@@ -9,9 +9,7 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "test:contracts": "vitest run",
-    "test:visual": "playwright test",
-    "test:visual:update": "playwright test --update-snapshots"
+    "test:contracts": "vitest run"
   },
   "dependencies": {
     "@veriworkly/ui": "*",
@@ -29,7 +27,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^25",
     "@types/react": "^19",
