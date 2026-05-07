@@ -12,6 +12,14 @@ jobs:
   quality:
     name: Quality & Testing
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:8080/api/v1"
+      BACKEND_INTERNAL_URL: "http://localhost:8080/api/v1"
+      SITE_URL: "http://localhost:3000"
+      AUTH_SECRET: "dummy-secret-for-build-purposes-only"
+      AUTH_BASE_URL: "http://localhost:8080"
+      JWT_SECRET: "dummy-jwt-secret"
+      DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -49,6 +57,14 @@ jobs:
     name: Visual Regression Tests
     needs: quality
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:8080/api/v1"
+      BACKEND_INTERNAL_URL: "http://localhost:8080/api/v1"
+      SITE_URL: "http://localhost:3000"
+      AUTH_SECRET: "dummy-secret-for-build-purposes-only"
+      AUTH_BASE_URL: "http://localhost:8080"
+      JWT_SECRET: "dummy-jwt-secret"
+      DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
