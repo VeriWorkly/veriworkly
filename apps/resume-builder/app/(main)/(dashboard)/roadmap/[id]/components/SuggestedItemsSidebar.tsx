@@ -32,31 +32,21 @@ const SuggestedItemsSidebar = ({
       <div className="space-y-3">
         {suggestedItems.length === 0 ? (
           <Card>
-            <p className="text-muted text-sm">
-              No other items in this category
-            </p>
+            <p className="text-muted text-sm">No other items in this category</p>
           </Card>
         ) : (
           suggestedItems.map((item) => (
             <Link key={item.id} href={`/roadmap/${item.id}`} className="block">
-              <Card className="cursor-pointer transition-all hover:shadow-md">
+              <Card className="cursor-pointer transition-all hover:shadow-md p-4!">
                 <div className="space-y-2">
-                  <h4 className="text-foreground line-clamp-2 font-semibold">
-                    {item.title}
-                  </h4>
+                  <h4 className="text-foreground line-clamp-2 font-semibold">{item.title}</h4>
 
-                  <p className="text-muted line-clamp-2 text-xs">
-                    {item.description}
-                  </p>
+                  <p className="text-muted line-clamp-2 text-xs">{item.description}</p>
 
-                  {item.eta && (
-                    <p className="text-muted text-xs font-medium">{item.eta}</p>
-                  )}
+                  {item.eta && <p className="text-muted text-xs font-medium">{item.eta}</p>}
 
                   {item.completedQuarter && (
-                    <p className="text-muted text-xs font-medium">
-                      {item.completedQuarter}
-                    </p>
+                    <p className="text-muted text-xs font-medium">{item.completedQuarter}</p>
                   )}
                 </div>
               </Card>

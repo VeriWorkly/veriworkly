@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     images: [
       {
-        url: "/og/blog-og.png",
+        url: "/og/blog-page-og.png",
         width: 1200,
         height: 630,
         alt: "VeriWorkly Blog Preview",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "VeriWorkly Blog | Resume Tips & Career Advice",
     description: "Learn how to build better resumes and grow your career with actionable insights.",
-    images: ["/og/blog-og.png"],
+    images: ["/og/blog-page-og.png"],
     creator: "@noober_boy",
   },
 

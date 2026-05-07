@@ -1,12 +1,14 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
+import Image from "next/image";
+
 import { siteConfig } from "@/config/site";
 
 export const baseOptions: BaseLayoutProps = {
   nav: {
     title: (
       <div className="flex items-center gap-2">
-        <img
+        <Image
           width={24}
           height={24}
           alt="VeriWorkly Logo"
@@ -19,6 +21,7 @@ export const baseOptions: BaseLayoutProps = {
     ),
     url: "/",
   },
+
   links: [
     {
       text: "Docs",
@@ -33,5 +36,6 @@ export const baseOptions: BaseLayoutProps = {
       url: siteConfig.links.blog,
     },
   ],
+
   githubUrl: siteConfig.links.github,
 };

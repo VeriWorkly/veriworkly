@@ -19,13 +19,13 @@ const APIReferenceLayout = ({ children }: { children: ReactNode }) => {
         {
           title: "VeriWorkly Docs",
           url: "/docs",
-          icon: <BookOpen />,
+          icon: <BookOpen className="size-4" />,
           description: "General documentation",
         },
         {
           title: "API Reference",
           url: "/api-reference",
-          icon: <Terminal />,
+          icon: <Terminal className="size-4" />,
           description: "OpenAPI specifications",
         },
       ]}

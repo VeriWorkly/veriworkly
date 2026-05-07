@@ -45,19 +45,15 @@ const KanbanItemCard = ({
   const cardContent = (
     <Card
       className={cn(
-        "cursor-default transition-all hover:shadow-lg",
+        "cursor-default transition-all hover:shadow-lg py-4 px-6",
         (showUrl && item.url) || showRoadmapLinks ? "cursor-pointer" : "",
       )}
     >
       <div className="flex flex-col gap-3">
         <div>
-          <h4 className="text-foreground leading-tight font-semibold">
-            {item.title}
-          </h4>
+          <h4 className="text-foreground leading-tight font-semibold">{item.title}</h4>
 
-          {item.eta && (
-            <p className="text-muted mt-1 text-xs">ETA: {item.eta}</p>
-          )}
+          {item.eta && <p className="text-muted mt-1 text-xs">ETA: {item.eta}</p>}
 
           {!item.eta && item.status === "done" && (
             <p className="text-muted mt-1 text-xs">
@@ -71,9 +67,7 @@ const KanbanItemCard = ({
         </div>
 
         {showDescription && item.description && (
-          <p className="text-muted text-sm leading-relaxed">
-            {item.description}
-          </p>
+          <p className="text-muted text-sm leading-relaxed">{item.description}</p>
         )}
 
         {item.tags && item.tags.length > 0 && (
@@ -81,10 +75,7 @@ const KanbanItemCard = ({
             {item.tags.map((tag) => (
               <Badge
                 key={tag}
-                className={
-                  tagColorMap[tag] ||
-                  "bg-gray-500/10 text-gray-700 dark:text-gray-300"
-                }
+                className={tagColorMap[tag] || "bg-gray-500/10 text-gray-700 dark:text-gray-300"}
               >
                 {tag}
               </Badge>

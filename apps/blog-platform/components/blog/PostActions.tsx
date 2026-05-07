@@ -10,9 +10,10 @@ import { siteConfig } from "@/config/site";
 type PostActionsProps = {
   title: string;
   url: string;
+  path: string;
 };
 
-const PostActions = ({ title, url }: PostActionsProps) => {
+const PostActions = ({ title, url, path }: PostActionsProps) => {
   const [copied, setCopied] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
@@ -118,7 +119,11 @@ const PostActions = ({ title, url }: PostActionsProps) => {
               <MenuItem
                 onClick={() => {
                   close();
-                  window.open(siteConfig.links.github, "_blank", "noopener,noreferrer");
+                  window.open(
+                    `${siteConfig.links.github}/tree/master/apps/blog-platform/content/blog/${path}`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
                 }}
               >
                 <ExternalLink className="h-4 w-4" />

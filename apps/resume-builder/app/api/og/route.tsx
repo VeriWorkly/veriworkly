@@ -9,13 +9,15 @@ export async function GET(request: Request) {
     const title = searchParams.get("title") ?? "VeriWorkly";
     const description = searchParams.get("description");
     const showDescription = searchParams.get("showDesc") !== "false";
+    const theme = searchParams.get("theme") ?? "light";
+
+    const isDark = theme === "dark";
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://veriworkly.com";
     const logoUrl = `${baseUrl}/veriworkly-logo.png`;
 
     const displayDescription =
-      description ||
-      "Building the future of professional resumes, one sync at a time.";
+      description || "Building the future of professional resumes, one sync at a time.";
 
     return new ImageResponse(
       <div
@@ -23,13 +25,13 @@ export async function GET(request: Request) {
           height: "100%",
           width: "100%",
           display: "flex",
-          color: "#171717",
+          color: isDark ? "#ffffff" : "#171717",
           alignItems: "center",
           position: "relative",
           flexDirection: "column",
           fontFamily: "sans-serif",
           justifyContent: "center",
-          backgroundColor: "#f5f4ef",
+          backgroundColor: isDark ? "#0a0a0a" : "#f5f4ef",
         }}
       >
         <div
@@ -39,8 +41,9 @@ export async function GET(request: Request) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundImage:
-              "radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%)",
+            backgroundImage: isDark
+              ? "radial-gradient(circle at top left, rgba(37, 99, 235, 0.2), transparent 40%)"
+              : "radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%)",
           }}
         />
 
@@ -51,8 +54,9 @@ export async function GET(request: Request) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundImage:
-              "radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 22%)",
+            backgroundImage: isDark
+              ? "radial-gradient(circle at top right, rgba(96, 165, 250, 0.15), transparent 30%)"
+              : "radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 22%)",
           }}
         />
 
@@ -67,16 +71,11 @@ export async function GET(request: Request) {
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <pattern
-              id="grid"
-              width="16"
-              height="16"
-              patternUnits="userSpaceOnUse"
-            >
+            <pattern id="grid" width="16" height="16" patternUnits="userSpaceOnUse">
               <path
                 d="M 16 0 L 0 0 0 16"
                 fill="none"
-                stroke="rgba(23, 23, 23, 0.035)"
+                stroke={isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(23, 23, 23, 0.035)"}
                 strokeWidth="1"
               />
             </pattern>
@@ -91,43 +90,49 @@ export async function GET(request: Request) {
             alignItems: "center",
             justifyContent: "center",
             padding: "80px",
-            zIndex: 10,
             textAlign: "center",
           }}
         >
           <div
             style={{
-              fontSize: 32,
-              fontWeight: 700,
+              fontSize: 24,
+              fontWeight: 600,
               marginBottom: 48,
               display: "flex",
               alignItems: "center",
-              letterSpacing: "-0.02em",
-              opacity: 0.9,
+              padding: "6px 12px",
+              borderRadius: "100px",
+              backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+              border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.07)",
             }}
           >
             <div
               style={{
-                width: 44,
-                height: 44,
-                marginRight: 14,
+                width: 38,
+                height: 38,
+                marginRight: 10,
                 backgroundImage: `url(${logoUrl})`,
                 backgroundSize: "contain",
                 backgroundRepeat: "no-repeat",
               }}
             />
-            VeriWorkly
+            <span style={{ fontWeight: 700 }}>VeriWorkly</span>
           </div>
 
           <div
             style={{
               fontSize: title.length > 40 ? 60 : 84,
               fontWeight: 900,
-              lineHeight: 1.1,
-              letterSpacing: "-0.04em",
-              marginBottom: showDescription ? 28 : 0,
-              maxWidth: "1000px",
+              lineHeight: 1.05,
+              letterSpacing: "-0.05em",
+              marginBottom: showDescription ? 32 : 0,
+              maxWidth: "1100px",
               display: "flex",
+              backgroundImage: isDark
+                ? "linear-gradient(to bottom, #ffffff, #a3a3a3)"
+                : "linear-gradient(to bottom, #000000, #4b5563)",
+              backgroundClip: "text",
+              color: "transparent",
             }}
           >
             {title}
@@ -136,9 +141,9 @@ export async function GET(request: Request) {
           {showDescription && (
             <div
               style={{
-                fontSize: 34,
-                color: "#4b5563",
-                maxWidth: "800px",
+                fontSize: 32,
+                color: isDark ? "#a3a3a3" : "#4b5563",
+                maxWidth: "850px",
                 lineHeight: 1.4,
                 fontWeight: 500,
                 display: "flex",
@@ -156,10 +161,10 @@ export async function GET(request: Request) {
             width: "100%",
             display: "flex",
             justifyContent: "center",
-            opacity: 0.4,
-            fontSize: 20,
-            fontWeight: 600,
-            letterSpacing: "0.05em",
+            opacity: 0.5,
+            fontSize: 18,
+            fontWeight: 700,
+            letterSpacing: "0.2em",
             textTransform: "uppercase",
           }}
         >

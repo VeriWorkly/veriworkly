@@ -32,8 +32,9 @@ export function getMDXComponents(components?: MDXComponents) {
     CodeBlockTabs,
     CodeBlockTabsList,
     CodeBlockTabsTrigger,
-    img: (props) => <ImageZoom {...(props as any)} />,
-    pre: ({ ref: _ref, ...props }) => (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    img: (props: any) => <ImageZoom {...props} />,
+    pre: (props) => (
       <CodeBlock {...props}>
         <Pre>{props.children}</Pre>
       </CodeBlock>

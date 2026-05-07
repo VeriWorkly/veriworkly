@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 
-import { siteConfig } from "@/config/site";
-
 import AdvancedProfileClient from "@/features/profile/components/advanced/AdvancedProfileClient";
 
 export const metadata: Metadata = {
-  title: `Advanced Profile | ${siteConfig.name}`,
+  title: `Advanced Profile`,
   description: "Bulk JSON operations and master profile data recovery.",
   robots: { index: false, follow: false },
 };
@@ -19,13 +17,10 @@ export default function AdvancedProfilePage() {
           Power Tools
         </div>
 
-        <h1 className="text-foreground text-4xl font-black tracking-tight">
-          Advanced Data
-        </h1>
+        <h1 className="text-foreground text-4xl font-black tracking-tight">Advanced Data</h1>
 
         <p className="text-muted-foreground max-w-2xl text-base leading-relaxed">
-          Direct JSON access for bulk migrations, environment porting, and
-          manual backup recovery.
+          Direct JSON access for bulk migrations, environment porting, and manual backup recovery.
         </p>
       </header>
 

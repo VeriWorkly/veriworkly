@@ -5,7 +5,7 @@ import { Button, Card } from "@veriworkly/ui";
 
 interface Post {
   url: string;
-  data: any;
+  data: unknown;
 }
 
 interface PostsGridProps {

@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 import {
   DocsBody,
-  DocsDescription,
   DocsPage,
   DocsTitle,
   EditOnGitHub,
+  DocsDescription,
 } from "fumadocs-ui/layouts/notebook/page";
 import { notFound } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
@@ -27,8 +27,10 @@ export default async function Page(props: PageProps) {
   const pageData = page.data as unknown as {
     title: string;
     description: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     toc: any[];
     full?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body: any;
   };
 

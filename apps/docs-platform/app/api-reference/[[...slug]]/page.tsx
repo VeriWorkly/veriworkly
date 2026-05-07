@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 
-import { DocsBody, DocsDescription, DocsPage, DocsTitle, EditOnGitHub } from "fumadocs-ui/layouts/notebook/page";
+import {
+  DocsBody,
+  DocsPage,
+  DocsTitle,
+  EditOnGitHub,
+  DocsDescription,
+} from "fumadocs-ui/layouts/notebook/page";
 import { notFound } from "next/navigation";
 
-import { apiSource } from "@/lib/source";
+import { apiSource, getApiPageImage } from "@/lib/source";
 
 import { getMDXComponents } from "@/components/mdx";
 
@@ -20,8 +26,10 @@ export default async function Page(props: PageProps) {
   const pageData = page.data as unknown as {
     title: string;
     description: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     toc: any[];
     full?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body: any;
   };
 
@@ -33,7 +41,7 @@ export default async function Page(props: PageProps) {
         style: "clerk",
         footer: (
           <EditOnGitHub
-            href={`https://github.com/Gautam25Raj/veriworkly-resume/edit/main/apps/docs-platform/content/api-reference/${page.file?.path ?? page.slugs.join("/") + ".mdx"}`}
+            href={`https://github.com/Gautam25Raj/veriworkly-resume/edit/main/apps/docs-platform/content/api-reference/${page.slugs.join("/") + ".mdx"}`}
           />
         ),
       }}
@@ -67,5 +75,8 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   return {
     title: pageData.title,
     description: pageData.description,
+    openGraph: {
+      images: getApiPageImage(page).url,
+    },
   };
 }

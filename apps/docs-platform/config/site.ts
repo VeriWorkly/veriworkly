@@ -2,7 +2,7 @@ export const siteConfig = {
   name: "VeriWorkly Docs",
   shortName: "VeriWorkly",
   creator: "Gautam Raj",
-  url: "https://docs.veriworkly.com",
+  url: process.env.SITE_URL || "https://docs.veriworkly.com",
   description: "Technical documentation and API reference for the VeriWorkly platform.",
   tagline: "Docs and API reference for VeriWorkly.",
 

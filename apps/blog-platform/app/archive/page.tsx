@@ -39,7 +39,7 @@ const BlogArchive = () => {
                 The Archive.
               </h1>
               <p className="text-muted text-lg font-medium">
-                Every story we've told about the future of career engineering.
+                Every story we&apos;ve told about the future of career engineering.
               </p>
             </div>
 

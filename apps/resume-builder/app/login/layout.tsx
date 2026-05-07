@@ -1,13 +1,44 @@
 import type { ReactNode } from "react";
 
 import Link from "next/link";
+import { Metadata } from "next";
 
-import { Badge } from "@veriworkly/ui";
-import { Button } from "@veriworkly/ui";
+import { siteConfig } from "@/config/site";
 
-export const metadata = {
-  title: "Login",
-  description: "Sign in to your account",
+import { Badge, Button } from "@veriworkly/ui";
+
+const pageUrl = `${siteConfig.url}/login`;
+const pageOgImage = `${siteConfig.url}/og/login-page-og.png`;
+
+export const metadata: Metadata = {
+  title: "Login | ATS Resume Builder",
+  description:
+    "Login to sync resumes, manage sharing, and access cloud features in VeriWorkly resume builder.",
+
+  openGraph: {
+    title: `Login | ATS Resume Builder`,
+    description:
+      "Login to sync resumes, manage sharing, and access cloud features in VeriWorkly resume builder.",
+    url: pageUrl,
+    siteName: siteConfig.shortName,
+    type: "website",
+    images: [
+      {
+        url: pageOgImage,
+        width: 1200,
+        height: 630,
+        alt: `Login | ATS Resume Builder`,
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: `Login | ATS Resume Builder`,
+    description:
+      "Login to sync resumes, manage sharing, and access cloud features in VeriWorkly resume builder.",
+    images: [pageOgImage],
+  },
 };
 
 interface AuthLayoutProps {
@@ -33,8 +64,8 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
               </h2>
 
               <p className="text-muted max-w-md text-base">
-                Everything works without login. Sign in only if you want cloud
-                sync, controlled sharing, and profile-powered resume variants.
+                Everything works without login. Sign in only if you want cloud sync, controlled
+                sharing, and profile-powered resume variants.
               </p>
             </div>
 
@@ -44,29 +75,19 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
                   Master Profile + Derived Resumes
                 </p>
 
-                <p className="text-muted mt-1 text-sm">
-                  Edit once, propagate selected changes.
-                </p>
+                <p className="text-muted mt-1 text-sm">Edit once, propagate selected changes.</p>
               </div>
 
               <div className="border-border/80 bg-background/70 rounded-2xl border p-3">
-                <p className="text-foreground text-sm font-semibold">
-                  Share Links with Controls
-                </p>
+                <p className="text-foreground text-sm font-semibold">Share Links with Controls</p>
 
-                <p className="text-muted mt-1 text-sm">
-                  Expiry, password, view-only, PDF toggle.
-                </p>
+                <p className="text-muted mt-1 text-sm">Expiry, password, view-only, PDF toggle.</p>
               </div>
 
               <div className="border-border/80 bg-background/70 rounded-2xl border p-3">
-                <p className="text-foreground text-sm font-semibold">
-                  Per-Resume Sync Toggle
-                </p>
+                <p className="text-foreground text-sm font-semibold">Per-Resume Sync Toggle</p>
 
-                <p className="text-muted mt-1 text-sm">
-                  Cloud sync stays opt-in, default off.
-                </p>
+                <p className="text-muted mt-1 text-sm">Cloud sync stays opt-in, default off.</p>
               </div>
             </div>
           </div>
@@ -76,20 +97,13 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
               <Link href="/dashboard">Continue Without Login</Link>
             </Button>
 
-            <Button
-              asChild
-              size="md"
-              variant="secondary"
-              className="w-full sm:w-auto"
-            >
+            <Button asChild size="md" variant="secondary" className="w-full sm:w-auto">
               <Link href="/templates">Explore Templates</Link>
             </Button>
           </div>
         </section>
 
-        <section className="relative mx-auto w-full max-w-xl">
-          {children}
-        </section>
+        <section className="relative mx-auto w-full max-w-xl">{children}</section>
       </div>
     </main>
   );

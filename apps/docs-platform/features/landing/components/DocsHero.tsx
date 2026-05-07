@@ -26,7 +26,7 @@ export const DocsHero = () => {
           </h1>
 
           <p className="text-muted max-w-2xl text-base leading-8 md:text-lg">
-            Deep dive into our privacy-first engine, explore the API specs, and learn how we're
+            Deep dive into our privacy-first engine, explore the API specs, and learn how we&apos;re
             redefining professional identity with local-first engineering.
           </p>
 

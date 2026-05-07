@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import type { ApiKeyRecord } from "./components/apiKeys/ApiKeyTypes";
 
-import { siteConfig } from "@/config/site";
 import { backendApiUrl } from "@/lib/constants";
 
 import ProfileCTA from "./components/ProfileCTA";
@@ -11,7 +10,7 @@ import ApiKeySection from "./components/ApiKeySection";
 import AppearanceSection from "./components/AppearanceSection";
 
 export const metadata: Metadata = {
-  title: `Settings | ${siteConfig.name}`,
+  title: `Settings`,
   description: "Manage workspace defaults and behavior.",
   robots: { index: false, follow: false },
 };

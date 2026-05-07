@@ -4,7 +4,7 @@ export const siteConfig = {
 
   creator: "Gautam Raj",
 
-  url: "https://veriworkly.com",
+  url: process.env.SITE_URL || "https://veriworkly.com",
 
   description:
     "Free, open-source, and privacy-first resume builder. Create professional ATS-friendly resumes with flexible templates, real-time preview, and complete data privacy.",
@@ -17,18 +17,26 @@ export const siteConfig = {
   },
 
   keywords: [
-    "resume builder",
     "free resume builder",
-    "no login resume builder",
     "ATS resume builder",
-    "resume templates",
-    "ATS friendly resume templates",
+    "ATS-friendly resume builder",
+    "resume builder no login",
     "online resume builder",
-    "resume maker free",
-    "professional resume builder",
-    "modern resume templates",
-    "privacy focused resume builder",
+    "resume maker",
+    "CV builder",
+    "professional resume templates",
+    "resume creator",
+    "resume generator",
+    "PDF resume builder",
     "open source resume builder",
+    "privacy-first resume builder",
+    "developer resume builder",
+    "modern resume templates",
+    "free CV maker",
+    "resume templates free",
+    "AI resume builder",
+    "job resume maker",
+    "best free resume builder",
   ],
 
   openGraph: {
@@ -45,12 +53,10 @@ export const siteConfig = {
 
   navigation: [
     { href: "/dashboard", label: "Dashboard" },
-
     { href: "/roadmap", label: "Roadmap" },
     { href: "/stats", label: "Development" },
+
     { href: "https://blogs.veriworkly.com", label: "Blog" },
     { href: "https://docs.veriworkly.com", label: "Docs" },
   ],
-
-
 } as const;

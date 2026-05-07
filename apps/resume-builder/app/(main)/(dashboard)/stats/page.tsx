@@ -25,7 +25,7 @@ import StatsOverview from "./components/StatsOverview";
 import StatsPagination from "./components/StatsPagination";
 
 export const metadata: Metadata = {
-  title: `Development Activity | ${siteConfig.name}`,
+  title: `Development Activity `,
   description:
     "Follow the GitHub sync board with live status filters, pagination, and sync timing.",
 };

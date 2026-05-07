@@ -6,7 +6,7 @@ import { Card } from "@veriworkly/ui";
 interface FeaturedPostProps {
   post: {
     url: string;
-    data: any;
+    data: unknown;
   };
 }
 

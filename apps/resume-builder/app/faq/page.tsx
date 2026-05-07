@@ -4,12 +4,7 @@ import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
 
-import {
-  Accordion,
-  AccordionItem,
-  AccordionContent,
-  AccordionTrigger,
-} from "@veriworkly/ui";
+import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@veriworkly/ui";
 import { Card } from "@veriworkly/ui";
 
 import { PublicPageShell } from "@/components/layout/PublicPageShell";
@@ -18,7 +13,7 @@ import { builderFaqs } from "./data/builderFaqs";
 import { contributorFaqs } from "./data/contributorFaqs";
 
 const pageUrl = `${siteConfig.url}/faq`;
-const pageOgImage = `${siteConfig.url}/og/landing-page-og.png`;
+const pageOgImage = `${siteConfig.url}/og/faq-page-og.png`;
 
 function splitIntoColumns<T>(items: T[]): [T[], T[]] {
   const left: T[] = [];
@@ -37,14 +32,14 @@ function splitIntoColumns<T>(items: T[]): [T[], T[]] {
 }
 
 export const metadata: Metadata = {
-  title: `Resume Builder FAQ (No Login, ATS-Friendly) | | ${siteConfig.name}`,
+  title: `Resume Builder FAQ | ATS Resume, Privacy & Export Help`,
   description:
-    "Find answers about using a free resume builder VeriWorkly, ATS-friendly templates, privacy, exports, and creating resumes without login.",
+    "Answers about ATS-friendly resumes, templates, exports, privacy, and using VeriWorkly without login.",
 
   openGraph: {
-    title: `FAQ | ${siteConfig.name}`,
+    title: `Resume Builder FAQ | ${siteConfig.shortName}`,
     description:
-      "Frequently asked questions about the resume builder and its privacy-first workflow.",
+      "Find answers about ATS resumes, resume templates, exports, privacy, and no-login resume creation.",
     url: pageUrl,
     siteName: siteConfig.shortName,
     type: "website",
@@ -53,24 +48,23 @@ export const metadata: Metadata = {
         url: pageOgImage,
         width: 1200,
         height: 630,
-        alt: `${siteConfig.shortName} FAQ`,
+        alt: `VeriWorkly Resume Builder FAQ`,
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: `FAQ | ${siteConfig.name}`,
+    title: `Resume Builder FAQ | ${siteConfig.shortName}`,
     description:
-      "Questions and answers about privacy, templates, exports, sharing, and roadmap workflows.",
+      "Common questions about ATS resumes, templates, exports, privacy, and resume builder workflows.",
     images: [pageOgImage],
   },
 };
 
 const FAQPage = () => {
   const [builderLeftColumn, builderRightColumn] = splitIntoColumns(builderFaqs);
-  const [contributorLeftColumn, contributorRightColumn] =
-    splitIntoColumns(contributorFaqs);
+  const [contributorLeftColumn, contributorRightColumn] = splitIntoColumns(contributorFaqs);
 
   const faqSchema = {
     "@context": "https://schema.org",
@@ -89,10 +83,10 @@ const FAQPage = () => {
     <>
       <PublicPageShell
         eyebrow="FAQ"
-        title="Resume builder frequently asked questions"
         secondaryAction={{ href: "/contact", label: "Contact" }}
         primaryAction={{ href: "/dashboard", label: "Open Dashboard" }}
-        description="A plain-language answer page for the most common questions about privacy, templates, exports, and the public roadmap."
+        title="Frequently Asked Questions About VeriWorkly Resume Builder"
+        description="Answers about ATS-friendly resumes, templates, exports, privacy, and no-login resume creation."
       >
         <script
           type="application/ld+json"
@@ -109,7 +103,7 @@ const FAQPage = () => {
               id="builder-faq-heading"
               className="text-foreground text-2xl font-semibold tracking-tight"
             >
-              Answers for resume builders and job seekers using VeriWorkly
+              ATS Resume Builder Questions for Job Seekers
             </h2>
           </div>
 
@@ -134,10 +128,7 @@ const FAQPage = () => {
           </div>
         </section>
 
-        <section
-          className="space-y-4"
-          aria-labelledby="contributor-faq-heading"
-        >
+        <section className="space-y-4" aria-labelledby="contributor-faq-heading">
           <div className="space-y-2">
             <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
               Contributor FAQ
@@ -147,7 +138,7 @@ const FAQPage = () => {
               id="contributor-faq-heading"
               className="text-foreground text-2xl font-semibold tracking-tight"
             >
-              Questions for contributors and maintainers
+              Contributor and Open Source Project Questions
             </h2>
           </div>
 
@@ -172,9 +163,7 @@ const FAQPage = () => {
           </div>
 
           <Card className="space-y-3 p-6">
-            <h3 className="text-foreground text-lg font-semibold">
-              Want to contribute now?
-            </h3>
+            <h3 className="text-foreground text-lg font-semibold">Contribute to VeriWorkly</h3>
 
             <p className="text-muted text-sm leading-6">
               Start by reading contribution guidelines and checking open issues.
@@ -195,12 +184,11 @@ const FAQPage = () => {
       </PublicPageShell>
 
       <section className="sr-only">
-        <h2>Free Resume Builder FAQ</h2>
+        <h2>ATS Resume Builder FAQ</h2>
 
         <p>
-          This page answers common questions about using a free resume builder,
-          creating ATS-friendly resumes, choosing templates, exporting resumes,
-          and building resumes without login.
+          Find answers about ATS-friendly resumes, resume templates, exports, privacy, and creating
+          resumes without login using VeriWorkly.
         </p>
       </section>
     </>

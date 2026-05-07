@@ -37,7 +37,7 @@ export const apiSource = loader({
           const file = this.storage.read(path);
           if (!file) return node;
 
-          const data = file.data as any;
+          const data = file.data as { _openapi?: { method: string }; new?: boolean };
           const method = data._openapi?.method;
           const isNew = data.new === true;
 
@@ -102,5 +102,14 @@ export function getPageImage(page: (typeof source)["$inferPage"]) {
   return {
     segments,
     url: `/og/docs/${segments.join("/")}`,
+  };
+}
+
+export function getApiPageImage(page: (typeof apiSource)["$inferPage"]) {
+  const segments = [...page.slugs, "image.png"];
+
+  return {
+    segments,
+    url: `/og/api/${segments.join("/")}`,
   };
 }

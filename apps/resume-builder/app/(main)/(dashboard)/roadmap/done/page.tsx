@@ -1,3 +1,5 @@
+import { Metadata } from "next";
+
 import { siteConfig } from "@/config/site";
 
 import {
@@ -7,15 +9,14 @@ import {
 
 import RoadmapPageShell from "../components/RoadmapPageShell";
 
-export const metadata = {
-  title: `Completed Features | ${siteConfig.name}`,
+export const metadata: Metadata = {
+  title: `Completed Resume Builder Features | ${siteConfig.shortName} Roadmap`,
   description:
-    "Explore features and updates already shipped in VeriWorkly. See what’s been completed in our free resume builder.",
+    "See completed features, shipped updates, and released improvements in the VeriWorkly resume builder roadmap.",
 
   openGraph: {
     title: `${siteConfig.shortName} Roadmap – Completed Features`,
-    description:
-      "View recently completed features and updates in VeriWorkly resume builder.",
+    description: "View recently completed features and updates in VeriWorkly resume builder.",
     url: `${siteConfig.url}/roadmap/done`,
     siteName: siteConfig.shortName,
     images: [
@@ -36,10 +37,6 @@ export const metadata = {
     images: ["/og/roadmap/roadmap-done-page-og.png"],
     creator: "@noober_boy",
   },
-
-  alternates: {
-    canonical: `${siteConfig.url}/roadmap/done`,
-  },
 };
 
 export const dynamic = "force-dynamic";
@@ -59,9 +56,7 @@ interface DoneRoadmapPageProps {
   }>;
 }
 
-export default async function DoneRoadmapPage({
-  searchParams,
-}: DoneRoadmapPageProps) {
+export default async function DoneRoadmapPage({ searchParams }: DoneRoadmapPageProps) {
   const params = await searchParams;
 
   const data = await fetchRoadmapFromBackend({

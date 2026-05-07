@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 
-import { siteConfig } from "@/config/site";
-
 import MasterProfileClient from "@/features/profile/components/master/MasterProfileClient";
 
 export const metadata: Metadata = {
-  title: `Master Editor | ${siteConfig.name}`,
+  title: `Master Editor`,
   description: "Guided form experience for your global resume data.",
   robots: { index: false, follow: false },
 };
@@ -24,8 +22,8 @@ const MasterProfilePage = () => {
         </h1>
 
         <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed">
-          The global source of truth for your professional identity. Changes
-          here populate all future resume drafts.
+          The global source of truth for your professional identity. Changes here populate all
+          future resume drafts.
         </p>
       </header>
 

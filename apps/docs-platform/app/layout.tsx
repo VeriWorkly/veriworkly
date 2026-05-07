@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     images: [
       {
-        url: "/og/docs-og.png",
+        url: "/og/docs-page-og.png",
         width: 1200,
         height: 630,
         alt: "VeriWorkly Docs Preview",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "VeriWorkly Docs | Guides & API Reference",
     description: "Explore guides, API references, and technical documentation for VeriWorkly.",
-    images: ["/og/docs-og.png"],
+    images: ["/og/docs-page-og.png"],
   },
 
   robots: {

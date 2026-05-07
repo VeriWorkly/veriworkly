@@ -21,9 +21,7 @@ interface RoadmapDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: RoadmapDetailPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: RoadmapDetailPageProps): Promise<Metadata> {
   const { id } = await params;
   const item = await fetchRoadmapFeatureById(id).catch(() => null);
 
@@ -40,15 +38,14 @@ export async function generateMetadata({
 
   const metadataDescription =
     item.description ||
-    `View details and progress for ${item.title} on our product roadmap.`;
+    `Track progress, updates, and release details for ${item.title} in the VeriWorkly resume builder roadmap.`;
 
   return {
-    title: `${item.title} | Roadmap | ${siteConfig.name}`,
-
+    title: `${item.title} | Resume Builder Roadmap`,
     description: metadataDescription,
 
     openGraph: {
-      title: item.title,
+      title: `${item.title} | VeriWorkly Roadmap`,
       description: metadataDescription,
       url: `${siteConfig.url}/roadmap/${id}`,
       siteName: siteConfig.name,
@@ -57,7 +54,7 @@ export async function generateMetadata({
           url: ogUrl.toString(),
           width: 1200,
           height: 630,
-          alt: item.title,
+          alt: `${item.title} Roadmap Feature`,
         },
       ],
       type: "article",
@@ -65,7 +62,7 @@ export async function generateMetadata({
 
     twitter: {
       card: "summary_large_image",
-      title: item.title,
+      title: `${item.title} | Resume Builder Feature`,
       description: metadataDescription,
       images: [ogUrl.toString()],
     },
@@ -74,6 +71,7 @@ export async function generateMetadata({
 
 const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
   const { id } = await params;
+
   const feature = await fetchRoadmapFeatureById(id);
 
   if (!feature) {

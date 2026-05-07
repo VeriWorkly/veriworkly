@@ -2,23 +2,22 @@ import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
 
-import { Card } from "@veriworkly/ui";
-import { Badge } from "@veriworkly/ui";
+import { Card, Badge } from "@veriworkly/ui";
 
 import { PublicPageShell } from "@/components/layout/PublicPageShell";
 
 const pageUrl = `${siteConfig.url}/terms`;
-const pageOgImage = `${siteConfig.url}/og/landing-page-og.png`;
+const pageOgImage = `${siteConfig.url}/og/terms-page-og.png`;
 
 export const metadata: Metadata = {
-  title: `Terms of Use | ${siteConfig.name}`,
+  title: `Terms of Use | ${siteConfig.shortName} Guidelines`,
   description:
-    "Review the basic terms for using VeriWorkly, including content ownership, acceptable use, and service limits.",
+    "Read the terms for using VeriWorkly including resume ownership, acceptable use, public sharing, and service limitations.",
 
   openGraph: {
-    title: `Terms of Use | ${siteConfig.name}`,
+    title: `Resume Builder Terms of Use | ${siteConfig.shortName}`,
     description:
-      "A plain-language terms page for the resume builder and its public-facing routes.",
+      "Simple and transparent terms for using the VeriWorkly ATS resume builder platform.",
     url: pageUrl,
     siteName: siteConfig.shortName,
     type: "website",
@@ -34,9 +33,8 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: `Terms of Use | ${siteConfig.name}`,
-    description:
-      "Plain-language terms for using the resume builder and related public routes.",
+    title: `Resume Builder Terms of Use | ${siteConfig.shortName}`,
+    description: "Understand your rights, responsibilities, and usage guidelines for VeriWorkly.",
     images: [pageOgImage],
   },
 };
@@ -101,19 +99,17 @@ const TermsPage = () => {
   return (
     <PublicPageShell
       eyebrow="Terms"
-      title="Clear and simple terms for using VeriWorkly"
+      title="Simple Terms for Using VeriWorkly Resume Builder"
       secondaryAction={{ href: "/contact", label: "Contact" }}
       primaryAction={{ href: "/about", label: "About the project" }}
-      description="Simple and clear terms for using VeriWorkly. Understand your rights, responsibilities, and service limits when using the resume builder."
+      description="Simple and clear terms for using VeriWorkly. Understand your rights, responsibilities, resume ownership, acceptable use, public sharing, and service limitations."
     >
       <section className="grid gap-4 md:grid-cols-2">
         {termsTopics.map((topic) => (
           <Card key={topic.title} className="space-y-3 p-6">
             <Badge>Terms</Badge>
 
-            <h2 className="text-foreground text-xl font-semibold">
-              {topic.title}
-            </h2>
+            <h2 className="text-foreground text-xl font-semibold">{topic.title}</h2>
 
             <p className="text-muted text-sm leading-6">{topic.description}</p>
           </Card>
@@ -127,9 +123,7 @@ const TermsPage = () => {
           </p>
 
           <ul className="space-y-3 text-sm leading-6">
-            <li className="text-muted">
-              Use the app for lawful and respectful purposes.
-            </li>
+            <li className="text-muted">Use the app for lawful and respectful purposes.</li>
 
             <li className="text-muted">
               You are responsible for the content you create and share.
@@ -140,8 +134,7 @@ const TermsPage = () => {
             </li>
 
             <li className="text-muted">
-              Keep backups of important data — the service is not a guaranteed
-              storage system.
+              Keep backups of important data — the service is not a guaranteed storage system.
             </li>
 
             <li className="text-muted">
@@ -151,39 +144,32 @@ const TermsPage = () => {
         </Card>
 
         <Card className="space-y-4 p-6 md:p-8">
-          <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-            Notes
-          </p>
+          <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">Notes</p>
+
           <h2 className="text-foreground text-2xl font-semibold tracking-tight">
-            These terms are intentionally simple.
+            Simple and Transparent Usage Terms
           </h2>
+
           <p className="text-muted text-sm leading-7">
-            The point of the site is to help people build resumes quickly, not
-            to trap them in a complicated legal flow. If anything on this page
-            conflicts with a more specific policy or feature-specific notice,
-            the more specific notice should guide that feature.
+            The point of the site is to help people build resumes quickly, not to trap them in a
+            complicated legal flow. If anything on this page conflicts with a more specific policy
+            or feature-specific notice, the more specific notice should guide that feature.
           </p>
         </Card>
       </section>
 
       <Card className="space-y-4 p-6 md:p-8">
-        <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-          Jurisdiction
-        </p>
+        <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">Jurisdiction</p>
 
         <p className="text-muted text-sm leading-7">
-          These terms are governed by applicable laws in India. By using the
-          service, you agree that any disputes will be handled under this
-          jurisdiction.
+          These terms are governed by applicable laws in India. By using the service, you agree that
+          any disputes will be handled under this jurisdiction.
         </p>
       </Card>
 
       <section className="text-muted text-sm">
         Questions about these terms?{" "}
-        <a
-          href="mailto:info@veriworkly.com"
-          className="text-accent font-medium hover:underline"
-        >
+        <a href="mailto:info@veriworkly.com" className="text-accent font-medium hover:underline">
           Contact us
         </a>
         .

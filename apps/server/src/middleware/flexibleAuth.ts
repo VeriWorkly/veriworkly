@@ -77,7 +77,7 @@ export const flexibleAuth = async (req: Request, res: Response, next: NextFuncti
       req.authUser = user;
     }
     return next();
-  } catch (error) {
+  } catch {
     // If it's a whitelisted origin, we ignore session errors and let the controller decide (e.g., if it's a public route)
     return next();
   }

@@ -1,3 +1,5 @@
+import { Metadata } from "next";
+
 import { siteConfig } from "@/config/site";
 
 import {
@@ -8,23 +10,26 @@ import {
 import RoadmapPageShell from "./components/RoadmapPageShell";
 import RoadmapSEOContent from "./components/RoadmapSEOContent";
 
-export const metadata = {
-  title: `Product Roadmap | ${siteConfig.name}`,
+const pageUrl = `${siteConfig.url}/roadmap`;
+const pageOgImage = `${siteConfig.url}/og/roadmap-page-og.png`;
+
+export const metadata: Metadata = {
+  title: `Resume Builder Product Roadmap`,
   description:
-    "Explore upcoming features, improvements, and recently completed updates for our free resume builder.",
+    "Explore upcoming ATS resume builder features, template updates, exports, and completed improvements in VeriWorkly.",
 
   openGraph: {
-    title: `${siteConfig.shortName} Roadmap – What’s Coming Next`,
+    title: `Resume Builder Roadmap | ${siteConfig.shortName}`,
     description:
-      "Track upcoming features and improvements. See what we're building next and what's already shipped.",
-    url: `${siteConfig.url}/roadmap`,
+      "Track upcoming resume builder features, roadmap progress, and recently shipped updates.",
+    url: pageUrl,
     siteName: siteConfig.shortName,
     images: [
       {
-        url: "/og/roadmap-page-og.png",
+        url: pageOgImage,
         width: 1200,
         height: 630,
-        alt: `${siteConfig.shortName} Product Roadmap`,
+        alt: `${siteConfig.shortName} | Resume Builder Roadmap`,
       },
     ],
     type: "website",
@@ -32,15 +37,10 @@ export const metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.shortName} Roadmap`,
+    title: `Resume Builder Roadmap | ${siteConfig.shortName}`,
     description:
-      "See upcoming features and improvements in our free resume builder.",
-    images: ["/og/roadmap-page-og.png"],
-    creator: "@noober_boy",
-  },
-
-  alternates: {
-    canonical: `${siteConfig.url}/roadmap`,
+      "See upcoming ATS resume builder features, template improvements, and shipped updates.",
+    images: [pageOgImage],
   },
 };
 

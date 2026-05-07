@@ -1,3 +1,5 @@
+import { Metadata } from "next";
+
 import { siteConfig } from "@/config/site";
 
 import {
@@ -7,10 +9,10 @@ import {
 
 import RoadmapPageShell from "../components/RoadmapPageShell";
 
-export const metadata = {
-  title: `Planned Features (Roadmap To Do) | ${siteConfig.name}`,
+export const metadata: Metadata = {
+  title: `Upcoming Resume Builder Features | ${siteConfig.shortName} Roadmap`,
   description:
-    "Explore upcoming features planned for VeriWorkly. See what’s next in our free, no-login resume builder.",
+    "Discover planned resume builder features, upcoming improvements, and future updates in the VeriWorkly roadmap.",
 
   openGraph: {
     title: `${siteConfig.shortName} Roadmap – Planned Features`,
@@ -32,14 +34,9 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: `${siteConfig.shortName} Planned Features`,
-    description:
-      "See what features are planned next in our free resume builder.",
+    description: "See what features are planned next in our free resume builder.",
     images: ["/og/roadmap/roadmap-todo-page-og.png"],
     creator: "@noober_boy",
-  },
-
-  alternates: {
-    canonical: `${siteConfig.url}/roadmap/todo`,
   },
 };
 
@@ -58,9 +55,7 @@ interface TodoRoadmapPageProps {
   }>;
 }
 
-export default async function TodoRoadmapPage({
-  searchParams,
-}: TodoRoadmapPageProps) {
+export default async function TodoRoadmapPage({ searchParams }: TodoRoadmapPageProps) {
   const params = await searchParams;
 
   const data = await fetchRoadmapFromBackend({

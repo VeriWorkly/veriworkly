@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
 
-import { Card } from "@veriworkly/ui";
-import { Badge } from "@veriworkly/ui";
-import { Button } from "@veriworkly/ui";
+import { Card, Badge, Button } from "@veriworkly/ui";
 
 import { PublicPageShell } from "@/components/layout/PublicPageShell";
 
 const pageUrl = `${siteConfig.url}/contact`;
-const pageOgImage = `${siteConfig.url}/og/landing-page-og.png`;
+const pageOgImage = `${siteConfig.url}/og/contact-page-og.png`;
 
 const supportEmail = "info@veriworkly.com";
 const supportEmailHref = `mailto:${supportEmail}`;
@@ -19,14 +17,14 @@ const githubSecurityPolicyUrl =
   "https://github.com/Gautam25Raj/veriworkly-resume/blob/master/SECURITY.md";
 
 export const metadata: Metadata = {
-  title: `Contact Resume Builder Support | ${siteConfig.shortName}`,
+  title: `Contact VeriWorkly Support | ATS Resume Builder Help`,
   description:
-    "Contact the VeriWorkly resume builder team for support, feedback, bug reports, or security issues. Get help with templates, exports, and resume creation.",
+    "Get help with ATS resume templates, exports, bugs, feature requests, and privacy-related questions.",
 
   openGraph: {
-    title: `Contact Resume Builder Support | ${siteConfig.shortName}`,
+    title: `Contact VeriWorkly Support`,
     description:
-      "Use the public contact routes to reach the project for support and feedback.",
+      "Contact VeriWorkly for resume builder support, bug reports, feature requests, and security issues.",
     url: pageUrl,
     siteName: siteConfig.shortName,
     type: "website",
@@ -35,16 +33,16 @@ export const metadata: Metadata = {
         url: pageOgImage,
         width: 1200,
         height: 630,
-        alt: `Contact Resume Builder Support | ${siteConfig.shortName}`,
+        alt: `Contact VeriWorkly Support`,
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: `Contact Resume Builder Support | ${siteConfig.shortName}`,
+    title: `Contact VeriWorkly Support`,
     description:
-      "Reach the project for support, roadmap feedback, and security reporting guidance.",
+      "Get support for resume templates, exports, feedback, bugs, and privacy-related issues.",
     images: [pageOgImage],
   },
 };
@@ -53,22 +51,19 @@ const contactOptions = [
   {
     label: "Email",
     href: supportEmailHref,
-    detail:
-      "Send support and privacy questions directly to info@veriworkly.com.",
+    detail: "Send support and privacy questions directly to info@veriworkly.com.",
   },
 
   {
     label: "Security Policy (GitHub)",
     href: githubSecurityPolicyUrl,
-    detail:
-      "Read the disclosure guidance in SECURITY.md before reporting sensitive issues.",
+    detail: "Read the disclosure guidance in SECURITY.md before reporting sensitive issues.",
   },
 
   {
     label: "GitHub Discussions",
     href: githubDiscussionsUrl,
-    detail:
-      "Use discussions for roadmap ideas, Q&A, and community conversation.",
+    detail: "Use discussions for roadmap ideas, Q&A, and community conversation.",
   },
 
   {
@@ -126,8 +121,8 @@ const ContactPage = () => {
           label: "Open discussions",
         }}
         primaryAction={{ href: supportEmailHref, label: "Email support" }}
-        title="Talk to the resume builder team in the simplest channel that fits your issue"
-        description="There is no forced support maze here. If you have feedback, a bug report, or a security concern, use the public routes below so the conversation stays transparent."
+        title="Contact the VeriWorkly Resume Builder Team"
+        description="Get help with resume templates, exports, bugs, privacy questions, and feature requests."
       >
         <script
           type="application/ld+json"
@@ -145,9 +140,7 @@ const ContactPage = () => {
                 <a
                   href={option.href}
                   target={option.href.startsWith("http") ? "_blank" : undefined}
-                  rel={
-                    option.href.startsWith("http") ? "noreferrer" : undefined
-                  }
+                  rel={option.href.startsWith("http") ? "noreferrer" : undefined}
                 >
                   Open {option.label}
                 </a>
@@ -159,39 +152,32 @@ const ContactPage = () => {
         <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
           <Card className="space-y-4 p-6 md:p-8">
             <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-              What to include
+              How to Report Resume Builder Issues
             </p>
 
             <ul className="space-y-3 text-sm leading-6">
               <li className="text-muted">
-                The page, resume template, or feature you were using when the
-                issue happened.
+                The page, resume template, or feature you were using when the issue happened.
+              </li>
+
+              <li className="text-muted">A short reproduction path, if the issue is technical.</li>
+
+              <li className="text-muted">Screenshots or screen recordings for layout problems.</li>
+
+              <li className="text-muted">
+                Whether the issue affects the public site, resume editor, or dashboard.
               </li>
 
               <li className="text-muted">
-                A short reproduction path, if the issue is technical.
-              </li>
-
-              <li className="text-muted">
-                Screenshots or screen recordings for layout problems.
-              </li>
-
-              <li className="text-muted">
-                Whether the issue affects the public site, resume editor, or
-                dashboard.
-              </li>
-
-              <li className="text-muted">
-                For security issues, share the minimum details needed to
-                reproduce the problem and wait for a response before wider
-                disclosure.
+                For security issues, share the minimum details needed to reproduce the problem and
+                wait for a response before wider disclosure.
               </li>
             </ul>
           </Card>
 
           <Card className="space-y-4 p-6 md:p-8">
             <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-              Security reports
+              Report Security Vulnerabilities
             </p>
 
             <h2 className="text-foreground text-2xl font-semibold tracking-tight">
@@ -199,9 +185,8 @@ const ContactPage = () => {
             </h2>
 
             <p className="text-muted text-sm leading-7">
-              If you believe you found a vulnerability, do not post it publicly
-              first. Use the security page so the issue can be assessed before
-              any wider disclosure.
+              If you believe you found a vulnerability, do not post it publicly first. Use the
+              security page so the issue can be assessed before any wider disclosure.
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -210,11 +195,7 @@ const ContactPage = () => {
               </Button>
 
               <Button asChild size="md" variant="secondary">
-                <a
-                  href={githubSecurityPolicyUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a href={githubSecurityPolicyUrl} target="_blank" rel="noreferrer">
                   Read SECURITY.md
                 </a>
               </Button>
@@ -224,12 +205,11 @@ const ContactPage = () => {
       </PublicPageShell>
 
       <section className="sr-only">
-        <h2>Resume Builder Support Contact</h2>
+        <h2>Contact ATS Resume Builder Support</h2>
 
         <p>
-          Contact VeriWorkly for help with resume creation, templates, exporting
-          resumes, privacy questions, and technical issues with the free resume
-          builder.
+          Contact VeriWorkly for help with ATS resume templates, exports, dashboard issues, privacy
+          questions, and resume builder support.
         </p>
       </section>
     </>

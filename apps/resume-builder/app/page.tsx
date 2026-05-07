@@ -9,6 +9,8 @@ import TrustBar from "@/features/landing/components/TrustBar";
 import CTASection from "@/features/landing/components/CTASection";
 import FAQSection from "@/features/landing/components/FAQSection";
 import HeroSection from "@/features/landing/components/HeroSection";
+import DocsSection from "@/features/landing/components/DocsSection";
+import BlogSection from "@/features/landing/components/BlogSection";
 import BenefitsSection from "@/features/landing/components/BenefitsSection";
 import FeaturesSection from "@/features/landing/components/FeaturesSection";
 import UseCasesSection from "@/features/landing/components/UseCasesSection";
@@ -16,22 +18,19 @@ import SecuritySection from "@/features/landing/components/SecuritySection";
 import ResourcesSection from "@/features/landing/components/ResourcesSection";
 import TemplatesPreview from "@/features/landing/components/TemplatesPreview";
 import HowItWorksSection from "@/features/landing/components/HowItWorksSection";
-import DocsSection from "@/features/landing/components/DocsSection";
-import BlogSection from "@/features/landing/components/BlogSection";
-
 
 const pageUrl = siteConfig.url;
 const pageOgImage = `${siteConfig.url}/og/landing-page-og.png`;
 
 export const metadata: Metadata = {
-  title: `Free Resume Builder (No Login) | ${siteConfig.shortName}`,
+  title: `Free ATS Resume Builder – No Login Required | ${siteConfig.shortName}`,
   description:
-    "Free, open-source, and privacy-first resume builder. Create ATS-friendly resumes online for free. No login required. Choose templates, customize easily, and download instantly.",
+    "Create ATS-friendly resumes instantly with VeriWorkly. Free, open-source, privacy-first, and no login required.",
 
   openGraph: {
-    title: `Free Resume Builder (No Login) | ${siteConfig.shortName}`,
+    title: `Free ATS Resume Builder (No Login) | ${siteConfig.shortName}`,
     description:
-      "Free, open-source, and privacy-first resume builder. Create polished resumes quickly with flexible templates, strong privacy defaults, and optional sync/share workflows.",
+      "Build professional ATS-friendly resumes in minutes with VeriWorkly for free. Free, open-source, privacy-first, and no signup required resume builder. Choose from modern resume templates, customize easily, and download instantly.",
     url: pageUrl,
     siteName: siteConfig.shortName,
     type: "website",
@@ -47,9 +46,9 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: `Free Resume Builder (No Login) | ${siteConfig.shortName}`,
+    title: `Free ATS Resume Builder (No Login) | ${siteConfig.shortName}`,
     description:
-      "Free, open-source, and privacy-first resume builder. Local-first resume builder with flexible templates and practical export workflows.",
+      "Create ATS-friendly resumes instantly. No signup required. Open-source and privacy-first.",
     images: [pageOgImage],
   },
 };
@@ -57,6 +56,38 @@ export const metadata: Metadata = {
 const Home = () => {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "VeriWorkly",
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            description: "Free ATS-friendly resume builder with no login required.",
+            url: siteConfig.url,
+            offers: {
+              "@type": "Offer",
+              price: "0",
+              priceCurrency: "USD",
+            },
+            creator: {
+              "@type": "Person",
+              name: "Gautam Raj",
+            },
+            featureList: [
+              "ATS-friendly resume builder",
+              "No login required",
+              "Open-source",
+              "Privacy-first",
+              "Resume PDF export",
+              "Modern resume templates",
+            ],
+          }),
+        }}
+      />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -89,18 +120,17 @@ const Home = () => {
           <BlogSection />
           <ResourcesSection />
 
-
           <FAQSection />
           <CTASection />
         </Container>
 
         <section className="sr-only">
-          <h2>Free Resume Builder Online</h2>
+          <h2>Free ATS-Friendly Resume Builder</h2>
 
           <p>
-            VeriWorkly is a free ATS-friendly resume builder that helps you create, edit, and
-            download professional resumes without login. Choose from modern resume templates,
-            customize sections, and export resumes for job applications easily.
+            VeriWorkly helps you create professional ATS-friendly resumes without requiring signup
+            or login. Choose modern resume templates, customize your resume easily, and export
+            ready-to-use resumes for job applications.
           </p>
         </section>
       </main>

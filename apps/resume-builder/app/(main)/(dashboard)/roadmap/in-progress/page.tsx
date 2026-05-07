@@ -1,3 +1,5 @@
+import { Metadata } from "next";
+
 import { siteConfig } from "@/config/site";
 
 import {
@@ -7,15 +9,14 @@ import {
 
 import RoadmapPageShell from "../components/RoadmapPageShell";
 
-export const metadata = {
-  title: `Features In Progress | ${siteConfig.name}`,
+export const metadata: Metadata = {
+  title: `Features In Development | ${siteConfig.shortName} Roadmap`,
   description:
-    "Track features currently being built in VeriWorkly. See what’s actively in development in our free resume builder.",
+    "Track resume builder features currently in development and active improvements planned for VeriWorkly users.",
 
   openGraph: {
     title: `${siteConfig.shortName} Roadmap – In Progress`,
-    description:
-      "Follow features currently in development and active improvements in VeriWorkly.",
+    description: "Follow features currently in development and active improvements in VeriWorkly.",
     url: `${siteConfig.url}/roadmap/in-progress`,
     siteName: siteConfig.shortName,
     images: [
@@ -32,14 +33,9 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: `${siteConfig.shortName} In Progress Features`,
-    description:
-      "See what features are currently being built in VeriWorkly resume builder.",
+    description: "See what features are currently being built in VeriWorkly resume builder.",
     images: ["/og/roadmap/roadmap-progress-page-og.png"],
     creator: "@noober_boy",
-  },
-
-  alternates: {
-    canonical: `${siteConfig.url}/roadmap/in-progress`,
   },
 };
 
@@ -58,16 +54,13 @@ interface InProgressRoadmapPageProps {
   }>;
 }
 
-export default async function InProgressRoadmapPage({
-  searchParams,
-}: InProgressRoadmapPageProps) {
+export default async function InProgressRoadmapPage({ searchParams }: InProgressRoadmapPageProps) {
   const params = await searchParams;
 
   const data = await fetchRoadmapFromBackend({
     status: "in-progress",
     sort: parseSort(params.sort),
-    refreshSection:
-      params.refresh === "in-progress" ? "in-progress" : undefined,
+    refreshSection: params.refresh === "in-progress" ? "in-progress" : undefined,
   });
 
   return (

@@ -4,24 +4,22 @@ import { siteConfig } from "@/config/site";
 
 import { principles } from "./data/principles";
 
-import { Card } from "@veriworkly/ui";
-import { Badge } from "@veriworkly/ui";
-import { Button } from "@veriworkly/ui";
+import { Card, Badge, Button } from "@veriworkly/ui";
 
 import { PublicPageShell } from "@/components/layout/PublicPageShell";
 
 const pageUrl = `${siteConfig.url}/about`;
-const pageOgImage = `${siteConfig.url}/og/landing-page-og.png`;
+const pageOgImage = `${siteConfig.url}/og/about-page-og.png`;
 
 export const metadata: Metadata = {
-  title: "About VeriWorkly Resume Builder (Free & Privacy-First)",
+  title: "About VeriWorkly | Free ATS Resume Builder",
   description:
-    "Learn about VeriWorkly, a free resume builder with no login. Discover how it helps you create ATS-friendly resumes with full privacy and control.",
+    "Learn how VeriWorkly helps users create ATS-friendly resumes with privacy-first, open-source, and no-login workflows.",
 
   openGraph: {
-    title: "About VeriWorkly Resume Builder (Free & Privacy-First)",
+    title: "About VeriWorkly | Free ATS Resume Builder",
     description:
-      "A privacy-first, open-source resume builder built for fast, controlled publishing.",
+      "Privacy-first ATS resume builder with open-source transparency and no signup required.",
     url: pageUrl,
     siteName: siteConfig.shortName,
     type: "website",
@@ -30,16 +28,16 @@ export const metadata: Metadata = {
         url: pageOgImage,
         width: 1200,
         height: 630,
-        alt: "About VeriWorkly Resume Builder (Free & Privacy-First)",
+        alt: "About VeriWorkly ATS Resume Builder",
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "About VeriWorkly Resume Builder (Free & Privacy-First)",
+    title: "About VeriWorkly | Free ATS Resume Builder",
     description:
-      "Learn how VeriWorkly is built around local-first privacy and practical resume workflows.",
+      "Open-source ATS resume builder focused on privacy, exports, and no-login resume creation.",
     images: [pageOgImage],
   },
 };
@@ -64,9 +62,14 @@ const AboutPage = () => {
     name: "VeriWorkly Resume Builder",
     url: siteConfig.url,
     applicationCategory: "BusinessApplication",
-    operatingSystem: "All",
+    operatingSystem: "Web",
     description:
       "Free resume builder with no login. Create ATS-friendly resumes online with full privacy.",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
   };
 
   return (
@@ -75,8 +78,8 @@ const AboutPage = () => {
         eyebrow="About"
         primaryAction={{ href: "/dashboard", label: "Open Dashboard" }}
         secondaryAction={{ href: "/contact", label: "Contact the team" }}
-        title="A free resume builder built to be fast, private, and easy to trust"
-        description="VeriWorkly is a local-first resume builder focused on practical output: clean templates, simple editing, optional sharing, and a public roadmap that makes the project easy to inspect."
+        title="Free ATS Resume Builder Built for Privacy and Simplicity"
+        description="VeriWorkly is a privacy-first ATS resume builder with modern templates, easy exports, and no login required."
       >
         <script
           type="application/ld+json"
@@ -90,13 +93,9 @@ const AboutPage = () => {
             <Card key={principle.title} className="space-y-3 p-6">
               <Badge>Principle</Badge>
 
-              <h2 className="text-foreground text-xl font-semibold">
-                {principle.title}
-              </h2>
+              <h2 className="text-foreground text-xl font-semibold">{principle.title}</h2>
 
-              <p className="text-muted text-sm leading-6">
-                {principle.description}
-              </p>
+              <p className="text-muted text-sm leading-6">{principle.description}</p>
             </Card>
           ))}
         </section>
@@ -104,7 +103,7 @@ const AboutPage = () => {
         <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
           <Card className="space-y-4 p-6 md:p-8">
             <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-              Why this exists
+              Why We Built VeriWorkly
             </p>
 
             <h2 className="text-foreground text-2xl font-semibold tracking-tight">
@@ -112,29 +111,26 @@ const AboutPage = () => {
             </h2>
 
             <p className="text-muted text-sm leading-7">
-              The product is structured around a simple idea: a resume builder
-              is most useful when it is easy to use, easy to audit, and easy to
-              move away from if needed. That means no unnecessary account gate,
-              clear export paths, and public pages that explain how the system
-              works.
+              The product is structured around a simple idea: a resume builder is most useful when
+              it is easy to use, easy to audit, and easy to move away from if needed. That means no
+              unnecessary account gate, clear export paths, and public pages that explain how the
+              system works.
             </p>
 
             <p className="text-muted text-sm leading-7">
-              The public site is intentionally small but complete. It includes
-              the landing page, templates, roadmap, policy pages, and contact
-              routes so people can verify the project before they trust it.
+              The public site is intentionally small but complete. It includes the landing page,
+              templates, roadmap, policy pages, and contact routes so people can verify the project
+              before they trust it.
             </p>
           </Card>
 
           <Card className="space-y-4 p-6 md:p-8">
             <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-              What people get
+              Features of VeriWorkly Resume Builder
             </p>
 
             <ul className="space-y-3 text-sm leading-6">
-              <li className="text-muted">
-                Free resume creation without forced sign-up or login.
-              </li>
+              <li className="text-muted">Free resume creation without forced sign-up or login.</li>
 
               <li className="text-muted">
                 ATS-friendly resume templates with fast export options.
@@ -144,13 +140,9 @@ const AboutPage = () => {
                 Optional sharing and sync instead of mandatory storage.
               </li>
 
-              <li className="text-muted">
-                A public roadmap so upcoming changes are visible.
-              </li>
+              <li className="text-muted">A public roadmap so upcoming changes are visible.</li>
 
-              <li className="text-muted">
-                Clear policy pages and contact routes for trust.
-              </li>
+              <li className="text-muted">Clear policy pages and contact routes for trust.</li>
             </ul>
 
             <div className="pt-2">
@@ -163,13 +155,12 @@ const AboutPage = () => {
       </PublicPageShell>
 
       <section className="sr-only">
-        <h2>About the Free Resume Builder</h2>
+        <h2>About VeriWorkly ATS Resume Builder</h2>
 
         <p>
-          VeriWorkly is a free ATS-friendly resume builder that helps users
-          create, edit, and export professional resumes without login. It
-          focuses on privacy-first workflows, flexible templates, and full
-          control over resume data.
+          VeriWorkly is a free ATS-friendly resume builder with no login required. Create
+          professional resumes, customize templates, and export resumes instantly with privacy-first
+          workflows.
         </p>
       </section>
     </>

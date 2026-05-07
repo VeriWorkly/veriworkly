@@ -8,14 +8,10 @@ import TemplateGroup from "./components/TemplateGroup";
 import TemplatesHeader from "./components/TemplatesHeader";
 import TemplatesSEOContent from "./components/TemplatesSEOContent";
 
-import {
-  getLayout,
-  getSingleParam,
-  familyByTemplateId,
-} from "./components/utils";
+import { getLayout, getSingleParam, familyByTemplateId } from "./components/utils";
 
 export const metadata: Metadata = {
-  title: `Free Resume Templates (ATS Friendly) | ${siteConfig.name}`,
+  title: `Free Resume Templates (ATS Friendly) `,
 
   description:
     "Browse free ATS-friendly resume templates. No login required. Choose from modern, professional, and simple resume designs and build your resume instantly.",
@@ -31,8 +27,7 @@ export const metadata: Metadata = {
 
   openGraph: {
     title: "Free Resume Templates (ATS Friendly) | VeriWorkly",
-    description:
-      "Explore modern and ATS-friendly resume templates. 100% free, no signup required.",
+    description: "Explore modern and ATS-friendly resume templates. 100% free, no signup required.",
     url: `${siteConfig.url}/templates`,
     siteName: siteConfig.name,
     images: [
@@ -49,8 +44,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Free Resume Templates | VeriWorkly",
-    description:
-      "Modern, ATS-friendly resume templates. Free & no login required.",
+    description: "Modern, ATS-friendly resume templates. Free & no login required.",
     images: ["/og/template-page-og.png"],
   },
 
@@ -79,10 +73,8 @@ const TemplatesPage = async ({ searchParams }: PageProps) => {
   }));
 
   const visibleTemplates = enrichedTemplates.filter((template) => {
-    const familyMatch =
-      selectedFamily === "All" || template.family === selectedFamily;
-    const layoutMatch =
-      selectedLayout === "All" || template.layout === selectedLayout;
+    const familyMatch = selectedFamily === "All" || template.family === selectedFamily;
+    const layoutMatch = selectedLayout === "All" || template.layout === selectedLayout;
 
     return familyMatch && layoutMatch;
   });
@@ -100,18 +92,12 @@ const TemplatesPage = async ({ searchParams }: PageProps) => {
 
   return (
     <div className="space-y-12 py-10">
-      <TemplatesHeader
-        selectedFamily={selectedFamily}
-        selectedLayout={selectedLayout}
-      />
+      <TemplatesHeader selectedFamily={selectedFamily} selectedLayout={selectedLayout} />
 
       {visibleTemplates.length ? (
         <div className="space-y-12">
           {templateGroups.map(
-            (group) =>
-              group.items.length && (
-                <TemplateGroup key={group.title} group={group} />
-              ),
+            (group) => group.items.length && <TemplateGroup key={group.title} group={group} />,
           )}
         </div>
       ) : (

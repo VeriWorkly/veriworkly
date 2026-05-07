@@ -53,9 +53,7 @@ export function PublicPageShell({
                 {title}
               </h1>
 
-              <p className="text-muted max-w-3xl text-base leading-8 md:text-lg">
-                {description}
-              </p>
+              <p className="text-muted max-w-3xl text-base leading-8 md:text-lg">{description}</p>
             </div>
 
             <div className="flex flex-wrap gap-3 pt-2">
@@ -71,9 +69,7 @@ export function PublicPageShell({
 
               {secondaryAction ? (
                 <Button asChild size="lg" variant="secondary">
-                  <Link href={secondaryAction.href}>
-                    {secondaryAction.label}
-                  </Link>
+                  <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
                 </Button>
               ) : null}
             </div>

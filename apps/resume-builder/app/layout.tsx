@@ -10,11 +10,7 @@ import { ThemeProvider } from "@/providers/theme-provider";
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
 
-  title: {
-    default: "VeriWorkly Resume Builder",
-    template: "%s | VeriWorkly Resume",
-  },
-
+  title: "VeriWorkly Resume Builder",
   description: siteConfig.description,
 
   keywords: [...siteConfig.keywords],
@@ -75,9 +71,9 @@ export const metadata: Metadata = {
   },
 
   alternates: {
-    canonical: siteConfig.url,
+    canonical: "/",
     languages: {
-      "en-US": siteConfig.url,
+      "en-US": "/",
     },
   },
 };
