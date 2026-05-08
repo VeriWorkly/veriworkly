@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Card, Button } from "@veriworkly/ui";
 import { siteConfig } from "@/config/site";
 
-
 const HeroSection = () => {
   return (
     <header
@@ -15,9 +14,7 @@ const HeroSection = () => {
 
       <div className="relative grid gap-8 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
         <div className="space-y-6">
-          <p className="text-muted text-xs font-semibold tracking-[0.28em] uppercase">
-            VeriWorkly
-          </p>
+          <p className="text-muted text-xs font-semibold tracking-[0.28em] uppercase">VeriWorkly</p>
 
           <h1
             id="hero-heading"

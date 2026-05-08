@@ -108,7 +108,6 @@ const Home = () => {
 
       <main className="py-6 md:py-10">
         <Container className="space-y-12 md:space-y-24">
-
           <HeroSection />
           <TrustBar />
           <FeaturesSection />
@@ -119,7 +118,6 @@ const Home = () => {
           <SecuritySection />
           <DocsSection />
           <BlogSection />
-
 
           <FAQSection />
           <CTASection />

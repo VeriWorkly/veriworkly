@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 
-import { Heart, ExternalLink, Mail, MapPin, ArrowUpRight } from "lucide-react";
+import { Heart, Mail, MapPin, ArrowUpRight } from "lucide-react";
 import { GithubIcon, LinkedInIcon, TwitterXIcon } from "./SocialIcons";
 
 import { siteConfig } from "@/config/site";
@@ -67,7 +67,8 @@ const Footer = () => {
               </Link>
 
               <p className="text-muted max-w-sm text-base leading-relaxed">
-                Empowering job seekers with the most advanced, privacy-first, and open-source resume building experience. 100% free, forever.
+                Empowering job seekers with the most advanced, privacy-first, and open-source resume
+                building experience. 100% free, forever.
               </p>
             </div>
 
@@ -92,7 +93,6 @@ const Footer = () => {
                 { name: "Twitter", href: siteConfig.links.twitter, icon: TwitterXIcon },
                 { name: "LinkedIn", href: siteConfig.links.linkedin, icon: LinkedInIcon },
               ].map((social) => (
-
                 <Link
                   key={social.name}
                   href={social.href}
@@ -150,10 +150,18 @@ const Footer = () => {
               Proudly crafted with <Heart className="h-4 w-4 fill-red-500 text-red-500" /> in Public
             </p>
             <div className="flex flex-wrap justify-center gap-6 text-[13px] font-bold text-slate-400">
-              <Link href="/privacy" className="hover:text-accent transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-accent transition-colors">Terms</Link>
-              <Link href="/faq" className="hover:text-accent transition-colors">FAQ</Link>
-              <Link href="/security" className="hover:text-accent transition-colors">Security</Link>
+              <Link href="/privacy" className="hover:text-accent transition-colors">
+                Privacy
+              </Link>
+              <Link href="/terms" className="hover:text-accent transition-colors">
+                Terms
+              </Link>
+              <Link href="/faq" className="hover:text-accent transition-colors">
+                FAQ
+              </Link>
+              <Link href="/security" className="hover:text-accent transition-colors">
+                Security
+              </Link>
             </div>
           </div>
         </div>

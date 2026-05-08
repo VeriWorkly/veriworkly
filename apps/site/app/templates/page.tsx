@@ -9,7 +9,6 @@ import TemplatesHeader from "./components/TemplatesHeader";
 import TemplatesSEOContent from "./components/TemplatesSEOContent";
 import { Container } from "@veriworkly/ui";
 
-
 import { getLayout, getSingleParam, familyByTemplateId } from "./components/utils";
 
 export const metadata: Metadata = {
@@ -96,7 +95,6 @@ const TemplatesPage = async ({ searchParams }: PageProps) => {
     <Container className="space-y-16 py-12 md:py-20">
       <TemplatesHeader selectedFamily={selectedFamily} selectedLayout={selectedLayout} />
 
-
       {visibleTemplates.length ? (
         <div className="space-y-12">
           {templateGroups.map(
@@ -109,7 +107,6 @@ const TemplatesPage = async ({ searchParams }: PageProps) => {
 
       <TemplatesSEOContent />
     </Container>
-
   );
 };
 

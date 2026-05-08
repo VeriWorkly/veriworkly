@@ -9,7 +9,6 @@ import { globalFontVariables } from "@veriworkly/ui";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { MainLayout } from "@/components/layout/MainLayout";
 
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
 
@@ -151,7 +150,6 @@ const RootLayout = ({
       <body
         className={`${globalFontVariables} bg-background text-foreground font-sans antialiased`}
       >
-
         <ThemeProvider
           enableSystem
           attribute="class"
@@ -159,10 +157,7 @@ const RootLayout = ({
           disableTransitionOnChange
           storageKey="veriworkly-theme"
         >
-          <MainLayout>
-            {children}
-          </MainLayout>
-
+          <MainLayout>{children}</MainLayout>
         </ThemeProvider>
       </body>
     </html>
