@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://veriworkly.com">
-    <img src="apps/resume-builder/public/og/landing-page-og.png" alt="VeriWorkly Resume" />
+    <img src="apps/site/public/og/landing-page-og.png" alt="VeriWorkly Resume" />
   </a>
 
   <h1>VeriWorkly Resume</h1>
@@ -45,33 +45,33 @@ All while maintaining **100% open-source transparency** and enabling self-hostin
 <table>
   <tr>
     <td align="center">
-      <img src="apps/resume-builder/public/templates/modern-resume-template.png" alt="Modern" width="150" />
+      <img src="apps/studio/public/templates/modern-resume-template.png" alt="Modern" width="150" />
       <br /><sub><b>Modern</b></sub>
     </td>
     <td align="center">
-      <img src="apps/resume-builder/public/templates/minimal-resume-template.png" alt="Minimal" width="150" />
+      <img src="apps/studio/public/templates/minimal-resume-template.png" alt="Minimal" width="150" />
       <br /><sub><b>Minimal</b></sub>
     </td>
     <td align="center">
-      <img src="apps/resume-builder/public/templates/executive-resume-template.png" alt="Executive" width="150" />
+      <img src="apps/studio/public/templates/executive-resume-template.png" alt="Executive" width="150" />
       <br /><sub><b>Executive</b></sub>
     </td>
     <td align="center">
-      <img src="apps/resume-builder/public/templates/classic-resume-template.png" alt="ATS Classic" width="150" />
+      <img src="apps/studio/public/templates/classic-resume-template.png" alt="ATS Classic" width="150" />
       <br /><sub><b>ATS Classic</b></sub>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="apps/resume-builder/public/templates/professional-resume-template.png" alt="Professional" width="150" />
+      <img src="apps/studio/public/templates/professional-resume-template.png" alt="Professional" width="150" />
       <br /><sub><b>Professional</b></sub>
     </td>
     <td align="center">
-      <img src="apps/resume-builder/public/templates/structured-resume-template.png" alt="Structured" width="150" />
+      <img src="apps/studio/public/templates/structured-resume-template.png" alt="Structured" width="150" />
       <br /><sub><b>Structured</b></sub>
     </td>
     <td align="center">
-      <img src="apps/resume-builder/public/templates/academic-resume-template.png" alt="Academic" width="150" />
+      <img src="apps/studio/public/templates/academic-resume-template.png" alt="Academic" width="150" />
       <br /><sub><b>Academic Serif</b></sub>
     </td>
   </tr>
@@ -94,7 +94,7 @@ VeriWorkly utilizes a modern, type-safe monorepo architecture to ensure service 
 
 The project is organized into independent applications and shared packages:
 
-- **`apps/resume-builder`**: The primary user interface for resume management.
+- **`apps/studio`**: The primary user interface for resume management.
 - **`apps/server`**: Centralized API service handling auth, sync, and exports.
 - **`apps/docs-platform`**: Technical and user documentation (powered by Fumadocs).
 - **`apps/blog-platform`**: Official product communications and career guides.

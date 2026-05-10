@@ -2,15 +2,12 @@ import { Router } from "express";
 
 import { adminAuthMiddleware } from "#middleware/adminAuth";
 
-import {
-  recordUsageMetricController,
-  getAdminDashboardStatsController,
-} from "#controllers/statsController";
+import { StatsController } from "#controllers/statsController";
 
 const router = Router();
 
-router.post("/events", recordUsageMetricController);
+router.post("/events", StatsController.recordUsageMetric);
 
-router.get("/admin/dashboard", adminAuthMiddleware, getAdminDashboardStatsController);
+router.get("/admin/dashboard", adminAuthMiddleware, StatsController.getAdminDashboardStats);
 
 export default router;

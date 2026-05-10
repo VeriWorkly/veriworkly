@@ -9,6 +9,7 @@ import { createErrorResponse } from "#utils/errors";
  * Middleware to authenticate requests using an API key.
  * It checks for the X-API-Key header.
  */
+
 export const apiKeyAuth = async (req: Request, res: Response, next: NextFunction) => {
   const headerValue = req.headers["x-api-key"];
   const apiKeyHeader = Array.isArray(headerValue) ? headerValue[0] : headerValue;

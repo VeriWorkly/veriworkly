@@ -1,6 +1,7 @@
 import cors from "cors";
 
 import { config } from "#config";
+
 import { ApiError } from "#utils/errors";
 
 export const corsMiddleware = cors({

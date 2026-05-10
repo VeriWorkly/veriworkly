@@ -22,10 +22,9 @@ model User {
   updatedAt           DateTime             @updatedAt
   sessions            Session[]
   accounts            Account[]
-  resumes             Resume[]
+  resumes             Document[]
   masterProfile       MasterProfile?
-  resumeCloudSyncs    ResumeCloudSync[]
-  resumeShareLinks    ResumeShareLink[]
+  shareLinks          ShareLink[]
   roadmapInteractions RoadmapInteraction[]
   apiKeys             ApiKey[]
 
@@ -80,24 +79,52 @@ model Verification {
   @@index([expiresAt])
 }
 
-// Resume model for storing user resumes
-model Resume {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String   @default("My Resume")
-  content   Json // Full resume data as JSON
-  template  String   @default("modern")
-  isPublic  Boolean  @default(false)
-  syncEnabled Boolean @default(false)
-  syncStatus  String  @default("local-only")
-  cloudResumeId String?
-  lastSyncedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ... (Rest of the schema)
 
-  @@index([userId])
-  @@index([isPublic])
+enum DocumentType {
+  RESUME
+  COVER_LETTER
+  PORTFOLIO
+  LINK_IN_BIO
+}
+
+enum Visibility {
+  PRIVATE
+  UNLISTED
+  PUBLIC
+}
+
+// Unified Document model for all product types
+model Document {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type          DocumentType @default(RESUME)
+  title         String       @default("Untitled Document")
+  slug          String?      // Unique per user/type for public links
+  
+  content       Json         // The main content (JSON Resume standard)
+  metadata      Json?        // UI state, favorites, tags, etc.
+  
+  templateId    String       @default("modern")
+  schemaVersion Int          @default(1)
+  revision      Int          @default(1)    // Optimistic concurrency control
+  
+  visibility    Visibility   @default(PRIVATE)
+  
+  // Sync metadata
+  lastSyncedAt  DateTime?
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?    // Soft delete
+
+  shareLinks    ShareLink[]
+
+  @@unique([userId, slug])
+  @@index([userId, type])
+  @@index([userId, updatedAt])
 }
 
 model MasterProfile {
@@ -109,52 +136,38 @@ model MasterProfile {
   updatedAt DateTime @updatedAt
 }
 
-model ResumeCloudSync {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resumeId      String
-  syncEnabled   Boolean  @default(false)
-  syncStatus    String   @default("local-only")
-  cloudResumeId String?
-  lastSyncedAt  DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@unique([userId, resumeId])
-  @@index([userId])
-  @@index([resumeId])
-}
-
-model ResumeShareLink {
-  id           String   @id @default(cuid())
+model ShareLink {
+  id           String    @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resumeId     String
-  resumeTitle  String
-  token        String   @unique
-  snapshot     Json
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  documentId   String
+  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  token        String    @unique
+  snapshot     Json      // Static snapshot of document at share time
+  
   passwordHash String?
   expiresAt    DateTime?
-  viewCount    Int      @default(0)
+  viewCount    Int       @default(0)
   lastViewedAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  views        ResumeShareView[]
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  views        ShareView[]
 
   @@index([userId])
-  @@unique([userId, resumeId])
-  @@index([resumeId])
-  @@index([expiresAt])
+  @@index([documentId])
+  @@index([token])
 }
 
-model ResumeShareView {
-  id           String          @id @default(cuid())
+model ShareView {
+  id           String    @id @default(cuid())
   shareLinkId  String
-  shareLink    ResumeShareLink  @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  shareLink    ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
   ipAddress    String?
   userAgent    String?
-  createdAt    DateTime        @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([shareLinkId])
   @@index([createdAt])

@@ -4,17 +4,13 @@ import { flexibleAuth } from "#middleware/flexibleAuth";
 import { adminAuthMiddleware } from "#middleware/adminAuth";
 import { requireApiKeyScopes } from "#middleware/apiKeyScope";
 
-import {
-  getGitHubStatsController,
-  getGitHubIssuesController,
-  syncGitHubStatsAsAdminController,
-} from "#controllers/githubController";
+import { GithubController } from "#controllers/githubController";
 
 const router = Router();
 
-router.get("/stats", flexibleAuth, requireApiKeyScopes("github:read"), getGitHubStatsController);
-router.get("/issues", flexibleAuth, requireApiKeyScopes("github:read"), getGitHubIssuesController);
+router.get("/stats", flexibleAuth, requireApiKeyScopes("github:read"), GithubController.getStats);
+router.get("/issues", flexibleAuth, requireApiKeyScopes("github:read"), GithubController.getIssues);
 
-router.post("/admin/sync", adminAuthMiddleware, syncGitHubStatsAsAdminController);
+router.post("/admin/sync", adminAuthMiddleware, GithubController.syncStats);
 
 export default router;

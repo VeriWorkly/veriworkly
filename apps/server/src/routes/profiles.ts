@@ -1,16 +1,16 @@
 import { Router } from "express";
 
-import {
-  getMasterProfileController,
-  updateMasterProfileController,
-} from "#controllers/profileController";
 import { authMiddleware } from "#middleware/auth";
+
+import { ProfileController } from "#controllers/profileController";
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.get("/master", getMasterProfileController);
-router.put("/master", updateMasterProfileController);
+router
+  .route("/master")
+  .get(ProfileController.getMasterProfile)
+  .put(ProfileController.updateMasterProfile);
 
 export default router;

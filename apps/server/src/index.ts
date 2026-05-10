@@ -14,23 +14,17 @@ import { errorHandler, notFoundHandler } from "#middleware/errorHandler";
 import { authRequestDiagnosticsMiddleware } from "#middleware/authRequestDiagnostics";
 
 import userRoutes from "#routes/users";
-import shareRoutes from "#routes/share";
 import statsRoutes from "#routes/stats";
 import githubRoutes from "#routes/github";
 import healthRoutes from "#routes/health";
-import exportRoutes from "#routes/exports";
-import resumeRoutes from "#routes/resumes";
+import sharesRoutes from "#routes/shares";
 import apiKeyRoutes from "#routes/apiKeys";
 import roadmapRoutes from "#routes/roadmap";
 import profileRoutes from "#routes/profiles";
-import shareControllerRoutes from "#routes/shares";
+import documentRoutes from "#routes/documents";
 
 import { authNodeHandler } from "#auth/index";
 import { ensureAdminUserExists, validateAuthRuntimeConfig } from "#auth/runtime";
-
-import { closeExportBrowser } from "#services/exportService";
-import { initExportArtifactStore, closeExportArtifactStore } from "#services/exportArtifactStore";
-import { startExportQueueWorker, stopExportQueueCleanup } from "#services/exportQueueService";
 
 import { startGitHubSyncJob, stopGitHubSyncJob } from "#jobs/githubSyncJob";
 import { startUsageMetricsJob, stopUsageMetricsJob } from "#jobs/usageMetricsJob";
@@ -56,18 +50,16 @@ app.use(express.urlencoded({ extended: true, limit: "4mb" }));
 // Trust proxy (for accurate IP addresses behind reverse proxies)
 app.set("trust proxy", config.server.trustProxy);
 
-// Versioned API routes (primary)
+// Versioned API routes
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/stats", statsRoutes);
 app.use("/api/v1/github", githubRoutes);
 app.use("/api/v1/health", healthRoutes);
-app.use("/api/v1/exports", exportRoutes);
-app.use("/api/v1/resumes", resumeRoutes);
+app.use("/api/v1/shares", sharesRoutes);
 app.use("/api/v1/roadmap", roadmapRoutes);
 app.use("/api/v1/api-keys", apiKeyRoutes);
 app.use("/api/v1/profiles", profileRoutes);
-app.use("/api/v1/share-links", shareRoutes);
-app.use("/api/v1/shares", shareControllerRoutes);
+app.use("/api/v1/documents", documentRoutes);
 
 app.all("/api/v1/auth", authRequestDiagnosticsMiddleware, authNodeHandler);
 app.all("/api/v1/auth/*", authRequestDiagnosticsMiddleware, authNodeHandler);
@@ -85,10 +77,7 @@ async function shutdown() {
   try {
     stopGitHubSyncJob();
     stopUsageMetricsJob();
-    stopExportQueueCleanup();
 
-    await closeExportBrowser();
-    await closeExportArtifactStore();
     await closeRedis();
     await prisma.$disconnect();
     process.exit(0);
@@ -106,20 +95,13 @@ async function main() {
   try {
     validateAuthRuntimeConfig();
 
-    // Initialize Redis
     await initRedis();
     logger.info("Redis initialized");
 
-    await initExportArtifactStore();
-    logger.info("Export artifact storage initialized");
-
-    // Test database connection
     logger.info("Database connected");
 
     await ensureAdminUserExists();
-    await startExportQueueWorker();
 
-    // Start listening
     const server = app.listen(config.port, () => {
       logger.info(`Server running on port ${config.port} (${config.nodeEnv})`);
       logger.info("IP/rate-limit configuration", {
@@ -135,7 +117,6 @@ async function main() {
       }
     });
 
-    // Handle server errors
     server.on("error", (err) => {
       logger.error("Server error:", err);
       process.exit(1);

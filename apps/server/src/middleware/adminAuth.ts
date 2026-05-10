@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 
 import { config } from "#config";
+
 import { createErrorResponse } from "#utils/errors";
 import { getSessionUserFromRequest } from "#middleware/auth";
 

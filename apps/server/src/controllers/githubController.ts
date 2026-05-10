@@ -5,6 +5,10 @@ import * as githubService from "#services/githubService";
 
 import { createSuccessResponse, handleValidationError } from "#utils/errors";
 
+/**
+ * Validation schema for GitHub query parameters.
+ */
+
 const githubQuerySchema = z.object({
   status: z.enum(["todo", "in-progress", "done"]).optional(),
   kind: z.enum(["issue", "pull-request", "all"]).optional(),
@@ -12,83 +16,60 @@ const githubQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-/**
- * Get GitHub project stats.
- *
- * @param _req Express request (unused)
- * @param res Express response
- * @param next Express next middleware
- *
- * Response:
- * - 200: Stats summary
- *
- * Errors:
- * - 500: Server error
- */
+export class GithubController {
+  /**
+   * Get GitHub project statistics (stars, forks, issues count, etc.).
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-const getGitHubStatsController = async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    const stats = await githubService.getGitHubStats();
+  static async getStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const stats = await githubService.getGitHubStats();
 
-    res.json(createSuccessResponse(stats, "Stats fetched successfully"));
-  } catch (error) {
-    next(error);
+      res.json(createSuccessResponse(stats, "GitHub stats fetched successfully"));
+    } catch (error) {
+      next(error);
+    }
   }
-};
 
-/**
- * Get GitHub issues with filtering and pagination.
- *
- * @param req Express request (query: status, kind, limit, offset)
- * @param res Express response
- * @param next Express next middleware
- *
- * Response:
- * - 200: Paginated issues list
- *
- * Errors:
- * - 400: Validation error
- * - 500: Server error
- */
+  /**
+   * Get GitHub issues with filtering, pagination, and status tracking.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-const getGitHubIssuesController = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const query = githubQuerySchema.parse(req.query);
-    const result = await githubService.getGitHubIssues(query);
+  static async getIssues(req: Request, res: Response, next: NextFunction) {
+    try {
+      const query = githubQuerySchema.parse(req.query);
+      const result = await githubService.getGitHubIssues(query);
 
-    res.json(createSuccessResponse(result, "Issues fetched successfully"));
-  } catch (error) {
-    if (error instanceof z.ZodError) return next(handleValidationError(error));
-    next(error);
+      res.json(createSuccessResponse(result, "GitHub issues fetched successfully"));
+    } catch (error) {
+      if (error instanceof z.ZodError) return next(handleValidationError(error));
+      next(error);
+    }
   }
-};
 
-/**
- * Trigger manual GitHub sync (admin).
- *
- * @param _req Express request (unused)
- * @param res Express response
- * @param next Express next middleware
- *
- * Response:
- * - 200: Sync result
- *
- * Errors:
- * - 500: Server error
- */
+  /**
+   * Trigger a manual sync of GitHub data (Admin only).
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-const syncGitHubStatsAsAdminController = async (
-  _req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const syncResult = await githubService.syncGitHubStatsFromGitHub();
+  static async syncStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const syncResult = await githubService.syncGitHubStatsFromGitHub();
 
-    res.json(createSuccessResponse(syncResult, "Manual sync completed"));
-  } catch (error) {
-    next(error);
+      res.json(createSuccessResponse(syncResult, "Manual GitHub sync completed successfully"));
+    } catch (error) {
+      next(error);
+    }
   }
-};
-
-export { getGitHubStatsController, getGitHubIssuesController, syncGitHubStatsAsAdminController };
+}

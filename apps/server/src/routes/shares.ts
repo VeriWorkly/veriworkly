@@ -1,25 +1,18 @@
 import { Router } from "express";
 
-import {
-  getPublicShareLinkController,
-  listResumeShareLinksController,
-  createResumeShareLinkController,
-  revokeResumeShareLinkController,
-  verifyPublicShareLinkController,
-} from "#controllers/shareController";
 import { authMiddleware } from "#middleware/auth";
+
+import { ShareController } from "#controllers/shareController";
 
 const router = Router();
 
-router.get("/resumes/:resumeId", authMiddleware, listResumeShareLinksController);
-router.post("/resumes/:resumeId", authMiddleware, createResumeShareLinkController);
-router.delete(
-  "/resumes/:resumeId/links/:shareLinkId",
-  authMiddleware,
-  revokeResumeShareLinkController,
-);
+router.get("/:token", ShareController.getPublic);
+router.post("/:token/verify", ShareController.verifyPublic);
 
-router.get("/public/:token", getPublicShareLinkController);
-router.post("/public/:token/verify", verifyPublicShareLinkController);
+router.use(authMiddleware);
+
+router.post("/", ShareController.create);
+router.get("/documents/:documentId", ShareController.list);
+router.delete("/documents/:documentId/links/:shareLinkId", ShareController.revoke);
 
 export default router;

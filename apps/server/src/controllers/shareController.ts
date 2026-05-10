@@ -1,22 +1,21 @@
 import { z } from "zod";
-import { promisify } from "node:util";
 import { NextFunction, Request, Response } from "express";
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-
-import type { ResumeShareLink } from "@prisma/client";
-
-import { Prisma } from "@prisma/client";
 
 import { requireAuthUser } from "#middleware/auth";
 
-import { prisma } from "#utils/prisma";
+import { ShareService } from "#services/shareService";
+
 import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
-import { ApiError, createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError, ApiError } from "#utils/errors";
+import { PublicShareLink } from "#types/api";
+
+/**
+ * Validation schemas for sharing-related requests
+ */
 
 const shareLinkCreateSchema = z.object({
-  resumeId: z.string().min(1),
+  documentId: z.string().min(1),
   snapshot: z.record(z.any()),
-  resumeTitle: z.string().min(1).optional(),
   password: z.string().min(1).optional(),
   expiresAt: z.string().datetime().nullable().optional(),
   noExpiry: z.boolean().optional(),
@@ -26,350 +25,191 @@ const shareLinkPasswordSchema = z.object({
   password: z.string().min(1),
 });
 
-const scryptAsync = promisify(scrypt);
+export class ShareController {
+  /**
+   * Create a new share link for a document.
+   * If a link already exists, it is replaced.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-// Helper functions
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const derived = (await scryptAsync(password, salt, 64)) as Buffer;
+  static async create(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = requireAuthUser(req);
 
-  return `${salt}:${derived.toString("hex")}`;
-}
+      const body = shareLinkCreateSchema.parse(req.body);
+      const { documentId } = body;
 
-async function verifyPassword(password: string, hash: string) {
-  const [salt, stored] = hash.split(":");
+      const { shareLink, oldToken } = await ShareService.createShareLink(user.id, documentId, body);
 
-  if (!salt || !stored) return false;
+      // Invalidate caches
+      await cacheDel(`share:list:${user.id}:${documentId}`);
+      if (oldToken) {
+        await cacheDel(`share:public:${oldToken}`);
+      }
 
-  const derived = (await scryptAsync(password, salt, 64)) as Buffer;
-  const left = derived;
-  const right = Buffer.from(stored, "hex");
+      res.status(201).json(createSuccessResponse(shareLink, "Share link created successfully"));
+    } catch (error) {
+      if (error instanceof z.ZodError) return next(handleValidationError(error));
+      next(error);
+    }
+  }
 
-  if (left.length !== right.length) return false;
+  /**
+   * List all share links associated with a specific document for the authenticated user.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-  return timingSafeEqual(left, right);
-}
+  static async list(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = requireAuthUser(req);
 
-function isExpired(expiresAt: Date | null | string) {
-  if (!expiresAt) return false;
+      const { documentId } = req.params;
 
-  return new Date(expiresAt).getTime() <= Date.now();
-}
+      const cacheKey = `share:list:${user.id}:${documentId}`;
+      const cached = await cacheGet<unknown>(cacheKey);
 
-function recordShareViewAsync(shareLinkId: string, req: Request) {
-  const ipAddress = req.ip;
-  const userAgent = req.headers["user-agent"] ?? null;
+      if (cached) {
+        return res.json(createSuccessResponse(cached, "Share links fetched from cache"));
+      }
 
-  prisma.resumeShareLink
-    .update({
-      where: { id: shareLinkId },
-      data: {
-        viewCount: { increment: 1 },
-        lastViewedAt: new Date(),
-        views: {
-          create: {
-            ipAddress,
-            userAgent,
-          },
-        },
-      },
-    })
-    .catch((error) => {
-      console.error(`Background view tracking failed for link ${shareLinkId}:`, error);
-    });
-}
+      const links = await ShareService.listShareLinks(user.id, documentId);
+      await cacheSet(cacheKey, links, 1800); // 30m cache
 
-/**
- * Create a new share link for a resume
- */
+      res.json(createSuccessResponse(links, "Share links fetched successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
 
-export async function createResumeShareLinkController(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  try {
-    const user = requireAuthUser(req);
+  /**
+   * Revoke an existing share link.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-    const resumeIdFromParam = req.params.resumeId;
-    const body = shareLinkCreateSchema.parse(req.body);
+  static async revoke(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = requireAuthUser(req);
 
-    const resumeId = resumeIdFromParam || body.resumeId;
+      const { documentId, shareLinkId } = req.params;
 
-    if (!resumeId) throw new ApiError(400, "Resume ID is required");
+      const token = await ShareService.revokeShareLink(user.id, documentId, shareLinkId);
 
-    const resume = await prisma.resume.findFirst({
-      where: { id: resumeId, userId: user.id },
-      select: { id: true },
-    });
+      // Invalidate caches
+      await cacheDel(`share:list:${user.id}:${documentId}`);
+      await cacheDel(`share:public:${token}`);
 
-    if (!resume) throw new ApiError(404, "Resume not found");
+      res.json(createSuccessResponse(null, "Share link revoked successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
 
-    const existingShareLink = await prisma.resumeShareLink.findFirst({
-      where: { userId: user.id, resumeId },
-      select: { id: true, expiresAt: true, token: true },
-    });
+  /**
+   * Public Endpoint: Get share link content.
+   * Requires a password if the link is password-protected.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-    if (existingShareLink) {
-      if (!isExpired(existingShareLink.expiresAt)) {
-        throw new ApiError(
-          409,
-          "Share link already exists for this resume. Revoke it first to create a new one.",
+  static async getPublic(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token } = req.params;
+      const cacheKey = `share:public:${token}`;
+
+      let shareLink = await cacheGet<PublicShareLink>(cacheKey);
+
+      if (!shareLink) {
+        shareLink = await ShareService.getPublicShareLink(token);
+        await cacheSet(cacheKey, shareLink, 3600);
+      }
+
+      if (!shareLink) throw new ApiError(404, "Link not found");
+
+      // Check if password is required
+      if (shareLink.passwordHash) {
+        return res.json(
+          createSuccessResponse(
+            {
+              passwordRequired: true,
+              title: shareLink.document.title,
+              expiresAt: shareLink.expiresAt,
+            },
+            "Password required",
+          ),
         );
       }
 
-      await prisma.resumeShareLink.delete({
-        where: { id: existingShareLink.id },
-      });
+      // Record view in background
+      ShareService.recordShareView(shareLink.id, req.ip, req.headers["user-agent"]).catch((err) =>
+        console.error("View tracking failed:", err),
+      );
 
-      await cacheDel(`share:public:${existingShareLink.token}`);
-    }
-
-    const token = randomBytes(18).toString("hex");
-
-    const passwordHash = body.password ? await hashPassword(body.password) : null;
-    const expiresAt = body.noExpiry ? null : body.expiresAt ? new Date(body.expiresAt) : null;
-
-    const resumeTitle =
-      body.resumeTitle ||
-      (body.snapshot as { basics?: { fullName?: string } }).basics?.fullName ||
-      "Shared Resume";
-
-    const shareLink = await prisma.resumeShareLink.create({
-      data: {
-        userId: user.id,
-        resumeId,
-        resumeTitle,
-        token,
-        snapshot: body.snapshot,
-        passwordHash,
-        expiresAt,
-      },
-    });
-
-    await cacheDel(`share:list:${user.id}:${resumeId}`);
-
-    res.json(createSuccessResponse(shareLink, "Share link created successfully"));
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return next(new ApiError(409, "Share link already exists for this resume. Revoke it first."));
-    }
-
-    if (error instanceof z.ZodError) return next(handleValidationError(error));
-
-    next(error);
-  }
-}
-
-/**
- * Get all share links for a resume
- */
-
-export async function listResumeShareLinksController(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  try {
-    const user = requireAuthUser(req);
-
-    const { resumeId } = req.params;
-
-    if (!resumeId) throw new ApiError(400, "Resume ID is required");
-
-    const cacheKey = `share:list:${user.id}:${resumeId}`;
-    const cachedList = await cacheGet(cacheKey);
-
-    if (cachedList) {
-      return res.json(createSuccessResponse(cachedList, "Share links fetched from cache"));
-    }
-
-    const shareLinks = await prisma.resumeShareLink.findMany({
-      where: { userId: user.id, resumeId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        token: true,
-        resumeTitle: true,
-        expiresAt: true,
-        passwordHash: true,
-        viewCount: true,
-        lastViewedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    const formattedLinks = shareLinks.map((item) => ({
-      id: item.id,
-      token: item.token,
-      resumeTitle: item.resumeTitle,
-      expiresAt: item.expiresAt,
-      passwordRequired: Boolean(item.passwordHash),
-      viewCount: item.viewCount,
-      lastViewedAt: item.lastViewedAt,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    }));
-
-    await cacheSet(cacheKey, formattedLinks, 1800);
-
-    res.json(createSuccessResponse(formattedLinks, "Share links fetched successfully"));
-  } catch (error) {
-    next(error);
-  }
-}
-
-/**
- * Revoke a share link
- */
-
-export async function revokeResumeShareLinkController(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  try {
-    const user = requireAuthUser(req);
-    const { resumeId, shareLinkId } = req.params;
-
-    if (!resumeId || !shareLinkId) {
-      throw new ApiError(400, "Resume ID and share link ID are required");
-    }
-
-    const existing = await prisma.resumeShareLink.findFirst({
-      where: { id: shareLinkId, userId: user.id, resumeId },
-      select: { id: true, token: true },
-    });
-
-    if (!existing) throw new ApiError(404, "Share link not found");
-
-    await prisma.resumeShareLink.delete({
-      where: { id: shareLinkId },
-    });
-
-    await Promise.all([
-      cacheDel(`share:list:${user.id}:${resumeId}`),
-      cacheDel(`share:public:${existing.token}`),
-    ]);
-
-    res.json(createSuccessResponse({ id: shareLinkId }, "Share link revoked successfully"));
-  } catch (error) {
-    next(error);
-  }
-}
-
-/**
- * Get public share link (without auth)
- */
-
-export async function getPublicShareLinkController(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  try {
-    const { token } = req.params;
-
-    if (!token) throw new ApiError(400, "Share token is required");
-
-    const cacheKey = `share:public:${token}`;
-    let shareLink: ResumeShareLink | null = await cacheGet<ResumeShareLink>(cacheKey);
-
-    if (!shareLink) {
-      shareLink = await prisma.resumeShareLink.findUnique({
-        where: { token },
-      });
-
-      if (!shareLink) throw new ApiError(404, "Shared resume not found");
-
-      await cacheSet(cacheKey, shareLink, 3600);
-    }
-
-    if (isExpired(shareLink.expiresAt)) {
-      throw new ApiError(410, "Shared resume has expired");
-    }
-
-    if (shareLink.passwordHash) {
-      return res.json(
+      res.json(
         createSuccessResponse(
           {
-            passwordRequired: true,
-            resumeTitle: shareLink.resumeTitle,
+            passwordRequired: false,
+            title: shareLink.document.title,
             expiresAt: shareLink.expiresAt,
+            snapshot: shareLink.snapshot,
           },
-          "Password required",
+          "Shared document fetched successfully",
         ),
       );
+    } catch (error) {
+      next(error);
     }
-
-    recordShareViewAsync(shareLink.id, req);
-
-    res.json(
-      createSuccessResponse(
-        {
-          passwordRequired: false,
-          resumeTitle: shareLink.resumeTitle,
-          expiresAt: shareLink.expiresAt,
-          snapshot: shareLink.snapshot,
-        },
-        "Shared resume fetched successfully",
-      ),
-    );
-  } catch (error) {
-    next(error);
   }
-}
 
-/**
- * Verify password and unlock public share link
- */
+  /**
+   * Public Endpoint: Verify password for a password-protected share link.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-export async function verifyPublicShareLinkController(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  try {
-    const { token } = req.params;
+  static async verifyPublic(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token } = req.params;
+      const { password } = shareLinkPasswordSchema.parse(req.body);
 
-    if (!token) throw new ApiError(400, "Share token is required");
+      const shareLink = await ShareService.getPublicShareLink(token);
 
-    const body = shareLinkPasswordSchema.parse(req.body);
+      if (shareLink.passwordHash) {
+        const matches = await ShareService.verifyPassword(password, shareLink.passwordHash);
+        if (!matches) throw new ApiError(401, "Invalid password");
+      }
 
-    const cacheKey = `share:public:${token}`;
-    let shareLink: ResumeShareLink | null = await cacheGet<ResumeShareLink>(cacheKey);
+      // Record view in background
+      ShareService.recordShareView(shareLink.id, req.ip, req.headers["user-agent"]).catch((err) =>
+        console.error("View tracking failed:", err),
+      );
 
-    if (!shareLink) {
-      shareLink = await prisma.resumeShareLink.findUnique({ where: { token } });
-      if (!shareLink) throw new ApiError(404, "Shared resume not found");
-      await cacheSet(cacheKey, shareLink, 3600);
+      res.json(
+        createSuccessResponse(
+          {
+            passwordRequired: false,
+            title: shareLink.document.title,
+            expiresAt: shareLink.expiresAt,
+            snapshot: shareLink.snapshot,
+          },
+          "Shared document unlocked successfully",
+        ),
+      );
+    } catch (error) {
+      if (error instanceof z.ZodError) return next(handleValidationError(error));
+      next(error);
     }
-
-    if (isExpired(shareLink.expiresAt)) {
-      throw new ApiError(410, "Shared resume has expired");
-    }
-
-    if (shareLink.passwordHash) {
-      const passwordMatches = await verifyPassword(body.password, shareLink.passwordHash);
-      if (!passwordMatches) throw new ApiError(401, "Invalid password");
-    }
-
-    recordShareViewAsync(shareLink.id, req);
-
-    res.json(
-      createSuccessResponse(
-        {
-          passwordRequired: false,
-          resumeTitle: shareLink.resumeTitle,
-          expiresAt: shareLink.expiresAt,
-          snapshot: shareLink.snapshot,
-        },
-        "Shared resume unlocked successfully",
-      ),
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) return next(handleValidationError(error));
-    next(error);
   }
 }

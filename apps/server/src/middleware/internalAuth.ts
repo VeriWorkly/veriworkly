@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 
 import { config } from "#config";
+
 import { createErrorResponse } from "#utils/errors";
 
 export function internalApiKeyMiddleware(req: Request, res: Response, next: NextFunction) {

@@ -1,6 +1,6 @@
 # VeriWorkly API Server
 
-The backend engine for VeriWorkly, providing authentication, data sync, and a high-fidelity PDF export pipeline.
+The backend engine for VeriWorkly, providing authentication, resume CRUD, sync, and public share functionality.
 
 ## 🚀 Quick Start
 
@@ -36,15 +36,16 @@ The API will be available at `http://localhost:8080`.
 
 - **Express.js**: Core API framework.
 - **Prisma ORM**: Type-safe database access for PostgreSQL.
-- **BullMQ + Redis**: Job queue for offloading PDF rendering.
-- **Playwright**: Headless Chromium used to render resumes into ATS-optimized PDFs.
+- **Redis**: Session cache and rate-limiting store.
 - **Better-Auth**: Complete authentication solution (OTP, sessions).
+
+> **PDF Export**: PDF generation runs entirely client-side in the studio app using React PDF (`@react-pdf/renderer`). The server no longer handles rendering or artifact storage.
 
 ## 📁 Folder Structure
 
 - `src/`: TypeScript source code.
   - `auth/`: Better-Auth configuration and mailers.
-  - `jobs/`: BullMQ worker logic and scheduled tasks.
+  - `jobs/`: Scheduled background tasks (GitHub sync, usage metrics).
   - `routes/`: Express route definitions.
   - `services/`: Business logic layer.
 - `prisma/`: Database schema and migrations.

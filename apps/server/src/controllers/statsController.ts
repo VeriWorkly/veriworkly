@@ -7,8 +7,8 @@ import { getGitHubStats } from "#services/githubService";
 import { getAdminDashboardMetrics, incrementUsageMetric } from "#services/analyticsService";
 
 /**
- * Zod validation schema for incoming usage metrics.
- * Ensures the event name is a non-empty string and the value is a positive integer (max 1000).
+ * Validation schema for incoming usage metrics.
+ * Ensures the event name is a non-empty string and the value is a positive integer.
  */
 
 const usageMetricEventSchema = z.object({
@@ -16,66 +16,61 @@ const usageMetricEventSchema = z.object({
   value: z.number().int().positive().max(1000).optional(),
 });
 
-/**
- * Record a single usage metric (e.g., resume_created) into Redis.
- *
- * req:
- * - body: { event: string, value?: number }
- *
- * res:
- * - 202: "Accepted" - signifies the metric is validated and queued for background processing.
- *
- * next:
- * - Forwards Zod validation errors or Redis connection issues to the error handler.
- */
+export class StatsController {
+  /**
+   * Record a single usage metric (e.g., resume_created) into Redis.
+   * In development mode, metric recording is skipped.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-const recordUsageMetricController = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (process.env.NODE_ENV === "development")
-      return res.status(202).json("Skipping metric recording in development mode");
+  static async recordUsageMetric(req: Request, res: Response, next: NextFunction) {
+    try {
+      // Skip recording in development to avoid cluttering metrics
+      if (process.env.NODE_ENV === "development") {
+        return res.status(202).json("Skipping metric recording in development mode");
+      }
 
-    const payload = usageMetricEventSchema.parse(req.body);
-    await incrementUsageMetric(payload);
+      // Validate and parse payload
+      const payload = usageMetricEventSchema.parse(req.body);
 
-    res.status(202).json(createSuccessResponse({ accepted: true }, "Metric accepted"));
-  } catch (error) {
-    next(error);
+      // Increment metric via AnalyticsService
+      await incrementUsageMetric(payload);
+
+      res.status(202).json(createSuccessResponse({ accepted: true }, "Metric accepted"));
+    } catch (error) {
+      next(error);
+    }
   }
-};
 
-/**
- * Fetch aggregated data for the Admin Dashboard, including GitHub and usage stats.
- *
- * req:
- * - (unused, protected by adminAuthMiddleware)
- *
- * res:
- * - 200: Returns combined githubStats and usageMetrics.
- *
- * next:
- * - Forwards service-level errors to the global error handler.
- */
+  /**
+   * Fetch aggregated data for the Admin Dashboard.
+   * Combines GitHub repository stats and internal usage metrics.
+   * Protected by admin authentication middleware.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-const getAdminDashboardStatsController = async (
-  _req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const [githubStats, usageMetrics] = await Promise.all([
-      getGitHubStats(),
-      getAdminDashboardMetrics(),
-    ]);
+  static async getAdminDashboardStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      // Parallelize fetching of stats for performance
+      const [githubStats, usageMetrics] = await Promise.all([
+        getGitHubStats(),
+        getAdminDashboardMetrics(),
+      ]);
 
-    res.json(
-      createSuccessResponse(
-        { githubStats, usageMetrics },
-        "Admin dashboard stats fetched successfully",
-      ),
-    );
-  } catch (error) {
-    next(error);
+      res.json(
+        createSuccessResponse(
+          { githubStats, usageMetrics },
+          "Admin dashboard stats fetched successfully",
+        ),
+      );
+    } catch (error) {
+      next(error);
+    }
   }
-};
-
-export { recordUsageMetricController, getAdminDashboardStatsController };
+}

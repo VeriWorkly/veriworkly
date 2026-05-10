@@ -57,3 +57,15 @@ export interface GitHubStatsResponse {
   nextSyncAt?: string | null;
   data?: Record<string, unknown>;
 }
+
+export interface PublicShareLink {
+  id: string;
+  token: string;
+  passwordHash: string | null;
+  expiresAt: any;
+  snapshot: any;
+  document: {
+    title: string;
+  };
+}
+

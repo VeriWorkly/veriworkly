@@ -12,6 +12,7 @@ const MAX_REQUESTS = 20;
  * Rate limiter middleware for API keys.
  * Expects apiKey object to be present on req (from apiKeyAuth middleware).
  */
+
 export const apiKeyRateLimit = async (req: Request, res: Response, next: NextFunction) => {
   const apiKey = req.apiKey;
 

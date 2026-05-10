@@ -3,126 +3,82 @@ import { NextFunction, Request, Response } from "express";
 
 import { requireAuthUser } from "#middleware/auth";
 
-import { prisma } from "#utils/prisma";
-import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
-import { ApiError, createSuccessResponse, handleValidationError } from "#utils/errors";
+import { UserService } from "#services/userService";
 
-// Validation schemas
+import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
+import { createSuccessResponse, handleValidationError } from "#utils/errors";
+
+/**
+ * Validation schemas for user-related requests
+ */
+
 const updateUserNameSchema = z.object({
   name: z.string().trim().min(1, "Name cannot be empty").max(255, "Name is too long"),
 });
 
-/**
- * Update the authenticated user's name.
- *
- * @param req Express request (expects { name } in body)
- * @param res Express response
- * @param next Express next middleware
- *
- * Body:
- * - name: string (required, 1–255 chars)
- *
- * Response:
- * - 200: Updated user object
- *
- * Errors:
- * - 400: Validation error
- * - 500: Server error
- */
+export class UserController {
+  /**
+   * Get the current authenticated user's information.
+   * Leverages Redis caching for performance.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
 
-const getCurrentUserController = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authUser = requireAuthUser(req);
+  static async getCurrentUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const authUser = requireAuthUser(req);
 
-    const cacheKey = `user:me:${authUser.id}`;
+      const cacheKey = `user:me:${authUser.id}`;
 
-    const cachedUser = await cacheGet(cacheKey);
-    if (cachedUser) {
-      return res.json(createSuccessResponse(cachedUser, "User information fetched successfully"));
+      // Check cache first
+      const cachedUser = await cacheGet(cacheKey);
+      if (cachedUser) {
+        return res.json(createSuccessResponse(cachedUser, "User information fetched from cache"));
+      }
+
+      // Fetch from database via UserService
+      const user = await UserService.getUserById(authUser.id);
+
+      // Cache the result for 30 minutes
+      await cacheSet(cacheKey, user, 1800);
+
+      res.json(createSuccessResponse(user, "User information fetched successfully"));
+    } catch (error) {
+      next(error);
     }
+  }
 
-    const user = await prisma.user.findUnique({
-      where: { id: authUser.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        emailVerified: true,
-        autoSyncEnabled: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            resumeShareLinks: true,
-            resumes: true,
-          },
-        },
-      },
-    });
+  /**
+   * Update the authenticated user's display name.
+   * Invalidates and refreshes the user cache upon success.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
+  static async updateUserName(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = requireAuthUser(req);
 
-    if (!user) {
-      throw new ApiError(404, "User not found");
+      // Validate request body
+      const { name } = updateUserNameSchema.parse(req.body);
+
+      // Perform update via UserService
+      const updated = await UserService.updateUserName(user.id, name);
+
+      // Invalidate existing cache and set new data
+      const cacheKey = `user:me:${user.id}`;
+
+      await cacheDel(cacheKey);
+      await cacheSet(cacheKey, updated, 1800);
+
+      res.json(createSuccessResponse(updated, "User name updated successfully"));
+    } catch (error) {
+      // Handle Zod validation errors
+      if (error instanceof z.ZodError) return next(handleValidationError(error));
+      next(error);
     }
-
-    await cacheSet(cacheKey, user, 1800);
-
-    res.json(createSuccessResponse(user, "User information fetched successfully"));
-  } catch (error) {
-    next(error);
   }
-};
-
-/**
- * Get the authenticated user's profile.
- *
- * @param req Express request
- * @param res Express response
- * @param next Express next middleware
- *
- * Response:
- * - 200: User profile data
- *
- * Errors:
- * - 404: User not found
- * - 500: Server error
- */
-
-const updateUserNameController = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const user = requireAuthUser(req);
-    const { name } = updateUserNameSchema.parse(req.body);
-
-    const updated = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        name,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        emailVerified: true,
-        autoSyncEnabled: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            resumeShareLinks: true,
-            resumes: true,
-          },
-        },
-      },
-    });
-
-    await cacheDel(`user:me:${user.id}`);
-    await cacheSet(`user:me:${user.id}`, updated, 1800);
-
-    res.json(createSuccessResponse(updated, "User name updated successfully"));
-  } catch (error) {
-    if (error instanceof z.ZodError) return next(handleValidationError(error));
-
-    next(error);
-  }
-};
-
-export { getCurrentUserController, updateUserNameController };
+}
