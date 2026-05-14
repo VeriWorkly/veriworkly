@@ -60,6 +60,7 @@ export const config = {
     smtpSecure: (process.env.AUTH_SMTP_SECURE || "false") === "true",
     smtpUser: process.env.AUTH_SMTP_USER || "",
     smtpPass: process.env.AUTH_SMTP_PASS || "",
+    cookieDomain: process.env.AUTH_COOKIE_DOMAIN || undefined,
   },
 
   apiKeys: {

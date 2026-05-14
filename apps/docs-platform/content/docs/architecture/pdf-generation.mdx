@@ -30,15 +30,19 @@ Every template in VeriWorkly implements a dual-engine architecture to ensure con
 The transition from a resume model to a finalized PDF follows a strictly defined pipeline:
 
 ### 1. Primal Mapping
+
 The application extracts the current state from the Zustand store and performs a normalization pass. This ensures that all dates, rich-text fragments, and media assets are formatted correctly for the PDF engine.
 
 ### 2. PDF Primitive Construction
+
 The normalized data is passed into the template's `pdf.tsx` component. Unlike the web engine, which uses standard CSS, the PDF engine utilizes a style object syntax similar to React Native, ensuring absolute positioning and fixed-width layouts required for document fidelity.
 
 ### 3. Local Generation
+
 The `react-pdf` renderer processes the component tree entirely within the browser's main thread (or a Web Worker for complex documents). It generates a `Blob` containing the binary PDF data.
 
 ### 4. Direct Delivery
+
 The generated Blob is converted into a temporary Object URL and triggered as a download. This ensures the document never leaves the user's secure device environment.
 
 ---
@@ -56,10 +60,10 @@ To ensure maximum machine-readability, the PDF engine follows several strict pro
 
 ## Comparison: Server-Side vs. Client-Side
 
-| Feature | Legacy (Playwright/Server) | Modern (react-pdf/Client) |
-| :--- | :--- | :--- |
-| **Latency** | High (Network + Browser Boot) | Instant (Local Render) |
-| **Privacy** | Data transmitted to API | Data remains on device |
-| **Scalability** | Resource-intensive (CPU/RAM) | Virtually unlimited (Distributed) |
-| **Fidelity** | Near-perfect | Perfect (Direct Coordinate Mapping) |
-| **Complexity** | High (Redis/BullMQ/Workers) | Low (Single Dependency) |
+| Feature         | Legacy (Playwright/Server)    | Modern (react-pdf/Client)           |
+| :-------------- | :---------------------------- | :---------------------------------- |
+| **Latency**     | High (Network + Browser Boot) | Instant (Local Render)              |
+| **Privacy**     | Data transmitted to API       | Data remains on device              |
+| **Scalability** | Resource-intensive (CPU/RAM)  | Virtually unlimited (Distributed)   |
+| **Fidelity**    | Near-perfect                  | Perfect (Direct Coordinate Mapping) |
+| **Complexity**  | High (Redis/BullMQ/Workers)   | Low (Single Dependency)             |

@@ -30,8 +30,8 @@ export const auth = betterAuth({
     },
     cookiePrefix: "veriworkly-auth",
     crossSubDomainCookies: {
-      enabled: true,
-      domain: config.nodeEnv === "production" ? ".veriworkly.com" : undefined,
+      enabled: !!config.auth.cookieDomain,
+      domain: config.auth.cookieDomain,
     },
   },
 

@@ -29,10 +29,21 @@
     "generate:api": "npx @redocly/cli bundle apps/docs-platform/specs/openapi.yaml -o apps/docs-platform/openapi.yaml && node scripts/generate-api.mjs"
   },
   "devDependencies": {
+    "@hono/node-server": "2.0.2",
     "@types/node": "^25",
     "eslint": "^9",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.7.3",
     "typescript": "^6"
+  },
+  "overrides": {
+    "postcss": "8.5.14",
+    "prisma": {
+      "@prisma/dev": {
+        "@hono/node-server": "2.0.2"
+      }
+    },
+    "@hono/node-server": "2.0.2",
+    "fast-uri": "3.1.2"
   }
 }

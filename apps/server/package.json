@@ -23,12 +23,12 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
-    "@better-auth/prisma-adapter": "^1.6.9",
+    "@better-auth/prisma-adapter": "^1.6.11",
     "@opentelemetry/api": "^1.9.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@prisma/config": "^7.8.0",
-    "better-auth": "^1.6.9",
+    "better-auth": "^1.6.11",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
@@ -42,7 +42,7 @@
     "redis": "^5.12.1",
     "uuid": "^14.0.0",
     "vitest": "^4.1.5",
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

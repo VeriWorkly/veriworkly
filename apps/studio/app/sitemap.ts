@@ -1,7 +1,5 @@
 import type { MetadataRoute } from "next";
 
-import { siteConfig } from "@/config/site";
-
 export const revalidate = 86400;
 
 const publicRoutes = [
