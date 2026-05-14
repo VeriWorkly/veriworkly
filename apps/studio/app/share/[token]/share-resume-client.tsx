@@ -126,7 +126,7 @@ const ShareResumeClient = ({
         icon={<AlertCircle className="text-destructive" />}
         action={
           <Button asChild variant="secondary" className="rounded-xl">
-            <Link href="/dashboard">Return to Dashboard</Link>
+            <Link href="/">Return to Dashboard</Link>
           </Button>
         }
       />

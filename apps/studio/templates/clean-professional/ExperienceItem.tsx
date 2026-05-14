@@ -26,7 +26,7 @@ export const ExperienceItem: React.FC<ExperienceItemProps> = ({
     .join(" | ");
 
   return (
-    <article className="space-y-1.5 break-inside-avoid">
+    <article className="break-inside-avoid space-y-1.5">
       <div className="flex flex-col justify-between gap-0.5 sm:flex-row sm:items-baseline">
         <h3 className="text-base leading-tight font-semibold" style={{ color: headingColor }}>
           {cleanResumeText(experience.role)}

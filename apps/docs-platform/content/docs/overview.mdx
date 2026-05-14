@@ -30,16 +30,16 @@ For users requiring cross-device synchronization or managed sharing, VeriWorkly 
 
 ---
 
-## Asynchronous PDF Rendering
+## Client-Side PDF Rendering
 
-To ensure consistent, ATS-optimized document layouts, VeriWorkly utilizes a server-side rendering pipeline.
+To ensure maximum privacy and instant feedback, VeriWorkly utilizes a client-side rendering pipeline for PDF generation. This approach eliminates the need for server-side headless browsers and ensures that document layouts are generated directly within the user's secure environment.
 
 ### Rendering Pipeline
 
-1. **Request**: The frontend transmits the resume JSON payload to the Express API.
-2. **Queueing**: The API registers a new job in **Redis** (managed via **BullMQ**) to handle processing asynchronously and ensure system stability.
-3. **Rendering**: A dedicated worker process initializes a **Playwright** (Chromium) instance to render the resume in a headless environment.
-4. **Distribution**: The finalized document is stored in **S3-compatible storage** and made available via a secure, temporary download link.
+1. **Instantiation**: The application initializes the `react-pdf` engine within the user's browser.
+2. **Data Mapping**: The local resume state is mapped to high-fidelity PDF primitives (View, Text, Image) optimized for ATS compatibility.
+3. **Generation**: The document is rendered into a Blob or Stream locally, ensuring pixel-perfect alignment with the template's PDF specification.
+4. **Delivery**: The finalized document is made available for immediate download without ever leaving the user's device.
 
 ---
 
@@ -55,6 +55,7 @@ The platform utilizes a modern stack optimized for type safety and scalability.
 | **UI Library**       | React 19                 | Modern component architecture                 |
 | **Styling**          | Tailwind CSS 4           | Utility-first CSS framework with `@theme` API |
 | **Design System**    | Radix UI                 | Unstyled, accessible components               |
+| **PDF Generation**   | react-pdf                | Client-side high-fidelity document rendering  |
 | **State Management** | Zustand                  | Lightweight, flexible store with middleware   |
 | **Forms**            | React Hook Form          | Performant form handling                      |
 | **Validation**       | Zod                      | TypeScript-first schema validation            |
@@ -70,10 +71,8 @@ The platform utilizes a modern stack optimized for type safety and scalability.
 | **Language**            | TypeScript (Strict) | Type safety across the backend             |
 | **Database**            | PostgreSQL          | Reliable, feature-rich relational database |
 | **ORM**                 | Prisma              | Type-safe database access with migrations  |
-| **Cache/Queue**         | Redis + BullMQ      | Session storage, rate limiting, job queues |
 | **Authentication**      | Better-Auth         | Modern, secure passwordless auth           |
-| **PDF Generation**      | Playwright          | Server-side headless browser rendering     |
-| **Document Generation** | `docx`              | Native Word document generation            |
+| **Document Generation** | `docx`              | Native Word document generation (local)    |
 | **Validation**          | Zod                 | Schema validation for API payloads         |
 | **Testing**             | Vitest              | Fast unit & integration testing            |
 | **Security**            | Helmet              | HTTP security headers                      |
@@ -83,6 +82,7 @@ The platform utilizes a modern stack optimized for type safety and scalability.
 ## Reference Guides
 
 - **[Monorepo Architecture](/docs/architecture/monorepo)**: Detailed breakdown of the repository structure.
+- **[Resume Schema](/docs/architecture/resume-schema)**: Technical reference for the Master Profile and resume data structures.
 - **[Database Schema](/docs/architecture/database-schema)**: Relational data model and Prisma configuration.
-- **[Export Pipeline](/docs/architecture/pdf-generation)**: Deep-dive into the BullMQ and Playwright integration.
+- **[Export Pipeline](/docs/architecture/pdf-generation)**: Deep-dive into the client-side react-pdf integration.
 - **[Local Setup](/docs/getting-started/local-setup)**: Instructions for configuring the development environment.

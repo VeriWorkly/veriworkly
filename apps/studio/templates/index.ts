@@ -8,6 +8,7 @@ export interface TemplateDefinition {
   name: string;
   description: string;
   accentColor: string;
+  previewImage?: string;
   tags: string[];
   renderWeb: (props: any) => React.ReactNode;
 }
@@ -21,6 +22,7 @@ export const templateRegistry: TemplateDefinition[] = [
     description:
       "A polished single-column resume with refined spacing, strong section rhythm, and ATS-safe structure.",
     accentColor: "#0ea5e9",
+    previewImage: "/templates/executive-clarity.png",
     tags: ["One column", "ATS-friendly", "Modern", "Professional"],
     renderWeb: (props: any) => {
       return React.createElement(CleanProfessionalWeb, props);
@@ -32,6 +34,7 @@ export const templateRegistry: TemplateDefinition[] = [
     description:
       "A dense, recruiter-friendly layout for longer resumes that still exports as a real matching PDF.",
     accentColor: "#10b981",
+    previewImage: "/templates/compact-ats.png",
     tags: ["One column", "ATS-friendly", "Compact", "Simple"],
     renderWeb: (props: any) => {
       return React.createElement(CompactAtsWeb, props);

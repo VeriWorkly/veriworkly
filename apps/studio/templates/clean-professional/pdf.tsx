@@ -392,7 +392,10 @@ export function CleanProfessionalPdf({ resume }: PdfTemplateProps) {
                 </View>
                 {item.skills?.length > 0 && (
                   <Text style={styles.meta}>
-                    {item.skills.map((skill) => cleanResumeText(skill)).filter(Boolean).join(", ")}
+                    {item.skills
+                      .map((skill) => cleanResumeText(skill))
+                      .filter(Boolean)
+                      .join(", ")}
                   </Text>
                 )}
                 {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}

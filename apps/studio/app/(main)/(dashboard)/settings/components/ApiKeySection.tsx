@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { useEffect, useState, useCallback } from "react";
+
+import type { ApiKeyRecord, GeneratedApiKeyRecord } from "./apiKeys/ApiKeyTypes";
 
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
@@ -10,7 +12,6 @@ import ApiKeyCreateForm from "./apiKeys/ApiKeyCreateForm";
 import ApiKeyRotateModal from "./apiKeys/ApiKeyRotateModal";
 import GeneratedApiKeyCard from "./apiKeys/GeneratedApiKeyCard";
 import { AVAILABLE_API_KEY_SCOPES } from "./apiKeys/ApiKeyScopes";
-import type { ApiKeyRecord, GeneratedApiKeyRecord } from "./apiKeys/ApiKeyTypes";
 
 import DestructiveModal from "@/components/modals/DestructiveModal";
 
@@ -28,23 +29,27 @@ function resolveErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKeySectionProps) {
-  const [keys, setKeys] = useState<ApiKeyRecord[]>(initialKeys);
-  const [loading, setLoading] = useState(!initialKeysLoaded);
   const [creating, setCreating] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("");
+  const [loading, setLoading] = useState(!initialKeysLoaded);
+
   const [rateLimit, setRateLimit] = useState(20);
-  const [expiresAt, setExpiresAt] = useState("");
-  const [selectedScopes, setSelectedScopes] = useState<string[]>(["user:read"]);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [keys, setKeys] = useState<ApiKeyRecord[]>(initialKeys);
   const [generatedKey, setGeneratedKey] = useState<GeneratedApiKeyRecord | null>(null);
+
+  const [expiresAt, setExpiresAt] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<ApiKeyRecord | null>(null);
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(["user:read"]);
+
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
-  const [rotateTarget, setRotateTarget] = useState<ApiKeyRecord | null>(null);
   const [rotateSubmitting, setRotateSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ApiKeyRecord | null>(null);
+  const [rotateTarget, setRotateTarget] = useState<ApiKeyRecord | null>(null);
 
   const fetchKeys = useCallback(async () => {
     try {
       setLoading(true);
+
       const data = await fetchApiData<ApiKeyRecord[]>("/api-keys", {
         method: "GET",
       });
@@ -63,12 +68,14 @@ export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKey
         setKeys(initialKeys);
         setLoading(false);
       });
+
       return;
     }
 
     const timer = setTimeout(() => {
       void fetchKeys();
     }, 0);
+
     return () => clearTimeout(timer);
   }, [fetchKeys, initialKeys, initialKeysLoaded]);
 
@@ -93,7 +100,9 @@ export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKey
       setRateLimit(20);
       setExpiresAt("");
       setSelectedScopes(["user:read"]);
+
       toast.success("API key created successfully.");
+
       void fetchKeys();
     } catch (error) {
       toast.error(resolveErrorMessage(error, "Failed to create API key."));
@@ -124,7 +133,9 @@ export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKey
 
       setGeneratedKey(data);
       setRotateTarget(null);
+
       toast.success("API key rotated successfully.");
+
       void fetchKeys();
     } catch (error) {
       toast.error(resolveErrorMessage(error, "Failed to rotate API key."));
@@ -140,6 +151,7 @@ export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKey
 
     try {
       setDeleteSubmitting(true);
+
       await fetchApiData<null>(`/api-keys/${deleteTarget.id}`, {
         method: "DELETE",
       });
@@ -157,8 +169,10 @@ export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKey
   const copyToClipboard = async (text: string, id: string) => {
     try {
       await navigator.clipboard.writeText(text);
+
       setCopiedId(id);
       toast.success("Copied to clipboard");
+
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
       toast.error("Failed to copy API key to clipboard.");
@@ -169,7 +183,8 @@ export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKey
     <section id="api-keys" className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">API Keys</h2>
+          <h2 className="text-foreground text-2xl font-bold tracking-tight">API Keys</h2>
+
           <p className="text-muted-foreground text-sm">
             Manage your API keys for programmatic access to VeriWorkly.
           </p>
@@ -190,8 +205,6 @@ export default function ApiKeySection({ initialKeys, initialKeysLoaded }: ApiKey
           onScopesChange={setSelectedScopes}
           onSubmitAction={handleCreateKey}
         />
-
-
 
         {generatedKey && (
           <GeneratedApiKeyCard

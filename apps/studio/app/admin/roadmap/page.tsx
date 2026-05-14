@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Calendar } from "lucide-react";
 
@@ -16,6 +17,12 @@ const statusConfig: Record<RoadmapStatus, { label: string; dot: string; bg: stri
     bg: "bg-blue-50/50",
   },
   done: { label: "Done", dot: "bg-emerald-500", bg: "bg-emerald-50/50" },
+};
+
+export const metadata: Metadata = {
+  title: "Admin Roadmap",
+  description: "Create, update, and organize public roadmap items from admin panel.",
+  robots: { index: false, follow: false },
 };
 
 const AdminRoadmapPage = async () => {

@@ -59,7 +59,7 @@ export const ShareHeaderBar = ({ title, expiresAt, actions }: ShareHeaderBarProp
                   size="sm"
                   className="bg-foreground text-background hover:bg-foreground/90 h-10 rounded-full px-5 text-[12px] font-bold tracking-wide"
                 >
-                  <Link href="/dashboard">
+                  <Link href="/">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
                   </Link>

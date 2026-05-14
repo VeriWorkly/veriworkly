@@ -147,7 +147,7 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
 
   useEffect(() => {
     if (resumeId) {
-      void refreshShareLinks(resumeId);
+      void Promise.resolve().then(() => refreshShareLinks(resumeId));
     }
   }, [resumeId, refreshShareLinks]);
 

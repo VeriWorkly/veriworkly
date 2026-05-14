@@ -1,0 +1,65 @@
+---
+title: PDF Generation Engine
+description: Technical analysis of the client-side rendering pipeline utilizing react-pdf.
+---
+
+# PDF Generation Engine
+
+VeriWorkly utilizes a sophisticated client-side rendering engine to generate high-fidelity, ATS-optimized PDF documents. By migrating from server-side headless browsers to a native React-based PDF pipeline, we have achieved significantly lower latency, improved privacy, and perfect visual parity between the editor and the exported file.
+
+---
+
+## Technical Architecture
+
+The PDF generation system is built on **react-pdf**, which allows us to define document layouts using familiar React components while rendering directly to the PDF coordinate system.
+
+### The Dual-Engine Approach
+
+Every template in VeriWorkly implements a dual-engine architecture to ensure consistent rendering across different environments:
+
+1.  **Web Engine (`web.tsx`)**: Renders the resume using standard HTML/CSS (Tailwind CSS 4). This engine is optimized for interactivity, real-time editing, and responsive previews.
+2.  **PDF Engine (`pdf.tsx`)**: Renders the same data using `react-pdf` primitives (`Document`, `Page`, `View`, `Text`, `Image`). This engine is strictly mapped to the PDF 1.7 specification, ensuring that font embedding and text layers are handled natively.
+
+> [!TIP]
+> You can view the live implementation of these engines in the [templates directory](https://github.com/Gautam25Raj/veriworkly-resume/tree/main/apps/studio/templates) on GitHub.
+
+---
+
+## Rendering Pipeline
+
+The transition from a resume model to a finalized PDF follows a strictly defined pipeline:
+
+### 1. Primal Mapping
+The application extracts the current state from the Zustand store and performs a normalization pass. This ensures that all dates, rich-text fragments, and media assets are formatted correctly for the PDF engine.
+
+### 2. PDF Primitive Construction
+The normalized data is passed into the template's `pdf.tsx` component. Unlike the web engine, which uses standard CSS, the PDF engine utilizes a style object syntax similar to React Native, ensuring absolute positioning and fixed-width layouts required for document fidelity.
+
+### 3. Local Generation
+The `react-pdf` renderer processes the component tree entirely within the browser's main thread (or a Web Worker for complex documents). It generates a `Blob` containing the binary PDF data.
+
+### 4. Direct Delivery
+The generated Blob is converted into a temporary Object URL and triggered as a download. This ensures the document never leaves the user's secure device environment.
+
+---
+
+## ATS Optimization and Compliance
+
+To ensure maximum machine-readability, the PDF engine follows several strict protocols:
+
+- **Vector-Based Text**: All text is rendered as actual font glyphs rather than images or flattened paths, allowing recruitment software to perform full-text indexing.
+- **Semantic Tagging**: We utilize standard PDF structure tags to define headers, lists, and contact sections.
+- **Font Embedding**: High-quality fonts are embedded directly within the document to ensure that layouts remain consistent regardless of the viewing device's local font library.
+- **Metadata Integration**: Professional metadata (Author, Title, Keywords) is automatically injected into the PDF properties to improve discoverability.
+
+---
+
+## Comparison: Server-Side vs. Client-Side
+
+| Feature | Legacy (Playwright/Server) | Modern (react-pdf/Client) |
+| :--- | :--- | :--- |
+| **Latency** | High (Network + Browser Boot) | Instant (Local Render) |
+| **Privacy** | Data transmitted to API | Data remains on device |
+| **Scalability** | Resource-intensive (CPU/RAM) | Virtually unlimited (Distributed) |
+| **Fidelity** | Near-perfect | Perfect (Direct Coordinate Mapping) |
+| **Complexity** | High (Redis/BullMQ/Workers) | Low (Single Dependency) |

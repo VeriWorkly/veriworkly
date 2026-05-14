@@ -7,14 +7,20 @@ VeriWorkly requires specific environment variables to function correctly across 
 ### Backend (`apps/server/.env`)
 
 - `DATABASE_URL`: PostgreSQL connection string.
-- `REDIS_URL`: Redis connection string.
 - `AUTH_SECRET`: Random secure string for authentication.
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`: For sending OTP emails.
+- `AUTH_SMTP_HOST`, `AUTH_SMTP_PORT`, `AUTH_SMTP_USER`, `AUTH_SMTP_PASS`: For sending OTP emails.
+- `REDIS_URL`: (Optional) For rate limiting and API caching.
 
-### Frontend (`.env`)
+### Frontend Studio (`apps/studio/.env`)
 
-- `NEXT_PUBLIC_API_URL`: URL of the backend server (default: `http://localhost:8080/api/v1`).
-- `NEXT_PUBLIC_APP_URL`: URL of the frontend (default: `http://localhost:3000`).
+- `NEXT_PUBLIC_BACKEND_URL`: URL of the backend server (default: `http://localhost:8080/api/v1`).
+- `NEXT_PUBLIC_APP_URL`: URL of the studio app (default: `http://localhost:3001`).
+- `AUTH_SECRET`: Same secret as backend.
+
+### Marketing Site (`apps/site/.env`)
+
+- `NEXT_PUBLIC_BACKEND_URL`: URL of the backend server.
+- `NEXT_PUBLIC_APP_URL`: URL of the marketing site (default: `http://localhost:3000`).
 
 ## 📚 Detailed Variable Reference
 

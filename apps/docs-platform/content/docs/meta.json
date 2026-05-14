@@ -16,6 +16,7 @@
     "architecture/pdf-generation",
     "architecture/auth-system",
     "architecture/database-schema",
+    "architecture/resume-schema",
     "---User Guides---",
     "user-guides/creating-your-first-resume",
     "user-guides/resume-templates",

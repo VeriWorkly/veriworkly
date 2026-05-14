@@ -33,7 +33,7 @@ const DashboardSegmentError = ({
               Try again
             </Button>
 
-            <Button variant="secondary" onClick={() => (window.location.href = "/dashboard")}>
+            <Button variant="secondary" onClick={() => (window.location.href = "/")}>
               Go to Dashboard
             </Button>
           </div>

@@ -45,9 +45,6 @@ export const urlOrEmptySchema = z
   .max(2048)
   .refine(isHttpUrl, "URL must start with http:// or https://.");
 
-export const monthDateSchema = z
-  .string()
-  .max(7)
-  .refine(isMonthDate, "Use YYYY-MM format.");
+export const monthDateSchema = z.string().max(7).refine(isMonthDate, "Use YYYY-MM format.");
 
 export const yearDateSchema = z.string().max(4).refine(isYearDate, "Use YYYY format.");

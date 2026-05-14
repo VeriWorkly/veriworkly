@@ -1,5 +1,12 @@
 import type { ResumeData } from "@/types/resume";
-import { safeText, escapeHtml, formatDateRange, isSectionVisible, getVisibleSectionMap, getResumeFileBaseName } from "@/features/resume/services/resume-formatters";
+import {
+  safeText,
+  escapeHtml,
+  formatDateRange,
+  isSectionVisible,
+  getVisibleSectionMap,
+  getResumeFileBaseName,
+} from "@/features/resume/services/resume-formatters";
 import { downloadBlob } from "./download";
 
 function getComputedStyleText(style: CSSStyleDeclaration): string {

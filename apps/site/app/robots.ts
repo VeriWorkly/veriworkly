@@ -10,36 +10,23 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
       },
       {
-        userAgent: "GPTBot",
-        allow: "/",
-      },
-      {
-        userAgent: "ChatGPT-User",
-        allow: "/",
-      },
-      {
-        userAgent: "ClaudeBot",
-        allow: "/",
-      },
-      {
-        userAgent: "PerplexityBot",
-        allow: "/",
-      },
-      {
-        userAgent: "Google-Extended",
-        allow: "/",
-      },
-      {
-        userAgent: "CCBot",
+        userAgent: [
+          "GPTBot",
+          "ChatGPT-User",
+          "ClaudeBot",
+          "PerplexityBot",
+          "Google-Extended",
+          "CCBot",
+        ],
         allow: "/",
       },
     ],
 
     sitemap: [
       `${siteConfig.url}/sitemap.xml`,
-      "https://app.veriworkly.com/sitemap.xml",
-      "https://blog.veriworkly.com/sitemap.xml",
-      "https://docs.veriworkly.com/sitemap.xml",
+      `${siteConfig.links.app}/sitemap.xml`,
+      `${siteConfig.links.blog}/sitemap.xml`,
+      `${siteConfig.links.docs}/sitemap.xml`,
     ],
   };
 }

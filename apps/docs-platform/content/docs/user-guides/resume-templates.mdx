@@ -18,36 +18,36 @@ All templates within the VeriWorkly library are engineered for compatibility wit
 ### Template Library
 
 <Cards>
-  <Card title="Modern" icon={<LayoutTemplate />}>
-    A balanced hierarchy utilizing contemporary spacing and typography. Optimized for technology, design, and marketing industries.
+  <Card title="Compact ATS" icon={<LayoutTemplate />}>
+    A high-density, single-column layout optimized for maximum information throughput and strict ATS parsing. Perfect for technical and corporate roles.
   </Card>
 
-<Card title="Minimal" icon={<LayoutTemplate />}>
-  A document-centric layout focusing on understated typography and high information density.
+<Card title="Clean Professional" icon={<LayoutTemplate />}>
+  A balanced, contemporary layout with clear section segmentation and refined typography. Ideal for creative, managerial, and general professional applications.
 </Card>
-
-<Card title="Executive" icon={<LayoutTemplate />}>
-  A professional, sidebar-oriented layout designed for comprehensive career histories and leadership
-  roles.
-</Card>
-
-<Card title="ATS Classic" icon={<LayoutTemplate />}>
-  A traditional, single-column format optimized for the strictest corporate and financial
-  recruitment standards.
-</Card>
-
-  <Card title="Professional" icon={<LayoutTemplate />}>
-    A highly structured layout utilizing clear section segmentation and formal headers.
-  </Card>
-  
-  <Card title="Structured" icon={<LayoutTemplate />}>
-    A grid-based architecture prioritizing technical proficiencies and dense skill lists.
-  </Card>
-  
-  <Card title="Academic Serif" icon={<LayoutTemplate />}>
-    Refined serif typography optimized for academic CVs, publications, and research-oriented applications.
-  </Card>
 </Cards>
+
+---
+
+## Dual-Engine Rendering
+
+To achieve perfect visual fidelity across both the editor and the final export, each template in the VeriWorkly ecosystem is built with two distinct rendering implementations:
+
+1.  **Web Engine (`web.tsx`)**: Utilizes standard React and Tailwind CSS 4 to provide a high-performance, interactive editing experience with real-time feedback.
+2.  **PDF Engine (`pdf.tsx`)**: Utilizes `react-pdf` primitives to generate a vector-based, high-resolution document that matches the web preview exactly while ensuring absolute machine-readability.
+
+---
+
+## Source Code Reference
+
+For developers interested in implementing their own templates or understanding the dual-engine architecture, the source code for our core templates is available on GitHub:
+
+| Template               | Web Engine (Tailwind)                                                                                                    | PDF Engine (react-pdf)                                                                                                   |
+| :--------------------- | :----------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| **Compact ATS**        | [web.tsx](https://github.com/Gautam25Raj/veriworkly-resume/blob/master/apps/studio/templates/compact-ats/web.tsx)        | [pdf.tsx](https://github.com/Gautam25Raj/veriworkly-resume/blob/master/apps/studio/templates/compact-ats/pdf.tsx)        |
+| **Clean Professional** | [web.tsx](https://github.com/Gautam25Raj/veriworkly-resume/blob/master/apps/studio/templates/clean-professional/web.tsx) | [pdf.tsx](https://github.com/Gautam25Raj/veriworkly-resume/blob/master/apps/studio/templates/clean-professional/pdf.tsx) |
+
+You can also explore the [Template Registry](https://github.com/Gautam25Raj/veriworkly-resume/blob/master/apps/studio/templates/index.ts) to see how these engines are integrated into the Studio.
 
 ---
 

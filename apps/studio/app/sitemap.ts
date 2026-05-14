@@ -6,12 +6,7 @@ export const revalidate = 86400;
 
 const publicRoutes = [
   {
-    url: siteConfig.url,
-    changeFrequency: "weekly" as const,
-    priority: 1,
-  },
-  {
-    url: "https://blog.veriworkly.com",
+    url: "https://blogs.veriworkly.com",
     changeFrequency: "weekly" as const,
     priority: 0.7,
   },

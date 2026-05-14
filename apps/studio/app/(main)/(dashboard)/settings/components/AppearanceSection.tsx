@@ -30,11 +30,12 @@ const THEME_OPTIONS: ThemeOption[] = [
 
 export default function AppearanceSection() {
   const { theme, setTheme } = useTheme();
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Set mounted state after render to avoid hydration mismatch
     const timer = setTimeout(() => setMounted(true), 0);
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -62,7 +63,7 @@ export default function AppearanceSection() {
               key={opt.key}
               onClick={() => setTheme(opt.key)}
               className={cn(
-                "group relative flex flex-col rounded-3xl border-2 p-5 text-left transition-all duration-300 active:scale-[0.97] cursor-pointer",
+                "group relative flex cursor-pointer flex-col rounded-3xl border-2 p-5 text-left transition-all duration-300 active:scale-[0.97]",
                 isActive
                   ? "border-accent bg-accent/3 shadow-accent/10 shadow-xl"
                   : "border-border hover:border-accent/40 hover:bg-accent/1 hover:-translate-y-1",

@@ -1,18 +1,18 @@
 # VeriWorkly Ecosystem
-> Free, open-source, and privacy-first resume builder. Build professional, ATS-friendly resumes in minutes without sacrificing your data privacy.
+> Free, open-source, and privacy-first ecosystem for career growth. Build professional, ATS-friendly resumes and manage your professional identity without sacrificing your data privacy.
 
 ## Who We Are & What We Do
-VeriWorkly is a developer-focused, open-source ecosystem designed to revolutionize how professionals create and manage career documents. We believe in **local-first data ownership**. Instead of locking your resume data behind paywalls or mandatory accounts, VeriWorkly processes and stores your data securely within your browser.
+VeriWorkly is a developer-focused, open-source ecosystem designed to revolutionize how professionals create and manage career documents. We champion **local-first data ownership**. By default, VeriWorkly processes and stores your data securely within your browser. Cloud synchronization is an optional opt-in feature for cross-device accessibility.
 
-Our suite of tools allows users to create ATS-optimized resumes using modern templates, preview changes in real-time, and optionally sync data to the cloud for cross-device access.
+Our suite of tools allows users to create ATS-optimized resumes using modern templates, preview changes in real-time, and manage a central "Master Profile" to seed multiple career documents efficiently.
 
 ## The VeriWorkly Ecosystem
 We operate several dedicated platforms to serve different needs:
-- **Main Site** ([veriworkly.com](https://veriworkly.com)): The landing page, marketing hub, and roadmap tracker.
-- **Resume Studio** ([app.veriworkly.com](https://app.veriworkly.com)): The core application where users build, edit, and export their resumes.
-- **Documentation** ([docs.veriworkly.com](https://docs.veriworkly.com)): Comprehensive technical guides, integration tutorials, and API references.
-- **Blog** ([blog.veriworkly.com](https://blog.veriworkly.com)): Articles on career advice, product updates, and our open-source engineering journey.
-- **API Server** ([api.veriworkly.com](https://api.veriworkly.com)): The backend infrastructure powering cloud sync, analytics, and public sharing.
+- **Main Site** (https://veriworkly.com): The landing page, marketing hub, and public roadmap tracker.
+- **Resume Studio** (https://app.veriworkly.com): The core interactive application where users build, edit, and export their resumes.
+- **Documentation** (https://docs.veriworkly.com): Comprehensive technical guides, integration tutorials, and API references.
+- **Blog** (https://blog.veriworkly.com): Articles on career advice, product updates, and our open-source engineering journey.
+- **API Server** (https://api.veriworkly.com): The backend infrastructure powering cloud sync, analytics, and public sharing.
 
 ## Authentication System
 VeriWorkly uses a flexible, modern authentication system powered by **Better Auth**:
@@ -39,4 +39,4 @@ When integrating with VeriWorkly, agents should rely on the documented API (`/op
 - **Creator**: Gautam Raj (@Gautam25Raj)
 - **License**: MIT
 - **Repository**: [Gautam25Raj/veriworkly-resume](https://github.com/Gautam25Raj/veriworkly-resume)
-- **Last Updated**: 2026-05-10
+- **Last Updated**: 2026-05-14

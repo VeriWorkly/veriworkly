@@ -26,7 +26,7 @@ export default function EditorPreviewError({
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button onClick={() => reset()}>Try again</Button>
 
-          <Button variant="secondary" onClick={() => (window.location.href = "/dashboard")}>
+          <Button variant="secondary" onClick={() => (window.location.href = "/")}>
             Dashboard
           </Button>
         </div>

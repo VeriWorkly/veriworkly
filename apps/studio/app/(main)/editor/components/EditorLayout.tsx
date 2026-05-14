@@ -17,6 +17,7 @@ import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/serv
 import { loadTemplateComponentById } from "@/templates";
 
 import Toolbar from "./Toolbar";
+import EditorModals from "./EditorModals";
 import EditorContentPanel from "./EditorContentPanel";
 import EditorSettingsPanel from "./EditorSettingsPanel";
 
@@ -38,6 +39,9 @@ const EditorLayout = ({ resumeId }: EditorLayoutProps) => {
   const [activePanel, setActivePanel] = useState<"content" | "settings">("content");
 
   const [templateComponent, setTemplateComponent] = useState<TemplateComponent | null>(null);
+
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const deferredResume = useDeferredValue(resume);
 
@@ -130,8 +134,20 @@ const EditorLayout = ({ resumeId }: EditorLayoutProps) => {
   return (
     <div className="flex h-[calc(100dvh-2rem)] min-h-0 flex-col gap-4 overflow-hidden">
       <div className="sticky top-0 z-30">
-        <Toolbar resumeId={resumeId} resumePreviewId={resumePreviewId} />
+        <Toolbar
+          resumeId={resumeId}
+          resumePreviewId={resumePreviewId}
+          onOpenShare={() => setShareModalOpen(true)}
+          onOpenDelete={() => setDeleteModalOpen(true)}
+        />
       </div>
+
+      <EditorModals
+        shareModalOpen={shareModalOpen}
+        onShareModalClose={() => setShareModalOpen(false)}
+        deleteModalOpen={deleteModalOpen}
+        onDeleteModalClose={() => setDeleteModalOpen(false)}
+      />
 
       <div className="border-border bg-card inline-flex rounded-2xl border p-1 md:hidden">
         <button

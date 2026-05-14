@@ -6,13 +6,13 @@ import type { FontFamilyId } from "@/features/documents/constants/fonts";
 
 import { templateSummaries } from "@/config/templates";
 
-import { SettingsColor, SettingsRange, SettingsSelect } from "./settings/SettingControls";
 import AdvancedThemeSettings from "./settings/AdvancedThemeSettings";
 import SectionVisibilitySettings from "./settings/SectionVisibilitySettings";
+import { SettingsColor, SettingsRange, SettingsSelect } from "./settings/SettingControls";
 
 import { useResume } from "@/features/resume/hooks/use-resume";
-import { defaultResume } from "@/features/resume/constants/default-resume";
 import { fontOptions } from "@/features/documents/constants/fonts";
+import { defaultResume } from "@/features/resume/constants/default-resume";
 
 const EditorSettingsPanel = () => {
   const { resume, setSectionVisibility, setTemplateId, updateCustomization } = useResume();

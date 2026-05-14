@@ -18,16 +18,16 @@ export default function GeneratedApiKeyCard({
   return (
     <Card className="animate-in zoom-in-95 border-accent/20 bg-accent/5 p-6 duration-300">
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-accent">
+        <div className="text-accent flex items-center gap-2">
           <AlertCircle className="h-5 w-5" />
           <h3 className="font-bold">Save your API Key</h3>
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           For security reasons, this key will only be shown once. Please copy it now.
         </p>
 
-        <div className="group flex items-center justify-between gap-2 break-all rounded-lg border border-accent/20 bg-background/80 p-3 font-mono text-sm">
+        <div className="group border-accent/20 bg-background/80 flex items-center justify-between gap-2 rounded-lg border p-3 font-mono text-sm break-all">
           <span className="text-foreground">{generatedKey}</span>
 
           <Button size="sm" variant="ghost" onClick={onCopy} className="shrink-0">

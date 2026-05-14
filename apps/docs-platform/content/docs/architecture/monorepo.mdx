@@ -7,36 +7,46 @@ description: Analysis of the workspace structure and inter-service organization 
 
 VeriWorkly utilizes a monorepo structure to manage multiple integrated applications and shared packages within a single repository. This approach ensures consistent dependency management and facilitates the sharing of design tokens and core logic.
 
+> [!NOTE]
+> The full repository structure and configuration can be explored directly on [GitHub](https://github.com/Gautam25Raj/veriworkly-resume).
+
 ## Application Architecture
 
-The platform is composed of four primary applications, each with a distinct operational scope.
+The platform is composed of several primary applications, each with a distinct operational scope.
 
-### 1. Resume Builder (`apps/resume-builder`)
+### 1. Marketing Site (`apps/site`)
 
 - **Port**: 3000
 - **Framework**: Next.js (App Router)
-- **Scope**: Primary user interface for resume construction and management.
-- **Key Features**: Local-first state synchronization, real-time previewing, and template customization.
+- **Scope**: Landing page, feature showcases, and public marketing content.
+- **Key Features**: SEO-optimized pages, interactive demos, and conversion funnels.
 
-### 2. API Server (`apps/server`)
+### 2. Resume Studio (`apps/studio`)
+
+- **Port**: 3001
+- **Framework**: Next.js (App Router)
+- **Scope**: Primary user interface for resume construction, management, and local-first editing.
+- **Key Features**: Dual-engine rendering (Web/PDF), Zustand-based state persistence, and real-time template customization.
+
+### 3. API Server (`apps/server`)
 
 - **Port**: 8080
 - **Framework**: Node.js / Express
-- **Scope**: Core backend services including authentication, data persistence, and background task orchestration.
-- **Key Features**: Prisma ORM integration, BullMQ job processing, and Playwright-based document rendering.
+- **Scope**: Core backend services including authentication, data synchronization, and administrative tasks.
+- **Key Features**: Prisma ORM integration, Better-Auth security layer, and GitHub data bridge.
 
-### 3. Documentation Platform (`apps/docs-platform`)
+### 4. Documentation Platform (`apps/docs-platform`)
 
-- **Port**: 3001
+- **Port**: 3002
 - **Framework**: Next.js / Fumadocs
 - **Scope**: Technical and user documentation.
 - **Key Features**: MDX-based content management and automated API reference generation.
 
-### 4. Blog Platform (`apps/blog-platform`)
+### 5. Blog Platform (`apps/blog-platform`)
 
-- **Port**: 3002
+- **Port**: 3003
 - **Framework**: Next.js / Fumadocs
-- **Scope**: Product updates and career-oriented content.
+- **Scope**: Product updates, career-oriented content, and official guides.
 
 ---
 
@@ -58,34 +68,42 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
 
 <Files>
   <Folder name="apps" defaultOpen>
+    <Folder name="site" defaultOpen>
+      <File name="app/" description="Next.js routes for the marketing site" />
+      <File name="features/" description="Landing page sections and marketing logic" />
+      <File name="README.md" />
+    </Folder>
+    <Folder name="studio" defaultOpen>
+      <File name="app/" description="Main editor and dashboard routes" />
+      <File name="features/" description="Domain logic (sync, store, documents)" />
+      <File name="templates/" description="Dual-engine resume templates (Web/PDF)" />
+      <File name="store/" description="Zustand state management definitions" />
+      <File name="README.md" />
+    </Folder>
     <Folder name="blog-platform">
-      <File name="content/blog" />
+      <File name="content/blog" description="MDX files for official blog posts" />
       <File name="README.md" />
     </Folder>
-    <Folder name="docs-platform" defaultOpen>
-      <File name="content/docs" />
+    <Folder name="docs-platform">
+      <File name="content/docs" description="Technical documentation and guides" />
       <File name="README.md" />
     </Folder>
-    <Folder name="resume-builder">
-      <File name="app/" />
-      <File name="templates/" />
-      <File name="README.md" />
-    </Folder>
-    <Folder name="server">
-      <File name="src/" />
-      <File name="prisma/schema.prisma" />
+    <Folder name="server" defaultOpen>
+      <File name="src/routes" description="Express API endpoints and controllers" />
+      <File name="src/services" description="Auth, synchronization, and storage logic" />
+      <File name="prisma/schema.prisma" description="Primary database schema definition" />
       <File name="README.md" />
     </Folder>
   </Folder>
   <Folder name="packages">
     <Folder name="ui" defaultOpen>
-      <File name="src/components" />
-      <File name="tailwind.config.ts" />
+      <File name="src/components" description="Shared React design system primitives" />
+      <File name="tailwind.config.ts" description="Global Tailwind CSS 4 theme tokens" />
     </Folder>
   </Folder>
-  <File name="compose.yaml" />
-  <File name="package.json" />
-  <File name="README.md" />
+  <File name="compose.yaml" description="Multi-service production deployment config" />
+  <File name="package.json" description="Monorepo workspace and dependency management" />
+  <File name="README.md" description="Project overview and executive summary" />
 </Files>
 
 ---

@@ -38,12 +38,12 @@ These variables are specific to the backend service and should be placed in `app
 
 ### Database and Persistence
 
-| Variable       | Required | Description                              | Example                               |
-| :------------- | :------- | :--------------------------------------- | :------------------------------------ |
-| `DATABASE_URL` | Yes      | PostgreSQL connection string.            | `postgresql://user:pass@host:5432/db` |
-| `REDIS_URL`    | Yes\*    | Unified Redis connection string.         | `redis://localhost:6379`              |
-| `REDIS_HOST`   | No       | Redis hostname (if URL is not utilized). | `localhost`                           |
-| `REDIS_PORT`   | No       | Redis port (if URL is not utilized).     | `6379`                                |
+| Variable       | Required | Description                                          | Example                               |
+| :------------- | :------- | :--------------------------------------------------- | :------------------------------------ |
+| `DATABASE_URL` | Yes      | PostgreSQL connection string.                        | `postgresql://user:pass@host:5432/db` |
+| `REDIS_URL`    | No       | Connection string for rate limiting and API caching. | `redis://localhost:6379`              |
+| `REDIS_HOST`   | No       | Redis hostname (if URL is not utilized).             | `localhost`                           |
+| `REDIS_PORT`   | No       | Redis port (if URL is not utilized).                 | `6379`                                |
 
 ### Authentication (Better-Auth)
 
@@ -76,15 +76,7 @@ These variables are specific to the backend service and should be placed in `app
 | `AUTH_SMTP_PORT`          | SMTP server port.                                | `587`                        |
 | `AUTH_SMTP_USER` / `PASS` | SMTP authentication credentials.                 |                              |
 
-### Document Export Pipeline
-
-| Variable                   | Description                                   | Default         |
-| :------------------------- | :-------------------------------------------- | :-------------- |
-| `EXPORT_QUEUE_NAME`        | BullMQ queue identifier in Redis.             | `resume-export` |
-| `EXPORT_MAX_CONCURRENCY`   | Maximum concurrent rendering instances.       | `2`             |
-| `EXPORT_ARTIFACT_PROVIDER` | Storage backend selection (`local` or `oci`). | `local`         |
-| `EXPORT_TIMEOUT_MS`        | Maximum execution duration for a single job.  | `45000`         |
-| `EXPORT_RESULT_TTL_MS`     | Metadata retention duration in Redis.         | `600000`        |
+---
 
 ---
 

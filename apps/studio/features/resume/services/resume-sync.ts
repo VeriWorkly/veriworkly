@@ -11,7 +11,6 @@ import { getResumeTitle } from "@/features/resume/services/resume-formatters";
 import {
   DocumentSyncService,
   type SyncResult as ResumeSyncResult,
-  type SyncNowOptions,
   type SyncWorkerOptions as ResumeSyncWorkerOptions,
 } from "@/features/documents/services/document-sync-service";
 import { type SyncTelemetry as ResumeSyncTelemetry } from "@/features/documents/services/sync-engine";
@@ -19,7 +18,6 @@ import { type SyncTelemetry as ResumeSyncTelemetry } from "@/features/documents/
 export type { ResumeSyncResult, ResumeSyncTelemetry };
 
 export const RESUME_SYNC_OUTBOX_UPDATED_EVENT = "veriworkly:sync-outbox-updated";
-
 
 const resumeSyncService = new DocumentSyncService<ResumeData>({
   documentType: "RESUME",
@@ -37,8 +35,8 @@ export async function syncAllPendingResumes() {
   return resumeSyncService.syncAllPending();
 }
 
-export async function syncResumeNow(resumeId: string, options?: SyncNowOptions) {
-  return resumeSyncService.syncNow(resumeId, options);
+export async function syncResumeNow(resumeId: string) {
+  return resumeSyncService.syncNow(resumeId);
 }
 
 export async function hydrateCloudResumeByIdToLocalStorage(resumeId: string) {

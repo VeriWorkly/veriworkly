@@ -93,7 +93,7 @@ export default function ApiKeyRotateModal({
             {keyRecord ? (
               <p className="text-muted-foreground text-xs font-medium">
                 Rotating{" "}
-                <span className="font-mono text-foreground">
+                <span className="text-foreground font-mono">
                   {keyRecord.keyPrefix}...{keyRecord.keySuffix}
                 </span>
               </p>
@@ -102,7 +102,7 @@ export default function ApiKeyRotateModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 pt-4">
-          <div className="grid gap-4 sm:grid-cols-1 px-4">
+          <div className="grid gap-4 px-4 sm:grid-cols-1">
             <div className="space-y-1.5">
               <label
                 htmlFor="rotate-api-key-name"
@@ -123,7 +123,7 @@ export default function ApiKeyRotateModal({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 px-4">
+          <div className="grid gap-4 px-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label
                 htmlFor="rotate-api-key-rate-limit"
@@ -168,9 +168,9 @@ export default function ApiKeyRotateModal({
             </div>
           </div>
 
-          <div className="rounded-xl border border-border/70 bg-muted/10 p-3 text-xs text-muted-foreground mx-4">
+          <div className="border-border/70 bg-muted/10 text-muted-foreground mx-4 rounded-xl border p-3 text-xs">
             <div className="flex items-start gap-2">
-              <Key className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+              <Key className="text-accent mt-0.5 h-4 w-4 shrink-0" />
 
               <p>
                 The old key is revoked as soon as this replacement is created. Share the new key

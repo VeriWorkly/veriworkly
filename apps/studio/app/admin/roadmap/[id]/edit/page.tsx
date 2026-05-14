@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -6,6 +7,20 @@ import { Card, Badge, Button } from "@veriworkly/ui";
 import { fetchAdminRoadmapFeatureServer } from "@/features/admin/services/admin-server";
 
 import RoadmapFeatureForm from "@/app/admin/roadmap/components/RoadmapFeatureForm";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+
+  return {
+    title: `Edit Roadmap - ${id}`,
+    description: "Edit roadmap feature details, status, tags, and timeline from admin panel.",
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function AdminRoadmapEditPage({
   params,

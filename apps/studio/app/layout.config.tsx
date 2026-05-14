@@ -7,7 +7,7 @@
 import { siteConfig } from "@/config/site";
 
 export const baseNavLinks = [
-  { text: "Dashboard", url: "/dashboard" },
+  { text: "Dashboard", url: "/" },
   { text: "Templates", url: "/templates" },
   { text: "Roadmap", url: "/roadmap" },
   { text: "Development", url: "/stats" },

@@ -26,9 +26,9 @@ export default function ApiKeyScopePicker({
     <Card className="border-border/60 bg-background/30 p-4">
       <div className="space-y-3">
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">Scopes</p>
+          <p className="text-foreground text-sm font-semibold">Scopes</p>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Choose exactly what this key can do. Start with the least access possible.
           </p>
         </div>
@@ -38,7 +38,7 @@ export default function ApiKeyScopePicker({
             (option) => (
               <label
                 key={option.value}
-                className="hover:border-accent/30 hover:bg-accent/5 flex cursor-pointer items-start gap-3 rounded-xl border border-border/70 px-3 py-3 text-sm transition-colors"
+                className="hover:border-accent/30 hover:bg-accent/5 border-border/70 flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-sm transition-colors"
               >
                 <Checkbox
                   checked={selectedScopes.includes(option.value)}
@@ -47,9 +47,9 @@ export default function ApiKeyScopePicker({
                 />
 
                 <span className="min-w-0 space-y-0.5">
-                  <span className="block font-medium text-foreground">{option.label}</span>
+                  <span className="text-foreground block font-medium">{option.label}</span>
 
-                  <span className="block text-xs leading-relaxed text-muted-foreground">
+                  <span className="text-muted-foreground block text-xs leading-relaxed">
                     {option.description}
                   </span>
                 </span>

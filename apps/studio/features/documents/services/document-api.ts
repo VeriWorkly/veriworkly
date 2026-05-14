@@ -6,7 +6,7 @@ export interface CloudDocument {
   id: string;
   type: DocumentType;
   title: string;
-  content: any;
+  content: unknown;
   templateId: string;
   visibility: string;
   revision: number;
@@ -58,7 +58,7 @@ export class DocumentApi {
     id?: string;
     type: DocumentType;
     title: string;
-    content: any;
+    content: unknown;
     templateId?: string;
     visibility?: string;
   }): Promise<CloudDocument> {
@@ -81,7 +81,7 @@ export class DocumentApi {
     id: string,
     input: {
       title?: string;
-      content?: any;
+      content?: unknown;
       templateId?: string;
       visibility?: string;
       revision: number;

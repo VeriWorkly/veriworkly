@@ -35,7 +35,6 @@ export default function SyncSection() {
   useEffect(() => {
     const settings = loadWorkspaceSettingsFromLocalStorage();
 
-    // Use callback to update state after render
     const timer = setTimeout(() => setAutoSync(settings.autoSyncEnabled), 0);
 
     const update = () => {
@@ -75,6 +74,7 @@ export default function SyncSection() {
           <h2 className="flex items-center gap-2 text-xl font-bold">
             <CloudSync className="text-accent h-5 w-5" /> Cloud & Data
           </h2>
+
           <p className="text-muted-foreground text-sm">Manage background synchronization.</p>
         </div>
 
@@ -102,7 +102,7 @@ export default function SyncSection() {
             telemetry.lastAttemptAt ? (
               <>
                 <span>{new Date(telemetry.lastAttemptAt).toLocaleTimeString()}</span>
-                <span className="text-muted-foreground/40 text-[10px] font-semibold ml-1">
+                <span className="text-muted-foreground/40 ml-1 text-[10px] font-semibold">
                   ({new Date(telemetry.lastAttemptAt).toLocaleDateString()})
                 </span>
               </>

@@ -197,7 +197,7 @@ const DashboardWorkspace = () => {
       trackUsageEvent({ event: "resume_deleted" });
 
       toast.success("Resume deleted successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete resume from cloud. Please try again.");
     } finally {
       setIsDeleting(false);

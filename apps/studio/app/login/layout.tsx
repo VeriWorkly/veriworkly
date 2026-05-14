@@ -76,7 +76,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="md" className="w-full sm:w-auto">
-              <Link href="/dashboard">Continue Without Login</Link>
+              <Link href="/">Continue Without Login</Link>
             </Button>
 
             <Button asChild size="md" variant="secondary" className="w-full sm:w-auto">

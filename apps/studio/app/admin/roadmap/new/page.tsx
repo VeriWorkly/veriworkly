@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Card, Badge, Button } from "@veriworkly/ui";
 
 import RoadmapFeatureForm from "@/app/admin/roadmap/components/RoadmapFeatureForm";
+
+export const metadata: Metadata = {
+  title: "Create Roadmap Item",
+  description: "Create a new roadmap item with full metadata and public-ready details.",
+  robots: { index: false, follow: false },
+};
 
 const AdminRoadmapCreatePage = () => {
   return (

@@ -2,7 +2,7 @@
 
 export async function importDocumentFromFile<T>(
   file: File,
-  parser: (content: any) => T | null,
+  parser: (content: unknown) => T | null,
   normalizer?: (data: T) => T,
 ) {
   const content = await file.text();

@@ -1,6 +1,6 @@
 {
   "name": "@veriworkly/studio",
-  "version": "3.2.4",
+  "version": "3.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -1,45 +1,21 @@
 {
   "schema_version": "1.0",
-  "name": "VeriWorkly Resume Builder",
-  "description": "Free, open-source, and privacy-first resume builder. Create polished resumes quickly with flexible templates, strong privacy defaults, and optional sync/share workflows.",
+  "name": "VeriWorkly Blog",
+  "description": "Insights into career management, open-source engineering, and product updates from the VeriWorkly team.",
   "contact_email": "info@veriworkly.com",
+  "site_url": "https://blog.veriworkly.com",
+  "parent_site_url": "https://veriworkly.com",
+  "llms_txt": "https://blog.veriworkly.com/llms.txt",
 
   "api": {
     "type": "openapi",
-    "url": "https://veriworkly.com/openapi.json",
-    "has_user_authentication": true
+    "url": "https://blog.veriworkly.com/openapi.json",
+    "has_user_authentication": true,
+    "auth_type": "cookie, bearer",
+    "auth_details": "Web clients authenticate using Better Auth via Email OTP, establishing a session cookie ('better-auth.session_token'). Programmatic agents must use API Keys as Bearer tokens.",
+    "base_url": "https://api.veriworkly.com/api/v1"
   },
 
-  "capabilities": [
-    {
-      "name": "Export Resume",
-      "description": "Generate a PDF or JSON export of a resume using its ID or a public token.",
-      "endpoints": ["/exports"]
-    },
-    {
-      "name": "Manage Resumes",
-      "description": "List, read, and sync complete resume content.",
-      "endpoints": ["/resumes"]
-    },
-    {
-      "name": "Manage Profiles",
-      "description": "Read and update the master user profile used to seed new resumes.",
-      "endpoints": ["/profiles"]
-    },
-    {
-      "name": "Share Resumes",
-      "description": "Create, list, and revoke public access tokens for resumes.",
-      "endpoints": ["/shares", "/share-links"]
-    },
-    {
-      "name": "Read Public Data",
-      "description": "Access public roadmap and Github integration metrics.",
-      "endpoints": ["/roadmap", "/github"]
-    }
-  ],
-
-  "compliance": {
-    "privacy_policy": "https://veriworkly.com/privacy",
-    "terms_of_service": "https://veriworkly.com/terms"
-  }
+  "master_llms_txt": "https://veriworkly.com/llms.txt",
+  "master_agent_json": "https://veriworkly.com/.well-known/agent.json"
 }

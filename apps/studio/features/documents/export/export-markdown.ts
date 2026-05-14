@@ -1,5 +1,11 @@
 import type { ResumeData } from "@/types/resume";
-import { safeText, formatDateRange, isSectionVisible, getVisibleSectionMap, getResumeFileBaseName } from "@/features/resume/services/resume-formatters";
+import {
+  safeText,
+  formatDateRange,
+  isSectionVisible,
+  getVisibleSectionMap,
+  getResumeFileBaseName,
+} from "@/features/resume/services/resume-formatters";
 import { downloadBlob } from "./download";
 
 function toMarkdownSection(title: string, body: string[]): string {

@@ -1,0 +1,118 @@
+---
+title: Resume Schema
+description: Technical reference for the Master Profile and Resume data structures.
+---
+
+# Resume Schema
+
+VeriWorkly utilizes a standardized, type-safe schema to represent professional data across the entire ecosystem. This schema ensures consistency between the local-first store, the synchronization engine, and the dual-engine rendering pipeline.
+
+---
+
+## The Master Profile
+
+The `MasterProfile` is the core data structure that stores a user's complete professional history. It is designed to be a "Source of Truth" from which individual resumes are derived.
+
+### Core Interface
+
+```typescript
+export interface MasterProfileData {
+  basics: ResumeBasics;
+  links: ResumeLinks;
+  summary: string;
+  experience: ResumeExperienceItem[];
+  education: ResumeEducationItem[];
+  projects: ResumeProjectItem[];
+  skills: ResumeSkillGroup[];
+  sections: ResumeSection[];
+  customization: ResumeCustomization;
+  // ... extended sections
+}
+```
+
+---
+
+## Detailed Section Schemas
+
+### 1. Basics & Links
+
+Manages personal identity and digital presence.
+
+```typescript
+export interface ResumeBasics {
+  fullName: string;
+  role: string;
+  headline: string;
+  email: string;
+  phone: string;
+  location: string;
+}
+
+export interface ResumeLinkItem {
+  id: string;
+  type: "github" | "linkedin" | "portfolio" | "custom" | string;
+  label: string;
+  url: string;
+}
+```
+
+### 2. Professional Experience
+
+Represents a single career milestone.
+
+```typescript
+export interface ResumeExperienceItem {
+  id: string;
+  company: string;
+  role: string;
+  location: string;
+  startDate: string; // ISO format
+  endDate: string; // ISO format or empty
+  current: boolean;
+  summary: string; // Rich text or markdown
+  highlights: string[];
+}
+```
+
+### 3. Education & Projects
+
+Academic background and personal initiatives.
+
+```typescript
+export interface ResumeEducationItem {
+  school: string;
+  degree: string;
+  field: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ResumeProjectItem {
+  name: string;
+  role: string;
+  link: string;
+  summary: string;
+  highlights: string[];
+}
+```
+
+---
+
+## Customization Engine
+
+The `ResumeCustomization` interface defines the visual parameters utilized by both the Web and PDF rendering engines.
+
+| Property         | Type     | Description                                     |
+| :--------------- | :------- | :---------------------------------------------- |
+| `fontFamily`     | `string` | The primary typeface for the document.          |
+| `accentColor`    | `string` | HEX code for headings and interactive elements. |
+| `sectionSpacing` | `number` | Vertical gap between major resume blocks.       |
+| `pagePadding`    | `number` | Inner margins for the document container.       |
+| `bodyLineHeight` | `number` | Typographic line-height for body text.          |
+
+---
+
+## Source Code Reference
+
+The full TypeScript definitions for the resume schema can be explored on GitHub:
+[apps/studio/types/resume.ts](https://github.com/Gautam25Raj/veriworkly-resume/blob/master/apps/studio/types/resume.ts)

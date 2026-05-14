@@ -44,6 +44,8 @@
     "utils/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
     "next.config.ts",
     "postcss.config.mjs",
     "vitest.config.ts",

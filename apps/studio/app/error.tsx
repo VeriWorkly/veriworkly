@@ -1,6 +1,8 @@
 "use client";
 
-import { Container, Button } from "@veriworkly/ui";
+import { useRouter } from "next/navigation";
+
+import { Button } from "@veriworkly/ui";
 
 export default function Error({
   reset,
@@ -8,37 +10,45 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <Container className="flex flex-col items-center text-center">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-600">
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+    <main className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 md:py-10">
+      <div className="space-y-6 py-2">
+        <section className="border-border bg-card relative overflow-hidden rounded-3xl border p-6 sm:p-8">
+          <div className="bg-accent/10 absolute -top-14 right-0 h-44 w-44 rounded-full blur-2xl" />
+          <div className="relative">
+            <p className="text-accent text-xs font-semibold tracking-[0.2em] uppercase">
+              Workspace Error
+            </p>
+
+            <h1 className="text-foreground mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+              We could not load this workspace
+            </h1>
+
+            <p className="text-muted mt-2 max-w-xl text-sm leading-6">
+              Temporary issue while loading dashboard data. Retry now or return to home workspace.
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Button onClick={() => reset()}>Try again</Button>
+
+              <Button variant="secondary" onClick={() => router.push("/")}>
+                Go to Dashboard
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="border-border bg-card/70 h-40 rounded-3xl border border-dashed"
             />
-          </svg>
-        </div>
-
-        <h1 className="text-foreground text-3xl font-bold tracking-tight">Something went wrong</h1>
-
-        <p className="text-muted mt-4 max-w-md text-sm leading-6">
-          An unexpected error occurred. This might be due to a corrupted local storage or a
-          temporary glitch.
-        </p>
-
-        <div className="mt-10 flex gap-4">
-          <Button variant="primary" onClick={() => reset()}>
-            Try again
-          </Button>
-
-          <Button variant="secondary" onClick={() => (window.location.href = "/")}>
-            Go Home
-          </Button>
-        </div>
-      </Container>
+          ))}
+        </section>
+      </div>
     </main>
   );
 }

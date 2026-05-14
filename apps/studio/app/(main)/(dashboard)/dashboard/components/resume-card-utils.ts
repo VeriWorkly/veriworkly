@@ -6,6 +6,7 @@ export function formatRelativeSyncTime(value: string | null): string {
   if (!value) return "none";
 
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) return "unknown";
 
   const elapsedMs = Date.now() - date.getTime();
@@ -18,6 +19,7 @@ export function formatRelativeSyncTime(value: string | null): string {
   if (elapsedHours < 24) return `${elapsedHours}h ago`;
 
   const elapsedDays = Math.floor(elapsedHours / 24);
+
   return `${elapsedDays}d ago`;
 }
 

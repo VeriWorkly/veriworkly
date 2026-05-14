@@ -1,6 +1,6 @@
 {
   "name": "veriworkly-resume",
-  "version": "3.2.4",
+  "version": "3.4.0",
   "private": true,
   "workspaces": [
     "apps/site",
@@ -12,8 +12,8 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @veriworkly/site",
-    "dev:site": "npm run dev -w @veriworkly/site -- p 3000",
-    "dev:studio": "npm run dev -w @veriworkly/studio",
+    "dev:site": "npm run dev -w @veriworkly/site -- -p 3000",
+    "dev:studio": "npm run dev -w @veriworkly/studio -- -p 3001",
     "dev:server": "npm run dev -w @veriworkly/server",
     "dev:docs": "npm run dev -w @veriworkly/docs-platform -- -p 3002",
     "dev:blog": "npm run dev -w @veriworkly/blog-platform -- -p 3003",

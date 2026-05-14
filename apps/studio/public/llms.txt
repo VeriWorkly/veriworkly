@@ -1,66 +1,19 @@
-# VeriWorkly Resume Builder
+# VeriWorkly Resume Studio
+> The interactive heart of the VeriWorkly ecosystem. A local-first, privacy-focused application for building, previewing, and managing ATS-friendly resumes.
 
-Free, open-source, and privacy-first resume builder. Create professional ATS-friendly resumes with flexible templates, real-time preview, and complete data privacy.
+## About this Service
+Resume Studio (`app.veriworkly.com`) is the primary interface for creating career documents. It leverages browser-based storage to ensure your data remains private and under your control.
 
-## Details
-- **Website**: https://veriworkly.com
-- **Tagline**: Free resume builder. No login. 100% private.
-- **Creator**: Gautam Raj
-- **Source Code**: https://github.com/Gautam25Raj/veriworkly-resume
+## Links & Discovery
+- **Main Ecosystem Docs**: [veriworkly.com/llms.txt](https://veriworkly.com/llms.txt)
+- **API Reference**: [veriworkly.com/openapi.json](https://veriworkly.com/openapi.json)
+- **Agent Discovery**: [veriworkly.com/.well-known/agent.json](https://veriworkly.com/.well-known/agent.json)
 
-## Key Features
-- **No Login Required**: Start building immediately without creating an account.
-- **Privacy First**: Data stays on your device (stored in local browser storage).
-- **ATS-Friendly**: Templates designed to pass through Applicant Tracking Systems.
-- **Real-time Preview**: See changes instantly as you type.
-- **Modern Templates**: Multiple professional designs to choose from.
+## Key Functionalities
+- **Live Preview**: Real-time rendering of resumes using professional templates.
+- **Local Storage**: Auto-saves data to the browser's IndexedDB/LocalStorage.
+- **Cloud Sync**: Optional synchronization to a secure PostgreSQL backend for cross-device access.
+- **Multi-Document Support**: Manage multiple resumes, cover letters, and portfolios from a single dashboard.
 
-## For AI Agents
-This site is designed to be easily readable by LLMs and agents. It uses semantic HTML and structured JSON-LD data. Our API is RESTful and documented using Fumadocs.
-
-### API Endpoints (v1)
-Base URL: `https://api.veriworkly.com/api/v1` (or local equivalent)
-
-#### System & Health
-- `GET /health`: Basic health check of the API server and dependencies.
-- `GET /github/stats`: Get GitHub repository metrics.
-- `GET /github/issues`: Get open GitHub issues for contributions.
-
-#### Resumes (Requires Auth)
-- `GET /resumes`: List all resumes for the authenticated user.
-- `GET /resumes/:resumeId`: Get specific resume data.
-- `PUT /resumes/:resumeId/sync`: Sync resume content to the server.
-
-#### Profiles (Requires Auth)
-- `GET /profiles/master`: Get the user's master profile.
-- `PUT /profiles/master`: Update the user's master profile.
-
-#### Share Links
-- `GET /shares/resumes/:resumeId`: List share links (Auth required).
-- `POST /shares/resumes/:resumeId`: Create a share link (Auth required).
-- `DELETE /shares/resumes/:resumeId/links/:shareLinkId`: Revoke link (Auth required).
-- `GET /share-links/:token`: Retrieve a public resume via secure token.
-- `POST /share-links/:token/verify`: Verify a public share link's validity.
-
-#### Exports
-- `POST /exports/resumes/:resumeId/jobs`: Queue a private export (Auth required).
-- `POST /exports/resumes/:resumeId/direct`: Direct synchronous export (Auth required).
-- `POST /exports/shares/:token/jobs`: Queue a public export using a share token.
-- `GET /exports/jobs/:jobId`: Get private job status.
-- `GET /exports/jobs/:jobId/download`: Download private exported artifact.
-- `GET /exports/shares/:token/jobs/:jobId`: Get public job status.
-- `GET /exports/shares/:token/jobs/:jobId/download`: Download public artifact.
-
-#### Roadmap
-- `GET /roadmap`: List public roadmap items.
-- `GET /roadmap/stats`: Get roadmap statistics.
-
-#### Users (Requires Auth)
-- `GET /users/me`: Get current user details.
-- `PUT /users/me/name`: Update user display name.
-
-## Technology Stack
-- **Frontend**: Next.js (App Router), TailwindCSS v4, TypeScript, Fumadocs.
-- **Backend**: Node.js, Express, Prisma, Redis.
-- **Authentication**: Better-Auth.
-- **Storage**: PostgreSQL.
+## Guidance for AI Agents
+If you are assisting a user within the Studio, focus on document structure and content optimization. For programmatic data operations (Sync, Share, Delete), refer to the main VeriWorkly API documentation.

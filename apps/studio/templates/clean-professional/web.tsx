@@ -51,7 +51,7 @@ function renderCustomSection(
         {section.items
           .filter((item) => item.name || item.description || item.details.length)
           .map((item) => (
-            <article className="space-y-1.5 break-inside-avoid" key={item.id}>
+            <article className="break-inside-avoid space-y-1.5" key={item.id}>
               <div className="flex flex-col justify-between gap-0.5 sm:flex-row sm:items-baseline">
                 <h3
                   className="text-base leading-tight font-semibold"
@@ -92,6 +92,7 @@ function renderCustomSection(
 }
 
 export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
+  if (!resume) return null;
   const {
     basics,
     experience,
@@ -131,18 +132,20 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
     <div
       id="resume-container"
       className="resume-page-preview mx-auto bg-white text-[0.9375rem] leading-relaxed"
-      style={{
-        "--resume-page-height": `${RESUME_PAGE_HEIGHT_PX}px`,
-        "--resume-page-margin": `${Math.max(0, renderStyle.pagePadding)}px`,
-        width: `${RESUME_PAGE_WIDTH_PX}px`,
-        minHeight: `${RESUME_PAGE_HEIGHT_PX * 2}px`,
-        padding: `${renderStyle.pagePadding}px`,
-        backgroundColor: renderStyle.pageBackgroundColor,
-        color: textColor,
-        fontFamily:
-          FONT_FAMILY_MAP[customization?.fontFamily as keyof typeof FONT_FAMILY_MAP] ||
-          "system-ui, -apple-system, sans-serif",
-      } as React.CSSProperties}
+      style={
+        {
+          "--resume-page-height": `${RESUME_PAGE_HEIGHT_PX}px`,
+          "--resume-page-margin": `${Math.max(0, renderStyle.pagePadding)}px`,
+          width: `${RESUME_PAGE_WIDTH_PX}px`,
+          minHeight: `${RESUME_PAGE_HEIGHT_PX * 2}px`,
+          padding: `${renderStyle.pagePadding}px`,
+          backgroundColor: renderStyle.pageBackgroundColor,
+          color: textColor,
+          fontFamily:
+            FONT_FAMILY_MAP[customization?.fontFamily as keyof typeof FONT_FAMILY_MAP] ||
+            "system-ui, -apple-system, sans-serif",
+        } as React.CSSProperties
+      }
     >
       {showBasics && (
         <Header basics={basics} links={links} customization={customization} sections={sections} />

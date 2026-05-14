@@ -11,7 +11,6 @@ import {
 
 export { safeText, formatDateRange, sanitizeFileName, escapeHtml };
 
-
 export function getResumeTitle(resume: ResumeData): string {
   return resume.basics.fullName.trim() || "Untitled Resume";
 }

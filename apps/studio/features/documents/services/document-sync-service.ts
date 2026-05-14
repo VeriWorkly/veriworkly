@@ -1,7 +1,7 @@
 "use client";
 
 import { DocumentApi, type CloudDocument, type DocumentType } from "./document-api";
-import { SyncEngine, type SyncStatus, type SyncTelemetry } from "./sync-engine";
+import { SyncEngine, type SyncStatus } from "./sync-engine";
 import { LocalStorageService } from "./local-storage-service";
 import { BaseDocumentData } from "@/types/document";
 
@@ -29,7 +29,7 @@ export interface DocumentSyncConfig<T extends BaseDocumentData> {
   documentType: DocumentType;
   localStorage: LocalStorageService<T>;
   updatedEventName: string;
-  parseItem: (input: any) => T | null;
+  parseItem: (input: unknown) => T | null;
   getDocumentTitle: (item: T) => string;
 }
 
@@ -163,7 +163,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
   // --- Sync Actions ---
 
-  async syncNow(id: string, options?: SyncNowOptions): Promise<SyncResult> {
+  async syncNow(id: string): Promise<SyncResult> {
     const item = this.config.localStorage.loadById(id);
     if (!item) return { ok: false, message: "Document not found locally.", reason: "not-found" };
 
@@ -198,8 +198,9 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       SyncEngine.updateTelemetry(id, { lastSuccessAt: new Date().toISOString() });
 
       return { ok: true, message: "Document synced successfully." };
-    } catch (error: any) {
-      const isConflict = error.message.includes("Conflict");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isConflict = message.includes("Conflict");
       this.setLocalSyncState(id, isConflict ? "conflicted" : "pending");
 
       SyncEngine.upsertOutboxItem(id, {
@@ -209,12 +210,12 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
       SyncEngine.updateTelemetry(id, {
         lastErrorAt: new Date().toISOString(),
-        lastErrorMessage: error.message,
+        lastErrorMessage: message,
       });
 
       return {
         ok: false,
-        message: error.message,
+        message: message,
         reason: isConflict ? "conflict" : "network",
       };
     }
@@ -252,8 +253,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       return merged.ok
         ? { ok: true, message: "Cloud document loaded successfully." }
         : { ok: false, message: "Unable to merge the cloud document." };
-    } catch (error: any) {
-      return { ok: false, message: error.message };
+    } catch (error: unknown) {
+      return { ok: false, message: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -274,8 +275,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       return merged.ok
         ? { ok: true, message: `Merged ${merged.mergedCount} documents.` }
         : { ok: false, message: "Merge failed." };
-    } catch (error: any) {
-      return { ok: false, message: error.message };
+    } catch (error: unknown) {
+      return { ok: false, message: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -325,7 +326,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
   }
 
   async resolveConflictUseLocal(id: string) {
-    return this.syncNow(id, { force: true });
+    return this.syncNow(id);
   }
 
   async resolveConflictUseCloud(id: string) {
@@ -342,7 +343,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     return raw ? JSON.parse(raw) : { lastHydratedAt: 0 };
   }
 
-  private setLastHydrateMeta(meta: any) {
+  private setLastHydrateMeta(meta: { lastHydratedAt: number; lastServerCursor: string }) {
     if (!this.isBrowser()) return;
     localStorage.setItem(this.cloudHydrateMetaKey, JSON.stringify(meta));
   }

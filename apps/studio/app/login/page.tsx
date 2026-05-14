@@ -41,8 +41,10 @@ const LoginPage = () => {
       setSentTo(email);
       setSent(true);
       toast.success("Verification code sent to your email!");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to fetch. Please check your connection.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch. Please check your connection.";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +97,7 @@ const LoginPage = () => {
 
       <p className="text-muted text-center text-xs md:text-sm">
         Want to continue immediately?
-        <Link href="/dashboard" className="text-foreground ml-1 font-semibold hover:opacity-80">
+        <Link href="/" className="text-foreground ml-1 font-semibold hover:opacity-80">
           Open Dashboard (No Login)
         </Link>
       </p>

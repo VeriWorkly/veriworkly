@@ -36,19 +36,21 @@ describe("share links contract", () => {
     } as Response);
 
     const result = await createResumeShareLink(defaultResume, {
-      resumeTitle: "Jane Doe",
       noExpiry: true,
     });
 
     expect(result.token).toBe("tok_123");
     expect(fetchMock).toHaveBeenCalledWith(
-      `http://localhost:4000/api/v1/shares/resumes/${defaultResume.id}`,
+      `http://localhost:4000/api/v1/shares`,
       expect.objectContaining({
         method: "POST",
         credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }),
     );
-    expect(mockedBackendApiUrl).toHaveBeenCalledWith(`/shares/resumes/${defaultResume.id}`);
+    expect(mockedBackendApiUrl).toHaveBeenCalledWith(`/shares`);
   });
 
   it("fetches a public share link snapshot", async () => {
@@ -100,9 +102,9 @@ describe("share links contract", () => {
   it("returns not found error for expired or missing link", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
-      json: async () => ({ message: "Shared resume not found" }),
+      json: async () => ({ message: "Shared document not found" }),
     } as Response);
 
-    await expect(fetchShareLink("expired_or_missing")).rejects.toThrow("Shared resume not found");
+    await expect(fetchShareLink("expired_or_missing")).rejects.toThrow("Shared document not found");
   });
 });

@@ -24,7 +24,7 @@ export const EducationItem: React.FC<EducationItemProps> = ({
   mutedTextColor,
 }) => {
   return (
-    <article className="space-y-1 break-inside-avoid">
+    <article className="break-inside-avoid space-y-1">
       <div className="flex flex-col justify-between gap-0.5 sm:flex-row sm:items-baseline">
         <h3 className="text-base leading-tight font-semibold" style={{ color: headingColor }}>
           {getEducationTitle(education) || "Education"}

@@ -69,7 +69,7 @@ export function PreviewClient({ resumeId }: PreviewClientProps) {
           </Link>
 
           <Link
-            href="/dashboard"
+            href="/"
             className="bg-card text-foreground ring-border hover:bg-background inline-flex h-9 items-center justify-center rounded-full px-3 text-sm font-medium ring-1 transition ring-inset"
           >
             Dashboard
@@ -88,7 +88,7 @@ export function PreviewClient({ resumeId }: PreviewClientProps) {
           <div>
             <Link
               className="bg-card text-foreground ring-border hover:bg-background inline-flex h-9 items-center justify-center rounded-full px-3 text-sm font-medium ring-1 transition ring-inset"
-              href="/dashboard"
+              href="/"
             >
               Go to dashboard
             </Link>

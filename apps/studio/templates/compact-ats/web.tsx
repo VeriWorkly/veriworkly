@@ -62,6 +62,7 @@ function Section({
 }
 
 export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
+  if (!resume) return null;
   const style = getResumeRenderStyle(resume);
   const pagePadding = Math.max(24, style.pagePadding * 0.85);
   const contactItems = getContactItems(resume.basics);
@@ -78,20 +79,21 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
     <div
       id="resume-container"
       className="resume-page-preview mx-auto bg-white text-[0.875rem]"
-      style={{
-        "--resume-page-height": `${RESUME_PAGE_HEIGHT_PX}px`,
-        "--resume-page-margin": `${pagePadding}px`,
-        width: `${RESUME_PAGE_WIDTH_PX}px`,
-        minHeight: `${RESUME_PAGE_HEIGHT_PX * 2}px`,
-        padding: `${pagePadding}px`,
-        backgroundColor: style.pageBackgroundColor,
-        color: style.textColor,
-        fontFamily: FONT_FAMILY_MAP[style.fontFamily],
-        lineHeight: style.bodyLineHeight,
-      } as React.CSSProperties}
+      style={
+        {
+          "--resume-page-height": `${RESUME_PAGE_HEIGHT_PX}px`,
+          "--resume-page-margin": `${pagePadding}px`,
+          width: `${RESUME_PAGE_WIDTH_PX}px`,
+          minHeight: `${RESUME_PAGE_HEIGHT_PX * 2}px`,
+          padding: `${pagePadding}px`,
+          backgroundColor: style.pageBackgroundColor,
+          color: style.textColor,
+          fontFamily: FONT_FAMILY_MAP[style.fontFamily],
+          lineHeight: style.bodyLineHeight,
+        } as React.CSSProperties
+      }
     >
-      {(hasResumeSectionContent(resume, "basics") ||
-        hasResumeSectionContent(resume, "links")) && (
+      {(hasResumeSectionContent(resume, "basics") || hasResumeSectionContent(resume, "links")) && (
         <header className="mb-4 border-b pb-3" style={{ borderColor: style.borderColor }}>
           {hasResumeSectionContent(resume, "basics") && (
             <>
@@ -233,7 +235,10 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
               </div>
               {item.skills?.length > 0 && (
                 <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
-                  {item.skills.map((skill) => cleanResumeText(skill)).filter(Boolean).join(", ")}
+                  {item.skills
+                    .map((skill) => cleanResumeText(skill))
+                    .filter(Boolean)
+                    .join(", ")}
                 </p>
               )}
               {item.summary && <p>{cleanResumeText(item.summary)}</p>}
@@ -254,7 +259,10 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
           {visibleSkills.map((skill) => (
             <p key={skill.id || skill.name}>
               <strong>{cleanResumeText(skill.name)}:</strong>{" "}
-              {skill.keywords.map((keyword) => cleanResumeText(keyword)).filter(Boolean).join(", ")}
+              {skill.keywords
+                .map((keyword) => cleanResumeText(keyword))
+                .filter(Boolean)
+                .join(", ")}
             </p>
           ))}
         </Section>

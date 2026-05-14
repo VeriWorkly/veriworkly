@@ -1,6 +1,12 @@
 import type { ResumeData } from "@/types/resume";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
-import { safeText, formatDateRange, isSectionVisible, getVisibleSectionMap, getResumeFileBaseName } from "@/features/resume/services/resume-formatters";
+import {
+  safeText,
+  formatDateRange,
+  isSectionVisible,
+  getVisibleSectionMap,
+  getResumeFileBaseName,
+} from "@/features/resume/services/resume-formatters";
 import { downloadBlob } from "./download";
 
 function createDocxParagraph(text: string): Paragraph {

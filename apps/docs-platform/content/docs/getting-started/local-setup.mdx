@@ -16,9 +16,9 @@ This guide provides comprehensive instructions for configuring a local developme
 Before initialization, ensure the following dependencies are installed:
 
 - **Node.js**: Version 20 or higher is required.
-- **Package Manager**: NPM, PNPM, or Yarn.
+- **Package Manager**: NPM (recommended), PNPM, or Yarn.
 - **PostgreSQL**: A valid connection string is required. We recommend [Neon](https://neon.tech) for a managed serverless experience.
-- **Redis**: Required for rate limiting and background job processing.
+- **Redis**: Utilized for rate limiting and API caching. Not required for core resume building.
 
 ---
 
@@ -48,54 +48,20 @@ Before initialization, ensure the following dependencies are installed:
 
   <Step>
     ### Configure Environment Variables
-    Environment configuration is required for both the frontend and the backend services.
+    Environment configuration is required for the site, studio, and server services.
 
     ```bash
     # Duplicate example configuration files
     cp .env.example .env
     cp apps/server/.env.example apps/server/.env
+    cp apps/studio/.env.example apps/studio/.env
+    cp apps/site/.env.example apps/site/.env
     ```
 
     Ensure the following critical variables are populated:
     - `DATABASE_URL`: PostgreSQL connection string.
-    - `REDIS_URL`: Redis connection string.
-    - `AUTH_SECRET`: Security secret for session encryption.
+    - `AUTH_SECRET`: Security secret for session encryption (must match between server and studio).
     - `NEXT_PUBLIC_BACKEND_URL`: Typically `http://localhost:8080/api/v1`.
-
-  </Step>
-
-  <Step>
-    ### Initialize Redis
-    VeriWorkly utilizes Redis for its asynchronous job queue and rate limiting.
-
-    <CodeBlockTabs defaultValue="docker" groupId="redis-setup">
-      <CodeBlockTabsList>
-        <CodeBlockTabsTrigger value="docker">Docker</CodeBlockTabsTrigger>
-        <CodeBlockTabsTrigger value="mac">macOS</CodeBlockTabsTrigger>
-        <CodeBlockTabsTrigger value="linux">Linux</CodeBlockTabsTrigger>
-      </CodeBlockTabsList>
-
-      <CodeBlockTab value="docker">
-        ```bash
-        docker run -d -p 6379:6379 --name redis redis:7
-        ```
-      </CodeBlockTab>
-
-      <CodeBlockTab value="mac">
-        ```bash
-        brew install redis
-        brew services start redis
-        ```
-      </CodeBlockTab>
-
-      <CodeBlockTab value="linux">
-        ```bash
-        sudo apt update
-        sudo apt install redis-server
-        sudo systemctl start redis
-        ```
-      </CodeBlockTab>
-    </CodeBlockTabs>
 
   </Step>
 
@@ -111,16 +77,23 @@ Before initialization, ensure the following dependencies are installed:
 
   <Step>
     ### Start Development Servers
-    The monorepo requires concurrent execution of the frontend and backend services.
+    The monorepo allows you to run services independently or concurrently.
 
-    **Terminal 1: Backend API**
+    **Option 1: Individual Services**
     ```bash
+    # Terminal 1: Backend API
     npm run dev:server
+
+    # Terminal 2: Resume Studio
+    npm run dev:studio
+
+    # Terminal 3: Marketing Site
+    npm run dev:site
     ```
 
-    **Terminal 2: Frontend Application**
+    **Option 2: Concurrent Development**
     ```bash
-    npm run dev
+    npm run dev:all
     ```
 
   </Step>
@@ -130,7 +103,9 @@ Before initialization, ensure the following dependencies are installed:
 
 ## Environment Verification
 
-To confirm a successful installation:
+To confirm a successful installation, verify the following endpoints:
 
-1. Navigate to `http://localhost:3000` to access the user interface.
-2. Access `http://localhost:8080/api/v1/health` to verify the backend's connectivity to PostgreSQL and Redis.
+- **Marketing Site**: `http://localhost:3000`
+- **Resume Studio**: `http://localhost:3001`
+- **Documentation**: `http://localhost:3002`
+- **Backend API**: `http://localhost:8080/api/v1/health` (Checks database connectivity)

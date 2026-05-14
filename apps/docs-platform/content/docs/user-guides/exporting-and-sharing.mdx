@@ -13,15 +13,14 @@ VeriWorkly provides several mechanisms for document distribution, ranging from l
 
 ## 1. High-Fidelity PDF Export
 
-To address the limitations of client-side rendering, VeriWorkly utilizes a server-side pipeline for PDF generation. This ensures 100% layout consistency and full compatibility with Applicant Tracking Systems (ATS).
+VeriWorkly utilizes a high-performance client-side rendering pipeline for PDF generation, powered by **react-pdf**. This ensures that document layouts are generated with pixel-perfect accuracy directly in the user's browser, providing instant feedback and superior data privacy.
 
-- **Technical Process**: Upon initiation, the document payload is transmitted to the backend API and queued via BullMQ. A headless Chromium instance (Playwright) renders the document natively, ensuring a selectable text layer and embedded font support.
-- **ATS Compliance**: The resulting PDF is a vector-based document, allowing recruitment software to accurately parse the semantic structure and professional history.
+- **Technical Process**: Upon clicking "Export", the application maps your resume data to high-fidelity PDF primitives. The generation process occurs entirely within your browser's secure sandbox, producing a vector-based PDF with embedded fonts and selectable text.
+- **ATS Compliance**: The resulting documents are strictly engineered for machine-readability. By utilizing standard PDF semantic structures, we ensure that recruitment software and Applicant Tracking Systems (ATS) can accurately parse your professional history without errors.
 
-<Callout type="warn" title="Data Privacy Boundary">
-  PDF generation requires the temporary transmission of document payloads to our API. For
-  unauthenticated users, this data is processed exclusively in-memory and is discarded immediately
-  following document delivery.
+<Callout type="info" title="Privacy First">
+  Unlike traditional platforms, VeriWorkly does not transmit your document data to a server for PDF
+  generation. Your personal information never leaves your device during the export process.
 </Callout>
 
 ---

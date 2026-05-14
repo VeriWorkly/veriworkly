@@ -43,7 +43,12 @@ export const LoginFeatures = ({ variant = "compact", className }: LoginFeaturesP
   }
 
   return (
-    <div className={cn("border-border/80 bg-background/65 rounded-2xl border p-3 backdrop-blur", className)}>
+    <div
+      className={cn(
+        "border-border/80 bg-background/65 rounded-2xl border p-3 backdrop-blur",
+        className,
+      )}
+    >
       <ul className="text-muted text-sm leading-6">
         {features.map((feature, index) => (
           <li key={feature.title}>

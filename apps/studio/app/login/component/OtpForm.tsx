@@ -48,10 +48,12 @@ const OtpForm = ({
       }
 
       toast.success("Successfully signed in!");
-      router.push("/dashboard");
+      router.push("/");
       router.refresh();
-    } catch (err: any) {
-      toast.error(err?.message || "Verification failed. Please check your connection.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Verification failed. Please check your connection.";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +77,10 @@ const OtpForm = ({
         setOtp("");
         toast.success("A new code has been sent to your email.");
       }
-    } catch (err: any) {
-      toast.error(err?.message || "Resend failed. Please check your connection.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Resend failed. Please check your connection.";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

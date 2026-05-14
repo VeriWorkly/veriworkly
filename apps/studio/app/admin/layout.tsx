@@ -1,6 +1,13 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 
 import AdminNavbar from "@/components/admin/AdminNavbar";
+
+export const metadata: Metadata = {
+  title: "Admin",
+  description: "VeriWorkly admin operations and roadmap management.",
+  robots: { index: false, follow: false },
+};
 
 const AdminLayout = async ({ children }: { children: ReactNode }) => {
   return (

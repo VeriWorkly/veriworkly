@@ -41,7 +41,8 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
 
 <Files>
   <Folder name="apps" defaultOpen>
-    <File name="resume-builder" />
+    <File name="site" />
+    <File name="studio" />
     <File name="server" />
     <File name="docs-platform" />
     <File name="blog-platform" />
@@ -58,8 +59,8 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
 
 The platform consists of several integrated components:
 
-1. **Frontend (Resume Builder)**: A Next.js application handling user interaction and local-first state management.
-2. **Backend API (Server)**: An Express-based service managing authentication, data persistence, and GitHub synchronization.
-3. **Database (PostgreSQL)**: The primary relational store. We recommend [Neon](https://neon.tech) for managed deployments.
-4. **Caching & Jobs (Redis)**: Facilitates rate limiting and manages the BullMQ job queue for document rendering.
-5. **PDF Engine (Playwright)**: An asynchronous worker that renders resumes into ATS-optimized formats.
+1. **Marketing Site (Site)**: A Next.js application handling landing pages and public content.
+2. **Resume Studio (Studio)**: The primary Next.js application handling user interaction, local-first state management, and high-fidelity document rendering.
+3. **Backend API (Server)**: An Express-based service managing authentication and secure data synchronization.
+4. **Database (PostgreSQL)**: The primary relational store. We recommend [Neon](https://neon.tech) for managed deployments.
+5. **PDF Engine (react-pdf)**: A client-side rendering library that generates ATS-optimized documents directly in the browser.

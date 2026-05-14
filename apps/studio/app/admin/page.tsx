@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Card, Badge, Button } from "@veriworkly/ui";
@@ -7,6 +8,12 @@ import AdminActionButtons from "@/app/admin/components/AdminActionButtons";
 
 import { fetchCurrentUser } from "@/features/auth/services/current-user";
 import { fetchAdminDashboardStatsServer } from "@/features/admin/services/admin-server";
+
+export const metadata: Metadata = {
+  title: "Admin Dashboard",
+  description: "Monitor platform metrics, roadmap operations, and admin controls.",
+  robots: { index: false, follow: false },
+};
 
 function toNumber(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;

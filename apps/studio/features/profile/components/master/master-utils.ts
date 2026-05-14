@@ -145,7 +145,10 @@ export function validateMasterProfileForSave(profile: MasterProfileData) {
   }
 
   for (const education of profile.education) {
-    if (!isYearDate(education.startDate) || (!education.current && !isYearDate(education.endDate))) {
+    if (
+      !isYearDate(education.startDate) ||
+      (!education.current && !isYearDate(education.endDate))
+    ) {
       issues.push(`Education "${education.degree || "Untitled"}" must use year-only dates.`);
       break;
     }
@@ -204,7 +207,9 @@ export function validateMasterProfileForSave(profile: MasterProfileData) {
     }
 
     if (reference.phone?.trim() && !isTenDigitPhone(reference.phone.trim())) {
-      issues.push(`Reference \"${reference.name || "Unnamed"}\" phone must have exactly 10 digits.`);
+      issues.push(
+        `Reference \"${reference.name || "Unnamed"}\" phone must have exactly 10 digits.`,
+      );
       break;
     }
   }

@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-
-import DashboardWorkspace from "./components/DashboardWorkspace";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: `Dashboard`,
-  description: "Manage your resumes, edit drafts, and export professional documents in seconds.",
+  title: "Dashboard Redirect",
+  description: "Legacy dashboard route redirect.",
   robots: { index: false, follow: false },
 };
 
-const DashboardPage = () => {
-  return <DashboardWorkspace />;
+const DashboardRouteCompatibilityPage = () => {
+  redirect("/");
 };
 
-export default DashboardPage;
+export default DashboardRouteCompatibilityPage;

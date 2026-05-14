@@ -1,6 +1,9 @@
 "use client";
 
-import { safeSetLocalStorageItem, type LocalStorageWriteResult } from "./storage/safe-local-storage";
+import {
+  safeSetLocalStorageItem,
+  type LocalStorageWriteResult,
+} from "./storage/safe-local-storage";
 import { BaseDocumentData, DocumentCollection } from "@/types/document";
 
 export interface SaveDocumentOptions {
@@ -17,8 +20,8 @@ export interface LocalStorageConfig<T extends BaseDocumentData> {
   activeIdKey: string;
   legacyKey?: string;
   updatedEventName: string;
-  parseItem: (input: any) => T | null;
-  parseCollection: (input: any) => DocumentCollection<T>;
+  parseItem: (input: unknown) => T | null;
+  parseCollection: (input: unknown) => DocumentCollection<T>;
 }
 
 export class LocalStorageService<T extends BaseDocumentData> {
@@ -141,9 +144,7 @@ export class LocalStorageService<T extends BaseDocumentData> {
 
   list(): T[] {
     const collection = this.loadCollection();
-    return Object.values(collection.items).sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    return Object.values(collection.items).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
   persist(item: T): SaveDocumentResult {
@@ -176,7 +177,11 @@ export class LocalStorageService<T extends BaseDocumentData> {
     this.setActiveId(toPersist.id);
 
     if (this.config.legacyKey) {
-      safeSetLocalStorageItem(window.localStorage, this.config.legacyKey, JSON.stringify(toPersist));
+      safeSetLocalStorageItem(
+        window.localStorage,
+        this.config.legacyKey,
+        JSON.stringify(toPersist),
+      );
     }
 
     return { ok: true, queued: false };

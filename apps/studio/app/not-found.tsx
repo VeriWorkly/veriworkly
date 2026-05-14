@@ -13,13 +13,13 @@ const NotFound = () => {
         </h1>
 
         <p className="text-muted mt-6 max-w-md text-base leading-7">
-          Sorry, we couldn’t find the page you’re looking for. It might have been moved, or the URL
-          might be incorrect.
+          Sorry, we could not find the page you are looking for. It may have moved, or URL may be
+          incorrect.
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-x-6">
           <Button asChild variant="primary">
-            <Link href="/dashboard">Go back to Dashboard</Link>
+            <Link href="/">Go back to Dashboard</Link>
           </Button>
 
           <Button asChild variant="ghost">

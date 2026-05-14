@@ -34,7 +34,7 @@ export type ShareLinkItem = {
   updatedAt: string;
 };
 
-export type ShareLinkPayload<T = any> = {
+export type ShareLinkPayload<T = unknown> = {
   passwordRequired: boolean;
   documentTitle: string;
   expiresAt: string | null;
@@ -42,7 +42,7 @@ export type ShareLinkPayload<T = any> = {
   viewCount?: number;
 };
 
-export async function createShareLink<T = any>(
+export async function createShareLink<T = unknown>(
   documentId: string,
   snapshot: T,
   options: CreateShareLinkOptions = {},
@@ -102,13 +102,13 @@ export async function revokeShareLink(documentId: string, shareLinkId: string) {
   }
 }
 
-export async function fetchShareLink<T = any>(token: string) {
+export async function fetchShareLink<T = unknown>(token: string) {
   return fetchApiData<ShareLinkPayload<T>>(`/shares/${token}`, {
     errorMessage: "Shared document not found",
   });
 }
 
-export async function verifyShareLink<T = any>(token: string, password: string) {
+export async function verifyShareLink<T = unknown>(token: string, password: string) {
   return fetchApiData<ShareLinkPayload<T>>(`/shares/${token}/verify`, {
     method: "POST",
     body: JSON.stringify({ password }),

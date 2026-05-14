@@ -20,7 +20,7 @@ export default function EditorPreviewNotFound() {
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button asChild variant="primary">
-            <Link href="/dashboard">Go to Dashboard</Link>
+            <Link href="/">Go to Dashboard</Link>
           </Button>
 
           <Button asChild variant="ghost">

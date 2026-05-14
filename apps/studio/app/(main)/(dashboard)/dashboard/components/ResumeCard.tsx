@@ -4,15 +4,15 @@ import Link from "next/link";
 import { memo } from "react";
 import { CalendarClock, FileText, Palette } from "lucide-react";
 
+import type { ResumeSyncTelemetry } from "@/features/resume/services/resume-sync";
+
 import { Card, Badge, Button } from "@veriworkly/ui";
 
 import { templateSummaries } from "@/config/templates";
 
-import ResumeCardMenu from "./ResumeCardMenu";
-
 import { ResumeListItem } from "@/features/resume/services/resume-service";
-import type { ResumeSyncTelemetry } from "@/features/resume/services/resume-sync";
 
+import ResumeCardMenu from "./ResumeCardMenu";
 import { getSyncTone, getSyncLabel, getSyncActivityLabel } from "./resume-card-utils";
 
 interface ResumeCardProps {

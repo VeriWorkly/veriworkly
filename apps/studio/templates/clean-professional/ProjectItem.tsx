@@ -26,7 +26,7 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
   const projectHref = normalizeLinkHref(project.link);
 
   return (
-    <article className="space-y-1.5 break-inside-avoid">
+    <article className="break-inside-avoid space-y-1.5">
       <div className="flex flex-col justify-between gap-0.5 sm:flex-row sm:items-baseline">
         <h3 className="text-base leading-tight font-semibold" style={{ color: headingColor }}>
           {getProjectTitle(project) || "Project"}
@@ -45,7 +45,10 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
       </div>
       {project.skills?.length > 0 && (
         <p className="text-xs font-medium" style={{ color: mutedTextColor }}>
-          {project.skills.map((skill) => cleanResumeText(skill)).filter(Boolean).join(", ")}
+          {project.skills
+            .map((skill) => cleanResumeText(skill))
+            .filter(Boolean)
+            .join(", ")}
         </p>
       )}
       {project.summary && (

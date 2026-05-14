@@ -36,7 +36,7 @@ export default function ApiKeyCreateForm({
     <Card className="border-accent/10 bg-card/50 p-6 backdrop-blur-sm">
       <form onSubmit={onSubmitAction} className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="key-name" className="text-sm font-medium text-foreground">
+          <label htmlFor="key-name" className="text-foreground text-sm font-medium">
             Create New Key
           </label>
 
@@ -63,7 +63,7 @@ export default function ApiKeyCreateForm({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <label htmlFor="rate-limit" className="text-sm font-medium text-foreground">
+            <label htmlFor="rate-limit" className="text-foreground text-sm font-medium">
               Rate limit
             </label>
 
@@ -87,7 +87,7 @@ export default function ApiKeyCreateForm({
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="expires-at" className="text-sm font-medium text-foreground">
+            <label htmlFor="expires-at" className="text-foreground text-sm font-medium">
               Expires at
             </label>
 
@@ -108,7 +108,7 @@ export default function ApiKeyCreateForm({
           availableScopes={availableScopes}
         />
 
-        <p className="text-[12px] italic text-muted-foreground">
+        <p className="text-muted-foreground text-[12px] italic">
           Leave expiry empty to use the default lifetime. Lower scopes and lower rate limits are
           safer.
         </p>

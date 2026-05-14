@@ -12,7 +12,10 @@ import { Toaster } from "@/components/Toaster";
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
 
-  title: "VeriWorkly Studio",
+  title: {
+    default: "VeriWorkly Studio",
+    template: "%s | VeriWorkly Studio",
+  },
   description: siteConfig.description,
 
   keywords: [...siteConfig.keywords],

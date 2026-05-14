@@ -245,10 +245,10 @@ export function AccordionContent({ children, className }: AccordionContentProps)
       aria-hidden={!isOpen}
       aria-labelledby={triggerId}
       className={cn(
-        "border-border/60 grid border-t px-5 transition-[grid-template-rows,padding,opacity,visibility] duration-300 ease-in-out overflow-hidden",
+        "border-border/60 grid overflow-hidden border-t px-5 transition-[grid-template-rows,padding,opacity,visibility] duration-300 ease-in-out",
         isOpen
-          ? "grid-rows-[1fr] py-4 opacity-100 visible"
-          : "grid-rows-[0fr] py-0 opacity-0 invisible",
+          ? "visible grid-rows-[1fr] py-4 opacity-100"
+          : "invisible grid-rows-[0fr] py-0 opacity-0",
         className,
       )}
     >

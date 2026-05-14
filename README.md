@@ -45,34 +45,12 @@ All while maintaining **100% open-source transparency** and enabling self-hostin
 <table>
   <tr>
     <td align="center">
-      <img src="apps/studio/public/templates/modern-resume-template.png" alt="Modern" width="150" />
-      <br /><sub><b>Modern</b></sub>
+      <img src="apps/studio/public/templates/compact-ats.png" alt="Compact ATS" width="300" />
+      <br /><sub><b>Compact ATS</b></sub>
     </td>
     <td align="center">
-      <img src="apps/studio/public/templates/minimal-resume-template.png" alt="Minimal" width="150" />
-      <br /><sub><b>Minimal</b></sub>
-    </td>
-    <td align="center">
-      <img src="apps/studio/public/templates/executive-resume-template.png" alt="Executive" width="150" />
-      <br /><sub><b>Executive</b></sub>
-    </td>
-    <td align="center">
-      <img src="apps/studio/public/templates/classic-resume-template.png" alt="ATS Classic" width="150" />
-      <br /><sub><b>ATS Classic</b></sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="apps/studio/public/templates/professional-resume-template.png" alt="Professional" width="150" />
-      <br /><sub><b>Professional</b></sub>
-    </td>
-    <td align="center">
-      <img src="apps/studio/public/templates/structured-resume-template.png" alt="Structured" width="150" />
-      <br /><sub><b>Structured</b></sub>
-    </td>
-    <td align="center">
-      <img src="apps/studio/public/templates/academic-resume-template.png" alt="Academic" width="150" />
-      <br /><sub><b>Academic Serif</b></sub>
+      <img src="apps/studio/public/templates/clean-professional.png" alt="Clean Professional" width="300" />
+      <br /><sub><b>Clean Professional</b></sub>
     </td>
   </tr>
 </table>
@@ -84,9 +62,9 @@ VeriWorkly utilizes a modern, type-safe monorepo architecture to ensure service 
 | Component            | Technology                                     |
 | :------------------- | :--------------------------------------------- |
 | **Frontend**         | Next.js (App Router), React 19, Tailwind CSS 4 |
-| **Backend API**      | Node.js, Express, ORPC                         |
-| **Data Persistence** | PostgreSQL (Prisma ORM), Redis (BullMQ)        |
-| **Rendering Engine** | Playwright (Server-side document generation)   |
+| **Backend API**      | Node.js, Express                               |
+| **Data Persistence** | PostgreSQL (Prisma ORM)                        |
+| **Rendering Engine** | react-pdf (Client-side document generation)    |
 | **Authentication**   | Better-Auth (Passwordless OTP)                 |
 | **State Management** | Zustand (with persistence)                     |
 
@@ -94,8 +72,9 @@ VeriWorkly utilizes a modern, type-safe monorepo architecture to ensure service 
 
 The project is organized into independent applications and shared packages:
 
-- **`apps/studio`**: The primary user interface for resume management.
-- **`apps/server`**: Centralized API service handling auth, sync, and exports.
+- **`apps/site`**: The landing page and marketing site.
+- **`apps/studio`**: The primary user interface for resume management and building.
+- **`apps/server`**: Centralized API service handling auth and sync.
 - **`apps/docs-platform`**: Technical and user documentation (powered by Fumadocs).
 - **`apps/blog-platform`**: Official product communications and career guides.
 - **`packages/ui`**: Shared design system and component library.

@@ -12,7 +12,7 @@ VeriWorkly provides an intuitive, high-performance editor designed to streamline
 From the main dashboard, select **Create New Resume**. You are presented with two options:
 
 - **Blank Template**: Start with a clean slate to manually enter your data.
-- **Import JSON**: Upload an existing VeriWorkly JSON schema to restore a previous document or migrate data.
+- **Import JSON**: Upload an existing VeriWorkly JSON schema to restore a previous document. For developers, refer to our [Resume Schema](/docs/architecture/resume-schema) for detailed field definitions.
 
 ## 2. Data Entry and Management
 
@@ -27,9 +27,8 @@ Utilize the sidebar navigation to populate the various sections of your resume. 
 
 The **Templates** tab allows you to switch visual layouts instantly. VeriWorkly ensures data integrity during transitions, allowing you to compare styles without data loss.
 
-- **Modern**: A clean, sidebar-oriented layout optimized for readability.
-- **Executive**: A formal, top-down structure designed for senior-level applications.
-- **ATS Classic**: A minimalist, single-column layout optimized for maximum compatibility with Applicant Tracking Systems.
+- **Compact ATS**: A high-density, single-column layout optimized for maximum machine-readability.
+- **Clean Professional**: A balanced, contemporary layout with clear section segmentation.
 
 ## 4. Visual Customization
 
@@ -41,9 +40,9 @@ The **Appearance** panel provides granular control over the document's aesthetic
 
 ## 5. Document Export
 
-VeriWorkly utilizes a server-side rendering pipeline to ensure pixel-perfect exports.
+VeriWorkly utilizes a client-side rendering engine to ensure pixel-perfect exports while maintaining absolute privacy.
 
-- **PDF Export**: Generates a high-fidelity, ATS-optimized PDF document.
+- **PDF Export**: Generates a high-fidelity, ATS-optimized PDF document locally in your browser.
 - **DOCX Export**: Provides an editable Word document for scenarios requiring further manual adjustments.
 
 ---

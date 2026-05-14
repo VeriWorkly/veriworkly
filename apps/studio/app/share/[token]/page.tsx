@@ -26,4 +26,3 @@ export default async function SharedResumePage({ params }: { params: Promise<{ t
 
   return <ShareResumeClient token={token} initialData={data} />;
 }
-
