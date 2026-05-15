@@ -49,8 +49,8 @@ All while maintaining **100% open-source transparency** and enabling self-hostin
       <br /><sub><b>Compact ATS</b></sub>
     </td>
     <td align="center">
-      <img src="apps/studio/public/templates/clean-professional.png" alt="Clean Professional" width="300" />
-      <br /><sub><b>Clean Professional</b></sub>
+      <img src="apps/studio/public/templates/executive-clarity.png" alt="Executive Clarity" width="300" />
+      <br /><sub><b>Executive Clarity</b></sub>
     </td>
   </tr>
 </table>

@@ -5,6 +5,7 @@ const NAV_LINKS = [
   { href: "#typography", label: "Typography" },
   { href: "#components", label: "Components" },
   { href: "#brand-assets", label: "Brand Assets" },
+  { href: "#effects", label: "Effects" },
   { href: "#layout", label: "Layout" },
 ];
 

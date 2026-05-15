@@ -4,6 +4,7 @@ import { siteConfig } from "@/config/site";
 
 import { ColorSection } from "./_components/ColorSection";
 import { LayoutSection } from "./_components/LayoutSection";
+import { EffectsSection } from "./_components/EffectsSection";
 import { StyleGuideHeader } from "./_components/StyleGuideHeader";
 import { TypographySection } from "./_components/TypographySection";
 import { ComponentsSection } from "./_components/ComponentsSection";
@@ -51,6 +52,7 @@ const StyleGuidePage = () => {
         <TypographySection />
         <ComponentsSection />
         <BrandAssetsSection />
+        <EffectsSection />
         <LayoutSection />
       </Container>
     </main>

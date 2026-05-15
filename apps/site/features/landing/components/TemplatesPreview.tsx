@@ -34,9 +34,9 @@ const TemplatesPreview = () => {
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-3" role="list">
         {featured.map((template) => (
-          <Card className="space-y-4 p-6" key={template.id}>
+          <Card className="space-y-4 p-6" key={template.id} role="listitem">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-foreground text-lg font-semibold">
                 {template.name} Resume Template
@@ -71,7 +71,7 @@ const TemplatesPreview = () => {
       </div>
 
       <p className="sr-only">
-        Browse free resume templates including modern, minimal, executive, and ATS-friendly layouts.
+        Browse free resume templates including Executive Clarity and Precision ATS layouts.
       </p>
     </section>
   );

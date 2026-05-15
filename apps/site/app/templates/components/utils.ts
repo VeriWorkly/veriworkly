@@ -1,11 +1,6 @@
 export const familyByTemplateId: Record<string, "Compact Core" | "Modern Core"> = {
-  modern: "Modern Core",
-  minimal: "Modern Core",
-  executive: "Modern Core",
-  ats: "Compact Core",
-  "classic-academic": "Compact Core",
-  "structured-professional": "Compact Core",
-  "academic-serif": "Compact Core",
+  "clean-professional": "Modern Core",
+  "compact-ats": "Compact Core",
 };
 
 export function getSingleParam(value: string | string[] | undefined, fallback: string) {

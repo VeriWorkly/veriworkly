@@ -15,14 +15,6 @@ export const ComponentsSection = () => {
           <h3 className="text-lg font-semibold">Buttons</h3>
 
           <div className="flex flex-wrap gap-4">
-            <Button variant="primary" size="lg">
-              Primary LG
-            </Button>
-
-            <Button variant="secondary" size="lg">
-              Secondary LG
-            </Button>
-
             <Button variant="primary">Default</Button>
 
             <Button variant="secondary">Secondary</Button>
