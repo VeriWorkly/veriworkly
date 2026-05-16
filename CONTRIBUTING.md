@@ -15,7 +15,7 @@ First off, thank you for considering contributing to **VeriWorkly**! We are buil
 1. **Fork** the repository.
 2. **Clone** your fork:
    ```bash
-   git clone https://github.com/Gautam25Raj/veriworkly-resume.git
+   git clone https://github.com/VeriWorkly/veriworkly.git
    cd veriworkly-resume
    ```
 3. **Install** dependencies:

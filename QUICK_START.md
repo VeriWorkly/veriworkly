@@ -7,7 +7,7 @@ VeriWorkly is a monorepo consisting of a Next.js frontend and an Express backend
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/Gautam25Raj/veriworkly-resume.git
+   git clone https://github.com/VeriWorkly/veriworkly.git
    cd veriworkly-resume
    ```
 

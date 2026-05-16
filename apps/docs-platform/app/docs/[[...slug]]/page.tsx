@@ -42,7 +42,7 @@ export default async function Page(props: PageProps) {
         style: "clerk",
         footer: (
           <EditOnGitHub
-            href={`https://github.com/Gautam25Raj/veriworkly-resume/edit/master/apps/docs-platform/content/docs/${page.slugs.join("/") + ".mdx"}`}
+            href={`https://github.com/VeriWorkly/veriworkly/edit/master/apps/docs-platform/content/docs/${page.slugs.join("/") + ".mdx"}`}
           />
         ),
       }}

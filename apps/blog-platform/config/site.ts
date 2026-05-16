@@ -7,9 +7,9 @@ export const siteConfig = {
   tagline: "Career platform ideas and architecture stories.",
 
   links: {
-    github: "https://github.com/Gautam25Raj/veriworkly-resume",
+    github: "https://github.com/VeriWorkly/veriworkly",
     docs: "https://docs.veriworkly.com",
-    app: "https://veriworkly.com",
+    app: "https://app.veriworkly.com",
   },
 
   keywords: ["VeriWorkly", "blog", "career tips", "architecture"],

@@ -1,7 +1,11 @@
 {
-  "name": "veriworkly-resume",
-  "version": "3.4.0",
+  "name": "veriworkly",
+  "version": "3.4.1",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VeriWorkly/veriworkly.git"
+  },
   "workspaces": [
     "apps/site",
     "apps/studio",

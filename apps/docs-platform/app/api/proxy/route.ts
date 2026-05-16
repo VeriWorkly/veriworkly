@@ -2,8 +2,14 @@ import { NextRequest } from "next/server";
 
 import { openapi } from "@/lib/openapi";
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : ["https://api.veriworkly.com", "https://veriworkly.com"];
+
 const proxyHandlers = openapi.createProxy({
-  allowedOrigins: ["https://docs.veriworkly.com", "https://veriworkly.com"],
+  allowedOrigins,
 });
 
 const handleRequest = async (req: NextRequest): Promise<Response> => {
@@ -18,9 +24,8 @@ const handleRequest = async (req: NextRequest): Promise<Response> => {
     headers.set("Cookie", decodedCookie);
   }
 
-  // Inject API key from our custom cookie if not already provided in headers
-  // This allows the sidebar input to work globally for "Try it" requests.
   const docsApiKey = req.cookies.get("docs_api_key")?.value;
+
   if (docsApiKey && !headers.has("X-API-Key")) {
     headers.set("X-API-Key", docsApiKey);
   }

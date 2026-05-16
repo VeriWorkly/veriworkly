@@ -18,9 +18,9 @@
   </p>
 
   <p>
-    <img src="https://img.shields.io/github/package-json/v/Gautam25Raj/veriworkly-resume?style=flat-square" alt="Version">
-    <img src="https://img.shields.io/github/stars/Gautam25Raj/veriworkly-resume?style=flat-square" alt="Stars">
-    <img src="https://img.shields.io/github/license/Gautam25Raj/veriworkly-resume?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/github/package-json/v/VeriWorkly/veriworkly-resume?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/github/stars/VeriWorkly/veriworkly-resume?style=flat-square" alt="Stars">
+    <img src="https://img.shields.io/github/license/VeriWorkly/veriworkly-resume?style=flat-square" alt="License" />
   </p>
 </div>
 
@@ -161,4 +161,4 @@ VeriWorkly is released under the **MIT License**. See [LICENSE](LICENSE) file fo
 
 VeriWorkly is built by a community of developers passionate about simplifying career building and protecting user privacy. Every line of code reflects our commitment to transparency, security, and user empowerment.
 
-**Made with ❤️ by [VeriWorkly Team](https://veriworkly.com) and [Contributors](https://github.com/Gautam25Raj/veriworkly-resume/graphs/contributors)**
+**Made with ❤️ by [VeriWorkly Team](https://veriworkly.com) and [Contributors](https://github.com/VeriWorkly/veriworkly/graphs/contributors)**

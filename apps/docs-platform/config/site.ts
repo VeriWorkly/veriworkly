@@ -7,7 +7,7 @@ export const siteConfig = {
   tagline: "Docs and API reference for VeriWorkly.",
 
   links: {
-    github: "https://github.com/Gautam25Raj/veriworkly-resume",
+    github: "https://github.com/VeriWorkly/veriworkly",
     blog: "https://blogs.veriworkly.com",
     app: "https://veriworkly.com",
   },

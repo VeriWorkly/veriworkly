@@ -6,6 +6,20 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report a bug!
+  - type: dropdown
+    id: component
+    attributes:
+      label: "App / Component"
+      description: "Which part of the monorepo is affected?"
+      options:
+        - "Site (apps/site)"
+        - "Studio (apps/studio)"
+        - "Server (apps/server)"
+        - "Docs Platform (apps/docs-platform)"
+        - "Blog Platform (apps/blog-platform)"
+        - "Infrastructure / Other"
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
@@ -25,6 +39,13 @@ body:
     validations:
       required: true
   - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behavior"
+      description: "What did you expect to happen?"
+    validations:
+      required: true
+  - type: textarea
     id: environment
     attributes:
       label: "Environment Information"
@@ -40,3 +61,8 @@ body:
     attributes:
       label: "Relevant Logs"
       description: "Paste any console logs or server errors here."
+  - type: textarea
+    id: fix
+    attributes:
+      label: "Proposed Fix / Suggestions"
+      description: "If you have a solution in mind or want to suggest a fix, please provide it here."
