@@ -6,10 +6,9 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { DocumentService } from "#services/documentService";
 
-import { documentCreateSchema, documentUpdateSchema } from "#validators/documentValidator";
-
-import { cacheDel, cacheGet, cacheSet } from "#utils/redis";
 import { createSuccessResponse, handleValidationError, ApiError } from "#utils/errors";
+
+import { documentCreateSchema, documentUpdateSchema } from "#validators/documentValidator";
 
 const listQuerySchema = z.object({
   type: z.nativeEnum(DocumentType).optional(),
@@ -19,7 +18,6 @@ export class DocumentController {
   /**
    * List all documents for the authenticated user.
    * Supports filtering by document type (e.g., RESUME, COVER_LETTER).
-   * Leverages Redis caching for optimized list retrieval.
    *
    * @param req Express request
    * @param res Express response
@@ -32,20 +30,7 @@ export class DocumentController {
 
       const { type } = listQuerySchema.parse(req.query);
 
-      const cacheKey = `documents:list:${user.id}:${type || "all"}`;
-
-      // Check cache first
-      const cached = await cacheGet(cacheKey);
-
-      if (cached) {
-        return res.json(createSuccessResponse(cached, "Documents fetched from cache"));
-      }
-
-      // Fetch from service
       const documents = await DocumentService.listDocuments(user.id, type);
-
-      // Cache the list for 30 minutes
-      await cacheSet(cacheKey, documents, 1800);
 
       res.json(createSuccessResponse(documents, "Documents fetched successfully"));
     } catch (error) {
@@ -68,22 +53,11 @@ export class DocumentController {
 
       const { id } = req.params;
 
-      const cacheKey = `document:${user.id}:${id}`;
-
-      // Check cache first
-      const cached = await cacheGet(cacheKey);
-      if (cached) {
-        return res.json(createSuccessResponse(cached, "Document fetched from cache"));
-      }
-
-      // Fetch from service
       const document = await DocumentService.getDocument(user.id, id);
+
       if (!document) {
         throw new ApiError(404, "Document not found");
       }
-
-      // Cache the individual document for 1 hour
-      await cacheSet(cacheKey, document, 3600);
 
       res.json(createSuccessResponse(document, "Document fetched successfully"));
     } catch (error) {
@@ -107,10 +81,6 @@ export class DocumentController {
       const data = documentCreateSchema.parse(req.body);
 
       const document = await DocumentService.createDocument(user.id, data);
-
-      // Invalidate relevant list caches
-      await cacheDel(`documents:list:${user.id}:all`);
-      await cacheDel(`documents:list:${user.id}:${document.type}`);
 
       res.status(201).json(createSuccessResponse(document, "Document created successfully"));
     } catch (error) {
@@ -137,16 +107,10 @@ export class DocumentController {
 
       const document = await DocumentService.updateDocument(user.id, id, data);
 
-      // Invalidate the document-specific cache and related list caches
-      await cacheDel(`document:${user.id}:${id}`);
-      await cacheDel(`documents:list:${user.id}:all`);
-      await cacheDel(`documents:list:${user.id}:${document.type}`);
-
       res.json(createSuccessResponse(document, "Document updated successfully"));
     } catch (error) {
       if (error instanceof z.ZodError) return next(handleValidationError(error));
 
-      // Specialized handling for optimistic concurrency conflicts
       if (error instanceof Error && error.message.includes("CONFLICTOR")) {
         return res.status(409).json({
           success: false,
@@ -154,6 +118,7 @@ export class DocumentController {
           message: error.message,
         });
       }
+
       next(error);
     }
   }
@@ -171,12 +136,7 @@ export class DocumentController {
       const user = requireAuthUser(req);
       const { id } = req.params;
 
-      const document = await DocumentService.deleteDocument(user.id, id);
-
-      // Invalidate all associated caches
-      await cacheDel(`document:${user.id}:${id}`);
-      await cacheDel(`documents:list:${user.id}:all`);
-      await cacheDel(`documents:list:${user.id}:${document.type}`);
+      await DocumentService.deleteDocument(user.id, id);
 
       res.json(createSuccessResponse(null, "Document deleted successfully"));
     } catch (error) {

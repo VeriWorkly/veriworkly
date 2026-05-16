@@ -19,7 +19,12 @@ export function loggingMiddleware(req: Request, res: Response, next: NextFunctio
 
       logger.error(`[ERROR] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
 
-      if (config.nodeEnv === "production") {
+      const shouldPersistAuditLog =
+        config.nodeEnv === "production" &&
+        // Avoid high-volume expected failures (auth probes, missing routes, rate limit noise).
+        ![401, 404, 429].includes(res.statusCode);
+
+      if (shouldPersistAuditLog) {
         prisma.auditLog
           .create({
             data: {

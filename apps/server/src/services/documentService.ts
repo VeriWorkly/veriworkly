@@ -2,6 +2,7 @@ import { DocumentType, Visibility, Prisma } from "@prisma/client";
 
 import { prisma } from "#utils/prisma";
 import { logger } from "#utils/logger";
+import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
 
 export type DocumentCreateInput = {
   id?: string;
@@ -26,11 +27,18 @@ export type DocumentUpdateInput = {
 
 export class DocumentService {
   /**
-   * List all documents for a user, optionally filtered by type
+   * List all documents for a user, optionally filtered by type.
+   * Results are cached for 30 minutes.
    */
 
   static async listDocuments(userId: string, type?: DocumentType) {
-    return prisma.document.findMany({
+    const cacheKey = `documents:list:${userId}:${type || "all"}`;
+
+    const cached = await cacheGet(cacheKey);
+
+    if (cached) return cached;
+
+    const documents = await prisma.document.findMany({
       where: {
         userId,
         type,
@@ -38,20 +46,34 @@ export class DocumentService {
       },
       orderBy: { updatedAt: "desc" },
     });
+
+    await cacheSet(cacheKey, documents, 1800);
+
+    return documents;
   }
 
   /**
-   * Get a single document by ID
+   * Get a single document by ID.
+   * Results are cached for 1 hour.
    */
 
   static async getDocument(userId: string, documentId: string) {
-    return prisma.document.findFirst({
+    const cacheKey = `document:${userId}:${documentId}`;
+    const cached = await cacheGet(cacheKey);
+
+    if (cached) return cached;
+
+    const document = await prisma.document.findFirst({
       where: {
         id: documentId,
         userId,
         deletedAt: null,
       },
     });
+
+    if (document) await cacheSet(cacheKey, document, 3600);
+
+    return document;
   }
 
   /**
@@ -74,7 +96,7 @@ export class DocumentService {
       }
     }
 
-    return prisma.document.create({
+    const document = await prisma.document.create({
       data: {
         id: input.id,
         userId,
@@ -87,6 +109,11 @@ export class DocumentService {
         visibility: input.visibility || "PRIVATE",
       },
     });
+
+    await cacheDel(`documents:list:${userId}:all`);
+    await cacheDel(`documents:list:${userId}:${document.type}`);
+
+    return document;
   }
 
   /**
@@ -96,26 +123,28 @@ export class DocumentService {
   static async updateDocument(userId: string, documentId: string, input: DocumentUpdateInput) {
     const { revision, ...data } = input;
 
-    // We use a transaction or a specific where clause to ensure revision match
     try {
       const updated = await prisma.document.update({
         where: {
           id: documentId,
           userId,
-          revision: revision, // Only update if revision matches
+          revision: revision,
         },
 
         data: {
           ...data,
-          revision: { increment: 1 }, // Auto-increment revision
+          revision: { increment: 1 },
           lastSyncedAt: new Date(),
         },
       });
 
+      await cacheDel(`document:${userId}:${documentId}`);
+      await cacheDel(`documents:list:${userId}:all`);
+      await cacheDel(`documents:list:${userId}:${updated.type}`);
+
       return updated;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-        // Record not found or revision mismatch
         const current = await prisma.document.findUnique({ where: { id: documentId } });
 
         if (!current) throw new Error("Document not found");
@@ -126,6 +155,7 @@ export class DocumentService {
           );
         }
       }
+
       throw error;
     }
   }
@@ -135,10 +165,16 @@ export class DocumentService {
    */
 
   static async deleteDocument(userId: string, documentId: string) {
-    return prisma.document.update({
+    const document = await prisma.document.update({
       where: { id: documentId, userId },
       data: { deletedAt: new Date() },
     });
+
+    await cacheDel(`document:${userId}:${documentId}`);
+    await cacheDel(`documents:list:${userId}:all`);
+    await cacheDel(`documents:list:${userId}:${document.type}`);
+
+    return document;
   }
 
   /**

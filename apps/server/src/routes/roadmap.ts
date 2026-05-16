@@ -13,13 +13,23 @@ import { RoadmapController } from "#controllers/roadmapController";
 
 const router = Router();
 
-router.get("/", flexibleAuth, requireApiKeyScopes("roadmap:read"), RoadmapController.getFeatures);
+router.get(
+  "/",
+  flexibleAuth({ skipSession: true }),
+  requireApiKeyScopes("roadmap:read"),
+  RoadmapController.getFeatures,
+);
 
-router.get("/stats", flexibleAuth, requireApiKeyScopes("roadmap:read"), RoadmapController.getStats);
+router.get(
+  "/stats",
+  flexibleAuth({ skipSession: true }),
+  requireApiKeyScopes("roadmap:read"),
+  RoadmapController.getStats,
+);
 
 router.get(
   "/:id",
-  flexibleAuth,
+  flexibleAuth({ skipSession: true }),
   requireApiKeyScopes("roadmap:read"),
   RoadmapController.getFeatureById,
 );

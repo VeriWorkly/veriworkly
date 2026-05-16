@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 
 import * as githubService from "#services/githubService";
 
+import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 import { createSuccessResponse, handleValidationError } from "#utils/errors";
 
 /**
@@ -12,8 +13,10 @@ import { createSuccessResponse, handleValidationError } from "#utils/errors";
 const githubQuerySchema = z.object({
   status: z.enum(["todo", "in-progress", "done"]).optional(),
   kind: z.enum(["issue", "pull-request", "all"]).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  offset: z.coerce.number().int().min(0).default(0),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(50).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
 });
 
 export class GithubController {
@@ -46,9 +49,24 @@ export class GithubController {
   static async getIssues(req: Request, res: Response, next: NextFunction) {
     try {
       const query = githubQuerySchema.parse(req.query);
-      const result = await githubService.getGitHubIssues(query);
 
-      res.json(createSuccessResponse(result, "GitHub issues fetched successfully"));
+      const pagination = parseOffsetPagination(query, { defaultPageSize: 20, maxPageSize: 50 });
+
+      const result = await githubService.getGitHubIssues({
+        status: query.status,
+        kind: query.kind,
+        limit: pagination.limit,
+        offset: pagination.offset,
+      });
+
+      const meta = createOffsetPaginationMeta(result.total, pagination);
+
+      res.json(
+        createSuccessResponse(
+          { items: result.items, ...meta },
+          "GitHub issues fetched successfully",
+        ),
+      );
     } catch (error) {
       if (error instanceof z.ZodError) return next(handleValidationError(error));
       next(error);

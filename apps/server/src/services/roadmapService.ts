@@ -1,8 +1,8 @@
+import { config } from "#config";
+
 import { prisma } from "#utils/prisma";
 import { ApiError } from "#utils/errors";
 import { cacheGet, cacheSet } from "#utils/redis";
-
-import { config } from "#config";
 
 export type RoadmapStatus = "todo" | "in-progress" | "done";
 export type RoadmapSort = "newest" | "oldest" | "recently-completed";
@@ -14,17 +14,40 @@ export interface RoadmapQuery {
   offset?: number;
 }
 
-function getRoadmapOrderBy(sort: RoadmapSort) {
-  if (sort === "oldest") {
-    return [{ createdAt: "asc" as const }];
-  }
+export type RoadmapListResult = {
+  items: Array<{
+    id: string;
+    title: string;
+    description: string;
+    status: RoadmapStatus;
+    eta: string | null;
+    tags: string[];
+    createdAt: Date;
+    startedAt: Date | null;
+    completedAt: Date | null;
+    completedQuarter: string | null;
+    updatedAt: Date;
+    timeline: string | null;
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+  pagination: {
+    mode: "offset";
+    nextOffset: number | null;
+    nextCursor: string | null;
+  };
+};
 
-  if (sort === "recently-completed") {
+function getRoadmapOrderBy(sort: RoadmapSort) {
+  if (sort === "oldest") return [{ createdAt: "asc" as const }];
+
+  if (sort === "recently-completed")
     return [
       { completedAt: { sort: "desc" as const, nulls: "last" as const } },
       { updatedAt: "desc" as const },
     ];
-  }
 
   return [{ createdAt: "desc" as const }];
 }
@@ -34,23 +57,19 @@ function getRoadmapOrderBy(sort: RoadmapSort) {
  * Results are cached based on query parameters.
  */
 
-const getRoadmapFeatures = async (query: RoadmapQuery = {}) => {
+const getRoadmapFeatures = async (query: RoadmapQuery = {}): Promise<RoadmapListResult> => {
   const { status, sort = "newest", limit = 20, offset = 0 } = query;
 
   const cacheKey = `roadmap:list:${status || "all"}:${sort}:${limit}:${offset}`;
-  const cached = await cacheGet(cacheKey);
+  const cached = await cacheGet<RoadmapListResult>(cacheKey);
 
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
   const where: {
     status?: RoadmapStatus;
   } = {};
 
-  if (status) {
-    where.status = status;
-  }
+  if (status) where.status = status;
 
   const [items, total] = await Promise.all([
     prisma.roadmapFeature.findMany({
@@ -77,9 +96,13 @@ const getRoadmapFeatures = async (query: RoadmapQuery = {}) => {
   ]);
 
   const hasMore = offset + limit < total;
+  const normalizedItems = items.map((item) => ({
+    ...item,
+    status: item.status as RoadmapStatus,
+  }));
 
   const response = {
-    items,
+    items: normalizedItems,
     total,
     limit,
     offset,
@@ -105,9 +128,7 @@ const getRoadmapFeatureById = async (id: string) => {
   const cacheKey = `roadmap:feature:${id}`;
   const cached = await cacheGet(cacheKey);
 
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
   const feature = await prisma.roadmapFeature.findUnique({
     where: { id },
@@ -144,9 +165,7 @@ const getRoadmapFeatureById = async (id: string) => {
     },
   });
 
-  if (!feature) {
-    throw new ApiError(404, "Roadmap feature not found");
-  }
+  if (!feature) throw new ApiError(404, "Roadmap feature not found");
 
   await cacheSet(cacheKey, feature, config.cache.roadmapTtlSeconds);
 
@@ -162,9 +181,7 @@ const getRoadmapStats = async () => {
   const cacheKey = "roadmap:stats";
   const cached = await cacheGet(cacheKey);
 
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
   const [groupedByStatus, totalFeatures] = await Promise.all([
     prisma.roadmapFeature.groupBy({

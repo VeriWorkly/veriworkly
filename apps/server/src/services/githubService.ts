@@ -14,6 +14,13 @@ export type GitHubIssuesQuery = {
   offset: number;
 };
 
+export type GitHubIssuesResult = {
+  items: Awaited<ReturnType<typeof prisma.gitHubSyncItem.findMany>>;
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 interface GitHubIssuePayload {
   id: number;
   number: number;
@@ -38,11 +45,11 @@ export interface GitHubItemSnapshot {
   labels: string[];
 }
 
+const MAX_GITHUB_FETCH_RETRIES = 3;
 const PROJECT_URL = config.github.projectUrl;
 const REDIS_STATS_KEY = `github:stats:${PROJECT_URL}`;
-const ISSUES_CACHE_PREFIX = `github:issues:${encodeURIComponent(PROJECT_URL)}:`;
 const RETRYABLE_GITHUB_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
-const MAX_GITHUB_FETCH_RETRIES = 3;
+const ISSUES_CACHE_PREFIX = `github:issues:${encodeURIComponent(PROJECT_URL)}:`;
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => {
@@ -78,6 +85,7 @@ function resolveRetryDelayMs(response: Response, attempt: number) {
   }
 
   const backoffMs = 1000 * 2 ** attempt;
+
   return Math.min(backoffMs, 10_000);
 }
 
@@ -195,6 +203,7 @@ const getGitHubStats = async () => {
   };
 
   await cacheSet(REDIS_STATS_KEY, response, 43200);
+
   return response;
 };
 
@@ -242,8 +251,9 @@ async function fetchAllGitHubIssues(owner: string, repo: string, token: string, 
  * Results are cached per query.
  */
 
-const getGitHubIssues = async (query: GitHubIssuesQuery) => {
+const getGitHubIssues = async (query: GitHubIssuesQuery): Promise<GitHubIssuesResult> => {
   const sortedQuery = new URLSearchParams();
+
   sortedQuery.set("limit", String(query.limit));
   sortedQuery.set("offset", String(query.offset));
 
@@ -259,7 +269,8 @@ const getGitHubIssues = async (query: GitHubIssuesQuery) => {
 
   const queryKey = `${ISSUES_CACHE_PREFIX}${sortedQuery.toString()}`;
 
-  const cached = await cacheGet(queryKey);
+  const cached = await cacheGet<GitHubIssuesResult>(queryKey);
+
   if (cached) return cached;
 
   const sync = await prisma.gitHubSync.findUnique({
@@ -268,8 +279,15 @@ const getGitHubIssues = async (query: GitHubIssuesQuery) => {
   });
 
   if (!sync) {
-    const emptyResult = { items: [], total: 0, limit: query.limit, offset: query.offset };
+    const emptyResult: GitHubIssuesResult = {
+      items: [],
+      total: 0,
+      limit: query.limit,
+      offset: query.offset,
+    };
+
     await cacheSet(queryKey, emptyResult, 300);
+
     return emptyResult;
   }
 
@@ -294,7 +312,7 @@ const getGitHubIssues = async (query: GitHubIssuesQuery) => {
     }),
   ]);
 
-  const result = { items, total, limit: query.limit, offset: query.offset };
+  const result: GitHubIssuesResult = { items, total, limit: query.limit, offset: query.offset };
   await cacheSet(queryKey, result, 300);
 
   return result;
@@ -313,6 +331,7 @@ const shouldSyncGitHubStats = async () => {
   if (!latest) return true;
 
   const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
   return Date.now() - new Date(latest.syncedAt).getTime() >= TWELVE_HOURS_MS;
 };
 
@@ -339,6 +358,7 @@ const syncGitHubStatsFromGitHub = async () => {
     });
 
     await cacheDel(REDIS_STATS_KEY);
+
     return updatedSync;
   }
 

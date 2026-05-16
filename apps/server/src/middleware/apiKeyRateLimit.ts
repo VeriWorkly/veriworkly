@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 
 import { logger } from "#utils/logger";
-import { prisma } from "#utils/prisma";
 import { getRedis } from "#utils/redis";
 import { createErrorResponse } from "#utils/errors";
 
@@ -42,19 +41,6 @@ export const apiKeyRateLimit = async (req: Request, res: Response, next: NextFun
 
     if (count > limit) {
       logger.warn(`API Key rate limit exceeded for key: ${apiKey.name} (${keyId})`);
-
-      prisma.auditLog
-        .create({
-          data: {
-            method: req.method,
-            path: req.originalUrl,
-            status: 429,
-            ip: req.ip,
-            userAgent: req.headers["user-agent"],
-            error: "API Key Rate limit exceeded",
-          },
-        })
-        .catch((err) => logger.error("Failed to log API rate limit violation", err));
 
       const ttl = Number(await redis.pTTL(redisKey));
       const retryAfter = Math.ceil(ttl / 1000);

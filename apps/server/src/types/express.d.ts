@@ -10,6 +10,7 @@ declare global {
   namespace Express {
     interface Request {
       authUser?: AuthenticatedUser;
+      _authChecked?: boolean;
       apiKey?: {
         id: string;
         keyHash: string;

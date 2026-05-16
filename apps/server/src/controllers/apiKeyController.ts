@@ -6,6 +6,7 @@ import { ApiKeyService } from "#services/apiKeyService";
 
 import { logger } from "#utils/logger";
 import { createSuccessResponse, createErrorResponse } from "#utils/errors";
+import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 
 const DEFAULT_ALLOWED_SCOPES = [
   "user:read",
@@ -31,6 +32,7 @@ function parseScopes(value: unknown) {
   if (scopes.length === 0) return undefined;
 
   const invalidScopes = scopes.filter((scope) => !DEFAULT_ALLOWED_SCOPES.includes(scope));
+
   if (invalidScopes.length > 0) {
     throw new Error(`Unsupported API key scope(s): ${invalidScopes.join(", ")}`);
   }
@@ -46,6 +48,7 @@ function parseRateLimit(value: unknown) {
   if (value == null || value === "") return undefined;
 
   const limit = Number(value);
+
   if (!Number.isInteger(limit) || limit < 1) {
     throw new Error("rateLimit must be a positive integer");
   }
@@ -61,6 +64,7 @@ function parseExpiresAt(value: unknown) {
   if (!value) return undefined;
 
   const parsed = new Date(String(value));
+
   if (Number.isNaN(parsed.getTime())) {
     throw new Error("expiresAt must be a valid ISO date string");
   }
@@ -77,9 +81,18 @@ export class ApiKeyController {
     try {
       const userId = requireAuthUser(req).id;
 
-      const keys = await ApiKeyService.listKeys(userId);
+      const pagination = parseOffsetPagination(req.query, {
+        defaultPageSize: 20,
+        maxPageSize: 50,
+      });
 
-      res.status(200).json(createSuccessResponse(keys, "API keys fetched successfully"));
+      const { items, total } = await ApiKeyService.listKeysPaginated(userId, pagination);
+
+      const meta = createOffsetPaginationMeta(total, pagination);
+
+      res
+        .status(200)
+        .json(createSuccessResponse({ items, ...meta }, "API keys fetched successfully"));
     } catch (error) {
       logger.error("Failed to list API keys:", error);
       next(error);

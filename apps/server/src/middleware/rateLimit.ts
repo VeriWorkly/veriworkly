@@ -3,7 +3,6 @@ import { Request, Response, NextFunction } from "express";
 import { config } from "#config";
 
 import { logger } from "#utils/logger";
-import { prisma } from "#utils/prisma";
 import { getRedis } from "#utils/redis";
 import { createErrorResponse } from "#utils/errors";
 import { getRequestIpDetails } from "#utils/requestIp";
@@ -18,15 +17,10 @@ const MAX_MEMORY_ENTRIES = process.env.MAX_MEMORY_ENTRIES
   : 15000;
 const bucket = new Map<string, RateLimitEntry>();
 
-import crypto from "crypto";
 
 function getClientKey(req: Request): string {
   const ip = getRequestIpDetails(req).resolvedIp;
-  const userAgent = req.headers["user-agent"] || "unknown";
-
-  const uaHash = crypto.createHash("md5").update(userAgent).digest("hex");
-
-  return `${ip}:${uaHash}`;
+  return ip || "unknown";
 }
 
 function getRouteLimitConfig(req: Request) {
@@ -105,19 +99,6 @@ export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunct
       }
 
       logger.warn(`Rate limit exceeded for IP: ${key}`);
-
-      prisma.auditLog
-        .create({
-          data: {
-            method: req.method,
-            path: req.originalUrl,
-            status: 429,
-            ip: key,
-            userAgent: req.headers["user-agent"],
-            error: "Rate limit exceeded",
-          },
-        })
-        .catch((err) => logger.error("Failed to log rate limit violation", err));
 
       const retryAfter = Math.ceil((windowMs - (now % windowMs)) / 1000);
       res.set("Retry-After", String(retryAfter));

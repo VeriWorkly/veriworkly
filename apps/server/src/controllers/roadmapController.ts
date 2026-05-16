@@ -11,6 +11,7 @@ import {
 
 import { roadmapQuerySchema } from "#validators/roadmapValidator";
 
+import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 import { ApiError, createSuccessResponse, handleValidationError } from "#utils/errors";
 
 export class RoadmapController {
@@ -25,15 +26,26 @@ export class RoadmapController {
   static async getFeatures(req: Request, res: Response, next: NextFunction) {
     try {
       const query = roadmapQuerySchema.parse(req.query);
+      const pagination = parseOffsetPagination(query, { defaultPageSize: 20, maxPageSize: 50 });
 
       const result = await getRoadmapFeatures({
         status: query.status as RoadmapStatus | undefined,
         sort: query.sort as RoadmapSort | undefined,
-        limit: Number(query.limit) >= 20 ? 20 : query.limit,
-        offset: query.offset,
+        limit: pagination.limit,
+        offset: pagination.offset,
       });
 
-      res.json(createSuccessResponse(result, "Roadmap features fetched successfully"));
+      const meta = createOffsetPaginationMeta(result.total, pagination);
+
+      res.json(
+        createSuccessResponse(
+          {
+            items: result.items,
+            ...meta,
+          },
+          "Roadmap features fetched successfully",
+        ),
+      );
     } catch (error) {
       if (error instanceof z.ZodError) return next(handleValidationError(error));
       next(error);

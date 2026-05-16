@@ -3,8 +3,10 @@ import { z } from "zod";
 export const roadmapQuerySchema = z.object({
   status: z.enum(["todo", "in-progress", "done"]).optional(),
   sort: z.enum(["newest", "oldest", "recently-completed"]).optional(),
-  limit: z.coerce.number().min(1).max(100).default(50),
-  offset: z.coerce.number().min(0).default(0),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(50).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
 });
 
 const roadmapDetailsSchema = z

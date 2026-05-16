@@ -7,7 +7,8 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { ShareService } from "#services/shareService";
 
-import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
+import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#utils/redis";
+import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 import { createSuccessResponse, handleValidationError, ApiError } from "#utils/errors";
 
 /**
@@ -45,8 +46,8 @@ export class ShareController {
 
       const { shareLink, oldToken } = await ShareService.createShareLink(user.id, documentId, body);
 
-      // Invalidate caches
-      await cacheDel(`share:list:${user.id}:${documentId}`);
+      await cacheDelByPrefix(`share:list:${user.id}:${documentId}:`);
+
       if (oldToken) {
         await cacheDel(`share:public:${oldToken}`);
       }
@@ -71,18 +72,29 @@ export class ShareController {
       const user = requireAuthUser(req);
 
       const { documentId } = req.params;
+      const pagination = parseOffsetPagination(req.query, {
+        defaultPageSize: 20,
+        maxPageSize: 50,
+      });
 
-      const cacheKey = `share:list:${user.id}:${documentId}`;
+      const cacheKey = `share:list:${user.id}:${documentId}:${pagination.limit}:${pagination.offset}`;
       const cached = await cacheGet<unknown>(cacheKey);
 
       if (cached) {
         return res.json(createSuccessResponse(cached, "Share links fetched from cache"));
       }
 
-      const links = await ShareService.listShareLinks(user.id, documentId);
-      await cacheSet(cacheKey, links, 1800); // 30m cache
+      const { items, total } = await ShareService.listShareLinksPaginated(
+        user.id,
+        documentId,
+        pagination,
+      );
 
-      res.json(createSuccessResponse(links, "Share links fetched successfully"));
+      const response = { items, ...createOffsetPaginationMeta(total, pagination) };
+
+      await cacheSet(cacheKey, response, 1800);
+
+      res.json(createSuccessResponse(response, "Share links fetched successfully"));
     } catch (error) {
       next(error);
     }
@@ -105,7 +117,7 @@ export class ShareController {
       const token = await ShareService.revokeShareLink(user.id, documentId, shareLinkId);
 
       // Invalidate caches
-      await cacheDel(`share:list:${user.id}:${documentId}`);
+      await cacheDelByPrefix(`share:list:${user.id}:${documentId}:`);
       await cacheDel(`share:public:${token}`);
 
       res.json(createSuccessResponse(null, "Share link revoked successfully"));

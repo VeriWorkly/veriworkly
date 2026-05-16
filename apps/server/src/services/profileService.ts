@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "#utils/prisma";
 import { ApiError } from "#utils/errors";
 
+import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
+
 export class ProfileService {
   /**
    * Check for optimistic concurrency conflict using updatedAt.
@@ -23,10 +25,16 @@ export class ProfileService {
 
   /**
    * Get the authenticated user's master profile and summary.
+   * Results are cached for 1 hour.
    * @param userId User ID
    */
 
   static async getMasterProfile(userId: string) {
+    const cacheKey = `profile:${userId}`;
+    const cached = await cacheGet(cacheKey);
+
+    if (cached) return cached;
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -39,25 +47,27 @@ export class ProfileService {
       },
     });
 
-    if (!user) {
-      throw new ApiError(404, "User not found");
-    }
+    if (!user) throw new ApiError(404, "User not found");
 
-    const [profile, shareResumeCount] = await prisma.$transaction([
-      prisma.masterProfile.upsert({
+    const [existingProfile, shareResumeCount] = await prisma.$transaction([
+      prisma.masterProfile.findUnique({
         where: { userId: user.id },
-        create: {
-          userId: user.id,
-          content: {},
-        },
-        update: {},
       }),
       prisma.shareLink.count({
         where: { userId: user.id },
       }),
     ]);
 
-    return {
+    const profile =
+      existingProfile ??
+      (await prisma.masterProfile.create({
+        data: {
+          userId: user.id,
+          content: {},
+        },
+      }));
+
+    const responseData = {
       profile,
       summary: {
         id: user.id,
@@ -69,14 +79,20 @@ export class ProfileService {
         shareResumeCount,
       },
     };
+
+    await cacheSet(cacheKey, responseData, 3600);
+
+    return responseData;
   }
 
   /**
    * Update the authenticated user's master profile.
+   * Invalidates cache upon success.
    * @param userId User ID
    * @param profile Profile content
    * @param expectedUpdatedAt Expected updatedAt for optimistic concurrency
    */
+
   static async updateMasterProfile(
     userId: string,
     profile: Prisma.InputJsonValue,
@@ -87,18 +103,16 @@ export class ProfileService {
       select: { updatedAt: true },
     });
 
-    if (this.hasConflict(existing?.updatedAt ?? null, expectedUpdatedAt)) {
+    if (this.hasConflict(existing?.updatedAt ?? null, expectedUpdatedAt))
       throw new ApiError(
         409,
         "Master profile was updated from another session. Refresh and retry.",
       );
-    }
 
-    if (JSON.stringify(profile).length > 1_000_000) {
+    if (JSON.stringify(profile).length > 1_000_000)
       throw new ApiError(413, "Master profile payload is too large");
-    }
 
-    return prisma.masterProfile.upsert({
+    const updated = await prisma.masterProfile.upsert({
       where: { userId },
       create: {
         userId,
@@ -108,5 +122,9 @@ export class ProfileService {
         content: profile,
       },
     });
+
+    await cacheDel(`profile:${userId}`);
+
+    return updated;
   }
 }

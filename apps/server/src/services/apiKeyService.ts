@@ -65,6 +65,11 @@ type ApiKeyListRecord = {
   lastUsed: Date | null;
 };
 
+type ApiKeyListQuery = {
+  limit: number;
+  offset: number;
+};
+
 type ApiKeyCreateInput = {
   name: string;
   scopes?: string[];
@@ -85,9 +90,8 @@ function normalizeScopes(scopes: string[] | undefined) {
 
   const invalidScopes = normalizedScopes.filter((scope) => !ALLOWED_SCOPES.has(scope));
 
-  if (invalidScopes.length > 0) {
+  if (invalidScopes.length > 0)
     throw new Error(`Unsupported API key scope(s): ${invalidScopes.join(", ")}`);
-  }
 
   return normalizedScopes;
 }
@@ -121,19 +125,16 @@ function keySuffix(key: string) {
 }
 
 function getExpiryDate(expiresAt?: Date | null) {
-  if (expiresAt) {
-    return expiresAt;
-  }
+  if (expiresAt) return expiresAt;
 
   const fallback = new Date();
   fallback.setUTCDate(fallback.getUTCDate() + DEFAULT_KEY_LIFETIME_DAYS);
+
   return fallback;
 }
 
 function isExpired(expiresAt: string | Date | null | undefined) {
-  if (!expiresAt) {
-    return false;
-  }
+  if (!expiresAt) return false;
 
   return new Date(expiresAt).getTime() <= Date.now();
 }
@@ -170,8 +171,10 @@ export class ApiKeyService {
 
   static async generateKey(userId: string, input: ApiKeyCreateInput) {
     const rawKey = generateRawKey();
+
     const scopes = normalizeScopes(input.scopes);
     const expiresAt = getExpiryDate(input.expiresAt ?? null);
+
     const hashedKey = hashKey(rawKey);
 
     const created = await prisma.apiKey.create({
@@ -210,6 +213,7 @@ export class ApiKeyService {
     const keyHash = hashKey(normalizedKey);
 
     const cached = await getAuthCache(keyHash);
+
     if (cached && cached.isActive && !isExpired(cached.expiresAt) && !cached.revokedAt) {
       void this.touchLastUsed(cached.id);
       return cached;
@@ -288,27 +292,36 @@ export class ApiKeyService {
   }
 
   static async listKeys(userId: string) {
-    const keys = await prisma.apiKey.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        keyPrefix: true,
-        keySuffix: true,
-        name: true,
-        userId: true,
-        isActive: true,
-        rateLimit: true,
-        scopes: true,
-        expiresAt: true,
-        revokedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        lastUsed: true,
-      },
-    });
+    return this.listKeysPaginated(userId, { limit: 100, offset: 0 });
+  }
 
-    return keys satisfies ApiKeyListRecord[];
+  static async listKeysPaginated(userId: string, query: ApiKeyListQuery) {
+    const [items, total] = await Promise.all([
+      prisma.apiKey.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: query.limit,
+        skip: query.offset,
+        select: {
+          id: true,
+          keyPrefix: true,
+          keySuffix: true,
+          name: true,
+          userId: true,
+          isActive: true,
+          rateLimit: true,
+          scopes: true,
+          expiresAt: true,
+          revokedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          lastUsed: true,
+        },
+      }),
+      prisma.apiKey.count({ where: { userId } }),
+    ]);
+
+    return { items: items satisfies ApiKeyListRecord[], total };
   }
 
   static async revokeKey(userId: string, keyId: string) {
@@ -317,9 +330,7 @@ export class ApiKeyService {
       select: { id: true, keyHash: true },
     });
 
-    if (!existing) {
-      return 0;
-    }
+    if (!existing) return 0;
 
     const result = await prisma.apiKey.updateMany({
       where: {
@@ -360,6 +371,7 @@ export class ApiKeyService {
 
     const rawKey = generateRawKey();
     const hashedKey = hashKey(rawKey);
+
     const scopes = normalizeScopes(input.scopes ?? current.scopes);
     const expiresAt = getExpiryDate(input.expiresAt ?? current.expiresAt ?? null);
 

@@ -17,10 +17,8 @@ export class HealthController {
 
   static async check(req: Request, res: Response) {
     try {
-      // Check Database connectivity
       await prisma.$queryRaw`SELECT 1`;
 
-      // Check Redis connectivity
       const redis = getRedis();
       await redis.ping();
 

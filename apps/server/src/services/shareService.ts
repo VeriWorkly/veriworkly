@@ -134,10 +134,27 @@ export class ShareService {
    */
 
   static async listShareLinks(userId: string, documentId: string) {
-    return prisma.shareLink.findMany({
-      where: { userId, documentId },
-      orderBy: { createdAt: "desc" },
-    });
+    return this.listShareLinksPaginated(userId, documentId, { limit: 100, offset: 0 });
+  }
+
+  static async listShareLinksPaginated(
+    userId: string,
+    documentId: string,
+    query: { limit: number; offset: number },
+  ) {
+    const where = { userId, documentId };
+
+    const [items, total] = await Promise.all([
+      prisma.shareLink.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: query.limit,
+        skip: query.offset,
+      }),
+      prisma.shareLink.count({ where }),
+    ]);
+
+    return { items, total };
   }
 
   /**

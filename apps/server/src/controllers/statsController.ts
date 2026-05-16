@@ -28,15 +28,12 @@ export class StatsController {
 
   static async recordUsageMetric(req: Request, res: Response, next: NextFunction) {
     try {
-      // Skip recording in development to avoid cluttering metrics
       if (process.env.NODE_ENV === "development") {
         return res.status(202).json("Skipping metric recording in development mode");
       }
 
-      // Validate and parse payload
       const payload = usageMetricEventSchema.parse(req.body);
 
-      // Increment metric via AnalyticsService
       await incrementUsageMetric(payload);
 
       res.status(202).json(createSuccessResponse({ accepted: true }, "Metric accepted"));
@@ -57,7 +54,6 @@ export class StatsController {
 
   static async getAdminDashboardStats(req: Request, res: Response, next: NextFunction) {
     try {
-      // Parallelize fetching of stats for performance
       const [githubStats, usageMetrics] = await Promise.all([
         getGitHubStats(),
         getAdminDashboardMetrics(),

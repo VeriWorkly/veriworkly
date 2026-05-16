@@ -8,8 +8,18 @@ import { GithubController } from "#controllers/githubController";
 
 const router = Router();
 
-router.get("/stats", flexibleAuth, requireApiKeyScopes("github:read"), GithubController.getStats);
-router.get("/issues", flexibleAuth, requireApiKeyScopes("github:read"), GithubController.getIssues);
+router.get(
+  "/stats",
+  flexibleAuth({ skipSession: true }),
+  requireApiKeyScopes("github:read"),
+  GithubController.getStats,
+);
+router.get(
+  "/issues",
+  flexibleAuth({ skipSession: true }),
+  requireApiKeyScopes("github:read"),
+  GithubController.getIssues,
+);
 
 router.post("/admin/sync", adminAuthMiddleware, GithubController.syncStats);
 
