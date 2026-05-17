@@ -1,22 +1,16 @@
 import Link from "next/link";
+import { Frown } from "lucide-react";
 
 import { Button, Container } from "@veriworkly/ui";
 
 const NotFound = () => {
   return (
-    <div className="surface-grid border-border/50 relative mx-4 my-8 flex min-h-[80vh] items-center justify-center overflow-hidden rounded-3xl border md:mx-8 md:my-12">
+    <div className="surface-grid border-border/50 relative mx-auto mt-28 mb-20 flex min-h-[80vh] max-w-7xl items-center justify-center overflow-hidden rounded-3xl border lg:mt-36">
       <div className="from-background/0 via-background/20 to-background/80 pointer-events-none absolute inset-0 bg-linear-to-b" />
 
       <Container className="relative flex flex-col items-center py-20 text-center">
         <div className="bg-accent/10 text-accent shadow-accent/5 mb-8 flex h-24 w-24 items-center justify-center rounded-full shadow-xl">
-          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+          <Frown className="h-12 w-12" />
         </div>
 
         <p className="text-accent text-sm font-bold tracking-[0.2em] uppercase">404 Error</p>

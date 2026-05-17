@@ -1,6 +1,8 @@
+import { siteConfig } from "@/config/site";
+
 export const familyByTemplateId: Record<string, "Compact Core" | "Modern Core"> = {
-  "clean-professional": "Modern Core",
-  "compact-ats": "Compact Core",
+  "executive-clarity": "Modern Core",
+  "precision-ats": "Compact Core",
 };
 
 export function getSingleParam(value: string | string[] | undefined, fallback: string) {
@@ -21,4 +23,10 @@ export function hrefWithFilters(family: string, layout: string) {
   if (layout !== "All") params.set("layout", layout);
 
   return params.toString() ? `/templates?${params.toString()}` : "/templates";
+}
+
+export function buildEditorUrl(templateId: string, documentType: string): string {
+  const base = siteConfig.links.app;
+
+  return `${base}/editor?template=${encodeURIComponent(templateId)}&type=${encodeURIComponent(documentType)}`;
 }

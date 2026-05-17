@@ -4,21 +4,39 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-import { siteConfig } from "@/config/site";
+import type { MarketingNavItem, MarketingSimpleLink } from "./types";
 
-import { Container, Button, cn } from "@veriworkly/ui";
+import { cn } from "../../../utils";
 
-import { NAVIGATION_ITEMS } from "./constants";
+import { Button } from "../../ui/Button";
 
-import { GithubIcon } from "../SocialIcons";
-import { ThemeToggle } from "../ThemeToggle";
+import { Container } from "../Container";
+import { GithubIcon } from "../social/SocialIcons";
+import { ThemeToggle } from "../theme/ThemeToggle";
 
-interface MobileNavProps {
+interface MarketingMobileNavProps {
   isOpen: boolean;
   onClose: () => void;
+  items: MarketingNavItem[];
+  resourceLinks: MarketingSimpleLink[];
+  legalLinks: MarketingSimpleLink[];
+  githubHref: string;
+  appHref: string;
+  ctaLabel?: string;
+  footerNote?: string;
 }
 
-export const MobileNav = ({ isOpen, onClose }: MobileNavProps) => {
+export const MarketingMobileNav = ({
+  isOpen,
+  onClose,
+  items,
+  resourceLinks,
+  legalLinks,
+  githubHref,
+  appHref,
+  ctaLabel = "Start Building Free",
+  footerNote = "No login required | Free forever",
+}: MarketingMobileNavProps) => {
   const pathname = usePathname();
 
   return (
@@ -38,7 +56,7 @@ export const MobileNav = ({ isOpen, onClose }: MobileNavProps) => {
             </p>
 
             <div className="grid gap-2">
-              {NAVIGATION_ITEMS.map((item, i) => (
+              {items.map((item, i) => (
                 <Link
                   key={item.name}
                   href={item.href}
@@ -97,29 +115,16 @@ export const MobileNav = ({ isOpen, onClose }: MobileNavProps) => {
               </p>
 
               <div className="flex flex-col gap-2">
-                <Link
-                  href="/faq"
-                  onClick={onClose}
-                  className="text-muted hover:text-foreground text-sm font-medium transition-colors"
-                >
-                  Help Center
-                </Link>
-
-                <Link
-                  href="/security"
-                  onClick={onClose}
-                  className="text-muted hover:text-foreground text-sm font-medium transition-colors"
-                >
-                  Security
-                </Link>
-
-                <Link
-                  href="/style-guide"
-                  onClick={onClose}
-                  className="text-muted hover:text-foreground text-sm font-medium transition-colors"
-                >
-                  Brand assets
-                </Link>
+                {resourceLinks.map((link) => (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    onClick={onClose}
+                    className="text-muted hover:text-foreground text-sm font-medium transition-colors"
+                  >
+                    {link.name}
+                  </Link>
+                ))}
               </div>
             </div>
 
@@ -127,21 +132,16 @@ export const MobileNav = ({ isOpen, onClose }: MobileNavProps) => {
               <p className="text-muted text-[10px] font-black tracking-[0.2em] uppercase">Legal</p>
 
               <div className="flex flex-col gap-2">
-                <Link
-                  href="/privacy"
-                  onClick={onClose}
-                  className="text-muted hover:text-foreground text-sm font-medium transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-
-                <Link
-                  href="/terms"
-                  onClick={onClose}
-                  className="text-muted hover:text-foreground text-sm font-medium transition-colors"
-                >
-                  Terms of Service
-                </Link>
+                {legalLinks.map((link) => (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    onClick={onClose}
+                    className="text-muted hover:text-foreground text-sm font-medium transition-colors"
+                  >
+                    {link.name}
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
@@ -170,8 +170,8 @@ export const MobileNav = ({ isOpen, onClose }: MobileNavProps) => {
             <div className="bg-border/40 h-4 w-px" />
 
             <Link
-              href={siteConfig.links.github}
               target="_blank"
+              href={githubHref}
               onClick={onClose}
               className="text-muted hover:text-foreground flex h-10 w-10 items-center justify-center rounded-full transition-colors"
             >
@@ -181,14 +181,14 @@ export const MobileNav = ({ isOpen, onClose }: MobileNavProps) => {
 
           <Button
             asChild
-            className="bg-foreground text-background shadow-foreground/5 h-16 w-full rounded-2xl text-lg font-black shadow-xl"
             onClick={onClose}
+            className="bg-foreground text-background shadow-foreground/5 h-16 w-full rounded-2xl text-lg font-black shadow-xl"
           >
-            <Link href={siteConfig.links.app}>Start Building Free</Link>
+            <Link href={appHref}>{ctaLabel}</Link>
           </Button>
 
           <p className="text-center text-[10px] font-bold tracking-widest uppercase opacity-40">
-            No login required • Free forever
+            {footerNote}
           </p>
         </div>
       </Container>

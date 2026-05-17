@@ -23,7 +23,7 @@ const BlogArchive = () => {
     );
 
   return (
-    <main className="surface-grid min-h-screen py-14 md:py-20">
+    <div className="surface-grid min-h-screen py-14 md:py-20">
       <Container className="space-y-12">
         <header className="space-y-8">
           <Link
@@ -101,7 +101,7 @@ const BlogArchive = () => {
           </div>
         )}
       </Container>
-    </main>
+    </div>
   );
 };
 

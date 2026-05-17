@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Card, Badge } from "@veriworkly/ui";
+import { Card, Badge, Tooltip } from "@veriworkly/ui";
 
 import { templateSummaries } from "@/config/templates";
 
@@ -36,11 +36,17 @@ const TemplatesPreview = () => {
 
       <div className="grid gap-6 md:grid-cols-3" role="list">
         {featured.map((template) => (
-          <Card className="space-y-4 p-6" key={template.id} role="listitem">
+          <Card
+            className="group hover:border-accent/20 relative flex flex-col justify-between space-y-4 border border-transparent p-6 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]"
+            key={template.id}
+            role="listitem"
+          >
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-foreground text-lg font-semibold">
-                {template.name} Resume Template
-              </h3>
+              <Tooltip content={`${template.name} Resume Template`} onlyShowIfTruncated>
+                <h3 className="text-foreground line-clamp-1 cursor-help text-lg font-semibold">
+                  {template.name} Resume Template
+                </h3>
+              </Tooltip>
 
               <span
                 aria-hidden="true"
@@ -49,7 +55,9 @@ const TemplatesPreview = () => {
               />
             </div>
 
-            <p className="text-muted text-sm leading-6">{template.description}</p>
+            <p className="text-muted line-clamp-3 cursor-help text-sm leading-6">
+              {template.description}
+            </p>
 
             <div className="flex flex-wrap gap-2">
               {template.tags.slice(0, 3).map((tag) => (

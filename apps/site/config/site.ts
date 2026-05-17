@@ -1,3 +1,5 @@
+const isDev = process.env.NODE_ENV === "development";
+
 export const siteConfig = {
   name: "VeriWorkly Resume",
   shortName: "VeriWorkly",
@@ -12,12 +14,14 @@ export const siteConfig = {
   tagline: "Free resume builder. No login. 100% private.",
 
   links: {
-    github: "https://github.com/Gautam25Raj/veriworkly-resume",
     twitter: "https://x.com/veriworkly",
-    app: "https://app.veriworkly.com",
+    github: "https://github.com/VeriWorkly/veriworkly",
     linkedin: "https://linkedin.com/company/veriworkly",
-    blog: "https://blogs.veriworkly.com",
-    docs: "https://docs.veriworkly.com",
+
+    main: isDev ? "http://localhost:3000" : "https://veriworkly.com",
+    app: isDev ? "http://localhost:3001" : "https://app.veriworkly.com",
+    docs: isDev ? "http://localhost:3002" : "https://docs.veriworkly.com",
+    blog: isDev ? "http://localhost:3003" : "https://blogs.veriworkly.com",
   },
 
   keywords: [

@@ -82,7 +82,7 @@ const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
 
   return (
     <main className="flex min-h-screen flex-col">
-      <Container className="py-8 md:py-12">
+      <Container className="pt-28 pb-20 lg:pt-36">
         <Link
           href={`/roadmap`}
           className="text-muted hover:text-foreground mb-8 inline-flex items-center gap-2 transition-colors"

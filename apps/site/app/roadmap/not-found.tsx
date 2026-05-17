@@ -5,7 +5,7 @@ import { Button, Container } from "@veriworkly/ui";
 export default function RoadmapNotFound() {
   return (
     <main className="flex min-h-screen flex-col">
-      <Container className="py-10 md:py-14">
+      <Container className="pt-28 pb-20 lg:pt-36">
         <header className="mb-10 space-y-4">
           <p className="text-accent text-xs font-semibold tracking-[0.24em] uppercase">
             Roadmap Update

@@ -1,8 +1,10 @@
 import Link from "next/link";
 
+import SEOContentContainer from "@/components/SEOContentContainer";
+
 const TemplatesSEOContent = () => {
   return (
-    <section className="mx-auto max-w-3xl space-y-4 pt-10">
+    <SEOContentContainer>
       <h2 className="text-xl font-semibold">Choose the Right Resume Template</h2>
 
       <p className="text-muted text-sm leading-6">
@@ -19,7 +21,7 @@ const TemplatesSEOContent = () => {
         </Link>
         .
       </p>
-    </section>
+    </SEOContentContainer>
   );
 };
 

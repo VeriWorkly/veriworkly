@@ -93,21 +93,23 @@ const TemplatesPage = async ({ searchParams }: PageProps) => {
   ];
 
   return (
-    <Container className="space-y-16 py-12 md:py-20">
-      <TemplatesHeader selectedFamily={selectedFamily} selectedLayout={selectedLayout} />
+    <>
+      <Container className="space-y-16 pt-28 pb-12 lg:pt-36">
+        <TemplatesHeader selectedFamily={selectedFamily} selectedLayout={selectedLayout} />
 
-      {visibleTemplates.length ? (
-        <div className="space-y-12">
-          {templateGroups.map(
-            (group) => group.items.length && <TemplateGroup key={group.title} group={group} />,
-          )}
-        </div>
-      ) : (
-        <EmptyState />
-      )}
+        {visibleTemplates.length ? (
+          <div className="space-y-12">
+            {templateGroups.map(
+              (group) => group.items.length && <TemplateGroup key={group.title} group={group} />,
+            )}
+          </div>
+        ) : (
+          <EmptyState />
+        )}
+      </Container>
 
       <TemplatesSEOContent />
-    </Container>
+    </>
   );
 };
 

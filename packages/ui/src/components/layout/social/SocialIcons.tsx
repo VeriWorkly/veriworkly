@@ -1,5 +1,6 @@
 import * as React from "react";
-import { cn } from "@veriworkly/ui";
+
+import { cn } from "../../../utils";
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;

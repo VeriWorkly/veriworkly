@@ -2,6 +2,8 @@ import { Container } from "@veriworkly/ui";
 
 import { docsFaqs } from "../data/faq";
 
+import { MainLayout } from "@/components/layout/MainLayout";
+
 import { DocsHero } from "../features/landing/components/DocsHero";
 import { FAQSection } from "../features/landing/components/FAQSection";
 import { CTASection } from "../features/landing/components/CTASection";
@@ -11,8 +13,8 @@ import { DeveloperSection } from "../features/landing/components/DeveloperSectio
 
 const HomePage = () => {
   return (
-    <main className="surface-grid min-h-screen py-14 md:py-20">
-      <Container className="space-y-12 md:space-y-20">
+    <MainLayout>
+      <Container className="space-y-12 py-14 md:space-y-20 md:py-20">
         <DocsHero />
         <CorePillars />
         <DeveloperSection />
@@ -20,7 +22,7 @@ const HomePage = () => {
         <FAQSection faqs={docsFaqs} />
         <CTASection />
       </Container>
-    </main>
+    </MainLayout>
   );
 };
 

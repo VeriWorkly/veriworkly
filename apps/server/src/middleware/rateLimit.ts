@@ -17,7 +17,6 @@ const MAX_MEMORY_ENTRIES = process.env.MAX_MEMORY_ENTRIES
   : 15000;
 const bucket = new Map<string, RateLimitEntry>();
 
-
 function getClientKey(req: Request): string {
   const ip = getRequestIpDetails(req).resolvedIp;
   return ip || "unknown";

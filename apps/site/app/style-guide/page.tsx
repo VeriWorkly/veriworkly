@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { Container } from "@veriworkly/ui";
+
 import { siteConfig } from "@/config/site";
+
+import { Container } from "@veriworkly/ui";
 
 import { ColorSection } from "./_components/ColorSection";
 import { LayoutSection } from "./_components/LayoutSection";
@@ -45,7 +47,7 @@ export const metadata: Metadata = {
 
 const StyleGuidePage = () => {
   return (
-    <main className="surface-grid min-h-screen py-14 md:py-20">
+    <main className="surface-grid min-h-screen pt-28 pb-20 lg:pt-36">
       <Container className="space-y-16 md:space-y-24">
         <StyleGuideHeader />
         <ColorSection />

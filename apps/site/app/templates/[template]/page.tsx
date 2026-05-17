@@ -3,11 +3,11 @@ import Image from "next/image";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { siteConfig } from "@/config/site";
 import { getTemplateById, templateSummaries } from "@/config/templates";
 
-import { Card, Button } from "@veriworkly/ui";
+import { Card, Button, Container } from "@veriworkly/ui";
 
+import { buildEditorUrl } from "../components/utils";
 import { TemplateDetailHeader } from "../components/TemplateHeader";
 
 interface Props {
@@ -16,6 +16,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { template } = await params;
+
   const data = getTemplateById(template);
 
   if (!data) return { title: "Template Not Found" };
@@ -35,12 +36,14 @@ export default async function TemplatePreviewPage({ params }: Props) {
 
   const templateDefinition = getTemplateById(template);
 
-  if (!templateDefinition || templateDefinition.id !== template) {
+  if (!templateDefinition) {
     notFound();
   }
 
+  const editorUrl = buildEditorUrl(templateDefinition.id, templateDefinition.documentType);
+
   return (
-    <div className="space-y-10 py-10">
+    <Container className="space-y-16 pt-28 pb-12 lg:pt-36">
       <TemplateDetailHeader template={templateDefinition} />
 
       <section aria-label="Template Preview" className="space-y-8">
@@ -48,11 +51,11 @@ export default async function TemplatePreviewPage({ params }: Props) {
           <div className="border-border bg-card relative mx-auto aspect-3/4 w-full max-w-4xl overflow-hidden rounded-xl border shadow-2xl">
             {templateDefinition.previewImage ? (
               <Image
+                fill
+                priority
+                className="object-cover object-top"
                 src={templateDefinition.previewImage}
                 alt={`${templateDefinition.name} preview`}
-                fill
-                className="object-cover object-top"
-                priority
               />
             ) : (
               <div className="text-muted flex h-full items-center justify-center">
@@ -62,9 +65,7 @@ export default async function TemplatePreviewPage({ params }: Props) {
 
             <div className="absolute inset-0 flex items-end justify-center bg-linear-to-t from-black/60 via-transparent to-transparent pb-12 opacity-0 transition-opacity duration-300 hover:opacity-100">
               <Button asChild size="lg" variant="primary">
-                <Link href={`${siteConfig.links.app}/editor?template=${templateDefinition.id}`}>
-                  Use this template
-                </Link>
+                <Link href={editorUrl}>Use this template</Link>
               </Button>
             </div>
           </div>
@@ -77,12 +78,10 @@ export default async function TemplatePreviewPage({ params }: Props) {
             variant="primary"
             className="h-14 rounded-full px-10 text-lg shadow-lg transition-all hover:shadow-xl"
           >
-            <Link href={`${siteConfig.links.app}/editor?template=${templateDefinition.id}`}>
-              Start Building with {templateDefinition.name}
-            </Link>
+            <Link href={editorUrl}>Start Building with {templateDefinition.name}</Link>
           </Button>
         </div>
       </section>
-    </div>
+    </Container>
   );
 }

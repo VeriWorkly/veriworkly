@@ -43,7 +43,7 @@ export default async function BlogPostPage(props: PageProps) {
   const postUrl = `${siteConfig.url}/${params.slug}`;
 
   return (
-    <main className="surface-grid min-h-screen py-10 md:py-16">
+    <div className="surface-grid min-h-screen py-10 md:py-16">
       <Container>
         <article className="border-border bg-card relative overflow-hidden rounded-4xl border px-6 py-8 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.45)] md:px-14 md:py-14">
           <div className="bg-accent/5 pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full blur-3xl" />
@@ -148,7 +148,7 @@ export default async function BlogPostPage(props: PageProps) {
           </footer>
         </article>
       </Container>
-    </main>
+    </div>
   );
 }
 

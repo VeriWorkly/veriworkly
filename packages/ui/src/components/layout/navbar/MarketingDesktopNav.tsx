@@ -4,16 +4,20 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-import { cn } from "@veriworkly/ui";
+import type { MarketingNavItem } from "./types";
 
-import { NAVIGATION_ITEMS } from "./constants";
+import { cn } from "../../../utils";
 
-export const DesktopNav = () => {
+interface MarketingDesktopNavProps {
+  items: MarketingNavItem[];
+}
+
+export const MarketingDesktopNav = ({ items }: MarketingDesktopNavProps) => {
   const pathname = usePathname();
 
   return (
     <div className="hidden items-center gap-1 lg:flex">
-      {NAVIGATION_ITEMS.map((item) => (
+      {items.map((item) => (
         <Link
           key={item.name}
           href={item.href}

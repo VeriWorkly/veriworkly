@@ -1,6 +1,7 @@
 export type TemplateSummary = {
   id: string;
   name: string;
+  documentType: "resume" | "cover-letter" | "formal-letter" | "invoice";
   description: string;
   accentColor: string;
   previewImage: string;
@@ -9,8 +10,9 @@ export type TemplateSummary = {
 
 export const templateSummaries: TemplateSummary[] = [
   {
-    id: "clean-professional",
+    id: "executive-clarity",
     name: "Executive Clarity",
+    documentType: "resume",
     description:
       "A polished single-column resume with refined spacing, strong section rhythm, and ATS-safe structure. Ideal for professionals who want a sophisticated, modern look.",
     accentColor: "#0ea5e9",
@@ -19,8 +21,9 @@ export const templateSummaries: TemplateSummary[] = [
   },
 
   {
-    id: "compact-ats",
+    id: "precision-ats",
     name: "Precision ATS",
+    documentType: "resume",
     description:
       "A dense, recruiter-friendly layout for longer resumes that still exports as a real matching PDF. Built for clarity and parsing accuracy above all else.",
     accentColor: "#10b981",
@@ -29,6 +32,6 @@ export const templateSummaries: TemplateSummary[] = [
   },
 ];
 
-export function getTemplateById(id: string) {
-  return templateSummaries.find((t) => t.id === id) || templateSummaries[0];
+export function getTemplateById(id: string): TemplateSummary | undefined {
+  return templateSummaries.find((t) => t.id === id);
 }

@@ -1,9 +1,14 @@
 import Link from "next/link";
 
 import { Badge } from "@veriworkly/ui";
+
 import { TemplateDefinition } from "@/types/template";
 
+import { buildEditorUrl } from "./utils";
+
 export function TemplateDetailHeader({ template }: { template: TemplateDefinition }) {
+  const editorUrl = buildEditorUrl(template.id, template.documentType);
+
   return (
     <header className="space-y-6">
       <div className="space-y-3">
@@ -23,7 +28,7 @@ export function TemplateDetailHeader({ template }: { template: TemplateDefinitio
       </div>
 
       <nav className="border-border/40 flex items-center gap-6 border-b pb-6 text-sm font-medium">
-        <Link href="/dashboard" className="text-accent hover:underline">
+        <Link href={editorUrl} className="text-accent hover:underline">
           Use in editor
         </Link>
 

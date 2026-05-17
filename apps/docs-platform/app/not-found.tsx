@@ -1,12 +1,16 @@
 import Link from "next/link";
+import { Frown } from "lucide-react";
 
-import { Button } from "@veriworkly/ui";
-import { Container } from "@veriworkly/ui";
+import { Button, Container } from "@veriworkly/ui";
 
 const NotFound = () => {
   return (
     <main className="surface-grid flex min-h-screen items-center justify-center">
       <Container className="flex flex-col items-center text-center">
+        <div className="bg-accent/10 text-accent shadow-accent/5 mb-8 flex h-24 w-24 items-center justify-center rounded-full shadow-xl">
+          <Frown className="h-12 w-12" />
+        </div>
+
         <p className="text-accent text-sm font-bold tracking-[0.2em] uppercase">404 Error</p>
 
         <h1 className="text-foreground mt-4 text-4xl font-bold tracking-tight sm:text-6xl">

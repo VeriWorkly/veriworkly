@@ -28,7 +28,7 @@ const BlogHome = () => {
   const remainingPosts = allPosts.slice(1, 4);
 
   return (
-    <main className="surface-grid min-h-screen py-14 md:py-20">
+    <div className="min-h-screen py-14 md:py-20">
       <Container className="space-y-12 md:space-y-20">
         <BlogHero postCount={allPosts.length} />
 
@@ -40,7 +40,7 @@ const BlogHome = () => {
 
         <CTASection />
       </Container>
-    </main>
+    </div>
   );
 };
 

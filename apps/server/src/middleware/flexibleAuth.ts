@@ -28,14 +28,8 @@ interface FlexibleAuthOptions {
  *    - If NOT whitelisted:
  *      - Enforce API Key Auth (which will fail because no key was provided).
  */
-export function flexibleAuth(
-  options: FlexibleAuthOptions,
-): RequestHandler;
-export function flexibleAuth(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void>;
+export function flexibleAuth(options: FlexibleAuthOptions): RequestHandler;
+export function flexibleAuth(req: Request, res: Response, next: NextFunction): Promise<void>;
 export function flexibleAuth(
   reqOrOptions: Request | FlexibleAuthOptions = {},
   res?: Response,

@@ -1,6 +1,8 @@
+import SEOContentContainer from "@/components/SEOContentContainer";
+
 const RoadmapSEOContent = () => {
   return (
-    <section className="mx-auto max-w-3xl space-y-4 py-10">
+    <SEOContentContainer>
       <h2 className="text-xl font-semibold">What’s on the VeriWorkly Roadmap?</h2>
 
       <p className="text-muted text-sm leading-6">
@@ -13,7 +15,7 @@ const RoadmapSEOContent = () => {
         VeriWorkly is a free, privacy-first resume builder with no login required. We continuously
         improve the platform based on user feedback and evolving hiring trends.
       </p>
-    </section>
+    </SEOContentContainer>
   );
 };
 

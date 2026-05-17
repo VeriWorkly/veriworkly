@@ -8,6 +8,7 @@ import { RootProvider } from "fumadocs-ui/provider/next";
 import { globalFontVariables } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
+import { MainLayout } from "../components/layout/MainLayout";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -119,7 +120,9 @@ const BlogLayout = ({ children }: { children: React.ReactNode }) => {
           disableTransitionOnChange
           storageKey="veriworkly-theme"
         >
-          <RootProvider search={{ options: { delayMs: 450 } }}>{children}</RootProvider>
+          <RootProvider search={{ options: { delayMs: 450 } }}>
+            <MainLayout>{children}</MainLayout>
+          </RootProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -120,7 +120,7 @@ const RoadmapPageShell = ({
 
   return (
     <main className="flex min-h-screen flex-col">
-      <Container className="py-10 md:py-14">
+      <Container className="pt-28 pb-20 lg:pt-36">
         <RoadmapHeader title={title} description={description} />
 
         <div className="border-border/60 bg-card/40 mb-8 flex justify-between rounded-2xl border p-5">

@@ -17,10 +17,17 @@ interface MenuProps {
   align?: "left" | "right";
   children: (props: MenuRenderProps) => React.ReactNode;
   panelClassName?: string;
+  size?: "sm" | "md";
   trigger: (props: MenuRenderProps) => React.ReactNode;
 }
 
-export function Menu({ align = "right", children, panelClassName, trigger }: MenuProps) {
+export function Menu({
+  align = "right",
+  children,
+  panelClassName,
+  size = "md",
+  trigger,
+}: MenuProps) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const menuId = React.useId();
   const [open, setOpen] = React.useState(false);
@@ -62,7 +69,8 @@ export function Menu({ align = "right", children, panelClassName, trigger }: Men
         <div
           aria-orientation="vertical"
           className={cn(
-            "border-border bg-card absolute z-30 mt-2 min-w-44 rounded-2xl border p-1.5 shadow-xl ring-1 ring-black/5",
+            "border-border bg-card absolute z-30 mt-2 border shadow-xl ring-1 ring-black/5",
+            size === "sm" ? "min-w-40 rounded-xl p-1" : "min-w-44 rounded-2xl p-1.5",
             align === "right" ? "right-0" : "left-0",
             panelClassName,
           )}

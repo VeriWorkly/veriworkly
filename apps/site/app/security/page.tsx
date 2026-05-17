@@ -13,8 +13,7 @@ const supportEmail = "info@veriworkly.com";
 const supportEmailHref = `mailto:${supportEmail}`;
 
 const githubDiscussionsUrl = `${siteConfig.links.github}/discussions`;
-const githubSecurityPolicyUrl =
-  "https://github.com/Gautam25Raj/veriworkly-resume/blob/master/SECURITY.md";
+const githubSecurityPolicyUrl = "https://github.com/VeriWorkly/veriworkly/blob/master/SECURITY.md";
 
 export const metadata: Metadata = {
   title: `Security Policy | Privacy-First Resume Builder`,
@@ -37,6 +36,7 @@ export const metadata: Metadata = {
       },
     ],
   },
+
   twitter: {
     card: "summary_large_image",
     title: `Resume Builder Security Policy | ${siteConfig.shortName}`,
@@ -44,6 +44,7 @@ export const metadata: Metadata = {
       "Learn how VeriWorkly handles security, privacy, and vulnerability reporting for resume data.",
     images: [pageOgImage],
   },
+
   alternates: {
     canonical: pageUrl,
   },
@@ -91,9 +92,9 @@ const SecurityPage = () => {
       <PublicPageShell
         eyebrow="Security"
         title="Security and Privacy for VeriWorkly Resume Builder"
-        description="Learn how VeriWorkly protects resume data with local-first storage and secure workflows."
         primaryAction={{ href: supportEmailHref, label: "Email security report" }}
         secondaryAction={{ href: githubDiscussionsUrl, label: "Open discussions" }}
+        description="Learn how VeriWorkly protects resume data with local-first storage and secure workflows."
       >
         <section className="grid gap-4 lg:grid-cols-3">
           {securityPrinciples.map((principle) => (

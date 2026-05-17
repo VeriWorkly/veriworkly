@@ -3,7 +3,7 @@ import { Container } from "@veriworkly/ui";
 export default function RoadmapLoading() {
   return (
     <main className="flex min-h-screen flex-col">
-      <Container className="py-10 md:py-14">
+      <Container className="pt-28 pb-20 lg:pt-36">
         <div className="mb-10 space-y-4">
           <div className="bg-accent/10 h-3 w-32 animate-pulse rounded-full" />
           <div className="bg-border h-12 w-full max-w-xl animate-pulse rounded-2xl" />

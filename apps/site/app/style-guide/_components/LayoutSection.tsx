@@ -7,7 +7,7 @@ import { SectionHeader } from "./SectionHeader";
 
 export const LayoutSection = () => {
   return (
-    <section id="layout" className="scroll-mt-24 space-y-8 pb-20">
+    <section id="layout" className="scroll-mt-24 space-y-8">
       <SectionHeader icon={LayoutIcon} title="Layout & Spacing" />
 
       <Card className="space-y-6 p-8">

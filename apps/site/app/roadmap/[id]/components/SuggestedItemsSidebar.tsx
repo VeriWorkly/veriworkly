@@ -42,11 +42,20 @@ const SuggestedItemsSidebar = ({
 
                   <p className="text-muted line-clamp-2 text-xs">{item.description}</p>
 
-                  {item.eta && <p className="text-muted text-xs font-medium">{item.eta}</p>}
+                  <div className="flex gap-2">
+                    {item.eta && (
+                      <p className="text-muted text-xs font-medium">
+                        <span className="font-semibold">ETA: </span> {item.eta}
+                      </p>
+                    )}
 
-                  {item.completedQuarter && (
-                    <p className="text-muted text-xs font-medium">{item.completedQuarter}</p>
-                  )}
+                    {item.completedQuarter && (
+                      <p className="text-muted text-xs font-medium">
+                        <span className="font-semibold">Completed: </span>
+                        {item.completedQuarter}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </Card>
             </Link>

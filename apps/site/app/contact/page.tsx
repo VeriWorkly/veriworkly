@@ -13,8 +13,7 @@ const supportEmail = "info@veriworkly.com";
 const supportEmailHref = `mailto:${supportEmail}`;
 
 const githubDiscussionsUrl = `${siteConfig.links.github}/discussions`;
-const githubSecurityPolicyUrl =
-  "https://github.com/Gautam25Raj/veriworkly-resume/blob/master/SECURITY.md";
+const githubSecurityPolicyUrl = "https://github.com/VeriWorkly/veriworkly/blob/master/SECURITY.md";
 
 export const metadata: Metadata = {
   title: `Contact VeriWorkly Support | ATS Resume Builder Help`,

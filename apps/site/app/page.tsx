@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
 
-import { faqs } from "@/features/landing/data/faqItems";
-
 import { Container } from "@veriworkly/ui";
+
+import { faqs } from "@/features/landing/data/faqItems";
 
 import TrustBar from "@/features/landing/components/TrustBar";
 import CTASection from "@/features/landing/components/CTASection";
@@ -148,7 +148,7 @@ const Home = () => {
         }}
       />
 
-      <section className="py-6 md:py-10">
+      <section className="pt-28 pb-20 lg:pt-36">
         <Container className="space-y-12 md:space-y-24">
           <HeroSection />
           <TrustBar />

@@ -13,8 +13,8 @@ import {
 } from "./components/stats-utils";
 
 import {
-  fetchGitHubIssuesFromBackend,
   fetchGitHubStatsFromBackend,
+  fetchGitHubIssuesFromBackend,
 } from "@/features/github/services/github-backend";
 
 import { Container } from "@veriworkly/ui";
@@ -64,8 +64,8 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
     }).catch(() => null),
   ]);
 
-  const projectName = stats?.projectName ?? `${siteConfig.shortName} GitHub Board`;
   const projectUrl = stats?.projectUrl ?? siteConfig.links.github;
+  const projectName = stats?.projectName ?? `${siteConfig.shortName} GitHub Board`;
 
   const issueCount = stats?.stats.issues ?? 0;
   const totalItems = stats?.stats.totalItems ?? issuePage?.total ?? 0;
@@ -77,6 +77,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
   const nextSyncAt = stats?.nextSyncAt ?? null;
 
   const hasMore = Boolean(issuePage?.hasMore);
+
   const totalPages = Math.max(1, Math.ceil((issuePage?.total ?? 0) / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
 
@@ -85,7 +86,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
       <div className="from-accent/10 pointer-events-none absolute inset-x-0 top-0 h-64" />
       <div className="pointer-events-none absolute top-20 -right-32 h-64 w-64 rounded-full blur-3xl" />
 
-      <Container className="relative py-12 md:py-16">
+      <Container className="relative pt-28 pb-20 lg:pt-36">
         <StatsHero syncedAt={syncedAt} nextSyncAt={nextSyncAt} />
 
         <StatsOverview
@@ -110,7 +111,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
           updatedFrom={updatedFrom}
         />
 
-        <section className="border-border/70 bg-card/70 mx-auto mt-10 max-w-4xl rounded-3xl border p-6">
+        <section className="border-border/70 bg-card/70 mx-auto mt-10 max-w-3xl rounded-3xl border p-6">
           <h3 className="text-foreground text-lg font-semibold">About this sync</h3>
 
           <p className="text-muted mt-3 max-w-3xl leading-relaxed">

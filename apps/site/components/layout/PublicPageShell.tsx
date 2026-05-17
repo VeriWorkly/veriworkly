@@ -30,7 +30,7 @@ export function PublicPageShell({
   children,
 }: PublicPageShellProps) {
   return (
-    <main className="surface-grid min-h-screen py-14 md:py-20">
+    <main className="surface-grid min-h-screen pt-28 pb-20 lg:pt-36">
       <Container className="space-y-10 md:space-y-12">
         <section className="border-border bg-card relative overflow-hidden rounded-4xl border px-6 py-10 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.45)] md:px-10 md:py-14">
           <div className="bg-accent/12 pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full blur-3xl" />

@@ -7,8 +7,6 @@ import {
   fetchRoadmapFromBackend,
 } from "@/features/roadmap/services/roadmap-backend";
 
-import { Container } from "@veriworkly/ui";
-
 import RoadmapPageShell from "./components/RoadmapPageShell";
 import RoadmapSEOContent from "./components/RoadmapSEOContent";
 
@@ -47,17 +45,13 @@ export const metadata: Metadata = {
 };
 
 function parseSort(raw: string | undefined): RoadmapSort | undefined {
-  if (raw === "newest" || raw === "oldest" || raw === "recently-completed") {
-    return raw;
-  }
+  if (raw === "newest" || raw === "oldest" || raw === "recently-completed") return raw;
 
   return undefined;
 }
 
 function parseStatus(raw: string | undefined) {
-  if (raw === "todo" || raw === "in-progress" || raw === "done") {
-    return raw;
-  }
+  if (raw === "todo" || raw === "in-progress" || raw === "done") return raw;
 
   return undefined;
 }
@@ -81,15 +75,13 @@ export default async function RoadmapPage({ searchParams }: RoadmapPageProps) {
     <>
       <RoadmapPageShell
         data={data}
-        basePath="/roadmap"
         activeStatus="all"
+        basePath="/roadmap"
         title="Product Roadmap"
         description="Track what is planned, currently shipping, and completed. Use the filters and section refresh controls to explore roadmap data."
       />
 
-      <Container className="pb-16 md:pb-20">
-        <RoadmapSEOContent />
-      </Container>
+      <RoadmapSEOContent />
     </>
   );
 }

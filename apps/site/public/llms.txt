@@ -38,5 +38,5 @@ When integrating with VeriWorkly, agents should rely on the documented API (`/op
 ## Metadata
 - **Creator**: Gautam Raj (@Gautam25Raj)
 - **License**: MIT
-- **Repository**: [Gautam25Raj/veriworkly-resume](https://github.com/Gautam25Raj/veriworkly-resume)
-- **Last Updated**: 2026-05-14
+- **Repository**: [VeriWorkly/veriworkly](https://github.com/VeriWorkly/veriworkly)
+- **Last Updated**: 2026-05-17
