@@ -44,7 +44,6 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     const internalRef = React.useRef<HTMLInputElement>(null);
     const [internalChecked, setInternalChecked] = React.useState(controlledChecked || false);
 
-    // Sync internal state with controlled state
     React.useEffect(() => {
       if (controlledChecked !== undefined) {
         setInternalChecked(controlledChecked);
@@ -53,10 +52,8 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
 
     const isChecked = controlledChecked !== undefined ? controlledChecked : internalChecked;
 
-    // Merge refs to allow external access while using it internally
     React.useImperativeHandle(ref, () => internalRef.current!);
 
-    // Sync indeterminate property with the native input element
     React.useEffect(() => {
       if (internalRef.current) {
         internalRef.current.indeterminate = !!indeterminate;

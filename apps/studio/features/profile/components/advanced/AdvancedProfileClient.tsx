@@ -98,7 +98,12 @@ const AdvancedProfileClient = () => {
     <div className="space-y-6">
       <AdvancedProfileStatusBand updatedAt={updatedAt} />
 
-      <ProfileAdvanced key={updatedAt ?? "init"} isSaving={saving} profile={profile} onSave={handleSave} />
+      <ProfileAdvanced
+        isSaving={saving}
+        profile={profile}
+        onSave={handleSave}
+        key={updatedAt ?? "init"}
+      />
     </div>
   );
 };

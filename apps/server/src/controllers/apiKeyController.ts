@@ -5,7 +5,7 @@ import { requireAuthUser } from "#middleware/auth";
 import { ApiKeyService } from "#services/apiKeyService";
 
 import { logger } from "#utils/logger";
-import { createSuccessResponse, createErrorResponse } from "#utils/errors";
+import { ApiError, createSuccessResponse, createErrorResponse } from "#utils/errors";
 import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 
 const DEFAULT_ALLOWED_SCOPES = [
@@ -32,7 +32,7 @@ function parseScopes(value: unknown) {
   const invalidScopes = scopes.filter((scope) => !DEFAULT_ALLOWED_SCOPES.includes(scope));
 
   if (invalidScopes.length > 0) {
-    throw new Error(`Unsupported API key scope(s): ${invalidScopes.join(", ")}`);
+    throw new ApiError(400, `Unsupported API key scope(s): ${invalidScopes.join(", ")}`);
   }
 
   return scopes;
@@ -48,7 +48,7 @@ function parseRateLimit(value: unknown) {
   const limit = Number(value);
 
   if (!Number.isInteger(limit) || limit < 1) {
-    throw new Error("rateLimit must be a positive integer");
+    throw new ApiError(400, "rateLimit must be a positive integer");
   }
 
   return limit;
@@ -64,7 +64,7 @@ function parseExpiresAt(value: unknown) {
   const parsed = new Date(String(value));
 
   if (Number.isNaN(parsed.getTime())) {
-    throw new Error("expiresAt must be a valid ISO date string");
+    throw new ApiError(400, "expiresAt must be a valid ISO date string");
   }
 
   return parsed;
@@ -93,6 +93,27 @@ export class ApiKeyController {
         .json(createSuccessResponse({ items, ...meta }, "API keys fetched successfully"));
     } catch (error) {
       logger.error("Failed to list API keys:", error);
+      next(error);
+    }
+  }
+
+  /**
+   * Get full details for a single API key.
+   */
+  static async getKey(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = requireAuthUser(req).id;
+      const { id } = req.params;
+
+      const apiKey = await ApiKeyService.getKey(userId, id);
+
+      if (!apiKey) {
+        return res.status(404).json(createErrorResponse(404, "API key not found"));
+      }
+
+      res.status(200).json(createSuccessResponse(apiKey, "API key fetched successfully"));
+    } catch (error) {
+      logger.error("Failed to get API key:", error);
       next(error);
     }
   }
@@ -148,7 +169,8 @@ export class ApiKeyController {
         expiresAt: parseExpiresAt(expiresAt),
       });
 
-      if (!rotated) return res.status(404).json(createErrorResponse(404, "API key not found"));
+      if (!rotated)
+        return res.status(404).json(createErrorResponse(404, "API key not found or inactive"));
 
       res
         .status(201)

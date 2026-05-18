@@ -49,17 +49,10 @@ type ApiKeyAuthRecord = {
 
 type ApiKeyListRecord = {
   id: string;
-  keyPrefix: string;
-  keySuffix: string;
   name: string;
-  userId: string;
+  keyPrefix: string;
   isActive: boolean;
-  rateLimit: number;
-  scopes: string[];
-  expiresAt: Date | null;
-  revokedAt: Date | null;
   createdAt: Date;
-  updatedAt: Date;
   lastUsed: Date | null;
 };
 
@@ -75,7 +68,22 @@ type ApiKeyCreateInput = {
   expiresAt?: Date | null;
 };
 
-type ApiKeyCreateResult = ApiKeyListRecord & { key: string };
+type ApiKeyCreateResult = {
+  id: string;
+  keyPrefix: string;
+  keySuffix: string;
+  name: string;
+  userId: string;
+  isActive: boolean;
+  rateLimit: number;
+  scopes: string[];
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  lastUsed: Date | null;
+  key: string;
+};
 
 type ApiKeyRotateResult = ApiKeyCreateResult & { rotatedFromId: string };
 
@@ -303,16 +311,9 @@ export class ApiKeyService {
         select: {
           id: true,
           keyPrefix: true,
-          keySuffix: true,
           name: true,
-          userId: true,
           isActive: true,
-          rateLimit: true,
-          scopes: true,
-          expiresAt: true,
-          revokedAt: true,
           createdAt: true,
-          updatedAt: true,
           lastUsed: true,
         },
       }),
@@ -320,6 +321,27 @@ export class ApiKeyService {
     ]);
 
     return { items: items satisfies ApiKeyListRecord[], total };
+  }
+
+  static async getKey(userId: string, keyId: string) {
+    return prisma.apiKey.findFirst({
+      where: { id: keyId, userId },
+      select: {
+        id: true,
+        keyPrefix: true,
+        keySuffix: true,
+        name: true,
+        userId: true,
+        isActive: true,
+        rateLimit: true,
+        scopes: true,
+        expiresAt: true,
+        revokedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        lastUsed: true,
+      },
+    });
   }
 
   static async revokeKey(userId: string, keyId: string) {
@@ -352,7 +374,7 @@ export class ApiKeyService {
     input: Partial<ApiKeyCreateInput> = {},
   ): Promise<ApiKeyRotateResult | null> {
     const current = await prisma.apiKey.findFirst({
-      where: { id: keyId, userId },
+      where: { id: keyId, userId, isActive: true, revokedAt: null },
       select: {
         id: true,
         keyHash: true,

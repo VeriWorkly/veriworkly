@@ -14,7 +14,7 @@ function StatusMetric({
   value: string;
 }) {
   return (
-    <div className="bg-muted/20 rounded-xl p-3">
+    <div className="bg-muted/10 rounded-xl p-3">
       <div className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
         <Icon className="h-3.5 w-3.5" />
         {label}
@@ -27,7 +27,7 @@ function StatusMetric({
 
 const AdvancedProfileStatusBand = ({ updatedAt }: { updatedAt: string | null }) => {
   return (
-    <section className="border-border bg-card grid gap-4 rounded-2xl border p-4 sm:p-5 md:grid-cols-[16rem_minmax(0,1fr)] md:items-center">
+    <section className="border-border bg-card grid gap-4 rounded-2xl border p-4 sm:p-5 md:grid-cols-[16rem_minmax(0,1fr)] md:items-start">
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1">
         <StatusMetric
           icon={Database}
