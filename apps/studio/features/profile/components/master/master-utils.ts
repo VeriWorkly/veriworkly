@@ -252,7 +252,7 @@ export function validateMasterProfileForSave(profile: MasterProfileData) {
 }
 
 export function sanitizeMasterProfileForSave(profile: MasterProfileData): MasterProfileData {
-  return {
+  const sanitized = {
     ...profile,
     basics: {
       ...profile.basics,
@@ -326,6 +326,164 @@ export function sanitizeMasterProfileForSave(profile: MasterProfileData): Master
       endDate: item.current ? "" : item.endDate.trim(),
     })),
   };
+
+  return {
+    ...sanitized,
+    customSections: buildResumeCompatibilityCustomSections(sanitized),
+  };
+}
+
+function findExistingCustomSection(profile: MasterProfileData, kind: ResumeCustomSection["kind"]) {
+  return profile.customSections.find((section) => section.kind === kind);
+}
+
+function makeCompatibilitySection(
+  profile: MasterProfileData,
+  kind: ResumeCustomSection["kind"],
+  title: string,
+  items: ResumeCustomSection["items"],
+): ResumeCustomSection {
+  const existing = findExistingCustomSection(profile, kind);
+
+  return {
+    id: existing?.id || createId(kind),
+    kind,
+    title: existing?.title || title,
+    editableTitle: existing?.editableTitle ?? true,
+    items,
+  };
+}
+
+// Resume templates still read these optional sections from customSections.
+// Master editor stores them in dedicated top-level arrays, then mirrors them here on save.
+function buildResumeCompatibilityCustomSections(profile: MasterProfileData) {
+  const compatibilitySections: ResumeCustomSection[] = [
+    makeCompatibilitySection(
+      profile,
+      "certifications",
+      "Certifications",
+      profile.certificates.map((item) => ({
+        id: item.id,
+        name: item.title,
+        issuer: item.issuer,
+        date: item.date,
+        link: item.website ?? "",
+        referenceId: "",
+        description: item.description,
+        details: [],
+      })),
+    ),
+    makeCompatibilitySection(
+      profile,
+      "awards",
+      "Awards",
+      profile.awards.map((item) => ({
+        id: item.id,
+        name: item.title,
+        issuer: item.awarder,
+        date: item.date,
+        link: item.website ?? "",
+        referenceId: "",
+        description: item.description,
+        details: [],
+      })),
+    ),
+    makeCompatibilitySection(
+      profile,
+      "publications",
+      "Publications",
+      profile.publications.map((item) => ({
+        id: item.id,
+        name: item.title,
+        issuer: item.publisher,
+        date: item.date,
+        link: item.website ?? "",
+        referenceId: "",
+        description: item.description,
+        details: [],
+      })),
+    ),
+    makeCompatibilitySection(
+      profile,
+      "languages",
+      "Languages",
+      profile.languages.map((item) => ({
+        id: item.id,
+        name: item.language,
+        issuer: item.fluency,
+        date: "",
+        link: "",
+        referenceId: "",
+        description: item.fluency,
+        details: [],
+      })),
+    ),
+    makeCompatibilitySection(
+      profile,
+      "interests",
+      "Interests",
+      profile.interests.map((item) => ({
+        id: item.id,
+        name: item.name,
+        issuer: "",
+        date: "",
+        link: "",
+        referenceId: "",
+        description: "",
+        details: item.keywords,
+      })),
+    ),
+    makeCompatibilitySection(
+      profile,
+      "volunteer",
+      "Volunteer",
+      profile.volunteer.map((item) => ({
+        id: item.id,
+        name: item.organization,
+        issuer: item.role,
+        date: [item.startDate, item.current ? "Present" : item.endDate].filter(Boolean).join(" - "),
+        link: "",
+        referenceId: "",
+        description: item.summary,
+        details: item.location ? [item.location] : [],
+      })),
+    ),
+    makeCompatibilitySection(
+      profile,
+      "references",
+      "References",
+      profile.references.map((item) => ({
+        id: item.id,
+        name: item.name,
+        issuer: item.organization,
+        date: "",
+        link: item.email ? `mailto:${item.email}` : "",
+        referenceId: "",
+        description: [item.title, item.relationship].filter(Boolean).join(" / "),
+        details: [item.phone ?? ""].filter(Boolean),
+      })),
+    ),
+    makeCompatibilitySection(
+      profile,
+      "achievements",
+      "Achievements",
+      profile.achievements.map((item) => ({
+        id: item.id,
+        name: item.title,
+        issuer: "",
+        date: "",
+        link: "",
+        referenceId: "",
+        description: item.description,
+        details: [],
+      })),
+    ),
+  ];
+
+  return [
+    ...compatibilitySections,
+    ...profile.customSections.filter((section) => section.kind === "custom"),
+  ];
 }
 
 export function ensureUniqueIds<T extends { id: string }>(items: T[], prefix: string) {

@@ -1,34 +1,58 @@
 import type { Metadata } from "next";
+import type { LucideIcon } from "lucide-react";
+
+import Link from "next/link";
+import { ArrowLeft, FileJson } from "lucide-react";
 
 import MasterProfileClient from "@/features/profile/components/master/MasterProfileClient";
 
 export const metadata: Metadata = {
-  title: `Master Editor`,
-  description: "Guided form experience for your global resume data.",
+  title: "Master Career Data",
+  description: "Guided editor for reusable career data.",
   robots: { index: false, follow: false },
 };
 
+function QuickLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="bg-background/70 hover:border-accent/40 flex items-center gap-3 rounded-xl border border-transparent p-3 text-sm font-bold transition"
+    >
+      <Icon className="text-accent h-4 w-4" />
+      {label}
+    </Link>
+  );
+}
+
 const MasterProfilePage = () => {
   return (
-    <div className="animate-in fade-in mx-auto max-w-7xl space-y-10 px-4 py-10 duration-500 sm:px-6 lg:px-8">
-      <header className="space-y-3 px-1">
-        <div className="text-accent flex items-center gap-2 text-[10px] font-bold tracking-[0.25em] uppercase">
-          <div className="bg-accent h-0.5 w-6 rounded-full" />
-          Data Architecture
+    <main className="space-y-6" aria-labelledby="master-profile-title">
+      <section className="border-border bg-card grid gap-0 overflow-hidden rounded-2xl border lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="p-5 sm:p-6">
+          <p className="text-accent text-xs font-bold tracking-[0.2em] uppercase">
+            Master career data
+          </p>
+
+          <h1
+            id="master-profile-title"
+            className="mt-3 text-3xl font-black tracking-tight sm:text-4xl"
+          >
+            Guided data editor
+          </h1>
+
+          <p className="text-muted mt-2 max-w-2xl text-base">
+            Reusable resume facts live here. User account profile remains separate.
+          </p>
         </div>
 
-        <h1 className="text-foreground text-4xl font-black tracking-tight">
-          Master Profile Editor
-        </h1>
-
-        <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed">
-          The global source of truth for your professional identity. Changes here populate all
-          future resume drafts.
-        </p>
-      </header>
+        <div className="border-border/70 grid gap-3 border-t p-5 lg:border-t-0 lg:border-l">
+          <QuickLink href="/profile" icon={ArrowLeft} label="User profile" />
+          <QuickLink href="/profile/advanced" icon={FileJson} label="Advanced JSON" />
+        </div>
+      </section>
 
       <MasterProfileClient />
-    </div>
+    </main>
   );
 };
 

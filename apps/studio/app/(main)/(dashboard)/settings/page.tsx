@@ -1,88 +1,157 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 
-import type { ApiKeyRecord } from "./components/apiKeys/ApiKeyTypes";
+import Link from "next/link";
+import { ArrowRight, Cloud, KeyRound, Palette, ShieldCheck } from "lucide-react";
 
-import { backendApiUrl } from "@/lib/constants";
-
-import ProfileCTA from "./components/ProfileCTA";
 import SyncSection from "./components/SyncSection";
-import ApiKeySection from "./components/ApiKeySection";
 import AppearanceSection from "./components/AppearanceSection";
 
 export const metadata: Metadata = {
-  title: `Settings`,
+  title: "Settings",
   description: "Manage workspace defaults and behavior.",
   robots: { index: false, follow: false },
 };
 
-async function fetchInitialApiKeys() {
-  try {
-    const response = await fetch(backendApiUrl("/api-keys"), {
-      method: "GET",
-      cache: "no-store",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+const settingsNav = [
+  ["Appearance", "#appearance", Palette],
+  ["Sync", "#sync", Cloud],
+] satisfies Array<[string, string, LucideIcon]>;
 
-    if (!response.ok) {
-      return { keys: [] as ApiKeyRecord[], loaded: false };
-    }
+function SettingsPanel({
+  children,
+  icon: Icon,
+  id,
+  text,
+  title,
+}: {
+  children: ReactNode;
+  icon: LucideIcon;
+  id: string;
+  text: string;
+  title: string;
+}) {
+  return (
+    <section
+      id={id}
+      className="border-border bg-card rounded-2xl border p-5 sm:p-6"
+      aria-labelledby={`${id}-title`}
+    >
+      <div className="mb-5 flex items-start gap-3">
+        <span className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+          <Icon className="h-5 w-5" />
+        </span>
 
-    const payload = (await response.json()) as {
-      data?: ApiKeyRecord[];
-    };
+        <div>
+          <h2 id={`${id}-title`} className="text-lg font-black">
+            {title}
+          </h2>
 
-    return { keys: payload.data ?? [], loaded: true };
-  } catch {
-    return { keys: [] as ApiKeyRecord[], loaded: false };
-  }
+          <p className="text-muted text-sm">{text}</p>
+        </div>
+      </div>
+
+      {children}
+    </section>
+  );
 }
 
-export default async function SettingsPage() {
-  const initialApiKeys = await fetchInitialApiKeys();
-
+const SettingsPage = async () => {
   return (
-    <div className="animate-in fade-in mx-auto max-w-5xl px-6 py-12 duration-500">
-      <header className="mb-12 space-y-2">
-        <div className="text-accent flex items-center gap-2 text-xs font-bold tracking-[0.2em] uppercase">
-          <div className="bg-accent h-1 w-4 rounded-full" />
-          System Preferences
+    <main className="space-y-6" aria-labelledby="settings-title">
+      <section className="border-border bg-card grid gap-0 overflow-hidden rounded-2xl border lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="p-5 sm:p-6">
+          <p className="text-accent text-xs font-bold tracking-[0.2em] uppercase">Settings</p>
+
+          <div className="mt-3">
+            <div>
+              <h1 id="settings-title" className="text-3xl font-black tracking-tight sm:text-4xl">
+                Workspace controls
+              </h1>
+
+              <p className="text-muted mt-2 max-w-2xl text-base">
+                Tune studio behavior without mixing in profile identity or developer tokens.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <h1 className="text-foreground text-4xl font-extrabold tracking-tight">Workspace</h1>
+        <div className="border-border/70 border-t p-5 lg:border-t-0 lg:border-l">
+          <div className="bg-background/70 rounded-xl p-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="text-accent h-4 w-4" />
+              <span className="text-sm font-bold">Private workspace</span>
+            </div>
 
-        <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed">
-          Fine-tune your environment, appearance, and cloud-synchronization behavior.
-        </p>
-      </header>
+            <p className="text-muted mt-2 text-sm leading-6">
+              Account profile lives on Profile. API keys live on their own page.
+            </p>
+          </div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
-        <aside className="lg:col-span-3">
-          <nav className="sticky top-24 hidden space-y-1 lg:block">
-            {["Appearance", "Sync & Cloud", "Profile", "API Keys"].map((item) => (
-              <a
-                key={item}
-                href={item === "API Keys" ? "#api-keys" : "#"}
-                className="text-muted-foreground/60 hover:text-accent hover:bg-accent/5 block rounded-xl p-2.5 text-sm font-semibold transition-all"
+      <div className="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <nav
+            className="border-border bg-card rounded-2xl border p-2"
+            aria-label="Settings sections"
+          >
+            {settingsNav.map(([label, href, Icon]) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-foreground/80 hover:bg-background hover:text-foreground flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition"
               >
-                {item}
-              </a>
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
             ))}
           </nav>
         </aside>
 
-        <main className="space-y-20 lg:col-span-9">
-          <AppearanceSection />
-          <SyncSection />
-          <ApiKeySection
-            initialKeys={initialApiKeys.keys}
-            initialKeysLoaded={initialApiKeys.loaded}
-          />
-          <ProfileCTA />
-        </main>
+        <div className="space-y-5">
+          <SettingsPanel
+            icon={Palette}
+            id="appearance"
+            title="Appearance"
+            text="Theme and visual preferences for the studio."
+          >
+            <AppearanceSection />
+          </SettingsPanel>
+
+          <SettingsPanel
+            id="sync"
+            icon={Cloud}
+            title="Sync"
+            text="Cloud behavior and local-first controls."
+          >
+            <SyncSection />
+          </SettingsPanel>
+
+          <Link
+            href="/api-keys"
+            className="border-border bg-card hover:border-accent/50 group flex items-center justify-between gap-4 rounded-2xl border p-5 transition hover:shadow-sm sm:p-6"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                <KeyRound className="h-5 w-5" />
+              </span>
+
+              <span className="min-w-0">
+                <span className="block text-lg font-black">Developer API keys</span>
+                <span className="text-muted block text-sm">
+                  Create, rotate, and delete integration tokens on a dedicated page.
+                </span>
+              </span>
+            </span>
+
+            <ArrowRight className="text-muted group-hover:text-accent h-5 w-5 shrink-0 transition group-hover:translate-x-1" />
+          </Link>
+        </div>
       </div>
-    </div>
+    </main>
   );
-}
+};
+
+export default SettingsPage;

@@ -1,8 +1,7 @@
 import { Button } from "@veriworkly/ui";
 import { Input } from "@veriworkly/ui";
-import { Select } from "@veriworkly/ui";
 import { TextArea } from "@veriworkly/ui";
-import type { MasterProfileData, ResumeAdditionalItem, ResumeCustomSection } from "@/types/resume";
+import type { MasterProfileData, ResumeAdditionalItem } from "@/types/resume";
 
 import { SectionCard, SectionItemCard } from "./master-shared";
 import {
@@ -602,189 +601,175 @@ export function AdditionalSections({
         description="Other structures that do not fit the standard sections."
       >
         <div className="space-y-4">
-          {localProfile.customSections.map((item) => (
-            <SectionItemCard
-              key={item.id}
-              title={item.title || "Custom section"}
-              onRemove={() => removeRepeatableItem("customSections", item.id)}
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <Input
-                  value={item.title}
-                  onChange={(event) =>
-                    updateRepeatableItem("customSections", item.id, (current) => ({
-                      ...current,
-                      title: event.target.value,
-                    }))
-                  }
-                  placeholder="Title"
-                />
-                <Select
-                  value={item.kind}
-                  onChange={(event) =>
-                    updateRepeatableItem("customSections", item.id, (current) => ({
-                      ...current,
-                      kind: event.target.value as ResumeCustomSection["kind"],
-                    }))
-                  }
-                >
-                  <option value="certifications">Certifications</option>
-                  <option value="awards">Awards</option>
-                  <option value="publications">Publications</option>
-                  <option value="languages">Languages</option>
-                  <option value="interests">Interests</option>
-                  <option value="volunteer">Volunteer</option>
-                  <option value="references">References</option>
-                  <option value="achievements">Achievements</option>
-                  <option value="custom">Custom</option>
-                </Select>
-                <label className="border-border/60 bg-card/40 flex items-center gap-3 rounded-xl border px-3 py-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={item.editableTitle ?? true}
+          {localProfile.customSections
+            .filter((section) => section.kind === "custom")
+            .map((item) => (
+              <SectionItemCard
+                key={item.id}
+                title={item.title || "Custom section"}
+                onRemove={() => removeRepeatableItem("customSections", item.id)}
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Input
+                    value={item.title}
                     onChange={(event) =>
                       updateRepeatableItem("customSections", item.id, (current) => ({
                         ...current,
-                        editableTitle: event.target.checked,
+                        title: event.target.value,
                       }))
                     }
+                    placeholder="Title"
                   />
-                  Editable title
-                </label>
-              </div>
-              <div className="space-y-3">
-                {item.items.map((customItem) => (
-                  <div
-                    key={customItem.id}
-                    className="border-border/60 bg-card/30 space-y-3 rounded-xl border p-4"
-                  >
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Input
-                        value={customItem.name}
-                        onChange={(event) =>
-                          updateRepeatableItem("customSections", item.id, (current) => ({
-                            ...current,
-                            items: updateItem(current.items, customItem.id, (currentItem) => ({
-                              ...currentItem,
-                              name: event.target.value,
-                            })),
-                          }))
-                        }
-                        placeholder="Name"
-                      />
-                      <Input
-                        value={customItem.issuer}
-                        onChange={(event) =>
-                          updateRepeatableItem("customSections", item.id, (current) => ({
-                            ...current,
-                            items: updateItem(current.items, customItem.id, (currentItem) => ({
-                              ...currentItem,
-                              issuer: event.target.value,
-                            })),
-                          }))
-                        }
-                        placeholder="Issuer"
-                      />
-                      <Input
-                        value={customItem.date}
-                        onChange={(event) =>
-                          updateRepeatableItem("customSections", item.id, (current) => ({
-                            ...current,
-                            items: updateItem(current.items, customItem.id, (currentItem) => ({
-                              ...currentItem,
-                              date: event.target.value,
-                            })),
-                          }))
-                        }
-                        placeholder="Date"
-                      />
-                      <Input
-                        value={customItem.link}
-                        onChange={(event) =>
-                          updateRepeatableItem("customSections", item.id, (current) => ({
-                            ...current,
-                            items: updateItem(current.items, customItem.id, (currentItem) => ({
-                              ...currentItem,
-                              link: event.target.value,
-                            })),
-                          }))
-                        }
-                        placeholder="Link"
-                      />
-                      <Input
-                        value={customItem.referenceId}
-                        onChange={(event) =>
-                          updateRepeatableItem("customSections", item.id, (current) => ({
-                            ...current,
-                            items: updateItem(current.items, customItem.id, (currentItem) => ({
-                              ...currentItem,
-                              referenceId: event.target.value,
-                            })),
-                          }))
-                        }
-                        placeholder="Reference ID"
-                      />
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-medium">Description</label>
-                        <TextArea
-                          value={customItem.description}
+                  <div className="border-border/60 bg-muted/20 text-muted flex h-10 items-center rounded-xl border px-3 text-sm">
+                    Custom section
+                  </div>
+                  <label className="border-border/60 bg-card/40 flex items-center gap-3 rounded-xl border px-3 py-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={item.editableTitle ?? true}
+                      onChange={(event) =>
+                        updateRepeatableItem("customSections", item.id, (current) => ({
+                          ...current,
+                          editableTitle: event.target.checked,
+                        }))
+                      }
+                    />
+                    Editable title
+                  </label>
+                </div>
+                <div className="space-y-3">
+                  {item.items.map((customItem) => (
+                    <div
+                      key={customItem.id}
+                      className="border-border/60 bg-card/30 space-y-3 rounded-xl border p-4"
+                    >
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <Input
+                          value={customItem.name}
                           onChange={(event) =>
                             updateRepeatableItem("customSections", item.id, (current) => ({
                               ...current,
                               items: updateItem(current.items, customItem.id, (currentItem) => ({
                                 ...currentItem,
-                                description: event.target.value,
+                                name: event.target.value,
                               })),
                             }))
                           }
-                          rows={3}
+                          placeholder="Name"
                         />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-medium">Details</label>
-                        <TextArea
-                          value={joinLines(customItem.details)}
+                        <Input
+                          value={customItem.issuer}
                           onChange={(event) =>
                             updateRepeatableItem("customSections", item.id, (current) => ({
                               ...current,
                               items: updateItem(current.items, customItem.id, (currentItem) => ({
                                 ...currentItem,
-                                details: splitLines(event.target.value),
+                                issuer: event.target.value,
                               })),
                             }))
                           }
-                          rows={3}
+                          placeholder="Issuer"
                         />
+                        <Input
+                          value={customItem.date}
+                          onChange={(event) =>
+                            updateRepeatableItem("customSections", item.id, (current) => ({
+                              ...current,
+                              items: updateItem(current.items, customItem.id, (currentItem) => ({
+                                ...currentItem,
+                                date: event.target.value,
+                              })),
+                            }))
+                          }
+                          placeholder="Date"
+                        />
+                        <Input
+                          value={customItem.link}
+                          onChange={(event) =>
+                            updateRepeatableItem("customSections", item.id, (current) => ({
+                              ...current,
+                              items: updateItem(current.items, customItem.id, (currentItem) => ({
+                                ...currentItem,
+                                link: event.target.value,
+                              })),
+                            }))
+                          }
+                          placeholder="Link"
+                        />
+                        <Input
+                          value={customItem.referenceId}
+                          onChange={(event) =>
+                            updateRepeatableItem("customSections", item.id, (current) => ({
+                              ...current,
+                              items: updateItem(current.items, customItem.id, (currentItem) => ({
+                                ...currentItem,
+                                referenceId: event.target.value,
+                              })),
+                            }))
+                          }
+                          placeholder="Reference ID"
+                        />
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="text-sm font-medium">Description</label>
+                          <TextArea
+                            value={customItem.description}
+                            onChange={(event) =>
+                              updateRepeatableItem("customSections", item.id, (current) => ({
+                                ...current,
+                                items: updateItem(current.items, customItem.id, (currentItem) => ({
+                                  ...currentItem,
+                                  description: event.target.value,
+                                })),
+                              }))
+                            }
+                            rows={3}
+                          />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="text-sm font-medium">Details</label>
+                          <TextArea
+                            value={joinLines(customItem.details)}
+                            onChange={(event) =>
+                              updateRepeatableItem("customSections", item.id, (current) => ({
+                                ...current,
+                                items: updateItem(current.items, customItem.id, (currentItem) => ({
+                                  ...currentItem,
+                                  details: splitLines(event.target.value),
+                                })),
+                              }))
+                            }
+                            rows={3}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                <Button
-                  onClick={() =>
-                    updateRepeatableItem("customSections", item.id, (current) => ({
-                      ...current,
-                      items: [
-                        ...current.items,
-                        {
-                          id: createId("custom-item"),
-                          name: "",
-                          issuer: "",
-                          date: "",
-                          link: "",
-                          referenceId: "",
-                          description: "",
-                          details: [],
-                        } satisfies ResumeAdditionalItem,
-                      ],
-                    }))
-                  }
-                  variant="secondary"
-                >
-                  Add custom item
-                </Button>
-              </div>
-            </SectionItemCard>
-          ))}
+                  ))}
+                  <Button
+                    onClick={() =>
+                      updateRepeatableItem("customSections", item.id, (current) => ({
+                        ...current,
+                        items: [
+                          ...current.items,
+                          {
+                            id: createId("custom-item"),
+                            name: "",
+                            issuer: "",
+                            date: "",
+                            link: "",
+                            referenceId: "",
+                            description: "",
+                            details: [],
+                          } satisfies ResumeAdditionalItem,
+                        ],
+                      }))
+                    }
+                    variant="secondary"
+                  >
+                    Add custom item
+                  </Button>
+                </div>
+              </SectionItemCard>
+            ))}
           <Button
             onClick={() => addRepeatableItem("customSections", emptyCustomSection())}
             variant="secondary"
