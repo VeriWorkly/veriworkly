@@ -6,8 +6,9 @@ import { siteConfig } from "@/config/site";
 
 import { globalFontVariables } from "@veriworkly/ui";
 
-import { ThemeProvider } from "@/providers/theme-provider";
 import { Toaster } from "@/components/Toaster";
+
+import { ThemeProvider } from "@/providers/theme-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -63,11 +64,11 @@ export const metadata: Metadata = {
   },
 
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
     googleBot: {
-      index: true,
-      follow: true,
+      index: false,
+      follow: false,
       "max-video-preview": -1,
       "max-image-preview": "large",
       "max-snippet": -1,

@@ -23,10 +23,7 @@ export function PreviewClient({ resumeId }: PreviewClientProps) {
   const routeResume = useMemo(() => loadResumeById(resumeId), [resumeId]);
 
   useEffect(() => {
-    if (!routeResume) {
-      return;
-    }
-
+    if (!routeResume) return;
     setResume(routeResume);
   }, [routeResume, setResume]);
 
@@ -35,9 +32,7 @@ export function PreviewClient({ resumeId }: PreviewClientProps) {
     const nextTemplate = loadTemplateComponentById(resume.templateId);
 
     queueMicrotask(() => {
-      if (!cancelled) {
-        setTemplateComponent(() => nextTemplate);
-      }
+      if (!cancelled) setTemplateComponent(() => nextTemplate);
     });
 
     return () => {
@@ -54,7 +49,6 @@ export function PreviewClient({ resumeId }: PreviewClientProps) {
           <p className="text-muted text-[11px] font-semibold tracking-[0.22em] uppercase">
             Resume Preview
           </p>
-
           <p className="text-foreground text-sm font-medium">
             {resume.basics.fullName || "Untitled Resume"}
           </p>
@@ -62,14 +56,13 @@ export function PreviewClient({ resumeId }: PreviewClientProps) {
 
         <div className="flex items-center gap-2">
           <Link
-            href={`/editor/${resumeId}`}
+            href={`/editor/resume/${resumeId}`}
             className="text-foreground hover:bg-card inline-flex h-9 items-center justify-center rounded-full bg-transparent px-3 text-sm font-medium transition"
           >
             Back to editor
           </Link>
-
           <Link
-            href="/"
+            href="/documents"
             className="bg-card text-foreground ring-border hover:bg-background inline-flex h-9 items-center justify-center rounded-full px-3 text-sm font-medium ring-1 transition ring-inset"
           >
             Dashboard
@@ -80,15 +73,13 @@ export function PreviewClient({ resumeId }: PreviewClientProps) {
       {!routeResume ? (
         <Card className="space-y-3 text-center">
           <h1 className="text-foreground text-xl font-semibold">Resume not found</h1>
-
           <p className="text-muted text-sm">
             This resume may have been deleted. Return to dashboard to pick another one.
           </p>
-
           <div>
             <Link
               className="bg-card text-foreground ring-border hover:bg-background inline-flex h-9 items-center justify-center rounded-full px-3 text-sm font-medium ring-1 transition ring-inset"
-              href="/"
+              href="/documents"
             >
               Go to dashboard
             </Link>

@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 
-import DashboardWorkspace from "./dashboard/components/DashboardWorkspace";
+import OverviewHome from "./components/OverviewHome";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Manage your resumes, edit drafts, and export professional documents in seconds.",
+  title: "Overview",
+  description: "Studio overview for recent work and document actions.",
   robots: { index: false, follow: false },
 };
 
 const StudioDashboardHomePage = () => {
-  return <DashboardWorkspace />;
+  return <OverviewHome />;
 };
 
 export default StudioDashboardHomePage;

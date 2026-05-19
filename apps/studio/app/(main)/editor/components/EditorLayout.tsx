@@ -103,7 +103,7 @@ const EditorLayout = ({ resumeId }: EditorLayoutProps) => {
     return () => {
       cancelled = true;
     };
-  }, [hydrateFromStorage, resumeId, setResume]);
+  }, [hydrateFromStorage, resumeId, router, searchParams, setResume]);
 
   useEffect(() => {
     if (!hasHydratedRef.current) {

@@ -40,6 +40,7 @@ const OtpForm = ({
       const { error: authError } = await authClient.signIn.emailOtp({
         email: sentTo,
         otp: otp,
+        name: "Veriworkly User",
       });
 
       if (authError) {

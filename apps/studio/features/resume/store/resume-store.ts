@@ -34,6 +34,7 @@ import {
 } from "@/features/resume/services/local-storage";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
+import { reorderItems, withTimestamp } from "@/features/resume/store/resume-store-utils";
 
 interface ResumeStoreState {
   resume: ResumeData;
@@ -81,30 +82,6 @@ interface ResumeStoreState {
   addProject: () => void;
   removeProject: (index: number) => void;
   reorderProjects: (fromIndex: number, toIndex: number) => void;
-}
-
-function reorderItems<T>(items: T[], fromIndex: number, toIndex: number) {
-  if (
-    fromIndex < 0 ||
-    toIndex < 0 ||
-    fromIndex >= items.length ||
-    toIndex >= items.length ||
-    fromIndex === toIndex
-  ) {
-    return items;
-  }
-
-  const nextItems = [...items];
-  const [moved] = nextItems.splice(fromIndex, 1);
-  nextItems.splice(toIndex, 0, moved);
-  return nextItems;
-}
-
-function withTimestamp(resume: ResumeData) {
-  return {
-    ...resume,
-    updatedAt: new Date().toISOString(),
-  };
 }
 
 export const useResumeStore = create<ResumeStoreState>((set, get) => ({

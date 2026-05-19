@@ -2,13 +2,11 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
-
 import { useResume } from "@/features/resume/hooks/use-resume";
 import { validateBasics } from "@/features/resume/utils/validation";
 
 import DraggableSection from "./DraggableSection";
-import { Field, invalidClass } from "../EditorFormPrimitives";
+import { CheckboxField, TextInputField } from "../EditorFormPrimitives";
 
 const BasicsSection = ({
   isOpen,
@@ -33,90 +31,74 @@ const BasicsSection = ({
       onDragStart={onDragStart}
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <Field error={basicErrors.fullName} label="Full name">
-          <Input
-            className={invalidClass(basicErrors.fullName)}
-            onChange={(event) => updateBasics({ fullName: event.target.value })}
-            value={resume.basics.fullName}
-          />
-        </Field>
+        <TextInputField
+          error={basicErrors.fullName}
+          label="Full name"
+          onValueChange={(fullName) => updateBasics({ fullName })}
+          value={resume.basics.fullName}
+        />
 
-        <Field error={basicErrors.role} label="Role">
-          <Input
-            className={invalidClass(basicErrors.role)}
-            onChange={(event) => updateBasics({ role: event.target.value })}
-            value={resume.basics.role}
-          />
-        </Field>
+        <TextInputField
+          error={basicErrors.role}
+          label="Role"
+          onValueChange={(role) => updateBasics({ role })}
+          value={resume.basics.role}
+        />
 
-        <Field error={basicErrors.headline} label="Headline">
-          <Input
-            className={invalidClass(basicErrors.headline)}
-            onChange={(event) => updateBasics({ headline: event.target.value })}
-            value={resume.basics.headline}
-          />
-        </Field>
+        <TextInputField
+          error={basicErrors.headline}
+          label="Headline"
+          onValueChange={(headline) => updateBasics({ headline })}
+          value={resume.basics.headline}
+        />
 
-        <Field error={basicErrors.email} label="Email">
-          <Input
-            className={invalidClass(basicErrors.email)}
-            onChange={(event) => updateBasics({ email: event.target.value })}
-            type="email"
-            value={resume.basics.email}
-          />
-        </Field>
+        <TextInputField
+          error={basicErrors.email}
+          label="Email"
+          onValueChange={(email) => updateBasics({ email })}
+          type="email"
+          value={resume.basics.email}
+        />
 
-        <Field error={basicErrors.phone} label="Phone">
-          <Input
-            className={invalidClass(basicErrors.phone)}
-            inputMode="numeric"
-            maxLength={10}
-            onChange={(event) =>
-              updateBasics({ phone: event.target.value.replace(/\D/g, "").slice(0, 10) })
-            }
-            pattern="[0-9]*"
-            placeholder="1234567890"
-            value={resume.basics.phone}
-          />
-        </Field>
+        <TextInputField
+          error={basicErrors.phone}
+          inputMode="numeric"
+          label="Phone"
+          maxLength={10}
+          onValueChange={(phone) => updateBasics({ phone: phone.replace(/\D/g, "").slice(0, 10) })}
+          pattern="[0-9]*"
+          placeholder="1234567890"
+          value={resume.basics.phone}
+        />
 
-        <Field error={basicErrors.location} label="Location">
-          <Input
-            className={invalidClass(basicErrors.location)}
-            onChange={(event) => updateBasics({ location: event.target.value })}
-            value={resume.basics.location}
-          />
-        </Field>
+        <TextInputField
+          error={basicErrors.location}
+          label="Location"
+          onValueChange={(location) => updateBasics({ location })}
+          value={resume.basics.location}
+        />
 
-        <label className="text-foreground border-border flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium">
-          <input
-            checked={resume.basics.linkEmail}
-            className="accent-accent h-4 w-4"
-            onChange={(event) => updateBasics({ linkEmail: event.target.checked })}
-            type="checkbox"
-          />
+        <CheckboxField
+          checked={resume.basics.linkEmail}
+          onCheckedChange={(linkEmail) => updateBasics({ linkEmail })}
+        >
           Email opens mail app
-        </label>
+        </CheckboxField>
 
-        <label className="text-foreground border-border flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium">
-          <input
-            checked={resume.basics.linkPhone}
-            className="accent-accent h-4 w-4"
-            onChange={(event) => updateBasics({ linkPhone: event.target.checked })}
-            type="checkbox"
-          />
+        <CheckboxField
+          checked={resume.basics.linkPhone}
+          onCheckedChange={(linkPhone) => updateBasics({ linkPhone })}
+        >
           Phone opens call
-        </label>
+        </CheckboxField>
 
-        <label className="text-foreground border-border flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium md:col-span-2">
-          <input
-            checked={resume.basics.linkLocation}
-            className="accent-accent h-4 w-4"
-            onChange={(event) => updateBasics({ linkLocation: event.target.checked })}
-            type="checkbox"
-          />
+        <CheckboxField
+          checked={resume.basics.linkLocation}
+          className="md:col-span-2"
+          onCheckedChange={(linkLocation) => updateBasics({ linkLocation })}
+        >
           Location opens Google search
-        </label>
+        </CheckboxField>
       </div>
     </DraggableSection>
   );

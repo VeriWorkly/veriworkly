@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import ToolbarHeader from "@/app/(main)/editor/components/toolbar/ToolbarHeader";
 import ToolbarActionsMenu from "@/app/(main)/editor/components/toolbar/ToolbarActionsMenu";
 import ToolbarDownloadMenu from "@/app/(main)/editor/components/toolbar/ToolbarDownloadMenu";
-import ToolbarSecondaryActions from "@/app/(main)/editor/components/toolbar/ToolbarSecondaryActions";
 import { useToolbarDownloads } from "@/app/(main)/editor/components/toolbar/useToolbarDownloads";
+import ToolbarSecondaryActions from "@/app/(main)/editor/components/toolbar/ToolbarSecondaryActions";
 
 import { useResume } from "@/features/resume/hooks/use-resume";
 import { saveResume, importResumeFromFile } from "@/features/resume/services/resume-service";
@@ -67,7 +67,7 @@ const Toolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }: Toolb
 
   return (
     <div className="border-border bg-card/95 flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 shadow-sm backdrop-blur">
-      <ToolbarHeader message={message} onBack={() => router.push("/dashboard")} />
+      <ToolbarHeader message={message} onBack={() => router.push("/")} />
 
       <div className="flex items-center gap-2">
         <ToolbarSecondaryActions

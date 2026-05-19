@@ -148,10 +148,15 @@ function normalizeMonthDate(value: string | undefined) {
 }
 
 export function normalizeResumeData(value: Partial<ResumeData> | null | undefined): ResumeData {
-  const templateAliases: Record<string, ResumeData["templateId"]> = {
-    faang: "compact-ats",
-    ats: "compact-ats",
-    modern: "clean-professional",
+  // Migration map: forwards old/legacy template IDs to the current canonical slugs.
+  // Old IDs are kept here permanently so existing stored resumes are silently upgraded.
+  const templateAliases: Record<string, string> = {
+    // v1 internal names → v2 canonical slugs
+    "clean-professional": "executive-clarity",
+    modern: "executive-clarity",
+    "compact-ats": "precision-ats",
+    faang: "precision-ats",
+    ats: "precision-ats",
   };
   const normalizedTemplateId = value?.templateId
     ? (templateAliases[value.templateId] ?? value.templateId)

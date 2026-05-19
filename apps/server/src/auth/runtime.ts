@@ -35,16 +35,29 @@ export function validateAuthRuntimeConfig(): void {
 export async function ensureAdminUserExists(): Promise<void> {
   const email = config.admin.email;
 
-  await prisma.user.upsert({
+  const existing = await prisma.user.findUnique({
     where: { email },
-    update: {
-      name: "Admin",
-    },
-    create: {
-      email,
-      name: "Admin",
-    },
+    select: { id: true, name: true },
   });
 
-  logger.info("Admin user ensured for auth", { email });
+  if (!existing) {
+    await prisma.user.create({
+      data: {
+        email,
+        name: "Admin",
+      },
+    });
+
+    logger.info("Admin user created for auth", { email });
+    return;
+  }
+
+  if (existing.name !== "Admin") {
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: { name: "Admin" },
+    });
+
+    logger.info("Admin user normalized for auth", { email });
+  }
 }

@@ -4,7 +4,7 @@ const navItems = [
   { href: "/admin", label: "Home" },
   { href: "/admin/roadmap", label: "Roadmap" },
   { href: "/admin/roadmap/new", label: "Create Item" },
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/", label: "Overview" },
 ];
 
 const AdminNavbar = () => {

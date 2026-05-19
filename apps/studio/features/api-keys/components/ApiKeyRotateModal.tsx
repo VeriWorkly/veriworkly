@@ -118,21 +118,18 @@ export default function ApiKeyRotateModal({
 
             {keyRecord ? (
               <p className="text-muted-foreground text-xs font-medium">
-                Rotating{" "}
-                <span className="text-foreground font-mono">
-                  {keyRecord.keyPrefix}...
-                </span>
+                Rotating <span className="text-foreground font-mono">{keyRecord.keyPrefix}...</span>
               </p>
             ) : null}
           </div>
         </div>
 
         {loadingDetails ? (
-           <div className="flex justify-center py-12">
-             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-           </div>
+          <div className="flex justify-center py-12">
+            <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          </div>
         ) : detailError ? (
-           <div className="p-6 text-center text-red-500 text-sm">{detailError}</div>
+          <div className="p-6 text-center text-sm text-red-500">{detailError}</div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5 pt-4">
             <div className="grid gap-4 px-4 sm:grid-cols-1">

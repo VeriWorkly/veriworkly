@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { Input } from "@veriworkly/ui";
+
 import { cn } from "@/lib/utils";
 
 export function Field({
@@ -37,6 +39,59 @@ export function TextArea({
       value={value}
       {...props}
     />
+  );
+}
+
+export function TextInputField({
+  error,
+  label,
+  onValueChange,
+  value,
+  ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> & {
+  error?: string;
+  label: string;
+  onValueChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <Field error={error} label={label}>
+      <Input
+        {...props}
+        className={cn(invalidClass(error), props.className)}
+        onChange={(event) => onValueChange(event.target.value)}
+        value={value}
+      />
+    </Field>
+  );
+}
+
+export function CheckboxField({
+  checked,
+  children,
+  className,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  children: ReactNode;
+  className?: string;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "text-foreground border-border flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium",
+        className,
+      )}
+    >
+      <input
+        checked={checked}
+        className="accent-accent h-4 w-4"
+        onChange={(event) => onCheckedChange(event.target.checked)}
+        type="checkbox"
+      />
+      {children}
+    </label>
   );
 }
 

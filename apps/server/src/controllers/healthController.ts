@@ -7,15 +7,32 @@ import { createErrorResponse, createSuccessResponse } from "#utils/errors";
 
 export class HealthController {
   /**
-   * Comprehensive health check endpoint.
-   * Verifies connectivity to the database and Redis.
+   * Lightweight liveness endpoint.
+   * Does not touch external dependencies, so uptime checks do not wake database compute.
+   */
+
+  static async check(_req: Request, res: Response) {
+    res.json(
+      createSuccessResponse(
+        {
+          status: "ok",
+          timestamp: new Date().toISOString(),
+        },
+        "Server is healthy",
+      ),
+    );
+  }
+
+  /**
+   * Comprehensive readiness endpoint.
+   * Verifies connectivity to the database and Redis for manual/deploy-time checks.
    *
    * @param req Express request
    * @param res Express response
    * @param next Express next function
    */
 
-  static async check(req: Request, res: Response) {
+  static async ready(_req: Request, res: Response) {
     try {
       await prisma.$queryRaw`SELECT 1`;
 

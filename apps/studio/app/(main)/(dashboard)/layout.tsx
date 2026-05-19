@@ -1,22 +1,9 @@
 import type { ReactNode } from "react";
 
-import { Container } from "@veriworkly/ui";
-
-import Footer from "@/components/layout/Footer";
-import Navbar from "@/components/layout/Navbar";
+import StudioShell from "@/components/dashboard/StudioShell";
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
-  return (
-    <div className="flex flex-col">
-      <Navbar />
-
-      <Container as="main" className="min-h-screen flex-1">
-        {children}
-      </Container>
-
-      <Footer />
-    </div>
-  );
+  return <StudioShell>{children}</StudioShell>;
 };
 
 export default DashboardLayout;
