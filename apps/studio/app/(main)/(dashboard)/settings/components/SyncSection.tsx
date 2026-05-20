@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { CloudSync, CheckCircle2, History, LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useUserStore } from "@/store/useUserStore";
 
 import { Switch } from "@veriworkly/ui";
 
@@ -17,6 +18,7 @@ import {
   loadWorkspaceSettingsFromLocalStorage,
 } from "@/features/documents/services/workspace-settings";
 import { setAllResumesSyncEnabled } from "@/features/resume/services/resume-service";
+import { getAutoSyncControlState } from "./sync-section-state";
 
 interface TelemetryState {
   lastAttemptAt: string | null;
@@ -24,6 +26,7 @@ interface TelemetryState {
 }
 
 export default function SyncSection() {
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [loading, setLoading] = useState(false);
   const [autoSync, setAutoSync] = useState(false);
 
@@ -56,6 +59,8 @@ export default function SyncSection() {
   }, []);
 
   const handleToggle = async (checked: boolean) => {
+    if (!isLoggedIn) return;
+
     setAutoSync(checked);
     setAutoSyncEnabledInLocalStorage(checked);
     setAllResumesSyncEnabled(checked);
@@ -67,6 +72,8 @@ export default function SyncSection() {
     }
   };
 
+  const autoSyncControl = getAutoSyncControlState({ autoSync, isLoggedIn, loading });
+
   return (
     <section className="space-y-6">
       <div className="border-border/60 flex items-end justify-between border-b pb-4">
@@ -75,7 +82,7 @@ export default function SyncSection() {
             <CloudSync className="text-accent h-5 w-5" /> Cloud & Data
           </h2>
 
-          <p className="text-muted-foreground text-sm">Manage background synchronization.</p>
+          <p className="text-muted-foreground text-sm">{autoSyncControl.description}</p>
         </div>
 
         <div className="border-border/40 flex items-center gap-3 rounded-full border bg-zinc-500/5 p-2 px-4">
@@ -83,7 +90,11 @@ export default function SyncSection() {
             Auto-Sync
           </span>
 
-          <Switch checked={autoSync} onCheckedChange={handleToggle} disabled={loading} />
+          <Switch
+            checked={autoSyncControl.checked}
+            onCheckedChange={handleToggle}
+            disabled={autoSyncControl.disabled}
+          />
         </div>
       </div>
 
