@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const config = {
-  matcher: ["/admin/:path*", "/profile/:path*", "/login"],
+  matcher: ["/admin/:path*", "/profile/:path*", "/api-keys", "/api-keys/:path*", "/login"],
 };
 
 export default async function proxy(request: NextRequest) {
