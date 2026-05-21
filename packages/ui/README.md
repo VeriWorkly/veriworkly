@@ -88,9 +88,7 @@ import "@veriworkly/ui/styles/globals.css";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={globalFontVariables}>
-      <body className="antialiased">
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
@@ -100,16 +98,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ## 🎨 Theme & Styling System
 
-The library utilizes a dual-theme variable design configured for light and dark modes in `src/styles/themes.css`. 
+The library utilizes a dual-theme variable design configured for light and dark modes in `src/styles/themes.css`.
 
 ### Key Custom Theme Variables:
-* `--background` / `--color-fd-background`: Main application canvas color.
-* `--foreground` / `--color-fd-foreground`: Primary typography and element color.
-* `--card` / `--color-fd-card`: Card and modal background color.
-* `--border` / `--color-fd-border`: Soft divider and border color.
-* `--accent` / `--color-fd-primary`: Main brand color for action elements.
+
+- `--background` / `--color-fd-background`: Main application canvas color.
+- `--foreground` / `--color-fd-foreground`: Primary typography and element color.
+- `--card` / `--color-fd-card`: Card and modal background color.
+- `--border` / `--color-fd-border`: Soft divider and border color.
+- `--accent` / `--color-fd-primary`: Main brand color for action elements.
 
 ### CSS Usage Example:
+
 ```css
 .custom-component {
   background-color: var(--background);

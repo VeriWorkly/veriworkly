@@ -9,20 +9,9 @@ import { CTASection } from "../features/landing/components/CTASection";
 import { FeaturedPost } from "../features/landing/components/FeaturedPost";
 
 const BlogHome = () => {
-  const toBlogMeta = (data: unknown) =>
-    data as {
-      title: string;
-      description: string;
-      author: string;
-      date: string;
-    };
-
   const allPosts = blog
     .getPages()
-    .sort(
-      (a, b) =>
-        new Date(toBlogMeta(b.data).date).getTime() - new Date(toBlogMeta(a.data).date).getTime(),
-    );
+    .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 
   const featuredPost = allPosts[0];
   const remainingPosts = allPosts.slice(1, 4);

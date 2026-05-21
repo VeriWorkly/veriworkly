@@ -26,20 +26,7 @@ export default async function BlogPostPage(props: PageProps) {
 
   if (!page) notFound();
 
-  const data = page.data as unknown as {
-    title: string;
-    description: string;
-    author: string;
-    date: string;
-    info: {
-      path: string;
-      fullPath: string;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    body: ComponentType<{ components: any }>;
-  };
-
-  const MDX = data.body;
+  const MDX = page.data.body;
   const postUrl = `${siteConfig.url}/${params.slug}`;
 
   return (
@@ -56,14 +43,14 @@ export default async function BlogPostPage(props: PageProps) {
               <ArrowLeft className="size-4" /> Back to Blog
             </Link>
 
-            <PostActions title={data.title} url={postUrl} path={data.info.path} />
+            <PostActions title={page.data.title} url={postUrl} path={page.data.info.path} />
           </nav>
 
           <header className="relative mb-12 space-y-6 md:mb-14">
             <div className="flex flex-wrap items-center gap-6 text-sm font-medium text-zinc-400">
               <div className="flex items-center gap-2">
                 <Calendar className="size-4" />
-                {new Date(data.date).toLocaleDateString("en-US", {
+                {new Date(page.data.date).toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
                   year: "numeric",
@@ -80,11 +67,11 @@ export default async function BlogPostPage(props: PageProps) {
             </div>
 
             <h1 className="text-foreground text-4xl leading-[1.1] font-bold tracking-tight sm:text-5xl md:text-6xl">
-              {data.title}
+              {page.data.title}
             </h1>
 
             <p className="text-muted max-w-3xl text-lg leading-relaxed font-medium md:text-xl">
-              {data.description}
+              {page.data.description}
             </p>
 
             <div className="flex items-center gap-4 pt-4">
