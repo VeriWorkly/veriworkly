@@ -45,8 +45,8 @@ All while maintaining **100% open-source transparency** and enabling self-hostin
 <table>
   <tr>
     <td align="center">
-      <img src="apps/studio/public/templates/compact-ats.png" alt="Compact ATS" width="300" />
-      <br /><sub><b>Compact ATS</b></sub>
+      <img src="apps/studio/public/templates/precision-ats.png" alt="Precision ATS" width="300" />
+      <br /><sub><b>Precision ATS</b></sub>
     </td>
     <td align="center">
       <img src="apps/studio/public/templates/executive-clarity.png" alt="Executive Clarity" width="300" />
