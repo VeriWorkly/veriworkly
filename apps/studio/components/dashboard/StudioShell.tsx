@@ -17,11 +17,13 @@ import {
 } from "@/components/dashboard/StudioNavigation";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { AccountMenu } from "@/components/dashboard/AccountMenu";
-import { NewDocumentButton } from "@/components/dashboard/NewDocumentModal";
+import { NewDocumentButton, NewDocumentModal } from "@/components/dashboard/NewDocumentModal";
 import { WorkspaceSearchModal } from "@/components/dashboard/WorkspaceSearchModal";
 
 import { createResume } from "@/features/resume/services/resume-service";
 import { signOutCurrentUser } from "@/features/auth/services/current-user";
+import { createDocument } from "@/features/documents/services/document-workspace-service";
+import type { DocumentType } from "@/features/documents/core/document-types";
 
 import { cn } from "@/lib/utils";
 
@@ -43,13 +45,21 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [newDocumentOpen, setNewDocumentOpen] = useState(false);
 
   const email = user?.email || "No account connected";
   const displayName = user?.name || user?.email?.split("@")[0] || "Local builder";
 
-  const createNewResume = () => {
-    const resume = createResume();
-    router.push(`/editor/resume/${resume.id}`);
+  const createNewDocument = (type: DocumentType) => {
+    if (type === "RESUME") {
+      const resume = createResume();
+      router.push(`/editor/resume/${resume.id}`);
+
+      return;
+    }
+
+    const document = createDocument(type);
+    router.push(`/editor/${type.toLowerCase()}/${document.id}`);
   };
 
   const handleLogout = async () => {
@@ -126,7 +136,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
         </div>
 
         <div className="px-2">
-          <NewDocumentButton collapsed={collapsed} onClick={createNewResume} />
+          <NewDocumentButton collapsed={collapsed} onClick={() => setNewDocumentOpen(true)} />
         </div>
 
         {!collapsed ? (
@@ -187,7 +197,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
           </Link>
 
           <div className="flex items-center gap-2">
-            <NewDocumentButton compact onClick={createNewResume} />
+            <NewDocumentButton compact onClick={() => setNewDocumentOpen(true)} />
 
             <button
               type="button"
@@ -229,6 +239,12 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
           open={searchOpen}
           onClose={() => setSearchOpen(false)}
           onOpenDocument={(id) => router.push(`/editor/resume/${id}`)}
+        />
+
+        <NewDocumentModal
+          open={newDocumentOpen}
+          onCreate={createNewDocument}
+          onClose={() => setNewDocumentOpen(false)}
         />
 
         <div

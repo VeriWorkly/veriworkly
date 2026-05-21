@@ -42,15 +42,32 @@ All while maintaining **100% open-source transparency** and enabling self-hostin
 
 ## Templates
 
+### Resume Templates
+
 <table>
   <tr>
     <td align="center">
-      <img src="apps/studio/public/templates/precision-ats.png" alt="Precision ATS" width="300" />
+      <img src="apps/studio/public/templates/resume/precision-ats.png" alt="Precision ATS" width="300" />
       <br /><sub><b>Precision ATS</b></sub>
     </td>
     <td align="center">
-      <img src="apps/studio/public/templates/executive-clarity.png" alt="Executive Clarity" width="300" />
+      <img src="apps/studio/public/templates/resume/executive-clarity.png" alt="Executive Clarity" width="300" />
       <br /><sub><b>Executive Clarity</b></sub>
+    </td>
+  </tr>
+</table>
+
+### Cover Letter Templates
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="apps/studio/public/templates/cover-letter/professional.png" alt="Professional" width="300" />
+      <br /><sub><b>Professional</b></sub>
+    </td>
+    <td align="center">
+      <img src="apps/studio/public/templates/cover-letter/veriworkly-special.png" alt="Veriworkly Special" width="300" />
+      <br /><sub><b>Veriworkly Special</b></sub>
     </td>
   </tr>
 </table>

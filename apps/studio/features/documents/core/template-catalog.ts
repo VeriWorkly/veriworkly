@@ -1,6 +1,11 @@
 import type { TemplateMeta } from "./types";
 import type { DocumentType } from "./document-types";
 
+import { precisionAtsMeta } from "@/templates/resume/precision-ats/meta";
+import { executiveClarityMeta } from "@/templates/resume/executive-clarity/meta";
+import { veriworklyCoverLetterMeta } from "@/templates/cover-letter/veriworkly/meta";
+import { professionalCoverLetterMeta } from "@/templates/cover-letter/professional/meta";
+
 /**
  * Template catalog per document type.
  *
@@ -12,45 +17,31 @@ import type { DocumentType } from "./document-types";
  */
 
 export const templateCatalogByType: Record<DocumentType, TemplateMeta[]> = {
-  RESUME: [
-    {
-      id: "executive-clarity",
-      label: "Executive Clarity",
-      type: "RESUME",
-      description: "A polished single-column resume with refined spacing and ATS-safe structure.",
-    },
-    {
-      id: "precision-ats",
-      label: "Precision ATS",
-      type: "RESUME",
-      description: "A dense, recruiter-friendly layout that exports as a perfectly matching PDF.",
-    },
-  ],
+  RESUME: [executiveClarityMeta, precisionAtsMeta],
 
-  COVER_LETTER: [
-    {
-      id: "cover-letter-classic",
-      label: "Classic Cover Letter",
-      type: "COVER_LETTER",
-      description: "Traditional business format.",
-    },
-  ],
+  COVER_LETTER: [professionalCoverLetterMeta, veriworklyCoverLetterMeta],
 
   FORMAL_LETTER: [
     {
       id: "formal-letter-modern",
-      label: "Modern Formal Letter",
-      type: "FORMAL_LETTER",
+      name: "Modern Formal Letter",
+      documentType: "FORMAL_LETTER",
       description: "Structured formal correspondence format.",
+      accentColor: "#0ea5e9",
+      previewImage: "",
+      tags: ["Formal", "Letter"],
     },
   ],
 
   INVOICE: [
     {
       id: "invoice-clean",
-      label: "Clean Invoice",
-      type: "INVOICE",
+      name: "Clean Invoice",
+      documentType: "INVOICE",
       description: "Deterministic line-item invoice layout.",
+      accentColor: "#10b981",
+      previewImage: "",
+      tags: ["Invoice", "Clean"],
     },
   ],
 };

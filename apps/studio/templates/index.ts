@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
 
-import type { ResumeTemplateMeta } from "./resume/types";
+import type { TemplateMeta } from "@/features/documents/core/types";
 
 import { precisionAtsMeta } from "./resume/precision-ats/meta";
 import { executiveClarityMeta } from "./resume/executive-clarity/meta";
 
-// Re-export the meta type so consumers can use it without importing from the
-// deeply-nested resume/types path.
-export type { ResumeTemplateMeta };
-
 /** A renderable template record used by the web editor. */
-export interface TemplateDefinition extends ResumeTemplateMeta {
+export interface TemplateDefinition extends TemplateMeta {
   renderWeb: (props: any) => React.ReactNode;
 }
 
@@ -51,4 +47,4 @@ export const getTemplateById = (id: string | undefined): TemplateDefinition | un
   templateRegistry.find((t) => t.id === id);
 
 /** Convenience list of all template metas (no render function). */
-export const resumeTemplateMetas: ResumeTemplateMeta[] = [executiveClarityMeta, precisionAtsMeta];
+export const resumeTemplateMetas: TemplateMeta[] = [executiveClarityMeta, precisionAtsMeta];

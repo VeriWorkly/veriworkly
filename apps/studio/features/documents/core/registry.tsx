@@ -85,7 +85,7 @@ export const documentRegistry: Record<DocumentType, DocumentDefinition> = {
     label: "Cover Letter",
     icon: "Mail",
     defaultTemplateId: COVER_LETTER_TEMPLATE_ID,
-    exportFormats: ["pdf", "docx", "markdown", "txt", "json"],
+    exportFormats: ["pdf", "docx", "html", "markdown", "txt", "json"],
     templates: templateCatalogByType.COVER_LETTER,
     createDefault: createDefaultCoverLetter,
     parse: parseCoverLetterDocument,

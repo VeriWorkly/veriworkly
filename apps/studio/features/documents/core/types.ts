@@ -24,9 +24,12 @@ export interface BaseDocument<TContent = unknown> {
 
 export interface TemplateMeta {
   id: string;
-  label: string;
-  type: DocumentType;
+  name: string;
+  documentType: DocumentType;
   description: string;
+  accentColor: string;
+  previewImage: string;
+  tags: string[];
 }
 
 export interface DocumentMeta {

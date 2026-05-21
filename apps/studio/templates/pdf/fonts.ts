@@ -2,8 +2,8 @@ import { Font } from "@react-pdf/renderer";
 
 import type { ResumeData } from "@/types/resume";
 
-import { FONT_REGISTRY } from "@/features/documents/constants/fonts";
 import { getResumeRenderStyle } from "@/features/documents/rendering/resume-rendering";
+import { FONT_REGISTRY, normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 
 const registeredFonts = new Set<string>();
 let hasRegisteredHyphenation = false;
@@ -23,9 +23,16 @@ function registerLongWordBreaking() {
 export function registerPdfFont(resume: ResumeData) {
   if (typeof window === "undefined") return;
 
+  const fontId = getResumeRenderStyle(resume).fontFamily;
+  registerPdfFontById(fontId);
+}
+
+export function registerPdfFontById(fontFamily: string | null | undefined) {
+  if (typeof window === "undefined") return;
+
   registerLongWordBreaking();
 
-  const fontId = getResumeRenderStyle(resume).fontFamily;
+  const fontId = normalizeFontFamilyId(fontFamily);
   const font = FONT_REGISTRY[fontId];
 
   if (!font || registeredFonts.has(font.id)) return;
