@@ -3,6 +3,7 @@
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 import type { DocumentType } from "@/features/documents/core/document-types";
 import type { BaseDocument, DocumentMeta } from "@/features/documents/core/types";
+import { DOCUMENT_STORAGE_UPDATED_EVENT } from "@/features/documents/services/document-sync";
 
 const VERSION = "v2";
 const ACTIVE_KEY = `veriworkly:docs:${VERSION}:active`;
@@ -35,6 +36,7 @@ function saveCollection(type: DocumentType, items: Record<string, BaseDocument>)
   if (typeof window === "undefined") return;
   localStorage.setItem(collectionKey(type), JSON.stringify({ version: 2, items }));
   window.dispatchEvent(new Event("storage"));
+  window.dispatchEvent(new Event(DOCUMENT_STORAGE_UPDATED_EVENT));
 }
 
 export function listDocuments(type?: DocumentType): DocumentMeta[] {

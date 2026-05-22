@@ -1,8 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FileSearch } from "lucide-react";
 
+import { Button } from "@veriworkly/ui";
 import ToolbarHeader from "@/app/(main)/editor/components/toolbar/ToolbarHeader";
 import ToolbarActionsMenu from "@/app/(main)/editor/components/toolbar/ToolbarActionsMenu";
 import ToolbarDownloadMenu from "@/app/(main)/editor/components/toolbar/ToolbarDownloadMenu";
@@ -70,6 +73,19 @@ const Toolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }: Toolb
       <ToolbarHeader message={message} onBack={() => router.push("/")} />
 
       <div className="flex items-center gap-2">
+        {process.env.NODE_ENV === "development" ? (
+          <Button asChild size="sm" variant="secondary">
+            <Link
+              href={`/pdf-debug/resume/${resume.templateId}?id=${resume.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <FileSearch className="mr-2 h-4 w-4" />
+              PDF Debug
+            </Link>
+          </Button>
+        ) : null}
+
         <ToolbarSecondaryActions
           resumeId={resumeId}
           onMessage={setMessage}

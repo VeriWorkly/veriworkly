@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { isDocumentType } from "@/features/documents/core/document-types";
 
 interface Params {
   type: string;
@@ -22,10 +23,10 @@ export default async function EditorByTypePage({ params }: { params: Promise<Par
   const { type, id } = await params;
   const normalizedType = type.toUpperCase();
 
-  if (normalizedType !== "RESUME") {
+  if (!isDocumentType(normalizedType)) {
     notFound();
   }
 
-  const Editor = getDocumentDefinition("RESUME").Editor;
+  const Editor = getDocumentDefinition(normalizedType).Editor;
   return <Editor documentId={id} />;
 }

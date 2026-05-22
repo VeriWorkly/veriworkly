@@ -1,10 +1,10 @@
 import type {
-  ResumeBasics,
-  ResumeCustomization,
   ResumeData,
+  ResumeBasics,
   ResumeLinkItem,
   ResumeLinkType,
   ResumeSectionId,
+  ResumeCustomization,
 } from "@/types/resume";
 
 import { formatDateRange, safeText } from "@/features/resume/services/resume-formatters";
@@ -39,7 +39,7 @@ export interface RenderContactItem {
 }
 
 export function cleanResumeText(value: string | null | undefined): string {
-  return stripEmoji(safeText(value ?? ""));
+  return stripEmoji(safeText(value ?? "")).replace(/\s+/g, " ");
 }
 
 export function getResumeRenderStyle(resume: ResumeData): ResumeRenderStyle {

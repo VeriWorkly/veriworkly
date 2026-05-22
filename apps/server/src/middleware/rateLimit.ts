@@ -22,6 +22,22 @@ function getClientKey(req: Request): string {
   return ip || "unknown";
 }
 
+function getSanitizedPath(path: string): string {
+  return path
+    .split("/")
+    .map((segment) => {
+      if (
+        /^\d+$/.test(segment) ||
+        /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(segment) ||
+        (segment.length >= 10 && /[a-zA-Z]/.test(segment) && /[0-9]/.test(segment))
+      ) {
+        return ":id";
+      }
+      return segment;
+    })
+    .join("/");
+}
+
 function getRouteLimitConfig(req: Request) {
   const isAuthRoute = req.path.startsWith("/api/v1/auth");
 
@@ -54,7 +70,8 @@ export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunct
   const { windowMs, maxRequests } = getRouteLimitConfig(req);
   const key = getClientKey(req);
 
-  const redisKey = `rate-limit:${req.method}:${req.path}:${key}`;
+  const sanitizedPath = getSanitizedPath(req.path);
+  const redisKey = `rate-limit:${req.method}:${sanitizedPath}:${key}`;
 
   const checkWithFallback = async () => {
     try {

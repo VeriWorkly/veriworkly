@@ -45,7 +45,7 @@ export const ShareHeaderBar = ({ title, expiresAt, actions }: ShareHeaderBarProp
             </div>
 
             <h1 className="text-foreground truncate text-xl font-bold tracking-tight md:text-2xl">
-              {title || "Shared Resume"}
+              {title || "Shared Document"}
             </h1>
           </div>
 

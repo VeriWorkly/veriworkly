@@ -6,10 +6,11 @@ import { Button } from "@veriworkly/ui";
 
 interface ToolbarHeaderProps {
   message: string;
+  title?: string;
   onBack: () => void;
 }
 
-const ToolbarHeader = ({ message, onBack }: ToolbarHeaderProps) => {
+const ToolbarHeader = ({ message, title = "Resume Editor", onBack }: ToolbarHeaderProps) => {
   return (
     <div className="flex items-start gap-2">
       <Button
@@ -23,7 +24,7 @@ const ToolbarHeader = ({ message, onBack }: ToolbarHeaderProps) => {
       </Button>
 
       <div>
-        <p className="text-foreground text-sm font-semibold">Resume Editor</p>
+        <p className="text-foreground text-sm font-semibold">{title}</p>
         <p className="text-muted text-sm">{message}</p>
       </div>
     </div>

@@ -16,19 +16,19 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import type { ResumeListItem } from "@/features/resume/services/resume-service";
 import type { ResumeSyncTelemetry } from "@/features/resume/services/resume-sync";
+import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { cn } from "@/lib/utils";
 
 import { Modal, Button } from "@veriworkly/ui";
 
-import { listResumeShareLinks } from "@/features/resume/services/share-links";
+import { listAllShareLinks } from "@/features/documents/services/share-service";
 
 interface SyncDetailsModalProps {
-  resume: ResumeListItem;
+  document: DocumentLibraryItem;
   telemetry: ResumeSyncTelemetry | null;
-  syncingResumeId: string | null;
+  syncingDocumentId: string | null;
   onClose: () => void;
   onResolveUseLocal: (id: string) => void;
   onResolveUseCloud: (id: string) => void;
@@ -37,9 +37,9 @@ interface SyncDetailsModalProps {
 }
 
 const SyncDetailsModal = ({
-  resume,
+  document,
   telemetry,
-  syncingResumeId,
+  syncingDocumentId,
   onClose,
   onResolveUseLocal,
   onResolveUseCloud,
@@ -48,15 +48,16 @@ const SyncDetailsModal = ({
 }: SyncDetailsModalProps) => {
   const router = useRouter();
 
-  const isSyncing = syncingResumeId === resume.id;
-  const isConflicted = resume.sync.status === "conflicted";
+  const isSyncing = syncingDocumentId === document.id;
+  const isConflicted = document.sync.status === "conflicted";
+  const editorHref = `/editor/${document.type.toLowerCase()}/${document.id}`;
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    void listResumeShareLinks(resume.id)
+    void listAllShareLinks(document.id)
       .then((links) => {
         if (cancelled) return;
         const token = links[0]?.token;
@@ -69,9 +70,9 @@ const SyncDetailsModal = ({
     return () => {
       cancelled = true;
     };
-  }, [resume.id]);
+  }, [document.id]);
 
-  if (!resume) return null;
+  if (!document) return null;
 
   const statusConfig = {
     synced: {
@@ -108,16 +109,16 @@ const SyncDetailsModal = ({
 
     disabled: {
       label: "Local only",
-      description: "Sync is disabled for this resume.",
+      description: "Sync is disabled for this document.",
       color: "text-zinc-500",
       bg: "md:bg-zinc-500/10",
       icon: CloudOff,
     },
   };
 
-  const currentStatus = !resume.sync.enabled
+  const currentStatus = !document.sync.enabled
     ? statusConfig.disabled
-    : statusConfig[resume.sync.status as keyof typeof statusConfig] || statusConfig.disabled;
+    : statusConfig[document.sync.status as keyof typeof statusConfig] || statusConfig.disabled;
 
   const StatusIcon = currentStatus.icon;
 
@@ -176,12 +177,12 @@ const SyncDetailsModal = ({
             </label>
 
             <div className="bg-muted/5 group hover:bg-muted/10 flex items-center justify-between rounded-xl border px-4 py-3 transition-colors">
-              <span className="text-sm font-bold">{resume.title}</span>
+              <span className="text-sm font-bold">{document.title}</span>
 
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => router.push(`/editor/resume/${resume.id}`)}
+                onClick={() => router.push(editorHref)}
                 className="h-8 w-8 rounded-full p-0 opacity-0 transition-all group-hover:opacity-100"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -225,8 +226,8 @@ const SyncDetailsModal = ({
               </p>
 
               <p className="text-xs font-bold">
-                {resume.sync.lastSyncedAt
-                  ? new Date(resume.sync.lastSyncedAt).toLocaleDateString(undefined, {
+                {document.sync.lastSyncedAt
+                  ? new Date(document.sync.lastSyncedAt).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
@@ -285,7 +286,7 @@ const SyncDetailsModal = ({
               <div className="grid gap-3 pt-2">
                 <Button
                   size="md"
-                  onClick={() => onResolveUseLocal(resume.id)}
+                  onClick={() => onResolveUseLocal(document.id)}
                   className="h-11 justify-between bg-white px-4 text-orange-600 shadow-sm ring-1 ring-orange-500/20 hover:bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:hover:bg-orange-950/40"
                 >
                   <div className="flex items-center gap-3">
@@ -298,7 +299,7 @@ const SyncDetailsModal = ({
 
                 <Button
                   size="md"
-                  onClick={() => onResolveUseCloud(resume.id)}
+                  onClick={() => onResolveUseCloud(document.id)}
                   className="h-11 justify-between bg-white px-4 text-orange-600 shadow-sm ring-1 ring-orange-500/20 hover:bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:hover:bg-orange-950/40"
                 >
                   <div className="flex items-center gap-3">
@@ -316,7 +317,7 @@ const SyncDetailsModal = ({
                     className="text-[10px] font-black tracking-widest uppercase"
                     onClick={() => {
                       toast.info("Opening editor for manual merge...");
-                      router.push(`/editor/resume/${resume.id}`);
+                      router.push(editorHref);
                       onClose();
                     }}
                   >
@@ -326,7 +327,7 @@ const SyncDetailsModal = ({
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => onKeepLocalOnly(resume.id)}
+                    onClick={() => onKeepLocalOnly(document.id)}
                     className="text-muted-foreground hover:text-foreground text-[10px] font-black tracking-widest uppercase"
                   >
                     Keep Local Only
@@ -352,7 +353,7 @@ const SyncDetailsModal = ({
           <Button
             size="sm"
             loading={isSyncing}
-            onClick={() => onSyncNow(resume.id)}
+            onClick={() => onSyncNow(document.id)}
             className="font-semibold shadow-md active:scale-95"
           >
             {isConflicted ? "Retry Handshake" : "Sync Now"}

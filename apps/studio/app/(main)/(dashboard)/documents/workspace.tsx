@@ -5,12 +5,13 @@ import { Grid2X2, LayoutList } from "lucide-react";
 import { Card, Select } from "@veriworkly/ui";
 
 import DestructiveModal from "@/components/modals/DestructiveModal";
-import ShareResumeModal from "@/components/modals/ShareResumeModal";
+import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
 import SyncDetailsModal from "@/components/modals/SyncDetailsModal";
 
-import { IconToggle, TabButton } from "./components/ResumeWorkspaceControls";
-import { ResumeWorkspaceEmptyPanel } from "./components/ResumeWorkspaceEmptyPanel";
-import { ResumeListRow, ResumePreviewCard } from "./components/ResumeWorkspaceItems";
+import { DocumentListRow } from "./components/DocumentListRow";
+import { DocumentPreviewCard } from "./components/DocumentPreviewCard";
+import { IconToggle, TabButton } from "./components/DocumentWorkspaceControls";
+import { DocumentWorkspaceEmptyState } from "./components/DocumentWorkspaceEmptyState";
 
 import {
   type SortMode,
@@ -30,19 +31,19 @@ export default function DocumentsWorkspace() {
     handleResolveUseLocal,
     isDeleting,
     deleteTarget,
-    resumeTarget,
+    syncDetailsTarget,
     setSortMode,
     setViewMode,
     setActiveTab,
     setActiveType,
     setDeleteTarget,
-    setShareTargetId,
+    setShareTarget,
     setSyncDetailsTargetId,
     sortMode,
     viewMode,
-    shareTargetId,
+    shareTarget,
     shareTargetTitle,
-    syncingResumeId,
+    syncingDocumentId,
     syncTelemetryById,
     syncTargetTelemetry,
     totalCount,
@@ -52,19 +53,19 @@ export default function DocumentsWorkspace() {
   return (
     <section className="space-y-7" aria-label="VeriWorkly dashboard">
       <header className="flex flex-col gap-3 pt-1">
-        <p className="text-accent text-xs font-bold tracking-[0.2em] uppercase">Resumes</p>
+        <p className="text-accent text-xs font-bold tracking-[0.2em] uppercase">Documents</p>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Resume library</h1>
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Document library</h1>
 
             <p className="text-muted mt-2 max-w-2xl text-base">
-              Saved resumes with sync state, sharing, and quick actions.
+              Saved resumes, cover letters, formal letters, and invoices.
             </p>
           </div>
 
           <div className="text-muted text-sm">
-            {totalCount} saved resume{totalCount === 1 ? "" : "s"}
+            {totalCount} saved document{totalCount === 1 ? "" : "s"}
           </div>
         </div>
       </header>
@@ -92,8 +93,11 @@ export default function DocumentsWorkspace() {
               onChange={(event) => setActiveType(event.target.value as DocumentTypeFilter)}
               className="h-10 w-auto min-w-36 rounded-xl px-3 shadow-none"
             >
-              <option value="ALL">All resumes ({totalCount})</option>
+              <option value="ALL">All documents ({totalCount})</option>
               <option value="RESUME">Resume ({counts.RESUME})</option>
+              <option value="COVER_LETTER">Cover letter ({counts.COVER_LETTER})</option>
+              <option value="FORMAL_LETTER">Formal letter ({counts.FORMAL_LETTER})</option>
+              <option value="INVOICE">Invoice ({counts.INVOICE})</option>
             </Select>
 
             <label className="sr-only" htmlFor="document-sort">
@@ -134,14 +138,14 @@ export default function DocumentsWorkspace() {
           viewMode === "grid" ? (
             <div className="grid grid-cols-1 gap-3 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {visibleDocs.map((doc) => (
-                <ResumePreviewCard
+                <DocumentPreviewCard
                   doc={doc}
                   key={doc.id}
-                  onSyncNow={handleSyncNow}
-                  onShare={setShareTargetId}
-                  onDelete={setDeleteTarget}
-                  syncing={syncingResumeId === doc.id}
-                  onSyncDetails={setSyncDetailsTargetId}
+                  onSyncNowAction={handleSyncNow}
+                  onShareAction={setShareTarget}
+                  onDeleteAction={setDeleteTarget}
+                  syncing={syncingDocumentId === doc.id}
+                  onSyncDetailsAction={setSyncDetailsTargetId}
                   telemetry={syncTelemetryById[doc.id] ?? null}
                 />
               ))}
@@ -149,21 +153,21 @@ export default function DocumentsWorkspace() {
           ) : (
             <div className="divide-border divide-y">
               {visibleDocs.map((doc) => (
-                <ResumeListRow
+                <DocumentListRow
                   doc={doc}
                   key={doc.id}
-                  onSyncNow={handleSyncNow}
-                  onDelete={setDeleteTarget}
-                  onShare={setShareTargetId}
-                  syncing={syncingResumeId === doc.id}
-                  onSyncDetails={setSyncDetailsTargetId}
+                  onSyncNowAction={handleSyncNow}
+                  onDeleteAction={setDeleteTarget}
+                  onShareAction={setShareTarget}
+                  syncing={syncingDocumentId === doc.id}
+                  onSyncDetailsAction={setSyncDetailsTargetId}
                   telemetry={syncTelemetryById[doc.id] ?? null}
                 />
               ))}
             </div>
           )
         ) : (
-          <ResumeWorkspaceEmptyPanel activeTab={activeTab} />
+          <DocumentWorkspaceEmptyState activeTab={activeTab} />
         )}
       </Card>
 
@@ -172,23 +176,24 @@ export default function DocumentsWorkspace() {
         open={Boolean(deleteTarget)}
         onConfirmAction={handleConfirmDelete}
         onCloseAction={() => setDeleteTarget(null)}
-        entityName={deleteTarget?.title ?? "resume"}
+        entityName={deleteTarget?.title ?? "document"}
       />
 
-      {shareTargetId ? (
-        <ShareResumeModal
-          resumeId={shareTargetId}
-          resumeTitle={shareTargetTitle}
-          onClose={() => setShareTargetId(null)}
+      {shareTarget ? (
+        <ShareDocumentModal
+          document={shareTarget}
+          documentId={shareTarget.type === "RESUME" ? shareTarget.id : null}
+          documentTitle={shareTargetTitle}
+          onClose={() => setShareTarget(null)}
         />
       ) : null}
 
-      {resumeTarget ? (
+      {syncDetailsTarget ? (
         <SyncDetailsModal
-          resume={resumeTarget}
+          document={syncDetailsTarget}
           onSyncNow={handleSyncNow}
           telemetry={syncTargetTelemetry}
-          syncingResumeId={syncingResumeId}
+          syncingDocumentId={syncingDocumentId}
           onKeepLocalOnly={handleKeepLocalOnly}
           onResolveUseCloud={handleResolveUseCloud}
           onResolveUseLocal={handleResolveUseLocal}

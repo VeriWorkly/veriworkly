@@ -5,13 +5,20 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 
 import type { TemplateComponent } from "@/types/template";
+import type { ResumeData } from "@/types/resume";
 
 import { Button } from "@veriworkly/ui";
 
 import { loadTemplateComponentById } from "@/templates";
 
-import { type ShareLinkPayload, verifyShareLink } from "@/features/resume/services/public-share";
+import {
+  type ShareLinkPayload,
+  verifyShareLink,
+} from "@/features/documents/services/share-service";
+import type { BaseDocument } from "@/features/documents/core/types";
 import { DocumentFontLoader } from "@/features/documents/components/DocumentFontLoader";
+import type { CoverLetterContent } from "@/features/cover-letter/types";
+import { CoverLetterPreview } from "@/templates/cover-letter/web";
 
 import {
   ResumeCanvas,
@@ -27,19 +34,19 @@ interface TemplateState {
   component: TemplateComponent | null;
 }
 
-const ShareResumeClient = ({
+const ShareDocumentClient = ({
   token,
   initialData,
 }: {
   token: string;
-  initialData: ShareLinkPayload;
+  initialData: ShareLinkPayload<ResumeData | BaseDocument>;
 }) => {
-  const sharePreviewId = `share-resume-preview-${token}`;
+  const sharePreviewId = `share-document-preview-${token}`;
 
   const [dataState, setDataState] = useState<{
     loading: boolean;
     error: string | null;
-    payload: ShareLinkPayload;
+    payload: ShareLinkPayload<ResumeData | BaseDocument>;
   }>({
     loading: false,
     error: null,
@@ -55,13 +62,21 @@ const ShareResumeClient = ({
   const [password, setPassword] = useState("");
   const [verifying, setVerifying] = useState(false);
 
-  const resume = dataState.payload?.snapshot;
+  const snapshot = dataState.payload?.snapshot;
+  const sharedDocument =
+    snapshot &&
+    typeof snapshot === "object" &&
+    "type" in snapshot &&
+    (snapshot as { type?: unknown }).type !== "RESUME"
+      ? (snapshot as BaseDocument)
+      : null;
+  const resume = sharedDocument ? null : (snapshot as ResumeData | undefined);
 
   useEffect(() => {
     if (dataState.payload.passwordRequired) {
       document.title = "Protected Resume | VeriWorkly";
-    } else if (dataState.payload.resumeTitle) {
-      document.title = `${dataState.payload.resumeTitle} | VeriWorkly Shared`;
+    } else if (dataState.payload.documentTitle) {
+      document.title = `${dataState.payload.documentTitle} | VeriWorkly Shared`;
     }
   }, [dataState.payload]);
 
@@ -90,7 +105,7 @@ const ShareResumeClient = ({
     setDataState((prev) => ({ ...prev, error: null }));
 
     try {
-      const payload = await verifyShareLink(token, password);
+      const payload = await verifyShareLink<ResumeData | BaseDocument>(token, password);
       setDataState({ loading: false, error: null, payload });
     } catch (err: unknown) {
       setDataState((prev) => ({
@@ -114,8 +129,41 @@ const ShareResumeClient = ({
     );
   }
 
+  if (!snapshot) {
+    return (
+      <FullScreenMessage title="Empty Content" description="Shared document data is missing." />
+    );
+  }
+
+  if (sharedDocument) {
+    return (
+      <main className="bg-background surface-grid selection:bg-accent/20 relative min-h-screen">
+        <ShareHeaderBar
+          title={dataState.payload.documentTitle}
+          expiresAt={dataState.payload.expiresAt}
+        />
+
+        <section className="mx-auto max-w-5xl px-4 py-8">
+          {sharedDocument.type === "COVER_LETTER" ? (
+            <CoverLetterPreview
+              content={sharedDocument.content as CoverLetterContent}
+              templateId={sharedDocument.templateId}
+            />
+          ) : (
+            <div className="bg-card text-foreground rounded-2xl border p-6 shadow-sm">
+              <h1 className="text-xl font-semibold">{sharedDocument.title}</h1>
+              <pre className="text-muted mt-4 text-sm whitespace-pre-wrap">
+                {JSON.stringify(sharedDocument.content, null, 2)}
+              </pre>
+            </div>
+          )}
+        </section>
+      </main>
+    );
+  }
+
   if (!resume) {
-    return <FullScreenMessage title="Empty Content" description="The resume data is missing." />;
+    return <FullScreenMessage title="Empty Content" description="Resume data is missing." />;
   }
 
   if (templateState.error) {
@@ -147,7 +195,7 @@ const ShareResumeClient = ({
     <main className="bg-background surface-grid selection:bg-accent/20 relative min-h-screen">
       <DocumentFontLoader fontFamily={resume.customization.fontFamily} />
       <ShareHeaderBar
-        title={dataState.payload.resumeTitle}
+        title={dataState.payload.documentTitle}
         expiresAt={dataState.payload.expiresAt}
         actions={<DownloadActions resume={resume} sharePreviewId={sharePreviewId} />}
       />
@@ -161,4 +209,4 @@ const ShareResumeClient = ({
   );
 };
 
-export default ShareResumeClient;
+export default ShareDocumentClient;
