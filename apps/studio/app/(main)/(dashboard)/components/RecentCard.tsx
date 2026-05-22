@@ -7,9 +7,9 @@ import { FileText } from "lucide-react";
 import { Badge } from "@veriworkly/ui";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
-import { type ResumeWorkspaceDoc } from "@/features/documents/services/resume-workspace";
+import { type DocumentLibraryItem } from "@/features/documents/services/document-library";
 
-const RecentCard = ({ doc }: { doc: ResumeWorkspaceDoc }) => {
+const RecentCard = ({ doc }: { doc: DocumentLibraryItem }) => {
   const definition = getDocumentDefinition(doc.type);
 
   return (
@@ -17,9 +17,16 @@ const RecentCard = ({ doc }: { doc: ResumeWorkspaceDoc }) => {
       href={`/editor/${doc.type.toLowerCase()}/${doc.id}`}
       className="border-border bg-background/70 group hover:border-accent/40 hover:bg-card overflow-hidden rounded-xl border transition"
     >
-      <div className="border-border/70 relative h-28 border-b bg-[color-mix(in_oklab,var(--card)_78%,var(--background))]">
+      <div className="border-border/70 relative h-32 border-b bg-[color-mix(in_oklab,var(--card)_78%,var(--background))]">
         {doc.previewImage ? (
-          <Image src={doc.previewImage} alt="" fill className="object-contain p-2" sizes="20vw" />
+          <Image
+            fill
+            alt=""
+            priority
+            sizes="80vw"
+            src={doc.previewImage}
+            className="object-cover object-top p-2"
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <FileText className="text-accent h-8 w-8" />

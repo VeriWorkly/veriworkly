@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PreviewClient } from "./PreviewClient";
+import { isDocumentType } from "@/features/documents/core/document-types";
 
 function isValidRouteId(id: string) {
-  return id.length > 0 && /^[a-z0-9-]+$/i.test(id);
+  return id.length > 0 && /^[a-z0-9_-]+$/i.test(id);
 }
 
 export async function generateMetadata({
@@ -30,7 +31,8 @@ export default async function EditorPreviewPage({
 
   if (!isValidRouteId(id)) notFound();
 
-  if (type.toLowerCase() !== "resume") notFound();
+  const normalizedType = type.toUpperCase();
+  if (!isDocumentType(normalizedType)) notFound();
 
-  return <PreviewClient resumeId={id} />;
+  return <PreviewClient documentId={id} type={normalizedType} />;
 }

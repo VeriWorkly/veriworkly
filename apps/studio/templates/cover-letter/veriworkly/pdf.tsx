@@ -19,13 +19,35 @@ import {
 } from "@/features/documents/rendering/resume-rendering";
 import { PdfSocialIcon } from "@/templates/pdf/SocialIcon";
 
-const styles = StyleSheet.create({
-  page: { padding: 0, fontSize: pt(14.5), lineHeight: 1.55, color: "#111827" },
+const PARAGRAPH_CHUNK_WORDS = 62;
+const PDF_PAGE_WIDTH = pt(794);
+const PDF_PAGE_HEIGHT = pt(1123);
 
-  shell: { flexDirection: "row", minHeight: "100%" },
+type VeriworklyFlowItem =
+  | { id: string; type: "greeting"; text: string }
+  | { id: string; type: "paragraph"; text: string }
+  | { id: string; type: "body-list"; items: string[] }
+  | { id: string; type: "proof-heading" }
+  | { id: string; type: "proof-item"; index: number; isLast: boolean; text: string }
+  | { id: string; type: "signoff"; closing?: string; signature: string }
+  | { id: string; type: "postscript"; text: string };
+
+const styles = StyleSheet.create({
+  page: {
+    width: PDF_PAGE_WIDTH,
+    height: PDF_PAGE_HEIGHT,
+    minHeight: PDF_PAGE_HEIGHT,
+    padding: 0,
+    fontSize: pt(14.5),
+    lineHeight: 1.55,
+    color: "#111827",
+  },
+
+  shell: { flexDirection: "row", height: PDF_PAGE_HEIGHT, minHeight: PDF_PAGE_HEIGHT },
 
   sidebar: {
     width: pt(214),
+    height: PDF_PAGE_HEIGHT,
     paddingHorizontal: pt(24),
     paddingVertical: pt(36),
     backgroundColor: "#111827",
@@ -34,7 +56,7 @@ const styles = StyleSheet.create({
     borderRightColor: "#e2e8f0",
   },
 
-  main: { flex: 1, padding: pt(44), backgroundColor: "#ffffff" },
+  main: { flex: 1, height: PDF_PAGE_HEIGHT, padding: pt(44), backgroundColor: "#ffffff" },
 
   railLabel: {
     fontSize: pt(10),
@@ -187,6 +209,112 @@ const styles = StyleSheet.create({
   },
 });
 
+function splitTextIntoChunks(text: string, wordsPerChunk = PARAGRAPH_CHUNK_WORDS) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length <= wordsPerChunk) return [text];
+
+  const chunks: string[] = [];
+
+  for (let index = 0; index < words.length; index += wordsPerChunk) {
+    chunks.push(words.slice(index, index + wordsPerChunk).join(" "));
+  }
+
+  return chunks;
+}
+
+function buildVeriworklyPdfFlowItems(content: CoverLetterContent, senderName: string) {
+  const items: VeriworklyFlowItem[] = [];
+
+  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
+
+  const bodyBlocks = [
+    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
+    ...splitRichTextBlocks(content.body),
+  ];
+
+  bodyBlocks.forEach((block, blockIndex) => {
+    if (block.type === "paragraph") {
+      splitTextIntoChunks(block.text).forEach((text, chunkIndex) => {
+        items.push({ id: `body-${blockIndex}-${chunkIndex}`, type: "paragraph", text });
+      });
+      return;
+    }
+
+    items.push({ id: `body-list-${blockIndex}`, type: "body-list", items: block.items });
+  });
+
+  const highlights = splitMarkdownLines(content.highlights);
+
+  if (highlights.length > 0) {
+    items.push({ id: "proof-heading", type: "proof-heading" });
+    highlights.forEach((text, index) => {
+      items.push({
+        id: `proof-${index}`,
+        type: "proof-item",
+        index,
+        isLast: index === highlights.length - 1,
+        text,
+      });
+    });
+  }
+
+  items.push({
+    id: "signoff",
+    type: "signoff",
+    closing: content.closing || undefined,
+    signature: content.signature || senderName,
+  });
+
+  if (content.postscript) {
+    splitTextIntoChunks(content.postscript, 50).forEach((text, index) => {
+      items.push({ id: `postscript-${index}`, type: "postscript", text });
+    });
+  }
+
+  return items;
+}
+
+function getVeriworklyPdfItemWeight(item: VeriworklyFlowItem) {
+  if (item.type === "body-list") {
+    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 70), 0);
+  }
+
+  if (item.type === "proof-heading") return 2;
+  if (item.type === "proof-item") return Math.max(1, Math.ceil(item.text.length / 70));
+  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 100);
+  if (item.type === "signoff") return item.closing ? 2 : 1;
+  if (item.type === "greeting") return 1;
+
+  return Math.max(1, Math.ceil(item.text.length / 82));
+}
+
+function paginateVeriworklyPdfItems(items: VeriworklyFlowItem[]) {
+  const pages: VeriworklyFlowItem[][] = [[]];
+  let pageIndex = 0;
+  let used = 0;
+
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+    const item = items[itemIndex];
+    const limit = pageIndex === 0 ? 24 : 24;
+    const weight = getVeriworklyPdfItemWeight(item);
+    const nextItem = items[itemIndex + 1];
+    const keepWithNextWeight =
+      item.type === "proof-heading" && nextItem ? getVeriworklyPdfItemWeight(nextItem) : 0;
+
+    if (pages[pageIndex].length > 0 && used + weight + keepWithNextWeight > limit) {
+      pages.push([]);
+      pageIndex += 1;
+      used = 0;
+    }
+
+    pages[pageIndex].push(item);
+    used += weight;
+  }
+
+  return pages.filter((page) => page.length > 0);
+}
+
 export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterContent }) {
   const appearance = content.appearance;
   const font = FONT_REGISTRY[normalizeFontFamilyId(appearance.fontFamily)];
@@ -218,157 +346,200 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
     content.companyName,
     content.companyLocation,
   ].filter(Boolean);
-  const bodyBlocks = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
-  ];
-  const highlights = splitMarkdownLines(content.highlights);
+  const flowItems = buildVeriworklyPdfFlowItems(content, senderName);
+  const pages = paginateVeriworklyPdfItems(flowItems);
+
+  function renderSidebar() {
+    return (
+      <View style={[styles.sidebar, { backgroundColor: appearance.sidebarColor }]}>
+        <Text style={[styles.railLabel, { color: appearance.accentColor }]}>Candidate</Text>
+
+        <Text style={styles.name}>{senderName}</Text>
+
+        {content.senderTitle ? <Text style={styles.title}>{content.senderTitle}</Text> : null}
+
+        <View style={[styles.rule, { backgroundColor: appearance.accentColor }]} />
+
+        <View style={styles.railBlock}>
+          {contact.map((item) => (
+            <Text key={item} style={styles.railText}>
+              {item}
+            </Text>
+          ))}
+
+          {links.length > 0 && (
+            <View
+              style={[styles.contactLinkDivider, { backgroundColor: appearance.accentColor }]}
+            />
+          )}
+
+          {links.map((link) => (
+            <View key={link.id} style={styles.railLinkRow}>
+              {linkDisplayMode !== "url" ? (
+                <Link src={normalizeLinkHref(link.url)} style={styles.railLinkIcon}>
+                  <PdfSocialIcon size={pt(14)} type={link.type} color="#000" />
+                </Link>
+              ) : null}
+
+              {linkDisplayMode !== "icon" ? (
+                <Link
+                  src={normalizeLinkHref(link.url)}
+                  style={[styles.railLinkText, { color: appearance.accentColor }]}
+                >
+                  {getLinkDisplayText(link, linkDisplayMode)}
+                </Link>
+              ) : null}
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.targetBlock}>
+          <Text style={[styles.targetLabel, { color: appearance.accentColor }]}>Target</Text>
+
+          <Text style={styles.targetJobTitle}>
+            {content.jobTitle || content.subject || "Open role"}
+          </Text>
+
+          {content.companyName ? <Text style={styles.railText}>{content.companyName}</Text> : null}
+        </View>
+      </View>
+    );
+  }
+
+  function renderFlowItem(item: VeriworklyFlowItem) {
+    if (item.type === "greeting") {
+      return (
+        <Text key={item.id} style={[styles.greeting, paragraphStyle]} wrap={false}>
+          {item.text}
+        </Text>
+      );
+    }
+
+    if (item.type === "paragraph") {
+      return (
+        <Text key={item.id} style={[styles.paragraph, paragraphStyle]} wrap={false}>
+          {item.text}
+        </Text>
+      );
+    }
+
+    if (item.type === "body-list") {
+      return (
+        <View key={item.id} style={[styles.bullets, listStyle]} wrap={false}>
+          {item.items.map((listItem) => (
+            <View key={listItem} style={styles.bulletRow}>
+              <Text style={styles.bulletDot}>-</Text>
+              <Text style={styles.bulletText}>{listItem}</Text>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (item.type === "proof-heading") {
+      return (
+        <View key={item.id} wrap={false}>
+          <Text style={styles.proofLabel}>Selected Proof</Text>
+        </View>
+      );
+    }
+
+    if (item.type === "proof-item") {
+      return (
+        <View
+          key={item.id}
+          style={[
+            styles.proofItem,
+            item.index === 0 ? { marginTop: pt(8) } : {},
+            item.isLast ? { borderBottomWidth: 0 } : {},
+          ]}
+          wrap={false}
+        >
+          <Text style={[styles.proofIndex, { color: appearance.accentColor }]}>
+            {String(item.index + 1).padStart(2, "0")}
+          </Text>
+
+          <Text style={styles.proofText}>{item.text}</Text>
+        </View>
+      );
+    }
+
+    if (item.type === "signoff") {
+      return (
+        <View key={item.id} style={styles.closingSection} wrap={false}>
+          {item.closing ? <Text style={styles.closing}>{item.closing}</Text> : null}
+          <Text style={styles.signature}>{item.signature}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <Text key={item.id} style={styles.postscript} wrap={false}>
+        P.S. {item.text}
+      </Text>
+    );
+  }
 
   return (
     <Document>
-      <Page
-        size="A4"
-        style={[
-          styles.page,
-          {
-            backgroundColor: appearance.pageColor,
-            color: appearance.textColor,
-            fontFamily: font.primaryFamily,
-          },
-        ]}
-      >
-        <View style={styles.shell}>
-          <View style={[styles.sidebar, { backgroundColor: appearance.sidebarColor }]}>
-            <Text style={[styles.railLabel, { color: appearance.accentColor }]}>Candidate</Text>
+      {pages.map((pageItems, pageIndex) => (
+        <Page
+          key={pageIndex}
+          size={[PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT]}
+          wrap={false}
+          style={[
+            styles.page,
+            {
+              backgroundColor: appearance.pageColor,
+              color: appearance.textColor,
+              fontFamily: font.primaryFamily,
+            },
+          ]}
+        >
+          <View style={styles.shell}>
+            {renderSidebar()}
 
-            <Text style={styles.name}>{senderName}</Text>
+            <View style={[styles.main, { padding: appearance.pageMargin * PX_TO_PT }]}>
+              {pageIndex === 0 ? (
+                <>
+                  <View style={styles.meta}>
+                    <View style={styles.metaLeft}>
+                      {recipient.map((line) => (
+                        <Text key={line}>{line}</Text>
+                      ))}
+                    </View>
 
-            {content.senderTitle ? <Text style={styles.title}>{content.senderTitle}</Text> : null}
-
-            <View style={[styles.rule, { backgroundColor: appearance.accentColor }]} />
-
-            <View style={styles.railBlock}>
-              {contact.map((item) => (
-                <Text key={item} style={styles.railText}>
-                  {item}
-                </Text>
-              ))}
-
-              {links.length > 0 && (
-                <View
-                  style={[styles.contactLinkDivider, { backgroundColor: appearance.accentColor }]}
-                />
-              )}
-
-              {links.map((link) => (
-                <View key={link.id} style={styles.railLinkRow}>
-                  {linkDisplayMode !== "url" ? (
-                    <Link src={normalizeLinkHref(link.url)} style={styles.railLinkIcon}>
-                      <PdfSocialIcon size={pt(14)} type={link.type} color="#000" />
-                    </Link>
-                  ) : null}
-
-                  {linkDisplayMode !== "icon" ? (
-                    <Link
-                      src={normalizeLinkHref(link.url)}
-                      style={[styles.railLinkText, { color: appearance.accentColor }]}
-                    >
-                      {getLinkDisplayText(link, linkDisplayMode)}
-                    </Link>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.targetBlock}>
-              <Text style={[styles.targetLabel, { color: appearance.accentColor }]}>Target</Text>
-
-              <Text style={styles.targetJobTitle}>
-                {content.jobTitle || content.subject || "Open role"}
-              </Text>
-
-              {content.companyName ? (
-                <Text style={styles.railText}>{content.companyName}</Text>
-              ) : null}
-            </View>
-          </View>
-
-          <View style={[styles.main, { padding: appearance.pageMargin * PX_TO_PT }]}>
-            <View style={styles.meta}>
-              <View style={styles.metaLeft}>
-                {recipient.map((line) => (
-                  <Text key={line}>{line}</Text>
-                ))}
-              </View>
-
-              {content.date ? <Text style={styles.metaDate}>{content.date}</Text> : null}
-            </View>
-
-            <View style={[styles.subject, { borderLeftColor: appearance.accentColor }]}>
-              <Text style={[styles.label, { color: appearance.accentColor }]}>Cover Letter</Text>
-
-              <Text style={styles.subjectText}>
-                {content.subject || content.jobTitle || "Application"}
-              </Text>
-            </View>
-
-            <View style={[styles.body, { fontSize: bodyFontSize, lineHeight: bodyLineHeight }]}>
-              {content.greeting ? (
-                <Text style={[styles.greeting, paragraphStyle]}>{content.greeting}</Text>
-              ) : null}
-
-              {bodyBlocks.map((block, index) =>
-                block.type === "list" ? (
-                  <View key={`list-${index}`} style={[styles.bullets, listStyle]}>
-                    {block.items.map((item) => (
-                      <View key={item} style={styles.bulletRow}>
-                        <Text style={styles.bulletDot}>-</Text>
-                        <Text style={styles.bulletText}>{item}</Text>
-                      </View>
-                    ))}
+                    {content.date ? <Text style={styles.metaDate}>{content.date}</Text> : null}
                   </View>
-                ) : (
-                  <Text key={`paragraph-${index}`} style={[styles.paragraph, paragraphStyle]}>
-                    {block.text}
-                  </Text>
-                ),
-              )}
-            </View>
 
-            {highlights.length > 0 ? (
-              <View>
-                <Text style={styles.proofLabel}>Selected Proof</Text>
-
-                {highlights.map((highlight, index) => (
-                  <View
-                    key={highlight}
-                    style={[
-                      styles.proofItem,
-                      ...(index === highlights.length - 1 ? [{ borderBottomWidth: 0 }] : []),
-                    ]}
-                  >
-                    <Text style={[styles.proofIndex, { color: appearance.accentColor }]}>
-                      {String(index + 1).padStart(2, "0")}
+                  <View style={[styles.subject, { borderLeftColor: appearance.accentColor }]}>
+                    <Text style={[styles.label, { color: appearance.accentColor }]}>
+                      Cover Letter
                     </Text>
 
-                    <Text style={styles.proofText}>{highlight}</Text>
+                    <Text style={styles.subjectText}>
+                      {content.subject || content.jobTitle || "Application"}
+                    </Text>
                   </View>
-                ))}
+                </>
+              ) : null}
+
+              <View
+                style={[
+                  styles.body,
+                  {
+                    fontSize: bodyFontSize,
+                    lineHeight: bodyLineHeight,
+                    marginTop: pageIndex === 0 ? 0 : pt(32),
+                  },
+                ]}
+              >
+                {pageItems.map((item) => renderFlowItem(item))}
               </View>
-            ) : null}
-
-            <View style={styles.closingSection}>
-              {content.closing ? <Text style={styles.closing}>{content.closing}</Text> : null}
-
-              <Text style={styles.signature}>{content.signature || senderName}</Text>
             </View>
-
-            {content.postscript ? (
-              <Text style={styles.postscript}>P.S. {content.postscript}</Text>
-            ) : null}
           </View>
-        </View>
-      </Page>
+        </Page>
+      ))}
     </Document>
   );
 }

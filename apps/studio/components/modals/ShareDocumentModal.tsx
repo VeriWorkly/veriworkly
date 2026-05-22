@@ -8,20 +8,25 @@ import { cn } from "@/lib/utils";
 
 import { Badge, Modal, Input, Button, Checkbox } from "@veriworkly/ui";
 
+import type { BaseDocument } from "@/features/documents/core/types";
+import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
+
 import {
-  type ShareLinkItem as ResumeShareLinkItem,
-  listResumeShareLinks,
-  createResumeShareLink,
-  revokeResumeShareLink,
-} from "@/features/resume/services/share-links";
+  type ShareLinkItem,
+  createShareLink,
+  revokeShareLink,
+  listAllShareLinks,
+} from "@/features/documents/services/share-service";
 import { loadResumeById } from "@/features/resume/services/resume-service";
 import { trackUsageEvent } from "@/features/analytics/services/usage-metrics";
+import { loadDocumentById } from "@/features/documents/services/document-workspace-service";
 
 import { ApiRequestError } from "@/utils/fetchApiData";
 
-interface ShareResumeModalProps {
-  resumeId: string | null;
-  resumeTitle?: string;
+interface ShareDocumentModalProps {
+  documentId: string | null;
+  documentTitle?: string;
+  document?: DocumentLibraryItem | null;
   onClose: () => void;
 }
 
@@ -69,7 +74,7 @@ const ActiveLinkRow = ({
             <Eye className="h-3 w-3 opacity-60" /> {link.viewCount} views
           </span>
 
-          <span className="opacity-30">•</span>
+          <span className="opacity-30">/</span>
 
           <span
             className={cn(
@@ -116,7 +121,24 @@ const ActiveLinkRow = ({
   );
 };
 
-const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
+function getShareSnapshot(
+  document: DocumentLibraryItem | null | undefined,
+  documentId: string | null,
+) {
+  if (document?.type && document.type !== "RESUME") {
+    return loadDocumentById(document.type, document.id) as BaseDocument | null;
+  }
+
+  const id = document?.id ?? documentId;
+  return id ? loadResumeById(id) : null;
+}
+
+const ShareDocumentModal = ({
+  documentId: fallbackDocumentId,
+  documentTitle: fallbackDocumentTitle,
+  document,
+  onClose,
+}: ShareDocumentModalProps) => {
   const [busy, setBusy] = useState(false);
   const [expiry, setExpiry] = useState("");
   const [password, setPassword] = useState("");
@@ -124,14 +146,24 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
 
   const [linksLoading, setLinksLoading] = useState(false);
 
-  const [shareLinks, setShareLinks] = useState<ResumeShareLinkItem[]>([]);
+  const [shareLinks, setShareLinks] = useState<ShareLinkItem[]>([]);
   const [revokingLinkId, setRevokingLinkId] = useState<string | null>(null);
+  const documentId = document?.id ?? fallbackDocumentId;
+  const documentLabel =
+    document?.type === "COVER_LETTER"
+      ? "Cover Letter"
+      : document?.type === "FORMAL_LETTER"
+        ? "Formal Letter"
+        : document?.type === "INVOICE"
+          ? "Invoice"
+          : "Resume";
+  const documentTitle = document?.title ?? fallbackDocumentTitle ?? "Untitled Document";
 
   const refreshShareLinks = useCallback(async (id: string) => {
     setLinksLoading(true);
 
     try {
-      const links = await listResumeShareLinks(id);
+      const links = await listAllShareLinks(id);
 
       setShareLinks(links);
 
@@ -146,24 +178,24 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
   }, []);
 
   useEffect(() => {
-    if (resumeId) {
-      void Promise.resolve().then(() => refreshShareLinks(resumeId));
+    if (documentId) {
+      void Promise.resolve().then(() => refreshShareLinks(documentId));
     }
-  }, [resumeId, refreshShareLinks]);
+  }, [documentId, refreshShareLinks]);
 
   const handleCreate = async () => {
-    if (!resumeId || busy) return;
+    if (!documentId || busy) return;
 
-    const fullResume = loadResumeById(resumeId);
+    const snapshot = getShareSnapshot(document, fallbackDocumentId);
 
-    if (!fullResume) {
-      toast.error("Resume not found. Refresh and try again.");
+    if (!snapshot) {
+      toast.error("Document not found. Refresh and try again.");
       return;
     }
 
     setBusy(true);
 
-    const promise = createResumeShareLink(fullResume, {
+    const promise = createShareLink(snapshot.id, snapshot, {
       password: password.trim() || undefined,
       expiresAt: noExpiry ? null : expiry ? new Date(expiry).toISOString() : null,
       noExpiry,
@@ -177,7 +209,7 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
         void navigator.clipboard.writeText(nextShareUrl);
 
         trackUsageEvent({ event: "share_link_created" });
-        void refreshShareLinks(resumeId);
+        void refreshShareLinks(documentId);
 
         setPassword("");
         setExpiry("");
@@ -187,9 +219,10 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
 
       error: (err) => {
         if (err instanceof ApiRequestError && err.status === 409) {
-          void refreshShareLinks(resumeId);
-          return "A share link already exists for this resume.";
+          void refreshShareLinks(documentId);
+          return "A share link already exists for this document.";
         }
+
         return err instanceof Error ? err.message : "Unable to create share link.";
       },
 
@@ -198,12 +231,12 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
   };
 
   const handleRevoke = async (linkId: string) => {
-    if (!resumeId || revokingLinkId) return;
+    if (!documentId || revokingLinkId) return;
 
     setRevokingLinkId(linkId);
 
     try {
-      await revokeResumeShareLink(resumeId, linkId);
+      await revokeShareLink(documentId, linkId);
 
       setShareLinks((prev) => prev.filter((item) => item.id !== linkId));
 
@@ -222,9 +255,19 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
     }
   };
 
-  const activeLinks = useMemo(() => shareLinks, [shareLinks]);
+  const activeLinks = useMemo<LinkItem[]>(
+    () =>
+      shareLinks.map((link) => ({
+        id: link.id,
+        token: link.token,
+        expiresAt: link.expiresAt,
+        viewCount: link.viewCount,
+        passwordRequired: Boolean(link.passwordHash),
+      })),
+    [shareLinks],
+  );
 
-  if (!resumeId) return null;
+  if (!documentId) return null;
 
   return (
     <Modal open={true} onClose={handleClose}>
@@ -235,9 +278,9 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
           </div>
 
           <div>
-            <Modal.Title className="text-lg font-bold">Share Resume</Modal.Title>
+            <Modal.Title className="text-lg font-bold">Share {documentLabel}</Modal.Title>
 
-            <p className="text-muted-foreground text-xs">Create public links for your resume</p>
+            <p className="text-muted-foreground text-xs">Create public links for {documentTitle}</p>
           </div>
         </div>
 
@@ -320,7 +363,7 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
 
                   <p className="text-xs font-medium">No active share links found</p>
 
-                  <p className="mt-1 text-[10px] opacity-60">Create one to share your resume</p>
+                  <p className="mt-1 text-[10px] opacity-60">Create one to share this document</p>
                 </div>
               ) : (
                 activeLinks.map((link) => (
@@ -352,4 +395,4 @@ const ShareResumeModal = ({ resumeId, onClose }: ShareResumeModalProps) => {
   );
 };
 
-export default ShareResumeModal;
+export default ShareDocumentModal;

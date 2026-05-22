@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
 
   bulletRow: { flexDirection: "row", marginBottom: pt(8) },
 
-  bulletDot: { width: pt(22), paddingTop: pt(3) },
+  bulletDot: { width: pt(24), paddingTop: pt(6) },
 
   bulletText: { flex: 1 },
 

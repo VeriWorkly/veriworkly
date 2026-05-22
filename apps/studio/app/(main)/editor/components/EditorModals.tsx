@@ -10,7 +10,7 @@ import { trackUsageEvent } from "@/features/analytics/services/usage-metrics";
 import { deleteResume, createResume } from "@/features/resume/services/resume-service";
 
 import DestructiveModal from "@/components/modals/DestructiveModal";
-import ShareResumeModal from "@/components/modals/ShareResumeModal";
+import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
 
 interface EditorModalsProps {
   shareModalOpen: boolean;
@@ -62,9 +62,9 @@ const EditorModals = ({
   return (
     <>
       {shareModalOpen && (
-        <ShareResumeModal
-          resumeId={resume.id}
-          resumeTitle={resume.basics.fullName || "Untitled Resume"}
+        <ShareDocumentModal
+          documentId={resume.id}
+          documentTitle={resume.basics.fullName || "Untitled Resume"}
           onClose={onShareModalClose}
         />
       )}

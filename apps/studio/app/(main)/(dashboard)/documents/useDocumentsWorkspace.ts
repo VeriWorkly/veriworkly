@@ -4,27 +4,29 @@ import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import {
-  syncResumeNow,
-  keepResumeLocalOnly,
-  getResumeSyncTelemetry,
-  resolveConflictUseCloud,
-  resolveConflictUseLocal,
-  getResumeSyncTelemetryByIds,
-} from "@/features/resume/services/resume-sync";
+  syncDocumentNow,
+  keepDocumentLocalOnly,
+  getDocumentSyncTelemetry,
+  resolveDocumentConflictUseCloud,
+  resolveDocumentConflictUseLocal,
+  getDocumentSyncTelemetryByDocs,
+} from "@/features/documents/services/document-sync";
 import {
-  type ResumeWorkspaceDoc,
-  getResumeWorkspaceSnapshot,
-  subscribeToResumeWorkspace,
-  RESUME_WORKSPACE_SERVER_SNAPSHOT,
-} from "@/features/documents/services/resume-workspace";
+  type DocumentLibraryItem,
+  getDocumentLibrarySnapshot,
+  subscribeToDocumentLibrary,
+  DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
+} from "@/features/documents/services/document-library";
 import { DocumentApi } from "@/features/documents/services/document-api";
+import { deleteDocument } from "@/features/documents/services/document-workspace-service";
 import { deleteResumeById } from "@/features/resume/services/resume-service";
-import { listResumeShareLinks } from "@/features/resume/services/share-links";
+import { listAllShareLinks } from "@/features/documents/services/share-service";
+import type { DocumentType } from "@/features/documents/core/document-types";
 
 export type ViewMode = "grid" | "list";
 export type SortMode = "updated" | "title";
 export type ActiveTab = "recent" | "shared";
-export type DocumentTypeFilter = ResumeWorkspaceDoc["type"] | "ALL";
+export type DocumentTypeFilter = DocumentType | "ALL";
 
 export function useDocumentsWorkspace() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -33,24 +35,24 @@ export function useDocumentsWorkspace() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("recent");
   const [activeType, setActiveType] = useState<DocumentTypeFilter>("ALL");
 
-  const [shareTargetId, setShareTargetId] = useState<string | null>(null);
-  const [sharedResumeIds, setSharedResumeIds] = useState<Set<string>>(new Set());
+  const [shareTarget, setShareTarget] = useState<DocumentLibraryItem | null>(null);
+  const [sharedDocumentIds, setSharedDocumentIds] = useState<Set<string>>(new Set());
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const [syncingResumeId, setSyncingResumeId] = useState<string | null>(null);
+  const [syncingDocumentId, setSyncingDocumentId] = useState<string | null>(null);
   const [syncDetailsTargetId, setSyncDetailsTargetId] = useState<string | null>(null);
 
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<ResumeWorkspaceDoc | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentLibraryItem | null>(null);
 
   const snapshot = useSyncExternalStore(
-    subscribeToResumeWorkspace,
-    () => getResumeWorkspaceSnapshot(activeType, refreshKey),
-    () => RESUME_WORKSPACE_SERVER_SNAPSHOT,
+    subscribeToDocumentLibrary,
+    () => getDocumentLibrarySnapshot(activeType, refreshKey),
+    () => DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
   );
 
   const { docs, counts } = snapshot;
-  const totalCount = counts.RESUME;
+  const totalCount = counts.RESUME + counts.COVER_LETTER + counts.FORMAL_LETTER + counts.INVOICE;
 
   const bump = useCallback(() => setRefreshKey((key) => key + 1), []);
 
@@ -59,7 +61,7 @@ export function useDocumentsWorkspace() {
 
     if (docs.length === 0) {
       queueMicrotask(() => {
-        if (!cancelled) setSharedResumeIds(new Set());
+        if (!cancelled) setSharedDocumentIds(new Set());
       });
 
       return () => {
@@ -70,7 +72,7 @@ export function useDocumentsWorkspace() {
     void Promise.all(
       docs.map(async (doc) => {
         try {
-          const links = await listResumeShareLinks(doc.id);
+          const links = await listAllShareLinks(doc.id);
           return links.length > 0 ? doc.id : null;
         } catch {
           return null;
@@ -78,7 +80,7 @@ export function useDocumentsWorkspace() {
       }),
     ).then((ids) => {
       if (!cancelled) {
-        setSharedResumeIds(new Set(ids.filter((id): id is string => Boolean(id))));
+        setSharedDocumentIds(new Set(ids.filter((id): id is string => Boolean(id))));
       }
     });
 
@@ -89,46 +91,46 @@ export function useDocumentsWorkspace() {
 
   const visibleDocs = useMemo(() => {
     const tabDocs =
-      activeTab === "shared" ? docs.filter((doc) => sharedResumeIds.has(doc.id)) : docs;
+      activeTab === "shared" ? docs.filter((doc) => sharedDocumentIds.has(doc.id)) : docs;
 
     return [...tabDocs].sort((left, right) => {
       if (sortMode === "title") return left.title.localeCompare(right.title);
       return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
     });
-  }, [activeTab, docs, sharedResumeIds, sortMode]);
+  }, [activeTab, docs, sharedDocumentIds, sortMode]);
 
-  const resumeTarget = useMemo(
-    () => docs.find((doc) => doc.id === syncDetailsTargetId)?.resume ?? null,
+  const syncDetailsTarget = useMemo(
+    () => docs.find((doc) => doc.id === syncDetailsTargetId) ?? null,
     [docs, syncDetailsTargetId],
   );
 
-  const shareTargetTitle = useMemo(
-    () => docs.find((doc) => doc.id === shareTargetId)?.title,
-    [docs, shareTargetId],
-  );
+  const shareTargetTitle = shareTarget?.title;
 
-  const syncTelemetryById = useMemo(
-    () => getResumeSyncTelemetryByIds(docs.map((doc) => doc.id)),
-    [docs],
-  );
+  const syncTelemetryById = useMemo(() => getDocumentSyncTelemetryByDocs(docs), [docs]);
 
   const syncTargetTelemetry = useMemo(
-    () => (resumeTarget ? getResumeSyncTelemetry(resumeTarget.id) : null),
-    [resumeTarget],
+    () =>
+      syncDetailsTarget
+        ? getDocumentSyncTelemetry(syncDetailsTarget.type, syncDetailsTarget.id)
+        : null,
+    [syncDetailsTarget],
   );
 
   const handleSyncNow = useCallback(
-    async (resumeId: string) => {
-      setSyncingResumeId(resumeId);
+    async (id: string) => {
+      const target = docs.find((doc) => doc.id === id);
+      if (!target) return;
 
-      const result = await syncResumeNow(resumeId);
+      setSyncingDocumentId(id);
+
+      const result = await syncDocumentNow(target.type, id);
 
       toast[result.ok ? "success" : "error"](result.message);
 
-      setSyncingResumeId(null);
+      setSyncingDocumentId(null);
       bump();
     },
-    [bump],
+    [bump, docs],
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -137,9 +139,12 @@ export function useDocumentsWorkspace() {
     setIsDeleting(true);
 
     try {
-      if (deleteTarget.sync.cloudDocumentId) await DocumentApi.delete(deleteTarget.id);
-
-      deleteResumeById(deleteTarget.id);
+      if (deleteTarget.type === "RESUME") {
+        if (deleteTarget.sync.cloudDocumentId) await DocumentApi.delete(deleteTarget.id);
+        deleteResumeById(deleteTarget.id);
+      } else {
+        deleteDocument(deleteTarget.type, deleteTarget.id);
+      }
 
       toast.success(`${deleteTarget.title} deleted`);
 
@@ -154,42 +159,51 @@ export function useDocumentsWorkspace() {
 
   const handleKeepLocalOnly = useCallback(
     (id: string) => {
-      const result = keepResumeLocalOnly(id);
+      const target = docs.find((doc) => doc.id === id);
+      if (!target) return;
+
+      const result = keepDocumentLocalOnly(target.type, id);
 
       toast.info(result.message);
 
       setSyncDetailsTargetId(null);
       bump();
     },
-    [bump],
+    [bump, docs],
   );
 
   const handleResolveUseCloud = useCallback(
     async (id: string) => {
-      setSyncingResumeId(id);
+      const target = docs.find((doc) => doc.id === id);
+      if (!target) return;
 
-      const result = await resolveConflictUseCloud(id);
+      setSyncingDocumentId(id);
+
+      const result = await resolveDocumentConflictUseCloud(target.type, id);
 
       toast[result.ok ? "success" : "error"](result.message);
 
-      setSyncingResumeId(null);
+      setSyncingDocumentId(null);
       bump();
     },
-    [bump],
+    [bump, docs],
   );
 
   const handleResolveUseLocal = useCallback(
     async (id: string) => {
-      setSyncingResumeId(id);
+      const target = docs.find((doc) => doc.id === id);
+      if (!target) return;
 
-      const result = await resolveConflictUseLocal(id);
+      setSyncingDocumentId(id);
+
+      const result = await resolveDocumentConflictUseLocal(target.type, id);
 
       toast[result.ok ? "success" : "error"](result.message);
 
-      setSyncingResumeId(null);
+      setSyncingDocumentId(null);
       bump();
     },
-    [bump],
+    [bump, docs],
   );
 
   return {
@@ -203,18 +217,18 @@ export function useDocumentsWorkspace() {
     handleResolveUseLocal,
     handleSyncNow,
     isDeleting,
-    resumeTarget,
+    syncDetailsTarget,
     setActiveTab,
     setActiveType,
     setDeleteTarget,
-    setShareTargetId,
+    setShareTarget,
     setSortMode,
     setSyncDetailsTargetId,
     setViewMode,
-    shareTargetId,
+    shareTarget,
     shareTargetTitle,
     sortMode,
-    syncingResumeId,
+    syncingDocumentId,
     syncTargetTelemetry,
     syncTelemetryById,
     totalCount,

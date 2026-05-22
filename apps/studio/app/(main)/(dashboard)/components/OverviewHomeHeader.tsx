@@ -15,9 +15,11 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 const OverviewHomeHeader = ({
   totalCount,
+  coverLetterCount,
   resumeCount,
 }: {
   totalCount: number;
+  coverLetterCount: number;
   resumeCount: number;
 }) => {
   const user = useUserStore((state) => state.user);
@@ -38,7 +40,7 @@ const OverviewHomeHeader = ({
           </h1>
 
           <p className="text-muted mt-2 max-w-2xl text-base">
-            Recent resumes, useful references, and account shortcuts without duplicating the full
+            Recent documents, useful references, and account shortcuts without duplicating the full
             library page.
           </p>
         </div>
@@ -46,7 +48,7 @@ const OverviewHomeHeader = ({
         <div className="grid grid-cols-3 gap-2 text-center">
           <Stat label="Files" value={totalCount} />
           <Stat label="Resumes" value={resumeCount} />
-          <Stat label="Shared" value={0} />
+          <Stat label="Letters" value={coverLetterCount} />
         </div>
       </div>
     </header>

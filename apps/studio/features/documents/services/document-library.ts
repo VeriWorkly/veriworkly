@@ -6,11 +6,18 @@ import { type ResumeListItem } from "@/features/resume/services/resume-service";
 import { listSavedResumes } from "@/features/resume/services/resume-core";
 import { RESUME_STORAGE_UPDATED_EVENT } from "@/features/resume/services/local-storage";
 import { RESUME_SYNC_OUTBOX_UPDATED_EVENT } from "@/features/resume/services/resume-sync";
+import {
+  listDocuments,
+  loadDocumentById,
+} from "@/features/documents/services/document-workspace-service";
+import type { DocumentType } from "@/features/documents/core/document-types";
+import type { BaseDocument } from "@/features/documents/core/types";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
 
-export type ResumeWorkspaceDoc = {
-  source: "resume";
+export type DocumentLibraryItem = {
+  source: "resume" | "document";
   id: string;
-  type: "RESUME";
+  type: DocumentType;
   title: string;
   description: string;
   templateId: string;
@@ -19,30 +26,34 @@ export type ResumeWorkspaceDoc = {
   previewImage: string;
   updatedAt: string;
   sync: ResumeListItem["sync"];
-  resume: ResumeListItem;
 };
 
-export type ResumeWorkspaceSnapshot = {
-  docs: ResumeWorkspaceDoc[];
-  counts: Record<ResumeWorkspaceDoc["type"], number>;
+export type DocumentLibrarySnapshot = {
+  docs: DocumentLibraryItem[];
+  counts: Record<DocumentType, number>;
   key: string;
 };
 
-const EMPTY_COUNTS: Record<ResumeWorkspaceDoc["type"], number> = { RESUME: 0 };
+const EMPTY_COUNTS: Record<DocumentType, number> = {
+  RESUME: 0,
+  COVER_LETTER: 0,
+  FORMAL_LETTER: 0,
+  INVOICE: 0,
+};
 
-export const RESUME_WORKSPACE_SERVER_SNAPSHOT: ResumeWorkspaceSnapshot = {
+export const DOCUMENT_LIBRARY_SERVER_SNAPSHOT: DocumentLibrarySnapshot = {
   docs: [],
   counts: EMPTY_COUNTS,
   key: "server",
 };
 
-let snapshotCache: ResumeWorkspaceSnapshot = {
+let snapshotCache: DocumentLibrarySnapshot = {
   docs: [],
   counts: EMPTY_COUNTS,
   key: "",
 };
 
-export function subscribeToResumeWorkspace(onStoreChange: () => void) {
+export function subscribeToDocumentLibrary(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
 
   window.addEventListener("storage", onStoreChange);
@@ -56,12 +67,12 @@ export function subscribeToResumeWorkspace(onStoreChange: () => void) {
   };
 }
 
-export function getResumeWorkspaceSnapshot(
-  activeType: ResumeWorkspaceDoc["type"] | "ALL" = "ALL",
+export function getDocumentLibrarySnapshot(
+  activeType: DocumentType | "ALL" = "ALL",
   refreshKey = 0,
-): ResumeWorkspaceSnapshot {
+): DocumentLibrarySnapshot {
   if (typeof window === "undefined") {
-    return RESUME_WORKSPACE_SERVER_SNAPSHOT;
+    return DOCUMENT_LIBRARY_SERVER_SNAPSHOT;
   }
 
   const storage = window.localStorage;
@@ -73,13 +84,20 @@ export function getResumeWorkspaceSnapshot(
   const nextKey = `${activeType}::${storageKey}`;
 
   if (nextKey !== snapshotCache.key) {
-    const allDocs = listSavedResumes()
-      .map(mapResumeToWorkspaceDoc)
-      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+    const resumeDocs = listSavedResumes().map(mapResumeToLibraryItem);
+    const documentDocs = listDocuments()
+      .filter((document) => document.type !== "RESUME")
+      .map((document) => loadDocumentById(document.type, document.id))
+      .filter((document): document is BaseDocument => Boolean(document))
+      .map(mapDocumentToLibraryItem);
+    const allDocs = [...resumeDocs, ...documentDocs].sort(
+      (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
+    );
 
-    const counts: Record<ResumeWorkspaceDoc["type"], number> = {
-      RESUME: allDocs.length,
-    };
+    const counts: Record<DocumentType, number> = { ...EMPTY_COUNTS };
+    allDocs.forEach((doc) => {
+      counts[doc.type] += 1;
+    });
 
     snapshotCache = {
       docs: activeType === "ALL" ? allDocs : allDocs.filter((doc) => doc.type === activeType),
@@ -91,7 +109,7 @@ export function getResumeWorkspaceSnapshot(
   return snapshotCache;
 }
 
-export function mapResumeToWorkspaceDoc(resume: ResumeListItem): ResumeWorkspaceDoc {
+export function mapResumeToLibraryItem(resume: ResumeListItem): DocumentLibraryItem {
   const template =
     templateSummaries.find((item) => item.id === resume.templateId) ?? templateSummaries[0];
 
@@ -107,7 +125,46 @@ export function mapResumeToWorkspaceDoc(resume: ResumeListItem): ResumeWorkspace
     previewImage: template?.previewImage ?? "",
     updatedAt: resume.updatedAt,
     sync: resume.sync,
-    resume,
+  };
+}
+
+function describeDocument(document: BaseDocument): string {
+  if (document.type === "COVER_LETTER") {
+    const content = document.content as {
+      jobTitle?: string;
+      companyName?: string;
+      subject?: string;
+    };
+    return (
+      [content.jobTitle, content.companyName].filter(Boolean).join(" at ") ||
+      content.subject ||
+      "Cover letter"
+    );
+  }
+
+  if (document.type === "FORMAL_LETTER") return "Formal correspondence";
+  if (document.type === "INVOICE") return "Invoice document";
+
+  return "Document";
+}
+
+export function mapDocumentToLibraryItem(document: BaseDocument): DocumentLibraryItem {
+  const definition = getDocumentDefinition(document.type);
+  const template =
+    definition.templates.find((item) => item.id === document.templateId) ?? definition.templates[0];
+
+  return {
+    source: "document",
+    id: document.id,
+    type: document.type,
+    title: document.title,
+    description: describeDocument(document),
+    templateId: document.templateId,
+    templateName: template?.name ?? definition.label,
+    templateDescription: template?.description ?? definition.label,
+    previewImage: template?.previewImage ?? "",
+    updatedAt: document.updatedAt,
+    sync: document.sync,
   };
 }
 

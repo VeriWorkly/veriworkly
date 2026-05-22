@@ -23,15 +23,16 @@ import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
 
 const PAGE_HEIGHT = 1123;
 const BODY_TOP_GAP = 32;
+const PAGE_FIT_TOLERANCE = 64;
 const PARAGRAPH_CHUNK_WORDS = 62;
 
 type VeriworklyFlowItem =
   | { id: string; type: "greeting"; text: string }
   | { id: string; type: "paragraph"; text: string }
   | { id: string; type: "body-list"; items: string[] }
-  | { id: string; type: "proof-list"; items: string[] }
-  | { id: string; type: "closing"; text: string }
-  | { id: string; type: "signature"; text: string }
+  | { id: string; type: "proof-heading" }
+  | { id: string; type: "proof-item"; index: number; isLast: boolean; text: string }
+  | { id: string; type: "signoff"; closing?: string; signature: string }
   | { id: string; type: "postscript"; text: string };
 
 type CoverLetterFlowContent = Pick<
@@ -85,12 +86,24 @@ function buildVeriworklyFlowItems(content: CoverLetterFlowContent, senderName: s
   const highlights = splitMarkdownLines(content.highlights);
 
   if (highlights.length > 0) {
-    items.push({ id: "proof-list", type: "proof-list", items: highlights });
+    items.push({ id: "proof-heading", type: "proof-heading" });
+    highlights.forEach((text, index) => {
+      items.push({
+        id: `proof-${index}`,
+        type: "proof-item",
+        index,
+        isLast: index === highlights.length - 1,
+        text,
+      });
+    });
   }
 
-  if (content.closing) items.push({ id: "closing", type: "closing", text: content.closing });
-
-  items.push({ id: "signature", type: "signature", text: content.signature || senderName });
+  items.push({
+    id: "signoff",
+    type: "signoff",
+    closing: content.closing || undefined,
+    signature: content.signature || senderName,
+  });
 
   if (content.postscript) {
     splitTextIntoChunks(content.postscript, 50).forEach((text, index) => {
@@ -122,34 +135,37 @@ function renderFlowItem(item: VeriworklyFlowItem, accentColor: string) {
       </ul>
     );
 
-  if (item.type === "proof-list")
+  if (item.type === "proof-heading")
     return (
-      <section className="mt-8 border-t border-slate-200 pt-6">
+      <div className="mt-8 border-t border-slate-200 pt-6">
         <p className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">
           Selected Proof
         </p>
-
-        <div className="mt-4 grid gap-2">
-          {item.items.map((proof, proofIndex) => (
-            <div
-              key={`${proofIndex}-${proof}`}
-              className="grid grid-cols-[1.75rem_1fr] gap-3 border-b border-slate-100 pb-2 last:border-b-0"
-            >
-              <span className="text-xs leading-5 font-bold" style={{ color: accentColor }}>
-                {String(proofIndex + 1).padStart(2, "0")}
-              </span>
-
-              <p className="text-sm leading-5 text-slate-700">{proof}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      </div>
     );
 
-  if (item.type === "closing") return <p>{item.text}</p>;
+  if (item.type === "proof-item")
+    return (
+      <div
+        className={`grid grid-cols-[1.75rem_1fr] gap-3 border-slate-100 pb-2 ${
+          item.index === 0 ? "mt-4" : "mt-2"
+        } ${item.isLast ? "" : "border-b"}`}
+      >
+        <span className="text-xs leading-5 font-bold" style={{ color: accentColor }}>
+          {String(item.index + 1).padStart(2, "0")}
+        </span>
 
-  if (item.type === "signature")
-    return <p className="text-base font-semibold text-slate-950">{item.text}</p>;
+        <p className="text-sm leading-5 text-slate-700">{item.text}</p>
+      </div>
+    );
+
+  if (item.type === "signoff")
+    return (
+      <section className="mt-8 space-y-2 text-[14px] text-slate-700">
+        {item.closing ? <p>{item.closing}</p> : null}
+        <p className="text-base font-semibold text-slate-950">{item.signature}</p>
+      </section>
+    );
 
   return (
     <p className="mt-5 border-t border-zinc-200 pt-3 text-sm leading-6 text-zinc-600">
@@ -159,61 +175,33 @@ function renderFlowItem(item: VeriworklyFlowItem, accentColor: string) {
 }
 
 function renderGroupedFlowItems(items: VeriworklyFlowItem[], accentColor: string) {
-  const nodes: React.ReactNode[] = [];
-  let index = 0;
-
-  while (index < items.length) {
-    const item = items[index];
-
-    if (item.type === "closing" || item.type === "signature") {
-      const group: VeriworklyFlowItem[] = [];
-
-      while (items[index]?.type === "closing" || items[index]?.type === "signature") {
-        group.push(items[index]);
-        index += 1;
-      }
-
-      nodes.push(
-        <section
-          key={`signoff-${group[0].id}`}
-          className="mt-8 space-y-2 text-[14px] text-slate-700"
-        >
-          {group.map((entry) => (
-            <div key={entry.id} className="flow-root">
-              {renderFlowItem(entry, accentColor)}
-            </div>
-          ))}
-        </section>,
-      );
-      continue;
-    }
-
-    nodes.push(
-      <div key={item.id} className="flow-root">
-        {renderFlowItem(item, accentColor)}
-      </div>,
-    );
-    index += 1;
-  }
-
-  return nodes;
+  return items.map((item) => (
+    <div key={item.id} className="flow-root">
+      {renderFlowItem(item, accentColor)}
+    </div>
+  ));
 }
 
-function paginateMeasuredItems<T extends { id: string }>(
-  items: T[],
+function paginateMeasuredItems(
+  items: VeriworklyFlowItem[],
   heights: Map<string, number>,
   firstLimit: number,
   nextLimit: number,
 ) {
-  const pages: T[][] = [[]];
+  const pages: VeriworklyFlowItem[][] = [[]];
   let pageIndex = 0;
   let used = 0;
 
-  for (const item of items) {
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+    const item = items[itemIndex];
     const height = Math.ceil(heights.get(item.id) ?? 0);
+    const nextItem = items[itemIndex + 1];
+    const keepWithNextHeight =
+      item.type === "proof-heading" && nextItem ? Math.ceil(heights.get(nextItem.id) ?? 0) : 0;
     const limit = pageIndex === 0 ? firstLimit : nextLimit;
+    const effectiveLimit = item.type === "postscript" ? limit : limit + PAGE_FIT_TOLERANCE;
 
-    if (pages[pageIndex].length > 0 && used + height > limit) {
+    if (pages[pageIndex].length > 0 && used + height + keepWithNextHeight > effectiveLimit) {
       pages.push([]);
       pageIndex += 1;
       used = 0;
@@ -227,12 +215,15 @@ function paginateMeasuredItems<T extends { id: string }>(
 }
 
 function getVeriworklyHtmlItemWeight(item: VeriworklyFlowItem) {
-  if (item.type === "body-list" || item.type === "proof-list") {
+  if (item.type === "body-list") {
     return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 70), 0);
   }
 
+  if (item.type === "proof-heading") return 2;
+  if (item.type === "proof-item") return Math.max(1, Math.ceil(item.text.length / 70));
   if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 100);
-  if (item.type === "closing" || item.type === "signature" || item.type === "greeting") return 1;
+  if (item.type === "signoff") return item.closing ? 2 : 1;
+  if (item.type === "greeting") return 1;
 
   return Math.max(1, Math.ceil(item.text.length / 82));
 }
@@ -242,11 +233,15 @@ function paginateVeriworklyHtmlItems(items: VeriworklyFlowItem[]) {
   let pageIndex = 0;
   let used = 0;
 
-  for (const item of items) {
-    const limit = pageIndex === 0 ? 14 : 22;
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+    const item = items[itemIndex];
+    const limit = pageIndex === 0 ? 24 : 24;
     const weight = getVeriworklyHtmlItemWeight(item);
+    const nextItem = items[itemIndex + 1];
+    const keepWithNextWeight =
+      item.type === "proof-heading" && nextItem ? getVeriworklyHtmlItemWeight(nextItem) : 0;
 
-    if (pages[pageIndex].length > 0 && used + weight > limit) {
+    if (pages[pageIndex].length > 0 && used + weight + keepWithNextWeight > limit) {
       pages.push([]);
       pageIndex += 1;
       used = 0;
@@ -265,16 +260,15 @@ function renderVeriworklyHtmlItem(item: VeriworklyFlowItem, accentColor: string)
   if (item.type === "body-list") {
     return `<ul class="body-list">${item.items.map((listItem) => `<li>${escapeHtml(listItem)}</li>`).join("")}</ul>`;
   }
-  if (item.type === "proof-list") {
-    return `<section class="proof"><p class="proof-label">Selected Proof</p>${item.items
-      .map(
-        (proof, proofIndex) =>
-          `<div class="proof-item"><span style="color:${accentColor}">${String(proofIndex + 1).padStart(2, "0")}</span><p>${escapeHtml(proof)}</p></div>`,
-      )
-      .join("")}</section>`;
+  if (item.type === "proof-heading") {
+    return `<section class="proof"><p class="proof-label">Selected Proof</p></section>`;
   }
-  if (item.type === "closing") return `<p>${escapeHtml(item.text)}</p>`;
-  if (item.type === "signature") return `<p class="signature">${escapeHtml(item.text)}</p>`;
+  if (item.type === "proof-item") {
+    return `<div class="proof-item${item.isLast ? " last" : ""}"><span style="color:${accentColor}">${String(item.index + 1).padStart(2, "0")}</span><p>${escapeHtml(item.text)}</p></div>`;
+  }
+  if (item.type === "signoff") {
+    return `<section class="signoff">${item.closing ? `<p>${escapeHtml(item.closing)}</p>` : ""}<p class="signature">${escapeHtml(item.signature)}</p></section>`;
+  }
 
   return `<p class="postscript">P.S. ${escapeHtml(item.text)}</p>`;
 }
@@ -470,27 +464,7 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
               </section>
             </div>
 
-            <div ref={nextPrefixRef}>
-              <p className="border-b border-slate-200 pb-5 text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">
-                Cover Letter Continued
-              </p>
-
-              <section
-                className="mt-8 border-l-2 pl-5"
-                style={{ borderLeftColor: appearance.accentColor }}
-              >
-                <p
-                  className="text-[10px] font-bold tracking-[0.2em] uppercase"
-                  style={{ color: appearance.accentColor }}
-                >
-                  Cover Letter
-                </p>
-
-                <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
-                  {content.subject || content.jobTitle || "Application"}
-                </h2>
-              </section>
-            </div>
+            <div ref={nextPrefixRef}></div>
 
             <section
               className="mt-8 text-[14.5px] text-slate-700"
@@ -561,29 +535,7 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
                   </h2>
                 </section>
               </>
-            ) : (
-              <>
-                <p className="border-b border-slate-200 pb-5 text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">
-                  Cover Letter Continued
-                </p>
-
-                <section
-                  className="mt-8 border-l-2 pl-5"
-                  style={{ borderLeftColor: appearance.accentColor }}
-                >
-                  <p
-                    className="text-[10px] font-bold tracking-[0.2em] uppercase"
-                    style={{ color: appearance.accentColor }}
-                  >
-                    Cover Letter
-                  </p>
-
-                  <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
-                    {content.subject || content.jobTitle || "Application"}
-                  </h2>
-                </section>
-              </>
-            )}
+            ) : null}
 
             <section
               className="mt-8 text-[14.5px] text-slate-700"
@@ -619,13 +571,13 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
   const pages = paginateVeriworklyHtmlItems(flowItems);
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.senderName || "Cover Letter")}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
-*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:#f4f4f5;color:${appearance.textColor};font-family:${fontFamily}}.page{width:794px;height:1123px;margin:0 auto 24px;overflow:hidden;background:${appearance.pageColor};color:${appearance.textColor};box-shadow:0 0 0 1px #e4e4e7;page-break-after:always}.page:last-child{page-break-after:auto}p{margin:0 0 ${appearance.paragraphSpacing}px;line-height:${appearance.lineHeight}}.label{color:${appearance.accentColor};font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase}.body{margin-top:32px;font-size:14.5px}.body-list{background:#f4f4f5;margin:16px 0;padding:14px 18px 14px 28px;line-height:${appearance.lineHeight}}.proof{border-top:1px solid #e2e8f0;margin-top:32px;padding-top:24px}.proof-label{color:#64748b;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}.proof-item{display:grid;grid-template-columns:28px 1fr;gap:12px;border-bottom:1px solid #f1f5f9;padding:0 0 8px;margin-bottom:8px}.proof-item span{font-size:12px;font-weight:700;line-height:20px}.proof-item p{font-size:14px;color:#334155;line-height:1.45}.signature{font-size:16px;font-weight:700;color:#0f172a}.postscript{border-top:1px solid #e4e4e7;padding-top:14px;color:#52525b}.continued{border-bottom:1px solid #dbe4f0;padding-bottom:20px;color:#64748b;font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase}.veri-page{display:grid;grid-template-columns:214px 1fr}.veri-page aside{background:${appearance.sidebarColor};color:#0f172a;border-right:1px solid #e2e8f0;padding:36px 28px;display:flex;flex-direction:column}.veri-page h1{margin:16px 0 0;font-size:26px;line-height:1.08}.veri-page .muted,.veri-page .rail,.veri-page .target p{color:#475569}.veri-page .rule{width:48px;height:1px;background:${appearance.accentColor};margin-top:40px}.veri-page .rail{margin-top:32px;font-size:12px}.veri-page .rail a{display:block;color:${appearance.accentColor};font-weight:600;text-underline-offset:4px}.veri-page .target{border-top:1px solid #e2e8f0;margin-top:auto;padding-top:28px}.veri-page main{padding:${appearance.pageMargin}px;background:#fff}.veri-page .meta{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #e2e8f0;padding-bottom:28px;color:#475569}.veri-page .subject{border-left:2px solid ${appearance.accentColor};margin-top:32px;padding:4px 0 4px 20px}.veri-page h2{margin:8px 0 0;font-size:22px}@media print{body{padding:0;background:white}.page{box-shadow:none;margin:0}}</style></head><body>${pages
+*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:#f4f4f5;color:${appearance.textColor};font-family:${fontFamily}}.page{width:794px;height:1123px;margin:0 auto 24px;overflow:hidden;background:${appearance.pageColor};color:${appearance.textColor};box-shadow:0 0 0 1px #e4e4e7;page-break-after:always}.page:last-child{page-break-after:auto}p{margin:0 0 ${appearance.paragraphSpacing}px;line-height:${appearance.lineHeight}}.label{color:${appearance.accentColor};font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase}.body{margin-top:32px;font-size:14.5px}.body-list{background:#f4f4f5;margin:16px 0;padding:14px 18px 14px 28px;line-height:${appearance.lineHeight}}.proof{border-top:1px solid #e2e8f0;margin-top:32px;padding-top:24px}.proof-label{color:#64748b;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}.proof+.proof-item{margin-top:16px}.proof-item{display:grid;grid-template-columns:28px 1fr;gap:12px;border-bottom:1px solid #f1f5f9;padding:0 0 8px;margin-bottom:8px}.proof-item.last{border-bottom:0}.proof-item span{font-size:12px;font-weight:700;line-height:20px}.proof-item p{font-size:14px;color:#334155;line-height:1.45}.signoff{margin-top:32px}.signature{font-size:16px;font-weight:700;color:#0f172a}.postscript{border-top:1px solid #e4e4e7;padding-top:14px;color:#52525b}.veri-page{display:grid;grid-template-columns:214px 1fr}.veri-page aside{background:${appearance.sidebarColor};color:#0f172a;border-right:1px solid #e2e8f0;padding:36px 28px;display:flex;flex-direction:column}.veri-page h1{margin:16px 0 0;font-size:26px;line-height:1.08}.veri-page .muted,.veri-page .rail,.veri-page .target p{color:#475569}.veri-page .rule{width:48px;height:1px;background:${appearance.accentColor};margin-top:40px}.veri-page .rail{margin-top:32px;font-size:12px}.veri-page .rail a{display:block;color:${appearance.accentColor};font-weight:600;text-underline-offset:4px}.veri-page .target{border-top:1px solid #e2e8f0;margin-top:auto;padding-top:28px}.veri-page main{padding:${appearance.pageMargin}px;background:#fff}.veri-page .meta{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #e2e8f0;padding-bottom:28px;color:#475569}.veri-page .subject{border-left:2px solid ${appearance.accentColor};margin-top:32px;padding:4px 0 4px 20px}.veri-page h2{margin:8px 0 0;font-size:22px}@media print{body{padding:0;background:white}.page{box-shadow:none;margin:0}}</style></head><body>${pages
     .map((blocks, pageIndex) => {
       const first = pageIndex === 0;
       const body = blocks
         .map((item) => renderVeriworklyHtmlItem(item, appearance.accentColor))
         .join("");
-      return `<article class="page veri-page"><aside><p class="label">Candidate</p><h1>${escapeHtml(senderName)}</h1><p class="muted">${escapeHtml(senderTitle)}</p><div class="rule"></div><div class="rail">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div><div class="target"><p class="label">Target</p><strong>${subject}</strong><p>${escapeHtml(content.companyName)}</p></div></aside><main>${first ? `<div class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></div><section class="subject"><p class="label">Cover Letter</p><h2>${subject}</h2></section>` : `<p class="continued">Cover Letter Continued</p><section class="subject"><p class="label">Cover Letter</p><h2>${subject}</h2></section>`}<section class="body">${body}</section></main></article>`;
+      return `<article class="page veri-page"><aside><p class="label">Candidate</p><h1>${escapeHtml(senderName)}</h1><p class="muted">${escapeHtml(senderTitle)}</p><div class="rule"></div><div class="rail">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div><div class="target"><p class="label">Target</p><strong>${subject}</strong><p>${escapeHtml(content.companyName)}</p></div></aside><main>${first ? `<div class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></div><section class="subject"><p class="label">Cover Letter</p><h2>${subject}</h2></section>` : ""}<section class="body">${body}</section></main></article>`;
     })
     .join("")}</body></html>`;
 }

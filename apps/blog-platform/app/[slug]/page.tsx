@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { ComponentType } from "react";
 
 import Link from "next/link";
 import Image from "next/image";

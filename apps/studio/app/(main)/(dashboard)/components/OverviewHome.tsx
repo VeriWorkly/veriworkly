@@ -9,10 +9,10 @@ import { BookOpen, FolderOpen, ArrowRight, BriefcaseBusiness } from "lucide-reac
 import { Card } from "@veriworkly/ui";
 
 import {
-  getResumeWorkspaceSnapshot,
-  subscribeToResumeWorkspace,
-  RESUME_WORKSPACE_SERVER_SNAPSHOT,
-} from "@/features/documents/services/resume-workspace";
+  getDocumentLibrarySnapshot,
+  subscribeToDocumentLibrary,
+  DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
+} from "@/features/documents/services/document-library";
 
 import RecentCard from "./RecentCard";
 import OverviewHomeHeader from "./OverviewHomeHeader";
@@ -33,18 +33,27 @@ function MiniLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon;
 
 const OverviewHome = () => {
   const snapshot = useSyncExternalStore(
-    subscribeToResumeWorkspace,
-    () => getResumeWorkspaceSnapshot(),
-    () => RESUME_WORKSPACE_SERVER_SNAPSHOT,
+    subscribeToDocumentLibrary,
+    () => getDocumentLibrarySnapshot(),
+    () => DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
   );
 
-  const totalCount = snapshot.counts.RESUME;
+  const totalCount =
+    snapshot.counts.RESUME +
+    snapshot.counts.COVER_LETTER +
+    snapshot.counts.FORMAL_LETTER +
+    snapshot.counts.INVOICE;
   const resumeCount = snapshot.counts.RESUME;
+  const coverLetterCount = snapshot.counts.COVER_LETTER;
   const recentDocs = snapshot.docs.slice(0, 6);
 
   return (
     <section className="space-y-7" aria-label="Studio overview">
-      <OverviewHomeHeader totalCount={totalCount} resumeCount={resumeCount} />
+      <OverviewHomeHeader
+        totalCount={totalCount}
+        resumeCount={resumeCount}
+        coverLetterCount={coverLetterCount}
+      />
 
       <OverviewReferenceCard />
 
@@ -54,11 +63,11 @@ const OverviewHome = () => {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-black">Recently opened</h2>
-                <p className="text-muted text-sm">Compact view, not another full resume page.</p>
+                <p className="text-muted text-sm">Compact view of your recent documents.</p>
               </div>
 
               <Link href="/documents" className="text-accent text-sm font-bold">
-                All resumes
+                All documents
               </Link>
             </div>
 
@@ -70,7 +79,7 @@ const OverviewHome = () => {
                   <p className="font-bold">No files yet</p>
 
                   <p className="text-muted mt-1 text-sm">
-                    Use New Document in sidebar to create first resume.
+                    Use New Document in sidebar to create your first file.
                   </p>
                 </div>
               )}
@@ -80,12 +89,14 @@ const OverviewHome = () => {
           <aside className="space-y-4 p-5 sm:p-6">
             <div>
               <h2 className="text-sm font-black">Workspace shortcuts</h2>
-              <p className="text-muted mt-1 text-xs">Profile data, roadmap, and resume library.</p>
+              <p className="text-muted mt-1 text-xs">
+                Profile data, roadmap, and document library.
+              </p>
             </div>
 
             <div className="grid gap-2">
               <MiniLink href="/profile" icon={BriefcaseBusiness} label="Profile workspace" />
-              <MiniLink href="/documents" icon={FolderOpen} label="Resume library" />
+              <MiniLink href="/documents" icon={FolderOpen} label="Document library" />
               <MiniLink href="/admin/roadmap" icon={BookOpen} label="Roadmap" />
             </div>
           </aside>
