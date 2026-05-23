@@ -8,7 +8,7 @@ import { PublicPageShell } from "@/components/layout/PublicPageShell";
 const pageUrl = `${siteConfig.url}/contact`;
 const pageOgImage = `${siteConfig.url}/og/contact-page-og.png`;
 
-const supportEmail = "info@veriworkly.com";
+const supportEmail = siteConfig.email;
 const supportEmailHref = `mailto:${supportEmail}`;
 
 const githubDiscussionsUrl = `${siteConfig.links.github}/discussions`;
@@ -49,7 +49,7 @@ const contactOptions = [
   {
     label: "Email",
     href: supportEmailHref,
-    detail: "Send support and privacy questions directly to info@veriworkly.com.",
+    detail: `Send support and privacy questions directly to ${supportEmail}.`,
   },
 
   {

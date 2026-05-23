@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import {
   type RoadmapSort,
   type RoadmapStatus,
@@ -58,35 +56,29 @@ const RoadmapPageShell = ({
   const currentSort = data?.query?.sort ?? "newest";
   const normalizedRootPath = rootPath.replace(/\/$/, "");
 
-  const sections = useMemo(
-    () =>
-      data?.sections ?? [
-        {
-          title: "To Do",
-          status: "todo" as RoadmapStatus,
-          items: [],
-          fetchedAt: new Date().toISOString(),
-        },
-        {
-          title: "In Progress",
-          status: "in-progress" as RoadmapStatus,
-          items: [],
-          fetchedAt: new Date().toISOString(),
-        },
-        {
-          title: "Done",
-          status: "done" as RoadmapStatus,
-          items: [],
-          fetchedAt: new Date().toISOString(),
-        },
-      ],
-    [data?.sections],
-  );
+  const sections = data?.sections ?? [
+    {
+      title: "To Do",
+      status: "todo" as RoadmapStatus,
+      items: [],
+      fetchedAt: new Date().toISOString(),
+    },
+    {
+      title: "In Progress",
+      status: "in-progress" as RoadmapStatus,
+      items: [],
+      fetchedAt: new Date().toISOString(),
+    },
+    {
+      title: "Done",
+      status: "done" as RoadmapStatus,
+      items: [],
+      fetchedAt: new Date().toISOString(),
+    },
+  ];
 
   const columns: KanbanColumn[] = sections.map((section) => ({
     title: section.title,
-    color:
-      section.status === "todo" ? "blue" : section.status === "in-progress" ? "amber" : "emerald",
     items: (section.items ?? []).map((item) => ({
       ...item,
       eta: item.eta ?? undefined,
@@ -96,20 +88,16 @@ const RoadmapPageShell = ({
     })),
   }));
 
-  const refreshTimestamp = useMemo(() => INITIAL_REFRESH_TIMESTAMP, []);
+  const refreshTimestamp = INITIAL_REFRESH_TIMESTAMP;
 
-  const refreshHrefMap = useMemo(
-    () =>
-      Object.fromEntries(
-        sections.map((section) => [
-          section.title,
-          buildHref(basePath, currentSort, {
-            refresh: section.status,
-            r: refreshTimestamp,
-          }),
-        ]),
-      ),
-    [sections, basePath, currentSort, refreshTimestamp],
+  const refreshHrefMap = Object.fromEntries(
+    sections.map((section) => [
+      section.title,
+      buildHref(basePath, currentSort, {
+        refresh: section.status,
+        r: refreshTimestamp,
+      }),
+    ]),
   );
 
   const columnHrefMap = {
@@ -119,18 +107,26 @@ const RoadmapPageShell = ({
   };
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className="relative flex min-h-screen flex-col overflow-hidden">
+      <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
+
+      <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[130px]" />
+
       <Container className="pt-28 pb-20 lg:pt-36">
         <RoadmapHeader title={title} description={description} />
 
-        <div className="border-border/60 bg-card/40 mb-8 flex justify-between rounded-2xl border p-5">
-          <RoadmapStatusFilters
-            currentSort={currentSort}
-            activeStatus={activeStatus}
-            rootPath={normalizedRootPath}
-          />
+        <div className="border-border/40 bg-card/30 mb-10 flex flex-col gap-4 rounded-3xl border p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="scrollbar-none overflow-x-auto pb-1.5 sm:pb-0">
+            <RoadmapStatusFilters
+              currentSort={currentSort}
+              activeStatus={activeStatus}
+              rootPath={normalizedRootPath}
+            />
+          </div>
 
-          <RoadmapSortControls basePath={basePath} currentSort={currentSort} />
+          <div className="scrollbar-none overflow-x-auto pb-1.5 sm:self-end sm:pb-0">
+            <RoadmapSortControls basePath={basePath} currentSort={currentSort} />
+          </div>
         </div>
 
         <RoadmapStatsGrid sections={sections} />

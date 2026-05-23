@@ -2,37 +2,10 @@ import Link from "next/link";
 import { ArrowRight, Clock, Calendar } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
-
-const latestPosts = [
-  {
-    title: "Building a Scalable Resume Platform: The VeriWorkly Multi-App Architecture",
-    description:
-      "Why we run separate apps for builder, docs, blog, and backend, and how that keeps development and deployments reliable.",
-    href: "https://blog.veriworkly.com/building-scalable-resume-platform-multi-app-architecture",
-    date: "April 28, 2026",
-    readTime: "5 min read",
-  },
-
-  {
-    title: "Mastering ATS-Friendly Resumes in 2026",
-    description:
-      "A deep dive into how modern Applicant Tracking Systems parse resumes and why structure matters more than visual design.",
-    href: "https://blog.veriworkly.com/mastering-ats-friendly-resumes-2026",
-    date: "April 27, 2026",
-    readTime: "6 min read",
-  },
-
-  {
-    title: "Why Privacy is the Future of Resume Technology",
-    description:
-      "Exploring data ownership in modern resume tools and why VeriWorkly is built on a local-first architecture.",
-    href: "https://blog.veriworkly.com/privacy-future-local-first-resume-builder",
-    date: "April 26, 2026",
-    readTime: "6 min read",
-  },
-];
+import { getLatestBlogPosts } from "@/lib/blog-reader";
 
 const BlogSection = () => {
+  const latestPosts = getLatestBlogPosts();
   return (
     <section className="space-y-10" aria-labelledby="blog-heading">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">

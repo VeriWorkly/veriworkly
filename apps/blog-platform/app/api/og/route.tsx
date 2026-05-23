@@ -168,7 +168,7 @@ export async function GET(request: Request) {
             textTransform: "uppercase",
           }}
         >
-          blogs.veriworkly.com
+          blog.veriworkly.com
         </div>
       </div>,
       {

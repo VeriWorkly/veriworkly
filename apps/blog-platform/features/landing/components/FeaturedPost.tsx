@@ -2,30 +2,36 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
+import { getReadingTime } from "@/lib/read-time";
 
 interface FeaturedPostProps {
   post: {
     url: string;
-    data: unknown;
+    data: {
+      title: string;
+      description: string;
+      author: string;
+      date: string | Date;
+      info: {
+        path: string;
+      };
+    };
   };
 }
 
 export const FeaturedPost = ({ post }: FeaturedPostProps) => {
-  const meta = post.data as {
-    title: string;
-    description: string;
-    author: string;
-    date: string;
-  };
+  const meta = post.data;
 
   return (
     <section className="space-y-12">
       <div className="flex items-end justify-between pb-6">
         <div className="space-y-2">
           <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">Spotlight</p>
+
           <h2 className="text-foreground text-3xl font-semibold tracking-tight">
             Featured Article
           </h2>
+
           <p className="text-muted font-medium">Our latest deep dive into career engineering.</p>
         </div>
 
@@ -68,7 +74,7 @@ export const FeaturedPost = ({ post }: FeaturedPostProps) => {
                 <span className="size-1 rounded-full bg-zinc-300" />
 
                 <span className="flex items-center gap-1">
-                  <Clock className="size-3" /> 10m read
+                  <Clock className="size-3" /> {getReadingTime(meta.info.path)}
                 </span>
               </div>
 

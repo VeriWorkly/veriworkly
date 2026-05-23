@@ -9,7 +9,7 @@ interface MainLayoutProps {
 
 export const MainLayout = ({ children }: MainLayoutProps) => {
   return (
-    <div className="surface-grid flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1 pt-20">{children}</main>
       <Footer />

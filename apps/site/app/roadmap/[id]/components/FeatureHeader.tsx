@@ -1,91 +1,26 @@
-import { Badge } from "@veriworkly/ui";
-
 import type { RoadmapFeature } from "@/features/roadmap/services/roadmap-backend";
-
-const statusColors = {
-  todo: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  "in-progress": "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  done: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-};
-
-const statusLabels = {
-  todo: "To Do",
-  "in-progress": "In Progress",
-  done: "Done",
-};
 
 const FeatureHeader = ({ feature }: { feature: RoadmapFeature }) => {
   return (
-    <div className="space-y-8">
-      <div>
-        <div className="mb-4 flex items-center gap-3">
-          <Badge className={statusColors[feature.status as keyof typeof statusColors]}>
-            {statusLabels[feature.status as keyof typeof statusLabels]}
-          </Badge>
+    <div className="space-y-4">
+      <h1 className="text-foreground -translate-x-px text-3xl leading-[1.1] font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
+        {feature.title}
+      </h1>
 
-          {feature.eta && (
-            <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-300">
-              ETA: {feature.eta}
-            </Badge>
-          )}
-
-          {feature.completedQuarter && (
-            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-              {feature.completedQuarter}
-            </Badge>
-          )}
-        </div>
-
-        <h1 className="text-foreground mb-4 text-4xl font-bold">{feature.title}</h1>
-
-        <p className="text-muted text-lg leading-relaxed">{feature.description}</p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="border-border bg-card/40 rounded-xl border p-4">
-          <p className="text-muted text-xs">Created</p>
-
-          <p className="text-foreground mt-1 text-sm font-semibold">
-            {new Date(feature.createdAt).toLocaleDateString()}
-          </p>
-        </div>
-
-        <div className="border-border bg-card/40 rounded-xl border p-4">
-          <p className="text-muted text-xs">Started</p>
-
-          <p className="text-foreground mt-1 text-sm font-semibold">
-            {feature.startedAt ? new Date(feature.startedAt).toLocaleDateString() : "Not started"}
-          </p>
-        </div>
-
-        <div className="border-border bg-card/40 rounded-xl border p-4">
-          <p className="text-muted text-xs">Completed</p>
-
-          <p className="text-foreground mt-1 text-sm font-semibold">
-            {feature.completedAt
-              ? new Date(feature.completedAt).toLocaleDateString()
-              : statusLabels[feature.status as keyof typeof statusLabels]}
-          </p>
-        </div>
-
-        <div className="border-border bg-card/40 rounded-xl border p-4">
-          <p className="text-muted text-xs">Last update</p>
-
-          <p className="text-foreground mt-1 text-sm font-semibold">
-            {new Date(feature.updatedAt).toLocaleDateString()}
-          </p>
-        </div>
-      </div>
+      <p className="text-muted max-w-3xl text-lg leading-relaxed font-medium">
+        {feature.description}
+      </p>
 
       {feature.tags && feature.tags.length > 0 && (
-        <div>
-          <h3 className="text-foreground mb-3 font-semibold">Tags</h3>
-
-          <div className="flex flex-wrap gap-2">
+        <div className="pt-2">
+          <div className="flex flex-wrap gap-1.5">
             {feature.tags.map((tag) => (
-              <Badge key={tag} className="bg-slate-500/10 text-slate-700 dark:text-slate-300">
-                {tag}
-              </Badge>
+              <span
+                key={tag}
+                className="bg-foreground/5 text-muted border-border/30 rounded-lg border px-2.5 py-0.5 text-xs font-semibold"
+              >
+                #{tag}
+              </span>
             ))}
           </div>
         </div>

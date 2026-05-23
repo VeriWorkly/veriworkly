@@ -5,6 +5,7 @@ export const siteConfig = {
   shortName: "VeriWorkly",
 
   creator: "Gautam Raj",
+  email: "info@veriworkly.com",
 
   url: process.env.SITE_URL || "https://veriworkly.com",
 

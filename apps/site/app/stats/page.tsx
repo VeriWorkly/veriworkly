@@ -12,12 +12,12 @@ import {
   parseDateInput,
 } from "./components/stats-utils";
 
+import { Container } from "@veriworkly/ui";
+
 import {
   fetchGitHubStatsFromBackend,
   fetchGitHubIssuesFromBackend,
 } from "@/features/github/services/github-backend";
-
-import { Container } from "@veriworkly/ui";
 
 import StatsHero from "./components/StatsHero";
 import StatsBoard from "./components/StatsBoard";
@@ -82,9 +82,10 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
   const currentPage = Math.min(page, totalPages);
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <div className="from-accent/10 pointer-events-none absolute inset-x-0 top-0 h-64" />
-      <div className="pointer-events-none absolute top-20 -right-32 h-64 w-64 rounded-full blur-3xl" />
+    <main className="relative flex min-h-screen flex-col overflow-hidden">
+      <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
+
+      <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[130px]" />
 
       <Container className="relative pt-28 pb-20 lg:pt-36">
         <StatsHero syncedAt={syncedAt} nextSyncAt={nextSyncAt} />
@@ -111,10 +112,12 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
           updatedFrom={updatedFrom}
         />
 
-        <section className="border-border/70 bg-card/70 mx-auto mt-10 max-w-3xl rounded-3xl border p-6">
-          <h3 className="text-foreground text-lg font-semibold">About this sync</h3>
+        <section className="border-border/40 bg-card/30 mx-auto mt-12 max-w-3xl rounded-3xl border p-6 shadow-[0_1px_3px_rgba(0,0,0,0.01)] backdrop-blur-xs">
+          <h3 className="text-foreground font-sans text-sm font-bold tracking-tight">
+            About this sync
+          </h3>
 
-          <p className="text-muted mt-3 max-w-3xl leading-relaxed">
+          <p className="text-muted mt-3 max-w-3xl font-sans text-[13px] leading-relaxed font-medium">
             GitHub data is synced on the server, persisted as normalized rows, and served in
             filtered slices so the frontend can render quickly without re-fetching the entire board
             on every visit.

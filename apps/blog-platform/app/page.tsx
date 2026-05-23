@@ -1,6 +1,18 @@
+import type { Metadata } from "next";
+
 import { blog } from "@/lib/source";
+import { siteConfig } from "@/config/site";
 
 import { Container } from "@veriworkly/ui";
+
+export const metadata: Metadata = {
+  title: "VeriWorkly Blog | Career Insights & Resume Tips",
+  description:
+    "Explore developer insights, ATS optimization strategies, and privacy-first resume architecture notes.",
+  alternates: {
+    canonical: siteConfig.url,
+  },
+};
 
 import { BlogHero } from "../features/landing/components/BlogHero";
 import { PostsGrid } from "../features/landing/components/PostsGrid";
@@ -17,7 +29,7 @@ const BlogHome = () => {
   const remainingPosts = allPosts.slice(1, 4);
 
   return (
-    <div className="min-h-screen py-14 md:py-20">
+    <div className="surface-grid min-h-screen py-14 md:py-20">
       <Container className="space-y-12 md:space-y-20">
         <BlogHero postCount={allPosts.length} />
 

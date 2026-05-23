@@ -5,6 +5,7 @@ export const siteConfig = {
   shortName: "VeriWorkly",
 
   creator: "Gautam Raj",
+  email: "info@veriworkly.com",
 
   tagline: "Career platform ideas and architecture stories.",
   description: "Insights, product notes, and career guidance from the VeriWorkly team.",

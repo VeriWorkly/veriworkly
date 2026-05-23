@@ -2,10 +2,18 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 
 import { Button, Card } from "@veriworkly/ui";
+import { getReadingTime } from "@/lib/read-time";
 
 interface Post {
   url: string;
-  data: unknown;
+  data: {
+    title: string;
+    description: string;
+    date: string | Date;
+    info: {
+      path: string;
+    };
+  };
 }
 
 interface PostsGridProps {
@@ -34,11 +42,7 @@ export const PostsGrid = ({ posts }: PostsGridProps) => {
 
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {posts.map((post) => {
-          const meta = post.data as {
-            title: string;
-            description: string;
-            date: string;
-          };
+          const meta = post.data;
 
           return (
             <Link key={post.url} href={post.url} className="group">
@@ -56,7 +60,7 @@ export const PostsGrid = ({ posts }: PostsGridProps) => {
                     <span className="size-1 rounded-full bg-zinc-200" />
 
                     <span className="flex items-center gap-1">
-                      <Clock className="size-3" /> 5m
+                      <Clock className="size-3" /> {getReadingTime(meta.info.path)}
                     </span>
                   </div>
 

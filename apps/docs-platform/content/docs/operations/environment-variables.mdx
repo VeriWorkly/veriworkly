@@ -52,6 +52,7 @@ These variables are specific to the backend service and should be placed in `app
 | :-------------------------- | :---------------------------------------------------- | :---------------------- |
 | `AUTH_SECRET`               | Security secret (must match frontend).                |                         |
 | `AUTH_BASE_URL`             | The base URL of the API for authentication callbacks. | `http://localhost:8080` |
+| `AUTH_COOKIE_DOMAIN`        | The domain scope for authentication cookies.          | `veriworkly.com`        |
 | `AUTH_SESSION_TTL_SECONDS`  | Maximum session duration (seconds).                   | `2592000` (30 days)     |
 | `AUTH_OTP_TTL_SECONDS`      | Validity duration for Email OTP tokens (seconds).     | `600` (10 minutes)      |
 | `AUTH_OTP_ALLOWED_ATTEMPTS` | Maximum permitted failed verification attempts.       | `3`                     |

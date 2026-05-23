@@ -8,9 +8,9 @@ const Footer = () => {
       homeHref="/"
       logoAlt="VeriWorkly Logo"
       logoSrc="/veriworkly-logo.png"
+      email={siteConfig.email}
       brandName={siteConfig.name}
       shortName={siteConfig.shortName}
-      email="hello@veriworkly.com"
       location="Open Source Everywhere"
       description="Empowering job seekers with most advanced, privacy-first, and open-source resume building experience. 100% free, forever."
       socialLinks={[
