@@ -1,6 +1,7 @@
 "use client";
 
 import { Copy, Cloud, Share2, Trash2, RefreshCw, ExternalLink, MoreHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
@@ -24,6 +25,8 @@ export function DocumentActionsMenu({
   onSyncNowAction,
   onSyncDetailsAction,
 }: DocumentActionsMenuProps) {
+  const router = useRouter();
+
   return (
     <Menu
       size="sm"
@@ -52,7 +55,7 @@ export function DocumentActionsMenu({
             className="h-8 rounded-lg text-xs"
             onClick={() => {
               close();
-              window.location.href = `/editor/${doc.type.toLowerCase()}/${doc.id}`;
+              router.push(`/editor/${doc.type.toLowerCase()}/${doc.id}`);
             }}
           >
             <ExternalLink className="h-4 w-4" />
