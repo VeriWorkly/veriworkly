@@ -226,6 +226,7 @@ export type ResumeSyncState = DocumentSyncState;
 export interface ResumeData {
   id: string;
   templateId: string;
+  title?: string;
   basics: ResumeBasics;
   links: ResumeLinks;
   summary: string;

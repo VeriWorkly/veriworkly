@@ -62,6 +62,7 @@ export class ShareService {
       noExpiry?: boolean;
       expiresAt?: string | Date | null;
       updateSlug?: boolean;
+      removePassword?: boolean;
       snapshot: Prisma.InputJsonValue;
     },
   ) {
@@ -75,14 +76,22 @@ export class ShareService {
 
     const existing = await prisma.shareLink.findUnique({
       where: { userId_documentId: { userId, documentId } },
-      select: { id: true, slug: true },
+      select: { id: true, slug: true, passwordHash: true },
     });
 
     const slug =
       existing && !data.updateSlug
         ? existing.slug
         : await this.buildUniqueShareSlug(userId, document.slug, existing?.id);
-    const passwordHash = data.password ? await this.hashPassword(data.password) : null;
+
+    let passwordHash = existing ? existing.passwordHash : null;
+
+    if (data.removePassword) {
+      passwordHash = null;
+    } else if (data.password) {
+      passwordHash = await this.hashPassword(data.password);
+    }
+
     const expiresAt = data.noExpiry ? null : data.expiresAt ? new Date(data.expiresAt) : null;
 
     const shareLink = existing
@@ -109,6 +118,7 @@ export class ShareService {
     return {
       shareLink: {
         ...shareLink,
+        token: shareLink.slug,
         username,
         documentSlug: document.slug,
         publicPath: `/${username}/${shareLink.slug}`,
@@ -118,27 +128,33 @@ export class ShareService {
   }
 
   static async listShareLinks(userId: string, documentId: string) {
-    return this.listShareLinksPaginated(userId, documentId, { limit: 100, offset: 0 });
+    return this.listShareLinksPaginated(userId, documentId);
   }
 
   static async listShareLinksPaginated(
     userId: string,
     documentId: string,
-    query: { limit: number; offset: number },
+    query?: { limit: number; offset: number },
   ) {
-    const where = { userId, documentId };
+    void query;
 
-    const [items, total] = await Promise.all([
-      prisma.shareLink.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: query.limit,
-        skip: query.offset,
-      }),
-      prisma.shareLink.count({ where }),
-    ]);
+    const item = await prisma.shareLink.findUnique({
+      where: { userId_documentId: { userId, documentId } },
+    });
 
-    return { items, total };
+    const username = await UserService.requireUsernameForUser(userId);
+
+    const items = item
+      ? [
+          {
+            ...item,
+            token: item.slug,
+            username,
+          },
+        ]
+      : [];
+
+    return { items, total: items.length };
   }
 
   static async revokeShareLink(userId: string, documentId: string, shareLinkId: string) {

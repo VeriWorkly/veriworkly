@@ -4,21 +4,22 @@ import Link from "next/link";
 import { Loader2, AlertCircle } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 
-import type { TemplateComponent } from "@/types/template";
-import type { ResumeData } from "@/types/resume";
-
 import { Button } from "@veriworkly/ui";
+
+import type { ResumeData } from "@/types/resume";
+import type { TemplateComponent } from "@/types/template";
+
+import type { BaseDocument } from "@/features/documents/core/types";
+import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import { loadTemplateComponentById } from "@/templates";
 
 import {
   type ShareLinkPayload,
-  verifyShareLink,
+  verifyShareLinkByUsernameAndSlug,
 } from "@/features/documents/services/share-service";
-import type { BaseDocument } from "@/features/documents/core/types";
-import { DocumentFontLoader } from "@/features/documents/components/DocumentFontLoader";
-import type { CoverLetterContent } from "@/features/cover-letter/types";
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
+import { DocumentFontLoader } from "@/features/documents/components/DocumentFontLoader";
 
 import {
   ResumeCanvas,
@@ -26,7 +27,7 @@ import {
   DownloadActions,
   FullScreenMessage,
   PasswordGateModal,
-} from "./components";
+} from "../../components";
 
 interface TemplateState {
   loading: boolean;
@@ -35,13 +36,15 @@ interface TemplateState {
 }
 
 const ShareDocumentClient = ({
-  token,
+  username,
+  slug,
   initialData,
 }: {
-  token: string;
+  username: string;
+  slug: string;
   initialData: ShareLinkPayload<ResumeData | BaseDocument>;
 }) => {
-  const sharePreviewId = `share-document-preview-${token}`;
+  const sharePreviewId = `share-document-preview-${username}-${slug}`;
 
   const [dataState, setDataState] = useState<{
     loading: boolean;
@@ -63,14 +66,15 @@ const ShareDocumentClient = ({
   const [verifying, setVerifying] = useState(false);
 
   const snapshot = dataState.payload?.snapshot;
-  const sharedDocument =
-    snapshot &&
-    typeof snapshot === "object" &&
-    "type" in snapshot &&
-    (snapshot as { type?: unknown }).type !== "RESUME"
-      ? (snapshot as BaseDocument)
-      : null;
-  const resume = sharedDocument ? null : (snapshot as ResumeData | undefined);
+  const isBaseDocument =
+    snapshot && typeof snapshot === "object" && "type" in snapshot && "content" in snapshot;
+
+  const sharedDocument = isBaseDocument ? (snapshot as BaseDocument) : null;
+  const resume = sharedDocument
+    ? sharedDocument.type === "RESUME"
+      ? (sharedDocument.content as ResumeData)
+      : null
+    : (snapshot as ResumeData | undefined);
 
   useEffect(() => {
     if (dataState.payload.passwordRequired) {
@@ -91,6 +95,7 @@ const ShareDocumentClient = ({
     setTemplateState((prev) => ({ ...prev, loading: true, error: null }));
 
     const component = loadTemplateComponentById(resume.templateId);
+
     if (isActive) setTemplateState({ loading: false, error: null, component });
 
     return () => {
@@ -105,7 +110,11 @@ const ShareDocumentClient = ({
     setDataState((prev) => ({ ...prev, error: null }));
 
     try {
-      const payload = await verifyShareLink<ResumeData | BaseDocument>(token, password);
+      const payload = await verifyShareLinkByUsernameAndSlug<ResumeData | BaseDocument>(
+        username,
+        slug,
+        password,
+      );
       setDataState({ loading: false, error: null, payload });
     } catch (err: unknown) {
       setDataState((prev) => ({
@@ -115,7 +124,7 @@ const ShareDocumentClient = ({
     } finally {
       setVerifying(false);
     }
-  }, [token, password]);
+  }, [username, slug, password]);
 
   if (dataState.payload.passwordRequired) {
     return (
@@ -152,6 +161,7 @@ const ShareDocumentClient = ({
           ) : (
             <div className="bg-card text-foreground rounded-2xl border p-6 shadow-sm">
               <h1 className="text-xl font-semibold">{sharedDocument.title}</h1>
+
               <pre className="text-muted mt-4 text-sm whitespace-pre-wrap">
                 {JSON.stringify(sharedDocument.content, null, 2)}
               </pre>
@@ -194,6 +204,7 @@ const ShareDocumentClient = ({
   return (
     <main className="bg-background surface-grid selection:bg-accent/20 relative min-h-screen">
       <DocumentFontLoader fontFamily={resume.customization.fontFamily} />
+
       <ShareHeaderBar
         title={dataState.payload.documentTitle}
         expiresAt={dataState.payload.expiresAt}

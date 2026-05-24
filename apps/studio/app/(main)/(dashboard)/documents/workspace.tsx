@@ -5,12 +5,13 @@ import { Grid2X2, LayoutList } from "lucide-react";
 import { Card, Select } from "@veriworkly/ui";
 
 import DestructiveModal from "@/components/modals/DestructiveModal";
-import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
 import SyncDetailsModal from "@/components/modals/SyncDetailsModal";
+import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
+import RenameDocumentModal from "@/components/modals/RenameDocumentModal";
 
 import { DocumentListRow } from "./components/DocumentListRow";
+import { IconToggle } from "./components/DocumentWorkspaceControls";
 import { DocumentPreviewCard } from "./components/DocumentPreviewCard";
-import { IconToggle, TabButton } from "./components/DocumentWorkspaceControls";
 import { DocumentWorkspaceEmptyState } from "./components/DocumentWorkspaceEmptyState";
 
 import {
@@ -22,7 +23,6 @@ import {
 export default function DocumentsWorkspace() {
   const {
     counts,
-    activeTab,
     activeType,
     handleSyncNow,
     handleConfirmDelete,
@@ -31,23 +31,24 @@ export default function DocumentsWorkspace() {
     handleResolveUseLocal,
     isDeleting,
     deleteTarget,
+    shareTarget,
+    renameTarget,
     syncDetailsTarget,
     setSortMode,
     setViewMode,
-    setActiveTab,
     setActiveType,
     setDeleteTarget,
     setShareTarget,
+    setRenameTarget,
     setSyncDetailsTargetId,
     sortMode,
     viewMode,
-    shareTarget,
-    shareTargetTitle,
     syncingDocumentId,
     syncTelemetryById,
     syncTargetTelemetry,
     totalCount,
     visibleDocs,
+    bump,
   } = useDocumentsWorkspace();
 
   return (
@@ -71,13 +72,7 @@ export default function DocumentsWorkspace() {
       <Card className="overflow-visible rounded-2xl p-0">
         <div className="border-border/70 flex flex-col gap-4 border-b p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-6">
-            <TabButton active={activeTab === "recent"} onClick={() => setActiveTab("recent")}>
-              Recently opened
-            </TabButton>
-
-            <TabButton active={activeTab === "shared"} onClick={() => setActiveTab("shared")}>
-              Shared files
-            </TabButton>
+            <span className="text-foreground text-sm font-semibold">Recently opened</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -138,8 +133,9 @@ export default function DocumentsWorkspace() {
                   doc={doc}
                   key={doc.id}
                   onSyncNowAction={handleSyncNow}
-                  onShareAction={setShareTarget}
                   onDeleteAction={setDeleteTarget}
+                  onShareAction={setShareTarget}
+                  onRenameAction={setRenameTarget}
                   syncing={syncingDocumentId === doc.id}
                   onSyncDetailsAction={setSyncDetailsTargetId}
                   telemetry={syncTelemetryById[doc.id] ?? null}
@@ -155,6 +151,7 @@ export default function DocumentsWorkspace() {
                   onSyncNowAction={handleSyncNow}
                   onDeleteAction={setDeleteTarget}
                   onShareAction={setShareTarget}
+                  onRenameAction={setRenameTarget}
                   syncing={syncingDocumentId === doc.id}
                   onSyncDetailsAction={setSyncDetailsTargetId}
                   telemetry={syncTelemetryById[doc.id] ?? null}
@@ -163,7 +160,7 @@ export default function DocumentsWorkspace() {
             </div>
           )
         ) : (
-          <DocumentWorkspaceEmptyState activeTab={activeTab} />
+          <DocumentWorkspaceEmptyState />
         )}
       </Card>
 
@@ -175,15 +172,6 @@ export default function DocumentsWorkspace() {
         entityName={deleteTarget?.title ?? "document"}
       />
 
-      {shareTarget ? (
-        <ShareDocumentModal
-          document={shareTarget}
-          documentId={shareTarget.type === "RESUME" ? shareTarget.id : null}
-          documentTitle={shareTargetTitle}
-          onClose={() => setShareTarget(null)}
-        />
-      ) : null}
-
       {syncDetailsTarget ? (
         <SyncDetailsModal
           document={syncDetailsTarget}
@@ -194,6 +182,24 @@ export default function DocumentsWorkspace() {
           onResolveUseCloud={handleResolveUseCloud}
           onResolveUseLocal={handleResolveUseLocal}
           onClose={() => setSyncDetailsTargetId(null)}
+        />
+      ) : null}
+
+      {shareTarget ? (
+        <ShareDocumentModal
+          document={shareTarget}
+          documentId={shareTarget.id}
+          documentTitle={shareTarget.title}
+          onClose={() => setShareTarget(null)}
+        />
+      ) : null}
+
+      {renameTarget ? (
+        <RenameDocumentModal
+          open={Boolean(renameTarget)}
+          doc={renameTarget}
+          onClose={() => setRenameTarget(null)}
+          onSuccess={bump}
         />
       ) : null}
     </section>

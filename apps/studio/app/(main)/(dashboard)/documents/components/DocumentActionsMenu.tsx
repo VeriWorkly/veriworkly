@@ -1,8 +1,17 @@
 "use client";
 
-import { Copy, Cloud, Share2, Trash2, RefreshCw, ExternalLink, MoreHorizontal } from "lucide-react";
-import { useRouter } from "next/navigation";
+import {
+  Copy,
+  Edit2,
+  Cloud,
+  Share2,
+  Trash2,
+  RefreshCw,
+  ExternalLink,
+  MoreHorizontal,
+} from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 import { Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
 
@@ -13,6 +22,7 @@ export interface DocumentActionsMenuProps {
   syncing: boolean;
   onDeleteAction: (doc: DocumentLibraryItem) => void;
   onShareAction: (doc: DocumentLibraryItem) => void;
+  onRenameAction: (doc: DocumentLibraryItem) => void;
   onSyncNowAction: (id: string) => void;
   onSyncDetailsAction: (id: string) => void;
 }
@@ -22,6 +32,7 @@ export function DocumentActionsMenu({
   syncing,
   onDeleteAction,
   onShareAction,
+  onRenameAction,
   onSyncNowAction,
   onSyncDetailsAction,
 }: DocumentActionsMenuProps) {
@@ -60,6 +71,17 @@ export function DocumentActionsMenu({
           >
             <ExternalLink className="h-4 w-4" />
             Open
+          </MenuItem>
+
+          <MenuItem
+            className="h-8 rounded-lg text-xs"
+            onClick={() => {
+              close();
+              onRenameAction(doc);
+            }}
+          >
+            <Edit2 className="h-4 w-4" />
+            Rename
           </MenuItem>
 
           <MenuItem

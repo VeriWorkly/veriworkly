@@ -9,15 +9,15 @@ import { useUserStore } from "@/store/useUserStore";
 import { Switch } from "@veriworkly/ui";
 
 import {
-  syncAllPendingResumes,
+  setAllDocumentsSyncEnabled,
+  syncAllPendingDocuments,
   getWorkspaceSyncTelemetry,
-  RESUME_SYNC_OUTBOX_UPDATED_EVENT,
-} from "@/features/resume/services/resume-sync";
+  DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT,
+} from "@/features/documents/services/document-sync";
 import {
   setAutoSyncEnabledInLocalStorage,
   loadWorkspaceSettingsFromLocalStorage,
 } from "@/features/documents/services/workspace-settings";
-import { setAllResumesSyncEnabled } from "@/features/resume/services/resume-service";
 import { getAutoSyncControlState } from "./sync-section-state";
 
 interface TelemetryState {
@@ -51,10 +51,10 @@ export default function SyncSection() {
 
     update();
 
-    window.addEventListener(RESUME_SYNC_OUTBOX_UPDATED_EVENT, update);
+    window.addEventListener(DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT, update);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener(RESUME_SYNC_OUTBOX_UPDATED_EVENT, update);
+      window.removeEventListener(DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT, update);
     };
   }, []);
 
@@ -63,11 +63,11 @@ export default function SyncSection() {
 
     setAutoSync(checked);
     setAutoSyncEnabledInLocalStorage(checked);
-    setAllResumesSyncEnabled(checked);
+    setAllDocumentsSyncEnabled(checked);
 
     if (checked) {
       setLoading(true);
-      await syncAllPendingResumes();
+      await syncAllPendingDocuments();
       setLoading(false);
     }
   };

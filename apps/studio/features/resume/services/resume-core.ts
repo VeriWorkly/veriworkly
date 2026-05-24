@@ -1,23 +1,32 @@
 "use client";
 
 import type { ResumeData, ResumeSyncStatus } from "@/types/resume";
+import type { BaseDocument } from "@/features/documents/core/types";
 
-import {
-  type SaveResumeResult,
-  saveResumeToLocalStorage,
-  loadResumeFromLocalStorage,
-  clearResumeFromLocalStorage,
-  listResumesFromLocalStorage,
-  deleteResumeFromLocalStorage,
-  loadResumeByIdFromLocalStorage,
-  setActiveResumeIdInLocalStorage,
-} from "@/features/resume/services/local-storage";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { deriveResumeFromMasterProfile } from "@/features/resume/services/master-profile";
 import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/services/workspace-settings";
 
-import { getResumeTitle } from "./resume-formatters";
+import {
+  saveDocument,
+  deleteDocument,
+  loadDocumentById,
+  setActiveDocument,
+  listFullDocuments,
+} from "@/features/documents/services/document-workspace-service";
+
+import { importDocumentFromFile } from "@/features/documents/services/import-service";
+import { parseResumeDataInput } from "@/features/resume/schemas/resume-storage-schema";
+
+export type SaveResumeResult =
+  | { ok: true; queued: boolean }
+  | { ok: false; reason: "quota-exceeded" | "unknown" };
+
+export type SaveResumeOptions = {
+  debounceMs?: number;
+  flush?: boolean;
+};
 
 export interface ResumeListItem {
   id: string;
@@ -33,49 +42,97 @@ function createId(): string {
 }
 
 export function loadResume(): ResumeData {
-  return normalizeResumeData(loadResumeFromLocalStorage() ?? defaultResume);
+  if (typeof window !== "undefined") {
+    const activeVal = window.localStorage.getItem("veriworkly:docs:v2:active");
+
+    if (activeVal) {
+      const [type, id] = activeVal.split(":");
+
+      if (type === "RESUME" && id) {
+        const resume = loadResumeById(id);
+        if (resume) return resume;
+      }
+    }
+  }
+
+  const fullDocs = listFullDocuments("RESUME");
+  if (fullDocs.length > 0) {
+    const firstResume = fullDocs[0].content as ResumeData;
+
+    setActiveDocument("RESUME", firstResume.id);
+
+    return normalizeResumeData(firstResume);
+  }
+
+  return normalizeResumeData(defaultResume);
 }
 
-export function saveResume(resume: ResumeData): SaveResumeResult {
-  return saveResumeToLocalStorage({
-    ...resume,
-    updatedAt: new Date().toISOString(),
-  });
+export function saveResume(resume: ResumeData, options?: SaveResumeOptions): SaveResumeResult {
+  const normalized = normalizeResumeData(resume);
+  const now = new Date().toISOString();
+
+  normalized.updatedAt = now;
+
+  const doc: BaseDocument = {
+    id: normalized.id,
+    type: "RESUME",
+    title: normalized.basics.fullName || "Untitled Resume",
+    templateId: normalized.templateId,
+    content: normalized,
+    updatedAt: now,
+    sync: normalized.sync,
+  };
+
+  return saveDocument(doc, options);
 }
 
 export function resetResume(): ResumeData {
-  clearResumeFromLocalStorage();
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem("veriworkly:docs:v2:resume");
+    window.localStorage.removeItem("veriworkly:docs:v2:active");
+  }
   return defaultResume;
 }
 
 export function listSavedResumes(): ResumeListItem[] {
-  const resumes = listResumesFromLocalStorage();
+  const docs = listFullDocuments("RESUME");
 
-  if (!resumes) return [];
-
-  return resumes.map((resume) => ({
-    id: resume.id,
-    title: getResumeTitle(resume),
-    templateId: resume.templateId,
-    role: resume.basics.role,
-    updatedAt: resume.updatedAt,
-    sync: resume.sync,
-  }));
+  return docs.map((doc) => {
+    const resume = doc.content as ResumeData;
+    return {
+      id: doc.id,
+      title: doc.title,
+      templateId: doc.templateId,
+      role: resume.basics?.role || "",
+      updatedAt: doc.updatedAt,
+      sync: doc.sync,
+    };
+  });
 }
 
 export function deleteResumeById(resumeId: string): string | null {
-  return deleteResumeFromLocalStorage(resumeId);
+  deleteDocument("RESUME", resumeId);
+
+  const remaining = listFullDocuments("RESUME");
+  const nextId = remaining[0]?.id ?? null;
+
+  if (nextId) {
+    setActiveDocument("RESUME", nextId);
+  } else {
+    if (typeof window !== "undefined") window.localStorage.removeItem("veriworkly:docs:v2:active");
+  }
+  return nextId;
 }
 
 export function loadResumeById(resumeId: string): ResumeData | null {
-  const resume = loadResumeByIdFromLocalStorage(resumeId);
+  const doc = loadDocumentById("RESUME", resumeId);
 
-  if (!resume) {
+  if (!doc) {
     return null;
   }
 
-  setActiveResumeIdInLocalStorage(resume.id);
-  return normalizeResumeData(resume);
+  setActiveDocument("RESUME", doc.id);
+  return normalizeResumeData(doc.content as ResumeData);
 }
 
 export function createResume(): ResumeData {
@@ -111,7 +168,7 @@ export function createResumeWithTemplate(templateId: string): ResumeData {
 }
 
 export function deleteResume(resumeId: string): ResumeData | null {
-  const nextId = deleteResumeFromLocalStorage(resumeId);
+  const nextId = deleteResumeById(resumeId);
 
   if (!nextId) {
     return null;
@@ -121,20 +178,18 @@ export function deleteResume(resumeId: string): ResumeData | null {
 }
 
 export function setAllResumesSyncEnabled(enabled: boolean): SaveResumeResult {
-  const collection = listSavedResumes();
+  const collection = listFullDocuments("RESUME");
 
   if (collection.length === 0) {
     return { ok: true, queued: false };
   }
 
-  const updated = collection.map((resume) => {
-    const fullResume = loadResumeById(resume.id);
-    if (!fullResume) return null;
-
+  const updated = collection.map((doc) => {
+    const resume = doc.content as ResumeData;
     return {
-      ...fullResume,
+      ...resume,
       sync: {
-        ...fullResume.sync,
+        ...resume.sync,
         enabled,
         status: (enabled ? "pending" : "local-only") as ResumeSyncStatus,
       },
@@ -144,8 +199,6 @@ export function setAllResumesSyncEnabled(enabled: boolean): SaveResumeResult {
   let lastResult: SaveResumeResult = { ok: true, queued: false };
 
   for (const resume of updated) {
-    if (!resume) continue;
-
     lastResult = saveResume(resume);
 
     if (!lastResult.ok) {
@@ -154,4 +207,8 @@ export function setAllResumesSyncEnabled(enabled: boolean): SaveResumeResult {
   }
 
   return lastResult;
+}
+
+export async function importResumeFromFile(file: File) {
+  return importDocumentFromFile(file, parseResumeDataInput, normalizeResumeData);
 }

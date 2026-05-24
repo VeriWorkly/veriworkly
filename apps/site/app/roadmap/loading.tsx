@@ -5,7 +5,7 @@ export default function RoadmapLoading() {
     <main className="relative flex min-h-screen flex-col overflow-hidden">
       <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
 
-      <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-[600px] w-[600px] rounded-full blur-[130px]" />
+      <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[130px]" />
 
       <Container className="pt-28 pb-20 lg:pt-36">
         <div className="border-border/40 mb-12 space-y-4 border-b pb-8">
@@ -41,7 +41,7 @@ export default function RoadmapLoading() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="border-border/30 bg-muted/5 flex min-h-[350px] flex-col gap-5 rounded-3xl border p-4 sm:p-5"
+              className="border-border/30 bg-muted/5 flex min-h-87.5 flex-col gap-5 rounded-3xl border p-4 sm:p-5"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

@@ -9,6 +9,7 @@ export interface SyncTelemetry {
 
 export interface OutboxItem {
   id: string;
+  scope: string | null;
   state: "pending" | "syncing" | "conflicted";
   attempts: number;
   nextAttemptAt: number;
@@ -29,14 +30,39 @@ export class SyncEngine {
     return scope ? `${scope}:${id}` : id;
   }
 
-  // --- Outbox Management ---
-
-  static getOutbox(): Record<string, OutboxItem> {
+  private static readOutbox(): Record<string, OutboxItem> {
     if (!this.isBrowser()) return {};
 
     const raw = localStorage.getItem(STORAGE_KEYS.OUTBOX);
 
-    return raw ? JSON.parse(raw).items : {};
+    const items = raw ? JSON.parse(raw).items : {};
+    if (!items || typeof items !== "object") return {};
+
+    return Object.fromEntries(
+      Object.entries(items as Record<string, OutboxItem>).map(([key, item]) => [
+        key,
+        {
+          ...item,
+          scope: item.scope ?? this.scopeFromKey(key),
+        },
+      ]),
+    );
+  }
+
+  private static scopeFromKey(key: string) {
+    const separatorIndex = key.indexOf(":");
+    return separatorIndex > 0 ? key.slice(0, separatorIndex) : null;
+  }
+
+  static getOutbox(scope?: string): Record<string, OutboxItem> {
+    const outbox = this.readOutbox();
+    if (!scope) return outbox;
+
+    return Object.fromEntries(
+      Object.entries(outbox).filter(
+        ([key, item]) => item.scope === scope || key === this.normalizeKey(item.id, scope),
+      ),
+    );
   }
 
   static saveOutbox(items: Record<string, OutboxItem>) {
@@ -57,6 +83,7 @@ export class SyncEngine {
 
     outbox[key] = {
       id,
+      scope: scope ?? existing?.scope ?? null,
       state: patch.state ?? existing?.state ?? "pending",
       attempts: patch.attempts ?? existing?.attempts ?? 0,
       nextAttemptAt: patch.nextAttemptAt ?? now,
@@ -75,25 +102,25 @@ export class SyncEngine {
     this.saveOutbox(outbox);
   }
 
-  // --- Telemetry Management ---
-
-  static getTelemetry(id: string): SyncTelemetry {
+  static getTelemetry(id: string, scope?: string): SyncTelemetry {
     if (!this.isBrowser()) return this.defaultTelemetry();
 
+    const key = this.normalizeKey(id, scope);
     const raw = localStorage.getItem(STORAGE_KEYS.TELEMETRY);
     const state = raw ? JSON.parse(raw).byDocumentId : {};
 
-    return state[id] || this.defaultTelemetry();
+    return state[key] || this.defaultTelemetry();
   }
 
-  static updateTelemetry(id: string, patch: Partial<SyncTelemetry>) {
+  static updateTelemetry(id: string, patch: Partial<SyncTelemetry>, scope?: string) {
     if (!this.isBrowser()) return;
 
+    const key = this.normalizeKey(id, scope);
     const raw = localStorage.getItem(STORAGE_KEYS.TELEMETRY);
     const state = raw ? JSON.parse(raw) : { byDocumentId: {} };
 
-    state.byDocumentId[id] = {
-      ...(state.byDocumentId[id] || this.defaultTelemetry()),
+    state.byDocumentId[key] = {
+      ...(state.byDocumentId[key] || this.defaultTelemetry()),
       ...patch,
     };
 

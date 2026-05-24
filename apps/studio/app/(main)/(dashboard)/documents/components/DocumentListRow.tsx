@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { Badge, Button } from "@veriworkly/ui";
 
-import type { ResumeSyncTelemetry } from "@/features/resume/services/resume-sync";
+import type { SyncTelemetry } from "@/features/documents/services/document-sync";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
@@ -16,9 +16,10 @@ import { docIconMap, getSyncLabel, getActivityLabel } from "./document-display";
 interface DocumentListRowProps {
   doc: DocumentLibraryItem;
   syncing: boolean;
-  telemetry: ResumeSyncTelemetry | null;
+  telemetry: SyncTelemetry | null;
   onDeleteAction: (doc: DocumentLibraryItem) => void;
   onShareAction: (doc: DocumentLibraryItem) => void;
+  onRenameAction: (doc: DocumentLibraryItem) => void;
   onSyncNowAction: (id: string) => void;
   onSyncDetailsAction: (id: string) => void;
 }
@@ -29,6 +30,7 @@ export function DocumentListRow({
   telemetry,
   onDeleteAction,
   onShareAction,
+  onRenameAction,
   onSyncNowAction,
   onSyncDetailsAction,
 }: DocumentListRowProps) {
@@ -72,6 +74,7 @@ export function DocumentListRow({
           doc={doc}
           syncing={syncing}
           onShareAction={onShareAction}
+          onRenameAction={onRenameAction}
           onDeleteAction={onDeleteAction}
           onSyncNowAction={onSyncNowAction}
           onSyncDetailsAction={onSyncDetailsAction}

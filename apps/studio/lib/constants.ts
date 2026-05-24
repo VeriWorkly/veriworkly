@@ -1,9 +1,5 @@
 import type { ResumeSectionId } from "@/types/resume";
 
-export const RESUME_STORAGE_KEY = "veriworkly:resume";
-export const RESUME_COLLECTION_STORAGE_KEY = "veriworkly:resumes";
-export const RESUME_ACTIVE_ID_STORAGE_KEY = "veriworkly:active-resume-id";
-
 export const WORKSPACE_SETTINGS_STORAGE_KEY = "veriworkly:workspace-settings";
 
 export const MASTER_PROFILE_STORAGE_KEY = "veriworkly:master-profile";

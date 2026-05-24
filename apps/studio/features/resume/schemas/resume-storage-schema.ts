@@ -2,14 +2,14 @@ import { z } from "zod";
 
 import type { ResumeData } from "@/types/resume";
 
+import {
+  phoneSchema,
+  yearDateSchema,
+  monthDateSchema,
+  urlOrEmptySchema,
+} from "@/features/resume/schemas/resume-validation-rules";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
-import {
-  monthDateSchema,
-  phoneSchema,
-  urlOrEmptySchema,
-  yearDateSchema,
-} from "@/features/resume/schemas/resume-validation-rules";
 
 const resumeSectionIdSchema = z.enum([
   "basics",
@@ -67,6 +67,7 @@ const resumeDataSchemaBase = z
   .object({
     id: z.string(),
     templateId: z.string(),
+    title: z.string().optional(),
     basics: z.object({
       fullName: z.string(),
       role: z.string(),

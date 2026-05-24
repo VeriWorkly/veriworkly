@@ -1,32 +1,41 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FileSearch, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { FileSearch, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { Button, Card, Input, Select, TextArea } from "@veriworkly/ui";
 
+import { cn } from "@/lib/utils";
+
+import { useUserStore } from "@/store/useUserStore";
+
+import type { BaseDocument, ExportFormat } from "@/features/documents/core/types";
+import type { ResumeLinkDisplayMode, ResumeLinkItem, ResumeLinkType } from "@/types/resume";
+import type { CoverLetterAppearance, CoverLetterContent } from "@/features/cover-letter/types";
+
 import {
+  startDocumentSyncWorker,
+  hydrateCloudDocumentByIdToLocalStorage,
+} from "@/features/documents/services/document-sync";
+import {
+  saveDocument,
   deleteDocument,
   loadDocumentById,
-  saveDocument,
 } from "@/features/documents/services/document-workspace-service";
-import { exportDocumentByType } from "@/features/documents/export/export-dispatcher";
-import type { BaseDocument, ExportFormat } from "@/features/documents/core/types";
-import { templateCatalogByType } from "@/features/documents/core/template-catalog";
-import { fontOptions, type FontFamilyId } from "@/features/documents/constants/fonts";
-import type { CoverLetterAppearance, CoverLetterContent } from "@/features/cover-letter/types";
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
-import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
 import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
+import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
 import ToolbarHeader from "@/app/(main)/editor/components/toolbar/ToolbarHeader";
+import { templateCatalogByType } from "@/features/documents/core/template-catalog";
+import { exportDocumentByType } from "@/features/documents/export/export-dispatcher";
+import { fontOptions, type FontFamilyId } from "@/features/documents/constants/fonts";
+import { linkTypeOptions } from "@/app/(main)/editor/components/content/editor-options";
 import ToolbarActionsMenu from "@/app/(main)/editor/components/toolbar/ToolbarActionsMenu";
 import ToolbarDownloadMenu from "@/app/(main)/editor/components/toolbar/ToolbarDownloadMenu";
-import { linkTypeOptions } from "@/app/(main)/editor/components/content/editor-options";
-import { cn } from "@/lib/utils";
-import type { ResumeLinkDisplayMode, ResumeLinkItem, ResumeLinkType } from "@/types/resume";
+import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/services/workspace-settings";
 
 interface Props {
   documentId: string;
@@ -142,29 +151,61 @@ function ColorField({
 
 export default function CoverLetterEditor({ documentId }: Props) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [doc, setDoc] = useState<BaseDocument<CoverLetterContent> | null>(null);
+
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
   const [hydrated, setHydrated] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
-  const [activePanel, setActivePanel] = useState<EditorPanel>("content");
-  const [activeTab, setActiveTab] = useState<"editor" | "preview">("editor");
-  const [activeDownload, setActiveDownload] = useState<ExportFormat | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("Autosave ready");
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<EditorPanel>("content");
+  const [activeTab, setActiveTab] = useState<"editor" | "preview">("editor");
+  const [doc, setDoc] = useState<BaseDocument<CoverLetterContent> | null>(null);
+  const [activeDownload, setActiveDownload] = useState<ExportFormat | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    queueMicrotask(() => {
+    const hydrate = async () => {
+      const localDocument = getInitialDocument(documentId);
+
+      if (!cancelled && localDocument) {
+        setDoc(localDocument);
+        setHydrated(true);
+        return;
+      }
+
+      const cloudResult = await hydrateCloudDocumentByIdToLocalStorage("COVER_LETTER", documentId);
+
+      if (!cancelled && cloudResult.ok) {
+        setDoc(getInitialDocument(documentId));
+        setHydrated(true);
+        return;
+      }
+
       if (cancelled) return;
-      setDoc(getInitialDocument(documentId));
+      setDoc(null);
       setHydrated(true);
-    });
+    };
+
+    void hydrate();
 
     return () => {
       cancelled = true;
     };
   }, [documentId]);
+
+  useEffect(() => {
+    if (!hydrated || !isLoggedIn) return;
+
+    const workspaceSettings = loadWorkspaceSettingsFromLocalStorage();
+
+    startDocumentSyncWorker("COVER_LETTER", {
+      enabled: isLoggedIn && workspaceSettings.autoSyncEnabled,
+      idleDelayMs: 12_000,
+    });
+  }, [hydrated, isLoggedIn, doc?.updatedAt]);
 
   if (!hydrated) {
     return (

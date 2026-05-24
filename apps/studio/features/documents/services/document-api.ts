@@ -97,6 +97,7 @@ export class DocumentApi {
       content?: unknown;
       templateId?: string;
       visibility?: string;
+      updateShareSlug?: boolean;
       revision: number;
     },
   ): Promise<CloudDocument> {

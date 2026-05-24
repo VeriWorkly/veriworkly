@@ -23,6 +23,7 @@ const shareLinkCreateSchema = z.object({
   expiresAt: z.string().datetime().nullable().optional(),
   noExpiry: z.boolean().optional(),
   updateSlug: z.boolean().optional(),
+  removePassword: z.boolean().optional(),
 });
 
 const shareLinkPasswordSchema = z.object({
@@ -41,6 +42,17 @@ function buildPublicSharePayload(shareLink: PublicShareLink, includeSnapshot: bo
     documentTitle: shareLink.document.title,
     expiresAt: shareLink.expiresAt,
     ...(includeSnapshot ? { snapshot: shareLink.snapshot } : {}),
+  };
+}
+
+function formatShareLinkResponse<T extends { passwordHash?: string | null }>(shareLink: T | null) {
+  if (!shareLink) return shareLink;
+
+  const { passwordHash, ...rest } = shareLink;
+
+  return {
+    ...rest,
+    hasPassword: Boolean(passwordHash),
   };
 }
 
@@ -75,7 +87,14 @@ export class ShareController {
       await cacheDel(`share:public-readable:${shareLink.username}:${shareLink.documentSlug}`);
       await cacheDel(`share:public-readable:${shareLink.username}:${shareLink.slug}`);
 
-      res.status(201).json(createSuccessResponse(shareLink, "Share link created successfully"));
+      res
+        .status(201)
+        .json(
+          createSuccessResponse(
+            formatShareLinkResponse(shareLink),
+            "Share link created successfully",
+          ),
+        );
     } catch (error) {
       if (error instanceof z.ZodError) return next(handleValidationError(error));
       next(error);
@@ -113,7 +132,8 @@ export class ShareController {
         pagination,
       );
 
-      const response = { items, ...createOffsetPaginationMeta(total, pagination) };
+      const formattedItems = items.map(formatShareLinkResponse);
+      const response = { items: formattedItems, ...createOffsetPaginationMeta(total, pagination) };
 
       await cacheSet(cacheKey, response, 1800);
 

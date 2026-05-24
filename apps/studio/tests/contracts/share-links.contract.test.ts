@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ResumeData } from "@/types/resume";
 import { defaultResume } from "@/features/resume/constants/default-resume";
-import { createResumeShareLink } from "@/features/resume/services/share-links";
-import { fetchShareLink, verifyShareLink } from "@/features/resume/services/public-share";
+import {
+  createShareLink,
+  fetchShareLinkByUsernameAndSlug,
+  verifyShareLinkByUsernameAndSlug,
+} from "@/features/documents/services/share-service";
 
 const mockedBackendApiUrl = vi.fn((path: string) => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -23,7 +27,7 @@ describe("share links contract", () => {
     mockedBackendApiUrl.mockClear();
   });
 
-  it("creates a share link for a resume", async () => {
+  it("creates a share link for a document", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -35,7 +39,7 @@ describe("share links contract", () => {
       }),
     } as Response);
 
-    const result = await createResumeShareLink(defaultResume, {
+    const result = await createShareLink(defaultResume.id, defaultResume, {
       noExpiry: true,
     });
 
@@ -59,14 +63,14 @@ describe("share links contract", () => {
       json: async () => ({
         data: {
           passwordRequired: false,
-          resumeTitle: "Jane Doe",
+          documentTitle: "Jane Doe",
           expiresAt: null,
           snapshot: defaultResume,
         },
       }),
     } as Response);
 
-    const result = await fetchShareLink("tok_123");
+    const result = await fetchShareLinkByUsernameAndSlug<ResumeData>("username_1", "slug_1");
 
     expect(result.passwordRequired).toBe(false);
     expect(result.snapshot?.id).toBe(defaultResume.id);
@@ -78,14 +82,18 @@ describe("share links contract", () => {
       json: async () => ({
         data: {
           passwordRequired: false,
-          resumeTitle: "Jane Doe",
+          documentTitle: "Jane Doe",
           expiresAt: null,
           snapshot: defaultResume,
         },
       }),
     } as Response);
 
-    const result = await verifyShareLink("tok_123", "secret");
+    const result = await verifyShareLinkByUsernameAndSlug<ResumeData>(
+      "username_1",
+      "slug_1",
+      "secret",
+    );
 
     expect(result.passwordRequired).toBe(false);
   });
@@ -96,7 +104,9 @@ describe("share links contract", () => {
       json: async () => ({ message: "Invalid password" }),
     } as Response);
 
-    await expect(verifyShareLink("tok_123", "wrong")).rejects.toThrow("Invalid password");
+    await expect(verifyShareLinkByUsernameAndSlug("username_1", "slug_1", "wrong")).rejects.toThrow(
+      "Invalid password",
+    );
   });
 
   it("returns not found error for expired or missing link", async () => {
@@ -105,6 +115,8 @@ describe("share links contract", () => {
       json: async () => ({ message: "Shared document not found" }),
     } as Response);
 
-    await expect(fetchShareLink("expired_or_missing")).rejects.toThrow("Shared document not found");
+    await expect(
+      fetchShareLinkByUsernameAndSlug("username_1", "expired_or_missing"),
+    ).rejects.toThrow("Shared document not found");
   });
 });

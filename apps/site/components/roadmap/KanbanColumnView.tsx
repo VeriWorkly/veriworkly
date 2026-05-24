@@ -56,8 +56,7 @@ const KanbanColumnView = ({
   );
 
   return (
-    <div className="border-border/30 bg-muted/5 flex min-h-[350px] flex-col gap-5 rounded-3xl border p-4 sm:p-5">
-      {/* Column Header */}
+    <div className="border-border/30 bg-muted/5 flex min-h-87.5 flex-col gap-5 rounded-3xl border p-4 sm:p-5">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">

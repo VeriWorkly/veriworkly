@@ -45,6 +45,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
   /** Loading state */
   loading?: boolean;
+
+  /** Loading text */
+  loadingText?: string;
 }
 
 export const Button = ({
@@ -54,6 +57,7 @@ export const Button = ({
   type = "button",
   asChild = false,
   loading = false,
+  loadingText = "Loading...",
   disabled,
   children,
   ...props
@@ -83,7 +87,7 @@ export const Button = ({
       {loading ? (
         <span className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Loading...</span>
+          <span>{loadingText}</span>
         </span>
       ) : (
         children

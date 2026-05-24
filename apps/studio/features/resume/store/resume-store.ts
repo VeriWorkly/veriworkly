@@ -29,9 +29,9 @@ import {
 import {
   type SaveResumeResult,
   type SaveResumeOptions,
-  saveResumeToLocalStorage,
-  loadResumeFromLocalStorage,
-} from "@/features/resume/services/local-storage";
+  saveResume as saveResumeToLocalStorage,
+  loadResume as loadResumeFromLocalStorage,
+} from "@/features/resume/services/resume-service";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { reorderItems, withTimestamp } from "@/features/resume/store/resume-store-utils";
