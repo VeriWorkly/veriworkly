@@ -100,11 +100,11 @@ export function DocumentActionsMenu({
               void navigator.clipboard.writeText(
                 `${window.location.origin}/editor/${doc.type.toLowerCase()}/${doc.id}`,
               );
-              toast.success("Document link copied");
+              toast.success("Editor URL copied");
             }}
           >
             <Copy className="h-4 w-4" />
-            Copy link
+            Copy editor URL
           </MenuItem>
 
           <MenuSeparator />
