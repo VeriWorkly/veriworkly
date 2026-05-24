@@ -191,6 +191,8 @@ const getGitHubStats = async () => {
     projectName: latest.projectName,
     stats: {
       total: latest.issueCount,
+      issues: latest.onlyIssueCount,
+      pullRequests: latest.prCount,
       todo: latest.todoCount,
       inProgress: latest.inProgressCount,
       done: latest.doneCount,
@@ -424,17 +426,54 @@ const syncGitHubStatsFromGitHub = async () => {
         );
       }
 
-      const [todoCount, inProgressCount, doneCount] = await Promise.all([
-        tx.gitHubSyncItem.count({ where: { syncId: sync.id, status: "todo" } }),
-        tx.gitHubSyncItem.count({ where: { syncId: sync.id, status: "in-progress" } }),
-        tx.gitHubSyncItem.count({ where: { syncId: sync.id, status: "done" } }),
-      ]);
+      const groupedStats = await tx.gitHubSyncItem.groupBy({
+        by: ["status", "kind"],
+        where: {
+          syncId: sync.id,
+        },
+        _count: {
+          id: true,
+        },
+      });
 
-      const issueCount = todoCount + inProgressCount + doneCount;
+      let todoCount = 0;
+      let inProgressCount = 0;
+      let doneCount = 0;
+
+      let onlyIssueCount = 0;
+      let prCount = 0;
+
+      for (const item of groupedStats) {
+        const count = item._count.id;
+
+        //status counts
+        if (item.status === "todo") {
+          todoCount += count;
+        }
+
+        if (item.status === "in-progress") {
+          inProgressCount += count;
+        }
+
+        if (item.status === "done") {
+          doneCount += count;
+        }
+
+        //kind counts
+        if (item.kind === "issue") {
+          onlyIssueCount += count;
+        }
+
+        if (item.kind === "pull-request") {
+          prCount += count;
+        }
+      }
+
+      const issueCount = onlyIssueCount + prCount;
 
       return tx.gitHubSync.update({
         where: { id: sync.id },
-        data: { issueCount, todoCount, inProgressCount, doneCount },
+        data: { issueCount, todoCount, inProgressCount, doneCount, onlyIssueCount, prCount },
       });
     },
     { timeout: 30000 },

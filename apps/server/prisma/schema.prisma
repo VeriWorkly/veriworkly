@@ -238,6 +238,8 @@ model GitHubSync {
   projectName     String
   projectUrl      String
   issueCount      Int       @default(0)
+  onlyIssueCount  Int       @default(0)
+  prCount         Int       @default(0)
   todoCount       Int       @default(0)
   inProgressCount Int       @default(0)
   doneCount       Int       @default(0)
