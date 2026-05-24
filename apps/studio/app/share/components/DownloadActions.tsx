@@ -7,21 +7,21 @@ import {
   FileText,
   FileJson,
   Download,
+  FileDown,
   FileCode2,
   ChevronDown,
-  FileDown,
 } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@veriworkly/ui";
-import { Menu, MenuItem } from "@veriworkly/ui";
+import { Button, Menu, MenuItem } from "@veriworkly/ui";
 
 import type { ResumeData } from "@/types/resume";
+
 import {
+  exportResumeAsPdf,
   exportResumeAsHtml,
   exportResumeAsJson,
   exportResumeAsDocx,
-  exportResumeAsPdf,
   exportResumeAsText,
   exportResumeAsMarkdown,
 } from "@/features/resume/services/resume-service";

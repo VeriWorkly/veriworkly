@@ -15,19 +15,23 @@ export type CreateShareLinkOptions = {
   password?: string;
   expiresAt?: string | null;
   noExpiry?: boolean;
+  updateSlug?: boolean;
+  removePassword?: boolean;
 };
 
 export type CreateShareLinkResult = {
   id: string;
   token: string;
+  username: string;
   expiresAt: string | null;
 };
 
 export type ShareLinkItem = {
   id: string;
   token: string;
+  username: string;
   expiresAt: string | null;
-  passwordHash: string | null;
+  hasPassword: boolean;
   viewCount: number;
   lastViewedAt: string | null;
   createdAt: string;
@@ -75,12 +79,12 @@ export async function createShareLink<T = unknown>(
       password: options.password || undefined,
       expiresAt: options.expiresAt ?? null,
       noExpiry: options.noExpiry ?? false,
+      updateSlug: options.updateSlug ?? false,
+      removePassword: options.removePassword ?? false,
     }),
   });
 
-  if (!response.ok) {
-    await throwApiError(response, "Failed to create share link");
-  }
+  if (!response.ok) await throwApiError(response, "Failed to create share link");
 
   const payload = (await response.json()) as {
     data: CreateShareLinkResult;
@@ -149,8 +153,26 @@ export async function fetchShareLink<T = unknown>(token: string) {
   });
 }
 
+export async function fetchShareLinkByUsernameAndSlug<T = unknown>(username: string, slug: string) {
+  return fetchApiData<ShareLinkPayload<T>>(`/shares/public/${username}/${slug}`, {
+    errorMessage: "Shared document not found",
+  });
+}
+
 export async function verifyShareLink<T = unknown>(token: string, password: string) {
   return fetchApiData<ShareLinkPayload<T>>(`/shares/${token}/verify`, {
+    method: "POST",
+    body: JSON.stringify({ password }),
+    errorMessage: "Invalid password",
+  });
+}
+
+export async function verifyShareLinkByUsernameAndSlug<T = unknown>(
+  username: string,
+  slug: string,
+  password: string,
+) {
+  return fetchApiData<ShareLinkPayload<T>>(`/shares/public/${username}/${slug}/verify`, {
     method: "POST",
     body: JSON.stringify({ password }),
     errorMessage: "Invalid password",

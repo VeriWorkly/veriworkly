@@ -150,12 +150,13 @@ export class DocumentService {
 
     const document = await prisma.document.create({
       data: {
-        id: input.id,
-        userId,
-        type: input.type,
-        title,
         slug,
+        title,
+        userId,
+        id: input.id,
+        type: input.type,
         tags: input.tags || [],
+        lastSyncedAt: new Date(),
         content: initialContent || {},
         metadata: input.metadata || {},
         templateId: input.templateId || "modern",
@@ -198,7 +199,7 @@ export class DocumentService {
         updateData.slug = await this.buildUniqueSlug(userId, nextSlugSource, documentId);
       }
 
-      if (updateShareSlug && user?.username && updateData.slug) {
+      if (user?.username && updateData.slug && updateShareSlug) {
         const shareLink = await prisma.shareLink.findUnique({
           where: { userId_documentId: { userId, documentId } },
           select: { id: true, slug: true },
@@ -210,6 +211,7 @@ export class DocumentService {
             id: shareLink.id,
             slug: await this.buildUniqueShareSlug(userId, updateData.slug, shareLink.id),
           };
+
           readableShareCacheKeys.add(
             `share:public-readable:${user.username}:${shareLinkSlugUpdate.slug}`,
           );

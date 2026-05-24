@@ -30,7 +30,7 @@ const StatsFilters = ({ status, kind, updatedFrom, updatedTo }: StatsFiltersProp
           </p>
         </div>
 
-        <div className="bg-muted/10 border-border/20 scrollbar-none inline-flex w-fit overflow-x-auto rounded-full border p-0.5">
+        <div className="bg-muted/10 border-border/20 inline-flex w-fit scrollbar-none overflow-x-auto rounded-full border p-0.5">
           {statusOptions.map((option) => {
             const isActive = status === option.value;
 
@@ -65,7 +65,7 @@ const StatsFilters = ({ status, kind, updatedFrom, updatedTo }: StatsFiltersProp
           </h2>
         </div>
 
-        <div className="bg-muted/10 border-border/20 scrollbar-none inline-flex w-fit overflow-x-auto rounded-full border p-0.5">
+        <div className="bg-muted/10 border-border/20 inline-flex w-fit scrollbar-none overflow-x-auto rounded-full border p-0.5">
           {kindOptions.map((option) => {
             const isActive = kind === option.value;
 

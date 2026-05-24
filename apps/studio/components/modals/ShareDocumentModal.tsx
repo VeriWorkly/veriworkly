@@ -1,14 +1,23 @@
 "use client";
 
+import {
+  Eye,
+  Lock,
+  Copy,
+  Globe,
+  Link2,
+  Trash2,
+  Calendar,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Eye, Lock, Copy, Globe, Link2, Trash2, Calendar, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 import { Badge, Modal, Input, Button, Checkbox } from "@veriworkly/ui";
 
-import type { BaseDocument } from "@/features/documents/core/types";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import {
@@ -17,11 +26,9 @@ import {
   revokeShareLink,
   listAllShareLinks,
 } from "@/features/documents/services/share-service";
-import { loadResumeById } from "@/features/resume/services/resume-service";
+
 import { trackUsageEvent } from "@/features/analytics/services/usage-metrics";
 import { loadDocumentById } from "@/features/documents/services/document-workspace-service";
-
-import { ApiRequestError } from "@/utils/fetchApiData";
 
 interface ShareDocumentModalProps {
   documentId: string | null;
@@ -33,10 +40,19 @@ interface ShareDocumentModalProps {
 interface LinkItem {
   id: string;
   token: string;
+  username: string;
   passwordRequired?: boolean;
   viewCount: number;
   expiresAt: string | null;
 }
+
+const slugify = (text: string) =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 const ActiveLinkRow = ({
   link,
@@ -47,7 +63,10 @@ const ActiveLinkRow = ({
   onRevoke: () => void;
   isRevoking: boolean;
 }) => {
-  const url = typeof window !== "undefined" ? `${window.location.origin}/share/${link.token}` : "";
+  const url =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/share/${link.username}/${link.token}`
+      : "";
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(url);
@@ -107,6 +126,7 @@ const ActiveLinkRow = ({
 
         <Button
           size="sm"
+          loadingText=""
           variant="ghost"
           onClick={onRevoke}
           loading={isRevoking}
@@ -125,12 +145,9 @@ function getShareSnapshot(
   document: DocumentLibraryItem | null | undefined,
   documentId: string | null,
 ) {
-  if (document?.type && document.type !== "RESUME") {
-    return loadDocumentById(document.type, document.id) as BaseDocument | null;
-  }
-
+  const type = document?.type ?? "RESUME";
   const id = document?.id ?? documentId;
-  return id ? loadResumeById(id) : null;
+  return id ? loadDocumentById(type, id) : null;
 }
 
 const ShareDocumentModal = ({
@@ -143,6 +160,8 @@ const ShareDocumentModal = ({
   const [expiry, setExpiry] = useState("");
   const [password, setPassword] = useState("");
   const [noExpiry, setNoExpiry] = useState(false);
+  const [updateSlug, setUpdateSlug] = useState(false);
+  const [removePassword, setRemovePassword] = useState(false);
 
   const [linksLoading, setLinksLoading] = useState(false);
 
@@ -152,6 +171,15 @@ const ShareDocumentModal = ({
   const documentLabel = document?.type === "COVER_LETTER" ? "Cover Letter" : "Resume";
   const documentTitle = document?.title ?? fallbackDocumentTitle ?? "Untitled Document";
 
+  const hasActiveLink = shareLinks.length > 0;
+  const activeLink = shareLinks[0];
+
+  const documentSlug = useMemo(() => slugify(documentTitle), [documentTitle]);
+  const isSlugOutofSync = useMemo(() => {
+    if (!activeLink) return false;
+    return slugify(activeLink.token) !== documentSlug;
+  }, [activeLink, documentSlug]);
+
   const refreshShareLinks = useCallback(async (id: string) => {
     setLinksLoading(true);
 
@@ -159,6 +187,22 @@ const ShareDocumentModal = ({
       const links = await listAllShareLinks(id);
 
       setShareLinks(links);
+
+      if (links.length > 0) {
+        const link = links[0];
+        if (link.expiresAt) {
+          setExpiry(new Date(link.expiresAt).toISOString().split("T")[0]);
+          setNoExpiry(false);
+        } else {
+          setExpiry("");
+          setNoExpiry(true);
+        }
+      } else {
+        setExpiry("");
+        setNoExpiry(false);
+      }
+      setRemovePassword(false);
+      setUpdateSlug(false);
 
       return links;
     } catch (err) {
@@ -192,31 +236,32 @@ const ShareDocumentModal = ({
       password: password.trim() || undefined,
       expiresAt: noExpiry ? null : expiry ? new Date(expiry).toISOString() : null,
       noExpiry,
+      updateSlug,
+      removePassword,
     });
 
     toast.promise(promise, {
-      loading: "Creating share link...",
+      loading: hasActiveLink ? "Updating share link..." : "Creating share link...",
 
       success: (shareLink) => {
-        const nextShareUrl = `${window.location.origin}/share/${shareLink.token}`;
+        const nextShareUrl = `${window.location.origin}/share/${shareLink.username}/${shareLink.token}`;
         void navigator.clipboard.writeText(nextShareUrl);
 
-        trackUsageEvent({ event: "share_link_created" });
+        trackUsageEvent({ event: hasActiveLink ? "share_link_updated" : "share_link_created" });
         void refreshShareLinks(documentId);
 
         setPassword("");
         setExpiry("");
+        setRemovePassword(false);
+        setUpdateSlug(false);
 
-        return "Share link created and copied to clipboard!";
+        return hasActiveLink
+          ? "Share link updated and copied to clipboard!"
+          : "Share link created and copied to clipboard!";
       },
 
       error: (err) => {
-        if (err instanceof ApiRequestError && err.status === 409) {
-          void refreshShareLinks(documentId);
-          return "A share link already exists for this document.";
-        }
-
-        return err instanceof Error ? err.message : "Unable to create share link.";
+        return err instanceof Error ? err.message : "Unable to save share link.";
       },
 
       finally: () => setBusy(false),
@@ -253,9 +298,10 @@ const ShareDocumentModal = ({
       shareLinks.map((link) => ({
         id: link.id,
         token: link.token,
+        username: link.username,
         expiresAt: link.expiresAt,
         viewCount: link.viewCount,
-        passwordRequired: Boolean(link.passwordHash),
+        passwordRequired: link.hasPassword,
       })),
     [shareLinks],
   );
@@ -278,6 +324,51 @@ const ShareDocumentModal = ({
         </div>
 
         <Modal.Body className="space-y-4 p-4">
+          {hasActiveLink && isSlugOutofSync && activeLink && (
+            <div className="flex flex-col gap-2 rounded-xl border border-orange-500/25 bg-orange-500/5 p-3">
+              <div className="flex gap-2.5">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
+
+                <div className="space-y-1">
+                  <p className="text-xs leading-none font-bold text-orange-500">
+                    Document Title Renamed
+                  </p>
+
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    This document has been renamed, but your public link is still using the older
+                    slug:{" "}
+                    <code className="text-foreground rounded bg-zinc-500/10 px-1 py-0.5 font-mono text-[10px]">
+                      {activeLink.token}
+                    </code>
+                    .
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-1 flex items-center justify-between border-t border-orange-500/10 pt-2">
+                <label
+                  htmlFor="update-slug-checkbox"
+                  className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase"
+                >
+                  Sync link slug with new title
+                </label>
+                <Checkbox
+                  id="update-slug-checkbox"
+                  checked={updateSlug}
+                  onCheckedChange={setUpdateSlug}
+                  className="scale-90"
+                />
+              </div>
+
+              {updateSlug && (
+                <p className="mt-1 text-[10px] leading-tight font-medium text-orange-500">
+                  ⚠️ Warning: Syncing will update the link slug. Anyone visiting the old URL will
+                  get a 404 error.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase">
@@ -288,10 +379,43 @@ const ShareDocumentModal = ({
                 inputSize="sm"
                 type="password"
                 value={password}
-                placeholder="Optional"
-                onChange={(e) => setPassword(e.target.value)}
+                disabled={removePassword}
+                placeholder={
+                  hasActiveLink && activeLink?.hasPassword && !removePassword
+                    ? "•••••••• (Protected)"
+                    : "Optional"
+                }
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (e.target.value) {
+                    setRemovePassword(false);
+                  }
+                }}
                 className="focus:ring-accent/20 transition-all"
               />
+
+              {hasActiveLink && activeLink?.hasPassword && (
+                <div className="mt-1.5 flex items-center justify-between">
+                  <label
+                    htmlFor="remove-password-checkbox"
+                    className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase"
+                  >
+                    Remove password
+                  </label>
+
+                  <Checkbox
+                    id="remove-password-checkbox"
+                    checked={removePassword}
+                    onCheckedChange={(val) => {
+                      setRemovePassword(val);
+                      if (val) {
+                        setPassword("");
+                      }
+                    }}
+                    className="scale-90"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -326,7 +450,7 @@ const ShareDocumentModal = ({
             onClick={handleCreate}
             className="shadow-accent/10 w-full shadow-md transition-all active:scale-[0.98]"
           >
-            Generate Public Link
+            {hasActiveLink ? "Update Share Link" : "Generate Public Link"}
           </Button>
 
           <div className="border-t pt-5">
@@ -341,7 +465,7 @@ const ShareDocumentModal = ({
               </h4>
             </div>
 
-            <div className="scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800 max-h-64 space-y-3 overflow-y-auto pr-1 transition-all">
+            <div className="max-h-64 scrollbar-thin scrollbar-thumb-zinc-200 space-y-3 overflow-y-auto pr-1 transition-all dark:scrollbar-thumb-zinc-800">
               {linksLoading ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <Loader2 className="text-accent h-6 w-6 animate-spin opacity-40" />

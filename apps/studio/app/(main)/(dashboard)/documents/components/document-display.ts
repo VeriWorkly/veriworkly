@@ -1,6 +1,8 @@
 import { FileText, Mail } from "lucide-react";
+
+import type { SyncTelemetry } from "@/features/documents/services/document-sync";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
-import type { ResumeSyncTelemetry } from "@/features/resume/services/resume-sync";
+
 import { formatRelative } from "@/features/documents/services/document-library";
 
 export const docIconMap = {
@@ -19,7 +21,7 @@ export function getSyncLabel(sync: DocumentLibraryItem["sync"]) {
 
 export function getActivityLabel(
   sync: DocumentLibraryItem["sync"],
-  telemetry: ResumeSyncTelemetry | null,
+  telemetry: SyncTelemetry | null,
 ) {
   if (sync.lastSyncedAt) return `Last synced ${formatRelative(sync.lastSyncedAt)}`;
   if (telemetry?.lastAttemptAt) return `Last attempt ${formatRelative(telemetry.lastAttemptAt)}`;

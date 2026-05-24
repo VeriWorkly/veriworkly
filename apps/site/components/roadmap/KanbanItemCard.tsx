@@ -71,7 +71,7 @@ const KanbanItemCard = ({
       }}
     >
       {isInteractive && (
-        <div className="bg-accent/80 absolute top-0 right-0 left-0 h-[2px] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="bg-accent/80 absolute top-0 right-0 left-0 h-0.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       )}
 
       <div className="flex flex-col gap-4">

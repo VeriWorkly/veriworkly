@@ -19,18 +19,21 @@ export const metadata: Metadata = {
 export default async function SharedDocumentPage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ username: string; slug: string }>;
 }) {
-  const { token } = await params;
+  const { username, slug } = await params;
 
-  const data = await fetchApiData<ShareLinkPayload<ResumeData | BaseDocument>>(`/shares/${token}`, {
-    errorMessage: "Could not fetch shared document",
-    nullOnNotFound: true,
-  });
+  const data = await fetchApiData<ShareLinkPayload<ResumeData | BaseDocument>>(
+    `/shares/public/${username}/${slug}`,
+    {
+      errorMessage: "Could not fetch shared document",
+      nullOnNotFound: true,
+    },
+  );
 
   if (!data) {
     notFound();
   }
 
-  return <ShareDocumentClient token={token} initialData={data} />;
+  return <ShareDocumentClient username={username} slug={slug} initialData={data} />;
 }

@@ -12,11 +12,11 @@ import {
 export { safeText, formatDateRange, sanitizeFileName, escapeHtml };
 
 export function getResumeTitle(resume: ResumeData): string {
-  return resume.basics.fullName.trim() || "Untitled Resume";
+  return resume.title?.trim() || resume.basics.fullName.trim() || "Untitled Resume";
 }
 
 export function getResumeFileBaseName(resume: ResumeData): string {
-  return sanitizeFileName(resume.basics.fullName) || "resume";
+  return sanitizeFileName(resume.title || resume.basics.fullName) || "resume";
 }
 
 export function getVisibleSectionMap(resume: ResumeData): Map<string, boolean> {

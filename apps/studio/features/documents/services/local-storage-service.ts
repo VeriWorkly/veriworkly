@@ -18,6 +18,7 @@ export type SaveDocumentResult =
 export interface LocalStorageConfig<T extends BaseDocumentData> {
   collectionKey: string;
   activeIdKey: string;
+  activeIdScope?: string;
   legacyKey?: string;
   updatedEventName: string;
   parseItem: (input: unknown) => T | null;
@@ -59,6 +60,18 @@ export class LocalStorageService<T extends BaseDocumentData> {
     return JSON.stringify(previousPayload) !== JSON.stringify(nextPayload);
   }
 
+  private formatActiveId(id: string) {
+    return this.config.activeIdScope ? `${this.config.activeIdScope}:${id}` : id;
+  }
+
+  private parseActiveId(value: string | null) {
+    if (!value) return null;
+    if (!this.config.activeIdScope) return value;
+
+    const prefix = `${this.config.activeIdScope}:`;
+    return value.startsWith(prefix) ? value.slice(prefix.length) : null;
+  }
+
   private writeCollection(collection: DocumentCollection<T>): LocalStorageWriteResult {
     if (!this.isBrowser()) return { ok: true };
 
@@ -75,12 +88,12 @@ export class LocalStorageService<T extends BaseDocumentData> {
 
   getActiveId(): string | null {
     if (!this.isBrowser()) return null;
-    return window.localStorage.getItem(this.config.activeIdKey);
+    return this.parseActiveId(window.localStorage.getItem(this.config.activeIdKey));
   }
 
   setActiveId(id: string) {
     if (!this.isBrowser()) return;
-    safeSetLocalStorageItem(window.localStorage, this.config.activeIdKey, id);
+    safeSetLocalStorageItem(window.localStorage, this.config.activeIdKey, this.formatActiveId(id));
   }
 
   loadCollection(): DocumentCollection<T> {

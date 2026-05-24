@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Copy,
-  Link2,
   Cloud,
   Monitor,
   History,
@@ -14,20 +12,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
-import type { ResumeSyncTelemetry } from "@/features/resume/services/resume-sync";
+import type { SyncTelemetry } from "@/features/documents/services/document-sync";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { cn } from "@/lib/utils";
 
 import { Modal, Button } from "@veriworkly/ui";
 
-import { listAllShareLinks } from "@/features/documents/services/share-service";
-
 interface SyncDetailsModalProps {
   document: DocumentLibraryItem;
-  telemetry: ResumeSyncTelemetry | null;
+  telemetry: SyncTelemetry | null;
   syncingDocumentId: string | null;
   onClose: () => void;
   onResolveUseLocal: (id: string) => void;
@@ -51,26 +46,6 @@ const SyncDetailsModal = ({
   const isSyncing = syncingDocumentId === document.id;
   const isConflicted = document.sync.status === "conflicted";
   const editorHref = `/editor/${document.type.toLowerCase()}/${document.id}`;
-
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void listAllShareLinks(document.id)
-      .then((links) => {
-        if (cancelled) return;
-        const token = links[0]?.token;
-        setShareUrl(token ? `${window.location.origin}/share/${token}` : null);
-      })
-      .catch(() => {
-        if (!cancelled) setShareUrl(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [document.id]);
 
   if (!document) return null;
 
@@ -190,35 +165,6 @@ const SyncDetailsModal = ({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-muted text-[10px] font-bold tracking-widest uppercase">
-              Share Link
-            </label>
-
-            <div className="bg-muted/5 flex items-center gap-2 rounded-xl border px-3 py-2">
-              <Link2 className="text-muted h-4 w-4 shrink-0" />
-
-              <span className="text-muted min-w-0 flex-1 truncate text-xs">
-                {shareUrl ?? "No active public share link"}
-              </span>
-
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={!shareUrl}
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => {
-                  if (!shareUrl) return;
-                  void navigator.clipboard.writeText(shareUrl);
-                  toast.success("Share link copied");
-                }}
-              >
-                <Copy className="h-3.5 w-3.5" />
-                Copy
-              </Button>
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card space-y-1 rounded-xl border p-3">
               <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-bold tracking-tight uppercase">
@@ -262,7 +208,9 @@ const SyncDetailsModal = ({
                 </p>
               </div>
 
-              <p className="text-muted-foreground text-xs leading-relaxed font-medium">hello</p>
+              <p className="text-muted-foreground text-xs leading-relaxed font-medium">
+                {telemetry.lastErrorMessage}
+              </p>
             </div>
           )}
 

@@ -8,9 +8,9 @@ import type { TemplateComponent } from "@/types/template";
 import { Card } from "@veriworkly/ui";
 
 import {
-  startResumeSyncWorker,
-  hydrateCloudResumeByIdToLocalStorage,
-} from "@/features/resume/services/resume-sync";
+  startDocumentSyncWorker,
+  hydrateCloudDocumentByIdToLocalStorage,
+} from "@/features/documents/services/document-sync";
 import {
   loadResumeById,
   createResumeWithTemplate,
@@ -79,7 +79,7 @@ const EditorLayout = ({ resumeId }: EditorLayoutProps) => {
           return;
         }
 
-        const cloudResult = await hydrateCloudResumeByIdToLocalStorage(resumeId);
+        const cloudResult = await hydrateCloudDocumentByIdToLocalStorage("RESUME", resumeId);
 
         if (!cancelled && cloudResult.ok) {
           const hydratedResume = loadResumeById(resumeId);
@@ -124,7 +124,7 @@ const EditorLayout = ({ resumeId }: EditorLayoutProps) => {
 
     const workspaceSettings = loadWorkspaceSettingsFromLocalStorage();
 
-    startResumeSyncWorker({
+    startDocumentSyncWorker("RESUME", {
       enabled: isLoggedIn && workspaceSettings.autoSyncEnabled,
       idleDelayMs: 12_000,
     });

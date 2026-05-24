@@ -37,7 +37,7 @@ const StatsLoading = () => {
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="border-border/30 bg-card/40 h-[72px] min-w-[110px] rounded-2xl border px-4 py-3"
+                  className="border-border/30 bg-card/40 h-18 min-w-27.5 rounded-2xl border px-4 py-3"
                 />
               ))}
             </div>

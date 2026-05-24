@@ -1,6 +1,7 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { Sparkles, CalendarDays, LayoutDashboard } from "lucide-react";
+
+import type { ReactNode } from "react";
 
 import { Button } from "@veriworkly/ui";
 
