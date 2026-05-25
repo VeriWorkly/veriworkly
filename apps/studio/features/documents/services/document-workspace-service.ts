@@ -2,18 +2,22 @@
 
 import type { DocumentType } from "@/features/documents/core/document-types";
 import type { BaseDocument, DocumentMeta } from "@/features/documents/core/types";
+import type { SaveDocumentOptions, SaveDocumentResult } from "./local-storage-service";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { DOCUMENT_STORAGE_UPDATED_EVENT } from "@/features/documents/services/document-sync";
 import { safeSetLocalStorageItem } from "@/features/documents/services/storage/safe-local-storage";
-import type { SaveDocumentOptions, SaveDocumentResult } from "./local-storage-service";
 
 const VERSION = "v2";
 const ACTIVE_KEY = `veriworkly:docs:${VERSION}:active`;
-const pendingSaves = new Map<DocumentType, { document: BaseDocument; timer: number | null }>();
+const pendingSaves = new Map<string, { document: BaseDocument; timer: number | null }>();
 
 function collectionKey(type: DocumentType) {
   return `veriworkly:docs:${VERSION}:${type.toLowerCase()}`;
+}
+
+function pendingSaveKey(type: DocumentType, id: string) {
+  return `${type}:${id}`;
 }
 
 function buildId(type: DocumentType): string {
@@ -61,14 +65,17 @@ function saveCollection(
   return { ok: true, queued: false };
 }
 
-function clearPendingSave(type: DocumentType) {
+function clearPendingSave(type: DocumentType, id: string) {
   if (typeof window === "undefined") return;
 
-  const pending = pendingSaves.get(type);
-  if (!pending?.timer) return;
+  const key = pendingSaveKey(type, id);
+  const pending = pendingSaves.get(key);
+  if (!pending) return;
 
-  window.clearTimeout(pending.timer);
-  pendingSaves.delete(type);
+  if (pending.timer !== null) {
+    window.clearTimeout(pending.timer);
+  }
+  pendingSaves.delete(key);
 }
 
 export function listDocuments(type?: DocumentType): DocumentMeta[] {
@@ -108,20 +115,25 @@ export function saveDocument(
   if (typeof window === "undefined") return { ok: true, queued: false };
 
   if (options?.flush) {
-    clearPendingSave(document.type);
+    clearPendingSave(document.type, document.id);
     return persistDocument(document);
   }
 
   const debounceMs = Math.max(0, options?.debounceMs ?? 0);
+
   if (debounceMs > 0) {
-    clearPendingSave(document.type);
+    const key = pendingSaveKey(document.type, document.id);
+
+    clearPendingSave(document.type, document.id);
+
     const timer = window.setTimeout(() => {
-      const pending = pendingSaves.get(document.type);
-      pendingSaves.delete(document.type);
+      const pending = pendingSaves.get(key);
+      pendingSaves.delete(key);
+
       if (pending) persistDocument(pending.document);
     }, debounceMs);
 
-    pendingSaves.set(document.type, { document, timer });
+    pendingSaves.set(key, { document, timer });
     return { ok: true, queued: true };
   }
 
@@ -131,14 +143,19 @@ export function saveDocument(
 export function createDocument(type: DocumentType) {
   const id = buildId(type);
   const doc = getDocumentDefinition(type).createDefault(id);
+
   saveDocument(doc);
   setActiveDocument(type, id);
+
   return doc;
 }
 
 export function deleteDocument(type: DocumentType, id: string) {
+  clearPendingSave(type, id);
+
   const items = loadCollection(type);
   delete items[id];
+
   saveCollection(type, items);
 }
 

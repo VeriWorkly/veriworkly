@@ -9,6 +9,7 @@ import type { SyncTelemetry } from "@/features/documents/services/document-sync"
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { formatRelative } from "@/features/documents/services/document-library";
 
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
@@ -35,6 +36,8 @@ export function DocumentPreviewCard({
   onSyncNowAction,
   onSyncDetailsAction,
 }: DocumentPreviewCardProps) {
+  const editorPath = getDocumentEditorPath(doc.type, doc.id);
+
   return (
     <article className="group border-border bg-card hover:border-accent/40 relative aspect-3/4 w-full min-w-0 overflow-hidden rounded-xl border transition hover:shadow-sm">
       <div className="absolute inset-0 bg-[color-mix(in_oklab,var(--background)_94%,white)]">
@@ -79,7 +82,7 @@ export function DocumentPreviewCard({
       <Link
         aria-label={`Open ${doc.title}`}
         className="absolute inset-0 z-20 cursor-pointer"
-        href={`/editor/${doc.type.toLowerCase()}/${doc.id}`}
+        href={editorPath}
       />
 
       <div className="absolute top-2 right-2 z-30 opacity-0 transition-opacity duration-200 group-hover:opacity-100">

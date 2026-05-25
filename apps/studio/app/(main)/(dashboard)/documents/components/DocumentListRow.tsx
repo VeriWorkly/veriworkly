@@ -8,6 +8,7 @@ import type { SyncTelemetry } from "@/features/documents/services/document-sync"
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { formatRelative } from "@/features/documents/services/document-library";
 
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
@@ -35,6 +36,7 @@ export function DocumentListRow({
   onSyncDetailsAction,
 }: DocumentListRowProps) {
   const Icon = docIconMap[doc.type];
+  const editorPath = getDocumentEditorPath(doc.type, doc.id);
 
   return (
     <article className="grid gap-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-5">
@@ -67,7 +69,7 @@ export function DocumentListRow({
 
       <div className="flex items-center gap-2 sm:justify-end">
         <Button asChild size="sm" variant="secondary">
-          <Link href={`/editor/${doc.type.toLowerCase()}/${doc.id}`}>Open</Link>
+          <Link href={editorPath}>Open</Link>
         </Button>
 
         <DocumentActionsMenu

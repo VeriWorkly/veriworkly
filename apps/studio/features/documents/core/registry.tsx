@@ -15,8 +15,12 @@ import { parseCoverLetterDocument } from "@/features/cover-letter/schema";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { parseResumeDataInput } from "@/features/resume/schemas/resume-storage-schema";
 
-const ResumeEditor = dynamic(() => import("@/app/(main)/editor/components/EditorLayout"));
+const ResumeEditor = dynamic(() => import("@/features/resume/editor/ResumeEditor"));
 const CoverLetterEditor = dynamic(() => import("@/features/cover-letter/editor/CoverLetterEditor"));
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 function wrapResumeDocument(id: string): BaseDocument {
   const now = new Date().toISOString();
@@ -39,18 +43,35 @@ function wrapResumeDocument(id: string): BaseDocument {
 }
 
 function parseResumeDocument(input: unknown): BaseDocument | null {
-  const resume = parseResumeDataInput(input);
+  const document = isRecord(input) ? input : {};
+  const resumeInput = isRecord(document.content) ? document.content : input;
+  const resume = parseResumeDataInput(resumeInput);
 
   if (!resume) return null;
 
+  const id = typeof document.id === "string" ? document.id : resume.id;
+  const templateId =
+    typeof document.templateId === "string" ? document.templateId : resume.templateId;
+  const updatedAt = typeof document.updatedAt === "string" ? document.updatedAt : resume.updatedAt;
+  const sync = isRecord(document.sync) ? { ...resume.sync, ...document.sync } : resume.sync;
+
+  const content = {
+    ...resume,
+    id,
+    templateId,
+    updatedAt,
+    sync,
+  };
+
   return {
-    id: resume.id,
+    id,
     type: "RESUME",
-    title: resume.basics.fullName || "Resume",
-    templateId: resume.templateId,
-    content: resume,
-    updatedAt: resume.updatedAt,
-    sync: resume.sync,
+    title:
+      (typeof document.title === "string" && document.title) || content.basics.fullName || "Resume",
+    templateId,
+    content,
+    updatedAt,
+    sync,
   };
 }
 
@@ -64,7 +85,7 @@ export const documentRegistry: Record<DocumentType, DocumentDefinition> = {
     templates: templateCatalogByType.RESUME,
     createDefault: wrapResumeDocument,
     parse: parseResumeDocument,
-    Editor: ({ documentId }: { documentId: string }) => <ResumeEditor resumeId={documentId} />,
+    Editor: ResumeEditor,
   },
 
   COVER_LETTER: {

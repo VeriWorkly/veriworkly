@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getTemplateById, templateRegistry } from "@/templates";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 
 interface EditorEntryPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -19,5 +20,5 @@ export default async function EditorEntryPage({ searchParams }: EditorEntryPageP
   const resolvedTemplate =
     (templateParam ? getTemplateById(templateParam) : null) ?? templateRegistry[0];
 
-  redirect(`/editor/resume/new?template=${resolvedTemplate.id}`);
+  redirect(`${getDocumentEditorPath("RESUME", "new")}?template=${resolvedTemplate.id}`);
 }

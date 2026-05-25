@@ -256,7 +256,7 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
 
   removeSkillGroup: (index) =>
     set((state) => {
-      if (state.resume.skills.length <= 1) {
+      if (state.resume.skills.length === 0) {
         return state;
       }
 
@@ -401,7 +401,7 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
 
   removeEducation: (index) =>
     set((state) => {
-      if (state.resume.education.length <= 1) {
+      if (state.resume.education.length === 0) {
         return state;
       }
 

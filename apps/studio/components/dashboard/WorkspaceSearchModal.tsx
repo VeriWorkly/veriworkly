@@ -3,11 +3,14 @@
 import { FileText, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 
-import { listSavedResumes } from "@/features/resume/services/resume-core";
+import type { DocumentType } from "@/features/documents/core/document-types";
+
+import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { listDocuments } from "@/features/documents/services/document-workspace-service";
 
 type SearchResult = {
   id: string;
-  type: "RESUME";
+  type: DocumentType;
   title: string;
   subtitle: string;
   updatedAt: string;
@@ -20,7 +23,7 @@ export function WorkspaceSearchModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onOpenDocument: (id: string) => void;
+  onOpenDocument: (doc: SearchResult) => void;
 }) {
   const [query, setQuery] = useState("");
   const inputId = useId();
@@ -39,17 +42,21 @@ export function WorkspaceSearchModal({
   const results = useMemo(() => {
     if (!open) return [];
 
-    const resumes: SearchResult[] = listSavedResumes().map((resume) => ({
-      id: resume.id,
-      type: "RESUME",
-      title: resume.title,
-      subtitle: resume.role || "Resume",
-      updatedAt: resume.updatedAt,
-    }));
+    const documents: SearchResult[] = listDocuments().map((document) => {
+      const definition = getDocumentDefinition(document.type);
+
+      return {
+        id: document.id,
+        type: document.type,
+        title: document.title,
+        subtitle: definition.label,
+        updatedAt: document.updatedAt,
+      };
+    });
 
     const needle = query.trim().toLowerCase();
 
-    return resumes
+    return documents
       .filter((doc) => !needle || `${doc.title} ${doc.subtitle}`.toLowerCase().includes(needle))
       .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
       .slice(0, 10);
@@ -113,7 +120,7 @@ export function WorkspaceSearchModal({
                 className="hover:bg-accent/10 focus-visible:bg-accent/10 flex w-full items-center gap-3 rounded-xl p-3 text-left outline-none"
                 onClick={() => {
                   onClose();
-                  onOpenDocument(doc.id);
+                  onOpenDocument(doc);
                 }}
               >
                 <span className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
@@ -122,14 +129,14 @@ export function WorkspaceSearchModal({
 
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold">{doc.title}</span>
-                  <span className="text-muted block truncate text-xs">Resume - {doc.subtitle}</span>
+                  <span className="text-muted block truncate text-xs">{doc.subtitle}</span>
                 </span>
               </button>
             ))
           ) : (
             <div className="p-8 text-center">
               <p className="font-bold">No documents found</p>
-              <p className="text-muted mt-1 text-sm">Try another resume title or role.</p>
+              <p className="text-muted mt-1 text-sm">Try another document title.</p>
             </div>
           )}
         </div>

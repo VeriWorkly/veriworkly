@@ -22,6 +22,7 @@ import { WorkspaceSearchModal } from "@/components/dashboard/WorkspaceSearchModa
 
 import { createResume } from "@/features/resume/services/resume-service";
 import { signOutCurrentUser } from "@/features/auth/services/current-user";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { createDocument } from "@/features/documents/services/document-workspace-service";
 import type { DocumentType } from "@/features/documents/core/document-types";
 
@@ -34,7 +35,7 @@ interface StudioShellProps {
   mainClassName?: string;
 }
 
-const STUDIO_VERSION = "v3.4.0";
+const STUDIO_VERSION = "v3.8.0";
 
 const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const router = useRouter();
@@ -53,13 +54,13 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const createNewDocument = (type: DocumentType) => {
     if (type === "RESUME") {
       const resume = createResume();
-      router.push(`/editor/resume/${resume.id}`);
+      router.push(getDocumentEditorPath("RESUME", resume.id));
 
       return;
     }
 
     const document = createDocument(type);
-    router.push(`/editor/${type.toLowerCase()}/${document.id}`);
+    router.push(getDocumentEditorPath(type, document.id));
   };
 
   const handleLogout = async () => {
@@ -238,7 +239,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
         <WorkspaceSearchModal
           open={searchOpen}
           onClose={() => setSearchOpen(false)}
-          onOpenDocument={(id) => router.push(`/editor/resume/${id}`)}
+          onOpenDocument={(doc) => router.push(getDocumentEditorPath(doc.type, doc.id))}
         />
 
         <NewDocumentModal

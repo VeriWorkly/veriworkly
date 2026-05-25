@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
 
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 
 export interface DocumentActionsMenuProps {
   doc: DocumentLibraryItem;
@@ -37,6 +38,7 @@ export function DocumentActionsMenu({
   onSyncDetailsAction,
 }: DocumentActionsMenuProps) {
   const router = useRouter();
+  const editorPath = getDocumentEditorPath(doc.type, doc.id);
 
   return (
     <Menu
@@ -66,7 +68,7 @@ export function DocumentActionsMenu({
             className="h-8 rounded-lg text-xs"
             onClick={() => {
               close();
-              router.push(`/editor/${doc.type.toLowerCase()}/${doc.id}`);
+              router.push(editorPath);
             }}
           >
             <ExternalLink className="h-4 w-4" />
@@ -122,9 +124,7 @@ export function DocumentActionsMenu({
             className="h-8 rounded-lg text-xs"
             onClick={() => {
               close();
-              void navigator.clipboard.writeText(
-                `${window.location.origin}/editor/${doc.type.toLowerCase()}/${doc.id}`,
-              );
+              void navigator.clipboard.writeText(`${window.location.origin}${editorPath}`);
               toast.success("Document link copied");
             }}
           >

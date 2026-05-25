@@ -15,6 +15,7 @@ import { loadResumeById } from "@/features/resume/services/resume-service";
 import { loadDocumentById } from "@/features/documents/services/document-workspace-service";
 import type { DocumentType } from "@/features/documents/core/document-types";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
 
 interface PreviewClientProps {
@@ -58,7 +59,7 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
   const found = type === "RESUME" ? Boolean(routeResume) : Boolean(routeDocument);
   const title =
     type === "RESUME" ? resume.basics.fullName || "Untitled Resume" : routeDocument?.title;
-  const routeType = type.toLowerCase();
+  const editorPath = getDocumentEditorPath(type, documentId);
   const debugType = type === "COVER_LETTER" ? "cover-letter" : type.toLowerCase();
   const debugTemplateId = type === "RESUME" ? resume.templateId : routeDocument?.templateId;
   const canDebugPdf = type === "RESUME" || type === "COVER_LETTER";
@@ -87,7 +88,7 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
           ) : null}
 
           <Link
-            href={`/editor/${routeType}/${documentId}`}
+            href={editorPath}
             className="text-foreground hover:bg-card inline-flex h-9 items-center justify-center rounded-full bg-transparent px-3 text-sm font-medium transition"
           >
             Back to editor

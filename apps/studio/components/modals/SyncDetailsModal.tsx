@@ -17,6 +17,7 @@ import type { SyncTelemetry } from "@/features/documents/services/document-sync"
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { cn } from "@/lib/utils";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 
 import { Modal, Button } from "@veriworkly/ui";
 
@@ -45,7 +46,7 @@ const SyncDetailsModal = ({
 
   const isSyncing = syncingDocumentId === document.id;
   const isConflicted = document.sync.status === "conflicted";
-  const editorHref = `/editor/${document.type.toLowerCase()}/${document.id}`;
+  const editorHref = getDocumentEditorPath(document.type, document.id);
 
   if (!document) return null;
 
