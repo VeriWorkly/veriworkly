@@ -10,9 +10,29 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
+type ModalContentProps = React.HTMLAttributes<HTMLDivElement> & {
+  titleId?: string;
+  descriptionId?: string;
+};
+
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "textarea:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
 function ModalRoot({ open, onClose, children }: ModalProps) {
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
+
   React.useEffect(() => {
     if (!open) return;
+
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -23,7 +43,9 @@ function ModalRoot({ open, onClose, children }: ModalProps) {
 
     return () => {
       document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      restoreFocusRef.current?.focus({ preventScroll: true });
+      restoreFocusRef.current = null;
     };
   }, [open, onClose]);
 
@@ -39,11 +61,69 @@ function ModalRoot({ open, onClose, children }: ModalProps) {
   );
 }
 
-function ModalContent({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function ModalContent({
+  children,
+  className,
+  titleId,
+  descriptionId,
+  onKeyDown,
+  ...props
+}: ModalContentProps) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+
+    window.requestAnimationFrame(() => {
+      if (!content.contains(document.activeElement)) {
+        content.focus({ preventScroll: true });
+      }
+    });
+  }, []);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    onKeyDown?.(event);
+    if (event.defaultPrevented || event.key !== "Tab") return;
+
+    const content = contentRef.current;
+    if (!content) return;
+
+    const focusable = Array.from(content.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+      (element) =>
+        !element.hasAttribute("disabled") &&
+        element.tabIndex !== -1 &&
+        element.offsetParent !== null,
+    );
+
+    if (focusable.length === 0) {
+      event.preventDefault();
+      content.focus({ preventScroll: true });
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <div
       role="dialog"
+      tabIndex={-1}
+      ref={contentRef}
       aria-modal="true"
+      aria-labelledby={titleId}
+      onKeyDown={handleKeyDown}
+      aria-describedby={descriptionId}
       onClick={(e) => e.stopPropagation()}
       className={cn(
         "border-border bg-card w-full rounded-t-3xl border p-6 shadow-2xl",

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { cacheDel } from "./redis";
+
+import { cacheDel } from "./redis.js";
 
 export function extractStableAuthCookieFingerprint(cookieHeader: string): string | null {
   const authCookies = cookieHeader
@@ -27,13 +28,16 @@ export function extractStableAuthCookieFingerprint(cookieHeader: string): string
 
 export function getSessionCacheKey(cookieHeader: string): string | null {
   const fingerprint = extractStableAuthCookieFingerprint(cookieHeader);
+
   if (!fingerprint) return null;
+
   const cookieHash = createHash("md5").update(fingerprint).digest("hex");
   return `auth:session:${cookieHash}`;
 }
 
 export async function invalidateSessionCache(cookieHeader: string): Promise<void> {
   const cacheKey = getSessionCacheKey(cookieHeader);
+
   if (cacheKey) {
     await cacheDel(cacheKey);
   }

@@ -38,9 +38,11 @@ const OverviewHome = () => {
     () => DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
   );
 
-  const totalCount = snapshot.counts.RESUME + snapshot.counts.COVER_LETTER;
+  const totalCount = Object.values(snapshot.counts).reduce((sum, count) => sum + count, 0);
+
   const resumeCount = snapshot.counts.RESUME;
   const coverLetterCount = snapshot.counts.COVER_LETTER;
+
   const recentDocs = snapshot.docs.slice(0, 6);
 
   return (
