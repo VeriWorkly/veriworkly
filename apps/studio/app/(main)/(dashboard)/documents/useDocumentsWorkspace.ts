@@ -49,7 +49,7 @@ export function useDocumentsWorkspace() {
   );
 
   const { docs, counts } = snapshot;
-  const totalCount = counts.RESUME + counts.COVER_LETTER;
+  const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
   const bump = useCallback(() => setRefreshKey((key) => key + 1), []);
 

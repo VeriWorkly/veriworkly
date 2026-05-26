@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 import { ApiError } from "#utils/errors";
+import { config } from "#config";
 
 import { convertNodeHeadersToWebHeaders, getSessionFromRequestHeaders } from "#auth/index";
 
@@ -63,8 +64,7 @@ export async function getSessionUserFromRequest(req: Request): Promise<Authentic
       name: user.name ?? null,
     };
 
-    // 5. Cache result in Redis for 15 minutes (short TTL for security)
-    await cacheSet(cacheKey, authUser, 900);
+    await cacheSet(cacheKey, authUser, config.auth.sessionCacheMaxAgeSeconds);
 
     req.authUser = authUser;
     return authUser;

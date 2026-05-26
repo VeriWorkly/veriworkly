@@ -9,6 +9,9 @@ import SyncDetailsModal from "@/components/modals/SyncDetailsModal";
 import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
 import RenameDocumentModal from "@/components/modals/RenameDocumentModal";
 
+import { DOCUMENT_TYPES } from "@/features/documents/core/document-types";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
+
 import { DocumentListRow } from "./components/DocumentListRow";
 import { IconToggle } from "./components/DocumentWorkspaceControls";
 import { DocumentPreviewCard } from "./components/DocumentPreviewCard";
@@ -87,8 +90,11 @@ export default function DocumentsWorkspace() {
               className="h-10 w-auto min-w-36 rounded-xl px-3 shadow-none"
             >
               <option value="ALL">All documents ({totalCount})</option>
-              <option value="RESUME">Resume ({counts.RESUME})</option>
-              <option value="COVER_LETTER">Cover letter ({counts.COVER_LETTER})</option>
+              {DOCUMENT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {getDocumentDefinition(type).label} ({counts[type]})
+                </option>
+              ))}
             </Select>
 
             <label className="sr-only" htmlFor="document-sort">
