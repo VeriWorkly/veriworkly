@@ -44,7 +44,7 @@ export function DocumentPreviewCard({
         <DocumentThumbnailPreview doc={doc} />
       </div>
 
-      <div className="bg-background/90 border-border absolute right-0 bottom-0 left-0 z-10 min-w-0 translate-y-[calc(100%-44px)] border-t p-3 backdrop-blur-md transition-transform duration-300 ease-in-out group-hover:translate-y-0">
+      <div className="bg-background/90 border-border absolute right-0 bottom-0 left-0 z-10 min-w-0 translate-y-0 md:translate-y-[calc(100%-44px)] border-t p-3 backdrop-blur-md transition-transform duration-300 ease-in-out md:group-hover:translate-y-0 md:group-focus-within:translate-y-0">
         <div className="flex h-5 items-center justify-between gap-2">
           <h2 className="text-foreground truncate pr-2 text-sm font-bold">{doc.title}</h2>
 
@@ -82,20 +82,20 @@ export function DocumentPreviewCard({
       <Link
         href={editorPath}
         aria-label={`Open ${doc.title}`}
-        className="absolute inset-0 z-20 cursor-pointer"
+        className="absolute inset-0 z-20 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-xl outline-none"
       />
 
-      <div className="absolute top-2 right-2 z-30 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-        <DocumentActionsMenu
-          doc={doc}
-          syncing={syncing}
-          onShareAction={onShareAction}
-          onRenameAction={onRenameAction}
-          onDeleteAction={onDeleteAction}
-          onSyncNowAction={onSyncNowAction}
-          onSyncDetailsAction={onSyncDetailsAction}
-        />
-      </div>
+      <DocumentActionsMenu
+        doc={doc}
+        syncing={syncing}
+        onShareAction={onShareAction}
+        onRenameAction={onRenameAction}
+        onDeleteAction={onDeleteAction}
+        onSyncNowAction={onSyncNowAction}
+        onSyncDetailsAction={onSyncDetailsAction}
+        className="absolute top-2 right-2 z-30"
+        triggerClassName="opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none transition-opacity duration-200 md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto"
+      />
     </article>
   );
 }

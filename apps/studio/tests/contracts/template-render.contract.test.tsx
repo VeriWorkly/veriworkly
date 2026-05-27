@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import type { TemplateRenderProps } from "@/types/template";
+
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { loadTemplateComponentById, templateRegistry } from "@/templates";
 
@@ -35,9 +37,15 @@ describe("template render contract", () => {
     for (const template of templateRegistry) {
       const TemplateComponent = loadTemplateComponentById(template.id);
 
-      expect(() => renderToStaticMarkup(<TemplateComponent {...({} as any)} />)).not.toThrow();
+      expect(() =>
+        renderToStaticMarkup(<TemplateComponent {...({} as unknown as TemplateRenderProps)} />),
+      ).not.toThrow();
 
-      expect(() => renderToStaticMarkup(<TemplateComponent resume={null as any} />)).not.toThrow();
+      expect(() =>
+        renderToStaticMarkup(
+          <TemplateComponent resume={null as unknown as TemplateRenderProps["resume"]} />,
+        ),
+      ).not.toThrow();
     }
   });
 
