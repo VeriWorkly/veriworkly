@@ -13,6 +13,8 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+import { cn } from "@/lib/utils";
+
 import { Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
 
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
@@ -26,6 +28,8 @@ export interface DocumentActionsMenuProps {
   onRenameAction: (doc: DocumentLibraryItem) => void;
   onSyncNowAction: (id: string) => void;
   onSyncDetailsAction: (id: string) => void;
+  className?: string;
+  triggerClassName?: string;
 }
 
 export function DocumentActionsMenu({
@@ -36,32 +40,44 @@ export function DocumentActionsMenu({
   onRenameAction,
   onSyncNowAction,
   onSyncDetailsAction,
+  className,
+  triggerClassName,
 }: DocumentActionsMenuProps) {
   const router = useRouter();
   const editorPath = getDocumentEditorPath(doc.type, doc.id);
 
   return (
-    <Menu
-      size="sm"
-      panelClassName="z-50"
-      trigger={({ open, toggle, menuId }) => (
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-haspopup="menu"
-          aria-controls={open ? menuId : undefined}
-          aria-label={`Open actions for ${doc.title}`}
-          className="border-border bg-card/90 text-foreground hover:bg-background flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm backdrop-blur"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            toggle();
-          }}
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-      )}
-    >
+    <div className={className}>
+      <Menu
+        size="sm"
+        panelClassName="z-50"
+        trigger={({ open, toggle, menuId }) => (
+          <div
+            className={cn(
+              "transition-opacity duration-200",
+              open
+                ? "opacity-100 pointer-events-auto"
+                : triggerClassName
+            )}
+          >
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-haspopup="menu"
+              aria-controls={open ? menuId : undefined}
+              aria-label={`Open actions for ${doc.title}`}
+              className="border-border bg-card/90 text-foreground hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm backdrop-blur"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                toggle();
+              }}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      >
       {({ close }) => (
         <>
           <MenuItem
@@ -147,5 +163,6 @@ export function DocumentActionsMenu({
         </>
       )}
     </Menu>
+    </div>
   );
 }
