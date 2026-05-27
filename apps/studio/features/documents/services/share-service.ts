@@ -54,6 +54,10 @@ export type ShareLinksPage = {
   };
 };
 
+export type SharedDocumentIdsResult = {
+  documentIds: string[];
+};
+
 export type ShareLinkPayload<T = unknown> = {
   passwordRequired: boolean;
   documentTitle: string;
@@ -108,9 +112,7 @@ export async function listShareLinks(
     },
   );
 
-  if (!response.ok) {
-    await throwApiError(response, "Failed to load share links");
-  }
+  if (!response.ok) await throwApiError(response, "Failed to load share links");
 
   const payload = (await response.json()) as { data: ShareLinksPage };
 
@@ -133,6 +135,24 @@ export async function listAllShareLinks(documentId: string): Promise<ShareLinkIt
   }
 }
 
+export async function listSharedDocumentIds(documentIds: string[]): Promise<string[]> {
+  if (documentIds.length === 0) return [];
+
+  const params = new URLSearchParams({ ids: [...new Set(documentIds)].join(",") });
+  const response = await fetch(backendApiUrl(`/shares/documents/shared-ids?${params}`), {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    await throwApiError(response, "Failed to load shared document ids");
+  }
+
+  const payload = (await response.json()) as { data: SharedDocumentIdsResult };
+
+  return payload.data.documentIds;
+}
+
 export async function revokeShareLink(documentId: string, shareLinkId: string) {
   const response = await fetch(
     backendApiUrl(`/shares/documents/${documentId}/links/${shareLinkId}`),
@@ -142,9 +162,7 @@ export async function revokeShareLink(documentId: string, shareLinkId: string) {
     },
   );
 
-  if (!response.ok) {
-    await throwApiError(response, "Failed to revoke share link");
-  }
+  if (!response.ok) await throwApiError(response, "Failed to revoke share link");
 }
 
 export async function fetchShareLink<T = unknown>(token: string) {

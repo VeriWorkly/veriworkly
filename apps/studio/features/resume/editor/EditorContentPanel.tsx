@@ -25,7 +25,7 @@ import AchievementsSection from "./content/sections/AchievementsSection";
 import PublicationsSection from "./content/sections/PublicationsSection";
 import CertificationsSection from "./content/sections/CertificationsSection";
 
-const EditorContentPanel = () => {
+const EditorContentPanel = memo(function EditorContentPanel() {
   const sections = useResumeStore((state) => state.resume.sections);
   const reorderSections = useResumeStore((state) => state.reorderSections);
 
@@ -92,7 +92,7 @@ const EditorContentPanel = () => {
       </div>
     </div>
   );
-};
+});
 
 interface EditorSectionItemProps {
   id: ResumeSectionId;

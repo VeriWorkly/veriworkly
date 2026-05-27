@@ -4,6 +4,7 @@ import type { ResumeData } from "@/types/resume";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import {
   createShareLink,
+  listSharedDocumentIds,
   fetchShareLinkByUsernameAndSlug,
   verifyShareLinkByUsernameAndSlug,
 } from "@/features/documents/services/share-service";
@@ -55,6 +56,35 @@ describe("share links contract", () => {
       }),
     );
     expect(mockedBackendApiUrl).toHaveBeenCalledWith(`/shares`);
+  });
+
+  it("fetches shared document ids in one request", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          documentIds: ["doc_1", "doc_2"],
+        },
+      }),
+    } as Response);
+
+    const result = await listSharedDocumentIds(["doc_1", "doc_1", "doc_2"]);
+
+    expect(result).toEqual(["doc_1", "doc_2"]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://localhost:4000/api/v1/shares/documents/shared-ids?ids=doc_1%2Cdoc_2`,
+      expect.objectContaining({
+        method: "GET",
+        credentials: "include",
+      }),
+    );
+  });
+
+  it("does not call the share status endpoint for an empty document set", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    await expect(listSharedDocumentIds([])).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("fetches a public share link snapshot", async () => {

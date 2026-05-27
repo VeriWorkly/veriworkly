@@ -12,6 +12,7 @@ router.post("/public/:username/:slug/verify", ShareController.verifyPublicReadab
 router.use(authMiddleware);
 
 router.post("/", ShareController.create);
+router.get("/documents/shared-ids", ShareController.listSharedDocumentIds);
 router.get("/documents/:documentId", ShareController.list);
 router.delete("/documents/:documentId/links/:shareLinkId", ShareController.revoke);
 

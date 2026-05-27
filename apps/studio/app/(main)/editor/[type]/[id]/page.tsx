@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
-import { isDocumentType } from "@/features/documents/core/document-types";
+import { parseDocumentRouteSegment } from "@/features/documents/core/routes";
+
+import { EditorEntryRedirect } from "../../EditorEntryRedirect";
 
 interface Params {
   type: string;
@@ -19,14 +21,31 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   };
 }
 
-export default async function EditorByTypePage({ params }: { params: Promise<Params> }) {
+export default async function EditorByTypePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<{ template?: string }>;
+}) {
   const { type, id } = await params;
-  const normalizedType = type.toUpperCase();
+  const { template } = await searchParams;
 
-  if (!isDocumentType(normalizedType)) {
-    notFound();
+  const documentType = parseDocumentRouteSegment(type);
+
+  if (!documentType) notFound();
+
+  if (id === "new") {
+    const definition = getDocumentDefinition(documentType);
+    const resolvedTemplate =
+      definition.templates.find((item) => item.id === template) ??
+      definition.templates.find((item) => item.id === definition.defaultTemplateId) ??
+      definition.templates[0];
+
+    return <EditorEntryRedirect type={documentType} templateId={resolvedTemplate?.id} />;
   }
 
-  const Editor = getDocumentDefinition(normalizedType).Editor;
+  const Editor = getDocumentDefinition(documentType).Editor;
+
   return <Editor documentId={id} />;
 }

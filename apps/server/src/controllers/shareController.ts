@@ -30,6 +30,18 @@ const shareLinkPasswordSchema = z.object({
   password: z.string().min(1),
 });
 
+const sharedDocumentIdsQuerySchema = z.object({
+  ids: z
+    .string()
+    .optional()
+    .transform((value) =>
+      (value ?? "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+});
+
 const publicReadableParamsSchema = z.object({
   username: z.string().transform((value) => normalizeUsername(value)),
   slug: z.string().transform((value) => normalizeSlug(value)),
@@ -80,6 +92,7 @@ export class ShareController {
       );
 
       await cacheDelByPrefix(`share:list:${user.id}:${documentId}:`);
+      await cacheDelByPrefix(`share:shared-document-ids:${user.id}:`);
 
       if (previousSlug)
         await cacheDel(`share:public-readable:${shareLink.username}:${previousSlug}`);
@@ -143,6 +156,30 @@ export class ShareController {
     }
   }
 
+  static async listSharedDocumentIds(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = requireAuthUser(req);
+      const { ids } = sharedDocumentIdsQuerySchema.parse(req.query);
+      const cacheKey = `share:shared-document-ids:${user.id}:${ids.sort().join(",")}`;
+
+      const cached = await cacheGet<unknown>(cacheKey);
+
+      if (cached) {
+        return res.json(createSuccessResponse(cached, "Shared document ids fetched from cache"));
+      }
+
+      const documentIds = await ShareService.listSharedDocumentIds(user.id, ids);
+      const response = { documentIds };
+
+      await cacheSet(cacheKey, response, 300);
+
+      res.json(createSuccessResponse(response, "Shared document ids fetched successfully"));
+    } catch (error) {
+      if (error instanceof z.ZodError) return next(handleValidationError(error));
+      next(error);
+    }
+  }
+
   /**
    * Revoke an existing share link.
    *
@@ -161,6 +198,7 @@ export class ShareController {
 
       // Invalidate caches
       await cacheDelByPrefix(`share:list:${user.id}:${documentId}:`);
+      await cacheDelByPrefix(`share:shared-document-ids:${user.id}:`);
       await cacheDel(`share:public-readable:${revoked.username}:${revoked.slug}`);
 
       res.json(createSuccessResponse(null, "Share link revoked successfully"));

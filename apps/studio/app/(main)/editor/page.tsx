@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 
-import { getTemplateById, templateRegistry } from "@/templates";
-import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import { DOCUMENT_TYPES } from "@/features/documents/core/document-types";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { parseDocumentRouteSegment } from "@/features/documents/core/routes";
+
+import { EditorEntryRedirect } from "./EditorEntryRedirect";
 
 interface EditorEntryPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -11,14 +14,16 @@ export default async function EditorEntryPage({ searchParams }: EditorEntryPageP
   const params = await searchParams;
 
   const templateParam = typeof params.template === "string" ? params.template : undefined;
-  const typeParam = typeof params.type === "string" ? params.type.toLowerCase() : "resume";
+  const typeParam = typeof params.type === "string" ? params.type : DOCUMENT_TYPES[0];
+  const type = parseDocumentRouteSegment(typeParam);
 
-  if (typeParam !== "resume") {
-    redirect("/");
-  }
+  if (!type) redirect("/documents");
 
+  const definition = getDocumentDefinition(type);
   const resolvedTemplate =
-    (templateParam ? getTemplateById(templateParam) : null) ?? templateRegistry[0];
+    definition.templates.find((template) => template.id === templateParam) ??
+    definition.templates.find((template) => template.id === definition.defaultTemplateId) ??
+    definition.templates[0];
 
-  redirect(`${getDocumentEditorPath("RESUME", "new")}?template=${resolvedTemplate.id}`);
+  return <EditorEntryRedirect type={type} templateId={resolvedTemplate?.id} />;
 }

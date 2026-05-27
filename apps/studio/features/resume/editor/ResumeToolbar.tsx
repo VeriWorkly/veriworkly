@@ -13,7 +13,7 @@ import ToolbarDownloadMenu from "@/features/documents/editor/toolbar/ToolbarDown
 import { useToolbarDownloads } from "@/features/resume/editor/toolbar/useToolbarDownloads";
 import ToolbarSecondaryActions from "@/features/resume/editor/toolbar/ToolbarSecondaryActions";
 
-import { useResume } from "@/features/resume/hooks/use-resume";
+import { useResumeStore } from "@/features/resume/store/resume-store";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { saveResume, importResumeFromFile } from "@/features/resume/services/resume-service";
 
@@ -29,7 +29,9 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { resetResume, resume, setResume } = useResume();
+  const resume = useResumeStore((state) => state.resume);
+  const resetResume = useResumeStore((state) => state.resetResume);
+  const setResume = useResumeStore((state) => state.setResume);
 
   const [message, setMessage] = useState("Autosave ready");
 

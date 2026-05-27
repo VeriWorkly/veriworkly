@@ -35,13 +35,9 @@ describe("template render contract", () => {
     for (const template of templateRegistry) {
       const TemplateComponent = loadTemplateComponentById(template.id);
 
-      expect(() =>
-        renderToStaticMarkup(<TemplateComponent {...({} as Record<string, unknown>)} />),
-      ).not.toThrow();
+      expect(() => renderToStaticMarkup(<TemplateComponent {...({} as any)} />)).not.toThrow();
 
-      expect(() =>
-        renderToStaticMarkup(<TemplateComponent resume={null as unknown as object} />),
-      ).not.toThrow();
+      expect(() => renderToStaticMarkup(<TemplateComponent resume={null as any} />)).not.toThrow();
     }
   });
 

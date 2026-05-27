@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@veriworkly/ui";
 
-import { useResume } from "@/features/resume/hooks/use-resume";
+import { useResumeStore } from "@/features/resume/store/resume-store";
 import { getDocumentPreviewPath } from "@/features/documents/core/routes";
 
 interface ToolbarSecondaryActionsProps {
@@ -20,7 +20,7 @@ const ToolbarSecondaryActions = ({
 }: ToolbarSecondaryActionsProps) => {
   const router = useRouter();
 
-  const { saveToStorage } = useResume();
+  const saveToStorage = useResumeStore((state) => state.saveToStorage);
 
   return (
     <>

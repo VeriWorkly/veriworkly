@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { FileText, Mail } from "lucide-react";
 
 import type { SyncTelemetry } from "@/features/documents/services/document-sync";
@@ -5,10 +6,16 @@ import type { DocumentLibraryItem } from "@/features/documents/services/document
 
 import { formatRelative } from "@/features/documents/services/document-library";
 
-export const docIconMap = {
-  RESUME: FileText,
-  COVER_LETTER: Mail,
-} satisfies Record<DocumentLibraryItem["type"], typeof FileText>;
+interface LibraryDocumentIconProps {
+  className?: string;
+  type: DocumentLibraryItem["type"];
+}
+
+export function LibraryDocumentIcon({ className, type }: LibraryDocumentIconProps) {
+  if (type === "COVER_LETTER") return createElement(Mail, { "aria-hidden": true, className });
+
+  return createElement(FileText, { "aria-hidden": true, className });
+}
 
 export function getSyncLabel(sync: DocumentLibraryItem["sync"]) {
   if (!sync.enabled) return "Local only";

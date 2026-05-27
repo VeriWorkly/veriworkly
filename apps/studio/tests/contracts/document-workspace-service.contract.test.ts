@@ -4,7 +4,9 @@ import type { BaseDocument } from "@/features/documents/core/types";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import {
   saveDocument,
+  createDocument,
   deleteDocument,
+  setActiveDocument,
   loadDocumentById,
 } from "@/features/documents/services/document-workspace-service";
 
@@ -94,5 +96,52 @@ describe("document workspace service", () => {
 
     expect(loadDocumentById("RESUME", first.id)).toBeNull();
     expect(loadDocumentById("RESUME", second.id)?.title).toBe(second.title);
+  });
+
+  it("returns a failed save result instead of throwing when local storage quota is exceeded", () => {
+    const document = createResumeDocument("resume-quota");
+    const quotaError = new DOMException("Storage quota exceeded", "QuotaExceededError");
+
+    vi.mocked(localStorage.setItem).mockImplementation(() => {
+      throw quotaError;
+    });
+
+    expect(saveDocument(document)).toEqual({ ok: false, reason: "quota-exceeded" });
+  });
+
+  it("does not throw when setting the active document fails under quota pressure", () => {
+    const quotaError = new DOMException("Storage quota exceeded", "QuotaExceededError");
+
+    vi.mocked(localStorage.setItem).mockImplementation(() => {
+      throw quotaError;
+    });
+
+    expect(() => setActiveDocument("RESUME", "resume-quota")).not.toThrow();
+  });
+
+  it("creates generic documents with sync enabled when workspace auto-sync is enabled", () => {
+    localStorage.setItem(
+      "veriworkly:workspace-settings",
+      JSON.stringify({ autoSyncEnabled: true }),
+    );
+
+    const document = createDocument("COVER_LETTER");
+    const saved = loadDocumentById("COVER_LETTER", document.id);
+
+    expect(saved?.sync.enabled).toBe(true);
+    expect(saved?.sync.status).toBe("pending");
+  });
+
+  it("creates generic documents as local-only when workspace auto-sync is disabled", () => {
+    localStorage.setItem(
+      "veriworkly:workspace-settings",
+      JSON.stringify({ autoSyncEnabled: false }),
+    );
+
+    const document = createDocument("COVER_LETTER");
+    const saved = loadDocumentById("COVER_LETTER", document.id);
+
+    expect(saved?.sync.enabled).toBe(false);
+    expect(saved?.sync.status).toBe("local-only");
   });
 });

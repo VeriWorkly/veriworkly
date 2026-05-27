@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronsLeft, ChevronsRight, Menu as MenuIcon, Search, X } from "lucide-react";
 
+import type { DocumentType } from "@/features/documents/core/document-types";
+
 import {
   mainNav,
   NavGroup,
@@ -17,14 +19,12 @@ import {
 } from "@/components/dashboard/StudioNavigation";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { AccountMenu } from "@/components/dashboard/AccountMenu";
-import { NewDocumentButton, NewDocumentModal } from "@/components/dashboard/NewDocumentModal";
 import { WorkspaceSearchModal } from "@/components/dashboard/WorkspaceSearchModal";
+import { NewDocumentButton, NewDocumentModal } from "@/components/dashboard/NewDocumentModal";
 
-import { createResume } from "@/features/resume/services/resume-service";
-import { signOutCurrentUser } from "@/features/auth/services/current-user";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import { signOutCurrentUser } from "@/features/auth/services/current-user";
 import { createDocument } from "@/features/documents/services/document-workspace-service";
-import type { DocumentType } from "@/features/documents/core/document-types";
 
 import { cn } from "@/lib/utils";
 
@@ -52,13 +52,6 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const displayName = user?.name || user?.email?.split("@")[0] || "Local builder";
 
   const createNewDocument = (type: DocumentType) => {
-    if (type === "RESUME") {
-      const resume = createResume();
-      router.push(getDocumentEditorPath("RESUME", resume.id));
-
-      return;
-    }
-
     const document = createDocument(type);
     router.push(getDocumentEditorPath(type, document.id));
   };
