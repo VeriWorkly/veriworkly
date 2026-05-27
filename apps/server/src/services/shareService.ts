@@ -131,6 +131,24 @@ export class ShareService {
     return this.listShareLinksPaginated(userId, documentId);
   }
 
+  static async listSharedDocumentIds(userId: string, documentIds: string[]) {
+    const uniqueDocumentIds = [...new Set(documentIds.filter(Boolean))];
+
+    if (uniqueDocumentIds.length === 0) return [];
+
+    const links = await prisma.shareLink.findMany({
+      where: {
+        userId,
+        documentId: { in: uniqueDocumentIds },
+        document: { deletedAt: null },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      select: { documentId: true },
+    });
+
+    return [...new Set(links.map((link) => link.documentId))];
+  }
+
   static async listShareLinksPaginated(
     userId: string,
     documentId: string,

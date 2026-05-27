@@ -7,12 +7,12 @@ import { Badge, Button } from "@veriworkly/ui";
 import type { SyncTelemetry } from "@/features/documents/services/document-sync";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
-import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { formatRelative } from "@/features/documents/services/document-library";
 
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
-import { docIconMap, getSyncLabel, getActivityLabel } from "./document-display";
+import { getSyncLabel, getActivityLabel, LibraryDocumentIcon } from "./document-display";
 
 interface DocumentListRowProps {
   doc: DocumentLibraryItem;
@@ -35,13 +35,12 @@ export function DocumentListRow({
   onSyncNowAction,
   onSyncDetailsAction,
 }: DocumentListRowProps) {
-  const Icon = docIconMap[doc.type];
   const editorPath = getDocumentEditorPath(doc.type, doc.id);
 
   return (
     <article className="grid gap-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-5">
       <div className="border-border bg-background flex h-12 w-10 shrink-0 items-center justify-center rounded-lg border sm:h-14 sm:w-11">
-        <Icon className="text-accent h-5 w-5" />
+        <LibraryDocumentIcon className="text-accent h-5 w-5" type={doc.type} />
       </div>
 
       <div className="min-w-0 flex-1">

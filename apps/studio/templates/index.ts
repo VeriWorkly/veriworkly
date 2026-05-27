@@ -1,14 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
 
+import type { ComponentType } from "react";
 import type { TemplateMeta } from "@/features/documents/core/types";
+import type { TemplateComponent, TemplateRenderProps } from "@/types/template";
 
 import { precisionAtsMeta } from "./resume/precision-ats/meta";
 import { executiveClarityMeta } from "./resume/executive-clarity/meta";
 
 /** A renderable template record used by the web editor. */
 export interface TemplateDefinition extends TemplateMeta {
-  renderWeb: (props: any) => React.ReactNode;
+  renderWeb: (props: TemplateRenderProps) => React.ReactNode;
 }
 
 // ---------------------------------------------------------------------------
@@ -24,11 +25,11 @@ import { CleanProfessionalWeb } from "./resume/executive-clarity/web";
 export const templateRegistry: TemplateDefinition[] = [
   {
     ...executiveClarityMeta,
-    renderWeb: (props: any) => React.createElement(CleanProfessionalWeb, props),
+    renderWeb: (props) => React.createElement(CleanProfessionalWeb, props),
   },
   {
     ...precisionAtsMeta,
-    renderWeb: (props: any) => React.createElement(CompactAtsWeb, props),
+    renderWeb: (props) => React.createElement(CompactAtsWeb, props),
   },
 ];
 
@@ -36,11 +37,13 @@ export const templateRegistry: TemplateDefinition[] = [
 // Lookup helpers
 // ---------------------------------------------------------------------------
 
-export const loadTemplateComponentById = (id: string | undefined): React.ComponentType<any> => {
+export const loadTemplateComponentById = (id: string | undefined): TemplateComponent => {
   const match = templateRegistry.find((t) => t.id === id);
   const template = match ?? templateRegistry[0];
 
-  return (props: any) => template.renderWeb(props);
+  const LoadedTemplate: ComponentType<TemplateRenderProps> = (props) => template.renderWeb(props);
+
+  return LoadedTemplate;
 };
 
 export const getTemplateById = (id: string | undefined): TemplateDefinition | undefined =>

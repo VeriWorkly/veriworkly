@@ -1,16 +1,12 @@
 "use client";
 
-import { FileText, Mail, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 import { Button, Modal } from "@veriworkly/ui";
 
+import { getDocumentIcon } from "@/features/documents/core/icons";
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { DOCUMENT_TYPES, type DocumentType } from "@/features/documents/core/document-types";
-
-const iconMap = {
-  RESUME: FileText,
-  COVER_LETTER: Mail,
-} satisfies Record<DocumentType, typeof FileText>;
 
 export function NewDocumentButton({
   collapsed,
@@ -48,7 +44,11 @@ export function NewDocumentModal({
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Modal.Content className="w-full max-w-2xl overflow-hidden rounded-2xl p-0">
+      <Modal.Content
+        titleId="new-document-title"
+        descriptionId="new-document-description"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl p-0"
+      >
         <div className="border-border/70 flex items-start justify-between gap-4 border-b p-5 sm:p-6">
           <div>
             <p className="text-accent text-xs font-bold tracking-[0.2em] uppercase">Create</p>
@@ -57,7 +57,7 @@ export function NewDocumentModal({
               New document
             </h2>
 
-            <p className="text-muted mt-1 text-sm">
+            <p id="new-document-description" className="text-muted mt-1 text-sm">
               Choose document type. Template comes next in editor.
             </p>
           </div>
@@ -74,7 +74,7 @@ export function NewDocumentModal({
 
         <Modal.Body className="grid max-h-[70vh] gap-3 p-4 sm:grid-cols-2 sm:p-5">
           {DOCUMENT_TYPES.map((type) => {
-            const Icon = iconMap[type];
+            const Icon = getDocumentIcon(type);
             const definition = getDocumentDefinition(type);
 
             return (

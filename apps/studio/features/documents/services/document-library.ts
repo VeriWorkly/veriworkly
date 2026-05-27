@@ -12,6 +12,7 @@ import {
   listDocuments,
   loadDocumentById,
 } from "@/features/documents/services/document-workspace-service";
+import { DOCUMENT_TYPES } from "@/features/documents/core/document-types";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 
@@ -35,10 +36,10 @@ export type DocumentLibrarySnapshot = {
   key: string;
 };
 
-const EMPTY_COUNTS: Record<DocumentType, number> = {
-  RESUME: 0,
-  COVER_LETTER: 0,
-};
+const EMPTY_COUNTS = Object.fromEntries(DOCUMENT_TYPES.map((type) => [type, 0])) as Record<
+  DocumentType,
+  number
+>;
 
 export const DOCUMENT_LIBRARY_SERVER_SNAPSHOT: DocumentLibrarySnapshot = {
   docs: [],
@@ -75,8 +76,9 @@ export function getDocumentLibrarySnapshot(
   const storage = window.localStorage;
 
   const storageKey = [
-    storage.getItem("veriworkly:docs:v2:resume") ?? "",
-    storage.getItem("veriworkly:docs:v2:cover_letter") ?? "",
+    ...DOCUMENT_TYPES.map(
+      (type) => storage.getItem(`veriworkly:docs:v2:${type.toLowerCase()}`) ?? "",
+    ),
     storage.getItem("veriworkly:docs:v2:active") ?? "",
     refreshKey.toString(),
   ].join("::");
@@ -149,6 +151,7 @@ export function mapDocumentToLibraryItem(document: BaseDocument): DocumentLibrar
 
 export function formatRelative(value: string) {
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) return "recently";
 
   const diffMs = Date.now() - date.getTime();

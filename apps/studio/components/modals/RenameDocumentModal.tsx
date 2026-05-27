@@ -8,11 +8,12 @@ import type { DocumentLibraryItem } from "@/features/documents/services/document
 
 import { Modal, Input, Button, Checkbox } from "@veriworkly/ui";
 
-import { DocumentApi } from "@/features/documents/services/document-api";
 import {
-  loadDocumentById,
   saveDocument,
+  loadDocumentById,
 } from "@/features/documents/services/document-workspace-service";
+import { DocumentApi } from "@/features/documents/services/document-api";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
 
 interface RenameDocumentModalProps {
   open: boolean;
@@ -36,23 +37,16 @@ export default function RenameDocumentModal({
     if (!title.trim() || loading) return;
 
     setLoading(true);
+
     try {
       const fullDoc = loadDocumentById(doc.type, doc.id);
 
-      if (!fullDoc) {
-        throw new Error("Local document not found");
-      }
+      if (!fullDoc) throw new Error("Local document not found");
 
       const nextTitle = title.trim();
-      const nextContent =
-        doc.type === "RESUME"
-          ? { ...(fullDoc.content as object), title: nextTitle }
-          : fullDoc.content;
-
       const updatedDoc = {
         ...fullDoc,
         title: nextTitle,
-        content: nextContent,
         updatedAt: new Date().toISOString(),
       };
 
@@ -98,7 +92,7 @@ export default function RenameDocumentModal({
               </Modal.Title>
 
               <p className="text-muted-foreground text-[10px] font-medium tracking-widest uppercase">
-                {doc.type === "RESUME" ? "Resume" : "Cover Letter"}
+                {getDocumentDefinition(doc.type).label}
               </p>
             </div>
           </div>

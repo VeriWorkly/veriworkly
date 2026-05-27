@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+
 import { notFound } from "next/navigation";
 
 import { PreviewClient } from "./PreviewClient";
-import { isDocumentType } from "@/features/documents/core/document-types";
+import { parseDocumentRouteSegment } from "@/features/documents/core/routes";
 
 function isValidRouteId(id: string) {
   return id.length > 0 && /^[a-z0-9_-]+$/i.test(id);
@@ -31,8 +32,8 @@ export default async function EditorPreviewPage({
 
   if (!isValidRouteId(id)) notFound();
 
-  const normalizedType = type.toUpperCase();
-  if (!isDocumentType(normalizedType)) notFound();
+  const documentType = parseDocumentRouteSegment(type);
+  if (!documentType) notFound();
 
-  return <PreviewClient documentId={id} type={normalizedType} />;
+  return <PreviewClient documentId={id} type={documentType} />;
 }

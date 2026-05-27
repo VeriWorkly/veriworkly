@@ -4,9 +4,9 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { useResume } from "@/features/resume/hooks/use-resume";
-import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import { useResumeStore } from "@/features/resume/store/resume-store";
 import { DocumentApi } from "@/features/documents/services/document-api";
+import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { trackUsageEvent } from "@/features/analytics/services/usage-metrics";
 import { deleteResume, createResume } from "@/features/resume/services/resume-service";
 
@@ -27,7 +27,8 @@ const EditorModals = ({
   onDeleteModalClose,
 }: EditorModalsProps) => {
   const router = useRouter();
-  const { resume, setResume } = useResume();
+  const resume = useResumeStore((state) => state.resume);
+  const setResume = useResumeStore((state) => state.setResume);
   const [isDeleting, setIsDeleting] = useState(false);
 
   async function onDeleteResume() {
@@ -65,6 +66,7 @@ const EditorModals = ({
       {shareModalOpen && (
         <ShareDocumentModal
           documentId={resume.id}
+          documentType="RESUME"
           documentTitle={resume.basics.fullName || "Untitled Resume"}
           onClose={onShareModalClose}
         />

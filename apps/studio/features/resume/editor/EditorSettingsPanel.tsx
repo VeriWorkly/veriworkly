@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import type { FontFamilyId } from "@/features/documents/constants/fonts";
 
@@ -10,12 +10,17 @@ import AdvancedThemeSettings from "./settings/AdvancedThemeSettings";
 import SectionVisibilitySettings from "./settings/SectionVisibilitySettings";
 import { SettingsColor, SettingsRange, SettingsSelect } from "./settings/SettingControls";
 
-import { useResume } from "@/features/resume/hooks/use-resume";
 import { fontOptions } from "@/features/documents/constants/fonts";
+import { useResumeStore } from "@/features/resume/store/resume-store";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 
-const EditorSettingsPanel = () => {
-  const { resume, setSectionVisibility, setTemplateId, updateCustomization } = useResume();
+const EditorSettingsPanel = memo(function EditorSettingsPanel() {
+  const sections = useResumeStore((state) => state.resume.sections);
+  const templateId = useResumeStore((state) => state.resume.templateId);
+  const customization = useResumeStore((state) => state.resume.customization);
+  const setSectionVisibility = useResumeStore((state) => state.setSectionVisibility);
+  const setTemplateId = useResumeStore((state) => state.setTemplateId);
+  const updateCustomization = useResumeStore((state) => state.updateCustomization);
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -31,7 +36,7 @@ const EditorSettingsPanel = () => {
 
       <SettingsSelect
         label="Template"
-        value={resume.templateId}
+        value={templateId}
         onChange={(event) => setTemplateId(event.target.value)}
       >
         {templateSummaries.map((template) => (
@@ -48,7 +53,7 @@ const EditorSettingsPanel = () => {
             fontFamily: event.target.value as FontFamilyId,
           })
         }
-        value={resume.customization.fontFamily}
+        value={customization.fontFamily}
       >
         {fontOptions.map((font) => (
           <option key={font.value} value={font.value}>
@@ -60,30 +65,30 @@ const EditorSettingsPanel = () => {
       <SettingsRange
         min={0}
         max={44}
-        label={`Section gap (${resume.customization.sectionSpacing}px)`}
+        label={`Section gap (${customization.sectionSpacing}px)`}
         onChange={(event) =>
           updateCustomization({
             sectionSpacing: Number(event.target.value),
           })
         }
-        value={resume.customization.sectionSpacing}
+        value={customization.sectionSpacing}
       />
 
       <SettingsRange
         max={52}
         min={16}
-        label={`Page margin (${resume.customization.pagePadding}px)`}
+        label={`Page margin (${customization.pagePadding}px)`}
         onChange={(event) =>
           updateCustomization({
             pagePadding: Number(event.target.value),
           })
         }
-        value={resume.customization.pagePadding}
+        value={customization.pagePadding}
       />
 
       <SettingsColor
         label="Accent color"
-        value={resume.customization.accentColor}
+        value={customization.accentColor}
         onChange={(event) =>
           updateCustomization({
             accentColor: event.target.value,
@@ -93,15 +98,15 @@ const EditorSettingsPanel = () => {
 
       <AdvancedThemeSettings
         advancedOpen={advancedOpen}
-        customization={resume.customization}
+        customization={customization}
         onUpdateCustomization={updateCustomization}
         onResetThemeDefaults={() => updateCustomization({ ...defaultResume.customization })}
         onToggleOpen={() => setAdvancedOpen((isOpen) => !isOpen)}
       />
 
-      <SectionVisibilitySettings sections={resume.sections} onToggle={setSectionVisibility} />
+      <SectionVisibilitySettings sections={sections} onToggle={setSectionVisibility} />
     </div>
   );
-};
+});
 
 export default EditorSettingsPanel;

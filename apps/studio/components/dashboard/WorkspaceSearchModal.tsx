@@ -1,12 +1,12 @@
 "use client";
 
-import { FileText, Search, X } from "lucide-react";
+import { FileText, Mail, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 
 import type { DocumentType } from "@/features/documents/core/document-types";
+import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
-import { getDocumentDefinition } from "@/features/documents/core/registry";
-import { listDocuments } from "@/features/documents/services/document-workspace-service";
+import { getDocumentLibrarySnapshot } from "@/features/documents/services/document-library";
 
 type SearchResult = {
   id: string;
@@ -25,8 +25,9 @@ export function WorkspaceSearchModal({
   onClose: () => void;
   onOpenDocument: (doc: SearchResult) => void;
 }) {
-  const [query, setQuery] = useState("");
   const inputId = useId();
+
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -42,17 +43,15 @@ export function WorkspaceSearchModal({
   const results = useMemo(() => {
     if (!open) return [];
 
-    const documents: SearchResult[] = listDocuments().map((document) => {
-      const definition = getDocumentDefinition(document.type);
-
-      return {
+    const documents: SearchResult[] = getDocumentLibrarySnapshot().docs.map(
+      (document: DocumentLibraryItem) => ({
         id: document.id,
         type: document.type,
         title: document.title,
-        subtitle: definition.label,
+        subtitle: [document.templateName, document.description].filter(Boolean).join(" - "),
         updatedAt: document.updatedAt,
-      };
-    });
+      }),
+    );
 
     const needle = query.trim().toLowerCase();
 
@@ -124,7 +123,7 @@ export function WorkspaceSearchModal({
                 }}
               >
                 <span className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-                  <FileText className="h-4 w-4" />
+                  <SearchResultIcon className="h-4 w-4" type={doc.type} />
                 </span>
 
                 <span className="min-w-0 flex-1">
@@ -143,4 +142,12 @@ export function WorkspaceSearchModal({
       </section>
     </div>
   );
+}
+
+function SearchResultIcon({ className, type }: { className?: string; type: DocumentType }) {
+  if (type === "COVER_LETTER") {
+    return <Mail aria-hidden="true" className={className} />;
+  }
+
+  return <FileText aria-hidden="true" className={className} />;
 }

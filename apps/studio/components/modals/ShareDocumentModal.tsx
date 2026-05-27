@@ -7,8 +7,8 @@ import {
   Globe,
   Link2,
   Trash2,
-  Calendar,
   Loader2,
+  Calendar,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 import { Badge, Modal, Input, Button, Checkbox } from "@veriworkly/ui";
 
+import type { DocumentType } from "@/features/documents/core/document-types";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import {
@@ -26,6 +27,7 @@ import {
   revokeShareLink,
   listAllShareLinks,
 } from "@/features/documents/services/share-service";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
 
 import { trackUsageEvent } from "@/features/analytics/services/usage-metrics";
 import { loadDocumentById } from "@/features/documents/services/document-workspace-service";
@@ -33,6 +35,7 @@ import { loadDocumentById } from "@/features/documents/services/document-workspa
 interface ShareDocumentModalProps {
   documentId: string | null;
   documentTitle?: string;
+  documentType?: DocumentType;
   document?: DocumentLibraryItem | null;
   onClose: () => void;
 }
@@ -144,15 +147,17 @@ const ActiveLinkRow = ({
 function getShareSnapshot(
   document: DocumentLibraryItem | null | undefined,
   documentId: string | null,
+  documentType: DocumentType | undefined,
 ) {
-  const type = document?.type ?? "RESUME";
+  const type = document?.type ?? documentType;
   const id = document?.id ?? documentId;
-  return id ? loadDocumentById(type, id) : null;
+  return id && type ? loadDocumentById(type, id) : null;
 }
 
 const ShareDocumentModal = ({
   documentId: fallbackDocumentId,
   documentTitle: fallbackDocumentTitle,
+  documentType: fallbackDocumentType,
   document,
   onClose,
 }: ShareDocumentModalProps) => {
@@ -167,8 +172,10 @@ const ShareDocumentModal = ({
 
   const [shareLinks, setShareLinks] = useState<ShareLinkItem[]>([]);
   const [revokingLinkId, setRevokingLinkId] = useState<string | null>(null);
+
   const documentId = document?.id ?? fallbackDocumentId;
-  const documentLabel = document?.type === "COVER_LETTER" ? "Cover Letter" : "Resume";
+  const documentType = document?.type ?? fallbackDocumentType;
+  const documentLabel = documentType ? getDocumentDefinition(documentType).label : "Document";
   const documentTitle = document?.title ?? fallbackDocumentTitle ?? "Untitled Document";
 
   const hasActiveLink = shareLinks.length > 0;
@@ -190,6 +197,7 @@ const ShareDocumentModal = ({
 
       if (links.length > 0) {
         const link = links[0];
+
         if (link.expiresAt) {
           setExpiry(new Date(link.expiresAt).toISOString().split("T")[0]);
           setNoExpiry(false);
@@ -201,6 +209,7 @@ const ShareDocumentModal = ({
         setExpiry("");
         setNoExpiry(false);
       }
+
       setRemovePassword(false);
       setUpdateSlug(false);
 
@@ -215,15 +224,13 @@ const ShareDocumentModal = ({
   }, []);
 
   useEffect(() => {
-    if (documentId) {
-      void Promise.resolve().then(() => refreshShareLinks(documentId));
-    }
+    if (documentId) void Promise.resolve().then(() => refreshShareLinks(documentId));
   }, [documentId, refreshShareLinks]);
 
   const handleCreate = async () => {
     if (!documentId || busy) return;
 
-    const snapshot = getShareSnapshot(document, fallbackDocumentId);
+    const snapshot = getShareSnapshot(document, fallbackDocumentId, documentType);
 
     if (!snapshot) {
       toast.error("Document not found. Refresh and try again.");

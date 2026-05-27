@@ -8,12 +8,12 @@ import { Badge } from "@veriworkly/ui";
 import type { SyncTelemetry } from "@/features/documents/services/document-sync";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
-import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { formatRelative } from "@/features/documents/services/document-library";
 
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
-import { docIconMap, getSyncLabel, getActivityLabel } from "./document-display";
+import { getSyncLabel, getActivityLabel, LibraryDocumentIcon } from "./document-display";
 
 interface DocumentPreviewCardProps {
   doc: DocumentLibraryItem;
@@ -80,9 +80,9 @@ export function DocumentPreviewCard({
       </div>
 
       <Link
+        href={editorPath}
         aria-label={`Open ${doc.title}`}
         className="absolute inset-0 z-20 cursor-pointer"
-        href={editorPath}
       />
 
       <div className="absolute top-2 right-2 z-30 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
@@ -116,14 +116,12 @@ function DocumentThumbnailPreview({ doc }: { doc: DocumentLibraryItem }) {
     );
   }
 
-  const Icon = docIconMap[doc.type];
-
   return (
     <div className="absolute inset-0 p-4">
       <div className="border-border bg-card h-full rounded-xl border p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="bg-accent/10 text-accent flex h-9 w-9 items-center justify-center rounded-lg">
-            <Icon className="h-5 w-5" />
+            <LibraryDocumentIcon className="h-5 w-5" type={doc.type} />
           </div>
 
           <div className="grid flex-1 gap-2">
