@@ -1,110 +1,127 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, FileText } from "lucide-react";
 
-import { Card, Badge } from "@veriworkly/ui";
+import type { TemplateSummary } from "@/config/templates";
 
-interface TemplateCardProps {
-  template: {
-    id: string;
-    name: string;
-    description: string;
-    accentColor: string;
-    previewImage: string;
-    family: string;
-    layout: string;
-    tags: string[];
-  };
-}
+import { Badge } from "@veriworkly/ui";
+
+import { getTemplateHref } from "./utils";
+
+type TemplateCardProps = {
+  template: TemplateSummary;
+};
 
 const TemplateCard = ({ template }: TemplateCardProps) => {
-  const topTags = template.tags.filter((tag) => tag !== "One column" && tag !== "Two column");
+  const previewAlt = `${template.name} ${template.documentTypeLabel.toLowerCase()} template preview`;
 
   return (
-    <Card className="group hover:border-accent/40 relative flex flex-col justify-between space-y-6 overflow-visible p-6 transition-colors">
-      <div className="pointer-events-none absolute top-4 right-4 z-30 hidden w-95 translate-y-2 opacity-0 transition-all duration-200 ease-out xl:block xl:group-hover:translate-y-0 xl:group-hover:opacity-100">
-        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-[0_24px_80px_-40px_rgba(15,23,42,0.6)]">
-          <div className="h-1 w-full" style={{ backgroundColor: template.accentColor }} />
-
-          <div className="relative h-56 bg-slate-100">
-            {template.previewImage ? (
-              <Image
-                fill
-                alt=""
-                aria-hidden="true"
-                src={template.previewImage}
-                sizes="(min-width: 1280px) 380px, 100vw"
-                className="h-full w-full object-cover object-top"
-              />
-            ) : null}
-
-            <div className="absolute inset-0 bg-linear-to-b from-black/0 via-black/0 to-black/45" />
-
-            <p className="absolute right-3 bottom-3 rounded-full border border-white/30 bg-black/45 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white/95 uppercase backdrop-blur-sm">
-              Quick Preview
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-5">
-        <div
-          className="border-border relative h-32 overflow-hidden rounded-lg border"
-          style={{
-            background:
-              "linear-gradient(145deg, color-mix(in oklab, var(--resume-page-bg) 92%, transparent), color-mix(in oklab, var(--resume-page-bg) 72%, black 4%))",
-          }}
-        >
-          {template.previewImage ? (
-            <Image
-              fill
-              alt=""
-              aria-hidden="true"
-              src={template.previewImage}
-              sizes="(min-width: 1280px) 320px, 100vw"
-              className="absolute inset-0 h-full w-full object-cover object-top opacity-70"
-            />
-          ) : null}
-
-          <div
-            className="absolute inset-x-0 top-0 h-1"
-            style={{ backgroundColor: template.accentColor }}
-          />
-
-          <div className="absolute inset-0 bg-linear-to-b from-black/0 via-black/0 to-black/40" />
-
-          <div className="absolute right-3 bottom-3 rounded-full border border-white/25 bg-black/45 px-2.5 py-1 text-[10px] font-medium text-white/90 backdrop-blur-sm">
-            {template.layout}
-          </div>
-
-          <p className="absolute bottom-3 left-3 hidden rounded-full border-white/25 bg-black/40 px-2.5 py-1 text-[10px] font-medium text-white xl:block">
-            Hover card for larger preview
-          </p>
-
-          <span className="sr-only">Preview for {template.name}</span>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-foreground text-2xl font-semibold tracking-tight">{template.name}</h2>
-
-          <p className="text-muted text-sm leading-relaxed">{template.description}</p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Badge>{template.layout}</Badge>
-          <Badge>{template.family}</Badge>
-          {topTags.slice(0, 3).map((tag) => (
-            <Badge key={tag}>{tag}</Badge>
-          ))}
-        </div>
-      </div>
-
+    <article className="group border-border/70 bg-card/70 hover:border-accent/45 grid overflow-hidden rounded-2xl border shadow-[0_28px_80px_-60px_rgba(15,23,42,0.7)] transition-all duration-200 hover:-translate-y-1 lg:grid-cols-[minmax(260px,0.75fr)_minmax(0,1fr)_minmax(220px,0.52fr)]">
       <Link
-        className="text-accent hover:text-accent/80 w-fit text-sm font-medium transition-colors"
-        href={`/templates/${template.id}`}
+        href={getTemplateHref(template)}
+        className="border-border/60 relative min-h-96 overflow-hidden border-b bg-[linear-gradient(135deg,var(--background),color-mix(in_srgb,var(--accent)_10%,var(--background)))] p-5 lg:border-r lg:border-b-0"
+        aria-label={`Open ${template.name} template details`}
       >
-        Open preview →
+        <div
+          className="absolute top-8 right-8 h-24 w-24 rounded-full opacity-15 blur-2xl"
+          style={{ backgroundColor: template.accentColor }}
+          aria-hidden="true"
+        />
+
+        <div className="border-border/70 bg-card/90 text-muted absolute top-4 left-4 z-10 flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium shadow-sm backdrop-blur">
+          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+          {template.layout}
+        </div>
+
+        <div className="border-border absolute right-5 bottom-5 aspect-8.5/11 h-82 max-h-[calc(100%-3rem)] overflow-hidden rounded-sm border bg-white shadow-[0_28px_70px_-38px_rgba(15,23,42,0.85)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:rotate-1">
+          <Image
+            fill
+            src={template.previewImage}
+            alt={previewAlt}
+            sizes="(min-width: 1024px) 260px, 80vw"
+            className="object-contain object-top"
+          />
+        </div>
+
+        <div className="border-border/50 absolute right-16 bottom-1 h-8 w-36 rounded-[50%] border bg-black/10 blur-xl" />
       </Link>
-    </Card>
+
+      <div className="flex min-w-0 flex-col justify-between gap-8 p-6 lg:p-7">
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className="h-2.5 w-10 rounded-full"
+              style={{ backgroundColor: template.accentColor }}
+              aria-hidden="true"
+            />
+
+            <span className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">
+              {template.documentTypeLabel}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-foreground text-3xl font-semibold tracking-tight">
+              {template.name}
+            </h2>
+
+            <p className="text-muted max-w-2xl text-sm leading-6">{template.shortDescription}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Badge>{template.family}</Badge>
+            {template.tags.slice(0, 3).map((tag) => (
+              <Badge key={tag}>{tag}</Badge>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <ul className="text-muted grid gap-3 text-sm leading-6 sm:grid-cols-2">
+            {template.bestFor.slice(0, 2).map((item) => (
+              <li key={item} className="flex gap-2">
+                <CheckCircle2 className="text-accent mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+
+          <Link
+            className="text-accent hover:text-accent/80 focus-visible:ring-accent inline-flex w-fit items-center gap-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            href={getTemplateHref(template)}
+          >
+            Review template
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+
+      <aside className="border-border/60 bg-background/70 flex flex-col justify-between gap-6 border-t p-6 lg:border-t-0 lg:border-l">
+        <div className="space-y-3">
+          <p className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">Best match</p>
+
+          <div className="space-y-2">
+            {template.audience.slice(0, 3).map((audience) => (
+              <div
+                key={audience}
+                className="border-border/70 bg-card flex items-center justify-between gap-3 rounded-full border px-3 py-2 text-sm"
+              >
+                <span className="text-foreground truncate">{audience}</span>
+                <span className="bg-accent h-1.5 w-1.5 shrink-0 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Link
+          href={getTemplateHref(template)}
+          className="border-border bg-card hover:border-accent/40 focus-visible:ring-accent text-foreground inline-flex items-center justify-between gap-3 rounded-full border px-4 py-3 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+        >
+          Open dossier
+          <ArrowRight className="text-accent h-4 w-4" aria-hidden="true" />
+        </Link>
+      </aside>
+    </article>
   );
 };
 

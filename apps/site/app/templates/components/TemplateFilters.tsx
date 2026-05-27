@@ -1,18 +1,29 @@
 import Link from "next/link";
 
+import type { TemplateSummary } from "@/config/templates";
+
 import { hrefWithFilters } from "./utils";
 
-const familyOptions = ["All", "Modern Core", "Compact Core"];
-const layoutOptions = ["All", "One column", "Two column", "Other"];
-
 type Props = {
+  docType: string;
+  templates: TemplateSummary[];
   selectedFamily: string;
   selectedLayout: string;
 };
 
-const TemplateFilters = ({ selectedFamily, selectedLayout }: Props) => {
+function unique(values: string[]) {
+  return ["All", ...Array.from(new Set(values))];
+}
+
+const TemplateFilters = ({ docType, templates, selectedFamily, selectedLayout }: Props) => {
+  const familyOptions = unique(templates.map((template) => template.family));
+  const layoutOptions = unique(templates.map((template) => template.layout));
+
   return (
-    <div className="space-y-3 pt-2">
+    <div
+      className="border-border bg-card/70 flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center sm:justify-between"
+      aria-label="Template filters"
+    >
       <div className="flex flex-wrap gap-2">
         {familyOptions.map((family) => {
           const active = selectedFamily === family;
@@ -20,12 +31,12 @@ const TemplateFilters = ({ selectedFamily, selectedLayout }: Props) => {
           return (
             <Link
               key={family}
-              href={hrefWithFilters(family, selectedLayout)}
+              href={hrefWithFilters(docType, family, selectedLayout)}
               className={[
-                "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                "focus-visible:ring-accent rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                 active
-                  ? "border-accent bg-accent/10 text-foreground"
-                  : "border-border text-muted hover:text-foreground",
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-background text-muted hover:text-foreground",
               ].join(" ")}
             >
               {family}
@@ -41,12 +52,12 @@ const TemplateFilters = ({ selectedFamily, selectedLayout }: Props) => {
           return (
             <Link
               key={layout}
-              href={hrefWithFilters(selectedFamily, layout)}
+              href={hrefWithFilters(docType, selectedFamily, layout)}
               className={[
-                "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                "focus-visible:ring-accent rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                 active
-                  ? "border-accent bg-accent/10 text-foreground"
-                  : "border-border text-muted hover:text-foreground",
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-muted hover:text-foreground",
               ].join(" ")}
             >
               {layout}

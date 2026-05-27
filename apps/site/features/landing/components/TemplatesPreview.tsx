@@ -68,7 +68,7 @@ const TemplatesPreview = () => {
             </div>
 
             <Link
-              href={`/templates/${template.id}`}
+              href={`/templates/${template.documentType}/${template.id}`}
               className="text-accent text-sm font-medium"
               aria-label={`Preview ${template.name} resume template`}
             >
