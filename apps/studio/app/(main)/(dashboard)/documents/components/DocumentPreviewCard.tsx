@@ -44,7 +44,7 @@ export function DocumentPreviewCard({
         <DocumentThumbnailPreview doc={doc} />
       </div>
 
-      <div className="bg-background/90 border-border absolute right-0 bottom-0 left-0 z-10 min-w-0 translate-y-0 md:translate-y-[calc(100%-44px)] border-t p-3 backdrop-blur-md transition-transform duration-300 ease-in-out md:group-hover:translate-y-0 md:group-focus-within:translate-y-0">
+      <div className="bg-background/90 border-border absolute right-0 bottom-0 left-0 z-10 min-w-0 translate-y-0 border-t p-3 backdrop-blur-md transition-transform duration-300 ease-in-out md:translate-y-[calc(100%-44px)] md:group-focus-within:translate-y-0 md:group-hover:translate-y-0">
         <div className="flex h-5 items-center justify-between gap-2">
           <h2 className="text-foreground truncate pr-2 text-sm font-bold">{doc.title}</h2>
 
@@ -82,7 +82,7 @@ export function DocumentPreviewCard({
       <Link
         href={editorPath}
         aria-label={`Open ${doc.title}`}
-        className="absolute inset-0 z-20 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-xl outline-none"
+        className="focus-visible:ring-accent absolute inset-0 z-20 cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       />
 
       <DocumentActionsMenu
