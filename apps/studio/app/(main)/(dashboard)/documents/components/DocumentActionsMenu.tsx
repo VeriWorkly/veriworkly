@@ -141,11 +141,11 @@ export function DocumentActionsMenu({
             onClick={() => {
               close();
               void navigator.clipboard.writeText(`${window.location.origin}${editorPath}`);
-              toast.success("Document link copied");
+              toast.success("Editor Link Copied");
             }}
           >
             <Copy className="h-4 w-4" />
-            Copy link
+            Copy Editor Link
           </MenuItem>
 
           <MenuSeparator />
