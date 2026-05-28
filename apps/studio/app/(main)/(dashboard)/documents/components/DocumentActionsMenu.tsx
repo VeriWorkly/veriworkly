@@ -55,9 +55,7 @@ export function DocumentActionsMenu({
           <div
             className={cn(
               "transition-opacity duration-200",
-              open
-                ? "opacity-100 pointer-events-auto"
-                : triggerClassName
+              open ? "pointer-events-auto opacity-100" : triggerClassName,
             )}
           >
             <button
@@ -66,7 +64,7 @@ export function DocumentActionsMenu({
               aria-haspopup="menu"
               aria-controls={open ? menuId : undefined}
               aria-label={`Open actions for ${doc.title}`}
-              className="border-border bg-card/90 text-foreground hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm backdrop-blur"
+              className="border-border bg-card/90 text-foreground hover:bg-background focus-visible:ring-accent flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm backdrop-blur focus-visible:ring-2 focus-visible:outline-none"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -78,63 +76,63 @@ export function DocumentActionsMenu({
           </div>
         )}
       >
-      {({ close }) => (
-        <>
-          <MenuItem
-            className="h-8 rounded-lg text-xs"
-            onClick={() => {
-              close();
-              router.push(editorPath);
-            }}
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open
-          </MenuItem>
+        {({ close }) => (
+          <>
+            <MenuItem
+              className="h-8 rounded-lg text-xs"
+              onClick={() => {
+                close();
+                router.push(editorPath);
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open
+            </MenuItem>
 
-          <MenuItem
-            className="h-8 rounded-lg text-xs"
-            onClick={() => {
-              close();
-              onRenameAction(doc);
-            }}
-          >
-            <Edit2 className="h-4 w-4" />
-            Rename
-          </MenuItem>
+            <MenuItem
+              className="h-8 rounded-lg text-xs"
+              onClick={() => {
+                close();
+                onRenameAction(doc);
+              }}
+            >
+              <Edit2 className="h-4 w-4" />
+              Rename
+            </MenuItem>
 
-          <MenuItem
-            className="h-8 rounded-lg text-xs"
-            onClick={() => {
-              close();
-              onShareAction(doc);
-            }}
-          >
-            <Share2 className="h-4 w-4" />
-            Create public link
-          </MenuItem>
+            <MenuItem
+              className="h-8 rounded-lg text-xs"
+              onClick={() => {
+                close();
+                onShareAction(doc);
+              }}
+            >
+              <Share2 className="h-4 w-4" />
+              Create public link
+            </MenuItem>
 
-          <MenuItem
-            className="h-8 rounded-lg text-xs"
-            disabled={syncing}
-            onClick={() => {
-              close();
-              onSyncNowAction(doc.id);
-            }}
-          >
-            <RefreshCw className="h-4 w-4" />
-            {syncing ? "Syncing..." : "Sync now"}
-          </MenuItem>
+            <MenuItem
+              className="h-8 rounded-lg text-xs"
+              disabled={syncing}
+              onClick={() => {
+                close();
+                onSyncNowAction(doc.id);
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+              {syncing ? "Syncing..." : "Sync now"}
+            </MenuItem>
 
-          <MenuItem
-            className="h-8 rounded-lg text-xs"
-            onClick={() => {
-              close();
-              onSyncDetailsAction(doc.id);
-            }}
-          >
-            <Cloud className="h-4 w-4" />
-            View sync details
-          </MenuItem>
+            <MenuItem
+              className="h-8 rounded-lg text-xs"
+              onClick={() => {
+                close();
+                onSyncDetailsAction(doc.id);
+              }}
+            >
+              <Cloud className="h-4 w-4" />
+              View sync details
+            </MenuItem>
 
           <MenuItem
             className="h-8 rounded-lg text-xs"
@@ -148,21 +146,21 @@ export function DocumentActionsMenu({
             Copy Editor Link
           </MenuItem>
 
-          <MenuSeparator />
+            <MenuSeparator />
 
-          <MenuItem
-            className="text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 h-8 rounded-lg text-xs"
-            onClick={() => {
-              close();
-              onDeleteAction(doc);
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </MenuItem>
-        </>
-      )}
-    </Menu>
+            <MenuItem
+              className="text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 h-8 rounded-lg text-xs"
+              onClick={() => {
+                close();
+                onDeleteAction(doc);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </MenuItem>
+          </>
+        )}
+      </Menu>
     </div>
   );
 }

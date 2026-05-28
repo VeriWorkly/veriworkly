@@ -1,41 +1,67 @@
 import Link from "next/link";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
-import { Badge } from "@veriworkly/ui";
+import type { TemplateSummary } from "@/config/templates";
 
-import { TemplateDefinition } from "@/types/template";
+import { Badge, Button } from "@veriworkly/ui";
 
 import { buildEditorUrl } from "./utils";
 
-export function TemplateDetailHeader({ template }: { template: TemplateDefinition }) {
-  const editorUrl = buildEditorUrl(template.id, template.documentType);
+export function TemplateDetailHeader({ template }: { template: TemplateSummary }) {
+  const editorUrl = buildEditorUrl(template);
 
   return (
-    <header className="space-y-6">
-      <div className="space-y-3">
-        <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-          Template Detail
-        </p>
+    <header className="border-border bg-card/60 grid gap-8 rounded-3xl border p-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] lg:items-end">
+      <div className="space-y-5">
+        <Link
+          href={`/templates/${template.documentType}`}
+          className="text-muted hover:text-foreground focus-visible:ring-accent inline-flex items-center gap-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to {template.documentTypeLabel.toLowerCase()} templates
+        </Link>
 
-        <h1 className="text-foreground text-4xl font-semibold tracking-tight">{template.name}</h1>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge>{template.documentTypeLabel}</Badge>
+            <Badge>{template.family}</Badge>
+            <Badge>{template.layout}</Badge>
+          </div>
 
-        <p className="text-muted max-w-2xl text-base leading-7">{template.description}</p>
+          <h1 className="text-foreground max-w-4xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
+            {template.name}
+          </h1>
+
+          <p className="text-muted max-w-2xl text-base leading-7">{template.description}</p>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           {template.tags.map((tag) => (
-            <Badge key={tag}>{tag}</Badge>
+            <span
+              key={tag}
+              className="border-border bg-background text-muted rounded-full border px-3 py-1.5 text-sm"
+            >
+              {tag}
+            </span>
           ))}
         </div>
       </div>
 
-      <nav className="border-border/40 flex items-center gap-6 border-b pb-6 text-sm font-medium">
-        <Link href={editorUrl} className="text-accent hover:underline">
-          Use in editor
-        </Link>
+      <div className="space-y-4">
+        <div className="border-border bg-background rounded-2xl border p-4">
+          <p className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">
+            Primary fit
+          </p>
+          <p className="text-muted mt-3 text-sm leading-6">{template.bestFor[0]}</p>
+        </div>
 
-        <Link href="/templates" className="text-muted hover:text-foreground transition-colors">
-          Back to templates
-        </Link>
-      </nav>
+        <Button asChild size="lg" variant="primary" className="h-12 w-full rounded-full px-6">
+          <Link href={editorUrl}>
+            Use This Template
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </Button>
+      </div>
     </header>
   );
 }

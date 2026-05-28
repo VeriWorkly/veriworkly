@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/config/site";
+import { documentTypeSummaries, templateSummaries } from "@/config/templates";
 
 export const revalidate = 86400;
 
@@ -83,8 +84,21 @@ const publicRoutes = [
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
+  const templateRoutes = documentTypeSummaries
+    .filter((docType) => docType.status === "available")
+    .map((docType) => ({
+      url: `${siteConfig.url}${docType.href}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
+    }));
 
-  return publicRoutes.map((route) => ({
+  const templateDetailRoutes = templateSummaries.map((template) => ({
+    url: `${siteConfig.url}/templates/${template.documentType}/${template.id}`,
+    changeFrequency: "monthly" as const,
+    priority: 0.75,
+  }));
+
+  return [...publicRoutes, ...templateRoutes, ...templateDetailRoutes].map((route) => ({
     ...route,
     lastModified,
   }));

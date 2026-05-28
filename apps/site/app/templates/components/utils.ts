@@ -1,32 +1,36 @@
-import { siteConfig } from "@/config/site";
+import type { TemplateSummary } from "@/config/templates";
 
-export const familyByTemplateId: Record<string, "Compact Core" | "Modern Core"> = {
-  "executive-clarity": "Modern Core",
-  "precision-ats": "Compact Core",
-};
+import { siteConfig } from "@/config/site";
 
 export function getSingleParam(value: string | string[] | undefined, fallback: string) {
   if (!value) return fallback;
   return Array.isArray(value) ? (value[0] ?? fallback) : value;
 }
 
-export function getLayout(tags: string[]) {
-  if (tags.includes("Two column")) return "Two column";
-  if (tags.includes("One column")) return "One column";
-  return "Other";
+export function getTemplateHref(template: Pick<TemplateSummary, "documentType" | "id">) {
+  return `/templates/${template.documentType}/${template.id}`;
 }
 
-export function hrefWithFilters(family: string, layout: string) {
+export function hrefWithFilters(docType: string, family: string, layout: string) {
   const params = new URLSearchParams();
 
   if (family !== "All") params.set("family", family);
   if (layout !== "All") params.set("layout", layout);
 
-  return params.toString() ? `/templates?${params.toString()}` : "/templates";
+  return params.toString() ? `/templates/${docType}?${params.toString()}` : `/templates/${docType}`;
 }
 
-export function buildEditorUrl(templateId: string, documentType: string): string {
+export function buildEditorUrl(
+  template: Pick<TemplateSummary, "editorTemplateId" | "documentType">,
+) {
   const base = siteConfig.links.app;
 
-  return `${base}/editor?template=${encodeURIComponent(templateId)}&type=${encodeURIComponent(documentType)}`;
+  return `${base}/editor?template=${encodeURIComponent(template.editorTemplateId)}&type=${encodeURIComponent(template.documentType)}`;
+}
+
+export function toTitle(value: string) {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
