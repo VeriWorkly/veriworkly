@@ -13,27 +13,37 @@ export type SessionUser = {
   shareResumeCount?: number;
 };
 
-type MasterProfileSummaryPayload = {
-  profile?: { userId?: string };
-  summary?: Partial<
-    Pick<
-      SessionUser,
-      | "id"
-      | "email"
-      | "name"
-      | "createdAt"
-      | "emailVerified"
-      | "autoSyncEnabled"
-      | "shareResumeCount"
-    >
-  >;
+type AccountProfileResponse = {
+  data?: {
+    id: string;
+    email: string;
+    name?: string | null;
+    createdAt?: string;
+    emailVerified?: boolean;
+    autoSyncEnabled?: boolean;
+    _count?: {
+      shareLinks?: number;
+    };
+  };
 };
 
 let memoryCache: SessionUser | null = null;
 
-async function fetchMasterProfileSummary(cookieHeader?: string) {
+async function fetchAccountProfileSummary(cookieHeader?: string) {
   try {
-    const response = await fetch(backendApiUrl("/profiles/master"), {
+    if (
+      typeof window === "undefined" &&
+      cookieHeader !== undefined &&
+      !cookieHeader.includes("veriworkly-auth")
+    ) {
+      return null;
+    }
+
+    if (typeof window !== "undefined" && !document.cookie.includes("veriworkly-auth")) {
+      return null;
+    }
+
+    const response = await fetch(backendApiUrl("/users/me"), {
       method: "GET",
       headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
       credentials: cookieHeader ? undefined : "include",
@@ -43,19 +53,19 @@ async function fetchMasterProfileSummary(cookieHeader?: string) {
       return null;
     }
 
-    const payload = (await response.json()) as { data?: MasterProfileSummaryPayload };
-    const summary = payload.data?.summary;
+    const payload = (await response.json()) as AccountProfileResponse;
+    const user = payload.data;
 
-    if (!summary) return null;
+    if (!user) return null;
 
     return {
-      id: summary.id ?? payload.data?.profile?.userId ?? "",
-      email: summary.email ?? "",
-      name: summary.name,
-      createdAt: summary.createdAt,
-      emailVerified: summary.emailVerified,
-      autoSyncEnabled: summary.autoSyncEnabled,
-      shareResumeCount: summary.shareResumeCount,
+      id: user.id,
+      email: user.email,
+      name: user.name ?? undefined,
+      createdAt: user.createdAt,
+      emailVerified: user.emailVerified,
+      autoSyncEnabled: user.autoSyncEnabled,
+      shareResumeCount: user._count?.shareLinks,
     } satisfies Partial<SessionUser>;
   } catch {
     return null;
@@ -71,7 +81,7 @@ export async function fetchCurrentUser(force = false): Promise<SessionUser | nul
 
       const cookieStore = await cookies();
       const cookieHeader = cookieStore.toString();
-      const summary = await fetchMasterProfileSummary(cookieHeader);
+      const summary = await fetchAccountProfileSummary(cookieHeader);
       if (!summary?.id || !summary?.email) return null;
       return summary as SessionUser;
     } catch {
@@ -82,7 +92,7 @@ export async function fetchCurrentUser(force = false): Promise<SessionUser | nul
   if (!force && memoryCache) return memoryCache;
 
   try {
-    const summary = await fetchMasterProfileSummary();
+    const summary = await fetchAccountProfileSummary();
     if (!summary?.id || !summary?.email) {
       memoryCache = null;
       return null;
@@ -141,7 +151,7 @@ export async function updateCurrentUserName(name: string): Promise<SessionUser> 
     throw new Error("Could not update name");
   }
 
-  const summary = await fetchMasterProfileSummary();
+  const summary = await fetchAccountProfileSummary();
   const merged = {
     ...updatedUser,
     ...summary,

@@ -22,6 +22,10 @@ export async function fetchAccountProfile(): Promise<AccountProfile | null> {
     const requestHeaders = await headers();
     const cookie = requestHeaders.get("cookie");
 
+    if (!cookie || !cookie.includes("veriworkly-auth")) {
+      return null;
+    }
+
     const response = await fetch(backendApiUrl("/users/me"), {
       method: "GET",
       cache: "no-store",
