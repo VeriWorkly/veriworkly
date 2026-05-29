@@ -15,7 +15,11 @@ import ToolbarSecondaryActions from "@/features/resume/editor/toolbar/ToolbarSec
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
-import { saveResume, importResumeFromFile } from "@/features/resume/services/resume-service";
+import {
+  saveResume,
+  importResumeFromFile,
+  importResumeFromMarkdownFile,
+} from "@/features/resume/services/resume-service";
 
 interface ToolbarProps {
   resumeId: string;
@@ -27,7 +31,8 @@ interface ToolbarProps {
 const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }: ToolbarProps) => {
   const router = useRouter();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
+  const markdownInputRef = useRef<HTMLInputElement>(null);
 
   const resume = useResumeStore((state) => state.resume);
   const resetResume = useResumeStore((state) => state.resetResume);
@@ -72,13 +77,33 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
     }
   }
 
+  async function onImportMarkdown(file: File | undefined) {
+    if (!file) return;
+
+    try {
+      const importedResume = await importResumeFromMarkdownFile(file, resume);
+      const saveResult = saveResume(importedResume);
+
+      if (!saveResult.ok) {
+        setMessage(getSaveFailureMessage(saveResult.reason));
+        return;
+      }
+
+      setResume(importedResume);
+      router.push(getDocumentEditorPath("RESUME", importedResume.id));
+      setMessage("Markdown imported successfully");
+    } catch {
+      setMessage("Import failed. Please use a valid Markdown file");
+    }
+  }
+
   return (
-    <div className="border-border bg-card/95 flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 shadow-sm backdrop-blur">
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
       <ToolbarHeader title="Resume Editor" message={message} onBack={() => router.push("/")} />
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {process.env.NODE_ENV === "development" ? (
-          <Button asChild size="sm" variant="secondary">
+          <Button asChild size="sm" variant="ghost" className="rounded-xl">
             <Link
               href={`/pdf-debug/resume/${resume.templateId}?id=${resume.id}`}
               target="_blank"
@@ -99,9 +124,25 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
         <input
           type="file"
           className="hidden"
-          ref={fileInputRef}
+          ref={jsonInputRef}
           accept="application/json"
-          onChange={(event) => onImportResume(event.target.files?.[0])}
+          onChange={(event) => {
+            void onImportResume(event.target.files?.[0]).finally(() => {
+              event.currentTarget.value = "";
+            });
+          }}
+        />
+
+        <input
+          type="file"
+          className="hidden"
+          ref={markdownInputRef}
+          accept="text/markdown,.md,.markdown"
+          onChange={(event) => {
+            void onImportMarkdown(event.target.files?.[0]).finally(() => {
+              event.currentTarget.value = "";
+            });
+          }}
         />
 
         <ToolbarDownloadMenu
@@ -117,8 +158,8 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
         <ToolbarActionsMenu
           onShare={onOpenShare}
           onDelete={onOpenDelete}
-          onExport={onDownloadJson}
-          onImport={() => fileInputRef.current?.click()}
+          onImportJson={() => jsonInputRef.current?.click()}
+          onImportMarkdown={() => markdownInputRef.current?.click()}
           onReset={() => {
             resetResume();
             setMessage("Resume reset to defaults");

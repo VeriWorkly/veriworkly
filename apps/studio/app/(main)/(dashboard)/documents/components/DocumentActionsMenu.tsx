@@ -134,17 +134,17 @@ export function DocumentActionsMenu({
               View sync details
             </MenuItem>
 
-          <MenuItem
-            className="h-8 rounded-lg text-xs"
-            onClick={() => {
-              close();
-              void navigator.clipboard.writeText(`${window.location.origin}${editorPath}`);
-              toast.success("Editor Link Copied");
-            }}
-          >
-            <Copy className="h-4 w-4" />
-            Copy Editor Link
-          </MenuItem>
+            <MenuItem
+              className="h-8 rounded-lg text-xs"
+              onClick={() => {
+                close();
+                void navigator.clipboard.writeText(`${window.location.origin}${editorPath}`);
+                toast.success("Editor Link Copied");
+              }}
+            >
+              <Copy className="h-4 w-4" />
+              Copy Editor Link
+            </MenuItem>
 
             <MenuSeparator />
 

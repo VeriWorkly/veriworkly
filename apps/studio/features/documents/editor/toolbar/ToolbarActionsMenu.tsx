@@ -3,9 +3,9 @@
 import {
   Trash2,
   Share2,
-  Download,
   RotateCcw,
   Settings2,
+  FileCode2,
   ChevronDown,
   FolderInput,
 } from "lucide-react";
@@ -14,16 +14,16 @@ import { Button, Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
 
 interface ToolbarActionsMenuProps {
   onDelete: () => void;
-  onExport: () => void;
-  onImport: () => void;
+  onImportJson: () => void;
+  onImportMarkdown: () => void;
   onReset: () => void;
   onShare: () => void;
 }
 
 const ToolbarActionsMenu = ({
   onDelete,
-  onExport,
-  onImport,
+  onImportJson,
+  onImportMarkdown,
   onReset,
   onShare,
 }: ToolbarActionsMenuProps) => {
@@ -32,13 +32,13 @@ const ToolbarActionsMenu = ({
       panelClassName="min-w-52"
       trigger={({ menuId, open, toggle }) => (
         <Button
+          size="sm"
+          onClick={toggle}
+          variant="secondary"
           aria-expanded={open}
           aria-haspopup="menu"
+          className="gap-2 rounded-xl"
           aria-controls={open ? menuId : undefined}
-          className="gap-2"
-          onClick={toggle}
-          size="sm"
-          variant="secondary"
         >
           <Settings2 className="h-4 w-4" />
           Actions
@@ -51,7 +51,7 @@ const ToolbarActionsMenu = ({
           <MenuItem
             onClick={() => {
               close();
-              onImport();
+              onImportJson();
             }}
           >
             <FolderInput className="h-4 w-4" />
@@ -61,11 +61,11 @@ const ToolbarActionsMenu = ({
           <MenuItem
             onClick={() => {
               close();
-              onExport();
+              onImportMarkdown();
             }}
           >
-            <Download className="h-4 w-4" />
-            Export JSON
+            <FileCode2 className="h-4 w-4" />
+            Import Markdown
           </MenuItem>
 
           <MenuSeparator />

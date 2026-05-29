@@ -35,7 +35,7 @@ interface StudioShellProps {
   mainClassName?: string;
 }
 
-const STUDIO_VERSION = "v3.8.0";
+const STUDIO_VERSION = "v3.10.0";
 
 const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const router = useRouter();
@@ -170,7 +170,6 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
             version={STUDIO_VERSION}
             displayName={displayName}
             onProfile={() => router.push("/profile")}
-            onSettings={() => router.push("/settings")}
           />
         </div>
       </aside>

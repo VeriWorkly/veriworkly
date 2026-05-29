@@ -76,6 +76,7 @@ export function createDefaultCoverLetter(id: string): BaseDocument<CoverLetterCo
         sidebarColor: "#f8fafc",
         pageColor: "#ffffff",
         textColor: "#18181b",
+        hiddenSections: [],
       },
     },
   };

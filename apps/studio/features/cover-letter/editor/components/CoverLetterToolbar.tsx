@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { FileSearch } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Eye, FileSearch, Save } from "lucide-react";
 
 import { Button } from "@veriworkly/ui";
 
@@ -23,6 +23,7 @@ interface CoverLetterToolbarProps {
   message: string;
   onDelete: () => void;
   onImportJson: (file: File | undefined) => Promise<void>;
+  onImportMarkdown: (file: File | undefined) => Promise<void>;
   onOpenShare: () => void;
   onSave: () => void;
   onSetMessage: (message: string) => void;
@@ -37,6 +38,7 @@ export function CoverLetterToolbar({
   message,
   onDelete,
   onImportJson,
+  onImportMarkdown,
   onOpenShare,
   onSave,
   onSetMessage,
@@ -44,7 +46,8 @@ export function CoverLetterToolbar({
 }: CoverLetterToolbarProps) {
   const router = useRouter();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
+  const markdownInputRef = useRef<HTMLInputElement>(null);
   const [activeDownload, setActiveDownload] = useState<ExportFormat | null>(null);
 
   async function download(format: ExportFormat) {
@@ -61,16 +64,16 @@ export function CoverLetterToolbar({
   }
 
   return (
-    <header className="border-border bg-card/95 z-30 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 shadow-sm backdrop-blur">
+    <header className="flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-2">
       <ToolbarHeader
         title="Cover Letter Editor"
         message={message}
         onBack={() => router.push("/documents")}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {process.env.NODE_ENV === "development" ? (
-          <Button asChild size="sm" variant="secondary">
+          <Button asChild size="sm" variant="ghost" className="rounded-xl">
             <Link
               href={`/pdf-debug/cover-letter/${document.templateId}?id=${document.id}`}
               target="_blank"
@@ -84,23 +87,38 @@ export function CoverLetterToolbar({
 
         <Button
           size="sm"
-          variant="secondary"
+          variant="ghost"
+          className="rounded-xl"
           onClick={() => router.push(getDocumentPreviewPath("COVER_LETTER", document.id))}
         >
+          <Eye className="mr-2 h-4 w-4" />
           Full Preview
         </Button>
 
-        <Button size="sm" variant="secondary" onClick={onSave}>
+        <Button size="sm" variant="secondary" className="rounded-xl" onClick={onSave}>
+          <Save className="mr-2 h-4 w-4" />
           Save
         </Button>
 
         <input
           type="file"
           className="hidden"
-          ref={fileInputRef}
+          ref={jsonInputRef}
           accept="application/json"
           onChange={(event) => {
             void onImportJson(event.target.files?.[0]).finally(() => {
+              event.currentTarget.value = "";
+            });
+          }}
+        />
+
+        <input
+          type="file"
+          className="hidden"
+          ref={markdownInputRef}
+          accept="text/markdown,.md,.markdown"
+          onChange={(event) => {
+            void onImportMarkdown(event.target.files?.[0]).finally(() => {
               event.currentTarget.value = "";
             });
           }}
@@ -119,8 +137,8 @@ export function CoverLetterToolbar({
         <ToolbarActionsMenu
           onShare={onOpenShare}
           onDelete={onDelete}
-          onExport={() => void download("json")}
-          onImport={() => fileInputRef.current?.click()}
+          onImportJson={() => jsonInputRef.current?.click()}
+          onImportMarkdown={() => markdownInputRef.current?.click()}
           onReset={() => {
             const reset = createDefaultCoverLetter(document.id);
             onUpdateDocument({ ...reset, updatedAt: new Date().toISOString() }, { flush: true });

@@ -1,10 +1,8 @@
-"use client";
-
+import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Moon, Settings, Sun, User } from "lucide-react";
+import { ChevronDown, LogOut, Moon, Sun, User } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 
 export function AccountMenu({
   collapsed,
@@ -12,7 +10,6 @@ export function AccountMenu({
   email,
   version,
   onProfile,
-  onSettings,
   onLogout,
 }: {
   collapsed: boolean;
@@ -20,7 +17,6 @@ export function AccountMenu({
   email: string;
   version: string;
   onProfile: () => void;
-  onSettings: () => void;
   onLogout: () => void;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
@@ -65,6 +61,7 @@ export function AccountMenu({
             <span className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
               {displayName.slice(0, 1).toUpperCase()}
             </span>
+
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold">{displayName}</span>
               <span className="text-muted block truncate text-xs">{email}</span>
@@ -79,14 +76,7 @@ export function AccountMenu({
               onProfile();
             }}
           />
-          <AccountMenuItem
-            icon={Settings}
-            label="Settings"
-            onClick={() => {
-              close();
-              onSettings();
-            }}
-          />
+
           <AccountMenuItem
             icon={themeLabel === "Light mode" ? Sun : Moon}
             label={themeLabel}
@@ -99,9 +89,9 @@ export function AccountMenu({
             danger
             icon={LogOut}
             label="Logout"
-            onClick={async () => {
+            onClick={() => {
               close();
-              await onLogout();
+              onLogout();
             }}
           />
 
@@ -113,24 +103,26 @@ export function AccountMenu({
 
       <button
         type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Open account menu"
+        onClick={() => setOpen((value) => !value)}
         className={cn(
           "border-border bg-card hover:bg-background flex w-full items-center gap-2 rounded-lg border p-2 text-left shadow-sm transition",
           collapsed && "justify-center p-1.5",
         )}
-        aria-label="Open account menu"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((value) => !value)}
       >
         <span className="bg-accent/10 text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold">
           {displayName.slice(0, 1).toUpperCase()}
         </span>
+
         {!collapsed ? (
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold">{displayName}</span>
               <span className="text-muted block truncate text-[11px]">{email}</span>
             </span>
+
             <ChevronDown className="text-muted h-4 w-4" />
           </>
         ) : null}

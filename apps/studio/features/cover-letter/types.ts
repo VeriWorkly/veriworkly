@@ -1,5 +1,5 @@
-import type { ResumeLinkDisplayMode, ResumeLinkItem } from "@/types/resume";
 import type { FontFamilyId } from "@/features/documents/constants/fonts";
+import type { ResumeLinkDisplayMode, ResumeLinkItem } from "@/types/resume";
 
 export interface CoverLetterContent {
   senderName: string;
@@ -37,6 +37,7 @@ export interface CoverLetterContent {
 }
 
 export type CoverLetterTemplateId = "professional" | "veriworkly-special";
+export type CoverLetterSectionId = "profile" | "links" | "target" | "letter";
 
 export interface CoverLetterAppearance {
   fontFamily: FontFamilyId;
@@ -47,4 +48,5 @@ export interface CoverLetterAppearance {
   sidebarColor: string;
   pageColor: string;
   textColor: string;
+  hiddenSections: CoverLetterSectionId[];
 }

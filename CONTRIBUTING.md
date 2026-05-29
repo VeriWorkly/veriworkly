@@ -10,11 +10,21 @@ First off, thank you for considering contributing to **VeriWorkly**! We are buil
 
 ---
 
-## ⚡ Quick TL;DR Contribution Workflow
+## ⚡ Contribution Workflow
 
-If you just need a quick heads-up on the commands and branching protocol:
+Follow these steps to contribute code or documentation to VeriWorkly:
 
-### 1. Fork & Clone
+### 1. Star the Repository 🌟
+
+Before getting started, please **star our repository** to show your support for the project!
+
+### 2. Claim an Issue 📋
+
+- Browse our open issues.
+- If you find an issue you want to work on, comment on it expressing your interest and wait to be officially assigned by a maintainer.
+- ⚠️ **Do not start coding or open a Pull Request before being assigned to the issue.** Unassigned PRs or PRs targeting unclaimed issues may be closed without review to avoid duplicate work.
+
+### 3. Fork & Clone 🍴
 
 1. Fork the [original repository](https://github.com/VeriWorkly/veriworkly).
 2. Clone your fork locally:
@@ -27,77 +37,56 @@ If you just need a quick heads-up on the commands and branching protocol:
    git remote add upstream https://github.com/VeriWorkly/veriworkly.git
    ```
 
-### 2. Branching Policy
+### 4. Branching Policy 🌿
 
-- **Base Branch**: PRs must be based on and target the **`master`** branch.
-- **Update your branch** before starting:
+- PRs must be based on and target the **`master`** branch.
+- Keep your fork in sync and create a descriptive feature branch:
   ```bash
   git checkout master
   git pull upstream master
   git checkout -b feat/your-feature-name
   ```
+- **Branch Naming Convention**:
+  - `feat/feature-name` (new features/enhancements)
+  - `fix/bug-name` (bug fixes)
+  - `docs/doc-update` (documentation changes)
+  - `refactor/scope-of-work` (restructuring/refactoring code)
 
-### 3. Local Run Commands
+### 5. Local Setup & Verification 🛠️
 
 - Install dependencies: `npm install`
 - Copy environment variables: `cp .env.example .env` and `cp apps/server/.env.example apps/server/.env`
-- Choose your dev flow:
-  - **Frontend-only (Site/Templates at port 3000)**: `npm run dev` _(No database or backend server needed)_
+- Run the app locally to test your changes:
+  - **Frontend-only (Site/Templates at port 3000)**: `npm run dev`
   - **Full-stack (All apps/databases)**: `npm run dev:all` _(Requires running `npm run db:push -w @veriworkly/server`)_
 
-### 4. Code Quality
+---
 
-Run checks before committing:
+## 📝 Pull Request Guidelines
 
-```bash
-   npm run dev:all
+To ensure smooth reviews and fast merges, please adhere to these PR guidelines:
+
+### 1. PR Title Naming Convention
+
+PR titles **must** follow the format:
+
+```
+[Type] [App/Component]: <lowercase description>
 ```
 
----
+- **Type**: `[Fix]`, `[Feature]`, `[Refactor]`, `[Docs]`, `[Chore]`
+- **App/Component**: `[Studio]`, `[Server]`, `[Site]`, `[UI]`, etc.
+- **Example**: `[Fix] [Studio]: hide auth-only actions in account menu for anonymous users`
 
-## 🌿 Branching Policy
+### 2. Linking Issues
 
-- `master`: Active development, integration, and production branch. **Base your PRs here.**
+- You **must link the issue** your PR addresses in the PR description using the hashtag format (e.g., `Fixes #123` or `Closes #123`). This allows GitHub to automatically associate and close the issue upon merge.
 
-### Branch Naming Convention
+### 3. Complete the PR Template & Checklist
 
-- `feat/feature-name`
-- `fix/bug-name`
-- `docs/doc-update`
-- `refactor/scope-of-work`
-
----
-
-## 🛠️ Development Guidelines
-
-### 1. Architecture
-
-We use a **Monorepo** structure.
-
-- **apps/site**: Marketing landing site.
-- **apps/studio**: Builder studio application.
-- **apps/server**: Express API.
-- **apps/docs-platform**: Documentation (Fumadocs).
-- **packages/ui**: Shared Design System.
-
-### 2. Coding Standards
-
-- **TypeScript**: Mandatory for all new code.
-- **Linting**: Run `npm run lint` before committing.
-- **Formatting**: We use Prettier. Run `npm run format:write`.
-
----
-
-## 📝 Pull Request Process
-
-1. **Create an Issue**: Discuss large changes before starting work.
-2. **Submit PR**: Open a PR against the `master` branch.
-3. **Checklist**:
-   - [ ] Lint passes (`npm run lint`)
-   - [ ] Prettier formatting succeeds (`npm run format:write`)
-   - [ ] Code builds successfully (`npm run build`)
-   - [ ] Tests pass (`npm test`)
-   - [ ] Documentation updated (if applicable)
+- When opening a PR, fill out the template fully.
+- Complete the checkbox checklist in the PR body by replacing `[ ]` with `[x]` for items you have done (e.g., linting, formatting, tests).
+- ⚠️ **PRs with empty, uncompleted checklists will not be reviewed.**
 
 ---
 

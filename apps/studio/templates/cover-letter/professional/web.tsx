@@ -7,6 +7,7 @@ import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import {
   getCoverLetterState,
+  isCoverLetterSectionVisible,
   splitMarkdownLines,
   splitParagraphs,
   splitRichTextBlocks,
@@ -252,15 +253,17 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
   } = state;
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const flowSenderName = content.senderName || content.signature || "Your Name";
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const showLetter = isCoverLetterSectionVisible(content, "letter");
   const flowContent = useMemo(
     () => ({
-      body: content.body,
-      closing: content.closing,
-      greeting: content.greeting,
-      highlights: content.highlights,
-      opening: content.opening,
-      postscript: content.postscript,
-      signature: content.signature,
+      body: showLetter ? content.body : "",
+      closing: showLetter ? content.closing : "",
+      greeting: showLetter ? content.greeting : "",
+      highlights: showLetter ? content.highlights : "",
+      opening: showLetter ? content.opening : "",
+      postscript: showLetter ? content.postscript : "",
+      signature: showLetter ? content.signature : "",
     }),
     [
       content.body,
@@ -270,6 +273,7 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
       content.opening,
       content.postscript,
       content.signature,
+      showLetter,
     ],
   );
   const flowItems = useMemo(
@@ -370,7 +374,7 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
               ) : null}
             </section>
 
-            {content.subject || content.jobTitle ? (
+            {showTarget && (content.subject || content.jobTitle) ? (
               <section className="mt-8 border-y border-zinc-200 py-4">
                 <p
                   className="text-[10px] font-bold tracking-[0.22em] uppercase"
@@ -480,7 +484,7 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
                 ) : null}
               </section>
 
-              {content.subject || content.jobTitle ? (
+              {showTarget && (content.subject || content.jobTitle) ? (
                 <section className="mt-8 border-y border-zinc-200 py-4">
                   <p
                     className="text-[10px] font-bold tracking-[0.22em] uppercase"
@@ -528,10 +532,25 @@ export function buildProfessionalCoverLetterHtml(content: CoverLetterContent): s
     renderedLinks,
     recipient,
   } = state;
-  const subject = escapeHtml(content.subject || content.jobTitle || "Application");
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const showLetter = isCoverLetterSectionVisible(content, "letter");
+  const subject = escapeHtml(
+    showTarget ? content.subject || content.jobTitle || "Application" : "",
+  );
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const fontHref = getFontStylesheetHref(appearance.fontFamily);
-  const flowItems = buildProfessionalFlowItems(content, senderName);
+  const flowItems = buildProfessionalFlowItems(
+    {
+      body: showLetter ? content.body : "",
+      closing: showLetter ? content.closing : "",
+      greeting: showLetter ? content.greeting : "",
+      highlights: showLetter ? content.highlights : "",
+      opening: showLetter ? content.opening : "",
+      postscript: showLetter ? content.postscript : "",
+      signature: showLetter ? content.signature : "",
+    },
+    senderName,
+  );
   const pages = paginateProfessionalHtmlItems(flowItems);
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.senderName || "Cover Letter")}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
@@ -539,7 +558,7 @@ export function buildProfessionalCoverLetterHtml(content: CoverLetterContent): s
     .map((blocks, pageIndex) => {
       const first = pageIndex === 0;
       const body = blocks.map((item) => renderProfessionalHtmlItem(item)).join("");
-      return `<article class="page professional-page">${first ? `<header><div><h1>${escapeHtml(senderName)}</h1><p>${escapeHtml(senderTitle)}</p></div><div class="contact">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div></header><section class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></section><section class="subject"><p class="label">Re</p><h2>${subject}</h2></section>` : `<p class="continued">Cover Letter Continued</p>`}<main class="body">${body}</main></article>`;
+      return `<article class="page professional-page">${first ? `<header><div><h1>${escapeHtml(senderName)}</h1><p>${escapeHtml(senderTitle)}</p></div><div class="contact">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div></header><section class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></section>${showTarget ? `<section class="subject"><p class="label">Re</p><h2>${subject}</h2></section>` : ""}` : `<p class="continued">Cover Letter Continued</p>`}<main class="body">${body}</main></article>`;
     })
     .join("")}</body></html>`;
 }
