@@ -4,14 +4,18 @@ import type { CoverLetterContent } from "@/features/cover-letter/types";
 import { FONT_REGISTRY, normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 
 import {
+  buildCoverLetterFlowContent,
+  buildVeriworklyFlowItems,
+  getCoverLetterFlowSenderName,
+  getVeriworklyFlowItemWeight,
+  keepVeriworklyProofHeadingWithNext,
+  paginateWeightedItems,
   pt,
   PX_TO_PT,
-  splitParagraphs,
-  splitMarkdownLines,
   getCoverLetterLinks,
-  splitRichTextBlocks,
   getCoverLetterLinkDisplayMode,
   isCoverLetterSectionVisible,
+  type VeriworklyFlowItem,
 } from "../shared";
 
 import {
@@ -20,18 +24,8 @@ import {
 } from "@/features/documents/rendering/resume-rendering";
 import { PdfSocialIcon } from "@/templates/pdf/SocialIcon";
 
-const PARAGRAPH_CHUNK_WORDS = 62;
 const PDF_PAGE_WIDTH = pt(794);
 const PDF_PAGE_HEIGHT = pt(1123);
-
-type VeriworklyFlowItem =
-  | { id: string; type: "greeting"; text: string }
-  | { id: string; type: "paragraph"; text: string }
-  | { id: string; type: "body-list"; items: string[] }
-  | { id: string; type: "proof-heading" }
-  | { id: string; type: "proof-item"; index: number; isLast: boolean; text: string }
-  | { id: string; type: "signoff"; closing?: string; signature: string }
-  | { id: string; type: "postscript"; text: string };
 
 const styles = StyleSheet.create({
   page: {
@@ -210,113 +204,13 @@ const styles = StyleSheet.create({
   },
 });
 
-function splitTextIntoChunks(text: string, wordsPerChunk = PARAGRAPH_CHUNK_WORDS) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length <= wordsPerChunk) return [text];
-
-  const chunks: string[] = [];
-
-  for (let index = 0; index < words.length; index += wordsPerChunk) {
-    chunks.push(words.slice(index, index + wordsPerChunk).join(" "));
-  }
-
-  return chunks;
-}
-
-function buildVeriworklyPdfFlowItems(content: CoverLetterContent, senderName: string) {
-  const items: VeriworklyFlowItem[] = [];
-  const showLetter = isCoverLetterSectionVisible(content, "letter");
-
-  if (!showLetter) return items;
-
-  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
-
-  const bodyBlocks = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
-  ];
-
-  bodyBlocks.forEach((block, blockIndex) => {
-    if (block.type === "paragraph") {
-      splitTextIntoChunks(block.text).forEach((text, chunkIndex) => {
-        items.push({ id: `body-${blockIndex}-${chunkIndex}`, type: "paragraph", text });
-      });
-      return;
-    }
-
-    items.push({ id: `body-list-${blockIndex}`, type: "body-list", items: block.items });
-  });
-
-  const highlights = splitMarkdownLines(content.highlights);
-
-  if (highlights.length > 0) {
-    items.push({ id: "proof-heading", type: "proof-heading" });
-    highlights.forEach((text, index) => {
-      items.push({
-        id: `proof-${index}`,
-        type: "proof-item",
-        index,
-        isLast: index === highlights.length - 1,
-        text,
-      });
-    });
-  }
-
-  items.push({
-    id: "signoff",
-    type: "signoff",
-    closing: content.closing || undefined,
-    signature: content.signature || senderName,
-  });
-
-  if (content.postscript) {
-    splitTextIntoChunks(content.postscript, 50).forEach((text, index) => {
-      items.push({ id: `postscript-${index}`, type: "postscript", text });
-    });
-  }
-
-  return items;
-}
-
-function getVeriworklyPdfItemWeight(item: VeriworklyFlowItem) {
-  if (item.type === "body-list") {
-    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 70), 0);
-  }
-
-  if (item.type === "proof-heading") return 2;
-  if (item.type === "proof-item") return Math.max(1, Math.ceil(item.text.length / 70));
-  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 100);
-  if (item.type === "signoff") return item.closing ? 2 : 1;
-  if (item.type === "greeting") return 1;
-
-  return Math.max(1, Math.ceil(item.text.length / 82));
-}
-
 function paginateVeriworklyPdfItems(items: VeriworklyFlowItem[]) {
-  const pages: VeriworklyFlowItem[][] = [[]];
-  let pageIndex = 0;
-  let used = 0;
-
-  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-    const item = items[itemIndex];
-    const limit = pageIndex === 0 ? 24 : 24;
-    const weight = getVeriworklyPdfItemWeight(item);
-    const nextItem = items[itemIndex + 1];
-    const keepWithNextWeight =
-      item.type === "proof-heading" && nextItem ? getVeriworklyPdfItemWeight(nextItem) : 0;
-
-    if (pages[pageIndex].length > 0 && used + weight + keepWithNextWeight > limit) {
-      pages.push([]);
-      pageIndex += 1;
-      used = 0;
-    }
-
-    pages[pageIndex].push(item);
-    used += weight;
-  }
-
-  return pages.filter((page) => page.length > 0);
+  return paginateWeightedItems(
+    items,
+    getVeriworklyFlowItemWeight,
+    () => 24,
+    keepVeriworklyProofHeadingWithNext,
+  );
 }
 
 export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterContent }) {
@@ -338,7 +232,7 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
     marginBottom: appearance.paragraphSpacing * PX_TO_PT,
     fontSize: bodyFontSize,
   };
-  const senderName = content.senderName || content.signature || "Your Name";
+  const senderName = getCoverLetterFlowSenderName(content);
   const contact = showProfile
     ? [
         content.senderEmail,
@@ -357,7 +251,7 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
         content.companyLocation,
       ].filter(Boolean)
     : [];
-  const flowItems = buildVeriworklyPdfFlowItems(content, senderName);
+  const flowItems = buildVeriworklyFlowItems(buildCoverLetterFlowContent(content), senderName);
   const pages = paginateVeriworklyPdfItems(flowItems);
   const renderPages = pages.length > 0 ? pages : [[]];
 

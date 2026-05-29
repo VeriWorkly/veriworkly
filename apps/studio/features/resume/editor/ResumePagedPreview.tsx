@@ -61,11 +61,10 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const container = measureRef.current?.querySelector(
-        "#resume-container",
-      ) as HTMLElement | null;
+      const measureRoot = measureRef.current;
+      const container = measureRoot?.querySelector("#resume-container") as HTMLElement | null;
 
-      if (!container) {
+      if (!measureRoot || !container) {
         setPages([]);
         return;
       }
@@ -91,7 +90,7 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
         width: `${RESUME_PAGE_WIDTH_PX}px`,
       });
 
-      measureRef.current.appendChild(probe);
+      measureRoot.appendChild(probe);
 
       const fitsPage = (elements: HTMLElement[]) => {
         probe.innerHTML = elements.map((element) => element.outerHTML).join("");

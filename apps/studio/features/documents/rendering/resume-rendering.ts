@@ -38,6 +38,24 @@ export interface RenderContactItem {
   href?: string;
 }
 
+export interface ResumeRenderModel {
+  style: ResumeRenderStyle;
+  contactItems: RenderContactItem[];
+  renderedLinks: ResumeLinkItem[];
+  showBasics: boolean;
+  showLinks: boolean;
+  showSummary: boolean;
+  showExperience: boolean;
+  showEducation: boolean;
+  showProjects: boolean;
+  showSkills: boolean;
+  visibleExperience: ResumeData["experience"];
+  visibleEducation: ResumeData["education"];
+  visibleProjects: ResumeData["projects"];
+  visibleSkills: ResumeData["skills"];
+  visibleCustomSections: ResumeData["customSections"];
+}
+
 export function cleanResumeText(value: string | null | undefined): string {
   return stripEmoji(safeText(value ?? "")).replace(/\s+/g, " ");
 }
@@ -267,4 +285,29 @@ export function hasResumeSectionContent(resume: ResumeData, sectionId: ResumeSec
         .filter((section) => section.kind === sectionId)
         .some((section) => hasCustomSectionContent(section));
   }
+}
+
+export function getResumeRenderModel(resume: ResumeData): ResumeRenderModel {
+  const style = getResumeRenderStyle(resume);
+
+  return {
+    style,
+    contactItems: getContactItems(resume.basics),
+    renderedLinks: resume.links.items.filter((link) => normalizeLinkHref(link.url)),
+    showBasics: hasResumeSectionContent(resume, "basics"),
+    showLinks: hasResumeSectionContent(resume, "links"),
+    showSummary: hasResumeSectionContent(resume, "summary"),
+    showExperience: hasResumeSectionContent(resume, "experience"),
+    showEducation: hasResumeSectionContent(resume, "education"),
+    showProjects: hasResumeSectionContent(resume, "projects"),
+    showSkills: hasResumeSectionContent(resume, "skills"),
+    visibleExperience: resume.experience.filter(hasExperienceContent),
+    visibleEducation: resume.education.filter(hasEducationContent),
+    visibleProjects: resume.projects.filter(hasProjectContent),
+    visibleSkills: resume.skills.filter(hasSkillGroupContent),
+    visibleCustomSections: resume.customSections.filter(
+      (section) =>
+        hasResumeSectionContent(resume, section.kind) && hasCustomSectionContent(section),
+    ),
+  };
 }

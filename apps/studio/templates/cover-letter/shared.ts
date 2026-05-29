@@ -13,6 +13,29 @@ import {
 
 export type RichTextBlock = { type: "paragraph"; text: string } | { type: "list"; items: string[] };
 
+export type CoverLetterFlowContent = Pick<
+  CoverLetterContent,
+  "body" | "closing" | "greeting" | "highlights" | "opening" | "postscript" | "signature"
+>;
+
+export type ProfessionalFlowItem =
+  | { id: string; type: "greeting"; text: string }
+  | { id: string; type: "paragraph"; text: string }
+  | { id: string; type: "body-list"; items: string[] }
+  | { id: string; type: "proof-list"; items: string[] }
+  | { id: string; type: "closing"; text: string }
+  | { id: string; type: "signature"; text: string }
+  | { id: string; type: "postscript"; text: string };
+
+export type VeriworklyFlowItem =
+  | { id: string; type: "greeting"; text: string }
+  | { id: string; type: "paragraph"; text: string }
+  | { id: string; type: "body-list"; items: string[] }
+  | { id: string; type: "proof-heading" }
+  | { id: string; type: "proof-item"; index: number; isLast: boolean; text: string }
+  | { id: string; type: "signoff"; closing?: string; signature: string }
+  | { id: string; type: "postscript"; text: string };
+
 type ContactLink = {
   label: string;
   url: string;
@@ -96,6 +119,233 @@ export function splitMarkdownLines(value: string) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.replace(/^[-*]\s+/, ""));
+}
+
+export function splitTextIntoChunks(text: string, wordsPerChunk: number) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length <= wordsPerChunk) return [text];
+
+  const chunks: string[] = [];
+
+  for (let index = 0; index < words.length; index += wordsPerChunk) {
+    chunks.push(words.slice(index, index + wordsPerChunk).join(" "));
+  }
+
+  return chunks;
+}
+
+export function getCoverLetterFlowSenderName(content: CoverLetterContent) {
+  return content.senderName || content.signature || "Your Name";
+}
+
+export function buildCoverLetterFlowContent(content: CoverLetterContent): CoverLetterFlowContent {
+  const showLetter = isCoverLetterSectionVisible(content, "letter");
+
+  return {
+    body: showLetter ? content.body : "",
+    closing: showLetter ? content.closing : "",
+    greeting: showLetter ? content.greeting : "",
+    highlights: showLetter ? content.highlights : "",
+    opening: showLetter ? content.opening : "",
+    postscript: showLetter ? content.postscript : "",
+    signature: showLetter ? content.signature : "",
+  };
+}
+
+export function paginateMeasuredItems<T extends { id: string }>(
+  items: T[],
+  fitsPage: (items: T[], pageIndex: number) => boolean,
+  keepWithNext?: (item: T, nextItem: T | undefined) => boolean,
+) {
+  const pages: T[][] = [[]];
+  let pageIndex = 0;
+
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+    const item = items[itemIndex];
+    const nextItem = items[itemIndex + 1];
+    const candidate = [...pages[pageIndex], item];
+    const fitCandidate =
+      keepWithNext?.(item, nextItem) && nextItem ? [...candidate, nextItem] : candidate;
+
+    if (pages[pageIndex].length > 0 && !fitsPage(fitCandidate, pageIndex)) {
+      pages.push([]);
+      pageIndex += 1;
+    }
+
+    pages[pageIndex].push(item);
+  }
+
+  return pages.filter((page) => page.length > 0);
+}
+
+export function paginateWeightedItems<T>(
+  items: T[],
+  getItemWeight: (item: T) => number,
+  getPageLimit: (pageIndex: number) => number,
+  keepWithNext?: (item: T, nextItem: T | undefined) => boolean,
+) {
+  const pages: T[][] = [[]];
+  let pageIndex = 0;
+  let used = 0;
+
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+    const item = items[itemIndex];
+    const nextItem = items[itemIndex + 1];
+    const weight = getItemWeight(item);
+    const keepWithNextWeight =
+      keepWithNext?.(item, nextItem) && nextItem ? getItemWeight(nextItem) : 0;
+
+    if (
+      pages[pageIndex].length > 0 &&
+      used + weight + keepWithNextWeight > getPageLimit(pageIndex)
+    ) {
+      pages.push([]);
+      pageIndex += 1;
+      used = 0;
+    }
+
+    pages[pageIndex].push(item);
+    used += weight;
+  }
+
+  return pages.filter((page) => page.length > 0);
+}
+
+export function getFlowPageKey<T>(pages: T[][]) {
+  return pages.map((page) => page.map((item) => JSON.stringify(item)).join(",")).join("|");
+}
+
+export function buildProfessionalFlowItems(
+  content: CoverLetterFlowContent,
+  senderName: string,
+  paragraphChunkWords = 70,
+) {
+  const items: ProfessionalFlowItem[] = [];
+
+  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
+
+  const bodyBlocks: RichTextBlock[] = [
+    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
+    ...splitRichTextBlocks(content.body),
+  ];
+
+  bodyBlocks.forEach((block, blockIndex) => {
+    if (block.type === "paragraph") {
+      splitTextIntoChunks(block.text, paragraphChunkWords).forEach((text, chunkIndex) => {
+        items.push({ id: `body-${blockIndex}-${chunkIndex}`, type: "paragraph", text });
+      });
+      return;
+    }
+
+    items.push({ id: `body-list-${blockIndex}`, type: "body-list", items: block.items });
+  });
+
+  const highlights = splitMarkdownLines(content.highlights);
+
+  if (highlights.length > 0) {
+    items.push({ id: "proof-list", type: "proof-list", items: highlights });
+  }
+
+  if (content.closing) items.push({ id: "closing", type: "closing", text: content.closing });
+
+  items.push({ id: "signature", type: "signature", text: content.signature || senderName });
+
+  if (content.postscript) {
+    splitTextIntoChunks(content.postscript, 55).forEach((text, index) => {
+      items.push({ id: `postscript-${index}`, type: "postscript", text });
+    });
+  }
+
+  return items;
+}
+
+export function getProfessionalFlowItemWeight(item: ProfessionalFlowItem) {
+  if (item.type === "body-list" || item.type === "proof-list") {
+    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 78), 0);
+  }
+
+  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 110);
+  if (item.type === "closing" || item.type === "signature" || item.type === "greeting") return 1;
+
+  return Math.max(1, Math.ceil(item.text.length / 92));
+}
+
+export function buildVeriworklyFlowItems(
+  content: CoverLetterFlowContent,
+  senderName: string,
+  paragraphChunkWords = 62,
+) {
+  const items: VeriworklyFlowItem[] = [];
+
+  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
+
+  const bodyBlocks: RichTextBlock[] = [
+    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
+    ...splitRichTextBlocks(content.body),
+  ];
+
+  bodyBlocks.forEach((block, blockIndex) => {
+    if (block.type === "paragraph") {
+      splitTextIntoChunks(block.text, paragraphChunkWords).forEach((text, chunkIndex) => {
+        items.push({ id: `body-${blockIndex}-${chunkIndex}`, type: "paragraph", text });
+      });
+      return;
+    }
+
+    items.push({ id: `body-list-${blockIndex}`, type: "body-list", items: block.items });
+  });
+
+  const highlights = splitMarkdownLines(content.highlights);
+
+  if (highlights.length > 0) {
+    items.push({ id: "proof-heading", type: "proof-heading" });
+    highlights.forEach((text, index) => {
+      items.push({
+        id: `proof-${index}`,
+        type: "proof-item",
+        index,
+        isLast: index === highlights.length - 1,
+        text,
+      });
+    });
+  }
+
+  items.push({
+    id: "signoff",
+    type: "signoff",
+    closing: content.closing || undefined,
+    signature: content.signature || senderName,
+  });
+
+  if (content.postscript) {
+    splitTextIntoChunks(content.postscript, 50).forEach((text, index) => {
+      items.push({ id: `postscript-${index}`, type: "postscript", text });
+    });
+  }
+
+  return items;
+}
+
+export function getVeriworklyFlowItemWeight(item: VeriworklyFlowItem) {
+  if (item.type === "body-list") {
+    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 70), 0);
+  }
+
+  if (item.type === "proof-heading") return 2;
+  if (item.type === "proof-item") return Math.max(1, Math.ceil(item.text.length / 70));
+  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 100);
+  if (item.type === "signoff") return item.closing ? 2 : 1;
+  if (item.type === "greeting") return 1;
+
+  return Math.max(1, Math.ceil(item.text.length / 82));
+}
+
+export function keepVeriworklyProofHeadingWithNext(
+  item: VeriworklyFlowItem,
+  nextItem: VeriworklyFlowItem | undefined,
+) {
+  return item.type === "proof-heading" && Boolean(nextItem);
 }
 
 export function splitContactLinks(value: string): ContactLink[] {

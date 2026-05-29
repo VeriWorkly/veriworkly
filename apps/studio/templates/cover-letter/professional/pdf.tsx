@@ -4,14 +4,15 @@ import type { CoverLetterContent } from "@/features/cover-letter/types";
 import { FONT_REGISTRY, normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 
 import {
+  buildCoverLetterFlowContent,
+  buildProfessionalFlowItems,
+  getCoverLetterFlowSenderName,
   pt,
   PX_TO_PT,
-  splitParagraphs,
-  splitMarkdownLines,
   getCoverLetterLinks,
-  splitRichTextBlocks,
   getCoverLetterLinkDisplayMode,
   isCoverLetterSectionVisible,
+  type ProfessionalFlowItem,
 } from "../shared";
 
 import {
@@ -152,7 +153,6 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
   const showProfile = isCoverLetterSectionVisible(content, "profile");
   const showLinks = isCoverLetterSectionVisible(content, "links");
   const showTarget = isCoverLetterSectionVisible(content, "target");
-  const showLetter = isCoverLetterSectionVisible(content, "letter");
   const font = FONT_REGISTRY[normalizeFontFamilyId(appearance.fontFamily)];
   const bodyLineHeight = appearance.lineHeight;
 
@@ -169,7 +169,7 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
     marginBottom: appearance.paragraphSpacing * PX_TO_PT,
   };
 
-  const senderName = content.senderName || content.signature || "Your Name";
+  const senderName = getCoverLetterFlowSenderName(content);
 
   const contact = showProfile
     ? [
@@ -192,14 +192,76 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
       ].filter(Boolean)
     : [];
 
-  const bodyBlocks = showLetter
-    ? [
-        ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-        ...splitRichTextBlocks(content.body),
-      ]
-    : [];
+  const flowItems = buildProfessionalFlowItems(buildCoverLetterFlowContent(content), senderName);
 
-  const highlights = showLetter ? splitMarkdownLines(content.highlights) : [];
+  function renderFlowItem(item: ProfessionalFlowItem) {
+    if (item.type === "greeting") {
+      return (
+        <Text
+          key={item.id}
+          style={[styles.paragraph, paragraphStyle, { fontWeight: 600, color: "#09090b" }]}
+        >
+          {item.text}
+        </Text>
+      );
+    }
+
+    if (item.type === "paragraph") {
+      return (
+        <Text key={item.id} style={[styles.paragraph, paragraphStyle]}>
+          {item.text}
+        </Text>
+      );
+    }
+
+    if (item.type === "body-list" || item.type === "proof-list") {
+      return (
+        <View key={item.id} style={[styles.bullets, listStyle]}>
+          {item.items.map((listItem, index) => (
+            <View
+              key={`${listItem}-${index}`}
+              style={[styles.bulletRow, index === item.items.length - 1 ? { marginBottom: 0 } : {}]}
+            >
+              <View style={styles.bulletDot}>
+                <Svg width={pt(8)} height={pt(8)} viewBox="0 0 8 8">
+                  <Circle
+                    cx="4"
+                    cy="4"
+                    r="3.5"
+                    fill={item.type === "proof-list" ? "#09090b" : appearance.accentColor}
+                  />
+                </Svg>
+              </View>
+
+              <Text style={styles.bulletText}>{listItem}</Text>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (item.type === "closing") {
+      return (
+        <Text key={item.id} style={styles.closing}>
+          {item.text}
+        </Text>
+      );
+    }
+
+    if (item.type === "signature") {
+      return (
+        <Text key={item.id} style={styles.signature}>
+          {item.text}
+        </Text>
+      );
+    }
+
+    return (
+      <Text key={item.id} style={styles.postscript}>
+        P.S. {item.text}
+      </Text>
+    );
+  }
 
   return (
     <Document>
@@ -270,70 +332,7 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
         ) : null}
 
         <View style={[styles.body, { fontSize: bodyFontSize, lineHeight: bodyLineHeight }]}>
-          {showLetter && content.greeting ? (
-            <Text style={[styles.paragraph, paragraphStyle, { fontWeight: 600, color: "#09090b" }]}>
-              {content.greeting}
-            </Text>
-          ) : null}
-
-          {bodyBlocks.map((block, index) =>
-            block.type === "list" ? (
-              <View key={`list-${index}`} style={[styles.bullets, listStyle]}>
-                {block.items.map((item, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.bulletRow,
-                      i === block.items.length - 1 ? { marginBottom: 0 } : {},
-                    ]}
-                  >
-                    <View style={styles.bulletDot}>
-                      <Svg width={pt(8)} height={pt(8)} viewBox="0 0 8 8">
-                        <Circle cx="4" cy="4" r="3.5" fill={appearance.accentColor} />
-                      </Svg>
-                    </View>
-
-                    <Text style={styles.bulletText}>{item}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text key={`paragraph-${index}`} style={[styles.paragraph, paragraphStyle]}>
-                {block.text}
-              </Text>
-            ),
-          )}
-
-          {highlights.length > 0 ? (
-            <View style={[styles.bullets, listStyle]}>
-              {highlights.map((highlight, i) => (
-                <View
-                  key={i}
-                  style={[styles.bulletRow, i === highlights.length - 1 ? { marginBottom: 0 } : {}]}
-                >
-                  <View style={styles.bulletDot}>
-                    <Svg width={pt(8)} height={pt(8)} viewBox="0 0 8 8">
-                      <Circle cx="4" cy="4" r="3.5" fill="#09090b" />
-                    </Svg>
-                  </View>
-
-                  <Text style={styles.bulletText}>{highlight}</Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-
-          {showLetter && content.closing ? (
-            <Text style={styles.closing}>{content.closing}</Text>
-          ) : null}
-
-          {showLetter ? (
-            <Text style={styles.signature}>{content.signature || senderName}</Text>
-          ) : null}
-
-          {showLetter && content.postscript ? (
-            <Text style={styles.postscript}>P.S. {content.postscript}</Text>
-          ) : null}
+          {flowItems.map((item) => renderFlowItem(item))}
         </View>
       </Page>
     </Document>

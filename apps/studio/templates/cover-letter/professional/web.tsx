@@ -2,15 +2,19 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import type { RichTextBlock } from "../shared";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import {
+  buildCoverLetterFlowContent,
+  buildProfessionalFlowItems,
   getCoverLetterState,
+  getFlowPageKey,
+  getProfessionalFlowItemWeight,
+  getCoverLetterFlowSenderName,
   isCoverLetterSectionVisible,
-  splitMarkdownLines,
-  splitParagraphs,
-  splitRichTextBlocks,
+  paginateMeasuredItems,
+  paginateWeightedItems,
+  type ProfessionalFlowItem,
 } from "../shared";
 
 import {
@@ -23,83 +27,6 @@ import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
 
 const PAGE_HEIGHT = 1123;
-const PARAGRAPH_CHUNK_WORDS = 70;
-
-type ProfessionalFlowItem =
-  | { id: string; type: "greeting"; text: string }
-  | { id: string; type: "paragraph"; text: string }
-  | { id: string; type: "body-list"; items: string[] }
-  | { id: string; type: "proof-list"; items: string[] }
-  | { id: string; type: "closing"; text: string }
-  | { id: string; type: "signature"; text: string }
-  | { id: string; type: "postscript"; text: string };
-
-type CoverLetterFlowContent = Pick<
-  CoverLetterContent,
-  "body" | "closing" | "greeting" | "highlights" | "opening" | "postscript" | "signature"
->;
-
-function splitTextIntoChunks(text: string, wordsPerChunk = PARAGRAPH_CHUNK_WORDS) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length <= wordsPerChunk) return [text];
-
-  const chunks: string[] = [];
-
-  for (let index = 0; index < words.length; index += wordsPerChunk) {
-    chunks.push(words.slice(index, index + wordsPerChunk).join(" "));
-  }
-
-  return chunks;
-}
-
-function buildProfessionalFlowItems(content: CoverLetterFlowContent, senderName: string) {
-  const items: ProfessionalFlowItem[] = [];
-
-  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
-
-  const bodyBlocks: RichTextBlock[] = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
-  ];
-
-  bodyBlocks.forEach((block, blockIndex) => {
-    if (block.type === "paragraph") {
-      splitTextIntoChunks(block.text).forEach((text, chunkIndex) => {
-        items.push({
-          id: `body-${blockIndex}-${chunkIndex}`,
-          type: "paragraph",
-          text,
-        });
-      });
-      return;
-    }
-
-    items.push({
-      id: `body-list-${blockIndex}`,
-      type: "body-list",
-      items: block.items,
-    });
-  });
-
-  const highlights = splitMarkdownLines(content.highlights);
-
-  if (highlights.length > 0) {
-    items.push({ id: "proof-list", type: "proof-list", items: highlights });
-  }
-
-  if (content.closing) items.push({ id: "closing", type: "closing", text: content.closing });
-
-  items.push({ id: "signature", type: "signature", text: content.signature || senderName });
-
-  if (content.postscript) {
-    splitTextIntoChunks(content.postscript, 55).forEach((text, index) => {
-      items.push({ id: `postscript-${index}`, type: "postscript", text });
-    });
-  }
-
-  return items;
-}
 
 function renderFlowItem(item: ProfessionalFlowItem, accentColor: string) {
   if (item.type === "greeting") return <p className="font-medium text-zinc-950">{item.text}</p>;
@@ -164,31 +91,6 @@ function renderGroupedFlowItems(items: ProfessionalFlowItem[], accentColor: stri
   return nodes;
 }
 
-function paginateMeasuredItems<T extends { id: string }>(
-  items: T[],
-  fitsPage: (items: T[], pageIndex: number) => boolean,
-) {
-  const pages: T[][] = [[]];
-  let pageIndex = 0;
-
-  for (const item of items) {
-    const candidate = [...pages[pageIndex], item];
-
-    if (pages[pageIndex].length > 0 && !fitsPage(candidate, pageIndex)) {
-      pages.push([]);
-      pageIndex += 1;
-    }
-
-    pages[pageIndex].push(item);
-  }
-
-  return pages.filter((page) => page.length > 0);
-}
-
-function getProfessionalPageKey(pages: ProfessionalFlowItem[][]) {
-  return pages.map((page) => page.map((item) => JSON.stringify(item)).join(",")).join("|");
-}
-
 function fitsInsideBottomPadding(container: HTMLElement, content: HTMLElement) {
   const containerStyle = window.getComputedStyle(container);
   const paddingBottom = Number.parseFloat(containerStyle.paddingBottom) || 0;
@@ -198,37 +100,10 @@ function fitsInsideBottomPadding(container: HTMLElement, content: HTMLElement) {
   return contentBottom <= containerBottom + 1;
 }
 
-function getProfessionalHtmlItemWeight(item: ProfessionalFlowItem) {
-  if (item.type === "body-list" || item.type === "proof-list") {
-    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 78), 0);
-  }
-
-  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 110);
-  if (item.type === "closing" || item.type === "signature" || item.type === "greeting") return 1;
-
-  return Math.max(1, Math.ceil(item.text.length / 92));
-}
-
 function paginateProfessionalHtmlItems(items: ProfessionalFlowItem[]) {
-  const pages: ProfessionalFlowItem[][] = [[]];
-  let pageIndex = 0;
-  let used = 0;
-
-  for (const item of items) {
-    const limit = pageIndex === 0 ? 17 : 26;
-    const weight = getProfessionalHtmlItemWeight(item);
-
-    if (pages[pageIndex].length > 0 && used + weight > limit) {
-      pages.push([]);
-      pageIndex += 1;
-      used = 0;
-    }
-
-    pages[pageIndex].push(item);
-    used += weight;
-  }
-
-  return pages.filter((page) => page.length > 0);
+  return paginateWeightedItems(items, getProfessionalFlowItemWeight, (pageIndex) =>
+    pageIndex === 0 ? 17 : 26,
+  );
 }
 
 function renderProfessionalHtmlItem(item: ProfessionalFlowItem) {
@@ -258,30 +133,9 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
     recipient,
   } = state;
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const flowSenderName = content.senderName || content.signature || "Your Name";
+  const flowSenderName = getCoverLetterFlowSenderName(content);
   const showTarget = isCoverLetterSectionVisible(content, "target");
-  const showLetter = isCoverLetterSectionVisible(content, "letter");
-  const flowContent = useMemo(
-    () => ({
-      body: showLetter ? content.body : "",
-      closing: showLetter ? content.closing : "",
-      greeting: showLetter ? content.greeting : "",
-      highlights: showLetter ? content.highlights : "",
-      opening: showLetter ? content.opening : "",
-      postscript: showLetter ? content.postscript : "",
-      signature: showLetter ? content.signature : "",
-    }),
-    [
-      content.body,
-      content.closing,
-      content.greeting,
-      content.highlights,
-      content.opening,
-      content.postscript,
-      content.signature,
-      showLetter,
-    ],
-  );
+  const flowContent = useMemo(() => buildCoverLetterFlowContent(content), [content]);
   const flowItems = useMemo(
     () => buildProfessionalFlowItems(flowContent, flowSenderName),
     [flowContent, flowSenderName],
@@ -328,10 +182,10 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
 
       const nextPages = paginateMeasuredItems(flowItems, fitsPage);
       probe.remove();
-      const nextKey = getProfessionalPageKey(nextPages);
+      const nextKey = getFlowPageKey(nextPages);
 
       setPages((current) => {
-        const currentKey = getProfessionalPageKey(current);
+        const currentKey = getFlowPageKey(current);
         return currentKey === nextKey ? current : nextPages;
       });
     });
@@ -571,24 +425,12 @@ export function buildProfessionalCoverLetterHtml(content: CoverLetterContent): s
     recipient,
   } = state;
   const showTarget = isCoverLetterSectionVisible(content, "target");
-  const showLetter = isCoverLetterSectionVisible(content, "letter");
   const subject = escapeHtml(
     showTarget ? content.subject || content.jobTitle || "Application" : "",
   );
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const fontHref = getFontStylesheetHref(appearance.fontFamily);
-  const flowItems = buildProfessionalFlowItems(
-    {
-      body: showLetter ? content.body : "",
-      closing: showLetter ? content.closing : "",
-      greeting: showLetter ? content.greeting : "",
-      highlights: showLetter ? content.highlights : "",
-      opening: showLetter ? content.opening : "",
-      postscript: showLetter ? content.postscript : "",
-      signature: showLetter ? content.signature : "",
-    },
-    senderName,
-  );
+  const flowItems = buildProfessionalFlowItems(buildCoverLetterFlowContent(content), senderName);
   const pages = paginateProfessionalHtmlItems(flowItems);
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.senderName || "Cover Letter")}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>

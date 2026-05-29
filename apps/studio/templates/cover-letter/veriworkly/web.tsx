@@ -2,15 +2,20 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import type { RichTextBlock } from "../shared";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import {
+  buildCoverLetterFlowContent,
+  buildVeriworklyFlowItems,
+  getCoverLetterFlowSenderName,
   getCoverLetterState,
+  getFlowPageKey,
+  getVeriworklyFlowItemWeight,
   isCoverLetterSectionVisible,
-  splitMarkdownLines,
-  splitParagraphs,
-  splitRichTextBlocks,
+  keepVeriworklyProofHeadingWithNext,
+  paginateMeasuredItems,
+  paginateWeightedItems,
+  type VeriworklyFlowItem,
 } from "../shared";
 
 import {
@@ -23,95 +28,6 @@ import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
 
 const PAGE_HEIGHT = 1123;
-const PARAGRAPH_CHUNK_WORDS = 62;
-
-type VeriworklyFlowItem =
-  | { id: string; type: "greeting"; text: string }
-  | { id: string; type: "paragraph"; text: string }
-  | { id: string; type: "body-list"; items: string[] }
-  | { id: string; type: "proof-heading" }
-  | { id: string; type: "proof-item"; index: number; isLast: boolean; text: string }
-  | { id: string; type: "signoff"; closing?: string; signature: string }
-  | { id: string; type: "postscript"; text: string };
-
-type CoverLetterFlowContent = Pick<
-  CoverLetterContent,
-  "body" | "closing" | "greeting" | "highlights" | "opening" | "postscript" | "signature"
->;
-
-function splitTextIntoChunks(text: string, wordsPerChunk = PARAGRAPH_CHUNK_WORDS) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length <= wordsPerChunk) return [text];
-
-  const chunks: string[] = [];
-
-  for (let index = 0; index < words.length; index += wordsPerChunk) {
-    chunks.push(words.slice(index, index + wordsPerChunk).join(" "));
-  }
-
-  return chunks;
-}
-
-function buildVeriworklyFlowItems(content: CoverLetterFlowContent, senderName: string) {
-  const items: VeriworklyFlowItem[] = [];
-
-  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
-
-  const bodyBlocks: RichTextBlock[] = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
-  ];
-
-  bodyBlocks.forEach((block, blockIndex) => {
-    if (block.type === "paragraph") {
-      splitTextIntoChunks(block.text).forEach((text, chunkIndex) => {
-        items.push({
-          id: `body-${blockIndex}-${chunkIndex}`,
-          type: "paragraph",
-          text,
-        });
-      });
-      return;
-    }
-
-    items.push({
-      id: `body-list-${blockIndex}`,
-      type: "body-list",
-      items: block.items,
-    });
-  });
-
-  const highlights = splitMarkdownLines(content.highlights);
-
-  if (highlights.length > 0) {
-    items.push({ id: "proof-heading", type: "proof-heading" });
-    highlights.forEach((text, index) => {
-      items.push({
-        id: `proof-${index}`,
-        type: "proof-item",
-        index,
-        isLast: index === highlights.length - 1,
-        text,
-      });
-    });
-  }
-
-  items.push({
-    id: "signoff",
-    type: "signoff",
-    closing: content.closing || undefined,
-    signature: content.signature || senderName,
-  });
-
-  if (content.postscript) {
-    splitTextIntoChunks(content.postscript, 50).forEach((text, index) => {
-      items.push({ id: `postscript-${index}`, type: "postscript", text });
-    });
-  }
-
-  return items;
-}
 
 function renderFlowItem(item: VeriworklyFlowItem, accentColor: string) {
   if (item.type === "greeting") return <p className="font-medium text-slate-950">{item.text}</p>;
@@ -181,35 +97,6 @@ function renderGroupedFlowItems(items: VeriworklyFlowItem[], accentColor: string
   ));
 }
 
-function paginateMeasuredItems(
-  items: VeriworklyFlowItem[],
-  fitsPage: (items: VeriworklyFlowItem[], pageIndex: number) => boolean,
-) {
-  const pages: VeriworklyFlowItem[][] = [[]];
-  let pageIndex = 0;
-
-  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-    const item = items[itemIndex];
-    const nextItem = items[itemIndex + 1];
-    const candidate = [...pages[pageIndex], item];
-    const fitCandidate =
-      item.type === "proof-heading" && nextItem ? [...candidate, nextItem] : candidate;
-
-    if (pages[pageIndex].length > 0 && !fitsPage(fitCandidate, pageIndex)) {
-      pages.push([]);
-      pageIndex += 1;
-    }
-
-    pages[pageIndex].push(item);
-  }
-
-  return pages.filter((page) => page.length > 0);
-}
-
-function getVeriworklyPageKey(pages: VeriworklyFlowItem[][]) {
-  return pages.map((page) => page.map((item) => JSON.stringify(item)).join(",")).join("|");
-}
-
 function fitsInsideBottomPadding(container: HTMLElement, content: HTMLElement) {
   const containerStyle = window.getComputedStyle(container);
   const paddingBottom = Number.parseFloat(containerStyle.paddingBottom) || 0;
@@ -219,44 +106,13 @@ function fitsInsideBottomPadding(container: HTMLElement, content: HTMLElement) {
   return contentBottom <= containerBottom + 1;
 }
 
-function getVeriworklyHtmlItemWeight(item: VeriworklyFlowItem) {
-  if (item.type === "body-list") {
-    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 70), 0);
-  }
-
-  if (item.type === "proof-heading") return 2;
-  if (item.type === "proof-item") return Math.max(1, Math.ceil(item.text.length / 70));
-  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 100);
-  if (item.type === "signoff") return item.closing ? 2 : 1;
-  if (item.type === "greeting") return 1;
-
-  return Math.max(1, Math.ceil(item.text.length / 82));
-}
-
 function paginateVeriworklyHtmlItems(items: VeriworklyFlowItem[]) {
-  const pages: VeriworklyFlowItem[][] = [[]];
-  let pageIndex = 0;
-  let used = 0;
-
-  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-    const item = items[itemIndex];
-    const limit = pageIndex === 0 ? 24 : 24;
-    const weight = getVeriworklyHtmlItemWeight(item);
-    const nextItem = items[itemIndex + 1];
-    const keepWithNextWeight =
-      item.type === "proof-heading" && nextItem ? getVeriworklyHtmlItemWeight(nextItem) : 0;
-
-    if (pages[pageIndex].length > 0 && used + weight + keepWithNextWeight > limit) {
-      pages.push([]);
-      pageIndex += 1;
-      used = 0;
-    }
-
-    pages[pageIndex].push(item);
-    used += weight;
-  }
-
-  return pages.filter((page) => page.length > 0);
+  return paginateWeightedItems(
+    items,
+    getVeriworklyFlowItemWeight,
+    () => 24,
+    keepVeriworklyProofHeadingWithNext,
+  );
 }
 
 function renderVeriworklyHtmlItem(item: VeriworklyFlowItem, accentColor: string) {
@@ -291,30 +147,9 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
     recipient,
   } = state;
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const flowSenderName = content.senderName || content.signature || "Your Name";
+  const flowSenderName = getCoverLetterFlowSenderName(content);
   const showTarget = isCoverLetterSectionVisible(content, "target");
-  const showLetter = isCoverLetterSectionVisible(content, "letter");
-  const flowContent = useMemo(
-    () => ({
-      body: showLetter ? content.body : "",
-      closing: showLetter ? content.closing : "",
-      greeting: showLetter ? content.greeting : "",
-      highlights: showLetter ? content.highlights : "",
-      opening: showLetter ? content.opening : "",
-      postscript: showLetter ? content.postscript : "",
-      signature: showLetter ? content.signature : "",
-    }),
-    [
-      content.body,
-      content.closing,
-      content.greeting,
-      content.highlights,
-      content.opening,
-      content.postscript,
-      content.signature,
-      showLetter,
-    ],
-  );
+  const flowContent = useMemo(() => buildCoverLetterFlowContent(content), [content]);
   const flowItems = useMemo(
     () => buildVeriworklyFlowItems(flowContent, flowSenderName),
     [flowContent, flowSenderName],
@@ -368,12 +203,16 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
         return main.scrollHeight <= PAGE_HEIGHT + 1 && fitsInsideBottomPadding(main, body);
       };
 
-      const nextPages = paginateMeasuredItems(flowItems, fitsPage);
+      const nextPages = paginateMeasuredItems(
+        flowItems,
+        fitsPage,
+        keepVeriworklyProofHeadingWithNext,
+      );
       probe.remove();
-      const nextKey = getVeriworklyPageKey(nextPages);
+      const nextKey = getFlowPageKey(nextPages);
 
       setPages((current) => {
-        const currentKey = getVeriworklyPageKey(current);
+        const currentKey = getFlowPageKey(current);
         return currentKey === nextKey ? current : nextPages;
       });
     });
@@ -622,24 +461,12 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
     recipient,
   } = state;
   const showTarget = isCoverLetterSectionVisible(content, "target");
-  const showLetter = isCoverLetterSectionVisible(content, "letter");
   const subject = escapeHtml(
     showTarget ? content.subject || content.jobTitle || "Application" : "",
   );
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const fontHref = getFontStylesheetHref(appearance.fontFamily);
-  const flowItems = buildVeriworklyFlowItems(
-    {
-      body: showLetter ? content.body : "",
-      closing: showLetter ? content.closing : "",
-      greeting: showLetter ? content.greeting : "",
-      highlights: showLetter ? content.highlights : "",
-      opening: showLetter ? content.opening : "",
-      postscript: showLetter ? content.postscript : "",
-      signature: showLetter ? content.signature : "",
-    },
-    senderName,
-  );
+  const flowItems = buildVeriworklyFlowItems(buildCoverLetterFlowContent(content), senderName);
   const pages = paginateVeriworklyHtmlItems(flowItems);
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.senderName || "Cover Letter")}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
