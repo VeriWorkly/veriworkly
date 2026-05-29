@@ -25,6 +25,7 @@ import ResumeToolbar from "./ResumeToolbar";
 import ResumeEditorModals from "./ResumeEditorModals";
 import EditorContentPanel from "./EditorContentPanel";
 import EditorSettingsPanel from "./EditorSettingsPanel";
+import { ResumePagedPreview } from "./ResumePagedPreview";
 
 import { useUserStore } from "@/store/useUserStore";
 
@@ -50,8 +51,6 @@ const ResumeEditor = ({ documentId }: ResumeEditorProps) => {
   const deferredResume = useDeferredValue(resume);
 
   const resumePreviewId = `resume-preview-${resume.id}`;
-
-  const stagePaddingClass = resume.customization.pagePadding === 0 ? "p-0" : "p-3 md:p-6";
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +147,11 @@ const ResumeEditor = ({ documentId }: ResumeEditorProps) => {
   const preview = templateComponent
     ? (() => {
         const TemplateComponent = templateComponent;
-        return <TemplateComponent resume={deferredResume} />;
+        return (
+          <ResumePagedPreview>
+            <TemplateComponent resume={deferredResume} />
+          </ResumePagedPreview>
+        );
       })()
     : null;
 
@@ -175,7 +178,7 @@ const ResumeEditor = ({ documentId }: ResumeEditorProps) => {
       preview={preview}
       previewId={resumePreviewId}
       previewTitle={deferredResume.basics.fullName || "Untitled Resume"}
-      previewStageClassName={stagePaddingClass}
+      previewStageClassName="p-0"
       settingsLabel="Style settings"
     />
   );

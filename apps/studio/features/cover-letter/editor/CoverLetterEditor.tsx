@@ -17,6 +17,7 @@ import { CoverLetterPreview } from "@/templates/cover-letter/web";
 import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
 import { DocumentEditorShell } from "@/features/documents/editor/DocumentEditorShell";
 import { startDocumentSyncWorker } from "@/features/documents/services/document-sync";
+import { importCoverLetterMarkdownFile } from "@/features/cover-letter/markdown-import";
 import { deleteDocument } from "@/features/documents/services/document-workspace-service";
 import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/services/workspace-settings";
 
@@ -118,6 +119,28 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
     }
   }
 
+  async function importMarkdown(file: File | undefined) {
+    if (!file) return;
+
+    try {
+      const importedContent = await importCoverLetterMarkdownFile(file, currentDoc.content);
+
+      updateDocument(
+        {
+          ...currentDoc,
+          title: importedContent.jobTitle || currentDoc.title,
+          updatedAt: new Date().toISOString(),
+          content: importedContent,
+        },
+        { flush: true },
+      );
+
+      toast.success("Cover letter markdown imported");
+    } catch {
+      toast.error("Import failed. Use a valid cover letter Markdown file.");
+    }
+  }
+
   function deleteCurrentDocument() {
     const confirmed = window.confirm(`Delete "${currentDoc.title}"? This cannot be undone.`);
     if (!confirmed) return;
@@ -137,6 +160,7 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
             message={message}
             onDelete={deleteCurrentDocument}
             onImportJson={importJson}
+            onImportMarkdown={importMarkdown}
             onOpenShare={() => setShareModalOpen(true)}
             onSave={saveCurrentDocument}
             onSetMessage={setMessage}

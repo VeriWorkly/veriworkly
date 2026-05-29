@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@veriworkly/ui";
@@ -26,9 +27,11 @@ const ToolbarSecondaryActions = ({
     <>
       <Button
         size="sm"
-        variant="secondary"
+        variant="ghost"
+        className="rounded-xl"
         onClick={() => router.push(getDocumentPreviewPath("RESUME", resumeId))}
       >
+        <Eye className="mr-2 h-4 w-4" />
         Full Preview
       </Button>
 
@@ -45,7 +48,9 @@ const ToolbarSecondaryActions = ({
         }}
         size="sm"
         variant="secondary"
+        className="rounded-xl"
       >
+        <Save className="mr-2 h-4 w-4" />
         Save
       </Button>
     </>

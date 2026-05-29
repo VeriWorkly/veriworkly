@@ -7,6 +7,7 @@ import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import {
   getCoverLetterState,
+  isCoverLetterSectionVisible,
   splitMarkdownLines,
   splitParagraphs,
   splitRichTextBlocks,
@@ -287,15 +288,17 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
   } = state;
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const flowSenderName = content.senderName || content.signature || "Your Name";
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const showLetter = isCoverLetterSectionVisible(content, "letter");
   const flowContent = useMemo(
     () => ({
-      body: content.body,
-      closing: content.closing,
-      greeting: content.greeting,
-      highlights: content.highlights,
-      opening: content.opening,
-      postscript: content.postscript,
-      signature: content.signature,
+      body: showLetter ? content.body : "",
+      closing: showLetter ? content.closing : "",
+      greeting: showLetter ? content.greeting : "",
+      highlights: showLetter ? content.highlights : "",
+      opening: showLetter ? content.opening : "",
+      postscript: showLetter ? content.postscript : "",
+      signature: showLetter ? content.signature : "",
     }),
     [
       content.body,
@@ -305,6 +308,7 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
       content.opening,
       content.postscript,
       content.signature,
+      showLetter,
     ],
   );
   const flowItems = useMemo(
@@ -402,12 +406,16 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
             Target
           </p>
 
-          <p className="mt-2 text-sm leading-5 font-semibold text-slate-950">
-            {content.jobTitle || content.subject || "Open role"}
-          </p>
+          {showTarget ? (
+            <>
+              <p className="mt-2 text-sm leading-5 font-semibold text-slate-950">
+                {content.jobTitle || content.subject || "Open role"}
+              </p>
 
-          {content.companyName ? (
-            <p className="mt-1 text-xs leading-5 text-slate-600">{content.companyName}</p>
+              {content.companyName ? (
+                <p className="mt-1 text-xs leading-5 text-slate-600">{content.companyName}</p>
+              ) : null}
+            </>
           ) : null}
         </div>
       </aside>
@@ -447,21 +455,23 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
                 ) : null}
               </div>
 
-              <section
-                className="mt-8 border-l-2 pl-5"
-                style={{ borderLeftColor: appearance.accentColor }}
-              >
-                <p
-                  className="text-[10px] font-bold tracking-[0.2em] uppercase"
-                  style={{ color: appearance.accentColor }}
+              {showTarget ? (
+                <section
+                  className="mt-8 border-l-2 pl-5"
+                  style={{ borderLeftColor: appearance.accentColor }}
                 >
-                  Cover Letter
-                </p>
+                  <p
+                    className="text-[10px] font-bold tracking-[0.2em] uppercase"
+                    style={{ color: appearance.accentColor }}
+                  >
+                    Cover Letter
+                  </p>
 
-                <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
-                  {content.subject || content.jobTitle || "Application"}
-                </h2>
-              </section>
+                  <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
+                    {content.subject || content.jobTitle || "Application"}
+                  </h2>
+                </section>
+              ) : null}
             </div>
 
             <div ref={nextPrefixRef}></div>
@@ -519,21 +529,23 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
                   ) : null}
                 </div>
 
-                <section
-                  className="mt-8 border-l-2 pl-5"
-                  style={{ borderLeftColor: appearance.accentColor }}
-                >
-                  <p
-                    className="text-[10px] font-bold tracking-[0.2em] uppercase"
-                    style={{ color: appearance.accentColor }}
+                {showTarget ? (
+                  <section
+                    className="mt-8 border-l-2 pl-5"
+                    style={{ borderLeftColor: appearance.accentColor }}
                   >
-                    Cover Letter
-                  </p>
+                    <p
+                      className="text-[10px] font-bold tracking-[0.2em] uppercase"
+                      style={{ color: appearance.accentColor }}
+                    >
+                      Cover Letter
+                    </p>
 
-                  <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
-                    {content.subject || content.jobTitle || "Application"}
-                  </h2>
-                </section>
+                    <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
+                      {content.subject || content.jobTitle || "Application"}
+                    </h2>
+                  </section>
+                ) : null}
               </>
             ) : null}
 
@@ -564,10 +576,25 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
     renderedLinks,
     recipient,
   } = state;
-  const subject = escapeHtml(content.subject || content.jobTitle || "Application");
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const showLetter = isCoverLetterSectionVisible(content, "letter");
+  const subject = escapeHtml(
+    showTarget ? content.subject || content.jobTitle || "Application" : "",
+  );
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const fontHref = getFontStylesheetHref(appearance.fontFamily);
-  const flowItems = buildVeriworklyFlowItems(content, senderName);
+  const flowItems = buildVeriworklyFlowItems(
+    {
+      body: showLetter ? content.body : "",
+      closing: showLetter ? content.closing : "",
+      greeting: showLetter ? content.greeting : "",
+      highlights: showLetter ? content.highlights : "",
+      opening: showLetter ? content.opening : "",
+      postscript: showLetter ? content.postscript : "",
+      signature: showLetter ? content.signature : "",
+    },
+    senderName,
+  );
   const pages = paginateVeriworklyHtmlItems(flowItems);
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.senderName || "Cover Letter")}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
@@ -577,7 +604,7 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
       const body = blocks
         .map((item) => renderVeriworklyHtmlItem(item, appearance.accentColor))
         .join("");
-      return `<article class="page veri-page"><aside><p class="label">Candidate</p><h1>${escapeHtml(senderName)}</h1><p class="muted">${escapeHtml(senderTitle)}</p><div class="rule"></div><div class="rail">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div><div class="target"><p class="label">Target</p><strong>${subject}</strong><p>${escapeHtml(content.companyName)}</p></div></aside><main>${first ? `<div class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></div><section class="subject"><p class="label">Cover Letter</p><h2>${subject}</h2></section>` : ""}<section class="body">${body}</section></main></article>`;
+      return `<article class="page veri-page"><aside><p class="label">Candidate</p><h1>${escapeHtml(senderName)}</h1><p class="muted">${escapeHtml(senderTitle)}</p><div class="rule"></div><div class="rail">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div>${showTarget ? `<div class="target"><p class="label">Target</p><strong>${subject}</strong><p>${escapeHtml(content.companyName)}</p></div>` : ""}</aside><main>${first ? `<div class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></div>${showTarget ? `<section class="subject"><p class="label">Cover Letter</p><h2>${subject}</h2></section>` : ""}` : ""}<section class="body">${body}</section></main></article>`;
     })
     .join("")}</body></html>`;
 }

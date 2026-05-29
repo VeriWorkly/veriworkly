@@ -24,12 +24,17 @@ function buildMarkdown(resume: ResumeData): string {
   const visibleSections = getVisibleSectionMap(resume);
 
   const role = safeText(resume.basics.role);
+  const headline = safeText(resume.basics.headline);
   const name = safeText(resume.basics.fullName) || "Your Name";
 
   parts.push(`# ${name}`);
 
   if (role) {
     parts.push(`_${role}_`);
+  }
+
+  if (headline) {
+    parts.push(headline);
   }
 
   const contact = [

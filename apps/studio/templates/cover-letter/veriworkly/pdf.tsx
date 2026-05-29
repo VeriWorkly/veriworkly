@@ -11,6 +11,7 @@ import {
   getCoverLetterLinks,
   splitRichTextBlocks,
   getCoverLetterLinkDisplayMode,
+  isCoverLetterSectionVisible,
 } from "../shared";
 
 import {
@@ -225,6 +226,9 @@ function splitTextIntoChunks(text: string, wordsPerChunk = PARAGRAPH_CHUNK_WORDS
 
 function buildVeriworklyPdfFlowItems(content: CoverLetterContent, senderName: string) {
   const items: VeriworklyFlowItem[] = [];
+  const showLetter = isCoverLetterSectionVisible(content, "letter");
+
+  if (!showLetter) return items;
 
   if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
 
@@ -317,6 +321,9 @@ function paginateVeriworklyPdfItems(items: VeriworklyFlowItem[]) {
 
 export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterContent }) {
   const appearance = content.appearance;
+  const showProfile = isCoverLetterSectionVisible(content, "profile");
+  const showLinks = isCoverLetterSectionVisible(content, "links");
+  const showTarget = isCoverLetterSectionVisible(content, "target");
   const font = FONT_REGISTRY[normalizeFontFamilyId(appearance.fontFamily)];
   const bodyFontSize = pt(14.5);
   const bodyLineHeight = appearance.lineHeight;
@@ -332,22 +339,27 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
     fontSize: bodyFontSize,
   };
   const senderName = content.senderName || content.signature || "Your Name";
-  const contact = [
-    content.senderEmail,
-    content.senderPhone,
-    content.senderLocation,
-    content.senderWebsite,
-  ].filter(Boolean);
-  const links = getCoverLetterLinks(content);
+  const contact = showProfile
+    ? [
+        content.senderEmail,
+        content.senderPhone,
+        content.senderLocation,
+        content.senderWebsite,
+      ].filter(Boolean)
+    : [];
+  const links = showLinks ? getCoverLetterLinks(content) : [];
   const linkDisplayMode = getCoverLetterLinkDisplayMode(content);
-  const recipient = [
-    content.recipientName,
-    content.recipientTitle,
-    content.companyName,
-    content.companyLocation,
-  ].filter(Boolean);
+  const recipient = showTarget
+    ? [
+        content.recipientName,
+        content.recipientTitle,
+        content.companyName,
+        content.companyLocation,
+      ].filter(Boolean)
+    : [];
   const flowItems = buildVeriworklyPdfFlowItems(content, senderName);
   const pages = paginateVeriworklyPdfItems(flowItems);
+  const renderPages = pages.length > 0 ? pages : [[]];
 
   function renderSidebar() {
     return (
@@ -393,15 +405,19 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
           ))}
         </View>
 
-        <View style={styles.targetBlock}>
-          <Text style={[styles.targetLabel, { color: appearance.accentColor }]}>Target</Text>
+        {showTarget ? (
+          <View style={styles.targetBlock}>
+            <Text style={[styles.targetLabel, { color: appearance.accentColor }]}>Target</Text>
 
-          <Text style={styles.targetJobTitle}>
-            {content.jobTitle || content.subject || "Open role"}
-          </Text>
+            <Text style={styles.targetJobTitle}>
+              {content.jobTitle || content.subject || "Open role"}
+            </Text>
 
-          {content.companyName ? <Text style={styles.railText}>{content.companyName}</Text> : null}
-        </View>
+            {content.companyName ? (
+              <Text style={styles.railText}>{content.companyName}</Text>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -482,7 +498,7 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
 
   return (
     <Document>
-      {pages.map((pageItems, pageIndex) => (
+      {renderPages.map((pageItems, pageIndex) => (
         <Page
           key={pageIndex}
           size={[PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT]}
@@ -512,15 +528,17 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
                     {content.date ? <Text style={styles.metaDate}>{content.date}</Text> : null}
                   </View>
 
-                  <View style={[styles.subject, { borderLeftColor: appearance.accentColor }]}>
-                    <Text style={[styles.label, { color: appearance.accentColor }]}>
-                      Cover Letter
-                    </Text>
+                  {showTarget ? (
+                    <View style={[styles.subject, { borderLeftColor: appearance.accentColor }]}>
+                      <Text style={[styles.label, { color: appearance.accentColor }]}>
+                        Cover Letter
+                      </Text>
 
-                    <Text style={styles.subjectText}>
-                      {content.subject || content.jobTitle || "Application"}
-                    </Text>
-                  </View>
+                      <Text style={styles.subjectText}>
+                        {content.subject || content.jobTitle || "Application"}
+                      </Text>
+                    </View>
+                  ) : null}
                 </>
               ) : null}
 

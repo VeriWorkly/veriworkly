@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 
-import type { ResumeSectionId } from "@/types/resume";
 import type { SectionDnDHandlers } from "./section-types";
+import type { ResumeSectionId } from "@/types/resume";
 
 import SectionAccordion from "../SectionAccordion";
 
@@ -20,22 +20,17 @@ const DraggableSection = ({
   id,
   isOpen,
   label,
-  onDragEnd,
   onDragOver,
-  onDragStart,
   onDrop,
   onToggle,
 }: DraggableSectionProps) => {
   return (
     <div onDragOver={onDragOver} onDrop={onDrop}>
       <SectionAccordion
-        draggable
         id={id}
         isOpen={isOpen}
         label={label}
-        onDragEnd={onDragEnd}
-        onDragStart={onDragStart}
-        onToggle={onToggle}
+        onToggle={(nextId) => onToggle(nextId as ResumeSectionId)}
       >
         {children}
       </SectionAccordion>

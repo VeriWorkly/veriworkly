@@ -11,6 +11,7 @@ import {
   getCoverLetterLinks,
   splitRichTextBlocks,
   getCoverLetterLinkDisplayMode,
+  isCoverLetterSectionVisible,
 } from "../shared";
 
 import {
@@ -148,6 +149,10 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
   const bodyFontSize = pt(15);
 
   const appearance = content.appearance;
+  const showProfile = isCoverLetterSectionVisible(content, "profile");
+  const showLinks = isCoverLetterSectionVisible(content, "links");
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const showLetter = isCoverLetterSectionVisible(content, "letter");
   const font = FONT_REGISTRY[normalizeFontFamilyId(appearance.fontFamily)];
   const bodyLineHeight = appearance.lineHeight;
 
@@ -166,29 +171,35 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
 
   const senderName = content.senderName || content.signature || "Your Name";
 
-  const contact = [
-    content.senderEmail,
-    content.senderPhone,
-    content.senderLocation,
-    content.senderWebsite,
-  ].filter(Boolean);
+  const contact = showProfile
+    ? [
+        content.senderEmail,
+        content.senderPhone,
+        content.senderLocation,
+        content.senderWebsite,
+      ].filter(Boolean)
+    : [];
 
-  const links = getCoverLetterLinks(content);
+  const links = showLinks ? getCoverLetterLinks(content) : [];
   const linkDisplayMode = getCoverLetterLinkDisplayMode(content);
 
-  const recipient = [
-    content.recipientName,
-    content.recipientTitle,
-    content.companyName,
-    content.companyLocation,
-  ].filter(Boolean);
+  const recipient = showTarget
+    ? [
+        content.recipientName,
+        content.recipientTitle,
+        content.companyName,
+        content.companyLocation,
+      ].filter(Boolean)
+    : [];
 
-  const bodyBlocks = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
-  ];
+  const bodyBlocks = showLetter
+    ? [
+        ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
+        ...splitRichTextBlocks(content.body),
+      ]
+    : [];
 
-  const highlights = splitMarkdownLines(content.highlights);
+  const highlights = showLetter ? splitMarkdownLines(content.highlights) : [];
 
   return (
     <Document>
@@ -250,7 +261,7 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
           {content.date ? <Text style={styles.metaDate}>{content.date}</Text> : null}
         </View>
 
-        {content.subject || content.jobTitle ? (
+        {showTarget && (content.subject || content.jobTitle) ? (
           <View style={styles.subject}>
             <Text style={[styles.label, { color: appearance.accentColor }]}>Re</Text>
 
@@ -259,7 +270,7 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
         ) : null}
 
         <View style={[styles.body, { fontSize: bodyFontSize, lineHeight: bodyLineHeight }]}>
-          {content.greeting ? (
+          {showLetter && content.greeting ? (
             <Text style={[styles.paragraph, paragraphStyle, { fontWeight: 600, color: "#09090b" }]}>
               {content.greeting}
             </Text>
@@ -312,11 +323,15 @@ export function ProfessionalCoverLetterPdf({ content }: { content: CoverLetterCo
             </View>
           ) : null}
 
-          {content.closing ? <Text style={styles.closing}>{content.closing}</Text> : null}
+          {showLetter && content.closing ? (
+            <Text style={styles.closing}>{content.closing}</Text>
+          ) : null}
 
-          <Text style={styles.signature}>{content.signature || senderName}</Text>
+          {showLetter ? (
+            <Text style={styles.signature}>{content.signature || senderName}</Text>
+          ) : null}
 
-          {content.postscript ? (
+          {showLetter && content.postscript ? (
             <Text style={styles.postscript}>P.S. {content.postscript}</Text>
           ) : null}
         </View>

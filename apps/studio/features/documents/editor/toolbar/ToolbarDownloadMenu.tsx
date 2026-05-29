@@ -39,14 +39,14 @@ const ToolbarDownloadMenu = ({
         <Button
           size="sm"
           onClick={toggle}
-          className="gap-2"
           variant="secondary"
           aria-haspopup="menu"
           aria-expanded={open}
+          className="gap-2 rounded-xl"
           aria-controls={open ? menuId : undefined}
         >
           <Download className="h-4 w-4" />
-          Download
+          Export
           <ChevronDown className="h-4 w-4" />
         </Button>
       )}

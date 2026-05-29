@@ -1,7 +1,6 @@
-import type { CoverLetterContent } from "./types";
-import type { ResumeLinkDisplayMode, ResumeLinkItem, ResumeLinkType } from "@/types/resume";
-
 import type { BaseDocument } from "@/features/documents/core/types";
+import type { CoverLetterContent, CoverLetterSectionId } from "./types";
+import type { ResumeLinkDisplayMode, ResumeLinkItem, ResumeLinkType } from "@/types/resume";
 
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 
@@ -28,6 +27,16 @@ const LINK_TYPES: ResumeLinkType[] = [
   "youtube",
   "custom",
 ];
+
+const COVER_LETTER_SECTION_IDS: CoverLetterSectionId[] = ["profile", "links", "target", "letter"];
+
+function parseHiddenSections(value: unknown): CoverLetterSectionId[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((item): item is CoverLetterSectionId =>
+    COVER_LETTER_SECTION_IDS.includes(item as CoverLetterSectionId),
+  );
+}
 
 function parseLinks(value: unknown): CoverLetterContent["links"] {
   if (!isRecord(value)) return { displayMode: "icon-username", items: [] };
@@ -124,6 +133,7 @@ export function parseCoverLetterDocument(input: unknown): BaseDocument<CoverLett
         sidebarColor: asText(appearanceRaw.sidebarColor) || "#111827",
         pageColor: asText(appearanceRaw.pageColor) || "#ffffff",
         textColor: asText(appearanceRaw.textColor) || "#18181b",
+        hiddenSections: parseHiddenSections(appearanceRaw.hiddenSections),
       },
     },
   };

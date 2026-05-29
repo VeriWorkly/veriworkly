@@ -1,8 +1,6 @@
 "use client";
 
-import type { DragEvent } from "react";
-
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import type { ResumeSectionId } from "@/types/resume";
 
@@ -27,9 +25,7 @@ import CertificationsSection from "./content/sections/CertificationsSection";
 
 const EditorContentPanel = memo(function EditorContentPanel() {
   const sections = useResumeStore((state) => state.resume.sections);
-  const reorderSections = useResumeStore((state) => state.reorderSections);
 
-  const draggedSectionIdRef = useRef<ResumeSectionId | null>(null);
   const [openSectionId, setOpenSectionId] = useState<ResumeSectionId | null>("basics");
 
   const sortedSections = useMemo(
@@ -41,51 +37,19 @@ const EditorContentPanel = memo(function EditorContentPanel() {
     setOpenSectionId((currentSectionId) => (currentSectionId === sectionId ? null : sectionId));
   }, []);
 
-  const handleDragStart = useCallback((sectionId: ResumeSectionId) => {
-    draggedSectionIdRef.current = sectionId;
-  }, []);
-
-  const handleDrop = useCallback(
-    (sectionId: ResumeSectionId, sectionIndex: number) => {
-      const draggedSectionId = draggedSectionIdRef.current;
-
-      if (draggedSectionId && draggedSectionId !== sectionId) {
-        const draggedIndex = sections.findIndex((item) => item.id === draggedSectionId);
-
-        if (draggedIndex !== -1) {
-          reorderSections(draggedIndex, sectionIndex);
-        }
-      }
-
-      draggedSectionIdRef.current = null;
-    },
-    [reorderSections, sections],
-  );
-
-  const handleDragEnd = useCallback(() => {
-    draggedSectionIdRef.current = null;
-  }, []);
-
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <p className="text-muted text-xs font-semibold tracking-[0.22em] uppercase">
-          Resume Content
-        </p>
-
-        <h2 className="text-foreground text-xl font-semibold">Content editor</h2>
+    <div>
+      <div className="border-border/70 border-b p-3">
+        <h2 className="text-foreground text-base font-semibold">Content editor</h2>
+        <p className="text-muted text-sm">Edit resume sections. Reorder them in visibility.</p>
       </div>
 
-      <div className="space-y-3">
-        {sortedSections.map((section, sectionIndex) => (
+      <div>
+        {sortedSections.map((section) => (
           <EditorSectionItem
             key={section.id}
             id={section.id}
-            index={sectionIndex}
             isOpen={openSectionId === section.id}
-            onDragEnd={handleDragEnd}
-            onDragStart={handleDragStart}
-            onDrop={handleDrop}
             onToggle={handleToggleSection}
           />
         ))}
@@ -96,56 +60,21 @@ const EditorContentPanel = memo(function EditorContentPanel() {
 
 interface EditorSectionItemProps {
   id: ResumeSectionId;
-  index: number;
   isOpen: boolean;
-  onDragEnd: () => void;
-  onDragStart: (sectionId: ResumeSectionId) => void;
-  onDrop: (sectionId: ResumeSectionId, sectionIndex: number) => void;
   onToggle: (sectionId: ResumeSectionId) => void;
 }
 
 const EditorSectionItem = memo(function EditorSectionItem({
   id,
-  index,
   isOpen,
-  onDragEnd,
-  onDragStart,
-  onDrop,
   onToggle,
 }: EditorSectionItemProps) {
-  const handleDragStart = useCallback(
-    (event: DragEvent<HTMLSpanElement>) => {
-      onDragStart(id);
-
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-      }
-    },
-    [id, onDragStart],
-  );
-
-  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      onDrop(id, index);
-    },
-    [id, index, onDrop],
-  );
-
   const sectionProps = {
     isOpen,
-    onDragEnd,
-    onDragOver: handleDragOver,
-    onDragStart: handleDragStart,
-    onDrop: handleDrop,
+    onDragEnd: () => undefined,
+    onDragOver: () => undefined,
+    onDragStart: () => undefined,
+    onDrop: () => undefined,
     onToggle,
   };
 

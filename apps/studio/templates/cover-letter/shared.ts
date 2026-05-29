@@ -1,5 +1,9 @@
 import type { ResumeLinkDisplayMode, ResumeLinkItem } from "@/types/resume";
-import type { CoverLetterContent, CoverLetterTemplateId } from "@/features/cover-letter/types";
+import type {
+  CoverLetterContent,
+  CoverLetterSectionId,
+  CoverLetterTemplateId,
+} from "@/features/cover-letter/types";
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 
 import {
@@ -19,6 +23,13 @@ export const COVER_LETTER_VERIWORKLY_ID = "veriworkly-special" satisfies CoverLe
 
 export const PX_TO_PT = 0.75;
 export const pt = (value: number) => value * PX_TO_PT;
+
+export function isCoverLetterSectionVisible(
+  content: CoverLetterContent,
+  sectionId: CoverLetterSectionId,
+) {
+  return !content.appearance?.hiddenSections?.includes(sectionId);
+}
 
 export function getCoverLetterExportLineHeight(lineHeight: number): number {
   return Math.max(1.15, lineHeight - 0.3);
@@ -171,6 +182,7 @@ export function getCoverLetterState(
     textColor: "#18181b",
     accentColor: "#2563eb",
     sidebarColor: "#111827",
+    hiddenSections: [],
   };
 
   const normalizedAppearance = {
@@ -182,27 +194,37 @@ export function getCoverLetterState(
   const senderTitle = content.senderTitle || "Role or professional title";
 
   const contact = [
-    content.senderEmail,
-    content.senderPhone,
-    content.senderLocation,
-    content.senderWebsite,
+    ...(isCoverLetterSectionVisible(content, "profile")
+      ? [content.senderEmail, content.senderPhone, content.senderLocation, content.senderWebsite]
+      : []),
   ].filter(Boolean);
 
-  const renderedLinks = getCoverLetterLinks(content);
+  const renderedLinks = isCoverLetterSectionVisible(content, "links")
+    ? getCoverLetterLinks(content)
+    : [];
   const linkDisplayMode = getCoverLetterLinkDisplayMode(content);
 
-  const recipient = [
-    content.recipientName,
-    content.recipientTitle,
-    content.companyName,
-    content.companyLocation,
-  ].filter(Boolean);
+  const recipient = isCoverLetterSectionVisible(content, "target")
+    ? [
+        content.recipientName,
+        content.recipientTitle,
+        content.companyName,
+        content.companyLocation,
+      ].filter(Boolean)
+    : [];
 
   const highlights = splitMarkdownLines(content.highlights);
 
   const bodyBlocks: RichTextBlock[] = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
+    ...(isCoverLetterSectionVisible(content, "letter")
+      ? [
+          ...splitParagraphs(content.opening).map((text) => ({
+            type: "paragraph" as const,
+            text,
+          })),
+          ...splitRichTextBlocks(content.body),
+        ]
+      : []),
   ];
 
   const pages = paginateBlocks(bodyBlocks, limits.firstPage, limits.nextPage);
@@ -252,15 +274,19 @@ export function buildCoverLetterMarkdown(content: CoverLetterContent): string {
     content.date,
     recipient.length ? recipient.join("\n") : "",
     content.subject ? `**Subject:** ${content.subject}` : "",
-    content.greeting,
-    content.opening,
-    body,
-    splitMarkdownLines(content.highlights)
-      .map((line) => `- ${line}`)
-      .join("\n"),
-    content.closing,
-    content.signature || content.senderName,
-    content.postscript ? `P.S. ${content.postscript}` : "",
+    isCoverLetterSectionVisible(content, "letter") ? content.greeting : "",
+    isCoverLetterSectionVisible(content, "letter") ? content.opening : "",
+    isCoverLetterSectionVisible(content, "letter") ? body : "",
+    isCoverLetterSectionVisible(content, "letter")
+      ? splitMarkdownLines(content.highlights)
+          .map((line) => `- ${line}`)
+          .join("\n")
+      : "",
+    isCoverLetterSectionVisible(content, "letter") ? content.closing : "",
+    isCoverLetterSectionVisible(content, "letter") ? content.signature || content.senderName : "",
+    isCoverLetterSectionVisible(content, "letter") && content.postscript
+      ? `P.S. ${content.postscript}`
+      : "",
   ];
 
   return parts.filter(Boolean).join("\n\n").trim();
