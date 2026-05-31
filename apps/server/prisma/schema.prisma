@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -12,22 +12,25 @@ datasource db {
 
 // User model for authentication and resume ownership
 model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  name                String?
-  username            String?              @unique
-  emailVerified       Boolean              @default(false)
-  image               String?
-  autoSyncEnabled     Boolean              @default(false)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  sessions            Session[]
-  accounts            Account[]
-  resumes             Document[]
-  masterProfile       MasterProfile?
-  shareLinks          ShareLink[]
-  roadmapInteractions RoadmapInteraction[]
-  apiKeys             ApiKey[]
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  name                 String?
+  username             String?               @unique
+  emailVerified        Boolean               @default(false)
+  image                String?
+  autoSyncEnabled      Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  sessions             Session[]
+  accounts             Account[]
+  resumes              Document[]
+  masterProfile        MasterProfile?
+  shareLinks           ShareLink[]
+  roadmapInteractions  RoadmapInteraction[]
+  apiKeys              ApiKey[]
+  subscriptions        Subscription[]
+  portfolioPublication PortfolioPublication?
+  portfolioAssets      PortfolioAsset[]
 
   @@index([email])
 }
@@ -97,36 +100,162 @@ enum Visibility {
 
 // Unified Document model for all product types
 model Document {
-  id            String       @id @default(cuid())
-  userId        String
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type          DocumentType @default(RESUME)
-  title         String       @default("Untitled Document")
-  slug          String       // Current editable document slug
-  tags          String[]     @default([])
-  
-  content       Json         // The main content (JSON Resume standard)
-  metadata      Json?        // UI state, favorites, tags, etc.
-  
-  templateId    String       @default("modern")
-  schemaVersion Int          @default(1)
-  revision      Int          @default(1)    // Optimistic concurrency control
-  
-  visibility    Visibility   @default(PRIVATE)
-  
-  // Sync metadata
-  lastSyncedAt  DateTime?
-  
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  deletedAt     DateTime?    // Soft delete
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  shareLinks    ShareLink[]
+  type  DocumentType @default(RESUME)
+  title String       @default("Untitled Document")
+  slug  String // Current editable document slug
+  tags  String[]     @default([])
+
+  content  Json // The main content (JSON Resume standard)
+  metadata Json? // UI state, favorites, tags, etc.
+
+  templateId    String @default("modern")
+  schemaVersion Int    @default(1)
+  revision      Int    @default(1) // Optimistic concurrency control
+
+  visibility Visibility @default(PRIVATE)
+
+  // Sync metadata
+  lastSyncedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete
+
+  shareLinks           ShareLink[]
+  portfolioPublication PortfolioPublication?
 
   @@unique([userId, slug])
-  @@index([userId, type])
+  @@index([userId, type, deletedAt, updatedAt])
+  @@index([userId, deletedAt, updatedAt])
+}
+
+enum SubscriptionStatus {
+  INACTIVE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           String
+  providerCustomerId String?
+  providerPriceId    String?
+  providerSubId      String?            @unique
+  status             SubscriptionStatus @default(INACTIVE)
+  interval           BillingInterval?
+  rawStatus          String?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean            @default(false)
+  graceEndsAt        DateTime?
+  lastWebhookAt      DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([userId, status])
   @@index([userId, updatedAt])
+}
+
+enum PortfolioPublicationStatus {
+  LIVE
+  GRACE
+  SUSPENDED
+}
+
+model PortfolioPublication {
+  id                String                     @id @default(cuid())
+  userId            String                     @unique
+  user              User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId        String                     @unique
+  document          Document                   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  subdomain         String                     @unique
+  templateId        String
+  snapshot          Json
+  status            PortfolioPublicationStatus @default(LIVE)
+  publishedRevision Int                        @default(1)
+  suspensionReason  String?
+  suspendedAt       DateTime?
+  publishedAt       DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  views             PortfolioViewDaily[]
+
+  @@index([status, updatedAt])
+}
+
+enum BillingWebhookStatus {
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model BillingWebhookEvent {
+  id              String               @id @default(cuid())
+  providerEventId String               @unique
+  type            String
+  payload         Json
+  status          BillingWebhookStatus @default(PROCESSING)
+  error           String?
+  processedAt     DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  retryCount      Int                  @default(0)
+  lastAttemptAt   DateTime?
+
+  @@index([type, createdAt])
+  @@index([status, createdAt])
+}
+
+enum PortfolioAssetKind {
+  AVATAR
+  PROJECT_COVER
+  SOCIAL_IMAGE
+}
+
+enum PortfolioAssetStatus {
+  PENDING
+  READY
+}
+
+model PortfolioAsset {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String               @unique
+  kind      PortfolioAssetKind
+  mimeType  String
+  sizeBytes Int
+  checksum  String?
+  status    PortfolioAssetStatus @default(PENDING)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([userId, status])
+}
+
+model PortfolioViewDaily {
+  id            String               @id @default(cuid())
+  publicationId String
+  publication   PortfolioPublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  date          DateTime
+  referrerHost  String               @default("")
+  count         Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([publicationId, date, referrerHost])
+  @@index([publicationId, date])
 }
 
 model MasterProfile {
@@ -139,24 +268,24 @@ model MasterProfile {
 }
 
 model ShareLink {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  documentId   String
-  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
-  slug         String    // Stable public URL slug
-  snapshot     Json      // Static snapshot of document at share time
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  slug     String // Stable public URL slug
+  snapshot Json // Static snapshot of document at share time
+
   passwordHash String?
   expiresAt    DateTime?
   viewCount    Int       @default(0)
   lastViewedAt DateTime?
-  
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  views        ShareView[]
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  views     ShareView[]
 
   @@unique([userId, documentId])
   @@unique([userId, slug])
@@ -164,12 +293,12 @@ model ShareLink {
 }
 
 model ShareView {
-  id           String    @id @default(cuid())
-  shareLinkId  String
-  shareLink    ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime  @default(now())
+  id          String    @id @default(cuid())
+  shareLinkId String
+  shareLink   ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
 
   @@index([shareLinkId])
   @@index([createdAt])
@@ -232,24 +361,40 @@ model UsageMetricDaily {
   @@index([event, date])
 }
 
+model UsageMetricFlushBatch {
+  id        String   @id
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model ViewFlushBatch {
+  id        String   @id
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+}
+
 // GitHub Stats sync record
 model GitHubSync {
-  id              String    @id @default(cuid())
+  id              String           @id @default(cuid())
   projectName     String
   projectUrl      String
-  issueCount      Int       @default(0)
-  onlyIssueCount  Int       @default(0)
-  prCount         Int       @default(0)
-  todoCount       Int       @default(0)
-  inProgressCount Int       @default(0)
-  doneCount       Int       @default(0)
+  issueCount      Int              @default(0)
+  onlyIssueCount  Int              @default(0)
+  prCount         Int              @default(0)
+  todoCount       Int              @default(0)
+  inProgressCount Int              @default(0)
+  doneCount       Int              @default(0)
   data            Json // Full GitHub data
   etag            String?
   lastSyncStatus  String? // "success", "failed", "not-modified"
   lastError       String?
   nextSyncAt      DateTime?
-  syncedAt        DateTime  @updatedAt
-  createdAt       DateTime  @default(now())
+  syncedAt        DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
   items           GitHubSyncItem[]
 
   @@unique([projectUrl])
@@ -271,6 +416,7 @@ model GitHubSyncItem {
   updatedAt  DateTime
   insertedAt DateTime   @default(now())
 
+  @@unique([syncId, githubId])
   @@index([syncId])
   @@index([status])
   @@index([kind])
@@ -280,26 +426,25 @@ model GitHubSyncItem {
   @@index([syncId, status, updatedAt])
   @@index([syncId, kind, updatedAt])
   @@index([syncId, status, kind, updatedAt])
-  @@unique([syncId, githubId])
 }
 
 // API Keys for rate limiting and access control
 model ApiKey {
-  id         String    @id @default(cuid())
-  keyHash    String    @unique
-  keyPrefix  String
-  keySuffix  String
-  name       String
-  scopes     String[]  @default(["user:read"])
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isActive   Boolean   @default(true)
-  rateLimit  Int       @default(20)
-  expiresAt  DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  lastUsed   DateTime?
+  id        String    @id @default(cuid())
+  keyHash   String    @unique
+  keyPrefix String
+  keySuffix String
+  name      String
+  scopes    String[]  @default(["user:read"])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive  Boolean   @default(true)
+  rateLimit Int       @default(20)
+  expiresAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  lastUsed  DateTime?
 
   @@index([userId])
   @@index([userId, isActive])

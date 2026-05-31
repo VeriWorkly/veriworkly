@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flexibleAuth } from "../../src/middleware/flexibleAuth";
-import { config } from "../../src/config";
+import type { Request, Response, NextFunction } from "express";
 
 vi.mock("../../src/config", () => ({
   config: {
@@ -22,9 +22,9 @@ vi.mock("../../src/middleware/apiKeyRateLimit", () => ({
 }));
 
 describe("flexibleAuth middleware", () => {
-  let req: any;
-  let res: any;
-  let next: any;
+  let req: Partial<Request> & { headers: Record<string, string> };
+  let res: Partial<Response>;
+  let next: NextFunction;
 
   beforeEach(() => {
     req = {

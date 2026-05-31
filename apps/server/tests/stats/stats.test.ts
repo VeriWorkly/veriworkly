@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StatsController } from "../../src/controllers/statsController";
-import { KNOWN_EVENTS } from "../../src/services/analyticsService";
+import type { Request, Response, NextFunction } from "express";
 
 const { mockIncrementUsageMetric } = vi.hoisted(() => {
   return {
@@ -9,7 +9,7 @@ const { mockIncrementUsageMetric } = vi.hoisted(() => {
 });
 
 vi.mock("../../src/services/analyticsService", async (importOriginal) => {
-  const actual: any = await importOriginal();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     incrementUsageMetric: mockIncrementUsageMetric,
@@ -31,9 +31,9 @@ vi.mock("../../src/config", () => ({
 }));
 
 describe("stats events endpoint validation and auth", () => {
-  let req: any;
-  let res: any;
-  let next: any;
+  let req: Partial<Request> & { apiKey?: unknown };
+  let res: Partial<Response>;
+  let next: NextFunction;
 
   beforeEach(() => {
     vi.restoreAllMocks();

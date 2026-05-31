@@ -27,7 +27,6 @@
     "@aws-sdk/client-s3": "^3.1057.0",
     "@aws-sdk/s3-request-presigner": "^3.1057.0",
     "@better-auth/prisma-adapter": "^1.6.12",
-    "@opentelemetry/api": "^1.9.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@prisma/config": "^7.8.0",
@@ -36,16 +35,12 @@
     "dodopayments": "^2.32.1",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
-    "express-rate-limit": "^8.5.2",
     "helmet": "^7.2.0",
-    "ioredis": "^5.11.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.10",
     "pg": "^8.21.0",
-    "rate-limit-redis": "^4.3.1",
     "redis": "^5.12.1",
     "uuid": "^14.0.0",
-    "vitest": "^4.1.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -60,6 +55,7 @@
     "resolve-tspaths": "^0.8.23",
     "tsc-alias": "^1.8.17",
     "tsx": "^4.22.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.7"
   }
 }

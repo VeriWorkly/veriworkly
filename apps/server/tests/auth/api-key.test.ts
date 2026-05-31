@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cacheGetMock = vi.fn();
 const cacheSetMock = vi.fn();
-const touchLastUsedMock = vi.fn();
-
 vi.mock("../../src/config", () => ({
   config: {
     apiKeys: {
@@ -29,7 +27,7 @@ const prismaFindMock = vi.fn();
 vi.mock("../../src/utils/prisma", () => ({
   prisma: {
     apiKey: {
-      findFirst: (...args: any[]) => prismaFindMock(...args),
+      findFirst: (...args: unknown[]) => prismaFindMock(...args),
     },
   },
 }));

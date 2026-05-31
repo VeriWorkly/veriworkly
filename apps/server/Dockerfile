@@ -7,36 +7,35 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-COPY prisma ./prisma
+COPY apps/server/package.json ./apps/server/package.json
 
-# 1. Install all dependencies
-RUN npm ci --include=dev --legacy-peer-deps
+# Build with repository root as context:
+# docker build -f apps/server/Dockerfile .
+RUN npm ci --workspace=@veriworkly/server --include=dev --legacy-peer-deps
 
-COPY tsconfig.json ./
-COPY src ./src
+COPY apps/server/prisma ./apps/server/prisma
+COPY apps/server/tsconfig.json ./apps/server/tsconfig.json
+COPY apps/server/src ./apps/server/src
 
-# 2. Generate Prisma, Build, and Fix Extensions
-RUN npx prisma generate \
-    && npm run build \
-    && npx resolve-tspaths \
+RUN npm run db:generate --workspace=@veriworkly/server \
+    && npm run build --workspace=@veriworkly/server \
     && npm prune --omit=dev --legacy-peer-deps
 
 FROM node:${NODE_VERSION}-alpine AS runner
-WORKDIR /app
+WORKDIR /app/apps/server
 
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# 3. UPDATED FIX: Install OpenSSL 1.1 from the v3.16 repository
 RUN apk add --no-cache openssl
 
-# Security: Run as non-root user
 RUN addgroup -S app && adduser -S app -G app
 
-COPY --from=build /app/package*.json ./
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/package*.json /app/
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/apps/server/package.json ./package.json
+COPY --from=build /app/apps/server/dist ./dist
+COPY --from=build /app/apps/server/prisma ./prisma
 
 USER app
 EXPOSE 8080

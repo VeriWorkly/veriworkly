@@ -34,7 +34,7 @@ vi.mock("../../src/utils/prisma", () => ({
   default: prismaMock,
 }));
 
-const mockRedisStore = new Map<string, any>();
+const mockRedisStore = new Map<string, any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const mockRedis = {
   set: vi.fn((key: string, value: string, options?: { NX?: boolean }) => {
