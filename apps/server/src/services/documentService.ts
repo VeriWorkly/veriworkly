@@ -1,10 +1,12 @@
 import { DocumentType, Visibility, Prisma } from "@prisma/client";
 
+import { ShareService } from "#services/shareService";
+
 import { prisma } from "#utils/prisma";
 import { logger } from "#utils/logger";
 import { ApiError } from "#utils/errors";
 import { normalizeSlug } from "#utils/slugs";
-import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
+import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#utils/redis";
 
 export type DocumentCreateInput = {
   id?: string;
@@ -43,28 +45,6 @@ export class DocumentService {
           userId,
           slug: candidate,
           ...(documentId ? { id: { not: documentId } } : {}),
-        },
-        select: { id: true },
-      });
-
-      if (!existing) return candidate;
-    }
-
-    return `${base.slice(0, 246)}-${Date.now().toString(36)}`;
-  }
-
-  private static async buildUniqueShareSlug(userId: string, slug: string, shareLinkId?: string) {
-    const base = normalizeSlug(slug);
-
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
-      const candidate = `${base.slice(0, 255 - suffix.length)}${suffix}`;
-
-      const existing = await prisma.shareLink.findFirst({
-        where: {
-          userId,
-          slug: candidate,
-          ...(shareLinkId ? { id: { not: shareLinkId } } : {}),
         },
         select: { id: true },
       });
@@ -166,6 +146,7 @@ export class DocumentService {
 
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDel(`user:profile:v2:${userId}`);
 
     return document;
   }
@@ -195,9 +176,8 @@ export class DocumentService {
 
       const nextSlugSource = input.slug || input.title;
 
-      if (nextSlugSource) {
+      if (nextSlugSource)
         updateData.slug = await this.buildUniqueSlug(userId, nextSlugSource, documentId);
-      }
 
       if (user?.username && updateData.slug && updateShareSlug) {
         const shareLink = await prisma.shareLink.findUnique({
@@ -207,9 +187,10 @@ export class DocumentService {
 
         if (shareLink) {
           readableShareCacheKeys.add(`share:public-readable:${user.username}:${shareLink.slug}`);
+
           shareLinkSlugUpdate = {
             id: shareLink.id,
-            slug: await this.buildUniqueShareSlug(userId, updateData.slug, shareLink.id),
+            slug: await ShareService.buildUniqueShareSlug(userId, updateData.slug, shareLink.id),
           };
 
           readableShareCacheKeys.add(
@@ -244,9 +225,10 @@ export class DocumentService {
           data: { slug: shareLinkSlugUpdate.slug },
         });
 
-      for (const cacheKey of readableShareCacheKeys) {
-        await cacheDel(cacheKey);
-      }
+      await Promise.all([
+        ...[...readableShareCacheKeys].map((cacheKey) => cacheDel(cacheKey)),
+        ...(shareLinkSlugUpdate ? [cacheDelByPrefix(`share:list:${userId}:${documentId}:`)] : []),
+      ]);
 
       return updated;
     } catch (error) {
@@ -290,6 +272,7 @@ export class DocumentService {
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDelByPrefix(`share:shared-document-ids:${userId}:`);
 
     if (docWithShares?.user?.username) {
       const username = docWithShares.user.username;
@@ -323,6 +306,7 @@ export class DocumentService {
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDelByPrefix(`share:shared-document-ids:${userId}:`);
 
     if (docWithShares?.user?.username) {
       const username = docWithShares.user.username;
@@ -355,6 +339,8 @@ export class DocumentService {
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDelByPrefix(`share:shared-document-ids:${userId}:`);
+    await cacheDel(`user:profile:v2:${userId}`);
 
     if (docWithShares?.user?.username) {
       const username = docWithShares.user.username;

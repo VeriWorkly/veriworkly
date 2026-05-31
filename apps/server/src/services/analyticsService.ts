@@ -1,7 +1,11 @@
+import { randomUUID } from "node:crypto";
+
+import { Prisma } from "@prisma/client";
+
 import { config } from "#config";
 
 import { prisma } from "#utils/prisma";
-import { cacheGet, cacheSet, getRedis } from "#utils/redis";
+import { cacheDel, cacheGet, cacheSet, getRedis } from "#utils/redis";
 
 /**
  * List of officially tracked events to ensure consistency.
@@ -100,6 +104,21 @@ export async function getUsageSnapshotForDate(date = new Date()) {
   return redis.hGetAll(key);
 }
 
+export async function getPendingUsageMetricDates() {
+  const redis = getRedis();
+  const dates = new Set<string>();
+
+  for await (const keys of redis.scanIterator({ MATCH: "usage:daily:*", COUNT: 100 })) {
+    for (const key of keys) {
+      const match = /^usage:daily:(\d{4}-\d{2}-\d{2})(?::processing)?$/.exec(key);
+
+      if (match) dates.add(match[1]);
+    }
+  }
+
+  return [...dates].sort();
+}
+
 /**
  * Moves metrics from Redis to Postgres in a single transaction.
  * * date: The date for which metrics should be persisted.
@@ -111,38 +130,69 @@ export async function flushUsageMetricsForDate(date: Date) {
 
   const dateKey = toDateKey(date);
   const key = usageRedisKey(dateKey);
+  const processingKey = `${key}:processing`;
+  const batchKey = `${processingKey}:batch-id`;
 
-  const snapshot = await redis.hGetAll(key);
-  const entries = Object.entries(snapshot);
+  if ((await redis.exists(processingKey)) === 0) {
+    try {
+      await redis.rename(key, processingKey);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("no such key"))
+        return { dateKey, flushedEvents: 0 };
 
-  if (entries.length === 0) return { dateKey, flushedEvents: 0 };
+      throw error;
+    }
+  }
+
+  const snapshot = await redis.hGetAll(processingKey);
+  const entries = Object.entries(snapshot).sort(([left], [right]) => left.localeCompare(right));
+
+  if (entries.length === 0) {
+    await redis.del(processingKey);
+    return { dateKey, flushedEvents: 0 };
+  }
 
   const metricDate = fromDateKeyToUtcDate(dateKey);
+  await redis.set(batchKey, randomUUID(), { NX: true });
+  const batchId = await redis.get(batchKey);
 
-  await prisma.$transaction(async (tx) => {
-    for (const [event, rawCount] of entries) {
-      const count = parseInt(rawCount, 10);
+  if (!batchId) throw new Error(`Failed to initialize usage metrics batch for ${dateKey}`);
 
-      await tx.usageMetricDaily.upsert({
-        where: {
-          date_event: {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.usageMetricFlushBatch.create({
+        data: { id: batchId, date: metricDate },
+      });
+
+      for (const [event, rawCount] of entries) {
+        const count = parseInt(rawCount, 10);
+
+        await tx.usageMetricDaily.upsert({
+          where: {
+            date_event: {
+              date: metricDate,
+              event,
+            },
+          },
+          create: {
             date: metricDate,
             event,
+            count,
           },
-        },
-        create: {
-          date: metricDate,
-          event,
-          count,
-        },
-        update: {
-          count: { increment: count },
-        },
-      });
+          update: {
+            count: { increment: count },
+          },
+        });
+      }
+    });
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+      throw error;
     }
-  });
+  }
 
-  await redis.del(key);
+  await redis.del([processingKey, batchKey]);
+  await cacheDel("admin:dashboard:stats");
 
   return { dateKey, flushedEvents: entries.length };
 }

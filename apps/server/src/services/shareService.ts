@@ -216,7 +216,7 @@ export class ShareService {
     return shareLink;
   }
 
-  private static async buildUniqueShareSlug(userId: string, slug: string, shareLinkId?: string) {
+  public static async buildUniqueShareSlug(userId: string, slug: string, shareLinkId?: string) {
     const base = normalizeSlug(slug);
 
     for (let attempt = 0; attempt < 20; attempt += 1) {

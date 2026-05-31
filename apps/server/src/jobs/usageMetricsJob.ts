@@ -4,7 +4,7 @@ import { config } from "#config";
 import { logger } from "#utils/logger";
 import { getRedis } from "#utils/redis";
 
-import { flushUsageMetricsForDate } from "#services/analyticsService";
+import { flushUsageMetricsForDate, getPendingUsageMetricDates } from "#services/analyticsService";
 
 let job: ScheduledTask | null = null;
 
@@ -13,9 +13,9 @@ let job: ScheduledTask | null = null;
  * This ensures we only flush complete day cycles.
  */
 
-function getYesterdayUtcDate() {
+function getTodayUtcDate() {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
 /**
@@ -45,16 +45,21 @@ async function runFlush(reason: "startup" | "cron") {
       return;
     }
 
-    const targetDate = getYesterdayUtcDate();
-    const result = await flushUsageMetricsForDate(targetDate);
+    const todayKey = getTodayUtcDate().toISOString().slice(0, 10);
+    const dateKeys = (await getPendingUsageMetricDates()).filter((dateKey) => dateKey < todayKey);
 
-    if (result.flushedEvents > 0) {
+    if (dateKeys.length === 0) {
+      logger.info(`Usage metrics flush (${reason}) skipped: no completed days pending`);
+      return;
+    }
+
+    for (const dateKey of dateKeys) {
+      const result = await flushUsageMetricsForDate(new Date(`${dateKey}T00:00:00.000Z`));
+
       logger.info(`Usage metrics flush (${reason}) completed`, {
         dateKey: result.dateKey,
         flushedEvents: result.flushedEvents,
       });
-    } else {
-      logger.info(`Usage metrics flush (${reason}) skipped: no data for ${result.dateKey}`);
     }
   } catch (error) {
     logger.error(`Usage metrics flush (${reason}) failed`, {

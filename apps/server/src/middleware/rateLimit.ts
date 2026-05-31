@@ -60,6 +60,14 @@ function pruneExpiredEntries() {
 const cleanupInterval = setInterval(pruneExpiredEntries, 10 * 60 * 1000);
 cleanupInterval.unref();
 
+const INCREMENT_WITH_EXPIRY_SCRIPT = `
+  local count = redis.call("INCR", KEYS[1])
+  if count == 1 then
+    redis.call("PEXPIRE", KEYS[1], ARGV[1])
+  end
+  return count
+`;
+
 export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction) => {
   if (config.nodeEnv === "development") {
     return next();
@@ -79,13 +87,12 @@ export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunct
 
       if (!redis.isOpen) throw new Error("Redis not open");
 
-      const count = await redis.incr(redisKey);
-
-      if (count === 1) {
-        await redis.pExpire(redisKey, windowMs);
-      }
-
-      return count;
+      return Number(
+        await redis.eval(INCREMENT_WITH_EXPIRY_SCRIPT, {
+          keys: [redisKey],
+          arguments: [String(windowMs)],
+        }),
+      );
     } catch {
       const current = bucket.get(redisKey);
 
@@ -99,6 +106,7 @@ export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunct
         }
 
         bucket.set(redisKey, { count: 1, resetAt: now + windowMs });
+
         return 1;
       }
 
@@ -108,7 +116,7 @@ export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunct
   };
 
   checkWithFallback()
-    .then((count) => {
+    .then(async (count) => {
       if (count <= maxRequests) {
         next();
         return;
@@ -116,7 +124,16 @@ export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunct
 
       logger.warn(`Rate limit exceeded for IP: ${key}`);
 
-      const retryAfter = Math.ceil((windowMs - (now % windowMs)) / 1000);
+      let retryAfter = Math.ceil(windowMs / 1000);
+
+      try {
+        const ttl = await getRedis().pTTL(redisKey);
+        if (ttl > 0) retryAfter = Math.ceil(ttl / 1000);
+      } catch {
+        const resetAt = bucket.get(redisKey)?.resetAt;
+        if (resetAt) retryAfter = Math.max(1, Math.ceil((resetAt - now) / 1000));
+      }
+
       res.set("Retry-After", String(retryAfter));
       res.status(429).json(createErrorResponse(429, "Too many requests. Please try again later."));
     })
