@@ -50,7 +50,6 @@ next-env.d.ts
 # testing
 /test-results
 /app/test
-/app/og-generator
 /api-index
 
 # Agents
@@ -59,3 +58,9 @@ skills-lock.json
 studio_audit_report.md
 server_audit_report.md
 github_issues_to_create.md
+portfolio_subdomains_plan.md
+portfolio_static_rendering.md
+portfolio_nextjs_architecture.md
+portfolio_nextjs_static_production.md
+portfolio_production_comparison.md
+portfolio_system_specification.md

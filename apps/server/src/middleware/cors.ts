@@ -4,26 +4,31 @@ import { config } from "#config";
 
 import { ApiError } from "#utils/errors";
 
-export const corsMiddleware = cors({
-  origin: (origin, callback) => {
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
+export const corsMiddleware = cors((req, callback) => {
+  const origin = typeof req.headers.origin === "string" ? req.headers.origin : undefined;
 
-    const trustedPortfolioOrigin =
-      /^https:\/\/[a-z0-9-]+\.veriworkly\.com$/i.test(origin) ||
-      /^http:\/\/[a-z0-9-]+\.localhost:3004$/i.test(origin);
+  const trustedPortfolioOrigin = Boolean(
+    origin &&
+    (/^https:\/\/[a-z0-9-]+\.veriworkly\.com$/i.test(origin) ||
+      /^http:\/\/[a-z0-9-]+\.localhost:3004$/i.test(origin)),
+  );
 
-    if (config.allowedOrigins.includes(origin) || trustedPortfolioOrigin) {
-      callback(null, true);
-    } else {
-      callback(new ApiError(403, "Not allowed by CORS"));
-    }
-  },
+  callback(null, {
+    origin: (requestOrigin, originCallback) => {
+      if (!requestOrigin) {
+        originCallback(null, true);
+        return;
+      }
 
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-API-KEY"],
-  maxAge: 86400,
+      if (config.allowedOrigins.includes(requestOrigin) || trustedPortfolioOrigin) {
+        originCallback(null, true);
+      } else {
+        originCallback(new ApiError(403, "Not allowed by CORS"));
+      }
+    },
+    credentials: !trustedPortfolioOrigin,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-API-KEY"],
+    maxAge: 86400,
+  });
 });

@@ -49,23 +49,23 @@ export class ProfileService {
 
     if (!user) throw new ApiError(404, "User not found");
 
-    const [existingProfile, shareResumeCount] = await prisma.$transaction([
+    const [profileRecord, shareResumeCount] = await Promise.all([
       prisma.masterProfile.findUnique({
         where: { userId: user.id },
       }),
+
       prisma.shareLink.count({
         where: { userId: user.id },
       }),
     ]);
 
-    const profile =
-      existingProfile ??
-      (await prisma.masterProfile.create({
-        data: {
-          userId: user.id,
-          content: {},
-        },
-      }));
+    const profile = profileRecord ?? {
+      id: "",
+      userId: user.id,
+      content: {},
+      createdAt: user.createdAt,
+      updatedAt: user.createdAt,
+    };
 
     const responseData = {
       profile,

@@ -1,0 +1,4 @@
+[submodule "apps/portfolio/template-library"]
+	path = apps/portfolio/template-library
+	url = https://github.com/VeriWorkly/portfolio-templates.git
+	branch = main

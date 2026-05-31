@@ -11,10 +11,31 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
 const defaultAuthSessionCacheEnabled =
   (process.env.NODE_ENV || "development") === "production" ? "true" : "false";
 
+function parseTrustProxy(value: string | undefined): boolean | string | number {
+  if (value == null) return false;
+
+  const trimmed = value.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (["true", "yes", "on"].includes(lower)) return true;
+  if (["false", "no", "off"].includes(lower)) return false;
+
+  const num = Number(trimmed);
+
+  if (!Number.isNaN(num)) return num;
+
+  return trimmed;
+}
+
 export const config = {
   nodeEnv: process.env.NODE_ENV || "development",
+
   port: parseInt(process.env.PORT || "8080", 10),
-  allowedOrigins: (process.env.ALLOWED_ORIGINS || "http://localhost:3000")
+
+  allowedOrigins: (
+    process.env.ALLOWED_ORIGINS ||
+    "http://localhost:3000,http://localhost:3001,http://localhost:3004"
+  )
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
@@ -45,8 +66,10 @@ export const config = {
       .filter(Boolean),
     sessionTtlSeconds: parseInt(process.env.AUTH_SESSION_TTL_SECONDS || "2592000", 10),
     sessionResetTtlOnUse: parseInt(process.env.AUTH_SESSION_RESET_TTL_ON_USE || "86400", 10),
-    sessionCacheEnabled:
-      (process.env.AUTH_SESSION_CACHE_ENABLED || defaultAuthSessionCacheEnabled) === "true",
+    sessionCacheEnabled: parseBoolean(
+      process.env.AUTH_SESSION_CACHE_ENABLED,
+      defaultAuthSessionCacheEnabled === "true",
+    ),
     sessionCacheMaxAgeSeconds: parseInt(
       process.env.AUTH_SESSION_CACHE_MAX_AGE_SECONDS || "900",
       10,
@@ -57,7 +80,7 @@ export const config = {
     emailFrom: process.env.AUTH_EMAIL_FROM || "VeriWorkly <no-reply@veriworkly.com>",
     smtpHost: process.env.AUTH_SMTP_HOST || "",
     smtpPort: parseInt(process.env.AUTH_SMTP_PORT || "587", 10),
-    smtpSecure: (process.env.AUTH_SMTP_SECURE || "false") === "true",
+    smtpSecure: parseBoolean(process.env.AUTH_SMTP_SECURE, false),
     smtpUser: process.env.AUTH_SMTP_USER || "",
     smtpPass: process.env.AUTH_SMTP_PASS || "",
     cookieDomain: process.env.AUTH_COOKIE_DOMAIN || undefined,
@@ -79,7 +102,7 @@ export const config = {
   },
 
   server: {
-    trustProxy: parseBoolean(process.env.TRUST_PROXY, false),
+    trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   },
 
   admin: {
@@ -117,8 +140,39 @@ export const config = {
     projectUrl: process.env.GITHUB_PROJECT_URL || "",
     syncCron: process.env.GITHUB_SYNC_CRON || "0 0,12 * * *",
     syncTimezone: process.env.GITHUB_SYNC_TIMEZONE || "UTC",
-    syncEnabled: (process.env.GITHUB_SYNC_ENABLED || "true") === "true",
+    syncEnabled: parseBoolean(process.env.GITHUB_SYNC_ENABLED, true),
     syncApiKey: process.env.INTERNAL_SYNC_API_KEY || "",
+  },
+
+  portfolio: {
+    graceDays: parseInt(process.env.PORTFOLIO_GRACE_DAYS || "7", 10),
+    url: process.env.PORTFOLIO_URL || "http://localhost:3004",
+    revalidateSecret: process.env.PORTFOLIO_REVALIDATE_SECRET || "dev-revalidate-secret",
+  },
+
+  dodo: {
+    apiKey: process.env.DODO_PAYMENTS_API_KEY || "",
+    webhookSecret: process.env.DODO_PAYMENTS_WEBHOOK_SECRET || "",
+    environment: (process.env.DODO_PAYMENTS_ENVIRONMENT || "test_mode") as
+      | "test_mode"
+      | "live_mode",
+    monthlyProductId: process.env.DODO_PAYMENTS_MONTHLY_PRODUCT_ID || "",
+    annualProductId: process.env.DODO_PAYMENTS_ANNUAL_PRODUCT_ID || "",
+    checkoutReturnUrl:
+      process.env.DODO_PAYMENTS_CHECKOUT_RETURN_URL ||
+      "http://localhost:3004/billing?checkout=complete",
+    checkoutCancelUrl:
+      process.env.DODO_PAYMENTS_CHECKOUT_CANCEL_URL ||
+      "http://localhost:3004/billing?checkout=cancelled",
+    portalReturnUrl: process.env.DODO_PAYMENTS_PORTAL_RETURN_URL || "http://localhost:3004/billing",
+  },
+
+  r2: {
+    endpoint: process.env.R2_ENDPOINT || "",
+    bucket: process.env.R2_BUCKET || "",
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+    publicBaseUrl: (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, ""),
   },
 };
 

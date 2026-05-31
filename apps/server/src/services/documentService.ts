@@ -5,7 +5,7 @@ import { ShareService } from "#services/shareService";
 import { prisma } from "#utils/prisma";
 import { logger } from "#utils/logger";
 import { ApiError } from "#utils/errors";
-import { normalizeSlug } from "#utils/slugs";
+import { buildUniqueSlugHelper } from "#utils/slugs";
 import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#utils/redis";
 
 export type DocumentCreateInput = {
@@ -34,12 +34,7 @@ export type DocumentUpdateInput = {
 
 export class DocumentService {
   private static async buildUniqueSlug(userId: string, title: string, documentId?: string) {
-    const base = normalizeSlug(title);
-
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
-      const candidate = `${base.slice(0, 255 - suffix.length)}${suffix}`;
-
+    return buildUniqueSlugHelper(title, async (candidate) => {
       const existing = await prisma.document.findFirst({
         where: {
           userId,
@@ -49,10 +44,8 @@ export class DocumentService {
         select: { id: true },
       });
 
-      if (!existing) return candidate;
-    }
-
-    return `${base.slice(0, 246)}-${Date.now().toString(36)}`;
+      return !!existing;
+    });
   }
 
   /**
@@ -201,29 +194,34 @@ export class DocumentService {
     }
 
     try {
-      const updated = await prisma.document.update({
-        where: {
-          id: documentId,
-          userId,
-          revision: revision,
-        },
+      const updated = await prisma.$transaction(async (tx) => {
+        const doc = await tx.document.update({
+          where: {
+            id: documentId,
+            userId,
+            revision: revision,
+          },
 
-        data: {
-          ...updateData,
-          revision: { increment: 1 },
-          lastSyncedAt: new Date(),
-        },
+          data: {
+            ...updateData,
+            revision: { increment: 1 },
+            lastSyncedAt: new Date(),
+          },
+        });
+
+        if (shareLinkSlugUpdate) {
+          await tx.shareLink.update({
+            where: { id: shareLinkSlugUpdate.id },
+            data: { slug: shareLinkSlugUpdate.slug },
+          });
+        }
+
+        return doc;
       });
 
       await cacheDel(`document:${userId}:${documentId}`);
       await cacheDel(`documents:list:${userId}:all`);
       await cacheDel(`documents:list:${userId}:${updated.type}`);
-
-      if (shareLinkSlugUpdate)
-        await prisma.shareLink.update({
-          where: { id: shareLinkSlugUpdate.id },
-          data: { slug: shareLinkSlugUpdate.slug },
-        });
 
       await Promise.all([
         ...[...readableShareCacheKeys].map((cacheKey) => cacheDel(cacheKey)),
@@ -233,13 +231,14 @@ export class DocumentService {
       return updated;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-        const current = await prisma.document.findUnique({ where: { id: documentId } });
+        const current = await prisma.document.findFirst({ where: { id: documentId, userId } });
 
-        if (!current) throw new Error("Document not found");
+        if (!current) throw new ApiError(404, "Document not found");
 
         if (current.revision !== revision)
-          throw new Error(
-            `CONFLICTOR: Revision mismatch. Client: ${revision}, Server: ${current.revision}`,
+          throw new ApiError(
+            409,
+            `Revision mismatch. Client: ${revision}, Server: ${current.revision}`,
           );
       }
 
@@ -264,10 +263,17 @@ export class DocumentService {
       },
     });
 
-    const document = await prisma.document.update({
-      where: { id: documentId, userId },
-      data: { deletedAt: new Date() },
-    });
+    let document;
+    try {
+      document = await prisma.document.update({
+        where: { id: documentId, userId },
+        data: { deletedAt: new Date() },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")
+        throw new ApiError(404, "Document not found");
+      throw error;
+    }
 
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
@@ -298,10 +304,17 @@ export class DocumentService {
       },
     });
 
-    const document = await prisma.document.update({
-      where: { id: documentId, userId },
-      data: { deletedAt: null },
-    });
+    let document;
+    try {
+      document = await prisma.document.update({
+        where: { id: documentId, userId },
+        data: { deletedAt: null },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")
+        throw new ApiError(404, "Document not found");
+      throw error;
+    }
 
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
@@ -332,9 +345,16 @@ export class DocumentService {
       },
     });
 
-    const document = await prisma.document.delete({
-      where: { id: documentId, userId },
-    });
+    let document;
+    try {
+      document = await prisma.document.delete({
+        where: { id: documentId, userId },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")
+        throw new ApiError(404, "Document not found");
+      throw error;
+    }
 
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);

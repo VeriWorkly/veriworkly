@@ -11,7 +11,7 @@ import { cacheDel, cacheGet, cacheSet, getRedis } from "#utils/redis";
  * List of officially tracked events to ensure consistency.
  */
 
-const KNOWN_EVENTS = [
+export const KNOWN_EVENTS = [
   "resume_created",
   "resume_deleted",
   "resume_exported",
@@ -19,6 +19,9 @@ const KNOWN_EVENTS = [
   "auth_login_success",
   "dashboard_opened",
   "roadmap_viewed",
+  "share_link_created",
+  "share_link_updated",
+  "share_link_revoked",
 ] as const;
 
 type KnownEvent = (typeof KNOWN_EVENTS)[number];

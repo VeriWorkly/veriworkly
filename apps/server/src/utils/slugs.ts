@@ -15,6 +15,7 @@ export const RESERVED_USERNAMES = new Set([
   "logout",
   "me",
   "profile",
+  "portfolio",
   "public",
   "settings",
   "share",
@@ -22,6 +23,20 @@ export const RESERVED_USERNAMES = new Set([
   "signup",
   "support",
   "users",
+  "www",
+  "veriworkly",
+  "job",
+  "work",
+  "billing",
+  "payment",
+  "webhook",
+  "developer",
+  "designer",
+  "server",
+  "github",
+  "studio",
+  "roadmap",
+  "portal",
 ]);
 
 export function normalizeSlug(value: string, fallback = "document") {
@@ -82,4 +97,22 @@ export function buildUsernameBase(input: { email?: string | null; name?: string 
 
 export function randomSuffix(bytes = 3) {
   return randomBytes(bytes).toString("hex");
+}
+
+export async function buildUniqueSlugHelper(
+  baseValue: string,
+  checkExisting: (candidate: string) => Promise<boolean>,
+): Promise<string> {
+  const base = normalizeSlug(baseValue);
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
+    const candidate = `${base.slice(0, 255 - suffix.length)}${suffix}`;
+
+    const exists = await checkExisting(candidate);
+
+    if (!exists) return candidate;
+  }
+
+  return `${base.slice(0, 246)}-${Date.now().toString(36)}`;
 }

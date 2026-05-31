@@ -12,7 +12,8 @@ const INCREMENT_WITH_EXPIRY_SCRIPT = `
   if count == 1 then
     redis.call("PEXPIRE", KEYS[1], ARGV[1])
   end
-  return count
+  local ttl = redis.call("PTTL", KEYS[1])
+  return {count, ttl}
 `;
 
 /**
@@ -37,19 +38,16 @@ export const apiKeyRateLimit = async (req: Request, res: Response, next: NextFun
 
     if (!redis.isOpen) throw new Error("Redis not connected");
 
-    const count = Number(
-      await redis.eval(INCREMENT_WITH_EXPIRY_SCRIPT, {
-        keys: [redisKey],
-        arguments: [String(WINDOW_MS)],
-      }),
-    );
+    const [count, ttl] = (await redis.eval(INCREMENT_WITH_EXPIRY_SCRIPT, {
+      keys: [redisKey],
+      arguments: [String(WINDOW_MS)],
+    })) as [number, number];
 
     const limit = apiKey.rateLimit || MAX_REQUESTS;
 
     if (count > limit) {
       logger.warn(`API Key rate limit exceeded for key: ${apiKey.name} (${keyId})`);
 
-      const ttl = Number(await redis.pTTL(redisKey));
       const retryAfter = Math.ceil(ttl / 1000);
 
       res.set("Retry-After", String(retryAfter));
@@ -69,8 +67,6 @@ export const apiKeyRateLimit = async (req: Request, res: Response, next: NextFun
 
     res.set("X-RateLimit-Limit", String(limit));
     res.set("X-RateLimit-Remaining", String(limit - count));
-
-    const ttl = Number(await redis.pTTL(redisKey));
     res.set("X-RateLimit-Reset", String(Math.ceil((now + ttl) / 1000)));
 
     next();

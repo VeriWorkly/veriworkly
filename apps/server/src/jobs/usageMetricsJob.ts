@@ -1,4 +1,5 @@
 import cron, { ScheduledTask } from "node-cron";
+import { v4 as uuidv4 } from "uuid";
 
 import { config } from "#config";
 import { logger } from "#utils/logger";
@@ -7,6 +8,14 @@ import { getRedis } from "#utils/redis";
 import { flushUsageMetricsForDate, getPendingUsageMetricDates } from "#services/analyticsService";
 
 let job: ScheduledTask | null = null;
+
+const RELEASE_LOCK_LUA_SCRIPT = `
+  if redis.call("get", KEYS[1]) == ARGV[1] then
+      return redis.call("del", KEYS[1])
+  else
+      return 0
+  end
+`;
 
 /**
  * Returns a Date object representing the start of yesterday in UTC.
@@ -27,13 +36,13 @@ async function runFlush(reason: "startup" | "cron") {
   const redis = getRedis();
 
   const lockKey = "usage:flush:lock";
-
+  const lockValue = uuidv4();
   const lockTTL = 60 * 5;
 
   let lockAcquired = false;
 
   try {
-    const lockResult = await redis.set(lockKey, "locked", {
+    const lockResult = await redis.set(lockKey, lockValue, {
       NX: true,
       EX: lockTTL,
     });
@@ -67,9 +76,14 @@ async function runFlush(reason: "startup" | "cron") {
     });
   } finally {
     if (lockAcquired) {
-      await redis
-        .del(lockKey)
-        .catch((err) => logger.error("Failed to release metrics flush lock", err));
+      try {
+        await redis.eval(RELEASE_LOCK_LUA_SCRIPT, {
+          keys: [lockKey],
+          arguments: [lockValue],
+        });
+      } catch (err) {
+        logger.error("Failed to release metrics flush lock", err);
+      }
     }
   }
 }

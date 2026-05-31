@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 
-import { config } from "#config";
+import { config, isDevelopment } from "#config";
+
 import { logger } from "#utils/logger";
 
 interface AuthOtpEmailPayload {
@@ -124,6 +125,10 @@ export async function sendAuthOtpEmail(payload: AuthOtpEmailPayload): Promise<vo
   if (config.auth.emailProvider === "smtp") {
     await sendViaSmtp(payload);
     return;
+  }
+
+  if (!isDevelopment) {
+    throw new Error("Console OTP provider is only available in development");
   }
 
   logger.info("OTP generated (dev mode)", {

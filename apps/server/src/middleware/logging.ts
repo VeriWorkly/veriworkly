@@ -17,7 +17,7 @@ export function loggingMiddleware(req: Request, res: Response, next: NextFunctio
     if (res.statusCode >= 400) {
       const duration = Math.round(performance.now() - startTime);
 
-      logger.error(`[ERROR] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+      logger.error(`[ERROR] ${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
 
       const shouldPersistAuditLog =
         config.nodeEnv === "production" &&
@@ -29,7 +29,7 @@ export function loggingMiddleware(req: Request, res: Response, next: NextFunctio
           .create({
             data: {
               method: req.method,
-              path: req.originalUrl,
+              path: req.path,
               status: res.statusCode,
               ip,
               userAgent,

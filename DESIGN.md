@@ -88,3 +88,20 @@ The Geist font family is used throughout for its modern, clean appearance.
 - **Max-Width**: `1280px` (`max-w-7xl`)
 - **Horizontal Padding**: `px-4` (Mobile), `px-6` (Tablet), `px-8` (Desktop)
 - **Vertical Spacing**: `space-y-16` to `space-y-24` between sections.
+
+## Portfolio Studio
+
+The portfolio product is a system-managed app surface. It extends the platform
+system without introducing a separate brand.
+
+- **Marketing pages**: asymmetric editorial product tour with a structured
+  template gallery.
+- **App pages**: workbench layout with grouped editing cards, contextual help,
+  publish readiness, and a persistent private preview.
+- **Public templates**: may use distinct local palettes and typography to give
+  portfolio owners a real creative choice. Template palettes must be declared as
+  named CSS tokens in each template stylesheet.
+- **Motion**: CSS-first reveal, hover lift, and state transitions. Spatial motion
+  collapses under `prefers-reduced-motion`.
+- **Editor stance**: section-aware inputs, plain-language guidance, compatible
+  snapshot parsing, visible focus, and no destructive action without a label.

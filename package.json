@@ -1,6 +1,6 @@
 {
   "name": "veriworkly",
-  "version": "3.10.2",
+  "version": "3.11.0",
   "private": true,
   "repository": {
     "type": "git",
@@ -9,6 +9,7 @@
   "workspaces": [
     "apps/site",
     "apps/studio",
+    "apps/portfolio",
     "apps/blog-platform",
     "apps/docs-platform",
     "apps/server",
@@ -18,19 +19,26 @@
     "dev": "npm run dev -w @veriworkly/site",
     "dev:site": "npm run dev -w @veriworkly/site -- -p 3000",
     "dev:studio": "npm run dev -w @veriworkly/studio -- -p 3001",
-    "dev:server": "npm run dev -w @veriworkly/server",
     "dev:docs": "npm run dev -w @veriworkly/docs-platform -- -p 3002",
     "dev:blog": "npm run dev -w @veriworkly/blog-platform -- -p 3003",
+    "dev:portfolio": "npm run dev -w @veriworkly/portfolio -- -p 3004",
+    "dev:server": "npm run dev -w @veriworkly/server",
     "dev:all": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "build:site": "npm run build -w @veriworkly/site",
     "build:studio": "npm run build -w @veriworkly/studio",
     "build:blog": "npm run build -w @veriworkly/blog-platform",
     "build:docs": "npm run build -w @veriworkly/docs-platform",
+    "build:portfolio": "npm run build -w @veriworkly/portfolio",
+    "build:server": "npm run build -w @veriworkly/server",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "generate:api": "npx @redocly/cli bundle apps/docs-platform/specs/openapi.yaml -o apps/docs-platform/openapi.yaml && node scripts/generate-api.mjs"
+    "generate:api": "npx @redocly/cli bundle apps/docs-platform/specs/openapi.yaml -o apps/docs-platform/openapi.yaml && node scripts/generate-api.mjs",
+    "db:push": "npm run db:push -w @veriworkly/server",
+    "db:migrate": "npm run db:migrate -w @veriworkly/server",
+    "db:generate": "npm run db:generate -w @veriworkly/server",
+    "db:studio": "npm run db:studio -w @veriworkly/server"
   },
   "devDependencies": {
     "@hono/node-server": "2.0.2",

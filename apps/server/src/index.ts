@@ -1,5 +1,5 @@
 import helmet from "helmet";
-import express from "express";
+import express, { raw } from "express";
 
 import { config, isDevelopment } from "#config";
 
@@ -20,14 +20,20 @@ import healthRoutes from "#routes/health";
 import sharesRoutes from "#routes/shares";
 import apiKeyRoutes from "#routes/apiKeys";
 import roadmapRoutes from "#routes/roadmap";
+import billingRoutes from "#routes/billing";
 import profileRoutes from "#routes/profiles";
 import documentRoutes from "#routes/documents";
+import portfolioRoutes from "#routes/portfolios";
+import portfolioAssetRoutes from "#routes/portfolioAssets";
 
 import { authNodeHandler } from "#auth/index";
+import { BillingController } from "#controllers/billingController";
 import { ensureAdminUserExists, validateAuthRuntimeConfig } from "#auth/runtime";
 
 import { startGitHubSyncJob, stopGitHubSyncJob } from "#jobs/githubSyncJob";
+import { startViewsFlushJob, stopViewsFlushJob } from "#jobs/viewsFlushJob";
 import { startUsageMetricsJob, stopUsageMetricsJob } from "#jobs/usageMetricsJob";
+import { startPortfolioAccessJob, stopPortfolioAccessJob } from "#jobs/portfolioAccessJob";
 
 const app = express();
 
@@ -44,6 +50,12 @@ app.use(rateLimitMiddleware);
 app.use(loggingMiddleware);
 
 // Body parser middleware
+app.post(
+  "/api/v1/billing/webhooks/dodo",
+  raw({ type: "application/json", limit: "1mb" }),
+  BillingController.dodoWebhook,
+);
+
 app.use(express.json({ limit: "4mb" }));
 app.use(express.urlencoded({ extended: true, limit: "4mb" }));
 
@@ -58,8 +70,11 @@ app.use("/api/v1/health", healthRoutes);
 app.use("/api/v1/shares", sharesRoutes);
 app.use("/api/v1/roadmap", roadmapRoutes);
 app.use("/api/v1/api-keys", apiKeyRoutes);
+app.use("/api/v1/billing", billingRoutes);
 app.use("/api/v1/profiles", profileRoutes);
 app.use("/api/v1/documents", documentRoutes);
+app.use("/api/v1/portfolios", portfolioRoutes);
+app.use("/api/v1/portfolio-assets", portfolioAssetRoutes);
 
 app.all("/api/v1/auth", authRequestDiagnosticsMiddleware, authNodeHandler);
 app.all("/api/v1/auth/*", authRequestDiagnosticsMiddleware, authNodeHandler);
@@ -78,13 +93,33 @@ app.use(notFoundHandler);
 // Error handler (must be last)
 app.use(errorHandler);
 
+let serverInstance: ReturnType<typeof app.listen> | null = null;
+
 // Graceful shutdown
 async function shutdown() {
   logger.info("Shutting down gracefully...");
 
+  if (serverInstance) {
+    logger.info("Stopping HTTP server from accepting new requests...");
+    await new Promise<void>((resolve) => {
+      serverInstance!.close(() => {
+        logger.info("HTTP server stopped.");
+        resolve();
+      });
+
+      // Force timeout shutdown in 10s
+      setTimeout(() => {
+        logger.warn("Graceful HTTP shutdown timeout reached. Continuing.");
+        resolve();
+      }, 10000);
+    });
+  }
+
   try {
     stopGitHubSyncJob();
+    stopViewsFlushJob();
     stopUsageMetricsJob();
+    stopPortfolioAccessJob();
 
     await closeRedis();
     await prisma.$disconnect();
@@ -110,14 +145,18 @@ async function main() {
 
     await ensureAdminUserExists();
 
-    const server = app.listen(config.port, () => {
+    serverInstance = app.listen(config.port, () => {
       logger.info(`Server running on port ${config.port} (${config.nodeEnv})`);
+
       logger.info("IP/rate-limit configuration", {
         trustProxy: config.server.trustProxy,
         authIpAddressHeaders: config.auth.ipAddressHeaders,
       });
+
       startGitHubSyncJob();
+      startViewsFlushJob();
       startUsageMetricsJob();
+      startPortfolioAccessJob();
 
       if (isDevelopment) {
         logger.info(`Allowed origins: ${config.allowedOrigins.join(", ")}`);
@@ -125,7 +164,7 @@ async function main() {
       }
     });
 
-    server.on("error", (err) => {
+    serverInstance.on("error", (err) => {
       logger.error("Server error:", err);
       process.exit(1);
     });

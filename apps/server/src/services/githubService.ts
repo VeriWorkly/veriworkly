@@ -1,8 +1,11 @@
+import { v4 as uuidv4 } from "uuid";
+import type { Prisma } from "@prisma/client";
 import { config } from "#config";
 
 import { prisma } from "#utils/prisma";
 import { ApiError } from "#utils/errors";
-import { cacheDel, cacheDelByPrefix, cacheGet, cacheSet } from "#utils/redis";
+import { cacheDel, cacheDelByPrefix, cacheGet, cacheSet, getRedis } from "#utils/redis";
+import { logger } from "#utils/logger";
 
 export type GitHubStatus = "todo" | "in-progress" | "done";
 export type GitHubItemKind = "issue" | "pull-request";
@@ -146,6 +149,7 @@ async function fetchGitHubIssuesPage(url: string, token: string) {
         Authorization: `Bearer ${token}`,
         "X-GitHub-Api-Version": "2022-11-28",
       },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (response.ok) {
@@ -341,148 +345,223 @@ const shouldSyncGitHubStats = async () => {
  * Sync GitHub issues from GitHub API into DB and refresh caches.
  */
 
-const syncGitHubStatsFromGitHub = async () => {
-  const { owner, repo, token } = config.github;
+const RELEASE_LOCK_LUA_SCRIPT = `
+  if redis.call("get", KEYS[1]) == ARGV[1] then
+      return redis.call("del", KEYS[1])
+  else
+      return 0
+  end
+`;
 
-  const existingSync = await prisma.gitHubSync.findUnique({
-    where: { projectUrl: PROJECT_URL },
-    select: { syncedAt: true, id: true },
+const syncGitHubStatsFromGitHub = async (forceFullSync = false) => {
+  const redis = getRedis();
+  const lockKey = "github:sync:lock";
+  const lockValue = uuidv4();
+  const lockTTL = 600; // 10 minutes
+
+  const lockResult = await redis.set(lockKey, lockValue, {
+    NX: true,
+    EX: lockTTL,
   });
 
-  const sinceDate = existingSync?.syncedAt ? new Date(existingSync.syncedAt) : undefined;
-
-  const rawIssues = await fetchAllGitHubIssues(owner, repo, token, sinceDate);
-
-  if (rawIssues.length === 0 && existingSync) {
-    const updatedSync = await prisma.gitHubSync.update({
-      where: { id: existingSync.id },
-      data: { syncedAt: new Date(), nextSyncAt: new Date(Date.now() + 43200000) },
-    });
-
-    await cacheDel(REDIS_STATS_KEY);
-
-    return updatedSync;
+  if (lockResult !== "OK") {
+    throw new ApiError(409, "GitHub sync is already in progress");
   }
 
-  const snapshot = buildGitHubIssuesSnapshot(rawIssues);
-  const CHUNK_SIZE = 50;
+  try {
+    const { owner, repo, token } = config.github;
 
-  const syncRecord = await prisma.$transaction(
-    async (tx) => {
-      const sync = await tx.gitHubSync.upsert({
-        where: { projectUrl: PROJECT_URL },
-        create: {
-          projectName: `${owner}/${repo}`,
-          projectUrl: PROJECT_URL,
-          issueCount: 0,
-          todoCount: 0,
-          inProgressCount: 0,
-          doneCount: 0,
-          data: { lastSyncedBy: "System" },
-          nextSyncAt: new Date(Date.now() + 43200000),
-        },
-        update: {
-          syncedAt: new Date(),
-          nextSyncAt: new Date(Date.now() + 43200000),
-        },
+    const existingSync = await prisma.gitHubSync.findUnique({
+      where: { projectUrl: PROJECT_URL },
+      select: { syncedAt: true, id: true },
+    });
+
+    const sinceDate =
+      existingSync?.syncedAt && !forceFullSync ? new Date(existingSync.syncedAt) : undefined;
+
+    const rawIssues = await fetchAllGitHubIssues(owner, repo, token, sinceDate);
+
+    if (rawIssues.length === 0 && existingSync) {
+      const updatedSync = await prisma.gitHubSync.update({
+        where: { id: existingSync.id },
+        data: { syncedAt: new Date(), nextSyncAt: new Date(Date.now() + 43200000) },
       });
 
-      const chunks = [];
+      await cacheDel(REDIS_STATS_KEY);
 
-      for (let i = 0; i < snapshot.issues.length; i += CHUNK_SIZE) {
-        chunks.push(snapshot.issues.slice(i, i + CHUNK_SIZE));
-      }
+      return updatedSync;
+    }
 
-      for (const chunk of chunks) {
-        await Promise.all(
-          chunk.map((item) => {
-            const githubId = item.id.replace("gh-", "");
-            return tx.gitHubSyncItem.upsert({
-              where: {
-                syncId_githubId: { syncId: sync.id, githubId },
-              },
+    const snapshot = buildGitHubIssuesSnapshot(rawIssues);
 
-              create: {
-                syncId: sync.id,
-                githubId,
-                number: item.number,
-                title: item.title,
-                status: item.status,
-                kind: item.kind,
-                url: item.url,
-                labels: item.labels,
-                createdAt: new Date(item.createdAt),
-                updatedAt: new Date(item.updatedAt),
-              },
+    const syncRecord = await prisma.$transaction(
+      async (tx) => {
+        const sync = await tx.gitHubSync.upsert({
+          where: { projectUrl: PROJECT_URL },
+          create: {
+            projectName: `${owner}/${repo}`,
+            projectUrl: PROJECT_URL,
+            issueCount: 0,
+            todoCount: 0,
+            inProgressCount: 0,
+            doneCount: 0,
+            data: { lastSyncedBy: "System" },
+            nextSyncAt: new Date(Date.now() + 43200000),
+          },
+          update: {
+            syncedAt: new Date(),
+            nextSyncAt: new Date(Date.now() + 43200000),
+          },
+        });
 
-              update: {
-                title: item.title,
-                status: item.status,
-                labels: item.labels,
-                updatedAt: new Date(item.updatedAt),
-              },
-            });
-          }),
-        );
-      }
+        // 1. Fetch current sync items to determine differences
+        const existingItems = await tx.gitHubSyncItem.findMany({
+          where: { syncId: sync.id },
+          select: { githubId: true, updatedAt: true, status: true, title: true, labels: true },
+        });
 
-      const groupedStats = await tx.gitHubSyncItem.groupBy({
-        by: ["status", "kind"],
-        where: {
-          syncId: sync.id,
-        },
-        _count: {
-          id: true,
-        },
+        const existingMap = new Map(existingItems.map((item) => [item.githubId, item]));
+
+        const itemsToCreate: Prisma.GitHubSyncItemCreateManyInput[] = [];
+        const itemsToUpdate: Prisma.GitHubSyncItemCreateManyInput[] = [];
+
+        for (const item of snapshot.issues) {
+          const githubId = item.id.replace("gh-", "");
+          const existing = existingMap.get(githubId);
+
+          const itemData = {
+            syncId: sync.id,
+            githubId,
+            number: item.number,
+            title: item.title,
+            status: item.status,
+            kind: item.kind,
+            url: item.url,
+            labels: item.labels,
+            createdAt: new Date(item.createdAt),
+            updatedAt: new Date(item.updatedAt),
+          };
+
+          if (!existing) {
+            itemsToCreate.push(itemData);
+          } else {
+            // Only write an update if GitHub attributes actually changed
+            const hasChanged =
+              existing.title !== item.title ||
+              existing.status !== item.status ||
+              new Date(existing.updatedAt).getTime() !== new Date(item.updatedAt).getTime() ||
+              JSON.stringify(existing.labels) !== JSON.stringify(item.labels);
+
+            if (hasChanged) {
+              itemsToUpdate.push(itemData);
+            }
+          }
+        }
+
+        // 2. Perform bulk creation in 1 query
+        if (itemsToCreate.length > 0) {
+          await tx.gitHubSyncItem.createMany({
+            data: itemsToCreate,
+          });
+        }
+
+        // 3. Update only modified items
+        if (itemsToUpdate.length > 0) {
+          await Promise.all(
+            itemsToUpdate.map((item) =>
+              tx.gitHubSyncItem.update({
+                where: {
+                  syncId_githubId: { syncId: sync.id, githubId: item.githubId },
+                },
+                data: {
+                  title: item.title,
+                  status: item.status,
+                  labels: item.labels,
+                  updatedAt: item.updatedAt,
+                },
+              }),
+            ),
+          );
+        }
+
+        // 4. If full sync, reconcile deleted items
+        if (!sinceDate) {
+          const fetchedGithubIds = snapshot.issues.map((i) => i.id.replace("gh-", ""));
+          await tx.gitHubSyncItem.deleteMany({
+            where: {
+              syncId: sync.id,
+              githubId: { notIn: fetchedGithubIds },
+            },
+          });
+        }
+
+        const groupedStats = await tx.gitHubSyncItem.groupBy({
+          by: ["status", "kind"],
+          where: {
+            syncId: sync.id,
+          },
+          _count: {
+            id: true,
+          },
+        });
+
+        let todoCount = 0;
+        let inProgressCount = 0;
+        let doneCount = 0;
+
+        let onlyIssueCount = 0;
+        let prCount = 0;
+
+        for (const item of groupedStats) {
+          const count = item._count.id;
+
+          //status counts
+          if (item.status === "todo") {
+            todoCount += count;
+          }
+
+          if (item.status === "in-progress") {
+            inProgressCount += count;
+          }
+
+          if (item.status === "done") {
+            doneCount += count;
+          }
+
+          //kind counts
+          if (item.kind === "issue") {
+            onlyIssueCount += count;
+          }
+
+          if (item.kind === "pull-request") {
+            prCount += count;
+          }
+        }
+
+        const issueCount = onlyIssueCount + prCount;
+
+        return tx.gitHubSync.update({
+          where: { id: sync.id },
+          data: { issueCount, todoCount, inProgressCount, doneCount, onlyIssueCount, prCount },
+        });
+      },
+      { timeout: 30000 },
+    );
+
+    await cacheDel(REDIS_STATS_KEY);
+    await cacheDelByPrefix(ISSUES_CACHE_PREFIX);
+
+    return syncRecord;
+  } finally {
+    try {
+      await redis.eval(RELEASE_LOCK_LUA_SCRIPT, {
+        keys: [lockKey],
+        arguments: [lockValue],
       });
-
-      let todoCount = 0;
-      let inProgressCount = 0;
-      let doneCount = 0;
-
-      let onlyIssueCount = 0;
-      let prCount = 0;
-
-      for (const item of groupedStats) {
-        const count = item._count.id;
-
-        //status counts
-        if (item.status === "todo") {
-          todoCount += count;
-        }
-
-        if (item.status === "in-progress") {
-          inProgressCount += count;
-        }
-
-        if (item.status === "done") {
-          doneCount += count;
-        }
-
-        //kind counts
-        if (item.kind === "issue") {
-          onlyIssueCount += count;
-        }
-
-        if (item.kind === "pull-request") {
-          prCount += count;
-        }
-      }
-
-      const issueCount = onlyIssueCount + prCount;
-
-      return tx.gitHubSync.update({
-        where: { id: sync.id },
-        data: { issueCount, todoCount, inProgressCount, doneCount, onlyIssueCount, prCount },
-      });
-    },
-    { timeout: 30000 },
-  );
-
-  await cacheDel(REDIS_STATS_KEY);
-  await cacheDelByPrefix(ISSUES_CACHE_PREFIX);
-
-  return syncRecord;
+    } catch (err) {
+      logger.error("Failed to release GitHub sync lock", err);
+    }
+  }
 };
 
 export { getGitHubStats, getGitHubIssues, shouldSyncGitHubStats, syncGitHubStatsFromGitHub };

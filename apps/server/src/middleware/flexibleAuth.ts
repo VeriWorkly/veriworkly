@@ -66,16 +66,35 @@ async function handleFlexibleAuth(
   const clientIp = req.ip || "";
   const isLocal = clientIp === "::1" || clientIp === "127.0.0.1" || clientIp.includes("localhost");
 
+  let parsedOrigin = "";
+
+  if (origin) {
+    try {
+      parsedOrigin = new URL(origin).origin;
+    } catch {
+      // Invalid URL/origin
+    }
+  }
+
+  let parsedRefererOrigin = "";
+
+  if (referer) {
+    try {
+      parsedRefererOrigin = new URL(referer).origin;
+    } catch {
+      // Invalid URL
+    }
+  }
+
   const isWhitelisted =
-    (origin && config.allowedOrigins.some((o) => origin.startsWith(o))) ||
-    (referer && config.allowedOrigins.some((o) => referer.startsWith(o))) ||
-    (!origin && !referer) ||
+    (parsedOrigin && config.allowedOrigins.includes(parsedOrigin)) ||
+    (parsedRefererOrigin && config.allowedOrigins.includes(parsedRefererOrigin)) ||
     (isDevelopment &&
       (isLocal ||
-        referer.includes("localhost:") ||
-        origin.includes("localhost:") ||
-        referer.includes("127.0.0.1:") ||
-        origin.includes("127.0.0.1:")));
+        (referer && referer.includes("localhost:")) ||
+        (origin && origin.includes("localhost:")) ||
+        (referer && referer.includes("127.0.0.1:")) ||
+        (origin && origin.includes("127.0.0.1:"))));
 
   if (!isWhitelisted) {
     logger.warn("Request rejected by flexibleAuth: Not whitelisted and no API key", {
