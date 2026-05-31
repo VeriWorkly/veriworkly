@@ -11,7 +11,11 @@ export const corsMiddleware = cors({
       return;
     }
 
-    if (config.allowedOrigins.includes(origin)) {
+    const trustedPortfolioOrigin =
+      /^https:\/\/[a-z0-9-]+\.veriworkly\.com$/i.test(origin) ||
+      /^http:\/\/[a-z0-9-]+\.localhost:3004$/i.test(origin);
+
+    if (config.allowedOrigins.includes(origin) || trustedPortfolioOrigin) {
       callback(null, true);
     } else {
       callback(new ApiError(403, "Not allowed by CORS"));

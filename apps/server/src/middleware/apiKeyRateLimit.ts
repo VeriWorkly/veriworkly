@@ -7,6 +7,14 @@ import { createErrorResponse } from "#utils/errors";
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_REQUESTS = 20;
 
+const INCREMENT_WITH_EXPIRY_SCRIPT = `
+  local count = redis.call("INCR", KEYS[1])
+  if count == 1 then
+    redis.call("PEXPIRE", KEYS[1], ARGV[1])
+  end
+  return count
+`;
+
 /**
  * Rate limiter middleware for API keys.
  * Expects apiKey object to be present on req (from apiKeyAuth middleware).
@@ -27,15 +35,14 @@ export const apiKeyRateLimit = async (req: Request, res: Response, next: NextFun
   try {
     const redis = getRedis();
 
-    if (!redis.isOpen) {
-      throw new Error("Redis not connected");
-    }
+    if (!redis.isOpen) throw new Error("Redis not connected");
 
-    const count = await redis.incr(redisKey);
-
-    if (count === 1) {
-      await redis.pExpire(redisKey, WINDOW_MS);
-    }
+    const count = Number(
+      await redis.eval(INCREMENT_WITH_EXPIRY_SCRIPT, {
+        keys: [redisKey],
+        arguments: [String(WINDOW_MS)],
+      }),
+    );
 
     const limit = apiKey.rateLimit || MAX_REQUESTS;
 
