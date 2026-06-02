@@ -22,6 +22,9 @@ export const siteConfig = {
     app: isDev ? "http://localhost:3001" : "https://app.veriworkly.com",
     docs: isDev ? "http://localhost:3002" : "https://docs.veriworkly.com",
     blog: isDev ? "http://localhost:3003" : "https://blog.veriworkly.com",
+    portfolio: isDev
+      ? "http://localhost:3004/dashboard"
+      : "https://portfolio.veriworkly.com/dashboard",
   },
 
   keywords: [

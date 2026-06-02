@@ -11,6 +11,7 @@ import {
   Newspaper,
   FolderOpen,
   HelpCircle,
+  PanelsTopLeft,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -44,6 +45,14 @@ export const mainNav: StudioNavItem[] = [
     href: `${siteConfig.links.main}/templates`,
     label: "Templates",
     icon: FileText,
+    external: true,
+    match: () => false,
+  },
+
+  {
+    href: siteConfig.links.portfolio,
+    label: "Portfolio",
+    icon: PanelsTopLeft,
     external: true,
     match: () => false,
   },
