@@ -1,22 +1,22 @@
-import fs from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
+import fs from "fs";
+import path from "path";
+import { execSync } from "child_process";
 
 const projectRoot = process.cwd();
-const templateLibPath = path.join(projectRoot, 'apps', 'portfolio', 'template-library');
-const registryFilePath = path.join(templateLibPath, 'registry.ts');
+const templateLibPath = path.join(projectRoot, "apps", "portfolio", "template-library");
+const registryFilePath = path.join(templateLibPath, "registry.ts");
 
 if (fs.existsSync(registryFilePath)) {
-  console.log('Template library already exists. Skipping mock setup.');
+  console.log("Template library already exists. Skipping mock setup.");
   process.exit(0);
 }
 
-console.log('Template library not found. Setting up mock templates for CI build...');
+console.log("Template library not found. Setting up mock templates for CI build...");
 
 // Create directories
 fs.mkdirSync(templateLibPath, { recursive: true });
-fs.mkdirSync(path.join(templateLibPath, 'atelier'), { recursive: true });
-fs.mkdirSync(path.join(templateLibPath, 'signal'), { recursive: true });
+fs.mkdirSync(path.join(templateLibPath, "atelier"), { recursive: true });
+fs.mkdirSync(path.join(templateLibPath, "signal"), { recursive: true });
 
 // Types
 const typesContent = `export interface PortfolioSection {
@@ -75,7 +75,7 @@ export function safeExternalUrl(value: string) {
 }
 `;
 
-fs.writeFileSync(path.join(templateLibPath, 'types.ts'), typesContent);
+fs.writeFileSync(path.join(templateLibPath, "types.ts"), typesContent);
 
 // Registry
 const registryContent = `import type { ComponentType } from "react";
@@ -107,8 +107,8 @@ export default function AtelierTemplate({ project }: { project: PortfolioProject
 }
 `;
 
-fs.writeFileSync(path.join(templateLibPath, 'atelier', 'AtelierTemplate.tsx'), atelierContent);
-fs.writeFileSync(path.join(templateLibPath, 'atelier', 'styles.css'), '/* Mock styles */');
+fs.writeFileSync(path.join(templateLibPath, "atelier", "AtelierTemplate.tsx"), atelierContent);
+fs.writeFileSync(path.join(templateLibPath, "atelier", "styles.css"), "/* Mock styles */");
 
 // SignalTemplate
 const signalContent = `import React from "react";
@@ -120,15 +120,15 @@ export default function SignalTemplate({ project }: { project: PortfolioProject 
 }
 `;
 
-fs.writeFileSync(path.join(templateLibPath, 'signal', 'SignalTemplate.tsx'), signalContent);
-fs.writeFileSync(path.join(templateLibPath, 'signal', 'styles.css'), '/* Mock styles */');
+fs.writeFileSync(path.join(templateLibPath, "signal", "SignalTemplate.tsx"), signalContent);
+fs.writeFileSync(path.join(templateLibPath, "signal", "styles.css"), "/* Mock styles */");
 
-console.log('Mock templates set up successfully.');
+console.log("Mock templates set up successfully.");
 
 try {
-  console.log('Formatting mocked files...');
-  execSync('npx prettier --write apps/portfolio/template-library', { stdio: 'inherit' });
-  console.log('Formatting completed.');
+  console.log("Formatting mocked files...");
+  execSync("npx prettier --write apps/portfolio/template-library", { stdio: "inherit" });
+  console.log("Formatting completed.");
 } catch (err) {
-  console.error('Failed to run prettier on mocked files:', err.message);
+  console.error("Failed to run prettier on mocked files:", err.message);
 }

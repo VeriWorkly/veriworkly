@@ -28,12 +28,10 @@ import {
   normalizeSlug,
   portfolioSectionTypes,
   type PortfolioContent,
-  type PortfolioSection,
   type PortfolioSectionType,
 } from "@/lib/portfolio";
-import { savePortfolioCache } from "@/lib/portfolio-storage";
 import { useShallow } from "zustand/react/shallow";
-import { usePortfolioStore, type EditorPanel } from "@/store/portfolio-store";
+import { usePortfolioStore } from "@/store/portfolio-store";
 
 const sectionTypes = portfolioSectionTypes;
 const inputClass =
@@ -977,9 +975,15 @@ function AssetUpload({
 
   return (
     <label className="flex cursor-pointer flex-wrap items-center gap-3 rounded-lg border border-dashed border-[var(--color-line)] p-3 text-xs font-bold text-[var(--color-muted)]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       {value ? (
-        <img className="size-10 rounded-full object-cover" src={value} alt="" />
+        <Image
+          className="size-10 rounded-full object-cover"
+          src={value}
+          alt=""
+          width={40}
+          height={40}
+          unoptimized
+        />
       ) : (
         <Upload size={16} />
       )}
