@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { backendApiUrl } from "@/lib/backend";
+import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
 import { parsePortfolioContent } from "@/lib/portfolio";
 import { LivePortfolioPreview } from "@/components/LivePortfolioPreview";
 
@@ -17,7 +17,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ docume
     response = await fetch(
       backendApiUrl(`/portfolios/preview/${encodeURIComponent(documentId)}`, true),
       {
-        headers: { Cookie: (await cookies()).toString() },
+        headers: firstPartyServerHeaders({ Cookie: (await cookies()).toString() }),
         cache: "no-store",
       },
     );

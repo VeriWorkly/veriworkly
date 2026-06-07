@@ -98,13 +98,31 @@ const statusTitles: Record<RoadmapStatus, string> = {
   done: "Done",
 };
 
+function normalizeHeaders(headers?: HeadersInit) {
+  return Object.fromEntries(new Headers(headers ?? {}).entries());
+}
+
+function firstPartyServerHeaders(headers?: HeadersInit) {
+  const normalizedHeaders = normalizeHeaders(headers);
+
+  if (typeof window !== "undefined") return normalizedHeaders;
+
+  const siteOrigin = process.env.SITE_URL ? new URL(process.env.SITE_URL).origin : "";
+  if (!siteOrigin) return normalizedHeaders;
+
+  return {
+    Origin: siteOrigin,
+    ...normalizedHeaders,
+  };
+}
+
 async function fetchApiData<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(backendApiUrl(path), {
     ...options,
     credentials: options?.credentials ?? "include",
     headers: {
       "Content-Type": "application/json",
-      ...(options?.headers ?? {}),
+      ...firstPartyServerHeaders(options?.headers),
     },
   });
 

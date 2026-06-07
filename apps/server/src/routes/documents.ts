@@ -1,19 +1,23 @@
 import { Router } from "express";
 
-import { authMiddleware } from "#middleware/auth";
+import { flexibleAuth } from "#middleware/flexibleAuth";
+import { requireApiKeyScopes } from "#middleware/apiKeyScope";
 
 import { DocumentController } from "#controllers/documentController";
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(flexibleAuth);
 
-router.route("/").get(DocumentController.list).post(DocumentController.create);
+router
+  .route("/")
+  .get(requireApiKeyScopes("resume:read"), DocumentController.list)
+  .post(requireApiKeyScopes("resume:write"), DocumentController.create);
 
 router
   .route("/:id")
-  .get(DocumentController.get)
-  .patch(DocumentController.update)
-  .delete(DocumentController.delete);
+  .get(requireApiKeyScopes("resume:read"), DocumentController.get)
+  .patch(requireApiKeyScopes("resume:write"), DocumentController.update)
+  .delete(requireApiKeyScopes("resume:write"), DocumentController.delete);
 
 export default router;
