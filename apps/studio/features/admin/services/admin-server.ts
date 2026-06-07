@@ -65,17 +65,33 @@ async function getCookieHeaderValue() {
   return cookieStore.toString();
 }
 
+function normalizeHeaders(headers?: HeadersInit) {
+  return Object.fromEntries(new Headers(headers ?? {}).entries());
+}
+
+function firstPartyServerHeaders(headers?: HeadersInit) {
+  const normalizedHeaders = normalizeHeaders(headers);
+  const siteOrigin = process.env.SITE_URL ? new URL(process.env.SITE_URL).origin : "";
+
+  if (!siteOrigin) return normalizedHeaders;
+
+  return {
+    Origin: siteOrigin,
+    ...normalizedHeaders,
+  };
+}
+
 async function fetchWithSession(path: string, options?: RequestInit) {
   const cookieHeader = await getCookieHeaderValue();
 
   return fetch(backendApiUrl(path), {
     ...options,
     cache: "no-store",
-    headers: {
+    headers: firstPartyServerHeaders({
       "Content-Type": "application/json",
       cookie: cookieHeader,
       ...(options?.headers ?? {}),
-    },
+    }),
   });
 }
 

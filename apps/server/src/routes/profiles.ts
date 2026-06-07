@@ -1,16 +1,17 @@
 import { Router } from "express";
 
-import { authMiddleware } from "#middleware/auth";
+import { flexibleAuth } from "#middleware/flexibleAuth";
+import { requireApiKeyScopes } from "#middleware/apiKeyScope";
 
 import { ProfileController } from "#controllers/profileController";
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(flexibleAuth);
 
 router
   .route("/master")
-  .get(ProfileController.getMasterProfile)
-  .put(ProfileController.updateMasterProfile);
+  .get(requireApiKeyScopes("resume:read"), ProfileController.getMasterProfile)
+  .put(requireApiKeyScopes("resume:write"), ProfileController.updateMasterProfile);
 
 export default router;

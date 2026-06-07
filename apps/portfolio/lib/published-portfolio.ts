@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { backendApiUrl } from "@/lib/backend";
+import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
 import { parsePortfolioContent, type PortfolioContent } from "@/lib/portfolio";
 
 export interface PublishedPortfolio {
@@ -13,7 +13,10 @@ export const getPublishedPortfolio = cache(
   async (subdomain: string): Promise<PublishedPortfolio | null> => {
     const response = await fetch(
       backendApiUrl(`/portfolios/public/${encodeURIComponent(subdomain)}`, true),
-      { next: { revalidate: 3600, tags: [`portfolio-${subdomain}`] } },
+      {
+        headers: firstPartyServerHeaders(),
+        next: { revalidate: 3600, tags: [`portfolio-${subdomain}`] },
+      },
     );
     if (!response.ok) return null;
     const payload = (await response.json()) as { data?: Partial<PublishedPortfolio> };

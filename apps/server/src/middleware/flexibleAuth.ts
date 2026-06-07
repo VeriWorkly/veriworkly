@@ -5,6 +5,7 @@ import { config, isDevelopment } from "#config";
 import { apiKeyAuth } from "#middleware/apiKeyAuth";
 import { getSessionUserFromRequest } from "#middleware/auth";
 import { apiKeyRateLimit } from "#middleware/apiKeyRateLimit";
+import { isWildcardPortfolioOrigin } from "#middleware/cors";
 
 import { logger } from "#utils/logger";
 
@@ -21,7 +22,9 @@ interface FlexibleAuthOptions {
  *    - Apply API Key Rate Limiting.
  *
  * 2. If no API Key:
- *    - Detect if the request is from a whitelisted origin (our frontend apps).
+ *    - Accept valid session cookies from first-party server-to-server requests,
+ *      even when Origin/Referer headers are absent.
+ *    - Otherwise detect if the request is from a whitelisted origin (our frontend apps).
  *    - If whitelisted:
  *      - Attempt to get Session Auth (sets req.authUser if found) UNLESS skipSession is true.
  *      - Allow the request to continue.
@@ -51,8 +54,11 @@ async function handleFlexibleAuth(
   next: NextFunction,
 ): Promise<void> {
   const apiKeyHeader = req.headers["x-api-key"];
+  const authorizationHeader = req.headers.authorization;
+  const bearerApiKey =
+    typeof authorizationHeader === "string" && /^Bearer\s+\S+/i.test(authorizationHeader);
 
-  if (apiKeyHeader) {
+  if (apiKeyHeader || bearerApiKey) {
     apiKeyAuth(req, res, (err) => {
       if (err) return next(err);
       apiKeyRateLimit(req, res, next);
@@ -86,9 +92,42 @@ async function handleFlexibleAuth(
     }
   }
 
+  if (
+    !options.skipSession &&
+    !origin &&
+    !referer &&
+    req.headers.cookie?.includes("veriworkly-auth")
+  ) {
+    try {
+      const user = await getSessionUserFromRequest(req);
+
+      if (user) {
+        req.authUser = user;
+        next();
+        return;
+      }
+
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+        code: "AUTH_REQUIRED",
+      });
+      return;
+    } catch {
+      res.status(401).json({
+        success: false,
+        message: "Invalid or expired session",
+        code: "AUTH_REQUIRED",
+      });
+      return;
+    }
+  }
+
   const isWhitelisted =
     (parsedOrigin && config.allowedOrigins.includes(parsedOrigin)) ||
     (parsedRefererOrigin && config.allowedOrigins.includes(parsedRefererOrigin)) ||
+    isWildcardPortfolioOrigin(parsedOrigin, config.allowedOrigins) ||
+    isWildcardPortfolioOrigin(parsedRefererOrigin, config.allowedOrigins) ||
     (isDevelopment &&
       (isLocal ||
         (referer && referer.includes("localhost:")) ||
@@ -108,7 +147,7 @@ async function handleFlexibleAuth(
     res.status(401).json({
       success: false,
       message:
-        "Authentication required. For programmatic or documentation access, please provide an API key in the X-API-Key header.",
+        "Authentication required. For programmatic or documentation access, please provide an API key in the X-API-Key header or Authorization bearer token.",
       code: "API_KEY_REQUIRED",
     });
     return;
@@ -124,7 +163,10 @@ async function handleFlexibleAuth(
 
     if (user) {
       req.authUser = user;
+      next();
+      return;
     }
+
     next();
     return;
   } catch {

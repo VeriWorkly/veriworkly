@@ -45,6 +45,24 @@ export function backendApiUrl(path: string) {
   return `${BACKEND_BASE_URL}${normalizedPath}`;
 }
 
+function normalizeHeaders(headers?: HeadersInit) {
+  return Object.fromEntries(new Headers(headers ?? {}).entries());
+}
+
+function firstPartyServerHeaders(headers?: HeadersInit) {
+  const normalizedHeaders = normalizeHeaders(headers);
+
+  if (typeof window !== "undefined") return normalizedHeaders;
+
+  const siteOrigin = process.env.SITE_URL ? new URL(process.env.SITE_URL).origin : "";
+  if (!siteOrigin) return normalizedHeaders;
+
+  return {
+    Origin: siteOrigin,
+    ...normalizedHeaders,
+  };
+}
+
 export async function fetchApiData<T>(
   path: string,
   options: RequestInit & { errorMessage?: string } = {},
@@ -58,7 +76,7 @@ export async function fetchApiData<T>(
     credentials: fetchOptions.credentials ?? "include",
     headers: {
       "Content-Type": "application/json",
-      ...(fetchOptions.headers ?? {}),
+      ...firstPartyServerHeaders(fetchOptions.headers),
     },
   });
 
