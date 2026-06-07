@@ -1,6 +1,18 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+@source "../../../packages/ui/src";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-card: var(--color-panel);
+  --color-border: var(--color-line);
+  --color-accent-foreground: var(--color-accent-ink);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -14,6 +26,7 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
 }
 .surface-grid {
   background-image:
@@ -23,8 +36,18 @@ body {
 }
 .paper-noise {
   background:
-    radial-gradient(circle at 10% 0%, var(--color-accent-soft), transparent 26rem),
+    radial-gradient(circle at 8% 0%, var(--color-accent-soft), transparent 30rem),
     var(--color-paper);
+}
+.proof-grid {
+  background-image:
+    linear-gradient(to right, oklch(100% 0 0 / 8%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(100% 0 0 / 8%) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.brand-shell {
+  width: min(1280px, calc(100% - 48px));
+  margin-inline: auto;
 }
 .reveal {
   animation: reveal var(--dur-slow) var(--ease-out) both;
@@ -73,9 +96,23 @@ textarea:disabled {
   opacity: 0.55;
 }
 h1,
-h2 {
+h2,
+h3 {
   min-width: 0;
   overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+@media (max-width: 640px) {
+  .brand-shell {
+    width: min(100% - 32px, 1280px);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   html,

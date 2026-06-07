@@ -1,6 +1,6 @@
 {
   "name": "@veriworkly/portfolio",
-  "version": "3.12.0",
+  "version": "3.14.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,8 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@veriworkly/ui": "*",
+    "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "next-themes": "^0.4.6",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "zustand": "^5.0.14"

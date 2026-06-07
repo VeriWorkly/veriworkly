@@ -33,7 +33,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ docume
 function PreviewUnavailable() {
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--color-paper)] p-6 text-center">
-      <div className="max-w-sm rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-6">
+      <div className="max-w-sm rounded-[var(--radius-lg)] bg-[var(--color-panel)] p-6 shadow-[0_4px_0_var(--color-line-strong)]">
         <h1 className="text-lg font-extrabold">Preview temporarily unavailable</h1>
         <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
           We could not load this private preview. Return to the workspace and try again after the

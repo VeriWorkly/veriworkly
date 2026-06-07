@@ -15,7 +15,7 @@ export function TemplateFrame() {
           <p className="mb-2 text-[11px] font-extrabold tracking-[.14em] text-[var(--color-accent-soft)] uppercase">
             Template library
           </p>
-          <h2 className="text-[clamp(2.2rem,5vw,4.5rem)] font-medium tracking-[-.065em]">
+          <h2 className="text-[clamp(2.2rem,5vw,4.5rem)] font-black tracking-[-.04em]">
             Choose a voice, not a skin.
           </h2>
         </div>
@@ -56,7 +56,7 @@ export function TemplateFrame() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-panel-18)] bg-[var(--color-panel)] shadow-[0_30px_80px_var(--color-shadow)]">
+        <div className="overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-panel)] shadow-[0_6px_0_var(--color-accent)]">
           <div className="flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] px-4">
             <div>
               <p className="text-sm font-extrabold text-[var(--color-ink)]">{selected.name}</p>

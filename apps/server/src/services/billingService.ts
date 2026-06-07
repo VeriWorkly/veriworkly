@@ -150,58 +150,61 @@ export class BillingService {
     const lockAcquired =
       (await getRedis().set(checkoutLockKey, interval, { NX: true, EX: 600 })) === "OK";
     if (!lockAcquired)
-      throw new ApiError(409, "A billing checkout is already active. Complete it or try again soon.");
+      throw new ApiError(
+        409,
+        "A billing checkout is already active. Complete it or try again soon.",
+      );
 
     try {
-    const productId =
-      interval === "annual"
-        ? config.dodo.annualProductId
-        : interval === "seven_day"
-          ? config.dodo.sevenDayProductId
-          : config.dodo.monthlyProductId;
+      const productId =
+        interval === "annual"
+          ? config.dodo.annualProductId
+          : interval === "seven_day"
+            ? config.dodo.sevenDayProductId
+            : config.dodo.monthlyProductId;
 
-    if (!productId) throw new ApiError(503, "Portfolio billing product is not configured.");
+      if (!productId) throw new ApiError(503, "Portfolio billing product is not configured.");
 
-    const [user, previousSubscription] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId } }),
-      prisma.subscription.findFirst({ where: { userId }, select: { id: true } }),
-    ]);
+      const [user, previousSubscription] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId } }),
+        prisma.subscription.findFirst({ where: { userId }, select: { id: true } }),
+      ]);
 
-    if (!user) throw new ApiError(404, "User not found");
-    if (
-      user.portfolioCanPublish &&
-      (!user.portfolioAccessEndsAt || user.portfolioAccessEndsAt > new Date())
-    )
-      throw new ApiError(409, "You already have an active Portfolio Pro subscription.");
+      if (!user) throw new ApiError(404, "User not found");
+      if (
+        user.portfolioCanPublish &&
+        (!user.portfolioAccessEndsAt || user.portfolioAccessEndsAt > new Date())
+      )
+        throw new ApiError(409, "You already have an active Portfolio Pro subscription.");
 
-    const buildRedirectUrl = (base: string, callback?: string) => {
-      if (!callback) return base;
+      const buildRedirectUrl = (base: string, callback?: string) => {
+        if (!callback) return base;
 
-      try {
-        const url = new URL(base);
-        url.searchParams.set("callbackURL", callback);
+        try {
+          const url = new URL(base);
+          url.searchParams.set("callbackURL", callback);
 
-        return url.toString();
-      } catch {
-        const separator = base.includes("?") ? "&" : "?";
+          return url.toString();
+        } catch {
+          const separator = base.includes("?") ? "&" : "?";
 
-        return `${base}${separator}callbackURL=${encodeURIComponent(callback)}`;
-      }
-    };
+          return `${base}${separator}callbackURL=${encodeURIComponent(callback)}`;
+        }
+      };
 
-    const checkout = await getDodoClient().checkoutSessions.create({
-      product_cart: [{ product_id: productId, quantity: 1 }],
-      customer: { email: user.email, name: user.name || "VeriWorkly User" },
-      metadata: { veriworkly_user_id: userId, veriworkly_product: "portfolio_pro" },
-      ...(interval === "monthly" && !previousSubscription
-        ? { subscription_data: { trial_period_days: 7 } }
-        : {}),
-      return_url: buildRedirectUrl(config.dodo.checkoutReturnUrl, redirectUrl),
-      cancel_url: buildRedirectUrl(config.dodo.checkoutCancelUrl, redirectUrl),
-    });
+      const checkout = await getDodoClient().checkoutSessions.create({
+        product_cart: [{ product_id: productId, quantity: 1 }],
+        customer: { email: user.email, name: user.name || "VeriWorkly User" },
+        metadata: { veriworkly_user_id: userId, veriworkly_product: "portfolio_pro" },
+        ...(interval === "monthly" && !previousSubscription
+          ? { subscription_data: { trial_period_days: 7 } }
+          : {}),
+        return_url: buildRedirectUrl(config.dodo.checkoutReturnUrl, redirectUrl),
+        cancel_url: buildRedirectUrl(config.dodo.checkoutCancelUrl, redirectUrl),
+      });
 
-    if (!checkout.checkout_url)
-      throw new ApiError(502, "Billing provider did not return a checkout URL.");
+      if (!checkout.checkout_url)
+        throw new ApiError(502, "Billing provider did not return a checkout URL.");
 
       return { url: checkout.checkout_url };
     } catch (error) {

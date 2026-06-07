@@ -5,5 +5,9 @@ import { fetchServerApiData } from "@/lib/server-api";
 
 export const metadata: Metadata = { title: "Analytics", robots: { index: false, follow: false } };
 export default async function AnalyticsPage() {
-  return <PortfolioAnalyticsWorkspace analytics={await fetchServerApiData<PortfolioAnalytics>("/portfolios/analytics")} />;
+  return (
+    <PortfolioAnalyticsWorkspace
+      analytics={await fetchServerApiData<PortfolioAnalytics>("/portfolios/analytics")}
+    />
+  );
 }

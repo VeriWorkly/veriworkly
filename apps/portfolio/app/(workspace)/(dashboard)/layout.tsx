@@ -1,5 +1,6 @@
 import { PortfolioAppShell } from "@/components/PortfolioAppShell";
 import { fetchServerApiData } from "@/lib/server-api";
+import type { CloudPortfolioDraft } from "@/lib/portfolio";
 import type { PortfolioWorkspaceBootstrap } from "@/store/portfolio-store";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -8,5 +9,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     fetchServerApiData<PortfolioWorkspaceBootstrap["workspace"]>("/portfolios/me"),
   ]);
 
-  return <PortfolioAppShell user={user} workspace={workspace}>{children}</PortfolioAppShell>;
+  const draft = workspace?.draft as CloudPortfolioDraft | undefined;
+  return (
+    <PortfolioAppShell user={user} draftSlug={draft?.slug}>
+      {children}
+    </PortfolioAppShell>
+  );
 }

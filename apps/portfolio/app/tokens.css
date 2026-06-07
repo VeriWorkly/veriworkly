@@ -1,17 +1,19 @@
 :root {
-  --color-paper: oklch(97.5% 0.006 250);
-  --color-paper-2: oklch(94.5% 0.009 250);
-  --color-panel: oklch(100% 0 0);
-  --color-panel-raised: oklch(99% 0.004 250);
-  --color-ink: oklch(20% 0.012 250);
-  --color-ink-soft: oklch(31% 0.018 250);
-  --color-muted: oklch(49% 0.018 250);
-  --color-line: oklch(20% 0.012 250 / 14%);
-  --color-line-strong: oklch(20% 0.012 250 / 24%);
-  --color-accent: oklch(55% 0.2 258);
-  --color-accent-strong: oklch(46% 0.2 258);
-  --color-accent-soft: oklch(93% 0.035 258);
-  --color-accent-ink: oklch(99% 0.005 258);
+  --color-paper: #f5f4ef;
+  --color-paper-2: #eeede7;
+  --color-panel: #ffffff;
+  --color-panel-raised: oklch(99% 0.003 258);
+  --color-ink: #171717;
+  --color-ink-soft: #33312d;
+  --color-muted: #5f5c54;
+  --color-line: rgb(23 23 23 / 12%);
+  --color-line-strong: rgb(23 23 23 / 22%);
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #dbeafe;
+  --color-accent-ink: #f8fbff;
+  --color-proof: #dbeafe;
+  --color-proof-ink: #1d4ed8;
   --color-success: oklch(52% 0.15 158);
   --color-success-soft: oklch(94% 0.04 158);
   --color-warning: oklch(59% 0.14 68);
@@ -21,8 +23,8 @@
   --color-panel-18: oklch(100% 0 0 / 18%);
   --color-panel-20: oklch(100% 0 0 / 20%);
   --color-panel-22: oklch(100% 0 0 / 22%);
-  --color-shadow: oklch(10% 0.02 250 / 18%);
-  --color-paper-glass: oklch(97.5% 0.006 250 / 90%);
+  --color-shadow: oklch(10% 0.03 258 / 20%);
+  --color-paper-glass: rgb(245 244 239 / 92%);
   --font-body: "Geist", "Inter", Arial, Helvetica, sans-serif;
   --font-display: "Geist", "Inter", Arial, Helvetica, sans-serif;
   --font-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
@@ -37,8 +39,8 @@
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --rule: 1px solid var(--color-line);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
@@ -46,4 +48,24 @@
   --dur-fast: 160ms;
   --dur-medium: 320ms;
   --dur-slow: 700ms;
+}
+.workspace-theme.dark,
+.dark .workspace-theme {
+  --color-paper: #0d1117;
+  --color-paper-2: #0a0e14;
+  --color-panel: #121924;
+  --color-panel-raised: #172131;
+  --color-ink: #f3f4f6;
+  --color-ink-soft: #d6dbe4;
+  --color-muted: #94a3b8;
+  --color-line: rgb(148 163 184 / 24%);
+  --color-line-strong: rgb(148 163 184 / 38%);
+  --color-accent: #60a5fa;
+  --color-accent-strong: #93c5fd;
+  --color-accent-soft: rgb(96 165 250 / 14%);
+  --color-accent-ink: #0f172a;
+  --color-proof: rgb(96 165 250 / 14%);
+  --color-proof-ink: #93c5fd;
+  --color-shadow: rgb(0 0 0 / 40%);
+  --color-paper-glass: rgb(13 17 23 / 92%);
 }

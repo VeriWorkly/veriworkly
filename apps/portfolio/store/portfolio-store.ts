@@ -196,8 +196,7 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
         ? ({ ...cloud, content: parsePortfolioContent(cloud.content) } as CloudPortfolioDraft)
         : null;
       const content = restored?.content ?? createDefaultPortfolio(user ?? undefined);
-      const slug =
-        restored?.slug ?? (normalizeSlug(user?.name || "portfolio") || "portfolio");
+      const slug = restored?.slug ?? (normalizeSlug(user?.name || "portfolio") || "portfolio");
 
       if (restored) savePortfolioCache(restored);
 

@@ -4,6 +4,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
+import { Modal } from "@veriworkly/ui";
 import {
   ArrowDown,
   ArrowUp,
@@ -61,6 +63,7 @@ export function PortfolioEditorWorkspace({
   const save = usePortfolioStore((state) => state.saveDraft);
   const ready = usePortfolioStore((state) => state.ready);
   const sections = usePortfolioStore((state) => state.content.sections);
+  const { resolvedTheme } = useTheme();
   const [selectedSectionId, setSelectedSectionId] = useState("profile");
   const [structureOpen, setStructureOpen] = useState(true);
   const [contentOpen, setContentOpen] = useState(true);
@@ -85,7 +88,9 @@ export function PortfolioEditorWorkspace({
     return () => window.clearInterval(timer);
   }, [save]);
   return (
-    <main className="flex h-dvh min-h-0 flex-col overflow-hidden">
+    <main
+      className={`workspace-theme ${resolvedTheme === "dark" ? "dark" : ""} flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--color-paper-2)] text-[var(--color-ink)]`}
+    >
       <EditorCommandBar />
       <div
         className={`grid min-h-0 flex-1 ${
@@ -136,7 +141,7 @@ export function PortfolioEditorWorkspace({
 function EditorCommandBar() {
   const { slug, status, billing, publication, draft, saveDraft, publish } = usePortfolioStore();
   return (
-    <header className="z-40 grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-panel)] px-3 sm:px-4">
+    <header className="z-40 grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 bg-[#171717] px-3 text-white sm:px-4">
       <Link className="flex items-center gap-2" href="/dashboard">
         <Image src="/veriworkly-logo.png" width={30} height={30} alt="" priority />
         <span className="hidden text-sm font-black sm:block">VeriWorkly</span>
@@ -144,7 +149,7 @@ function EditorCommandBar() {
       <div className="min-w-0 text-center">
         <p className="truncate text-sm font-extrabold">Portfolio editor</p>
         <a
-          className="mx-auto mt-0.5 flex w-fit max-w-full items-center gap-1 text-[11px] font-bold text-[var(--color-muted)]"
+          className="mx-auto mt-0.5 flex w-fit max-w-full items-center gap-1 text-[11px] font-bold text-white/45"
           href={portfolioPublicUrl(slug)}
           target="_blank"
           rel="noreferrer"
@@ -154,12 +159,10 @@ function EditorCommandBar() {
         </a>
       </div>
       <div className="flex items-center justify-end gap-1.5">
-        <span className="hidden text-xs font-bold text-[var(--color-muted)] lg:block">
-          {status}
-        </span>
+        <span className="hidden text-xs font-bold text-white/45 lg:block">{status}</span>
         {draft ? (
           <Link
-            className={`${action} border border-[var(--color-line)] bg-[var(--color-paper)]`}
+            className={`${action} border border-white/15 bg-white/8`}
             href={`/preview/${draft.id}`}
             target="_blank"
           >
@@ -168,13 +171,13 @@ function EditorCommandBar() {
           </Link>
         ) : null}
         <button
-          className={`${action} border border-[var(--color-line)] bg-[var(--color-panel)]`}
+          className={`${action} border border-white/15 bg-white/8`}
           onClick={() => void saveDraft()}
         >
           <Save size={14} /> Save
         </button>
         <button
-          className={`${action} bg-[var(--color-ink)] text-[var(--color-panel)]`}
+          className={`${action} bg-[var(--color-accent)] text-[var(--color-accent-ink)] hover:bg-[var(--color-accent-strong)]`}
           disabled={!billing.canPublish}
           onClick={() => void publish()}
         >
@@ -206,19 +209,21 @@ function StructureRail({
   return (
     <aside className="hidden min-h-0 flex-col overflow-y-auto border-r border-[var(--color-line)] bg-[var(--color-panel)] p-2 lg:flex">
       <button
-        className="group mb-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-ink)] p-2 text-left text-[var(--color-panel)] transition hover:-translate-y-0.5"
+        className="group mb-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-accent)] p-2 text-left text-white transition hover:-translate-y-0.5"
         onClick={onOpenTemplates}
       >
         <span className="grid size-9 place-items-center rounded-lg bg-[var(--color-panel-18)]">
           <Monitor size={15} />
         </span>
         <span className="min-w-0">
-          <span className="block text-[10px] font-extrabold tracking-[.12em] text-[var(--color-panel)]/55 uppercase">
+          <span className="block text-[10px] font-extrabold tracking-[.12em] text-white/60 uppercase">
             Active template
           </span>
-          <span className="mt-0.5 block truncate text-xs font-extrabold capitalize">{templateId}</span>
+          <span className="mt-0.5 block truncate text-xs font-extrabold capitalize">
+            {templateId}
+          </span>
         </span>
-        <span className="text-[10px] font-extrabold text-[var(--color-panel)]/65">Change</span>
+        <span className="text-[10px] font-extrabold text-white/70">Change</span>
       </button>
       <div className="flex items-center justify-between px-2 py-2">
         <h2 className="text-xs font-extrabold">Page structure</h2>
@@ -241,7 +246,7 @@ function StructureRail({
       </div>
       <div className="space-y-1">
         <button
-          className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-2 text-left text-xs font-bold ${selectedSectionId === "profile" ? "bg-[var(--color-ink)] text-[var(--color-panel)]" : "hover:bg-[var(--color-paper)]"}`}
+          className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-2 text-left text-xs font-bold ${selectedSectionId === "profile" ? "bg-[var(--color-accent)] text-[var(--color-accent-ink)]" : "hover:bg-[var(--color-paper)]"}`}
           onClick={() => onSelect("profile")}
         >
           <span className="w-5 text-[10px] opacity-60">00</span>
@@ -250,9 +255,11 @@ function StructureRail({
         {sections.map((section, index) => (
           <div
             key={section.id}
-            className={`group flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-2 ${selectedSectionId === section.id ? "bg-[var(--color-ink)] text-[var(--color-panel)]" : "hover:bg-[var(--color-paper)]"}`}
+            className={`group flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-2 ${selectedSectionId === section.id ? "bg-[var(--color-accent)] text-[var(--color-accent-ink)]" : "hover:bg-[var(--color-paper)]"}`}
           >
-            <span className={`w-5 text-[10px] font-bold tabular-nums ${selectedSectionId === section.id ? "text-[var(--color-panel)]/55" : "text-[var(--color-muted)]"}`}>
+            <span
+              className={`w-5 text-[10px] font-bold tabular-nums ${selectedSectionId === section.id ? "text-[var(--color-accent-ink)]/65" : "text-[var(--color-muted)]"}`}
+            >
               {String(index + 1).padStart(2, "0")}
             </span>
             <button
@@ -261,10 +268,18 @@ function StructureRail({
             >
               {section.title.trim() || `Untitled ${sectionInfo[section.type].label}`}
             </button>
-            <RailButton selected={selectedSectionId === section.id} label="Move up" onClick={() => moveSection(index, -1)}>
+            <RailButton
+              selected={selectedSectionId === section.id}
+              label="Move up"
+              onClick={() => moveSection(index, -1)}
+            >
               <ArrowUp size={12} />
             </RailButton>
-            <RailButton selected={selectedSectionId === section.id} label="Move down" onClick={() => moveSection(index, 1)}>
+            <RailButton
+              selected={selectedSectionId === section.id}
+              label="Move down"
+              onClick={() => moveSection(index, 1)}
+            >
               <ArrowDown size={12} />
             </RailButton>
             <RailButton
@@ -274,7 +289,12 @@ function StructureRail({
             >
               {section.visible ? <Eye size={12} /> : <EyeOff size={12} />}
             </RailButton>
-            <RailButton selected={selectedSectionId === section.id} label="Delete" danger onClick={() => removeSection(section.id)}>
+            <RailButton
+              selected={selectedSectionId === section.id}
+              label="Delete"
+              danger
+              onClick={() => removeSection(section.id)}
+            >
               <Trash2 size={12} />
             </RailButton>
           </div>
@@ -444,7 +464,8 @@ function ContentCanvas({
 
 function SectionEditor({ section }: { section: PortfolioSection }) {
   const updateSection = usePortfolioStore((state) => state.updateSection);
-  const replaceItems = (items: Array<Record<string, unknown>>) => updateSection(section.id, { items });
+  const replaceItems = (items: Array<Record<string, unknown>>) =>
+    updateSection(section.id, { items });
   const updateItem = (index: number, patch: Record<string, unknown>) =>
     replaceItems(section.items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   const moveItem = (index: number, direction: -1 | 1) => {
@@ -482,13 +503,27 @@ function SectionEditor({ section }: { section: PortfolioSection }) {
                 Item {String(index + 1).padStart(2, "0")}
               </span>
               <div className="flex items-center gap-1">
-                <ItemAction label="Move item up" disabled={index === 0} onClick={() => moveItem(index, -1)}>
+                <ItemAction
+                  label="Move item up"
+                  disabled={index === 0}
+                  onClick={() => moveItem(index, -1)}
+                >
                   <ArrowUp size={13} />
                 </ItemAction>
-                <ItemAction label="Move item down" disabled={index === section.items.length - 1} onClick={() => moveItem(index, 1)}>
+                <ItemAction
+                  label="Move item down"
+                  disabled={index === section.items.length - 1}
+                  onClick={() => moveItem(index, 1)}
+                >
                   <ArrowDown size={13} />
                 </ItemAction>
-                <ItemAction label="Delete item" danger onClick={() => replaceItems(section.items.filter((_, itemIndex) => itemIndex !== index))}>
+                <ItemAction
+                  label="Delete item"
+                  danger
+                  onClick={() =>
+                    replaceItems(section.items.filter((_, itemIndex) => itemIndex !== index))
+                  }
+                >
                   <Trash2 size={13} />
                 </ItemAction>
               </div>
@@ -668,7 +703,7 @@ function PreviewStage({
               )
             }
             style={{ width }}
-            className="h-full min-h-[640px] shrink-0 border-0 bg-white shadow-[0_20px_70px_var(--color-shadow)] transition-[width] duration-300"
+            className="h-full min-h-[640px] shrink-0 border-0 bg-white shadow-[0_6px_18px_var(--color-shadow)] transition-[width] duration-300"
           />
         ) : (
           <div className="grid h-full w-full place-items-center text-center text-xs font-bold text-[var(--color-muted)]">
@@ -684,23 +719,19 @@ function TemplatePicker({ open, onClose }: { open: boolean; onClose: () => void 
   const activeTemplateId = usePortfolioStore((state) => state.content.templateId);
   const updateContent = usePortfolioStore((state) => state.updateContent);
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[oklch(10%_0.02_250_/_55%)] p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Choose portfolio template"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div className="flex max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-panel)] shadow-2xl">
+    <Modal open={open} onClose={onClose}>
+      <Modal.Content
+        titleId="template-picker-title"
+        descriptionId="template-picker-description"
+        className="workspace-theme flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-5xl flex-col overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-panel)] p-0"
+      >
         <header className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
           <div>
-            <h2 className="text-base font-extrabold">Choose a template</h2>
-            <p className="mt-1 text-xs text-[var(--color-muted)]">
+            <h2 id="template-picker-title" className="text-base font-extrabold">
+              Choose a template
+            </h2>
+            <p id="template-picker-description" className="mt-1 text-xs text-[var(--color-muted)]">
               Preview the complete layout before applying it.
             </p>
           </div>
@@ -743,8 +774,8 @@ function TemplatePicker({ open, onClose }: { open: boolean; onClose: () => void 
             </button>
           ))}
         </div>
-      </div>
-    </div>
+      </Modal.Content>
+    </Modal>
   );
 }
 
@@ -851,7 +882,7 @@ function WorkspaceNotice() {
   const message = usePortfolioStore((state) => state.message);
   return message ? (
     <p
-      className="fixed right-4 bottom-4 z-50 max-w-sm rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-ink)] px-4 py-3 text-xs font-bold text-[var(--color-panel)] shadow-xl"
+      className="fixed right-4 bottom-4 z-50 max-w-sm rounded-[var(--radius-sm)] bg-[#171717] px-4 py-3 text-xs font-bold text-white shadow-xl"
       role="status"
     >
       {message}
