@@ -22,10 +22,13 @@ export function PortfolioAppShell({
 }) {
   const initials = getInitials(user?.name || user?.email || "Portfolio user");
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { resolvedTheme } = useTheme();
+  const isDark = mounted && resolvedTheme === "dark";
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
+      setMounted(true);
       setCollapsed(window.localStorage.getItem("portfolio-sidebar-collapsed") === "true");
     });
     return () => window.cancelAnimationFrame(frame);
@@ -39,7 +42,7 @@ export function PortfolioAppShell({
 
   return (
     <div
-      className={`workspace-theme ${resolvedTheme === "dark" ? "dark" : ""} min-h-dvh bg-[var(--color-paper)] text-[var(--color-ink)] lg:grid ${collapsed ? "lg:grid-cols-[4.75rem_minmax(0,1fr)]" : "lg:grid-cols-[16rem_minmax(0,1fr)]"}`}
+      className={`workspace-theme ${isDark ? "dark" : ""} min-h-dvh bg-[var(--color-paper)] text-[var(--color-ink)] lg:grid ${collapsed ? "lg:grid-cols-[4.75rem_minmax(0,1fr)]" : "lg:grid-cols-[16rem_minmax(0,1fr)]"}`}
     >
       <aside className="hidden border-r border-[var(--color-line)] bg-[var(--color-panel)] lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
         <div

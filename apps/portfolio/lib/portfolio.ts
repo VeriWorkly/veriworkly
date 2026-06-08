@@ -129,23 +129,23 @@ export const demoPortfolio: PortfolioContent = {
   schemaVersion: 1,
   templateId: "signal",
   identity: {
-    name: "Avery Morgan",
-    email: "hello@averymorgan.dev",
-    headline: "Product engineer turning complex systems into calm software.",
-    bio: "I design and build digital products for teams working through operational complexity. My practice combines product thinking, interface design, and frontend engineering.",
-    location: "Brooklyn, New York",
+    name: "Gautam Raj",
+    email: "info@veriworkly.com",
+    headline: "Builder shaping VeriWorkly into useful public tools.",
+    bio: "I build VeriWorkly across resumes, portfolios, docs, publishing, and product workflows. The work focuses on practical tools that help people present proof, move faster, and stay in control of their data.",
+    location: "India",
     availability: "Available for selected collaborations",
     avatar: null,
   },
   seo: {
-    title: "Avery Morgan | Product engineer",
-    description: "Selected product engineering work by Avery Morgan.",
+    title: "Gautam Raj | Builder of VeriWorkly",
+    description: "Selected product and engineering work by Gautam Raj, builder of VeriWorkly.",
     socialImage: null,
   },
   socialLinks: [
-    { id: "linkedin", label: "LinkedIn", url: "https://www.linkedin.com" },
-    { id: "github", label: "GitHub", url: "https://github.com" },
-    { id: "writing", label: "Writing", url: "https://example.com" },
+    { id: "linkedin", label: "LinkedIn", url: "https://linkedin.com/company/veriworkly" },
+    { id: "github", label: "GitHub", url: "https://github.com/VeriWorkly/veriworkly" },
+    { id: "writing", label: "VeriWorkly", url: "https://veriworkly.com" },
   ],
   sections: [
     {
@@ -156,27 +156,27 @@ export const demoPortfolio: PortfolioContent = {
       items: [
         {
           id: "project-1",
-          title: "Field Notes",
+          title: "VeriWorkly Portfolio",
           summary:
-            "A planning workspace that helps distributed product teams turn research into clear delivery decisions.",
+            "A portfolio builder that turns one focused form into a live website with template switching, metadata controls, and subdomain publishing.",
           year: "2026",
-          tags: ["Product design", "Frontend", "Systems"],
+          tags: ["Portfolio builder", "Next.js", "Publishing"],
         },
         {
           id: "project-2",
-          title: "Northline",
+          title: "VeriWorkly Resume",
           summary:
-            "A service operations platform redesigned around the daily decisions of dispatch teams and field managers.",
+            "A privacy-first resume builder with ATS-friendly templates, real-time editing, and export-ready document workflows.",
           year: "2025",
-          tags: ["UX strategy", "Design system"],
+          tags: ["Resume builder", "Templates", "Privacy"],
         },
         {
           id: "project-3",
-          title: "Ledger",
+          title: "VeriWorkly Docs",
           summary:
-            "A focused financial reporting experience for independent studios that need clarity without accounting overhead.",
+            "A document platform for clear public resources, product education, and structured documentation around the VeriWorkly ecosystem.",
           year: "2024",
-          tags: ["Research", "React", "Data"],
+          tags: ["Docs", "Content system", "Product"],
         },
       ],
     },
@@ -188,17 +188,17 @@ export const demoPortfolio: PortfolioContent = {
       items: [
         {
           id: "experience-1",
-          title: "Independent product engineer",
+          title: "Builder - VeriWorkly",
           summary:
-            "Partnering with early-stage teams on product strategy, interface systems, and production frontend builds.",
-          year: "2023 — now",
+            "Designing and engineering the VeriWorkly product ecosystem across portfolio, resume, docs, blog, and publishing surfaces.",
+          year: "2023 - now",
         },
         {
           id: "experience-2",
-          title: "Senior product designer · Northstar",
+          title: "Product engineer",
           summary:
-            "Led the design system and core workflow redesign for a multi-product operations platform.",
-          year: "2020 — 2023",
+            "Building practical interfaces, editor workflows, template systems, and production web applications.",
+          year: "2020 - 2023",
         },
       ],
     },
@@ -210,14 +210,14 @@ export const demoPortfolio: PortfolioContent = {
       items: [
         {
           id: "service-1",
-          title: "Product direction",
+          title: "Product building",
           summary:
-            "Clarify the problem, shape the experience, and define the smallest useful release.",
+            "Shape useful product workflows from idea to shipped interface.",
         },
         {
           id: "service-2",
-          title: "Interface systems",
-          summary: "Build a reusable visual language that remains coherent as the product grows.",
+          title: "Publishing systems",
+          summary: "Build reusable content, template, and website systems that can grow cleanly.",
         },
       ],
     },
@@ -229,15 +229,15 @@ export const demoPortfolio: PortfolioContent = {
       items: [
         {
           id: "skill-1",
-          title: "Design and research",
+          title: "Product and interface",
           summary:
-            "Product strategy, interface design, prototyping, usability testing, design systems.",
+            "Product strategy, interface design, frontend systems, and practical workflow design.",
         },
         {
           id: "skill-2",
           title: "Engineering",
           summary:
-            "React, Next.js, TypeScript, accessible component systems, frontend architecture.",
+            "Next.js, React, TypeScript, accessible component systems, and production frontend architecture.",
         },
       ],
     },
@@ -249,15 +249,15 @@ export const demoPortfolio: PortfolioContent = {
       items: [
         {
           id: "writing-1",
-          title: "Designing for the decision",
+          title: "Designing builders into public proof",
           summary:
-            "Why the best workflow interfaces reduce interpretation before they reduce clicks.",
+            "How portfolio tools can turn structured information into trust quickly.",
           year: "2026",
         },
         {
           id: "writing-2",
-          title: "A smaller, stronger design system",
-          summary: "How product teams can choose consistency without flattening every interaction.",
+          title: "One profile, many surfaces",
+          summary: "Why reusable content matters across resumes, portfolios, docs, and product pages.",
           year: "2025",
         },
       ],
@@ -270,15 +270,15 @@ export const demoPortfolio: PortfolioContent = {
       items: [
         {
           id: "testimonial-1",
-          title: "Mina Patel · Northline",
+          title: "VeriWorkly user",
           summary:
-            "Avery made a complicated product feel obvious without making it simplistic. The work changed how our team makes decisions.",
+            "The builder makes a complicated publishing workflow feel direct without hiding the important controls.",
         },
         {
           id: "testimonial-2",
-          title: "Jon Bell · Field Notes",
+          title: "Early product collaborator",
           summary:
-            "The rare partner who can move from product framing to a production interface without losing the thread.",
+            "Gautam can move from product framing to production interface without losing the thread.",
         },
       ],
     },
@@ -290,8 +290,8 @@ export const demoPortfolio: PortfolioContent = {
       items: [
         {
           id: "award-1",
-          title: "Independent Site of the Day",
-          summary: "Field Notes product story.",
+          title: "VeriWorkly portfolio launch",
+          summary: "Public portfolio builder with template switching and subdomain publishing.",
           year: "2026",
         },
       ],

@@ -6,6 +6,8 @@ import { getPublishedPortfolio } from "@/lib/published-portfolio";
 import { renderTemplate } from "@/templates/runtime/registry";
 import { PublicViewTracker } from "@/components/PublicViewTracker";
 
+export const revalidate = 3600;
+
 export async function generateMetadata({
   params,
 }: {

@@ -2,7 +2,7 @@
 
 ## Visual Theme
 
-Public surfaces use a proof-studio direction: oversized but controlled typography, dark ink fields, cobalt actions, lime proof markers, and large live portfolio previews. Authenticated surfaces use a quieter VeriWorkly workbench with cool white layers and compact controls.
+Public surfaces use a proof-studio direction: oversized but controlled typography, dark ink fields, VeriWorkly blue actions and proof markers, and large live portfolio previews. Authenticated surfaces use a quieter VeriWorkly workbench with cool white layers and compact controls.
 
 ## Color Palette
 

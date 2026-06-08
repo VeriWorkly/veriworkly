@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, ExternalLink, Globe2 } from "lucide-react";
 
 import {
   templateSummaries,
@@ -13,7 +13,7 @@ import { siteConfig } from "@/config/site";
 
 import { Button, Container } from "@veriworkly/ui";
 
-import { buildEditorUrl } from "../../components/utils";
+import { buildEditorUrl, buildPreviewUrl } from "../../components/utils";
 import { TemplateDetailHeader } from "../../components/TemplateHeader";
 
 type PageProps = {
@@ -71,6 +71,30 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
   if (!docTypeData || !template) notFound();
 
   const editorUrl = buildEditorUrl(template);
+  const previewUrl = buildPreviewUrl(template);
+  const isPortfolioTemplate = template.documentType === "portfolio-website";
+  const designPrinciples = isPortfolioTemplate
+    ? [
+        "The template behaves like a real public website rather than a static document preview.",
+        "The same portfolio profile can move between website templates without losing content.",
+        "The hierarchy is tuned for proof first: opening claim, project scan, and clear contact path.",
+      ]
+    : [
+        "The template is designed around the first human scan before decorative detail.",
+        "Spacing and hierarchy keep exported pages readable, credible, and easy to compare.",
+        "The system balances visual distinction with safe structure for the document type.",
+      ];
+  const implementationNotes = isPortfolioTemplate
+    ? [
+        "Supports public VeriWorkly subdomain publishing.",
+        "Works with portfolio metadata controls for title, description, and sharing.",
+        "Uses the same portfolio content model as other website templates, so switching does not erase content.",
+      ]
+    : [
+        "Exports from the document editor using production template assets.",
+        "Keeps typography and spacing consistent with the selected document family.",
+        "Uses editor-ready content regions rather than flat image-only previews.",
+      ];
 
   return (
     <Container className="space-y-14 pt-28 pb-16 lg:pt-36">
@@ -80,8 +104,14 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
         <div className="border-border bg-card/70 overflow-hidden rounded-3xl border shadow-[0_34px_110px_-80px_rgba(15,23,42,0.85)]">
           <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
             <div>
-              <p className="text-foreground text-sm font-semibold">Full document preview</p>
-              <p className="text-muted text-xs">Rendered from the production template asset</p>
+              <p className="text-foreground text-sm font-semibold">
+                {isPortfolioTemplate ? "Live website preview" : "Full document preview"}
+              </p>
+              <p className="text-muted text-xs">
+                {isPortfolioTemplate
+                  ? "Open the production portfolio route for the full scrollable page"
+                  : "Rendered from the production template asset"}
+              </p>
             </div>
 
             <span
@@ -98,16 +128,45 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
               aria-hidden="true"
             />
 
-            <div className="border-border relative aspect-8.5/11 h-152 max-h-[78vh] overflow-hidden rounded-sm border bg-white shadow-[0_34px_90px_-48px_rgba(15,23,42,0.9)]">
-              <Image
-                fill
-                priority
-                src={template.previewImage}
-                alt={`${template.name} ${template.documentTypeLabel.toLowerCase()} template preview`}
-                sizes="(min-width: 1024px) 620px, 92vw"
-                className="object-contain object-top"
-              />
-            </div>
+            {isPortfolioTemplate ? (
+              <div className="border-border relative h-152 w-full max-w-3xl overflow-hidden rounded-3xl border bg-white shadow-[0_34px_90px_-48px_rgba(15,23,42,0.9)]">
+                <div className="border-border flex h-12 items-center justify-between border-b px-4 text-xs font-semibold">
+                  <span>{template.editorTemplateId}.veriworkly.com</span>
+                  <Globe2 className="text-accent h-4 w-4" aria-hidden="true" />
+                </div>
+                <div className="bg-background relative min-h-full overflow-hidden p-8">
+                  <div
+                    className="bg-accent/20 absolute top-10 right-10 h-48 w-48 rounded-full blur-3xl"
+                    aria-hidden="true"
+                  />
+                  <p className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">
+                    Gautam Raj / VeriWorkly
+                  </p>
+                  <h3 className="text-foreground mt-8 max-w-xl text-6xl leading-none font-semibold tracking-[-0.07em]">
+                    Building products with proof, story, and public presence.
+                  </h3>
+                  <div className="mt-12 grid gap-3 md:grid-cols-3">
+                    {["Portfolio Builder", "Resume Tools", "Publishing System"].map((item) => (
+                      <div key={item} className="border-border bg-card rounded-2xl border p-4">
+                        <span className="bg-accent block h-2 w-12 rounded-full" />
+                        <p className="text-foreground mt-8 text-sm font-semibold">{item}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="border-border relative aspect-8.5/11 h-152 max-h-[78vh] overflow-hidden rounded-sm border bg-white shadow-[0_34px_90px_-48px_rgba(15,23,42,0.9)]">
+                <Image
+                  fill
+                  priority
+                  src={template.previewImage}
+                  alt={`${template.name} ${template.documentTypeLabel.toLowerCase()} template preview`}
+                  sizes="(min-width: 1024px) 620px, 92vw"
+                  className="object-contain object-top"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -153,10 +212,18 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
 
           <Button asChild size="lg" variant="primary" className="h-13 w-full rounded-full px-6">
             <Link href={editorUrl}>
-              Use This Template
+              {isPortfolioTemplate ? "Use in Portfolio Builder" : "Use This Template"}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </Button>
+          {previewUrl && (
+            <Button asChild size="lg" variant="secondary" className="h-13 w-full rounded-full px-6">
+              <a href={previewUrl}>
+                Open Live Preview
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </Button>
+          )}
         </aside>
       </section>
 
@@ -194,6 +261,39 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
             </div>
           ))}
         </div>
+      </section>
+
+      <section
+        className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
+        aria-label="Design briefing"
+      >
+        <div className="border-border bg-card/75 rounded-3xl border p-6">
+          <p className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">
+            Design direction
+          </p>
+          <h2 className="text-foreground mt-4 text-3xl font-semibold tracking-tight">
+            What the template is trying to communicate
+          </h2>
+          <p className="text-muted mt-4 text-sm leading-7">{template.designVision}</p>
+        </div>
+
+        <div className="border-border bg-border grid overflow-hidden rounded-3xl border md:grid-cols-3">
+          {designPrinciples.map((principle) => (
+            <div className="bg-card p-5" key={principle}>
+              <CheckCircle2 className="text-accent h-5 w-5" aria-hidden="true" />
+              <p className="text-muted mt-5 text-sm leading-6">{principle}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-3" aria-label="Implementation notes">
+        {implementationNotes.map((note) => (
+          <div className="border-border bg-card/70 rounded-2xl border p-5" key={note}>
+            <p className="text-foreground text-sm font-semibold">Template behavior</p>
+            <p className="text-muted mt-3 text-sm leading-6">{note}</p>
+          </div>
+        ))}
       </section>
 
       <section className="space-y-5" aria-label="Template structure">

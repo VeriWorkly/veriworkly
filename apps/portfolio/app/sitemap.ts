@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { portfolioPublicUrl, portfolioSiteConfig } from "@/config/site";
-import { backendApiUrl } from "@/lib/backend";
+import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
 
 export const revalidate = 3600;
 
@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   try {
     const response = await fetch(backendApiUrl("/portfolios/public", true), {
+      headers: firstPartyServerHeaders(),
       next: { revalidate, tags: ["portfolios-list"] },
     });
     if (!response.ok) return routes;

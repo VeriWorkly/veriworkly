@@ -1,10 +1,13 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 
 import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
 
-export async function fetchServerApiData<T>(path: string): Promise<T | null> {
+export const fetchServerApiData = cache(async function fetchServerApiData<T>(
+  path: string,
+): Promise<T | null> {
   try {
     const response = await fetch(backendApiUrl(path, true), {
       headers: firstPartyServerHeaders({ Cookie: (await cookies()).toString() }),
@@ -18,4 +21,4 @@ export async function fetchServerApiData<T>(path: string): Promise<T | null> {
   } catch {
     return null;
   }
-}
+});
