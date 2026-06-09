@@ -3,7 +3,7 @@
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--color-paper)] p-6 text-center">
-      <div className="max-w-md rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-7">
+      <div className="max-w-md rounded-xl border border-[var(--color-line)] bg-white p-7">
         <p className="text-[11px] font-extrabold tracking-[.14em] text-[var(--color-accent)] uppercase">
           Temporary issue
         </p>

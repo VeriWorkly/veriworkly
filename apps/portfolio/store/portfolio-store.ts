@@ -26,10 +26,15 @@ export type WorkspaceState = "loading" | "ready" | "error";
 export type Publication = { subdomain: string; status: "LIVE" | "GRACE" | "SUSPENDED" } | null;
 export type Billing = { canPublish: boolean; status: string; graceEndsAt?: string | null };
 export type EditorPanel = "profile" | "sections" | "style" | "sharing";
+export type PortfolioAnalyticsData = {
+  totalViews: number;
+  daily: Array<{ date: string; count: number }>;
+  referrers: Array<{ host: string; count: number }>;
+};
 export type PortfolioWorkspaceBootstrap = {
   user: { name?: string | null; email?: string | null } | null;
   workspace: { draft?: unknown; publication?: Publication; billing?: Billing } | null;
-  analytics: { totalViews?: number } | null;
+  analytics: PortfolioAnalyticsData | null;
 };
 
 async function fetchPayload(path: string, fallbackMessage: string, init?: RequestInit) {
@@ -46,6 +51,8 @@ interface PortfolioStoreState {
   publication: Publication;
   billing: Billing;
   analytics: number;
+  user: { name?: string | null; email?: string | null } | null;
+  analyticsData: PortfolioAnalyticsData | null;
   status: SaveStatus;
   message: string;
   ready: boolean;
@@ -94,6 +101,8 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
     publication: null,
     billing: { canPublish: false, status: "INACTIVE" },
     analytics: 0,
+    user: null,
+    analyticsData: null,
     status: "Saved",
     message: "",
     ready: false,
@@ -201,12 +210,14 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
       if (restored) savePortfolioCache(restored);
 
       set({
+        user,
         draft: restored,
         content,
         slug,
         publication: workspace?.publication ?? null,
         billing: workspace?.billing ?? { canPublish: false, status: "INACTIVE" },
         analytics: analytics?.totalViews ?? 0,
+        analyticsData: analytics,
         message: workspace ? "" : "Could not load your portfolio workspace.",
         previewIssue: "",
         workspaceState: workspace ? "ready" : "error",
@@ -230,6 +241,8 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
             () => null,
           ),
         ]);
+        const user = userPayload?.data ?? null;
+        const analytics = analyticsPayload?.data ?? null;
         const cloud = portfolioPayload?.data?.draft;
         if (cloud) {
           const restored = {
@@ -243,16 +256,18 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
           });
           savePortfolioCache(restored);
         } else if (!cached) {
-          const seeded = createDefaultPortfolio(userPayload?.data);
+          const seeded = createDefaultPortfolio(user);
           set({
             content: seeded,
-            slug: normalizeSlug(userPayload?.data?.name || "portfolio") || "portfolio",
+            slug: normalizeSlug(user?.name || "portfolio") || "portfolio",
           });
         }
         set({
+          user,
           publication: portfolioPayload?.data?.publication ?? null,
           billing: portfolioPayload?.data?.billing ?? { canPublish: false, status: "INACTIVE" },
-          analytics: analyticsPayload?.data?.totalViews ?? 0,
+          analytics: analytics?.totalViews ?? 0,
+          analyticsData: analytics,
           message: "",
           workspaceState: "ready",
           ready: true,

@@ -211,8 +211,7 @@ export const demoPortfolio: PortfolioContent = {
         {
           id: "service-1",
           title: "Product building",
-          summary:
-            "Shape useful product workflows from idea to shipped interface.",
+          summary: "Shape useful product workflows from idea to shipped interface.",
         },
         {
           id: "service-2",
@@ -250,14 +249,14 @@ export const demoPortfolio: PortfolioContent = {
         {
           id: "writing-1",
           title: "Designing builders into public proof",
-          summary:
-            "How portfolio tools can turn structured information into trust quickly.",
+          summary: "How portfolio tools can turn structured information into trust quickly.",
           year: "2026",
         },
         {
           id: "writing-2",
           title: "One profile, many surfaces",
-          summary: "Why reusable content matters across resumes, portfolios, docs, and product pages.",
+          summary:
+            "Why reusable content matters across resumes, portfolios, docs, and product pages.",
           year: "2025",
         },
       ],

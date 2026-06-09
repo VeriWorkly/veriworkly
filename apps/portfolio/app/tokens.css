@@ -1,4 +1,4 @@
-:root {
+@theme {
   --color-paper: #f5f4ef;
   --color-paper-2: #eeede7;
   --color-panel: #ffffff;
@@ -25,9 +25,11 @@
   --color-panel-22: oklch(100% 0 0 / 22%);
   --color-shadow: oklch(10% 0.03 258 / 20%);
   --color-paper-glass: rgb(245 244 239 / 92%);
+
   --font-body: "Geist", "Inter", Arial, Helvetica, sans-serif;
   --font-display: "Geist", "Inter", Arial, Helvetica, sans-serif;
   --font-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -36,11 +38,13 @@
   --space-2xl: 48px;
   --space-3xl: 72px;
   --space-4xl: 112px;
+
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+
   --rule: 1px solid var(--color-line);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
@@ -49,8 +53,8 @@
   --dur-medium: 320ms;
   --dur-slow: 700ms;
 }
-.workspace-theme.dark,
-.dark .workspace-theme {
+
+.dark {
   --color-paper: #0d1117;
   --color-paper-2: #0a0e14;
   --color-panel: #121924;

@@ -1,0 +1,17 @@
+# VeriWorkly Portfolio
+
+> Build and publish a professional developer or designer portfolio website in minutes on your own VeriWorkly subdomain.
+
+## Core Features
+- **One Reusable Content Model**: Fill your profile once, switch visual templates freely without losing content.
+- **Signal Template**: A precise, proof-first portfolio optimized for product engineers and technical builders.
+- **Atelier Template**: An editorial, case-study first layout for designers, creative builders, and visual storytellers.
+- **Private Draft Workflow**: Edit and preview your drafts before publishing.
+- **SEO & Social Metadata**: Customize page titles, meta descriptions, and sharing parameters for search engine optimization and generative engine optimization.
+- **Analytics**: Built-in page view and referrer analytics.
+
+## Links
+- [Landing page](https://portfolio.veriworkly.com)
+- [Pricing details](https://portfolio.veriworkly.com/pricing)
+- [Templates catalog](https://portfolio.veriworkly.com/templates)
+- [Workspace Dashboard](https://portfolio.veriworkly.com/dashboard)
