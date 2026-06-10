@@ -24,6 +24,10 @@ async function fetchInitialApiKeys() {
     const requestHeaders = await headers();
     const cookie = requestHeaders.get("cookie");
 
+    if (!cookie?.includes("veriworkly-auth")) {
+      return { keys: [] as ApiKeyRecord[], pagination: null, loaded: true };
+    }
+
     const response = await fetch(backendApiUrl("/api-keys"), {
       method: "GET",
       cache: "no-store",
@@ -56,6 +60,7 @@ function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string;
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
+
       <p className="mt-2 text-2xl font-black">{value}</p>
     </div>
   );

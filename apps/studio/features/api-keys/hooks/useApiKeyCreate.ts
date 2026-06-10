@@ -9,6 +9,8 @@ import type { GeneratedApiKeyRecord } from "../components/ApiKeyTypes";
 
 import { API_KEY_SCOPE_OPTIONS, AVAILABLE_API_KEY_SCOPES } from "../components/ApiKeyScopes";
 
+import { useUserStore } from "@/store/useUserStore";
+
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 const DEFAULT_SELECTED_SCOPES = ["user:read"];
@@ -19,6 +21,8 @@ function resolveErrorMessage(error: unknown) {
 }
 
 export function useApiKeyCreate() {
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
   const [name, setName] = useState("");
   const [rateLimit, setRateLimit] = useState(20);
 
@@ -46,6 +50,11 @@ export function useApiKeyCreate() {
 
   const createKey = async (event: FormEvent) => {
     event.preventDefault();
+
+    if (!isLoggedIn) {
+      toast.error("Sign in to create an API key.");
+      return;
+    }
 
     if (!name.trim() || selectedScopes.length === 0) return;
 
@@ -95,7 +104,7 @@ export function useApiKeyCreate() {
     selectedScopes,
     selectedScopeDetails,
     generatedKey,
-    canSubmit: Boolean(name.trim() && selectedScopes.length > 0 && !creating),
+    canSubmit: Boolean(isLoggedIn && name.trim() && selectedScopes.length > 0 && !creating),
     setName,
     setRateLimit,
     setExpiresAt,

@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Input, Badge, Button } from "@veriworkly/ui";
 
@@ -14,11 +14,16 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 
 const LoginPage = () => {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sentTo, setSentTo] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleGuestAccess = () => {
+    router.push("/");
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -97,9 +102,12 @@ const LoginPage = () => {
 
       <p className="text-muted text-center text-xs md:text-sm">
         Want to continue immediately?
-        <Link href="/" className="text-foreground ml-1 font-semibold hover:opacity-80">
+        <button
+          onClick={handleGuestAccess}
+          className="text-foreground ml-1 font-semibold hover:opacity-80"
+        >
           Open Dashboard (No Login)
-        </Link>
+        </button>
       </p>
     </AuthCard>
   );

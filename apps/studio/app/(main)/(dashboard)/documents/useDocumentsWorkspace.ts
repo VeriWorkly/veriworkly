@@ -23,11 +23,15 @@ import { DocumentApi } from "@/features/documents/services/document-api";
 import { deleteResumeById } from "@/features/resume/services/resume-service";
 import { deleteDocument } from "@/features/documents/services/document-workspace-service";
 
+import { useUserStore } from "@/store/useUserStore";
+
 export type ViewMode = "grid" | "list";
 export type SortMode = "updated" | "title";
 export type DocumentTypeFilter = DocumentType | "ALL";
 
 export function useDocumentsWorkspace() {
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortMode, setSortMode] = useState<SortMode>("updated");
 
@@ -77,6 +81,11 @@ export function useDocumentsWorkspace() {
 
   const handleSyncNow = useCallback(
     async (id: string) => {
+      if (!isLoggedIn) {
+        toast.error("Sign in to sync documents with the cloud.");
+        return;
+      }
+
       const target = docs.find((doc) => doc.id === id);
       if (!target) return;
 
@@ -89,7 +98,7 @@ export function useDocumentsWorkspace() {
       setSyncingDocumentId(null);
       bump();
     },
-    [bump, docs],
+    [bump, docs, isLoggedIn],
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -133,6 +142,11 @@ export function useDocumentsWorkspace() {
 
   const handleResolveUseCloud = useCallback(
     async (id: string) => {
+      if (!isLoggedIn) {
+        toast.error("Sign in to restore a document from the cloud.");
+        return;
+      }
+
       const target = docs.find((doc) => doc.id === id);
       if (!target) return;
 
@@ -145,11 +159,16 @@ export function useDocumentsWorkspace() {
       setSyncingDocumentId(null);
       bump();
     },
-    [bump, docs],
+    [bump, docs, isLoggedIn],
   );
 
   const handleResolveUseLocal = useCallback(
     async (id: string) => {
+      if (!isLoggedIn) {
+        toast.error("Sign in to sync documents with the cloud.");
+        return;
+      }
+
       const target = docs.find((doc) => doc.id === id);
       if (!target) return;
 
@@ -162,7 +181,7 @@ export function useDocumentsWorkspace() {
       setSyncingDocumentId(null);
       bump();
     },
-    [bump, docs],
+    [bump, docs, isLoggedIn],
   );
 
   return {

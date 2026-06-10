@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, CreditCard, LogOut, User, Settings } from "lucide-react";
+import { ChevronDown, CreditCard, LogIn, LogOut, User, UserRound, Settings } from "lucide-react";
 
 import { signOutCurrentUser } from "@/features/auth/services/current-user";
 
@@ -29,7 +29,7 @@ export function AccountMenu({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const { logout } = useUserStore();
+  const { logout, isLoggedIn } = useUserStore();
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -66,8 +66,17 @@ export function AccountMenu({
           role="menu"
         >
           <div className="border-border/70 flex items-center gap-3 border-b px-2 py-2.5">
-            <span className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
-              {displayName.slice(0, 1).toUpperCase()}
+            <span
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
+                isLoggedIn ? "bg-accent/10 text-accent" : "bg-muted/30 text-muted",
+              )}
+            >
+              {isLoggedIn ? (
+                displayName.slice(0, 1).toUpperCase()
+              ) : (
+                <UserRound className="h-5 w-5" />
+              )}
             </span>
 
             <span className="min-w-0">
@@ -76,21 +85,25 @@ export function AccountMenu({
             </span>
           </div>
 
-          <AccountMenuItem
-            icon={User}
-            label="Profile"
-            onClick={() => {
-              router.push("/profile");
-            }}
-          />
+          {isLoggedIn ? (
+            <>
+              <AccountMenuItem
+                icon={User}
+                label="Profile"
+                onClick={() => {
+                  router.push("/profile");
+                }}
+              />
 
-          <AccountMenuItem
-            icon={CreditCard}
-            label="Billing"
-            onClick={() => {
-              router.push("/billing");
-            }}
-          />
+              <AccountMenuItem
+                icon={CreditCard}
+                label="Billing"
+                onClick={() => {
+                  router.push("/billing");
+                }}
+              />
+            </>
+          ) : null}
 
           <AccountMenuItem
             icon={Settings}
@@ -102,7 +115,17 @@ export function AccountMenu({
 
           <AccountMenuTheme setOpen={setOpen} />
 
-          <AccountMenuItem danger icon={LogOut} label="Logout" onClick={handleLogout} />
+          {isLoggedIn ? (
+            <AccountMenuItem danger icon={LogOut} label="Logout" onClick={handleLogout} />
+          ) : (
+            <AccountMenuItem
+              icon={LogIn}
+              label="Log In"
+              onClick={() => {
+                router.push("/login");
+              }}
+            />
+          )}
 
           <div className="text-muted border-border/70 mt-1 border-t px-3 pt-2 text-[11px]">
             {version} - Terms
@@ -121,8 +144,17 @@ export function AccountMenu({
           collapsed && "justify-center p-1.5",
         )}
       >
-        <span className="bg-accent/10 text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold">
-          {displayName.slice(0, 1).toUpperCase()}
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+            isLoggedIn ? "bg-accent/10 text-accent" : "bg-muted/30 text-muted",
+          )}
+        >
+          {isLoggedIn ? (
+            displayName.slice(0, 1).toUpperCase()
+          ) : (
+            <UserRound className="h-4 w-4" />
+          )}
         </span>
 
         {!collapsed ? (

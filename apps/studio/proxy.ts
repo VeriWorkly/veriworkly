@@ -6,15 +6,28 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 
-const PUBLIC_PATH_PREFIXES = ["/login", "/share", "/api/og"];
-const PUBLIC_FILES = new Set(["/robots.txt", "/sitemap.xml", "/manifest.json"]);
+const PROTECTED_PATH_PREFIXES = ["/admin", "/profile/master", "/profile/advanced"];
+const GUEST_COOKIE_NAME = "veriworkly-guest-mode";
+const GUEST_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
-export function isPublicStudioPath(pathname: string) {
-  return (
-    PUBLIC_FILES.has(pathname) ||
-    pathname.includes(".") ||
-    PUBLIC_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+export function isProtectedStudioPath(pathname: string) {
+  return PROTECTED_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+function withGuestCookie(response: NextResponse, request: NextRequest) {
+  if (!request.cookies.get(GUEST_COOKIE_NAME)?.value) {
+    response.cookies.set(GUEST_COOKIE_NAME, "true", {
+      httpOnly: true,
+      maxAge: GUEST_COOKIE_MAX_AGE,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+  }
+
+  return response;
 }
 
 export default async function proxy(request: NextRequest) {
@@ -25,7 +38,8 @@ export default async function proxy(request: NextRequest) {
     request.cookies.get("veriworkly-auth.session_token")?.value;
 
   const isLoginPage = pathname === "/login";
-  const isPublicPath = isPublicStudioPath(pathname);
+
+  const isProtectedPath = isProtectedStudioPath(pathname);
   const isAuthenticated = !!sessionCookie;
 
   if (isLoginPage && isAuthenticated) {
@@ -35,12 +49,14 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (!isPublicPath && !isAuthenticated) {
+  if (isProtectedPath && !isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackURL", `${pathname}${request.nextUrl.search}`);
 
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  return isAuthenticated ? response : withGuestCookie(response, request);
 }

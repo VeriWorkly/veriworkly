@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronsLeft, ChevronsRight, Menu as MenuIcon, Search, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogIn, Menu as MenuIcon, Search, X } from "lucide-react";
 
 import type { DocumentType } from "@/features/documents/core/document-types";
 
@@ -40,7 +40,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const { user } = useUserStore();
+  const { user, isLoggedIn } = useUserStore();
 
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -206,10 +206,21 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
             </nav>
 
             <div className="border-border bg-card flex items-center justify-between rounded-2xl border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{displayName}</p>
-                <p className="text-muted truncate text-xs">{email}</p>
-              </div>
+              {isLoggedIn ? (
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{displayName}</p>
+                  <p className="text-muted truncate text-xs">{email}</p>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="text-accent flex items-center gap-2 text-sm font-semibold"
+                >
+                  <LogIn className="h-4 w-4 shrink-0" />
+                  Log In
+                </Link>
+              )}
 
               <ThemeToggle className="h-9 w-9 rounded-xl px-0" />
             </div>
