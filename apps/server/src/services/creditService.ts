@@ -182,6 +182,11 @@ export class CreditService {
     requestId: string,
   ) {
     const cost = this.costFor(action, mode);
+    return this.reserve(userId, cost, action, requestId);
+  }
+
+  static async reserve(userId: string, cost: number, action: string, requestId: string) {
+    validateAmount(cost);
     await this.releaseExpiredReservations(userId);
     await this.expireCredits(userId);
 

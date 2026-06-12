@@ -9,6 +9,7 @@ import {
   FolderOpen,
   HelpCircle,
   PanelsTopLeft,
+  ScanSearch,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -36,6 +37,13 @@ export const mainNav: StudioNavItem[] = [
     label: "Documents",
     icon: FolderOpen,
     match: (pathname) => pathname.startsWith("/documents"),
+  },
+
+  {
+    href: "/ats",
+    label: "ATS checker",
+    icon: ScanSearch,
+    match: (pathname) => pathname.startsWith("/ats"),
   },
 
   {
