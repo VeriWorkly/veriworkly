@@ -7,6 +7,7 @@ import { Input } from "@veriworkly/ui";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { validateProject } from "@/features/resume/utils/validation";
+import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
 
 import { Field, TextArea, invalidClass, DelimitedTextArea } from "../EditorFormPrimitives";
 import DraggableSection from "./DraggableSection";
@@ -21,6 +22,7 @@ const ProjectsSection = ({
   onToggle,
 }: BaseSectionProps) => {
   const projects = useResumeStore((state) => state.resume.projects);
+  const resumeId = useResumeStore((state) => state.resume.id);
   const addProject = useResumeStore((state) => state.addProject);
   const removeProject = useResumeStore((state) => state.removeProject);
   const updateProject = useResumeStore((state) => state.updateProject);
@@ -169,6 +171,18 @@ const ProjectsSection = ({
                 value={activeProject.summary}
               />
             </Field>
+            <AiFieldAssist
+              action={activeProject.summary ? "rewrite_section" : "generate_section"}
+              context={JSON.stringify({
+                name: activeProject.name,
+                role: activeProject.role,
+                skills: activeProject.skills,
+                highlights: activeProject.highlights,
+              })}
+              documentId={resumeId}
+              onApply={(summary) => updateProject(safeProjectIndex, { summary })}
+              text={activeProject.summary}
+            />
 
             <Field label="Highlights (comma separated)">
               <DelimitedTextArea

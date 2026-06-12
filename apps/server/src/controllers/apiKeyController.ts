@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 
 import { requireAuthUser } from "#middleware/auth";
 
@@ -15,6 +15,7 @@ const DEFAULT_ALLOWED_SCOPES = [
   "resume:write",
   "roadmap:read",
   "github:read",
+  "ai:write",
 ];
 
 /**

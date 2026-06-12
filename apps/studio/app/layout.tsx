@@ -151,13 +151,7 @@ const RootLayout = ({
       <body
         className={`${globalFontVariables} bg-background text-foreground flex min-h-screen flex-col font-sans antialiased`}
       >
-        <ThemeProvider
-          enableSystem
-          attribute="class"
-          defaultTheme="system"
-          disableTransitionOnChange
-          storageKey="veriworkly-theme"
-        >
+        <ThemeProvider>
           {children}
           <Toaster position="bottom-right" expand={false} richColors />
         </ThemeProvider>

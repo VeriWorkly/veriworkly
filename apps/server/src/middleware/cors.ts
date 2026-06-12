@@ -4,22 +4,41 @@ import { config } from "#config";
 
 import { ApiError } from "#utils/errors";
 
-export const corsMiddleware = cors({
-  origin: (origin, callback) => {
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
+function isWildcardPortfolioOrigin(origin: string | undefined, allowedOrigins: string[]): boolean {
+  if (!origin || allowedOrigins.includes(origin)) {
+    return false;
+  }
 
-    if (config.allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new ApiError(403, "Not allowed by CORS"));
-    }
-  },
+  return (
+    /^https:\/\/[a-z0-9-]+\.veriworkly\.com$/i.test(origin) ||
+    /^http:\/\/[a-z0-9-]+\.localhost:3004$/i.test(origin)
+  );
+}
 
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-API-KEY"],
-  maxAge: 86400,
+export const corsMiddleware = cors((req, callback) => {
+  const origin = typeof req.headers.origin === "string" ? req.headers.origin : undefined;
+
+  const explicitlyAllowedOrigin = Boolean(origin && config.allowedOrigins.includes(origin));
+  const trustedPortfolioOrigin = isWildcardPortfolioOrigin(origin, config.allowedOrigins);
+
+  callback(null, {
+    origin: (requestOrigin, originCallback) => {
+      if (!requestOrigin) {
+        originCallback(null, true);
+        return;
+      }
+
+      if (config.allowedOrigins.includes(requestOrigin) || trustedPortfolioOrigin) {
+        originCallback(null, true);
+      } else {
+        originCallback(new ApiError(403, "Not allowed by CORS"));
+      }
+    },
+    credentials: explicitlyAllowedOrigin,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-API-KEY"],
+    maxAge: 86400,
+  });
 });
+
+export { isWildcardPortfolioOrigin };

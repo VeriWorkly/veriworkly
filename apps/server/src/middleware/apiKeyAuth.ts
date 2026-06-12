@@ -11,18 +11,29 @@ import { createErrorResponse } from "#utils/errors";
  */
 
 export const apiKeyAuth = async (req: Request, res: Response, next: NextFunction) => {
-  const headerValue = req.headers["x-api-key"];
-  const apiKeyHeader = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  const apiKeyHeaderValue = req.headers["x-api-key"];
+  const apiKeyHeader = Array.isArray(apiKeyHeaderValue) ? apiKeyHeaderValue[0] : apiKeyHeaderValue;
 
-  if (!apiKeyHeader) {
+  const authorizationHeaderValue = req.headers.authorization;
+  const authorizationHeader = Array.isArray(authorizationHeaderValue)
+    ? authorizationHeaderValue[0]
+    : authorizationHeaderValue;
+
+  const bearerApiKey = authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+  const credential = apiKeyHeader ?? bearerApiKey;
+
+  if (!credential) {
     return res
       .status(401)
       .json(
-        createErrorResponse(401, "API key is missing. Please provide it in the X-API-Key header."),
+        createErrorResponse(
+          401,
+          "API key is missing. Please provide it in the X-API-Key header or Authorization bearer token.",
+        ),
       );
   }
 
-  const normalizedApiKey = apiKeyHeader.trim();
+  const normalizedApiKey = credential.trim();
   const apiKeyPattern = /^vw_[a-f0-9]{64}$/i;
 
   if (!apiKeyPattern.test(normalizedApiKey)) {

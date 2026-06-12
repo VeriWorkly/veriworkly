@@ -2,14 +2,20 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import type { RichTextBlock } from "../shared";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import {
+  buildCoverLetterFlowContent,
+  buildVeriworklyFlowItems,
+  getCoverLetterFlowSenderName,
   getCoverLetterState,
-  splitMarkdownLines,
-  splitParagraphs,
-  splitRichTextBlocks,
+  getFlowPageKey,
+  getVeriworklyFlowItemWeight,
+  isCoverLetterSectionVisible,
+  keepVeriworklyProofHeadingWithNext,
+  paginateMeasuredItems,
+  paginateWeightedItems,
+  type VeriworklyFlowItem,
 } from "../shared";
 
 import {
@@ -22,97 +28,6 @@ import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
 
 const PAGE_HEIGHT = 1123;
-const BODY_TOP_GAP = 32;
-const PAGE_FIT_TOLERANCE = 64;
-const PARAGRAPH_CHUNK_WORDS = 62;
-
-type VeriworklyFlowItem =
-  | { id: string; type: "greeting"; text: string }
-  | { id: string; type: "paragraph"; text: string }
-  | { id: string; type: "body-list"; items: string[] }
-  | { id: string; type: "proof-heading" }
-  | { id: string; type: "proof-item"; index: number; isLast: boolean; text: string }
-  | { id: string; type: "signoff"; closing?: string; signature: string }
-  | { id: string; type: "postscript"; text: string };
-
-type CoverLetterFlowContent = Pick<
-  CoverLetterContent,
-  "body" | "closing" | "greeting" | "highlights" | "opening" | "postscript" | "signature"
->;
-
-function splitTextIntoChunks(text: string, wordsPerChunk = PARAGRAPH_CHUNK_WORDS) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length <= wordsPerChunk) return [text];
-
-  const chunks: string[] = [];
-
-  for (let index = 0; index < words.length; index += wordsPerChunk) {
-    chunks.push(words.slice(index, index + wordsPerChunk).join(" "));
-  }
-
-  return chunks;
-}
-
-function buildVeriworklyFlowItems(content: CoverLetterFlowContent, senderName: string) {
-  const items: VeriworklyFlowItem[] = [];
-
-  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
-
-  const bodyBlocks: RichTextBlock[] = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
-  ];
-
-  bodyBlocks.forEach((block, blockIndex) => {
-    if (block.type === "paragraph") {
-      splitTextIntoChunks(block.text).forEach((text, chunkIndex) => {
-        items.push({
-          id: `body-${blockIndex}-${chunkIndex}`,
-          type: "paragraph",
-          text,
-        });
-      });
-      return;
-    }
-
-    items.push({
-      id: `body-list-${blockIndex}`,
-      type: "body-list",
-      items: block.items,
-    });
-  });
-
-  const highlights = splitMarkdownLines(content.highlights);
-
-  if (highlights.length > 0) {
-    items.push({ id: "proof-heading", type: "proof-heading" });
-    highlights.forEach((text, index) => {
-      items.push({
-        id: `proof-${index}`,
-        type: "proof-item",
-        index,
-        isLast: index === highlights.length - 1,
-        text,
-      });
-    });
-  }
-
-  items.push({
-    id: "signoff",
-    type: "signoff",
-    closing: content.closing || undefined,
-    signature: content.signature || senderName,
-  });
-
-  if (content.postscript) {
-    splitTextIntoChunks(content.postscript, 50).forEach((text, index) => {
-      items.push({ id: `postscript-${index}`, type: "postscript", text });
-    });
-  }
-
-  return items;
-}
 
 function renderFlowItem(item: VeriworklyFlowItem, accentColor: string) {
   if (item.type === "greeting") return <p className="font-medium text-slate-950">{item.text}</p>;
@@ -182,76 +97,22 @@ function renderGroupedFlowItems(items: VeriworklyFlowItem[], accentColor: string
   ));
 }
 
-function paginateMeasuredItems(
-  items: VeriworklyFlowItem[],
-  heights: Map<string, number>,
-  firstLimit: number,
-  nextLimit: number,
-) {
-  const pages: VeriworklyFlowItem[][] = [[]];
-  let pageIndex = 0;
-  let used = 0;
+function fitsInsideBottomPadding(container: HTMLElement, content: HTMLElement) {
+  const containerStyle = window.getComputedStyle(container);
+  const paddingBottom = Number.parseFloat(containerStyle.paddingBottom) || 0;
+  const containerBottom = container.getBoundingClientRect().bottom - paddingBottom;
+  const contentBottom = content.getBoundingClientRect().bottom;
 
-  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-    const item = items[itemIndex];
-    const height = Math.ceil(heights.get(item.id) ?? 0);
-    const nextItem = items[itemIndex + 1];
-    const keepWithNextHeight =
-      item.type === "proof-heading" && nextItem ? Math.ceil(heights.get(nextItem.id) ?? 0) : 0;
-    const limit = pageIndex === 0 ? firstLimit : nextLimit;
-    const effectiveLimit = item.type === "postscript" ? limit : limit + PAGE_FIT_TOLERANCE;
-
-    if (pages[pageIndex].length > 0 && used + height + keepWithNextHeight > effectiveLimit) {
-      pages.push([]);
-      pageIndex += 1;
-      used = 0;
-    }
-
-    pages[pageIndex].push(item);
-    used += height;
-  }
-
-  return pages.filter((page) => page.length > 0);
-}
-
-function getVeriworklyHtmlItemWeight(item: VeriworklyFlowItem) {
-  if (item.type === "body-list") {
-    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 70), 0);
-  }
-
-  if (item.type === "proof-heading") return 2;
-  if (item.type === "proof-item") return Math.max(1, Math.ceil(item.text.length / 70));
-  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 100);
-  if (item.type === "signoff") return item.closing ? 2 : 1;
-  if (item.type === "greeting") return 1;
-
-  return Math.max(1, Math.ceil(item.text.length / 82));
+  return contentBottom <= containerBottom + 1;
 }
 
 function paginateVeriworklyHtmlItems(items: VeriworklyFlowItem[]) {
-  const pages: VeriworklyFlowItem[][] = [[]];
-  let pageIndex = 0;
-  let used = 0;
-
-  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-    const item = items[itemIndex];
-    const limit = pageIndex === 0 ? 24 : 24;
-    const weight = getVeriworklyHtmlItemWeight(item);
-    const nextItem = items[itemIndex + 1];
-    const keepWithNextWeight =
-      item.type === "proof-heading" && nextItem ? getVeriworklyHtmlItemWeight(nextItem) : 0;
-
-    if (pages[pageIndex].length > 0 && used + weight + keepWithNextWeight > limit) {
-      pages.push([]);
-      pageIndex += 1;
-      used = 0;
-    }
-
-    pages[pageIndex].push(item);
-    used += weight;
-  }
-
-  return pages.filter((page) => page.length > 0);
+  return paginateWeightedItems(
+    items,
+    getVeriworklyFlowItemWeight,
+    () => 24,
+    keepVeriworklyProofHeadingWithNext,
+  );
 }
 
 function renderVeriworklyHtmlItem(item: VeriworklyFlowItem, accentColor: string) {
@@ -286,60 +147,86 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
     recipient,
   } = state;
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const flowSenderName = content.senderName || content.signature || "Your Name";
-  const flowContent = useMemo(
-    () => ({
-      body: content.body,
-      closing: content.closing,
-      greeting: content.greeting,
-      highlights: content.highlights,
-      opening: content.opening,
-      postscript: content.postscript,
-      signature: content.signature,
-    }),
-    [
-      content.body,
-      content.closing,
-      content.greeting,
-      content.highlights,
-      content.opening,
-      content.postscript,
-      content.signature,
-    ],
-  );
+  const flowSenderName = getCoverLetterFlowSenderName(content);
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const flowContent = useMemo(() => buildCoverLetterFlowContent(content), [content]);
   const flowItems = useMemo(
     () => buildVeriworklyFlowItems(flowContent, flowSenderName),
     [flowContent, flowSenderName],
   );
   const [pages, setPages] = useState<VeriworklyFlowItem[][]>(() => [flowItems]);
+  const measureRef = useRef<HTMLDivElement | null>(null);
   const firstPrefixRef = useRef<HTMLDivElement | null>(null);
   const nextPrefixRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
 
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const firstPrefixHeight = firstPrefixRef.current?.getBoundingClientRect().height ?? 0;
-      const nextPrefixHeight = nextPrefixRef.current?.getBoundingClientRect().height ?? 0;
-      const firstLimit = PAGE_HEIGHT - appearance.pageMargin * 2 - firstPrefixHeight - BODY_TOP_GAP;
-      const nextLimit = PAGE_HEIGHT - appearance.pageMargin * 2 - nextPrefixHeight - BODY_TOP_GAP;
-      const heights = new Map<string, number>();
+      const probe = document.createElement("article");
 
-      flowItems.forEach((item) => {
-        const node = itemRefs.current.get(item.id);
-        heights.set(item.id, node?.getBoundingClientRect().height ?? 0);
+      probe.className =
+        "mx-auto grid h-280.75 w-198.5 max-w-full grid-cols-[214px_1fr] overflow-hidden text-[#111827]";
+      Object.assign(probe.style, {
+        backgroundColor: appearance.pageColor,
+        color: appearance.textColor,
+        fontFamily,
       });
 
-      const nextPages = paginateMeasuredItems(flowItems, heights, firstLimit, nextLimit);
-      const nextKey = nextPages.map((page) => page.map((item) => item.id).join(",")).join("|");
+      const aside = document.createElement("aside");
+      aside.className = "h-280.75";
+      probe.appendChild(aside);
+
+      const main = document.createElement("main");
+      main.className = "h-280.75 bg-white";
+      main.style.padding = `${appearance.pageMargin}px`;
+      probe.appendChild(main);
+      measureRef.current?.appendChild(probe);
+
+      const fitsPage = (items: VeriworklyFlowItem[], pageIndex: number) => {
+        main.innerHTML = "";
+
+        const prefix = pageIndex === 0 ? firstPrefixRef.current : nextPrefixRef.current;
+        if (prefix) main.appendChild(prefix.cloneNode(true));
+
+        const body = document.createElement("section");
+        body.className = "mt-8 text-[14.5px] text-slate-700";
+        body.style.lineHeight = String(appearance.lineHeight);
+        body.style.setProperty("--paragraph-gap", `${appearance.paragraphSpacing}px`);
+
+        items.forEach((item) => {
+          const node = itemRefs.current.get(item.id);
+          if (node) body.appendChild(node.cloneNode(true));
+        });
+
+        main.appendChild(body);
+
+        return main.scrollHeight <= PAGE_HEIGHT + 1 && fitsInsideBottomPadding(main, body);
+      };
+
+      const nextPages = paginateMeasuredItems(
+        flowItems,
+        fitsPage,
+        keepVeriworklyProofHeadingWithNext,
+      );
+      probe.remove();
+      const nextKey = getFlowPageKey(nextPages);
 
       setPages((current) => {
-        const currentKey = current.map((page) => page.map((item) => item.id).join(",")).join("|");
+        const currentKey = getFlowPageKey(current);
         return currentKey === nextKey ? current : nextPages;
       });
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [appearance.lineHeight, appearance.pageMargin, appearance.paragraphSpacing, flowItems]);
+  }, [
+    appearance.lineHeight,
+    appearance.pageColor,
+    appearance.pageMargin,
+    appearance.paragraphSpacing,
+    appearance.textColor,
+    flowItems,
+    fontFamily,
+  ]);
 
   function renderSidebar() {
     return (
@@ -402,12 +289,16 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
             Target
           </p>
 
-          <p className="mt-2 text-sm leading-5 font-semibold text-slate-950">
-            {content.jobTitle || content.subject || "Open role"}
-          </p>
+          {showTarget ? (
+            <>
+              <p className="mt-2 text-sm leading-5 font-semibold text-slate-950">
+                {content.jobTitle || content.subject || "Open role"}
+              </p>
 
-          {content.companyName ? (
-            <p className="mt-1 text-xs leading-5 text-slate-600">{content.companyName}</p>
+              {content.companyName ? (
+                <p className="mt-1 text-xs leading-5 text-slate-600">{content.companyName}</p>
+              ) : null}
+            </>
           ) : null}
         </div>
       </aside>
@@ -417,6 +308,7 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
   return (
     <div className="grid gap-6">
       <div
+        ref={measureRef}
         aria-hidden="true"
         className="pointer-events-none absolute opacity-0"
         style={{ left: -10000, top: 0, width: 794 }}
@@ -447,21 +339,23 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
                 ) : null}
               </div>
 
-              <section
-                className="mt-8 border-l-2 pl-5"
-                style={{ borderLeftColor: appearance.accentColor }}
-              >
-                <p
-                  className="text-[10px] font-bold tracking-[0.2em] uppercase"
-                  style={{ color: appearance.accentColor }}
+              {showTarget ? (
+                <section
+                  className="mt-8 border-l-2 pl-5"
+                  style={{ borderLeftColor: appearance.accentColor }}
                 >
-                  Cover Letter
-                </p>
+                  <p
+                    className="text-[10px] font-bold tracking-[0.2em] uppercase"
+                    style={{ color: appearance.accentColor }}
+                  >
+                    Cover Letter
+                  </p>
 
-                <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
-                  {content.subject || content.jobTitle || "Application"}
-                </h2>
-              </section>
+                  <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
+                    {content.subject || content.jobTitle || "Application"}
+                  </h2>
+                </section>
+              ) : null}
             </div>
 
             <div ref={nextPrefixRef}></div>
@@ -519,21 +413,23 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
                   ) : null}
                 </div>
 
-                <section
-                  className="mt-8 border-l-2 pl-5"
-                  style={{ borderLeftColor: appearance.accentColor }}
-                >
-                  <p
-                    className="text-[10px] font-bold tracking-[0.2em] uppercase"
-                    style={{ color: appearance.accentColor }}
+                {showTarget ? (
+                  <section
+                    className="mt-8 border-l-2 pl-5"
+                    style={{ borderLeftColor: appearance.accentColor }}
                   >
-                    Cover Letter
-                  </p>
+                    <p
+                      className="text-[10px] font-bold tracking-[0.2em] uppercase"
+                      style={{ color: appearance.accentColor }}
+                    >
+                      Cover Letter
+                    </p>
 
-                  <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
-                    {content.subject || content.jobTitle || "Application"}
-                  </h2>
-                </section>
+                    <h2 className="mt-2 text-[22px] leading-snug font-semibold tracking-normal text-[#0f172a]">
+                      {content.subject || content.jobTitle || "Application"}
+                    </h2>
+                  </section>
+                ) : null}
               </>
             ) : null}
 
@@ -564,10 +460,13 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
     renderedLinks,
     recipient,
   } = state;
-  const subject = escapeHtml(content.subject || content.jobTitle || "Application");
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const subject = escapeHtml(
+    showTarget ? content.subject || content.jobTitle || "Application" : "",
+  );
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const fontHref = getFontStylesheetHref(appearance.fontFamily);
-  const flowItems = buildVeriworklyFlowItems(content, senderName);
+  const flowItems = buildVeriworklyFlowItems(buildCoverLetterFlowContent(content), senderName);
   const pages = paginateVeriworklyHtmlItems(flowItems);
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.senderName || "Cover Letter")}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
@@ -577,7 +476,7 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
       const body = blocks
         .map((item) => renderVeriworklyHtmlItem(item, appearance.accentColor))
         .join("");
-      return `<article class="page veri-page"><aside><p class="label">Candidate</p><h1>${escapeHtml(senderName)}</h1><p class="muted">${escapeHtml(senderTitle)}</p><div class="rule"></div><div class="rail">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div><div class="target"><p class="label">Target</p><strong>${subject}</strong><p>${escapeHtml(content.companyName)}</p></div></aside><main>${first ? `<div class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></div><section class="subject"><p class="label">Cover Letter</p><h2>${subject}</h2></section>` : ""}<section class="body">${body}</section></main></article>`;
+      return `<article class="page veri-page"><aside><p class="label">Candidate</p><h1>${escapeHtml(senderName)}</h1><p class="muted">${escapeHtml(senderTitle)}</p><div class="rule"></div><div class="rail">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div>${showTarget ? `<div class="target"><p class="label">Target</p><strong>${subject}</strong><p>${escapeHtml(content.companyName)}</p></div>` : ""}</aside><main>${first ? `<div class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></div>${showTarget ? `<section class="subject"><p class="label">Cover Letter</p><h2>${subject}</h2></section>` : ""}` : ""}<section class="body">${body}</section></main></article>`;
     })
     .join("")}</body></html>`;
 }

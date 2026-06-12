@@ -1,0 +1,128 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@source "../../../packages/ui/src";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-card: var(--color-panel);
+  --color-border: var(--color-line);
+  --color-accent-foreground: var(--color-accent-ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  overflow-x: clip;
+  scroll-behavior: smooth;
+}
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
+}
+.surface-grid {
+  background-image:
+    linear-gradient(to right, var(--color-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.paper-noise {
+  background:
+    radial-gradient(circle at 8% 0%, var(--color-accent-soft), transparent 30rem),
+    var(--color-paper);
+}
+.proof-grid {
+  background-image:
+    linear-gradient(to right, oklch(100% 0 0 / 8%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(100% 0 0 / 8%) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.brand-shell {
+  width: min(1280px, calc(100% - 48px));
+  margin-inline: auto;
+}
+.reveal {
+  animation: reveal var(--dur-slow) var(--ease-out) both;
+}
+.reveal-delay {
+  animation-delay: 120ms;
+}
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+a {
+  text-decoration: none;
+}
+button,
+input,
+textarea {
+  font: inherit;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+button:active,
+a:active {
+  opacity: 0.72;
+}
+button:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+h1,
+h2,
+h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+@media (max-width: 640px) {
+  .brand-shell {
+    width: min(100% - 32px, 1280px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

@@ -1,10 +1,12 @@
 import { DocumentType, Visibility, Prisma } from "@prisma/client";
 
+import { ShareService } from "#services/shareService";
+
 import { prisma } from "#utils/prisma";
 import { logger } from "#utils/logger";
 import { ApiError } from "#utils/errors";
-import { normalizeSlug } from "#utils/slugs";
-import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
+import { buildUniqueSlugHelper } from "#utils/slugs";
+import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#utils/redis";
 
 export type DocumentCreateInput = {
   id?: string;
@@ -32,12 +34,7 @@ export type DocumentUpdateInput = {
 
 export class DocumentService {
   private static async buildUniqueSlug(userId: string, title: string, documentId?: string) {
-    const base = normalizeSlug(title);
-
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
-      const candidate = `${base.slice(0, 255 - suffix.length)}${suffix}`;
-
+    return buildUniqueSlugHelper(title, async (candidate) => {
       const existing = await prisma.document.findFirst({
         where: {
           userId,
@@ -47,32 +44,8 @@ export class DocumentService {
         select: { id: true },
       });
 
-      if (!existing) return candidate;
-    }
-
-    return `${base.slice(0, 246)}-${Date.now().toString(36)}`;
-  }
-
-  private static async buildUniqueShareSlug(userId: string, slug: string, shareLinkId?: string) {
-    const base = normalizeSlug(slug);
-
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
-      const candidate = `${base.slice(0, 255 - suffix.length)}${suffix}`;
-
-      const existing = await prisma.shareLink.findFirst({
-        where: {
-          userId,
-          slug: candidate,
-          ...(shareLinkId ? { id: { not: shareLinkId } } : {}),
-        },
-        select: { id: true },
-      });
-
-      if (!existing) return candidate;
-    }
-
-    return `${base.slice(0, 246)}-${Date.now().toString(36)}`;
+      return !!existing;
+    });
   }
 
   /**
@@ -166,6 +139,7 @@ export class DocumentService {
 
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDel(`user:profile:v2:${userId}`);
 
     return document;
   }
@@ -195,9 +169,8 @@ export class DocumentService {
 
       const nextSlugSource = input.slug || input.title;
 
-      if (nextSlugSource) {
+      if (nextSlugSource)
         updateData.slug = await this.buildUniqueSlug(userId, nextSlugSource, documentId);
-      }
 
       if (user?.username && updateData.slug && updateShareSlug) {
         const shareLink = await prisma.shareLink.findUnique({
@@ -207,9 +180,10 @@ export class DocumentService {
 
         if (shareLink) {
           readableShareCacheKeys.add(`share:public-readable:${user.username}:${shareLink.slug}`);
+
           shareLinkSlugUpdate = {
             id: shareLink.id,
-            slug: await this.buildUniqueShareSlug(userId, updateData.slug, shareLink.id),
+            slug: await ShareService.buildUniqueShareSlug(userId, updateData.slug, shareLink.id),
           };
 
           readableShareCacheKeys.add(
@@ -220,44 +194,51 @@ export class DocumentService {
     }
 
     try {
-      const updated = await prisma.document.update({
-        where: {
-          id: documentId,
-          userId,
-          revision: revision,
-        },
+      const updated = await prisma.$transaction(async (tx) => {
+        const doc = await tx.document.update({
+          where: {
+            id: documentId,
+            userId,
+            revision: revision,
+          },
 
-        data: {
-          ...updateData,
-          revision: { increment: 1 },
-          lastSyncedAt: new Date(),
-        },
+          data: {
+            ...updateData,
+            revision: { increment: 1 },
+            lastSyncedAt: new Date(),
+          },
+        });
+
+        if (shareLinkSlugUpdate) {
+          await tx.shareLink.update({
+            where: { id: shareLinkSlugUpdate.id },
+            data: { slug: shareLinkSlugUpdate.slug },
+          });
+        }
+
+        return doc;
       });
 
       await cacheDel(`document:${userId}:${documentId}`);
       await cacheDel(`documents:list:${userId}:all`);
       await cacheDel(`documents:list:${userId}:${updated.type}`);
 
-      if (shareLinkSlugUpdate)
-        await prisma.shareLink.update({
-          where: { id: shareLinkSlugUpdate.id },
-          data: { slug: shareLinkSlugUpdate.slug },
-        });
-
-      for (const cacheKey of readableShareCacheKeys) {
-        await cacheDel(cacheKey);
-      }
+      await Promise.all([
+        ...[...readableShareCacheKeys].map((cacheKey) => cacheDel(cacheKey)),
+        ...(shareLinkSlugUpdate ? [cacheDelByPrefix(`share:list:${userId}:${documentId}:`)] : []),
+      ]);
 
       return updated;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-        const current = await prisma.document.findUnique({ where: { id: documentId } });
+        const current = await prisma.document.findFirst({ where: { id: documentId, userId } });
 
-        if (!current) throw new Error("Document not found");
+        if (!current) throw new ApiError(404, "Document not found");
 
         if (current.revision !== revision)
-          throw new Error(
-            `CONFLICTOR: Revision mismatch. Client: ${revision}, Server: ${current.revision}`,
+          throw new ApiError(
+            409,
+            `Revision mismatch. Client: ${revision}, Server: ${current.revision}`,
           );
       }
 
@@ -282,14 +263,22 @@ export class DocumentService {
       },
     });
 
-    const document = await prisma.document.update({
-      where: { id: documentId, userId },
-      data: { deletedAt: new Date() },
-    });
+    let document;
+    try {
+      document = await prisma.document.update({
+        where: { id: documentId, userId },
+        data: { deletedAt: new Date() },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")
+        throw new ApiError(404, "Document not found");
+      throw error;
+    }
 
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDelByPrefix(`share:shared-document-ids:${userId}:`);
 
     if (docWithShares?.user?.username) {
       const username = docWithShares.user.username;
@@ -315,14 +304,22 @@ export class DocumentService {
       },
     });
 
-    const document = await prisma.document.update({
-      where: { id: documentId, userId },
-      data: { deletedAt: null },
-    });
+    let document;
+    try {
+      document = await prisma.document.update({
+        where: { id: documentId, userId },
+        data: { deletedAt: null },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")
+        throw new ApiError(404, "Document not found");
+      throw error;
+    }
 
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDelByPrefix(`share:shared-document-ids:${userId}:`);
 
     if (docWithShares?.user?.username) {
       const username = docWithShares.user.username;
@@ -348,13 +345,22 @@ export class DocumentService {
       },
     });
 
-    const document = await prisma.document.delete({
-      where: { id: documentId, userId },
-    });
+    let document;
+    try {
+      document = await prisma.document.delete({
+        where: { id: documentId, userId },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")
+        throw new ApiError(404, "Document not found");
+      throw error;
+    }
 
     await cacheDel(`document:${userId}:${documentId}`);
     await cacheDel(`documents:list:${userId}:all`);
     await cacheDel(`documents:list:${userId}:${document.type}`);
+    await cacheDelByPrefix(`share:shared-document-ids:${userId}:`);
+    await cacheDel(`user:profile:v2:${userId}`);
 
     if (docWithShares?.user?.username) {
       const username = docWithShares.user.username;

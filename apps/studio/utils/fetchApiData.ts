@@ -1,4 +1,5 @@
 import { backendApiUrl } from "@/lib/constants";
+import { clearInvalidSessionAndRedirect, isInvalidSessionResponse } from "@/lib/invalid-session";
 
 interface ApiSuccessResponse<T> {
   success: boolean;
@@ -16,6 +17,24 @@ export class ApiRequestError extends Error {
   }
 }
 
+function normalizeHeaders(headers?: HeadersInit) {
+  return Object.fromEntries(new Headers(headers ?? {}).entries());
+}
+
+function firstPartyServerHeaders(headers?: HeadersInit) {
+  const normalizedHeaders = normalizeHeaders(headers);
+
+  if (typeof window !== "undefined") return normalizedHeaders;
+
+  const siteOrigin = process.env.SITE_URL ? new URL(process.env.SITE_URL).origin : "";
+  if (!siteOrigin) return normalizedHeaders;
+
+  return {
+    Origin: siteOrigin,
+    ...normalizedHeaders,
+  };
+}
+
 export async function fetchApiData<T>(
   path: string,
   options: RequestInit & { errorMessage?: string; nullOnNotFound?: boolean } = {},
@@ -29,11 +48,15 @@ export async function fetchApiData<T>(
     credentials: fetchOptions.credentials ?? "include",
     headers: {
       "Content-Type": "application/json",
-      ...(fetchOptions.headers ?? {}),
+      ...firstPartyServerHeaders(fetchOptions.headers),
     },
   });
 
   if (!response.ok) {
+    if (isInvalidSessionResponse(path, response.status)) {
+      await clearInvalidSessionAndRedirect();
+    }
+
     if (response.status === 404 && nullOnNotFound) {
       return null as unknown as T;
     }

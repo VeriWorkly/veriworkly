@@ -82,13 +82,15 @@ const TemplatesByDocumentTypePage = async ({ params, searchParams }: PageProps) 
     (family) => ({
       title: family,
       description:
-        family === "Compact Core"
-          ? "High-density layouts for applications where parsing, keywords, and page control matter."
-          : family === "Modern Core"
-            ? "Polished application layouts with contemporary spacing and calm hierarchy."
-            : family === "Classic Letter"
-              ? "Formal letter systems for conservative, high-trust application moments."
-              : "Distinctive letter systems for modern applicants who still need a credible PDF.",
+        family === "Portfolio Websites"
+          ? "Live portfolio website templates that publish from one reusable profile and can be previewed before building."
+          : family === "Compact Core"
+            ? "High-density layouts for applications where parsing, keywords, and page control matter."
+            : family === "Modern Core"
+              ? "Polished application layouts with contemporary spacing and calm hierarchy."
+              : family === "Classic Letter"
+                ? "Formal letter systems for conservative, high-trust application moments."
+                : "Distinctive letter systems for modern applicants who still need a credible PDF.",
       items: visibleTemplates.filter((template) => template.family === family),
     }),
   );

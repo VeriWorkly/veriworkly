@@ -10,8 +10,8 @@ We provide security updates for the latest stable release.
 
 | Version | Supported |
 | ------- | --------- |
-| ≥ 1.0.0 | ✅ Yes    |
-| < 1.0.0 | ❌ No     |
+| ≥ 3.0.0 | ✅ Yes    |
+| < 3.0.0 | ❌ No     |
 
 > Only the most recent major version is actively maintained.
 

@@ -1,0 +1,9 @@
+{
+  "scannedAt": "2026-06-07",
+  "framework": "Next.js 16 App Router",
+  "styling": "Tailwind CSS v4 with shared @veriworkly/ui tokens",
+  "fonts": ["Geist", "Geist Mono"],
+  "motion": "restrained native transitions",
+  "palette": "existing cool neutral Studio tokens with one accent",
+  "preserve": ["font stack", "shared UI primitives", "token palette", "spacing scale"]
+}

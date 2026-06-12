@@ -1,5 +1,6 @@
+import type { NextFunction, Request, Response } from "express";
+
 import { z } from "zod";
-import { NextFunction, Request, Response } from "express";
 
 import { PublicShareLink } from "#types/api";
 
@@ -91,14 +92,17 @@ export class ShareController {
         body,
       );
 
-      await cacheDelByPrefix(`share:list:${user.id}:${documentId}:`);
-      await cacheDelByPrefix(`share:shared-document-ids:${user.id}:`);
-
-      if (previousSlug)
-        await cacheDel(`share:public-readable:${shareLink.username}:${previousSlug}`);
-
-      await cacheDel(`share:public-readable:${shareLink.username}:${shareLink.documentSlug}`);
-      await cacheDel(`share:public-readable:${shareLink.username}:${shareLink.slug}`);
+      await Promise.all([
+        cacheDelByPrefix(`share:list:${user.id}:${documentId}:`),
+        cacheDelByPrefix(`share:shared-document-ids:${user.id}:`),
+        cacheDel(`profile:${user.id}`),
+        cacheDel(`user:profile:v2:${user.id}`),
+        ...(previousSlug
+          ? [cacheDel(`share:public-readable:${shareLink.username}:${previousSlug}`)]
+          : []),
+        cacheDel(`share:public-readable:${shareLink.username}:${shareLink.documentSlug}`),
+        cacheDel(`share:public-readable:${shareLink.username}:${shareLink.slug}`),
+      ]);
 
       res
         .status(201)
@@ -164,9 +168,8 @@ export class ShareController {
 
       const cached = await cacheGet<unknown>(cacheKey);
 
-      if (cached) {
+      if (cached)
         return res.json(createSuccessResponse(cached, "Shared document ids fetched from cache"));
-      }
 
       const documentIds = await ShareService.listSharedDocumentIds(user.id, ids);
       const response = { documentIds };
@@ -197,9 +200,13 @@ export class ShareController {
       const revoked = await ShareService.revokeShareLink(user.id, documentId, shareLinkId);
 
       // Invalidate caches
-      await cacheDelByPrefix(`share:list:${user.id}:${documentId}:`);
-      await cacheDelByPrefix(`share:shared-document-ids:${user.id}:`);
-      await cacheDel(`share:public-readable:${revoked.username}:${revoked.slug}`);
+      await Promise.all([
+        cacheDelByPrefix(`share:list:${user.id}:${documentId}:`),
+        cacheDelByPrefix(`share:shared-document-ids:${user.id}:`),
+        cacheDel(`profile:${user.id}`),
+        cacheDel(`user:profile:v2:${user.id}`),
+        cacheDel(`share:public-readable:${revoked.username}:${revoked.slug}`),
+      ]);
 
       res.json(createSuccessResponse(null, "Share link revoked successfully"));
     } catch (error) {
@@ -225,16 +232,29 @@ export class ShareController {
 
       if (!shareLink) {
         shareLink = await ShareService.getPublicShareLinkByUsernameAndSlug(username, slug);
-        await cacheSet(cacheKey, shareLink, 3600);
+        let ttl = 3600;
+
+        if (shareLink.expiresAt) {
+          const msLeft = new Date(shareLink.expiresAt).getTime() - Date.now();
+
+          if (msLeft > 0) {
+            ttl = Math.min(3600, Math.ceil(msLeft / 1000));
+          } else {
+            ttl = 0;
+          }
+        }
+
+        if (ttl > 0) await cacheSet(cacheKey, shareLink, ttl);
       }
 
       if (!shareLink) throw new ApiError(404, "Link not found");
 
-      if (shareLink.passwordHash) {
+      if (ShareService.isExpired(shareLink.expiresAt)) throw new ApiError(410, "Link expired");
+
+      if (shareLink.passwordHash)
         return res.json(
           createSuccessResponse(buildPublicSharePayload(shareLink, false), "Password required"),
         );
-      }
 
       ShareService.recordShareView(shareLink.id, req.ip, req.headers["user-agent"]).catch((err) =>
         console.error("View tracking failed:", err),
@@ -248,6 +268,7 @@ export class ShareController {
       );
     } catch (error) {
       if (error instanceof z.ZodError) return next(handleValidationError(error));
+
       next(error);
     }
   }

@@ -23,7 +23,6 @@ import { WorkspaceSearchModal } from "@/components/dashboard/WorkspaceSearchModa
 import { NewDocumentButton, NewDocumentModal } from "@/components/dashboard/NewDocumentModal";
 
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
-import { signOutCurrentUser } from "@/features/auth/services/current-user";
 import { createDocument } from "@/features/documents/services/document-workspace-service";
 
 import { cn } from "@/lib/utils";
@@ -35,13 +34,13 @@ interface StudioShellProps {
   mainClassName?: string;
 }
 
-const STUDIO_VERSION = "v3.8.0";
+const STUDIO_VERSION = "v3.17.0";
 
 const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const { user, logout } = useUserStore();
+  const { user } = useUserStore();
 
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -54,15 +53,6 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const createNewDocument = (type: DocumentType) => {
     const document = createDocument(type);
     router.push(getDocumentEditorPath(type, document.id));
-  };
-
-  const handleLogout = async () => {
-    await signOutCurrentUser();
-
-    logout();
-
-    router.push("/login");
-    router.refresh();
   };
 
   useEffect(() => {
@@ -85,6 +75,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
         collapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[16.5rem_minmax(0,1fr)]",
       )}
     >
+      {/* Mobile Navigation */}
       <aside className="border-border/70 bg-background/95 sticky top-0 z-40 hidden h-dvh flex-col border-r lg:flex">
         <div
           className={cn(
@@ -166,11 +157,8 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
           <AccountMenu
             email={email}
             collapsed={collapsed}
-            onLogout={handleLogout}
             version={STUDIO_VERSION}
             displayName={displayName}
-            onProfile={() => router.push("/profile")}
-            onSettings={() => router.push("/settings")}
           />
         </div>
       </aside>
@@ -208,7 +196,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
         {mobileNavOpen ? (
           <div className="border-border/70 bg-background/95 space-y-4 border-b p-4 backdrop-blur lg:hidden">
             <nav className="grid gap-1" aria-label="Mobile studio navigation">
-              {[...mainNav, ...supportNav].map((item) => (
+              {[...mainNav, ...supportNav, ...bottomNav].map((item) => (
                 <StudioNavLink
                   item={item}
                   key={item.href}
@@ -218,13 +206,16 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
               ))}
             </nav>
 
-            <div className="border-border bg-card flex items-center justify-between rounded-2xl border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{displayName}</p>
-                <p className="text-muted truncate text-xs">{email}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <AccountMenu
+                  collapsed={false}
+                  displayName={displayName}
+                  email={email}
+                  version={STUDIO_VERSION}
+                />
               </div>
-
-              <ThemeToggle className="h-9 w-9 rounded-xl px-0" />
+              <ThemeToggle className="h-9 w-9 shrink-0 rounded-xl px-0" />
             </div>
           </div>
         ) : null}

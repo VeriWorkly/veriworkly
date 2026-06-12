@@ -27,6 +27,7 @@ type ApiKeyAuthUser = {
   id: string;
   email: string | null;
   name: string | null;
+  subscriptions: { status: string }[];
 };
 
 type ApiKeyAuthRecord = {
@@ -153,6 +154,10 @@ async function invalidateAuthCache(keyHash: string) {
   }
 }
 
+async function invalidateProfileCache(userId: string) {
+  await cacheDel(`user:profile:v2:${userId}`);
+}
+
 async function setAuthCache(record: ApiKeyAuthRecord) {
   try {
     await cacheSet(`apikey:auth:${record.keyHash}`, record, AUTH_CACHE_TTL_SECONDS);
@@ -211,6 +216,7 @@ export class ApiKeyService {
       },
     });
 
+    await invalidateProfileCache(userId);
     return { ...created, key: rawKey } satisfies ApiKeyCreateResult;
   }
 
@@ -221,7 +227,20 @@ export class ApiKeyService {
     const cached = await getAuthCache(keyHash);
 
     if (cached && cached.isActive && !isExpired(cached.expiresAt) && !cached.revokedAt) {
+      const userSubscription = cached.user.subscriptions?.[0];
+
+      if (
+        userSubscription &&
+        (userSubscription.status === "CANCELED" || userSubscription.status === "INACTIVE")
+      ) {
+        logger.warn(
+          `API key validation rejected: User account ${cached.userId} subscription status is ${userSubscription.status}`,
+        );
+        return null;
+      }
+
       void this.touchLastUsed(cached.id);
+
       return cached;
     }
 
@@ -238,12 +257,28 @@ export class ApiKeyService {
             id: true,
             email: true,
             name: true,
+            subscriptions: {
+              orderBy: { updatedAt: "desc" },
+              take: 1,
+              select: { status: true },
+            },
           },
         },
       },
     });
 
     if (!apiKey) {
+      return null;
+    }
+
+    const userSubscription = apiKey.user.subscriptions?.[0];
+    if (
+      userSubscription &&
+      (userSubscription.status === "CANCELED" || userSubscription.status === "INACTIVE")
+    ) {
+      logger.warn(
+        `API key validation rejected: User account ${apiKey.userId} subscription status is ${userSubscription.status}`,
+      );
       return null;
     }
 
@@ -262,7 +297,12 @@ export class ApiKeyService {
       createdAt: apiKey.createdAt.toISOString(),
       updatedAt: apiKey.updatedAt.toISOString(),
       lastUsed: apiKey.lastUsed ? apiKey.lastUsed.toISOString() : null,
-      user: apiKey.user,
+      user: {
+        id: apiKey.user.id,
+        email: apiKey.user.email,
+        name: apiKey.user.name,
+        subscriptions: apiKey.user.subscriptions.map((sub) => ({ status: sub.status })),
+      },
     };
 
     void setAuthCache(authRecord);
@@ -364,6 +404,7 @@ export class ApiKeyService {
     });
 
     await invalidateAuthCache(existing.keyHash);
+    await invalidateProfileCache(userId);
 
     return result.count;
   }
@@ -436,6 +477,7 @@ export class ApiKeyService {
     });
 
     await invalidateAuthCache(current.keyHash);
+    await invalidateProfileCache(userId);
 
     return { ...rotated, key: rawKey, rotatedFromId: current.id };
   }
@@ -458,6 +500,7 @@ export class ApiKeyService {
     });
 
     await invalidateAuthCache(existing.keyHash);
+    await invalidateProfileCache(userId);
 
     return deleted.count;
   }

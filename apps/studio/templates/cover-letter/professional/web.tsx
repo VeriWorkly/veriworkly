@@ -2,14 +2,19 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import type { RichTextBlock } from "../shared";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import {
+  buildCoverLetterFlowContent,
+  buildProfessionalFlowItems,
   getCoverLetterState,
-  splitMarkdownLines,
-  splitParagraphs,
-  splitRichTextBlocks,
+  getFlowPageKey,
+  getProfessionalFlowItemWeight,
+  getCoverLetterFlowSenderName,
+  isCoverLetterSectionVisible,
+  paginateMeasuredItems,
+  paginateWeightedItems,
+  type ProfessionalFlowItem,
 } from "../shared";
 
 import {
@@ -22,84 +27,6 @@ import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
 
 const PAGE_HEIGHT = 1123;
-const BODY_TOP_GAP = 28;
-const PARAGRAPH_CHUNK_WORDS = 70;
-
-type ProfessionalFlowItem =
-  | { id: string; type: "greeting"; text: string }
-  | { id: string; type: "paragraph"; text: string }
-  | { id: string; type: "body-list"; items: string[] }
-  | { id: string; type: "proof-list"; items: string[] }
-  | { id: string; type: "closing"; text: string }
-  | { id: string; type: "signature"; text: string }
-  | { id: string; type: "postscript"; text: string };
-
-type CoverLetterFlowContent = Pick<
-  CoverLetterContent,
-  "body" | "closing" | "greeting" | "highlights" | "opening" | "postscript" | "signature"
->;
-
-function splitTextIntoChunks(text: string, wordsPerChunk = PARAGRAPH_CHUNK_WORDS) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length <= wordsPerChunk) return [text];
-
-  const chunks: string[] = [];
-
-  for (let index = 0; index < words.length; index += wordsPerChunk) {
-    chunks.push(words.slice(index, index + wordsPerChunk).join(" "));
-  }
-
-  return chunks;
-}
-
-function buildProfessionalFlowItems(content: CoverLetterFlowContent, senderName: string) {
-  const items: ProfessionalFlowItem[] = [];
-
-  if (content.greeting) items.push({ id: "greeting", type: "greeting", text: content.greeting });
-
-  const bodyBlocks: RichTextBlock[] = [
-    ...splitParagraphs(content.opening).map((text) => ({ type: "paragraph" as const, text })),
-    ...splitRichTextBlocks(content.body),
-  ];
-
-  bodyBlocks.forEach((block, blockIndex) => {
-    if (block.type === "paragraph") {
-      splitTextIntoChunks(block.text).forEach((text, chunkIndex) => {
-        items.push({
-          id: `body-${blockIndex}-${chunkIndex}`,
-          type: "paragraph",
-          text,
-        });
-      });
-      return;
-    }
-
-    items.push({
-      id: `body-list-${blockIndex}`,
-      type: "body-list",
-      items: block.items,
-    });
-  });
-
-  const highlights = splitMarkdownLines(content.highlights);
-
-  if (highlights.length > 0) {
-    items.push({ id: "proof-list", type: "proof-list", items: highlights });
-  }
-
-  if (content.closing) items.push({ id: "closing", type: "closing", text: content.closing });
-
-  items.push({ id: "signature", type: "signature", text: content.signature || senderName });
-
-  if (content.postscript) {
-    splitTextIntoChunks(content.postscript, 55).forEach((text, index) => {
-      items.push({ id: `postscript-${index}`, type: "postscript", text });
-    });
-  }
-
-  return items;
-}
 
 function renderFlowItem(item: ProfessionalFlowItem, accentColor: string) {
   if (item.type === "greeting") return <p className="font-medium text-zinc-950">{item.text}</p>;
@@ -164,64 +91,19 @@ function renderGroupedFlowItems(items: ProfessionalFlowItem[], accentColor: stri
   return nodes;
 }
 
-function paginateMeasuredItems<T extends { id: string }>(
-  items: T[],
-  heights: Map<string, number>,
-  firstLimit: number,
-  nextLimit: number,
-) {
-  const pages: T[][] = [[]];
-  let pageIndex = 0;
-  let used = 0;
+function fitsInsideBottomPadding(container: HTMLElement, content: HTMLElement) {
+  const containerStyle = window.getComputedStyle(container);
+  const paddingBottom = Number.parseFloat(containerStyle.paddingBottom) || 0;
+  const containerBottom = container.getBoundingClientRect().bottom - paddingBottom;
+  const contentBottom = content.getBoundingClientRect().bottom;
 
-  for (const item of items) {
-    const height = Math.ceil(heights.get(item.id) ?? 0);
-    const limit = pageIndex === 0 ? firstLimit : nextLimit;
-
-    if (pages[pageIndex].length > 0 && used + height > limit) {
-      pages.push([]);
-      pageIndex += 1;
-      used = 0;
-    }
-
-    pages[pageIndex].push(item);
-    used += height;
-  }
-
-  return pages.filter((page) => page.length > 0);
-}
-
-function getProfessionalHtmlItemWeight(item: ProfessionalFlowItem) {
-  if (item.type === "body-list" || item.type === "proof-list") {
-    return 2 + item.items.reduce((total, listItem) => total + Math.ceil(listItem.length / 78), 0);
-  }
-
-  if (item.type === "postscript") return 2 + Math.ceil(item.text.length / 110);
-  if (item.type === "closing" || item.type === "signature" || item.type === "greeting") return 1;
-
-  return Math.max(1, Math.ceil(item.text.length / 92));
+  return contentBottom <= containerBottom + 1;
 }
 
 function paginateProfessionalHtmlItems(items: ProfessionalFlowItem[]) {
-  const pages: ProfessionalFlowItem[][] = [[]];
-  let pageIndex = 0;
-  let used = 0;
-
-  for (const item of items) {
-    const limit = pageIndex === 0 ? 17 : 26;
-    const weight = getProfessionalHtmlItemWeight(item);
-
-    if (pages[pageIndex].length > 0 && used + weight > limit) {
-      pages.push([]);
-      pageIndex += 1;
-      used = 0;
-    }
-
-    pages[pageIndex].push(item);
-    used += weight;
-  }
-
-  return pages.filter((page) => page.length > 0);
+  return paginateWeightedItems(items, getProfessionalFlowItemWeight, (pageIndex) =>
+    pageIndex === 0 ? 17 : 26,
+  );
 }
 
 function renderProfessionalHtmlItem(item: ProfessionalFlowItem) {
@@ -251,64 +133,78 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
     recipient,
   } = state;
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const flowSenderName = content.senderName || content.signature || "Your Name";
-  const flowContent = useMemo(
-    () => ({
-      body: content.body,
-      closing: content.closing,
-      greeting: content.greeting,
-      highlights: content.highlights,
-      opening: content.opening,
-      postscript: content.postscript,
-      signature: content.signature,
-    }),
-    [
-      content.body,
-      content.closing,
-      content.greeting,
-      content.highlights,
-      content.opening,
-      content.postscript,
-      content.signature,
-    ],
-  );
+  const flowSenderName = getCoverLetterFlowSenderName(content);
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const flowContent = useMemo(() => buildCoverLetterFlowContent(content), [content]);
   const flowItems = useMemo(
     () => buildProfessionalFlowItems(flowContent, flowSenderName),
     [flowContent, flowSenderName],
   );
   const [pages, setPages] = useState<ProfessionalFlowItem[][]>(() => [flowItems]);
+  const measureRef = useRef<HTMLDivElement | null>(null);
   const firstPrefixRef = useRef<HTMLDivElement | null>(null);
   const nextPrefixRef = useRef<HTMLParagraphElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
 
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const firstPrefixHeight = firstPrefixRef.current?.getBoundingClientRect().height ?? 0;
-      const nextPrefixHeight = nextPrefixRef.current?.getBoundingClientRect().height ?? 0;
-      const firstLimit = PAGE_HEIGHT - appearance.pageMargin * 2 - firstPrefixHeight - BODY_TOP_GAP;
-      const nextLimit = PAGE_HEIGHT - appearance.pageMargin * 2 - nextPrefixHeight - BODY_TOP_GAP;
-      const heights = new Map<string, number>();
+      const probe = document.createElement("article");
 
-      flowItems.forEach((item) => {
-        const node = itemRefs.current.get(item.id);
-        heights.set(item.id, node?.getBoundingClientRect().height ?? 0);
+      probe.className = "mx-auto h-280.75 w-198.5 max-w-full overflow-hidden";
+      Object.assign(probe.style, {
+        backgroundColor: appearance.pageColor,
+        color: appearance.textColor,
+        fontFamily,
+        padding: `${appearance.pageMargin}px`,
       });
+      measureRef.current?.appendChild(probe);
 
-      const nextPages = paginateMeasuredItems(flowItems, heights, firstLimit, nextLimit);
-      const nextKey = nextPages.map((page) => page.map((item) => item.id).join(",")).join("|");
+      const fitsPage = (items: ProfessionalFlowItem[], pageIndex: number) => {
+        probe.innerHTML = "";
+
+        const prefix = pageIndex === 0 ? firstPrefixRef.current : nextPrefixRef.current;
+        if (prefix) probe.appendChild(prefix.cloneNode(true));
+
+        const main = document.createElement("main");
+        main.className = "mt-7 text-[15px] text-zinc-800";
+        main.style.lineHeight = String(appearance.lineHeight);
+        main.style.setProperty("--paragraph-gap", `${appearance.paragraphSpacing}px`);
+
+        items.forEach((item) => {
+          const node = itemRefs.current.get(item.id);
+          if (node) main.appendChild(node.cloneNode(true));
+        });
+
+        probe.appendChild(main);
+
+        return probe.scrollHeight <= PAGE_HEIGHT + 1 && fitsInsideBottomPadding(probe, main);
+      };
+
+      const nextPages = paginateMeasuredItems(flowItems, fitsPage);
+      probe.remove();
+      const nextKey = getFlowPageKey(nextPages);
 
       setPages((current) => {
-        const currentKey = current.map((page) => page.map((item) => item.id).join(",")).join("|");
+        const currentKey = getFlowPageKey(current);
         return currentKey === nextKey ? current : nextPages;
       });
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [appearance.lineHeight, appearance.pageMargin, appearance.paragraphSpacing, flowItems]);
+  }, [
+    appearance.lineHeight,
+    appearance.pageColor,
+    appearance.pageMargin,
+    appearance.paragraphSpacing,
+    appearance.textColor,
+    flowItems,
+    fontFamily,
+  ]);
 
   return (
     <div className="grid gap-6">
       <div
+        ref={measureRef}
         aria-hidden="true"
         className="pointer-events-none absolute opacity-0"
         style={{ left: -10000, top: 0, width: 794 }}
@@ -370,7 +266,7 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
               ) : null}
             </section>
 
-            {content.subject || content.jobTitle ? (
+            {showTarget && (content.subject || content.jobTitle) ? (
               <section className="mt-8 border-y border-zinc-200 py-4">
                 <p
                   className="text-[10px] font-bold tracking-[0.22em] uppercase"
@@ -480,7 +376,7 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
                 ) : null}
               </section>
 
-              {content.subject || content.jobTitle ? (
+              {showTarget && (content.subject || content.jobTitle) ? (
                 <section className="mt-8 border-y border-zinc-200 py-4">
                   <p
                     className="text-[10px] font-bold tracking-[0.22em] uppercase"
@@ -528,10 +424,13 @@ export function buildProfessionalCoverLetterHtml(content: CoverLetterContent): s
     renderedLinks,
     recipient,
   } = state;
-  const subject = escapeHtml(content.subject || content.jobTitle || "Application");
+  const showTarget = isCoverLetterSectionVisible(content, "target");
+  const subject = escapeHtml(
+    showTarget ? content.subject || content.jobTitle || "Application" : "",
+  );
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const fontHref = getFontStylesheetHref(appearance.fontFamily);
-  const flowItems = buildProfessionalFlowItems(content, senderName);
+  const flowItems = buildProfessionalFlowItems(buildCoverLetterFlowContent(content), senderName);
   const pages = paginateProfessionalHtmlItems(flowItems);
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.senderName || "Cover Letter")}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
@@ -539,7 +438,7 @@ export function buildProfessionalCoverLetterHtml(content: CoverLetterContent): s
     .map((blocks, pageIndex) => {
       const first = pageIndex === 0;
       const body = blocks.map((item) => renderProfessionalHtmlItem(item)).join("");
-      return `<article class="page professional-page">${first ? `<header><div><h1>${escapeHtml(senderName)}</h1><p>${escapeHtml(senderTitle)}</p></div><div class="contact">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div></header><section class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></section><section class="subject"><p class="label">Re</p><h2>${subject}</h2></section>` : `<p class="continued">Cover Letter Continued</p>`}<main class="body">${body}</main></article>`;
+      return `<article class="page professional-page">${first ? `<header><div><h1>${escapeHtml(senderName)}</h1><p>${escapeHtml(senderTitle)}</p></div><div class="contact">${contact.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}${renderedLinks.map((link) => `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`).join("")}</div></header><section class="meta"><div>${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><p>${escapeHtml(content.date)}</p></section>${showTarget ? `<section class="subject"><p class="label">Re</p><h2>${subject}</h2></section>` : ""}` : `<p class="continued">Cover Letter Continued</p>`}<main class="body">${body}</main></article>`;
     })
     .join("")}</body></html>`;
 }

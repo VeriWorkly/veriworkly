@@ -1,16 +1,15 @@
-"use client";
-
 import type { LucideIcon } from "lucide-react";
 
 import {
   Home,
-  Settings,
   BookOpen,
   FileText,
   KeyRound,
   Newspaper,
   FolderOpen,
   HelpCircle,
+  PanelsTopLeft,
+  ScanSearch,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -41,9 +40,24 @@ export const mainNav: StudioNavItem[] = [
   },
 
   {
+    href: "/ats",
+    label: "ATS checker",
+    icon: ScanSearch,
+    match: (pathname) => pathname.startsWith("/ats"),
+  },
+
+  {
     href: `${siteConfig.links.main}/templates`,
     label: "Templates",
     icon: FileText,
+    external: true,
+    match: () => false,
+  },
+
+  {
+    href: `${siteConfig.links.portfolio}/editor`,
+    label: "Portfolio",
+    icon: PanelsTopLeft,
     external: true,
     match: () => false,
   },
@@ -81,13 +95,6 @@ export const bottomNav: StudioNavItem[] = [
     label: "API keys",
     icon: KeyRound,
     match: (pathname) => pathname.startsWith("/api-keys"),
-  },
-
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
-    match: (pathname) => pathname.startsWith("/settings"),
   },
 ];
 

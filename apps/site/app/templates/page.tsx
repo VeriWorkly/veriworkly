@@ -9,9 +9,9 @@ import { siteConfig } from "@/config/site";
 import { documentTypeSummaries, templateSummaries } from "@/config/templates";
 
 export const metadata: Metadata = {
-  title: "Document Template Directory | VeriWorkly",
+  title: "Template Directory | VeriWorkly",
   description:
-    "Explore VeriWorkly templates by document type, including resumes and cover letters with production-ready previews and editor-ready layouts.",
+    "Explore VeriWorkly templates by type, including resumes, cover letters, and portfolio websites with production-ready previews and editor-ready layouts.",
   keywords: [
     "document templates",
     "resume templates",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Document Template Directory | VeriWorkly",
     description:
-      "Browse resume and cover letter templates by document type, compare design intent, and start from the right layout.",
+      "Browse resume, cover letter, and portfolio website templates by type, compare design intent, and start from the right layout.",
     url: `${siteConfig.url}/templates`,
     siteName: siteConfig.name,
     images: [
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Document Template Directory | VeriWorkly",
-    description: "Resume and cover letter templates, organized by document type.",
+    description: "Resume, cover letter, and portfolio website templates, organized by type.",
     images: ["/og/template-page-og.png"],
   },
   alternates: {
@@ -57,7 +57,7 @@ const TemplatesPortalPage = () => {
       <header className="grid gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.7fr)] lg:items-end">
         <div className="space-y-7">
           <div className="flex flex-wrap gap-2">
-            <Badge>Document-first templates</Badge>
+            <Badge>Document and website templates</Badge>
             <Badge>{templateSummaries.length} live layouts</Badge>
           </div>
 
@@ -67,9 +67,9 @@ const TemplatesPortalPage = () => {
             </h1>
 
             <p className="text-muted max-w-2xl text-base leading-7">
-              A resume and a cover letter do different jobs. This directory separates them from the
-              start, then shows real document previews, fit signals, and the exact editor path for
-              each template.
+              Resumes, cover letters, and portfolio websites do different jobs. This directory
+              separates them from the start, then shows real previews, fit signals, and the exact
+              editor path for each template.
             </p>
           </div>
         </div>

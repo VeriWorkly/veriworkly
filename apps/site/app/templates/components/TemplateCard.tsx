@@ -1,12 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, FileText } from "lucide-react";
+import { ArrowRight, CheckCircle2, ExternalLink, FileText, Globe2 } from "lucide-react";
 
 import type { TemplateSummary } from "@/config/templates";
 
 import { Badge } from "@veriworkly/ui";
 
-import { getTemplateHref } from "./utils";
+import { buildPreviewUrl, getTemplateHref } from "./utils";
 
 type TemplateCardProps = {
   template: TemplateSummary;
@@ -14,6 +14,8 @@ type TemplateCardProps = {
 
 const TemplateCard = ({ template }: TemplateCardProps) => {
   const previewAlt = `${template.name} ${template.documentTypeLabel.toLowerCase()} template preview`;
+  const previewUrl = buildPreviewUrl(template);
+  const isPortfolioTemplate = template.documentType === "portfolio-website";
 
   return (
     <article className="group border-border/70 bg-card/70 hover:border-accent/45 grid overflow-hidden rounded-2xl border shadow-[0_28px_80px_-60px_rgba(15,23,42,0.7)] transition-all duration-200 hover:-translate-y-1 lg:grid-cols-[minmax(260px,0.75fr)_minmax(0,1fr)_minmax(220px,0.52fr)]">
@@ -33,15 +35,37 @@ const TemplateCard = ({ template }: TemplateCardProps) => {
           {template.layout}
         </div>
 
-        <div className="border-border absolute right-5 bottom-5 aspect-8.5/11 h-82 max-h-[calc(100%-3rem)] overflow-hidden rounded-sm border bg-white shadow-[0_28px_70px_-38px_rgba(15,23,42,0.85)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:rotate-1">
-          <Image
-            fill
-            src={template.previewImage}
-            alt={previewAlt}
-            sizes="(min-width: 1024px) 260px, 80vw"
-            className="object-contain object-top"
-          />
-        </div>
+        {isPortfolioTemplate ? (
+          <div className="border-border absolute right-5 bottom-5 h-82 w-[72%] max-w-80 overflow-hidden rounded-2xl border bg-white shadow-[0_28px_70px_-38px_rgba(15,23,42,0.85)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:rotate-1">
+            <div className="border-border flex h-9 items-center justify-between border-b px-3 text-[10px] font-semibold">
+              <span>{template.editorTemplateId}.veriworkly.com</span>
+              <Globe2 className="text-accent h-3.5 w-3.5" aria-hidden="true" />
+            </div>
+            <div className="bg-background min-h-full p-5">
+              <p className="text-muted text-[10px] font-semibold tracking-[0.18em] uppercase">
+                Gautam Raj
+              </p>
+              <h3 className="text-foreground mt-5 max-w-56 text-4xl leading-none font-semibold tracking-[-0.06em]">
+                Building VeriWorkly into useful public tools.
+              </h3>
+              <div className="mt-8 grid gap-2">
+                <span className="bg-accent h-3 w-28 rounded-full" />
+                <span className="bg-foreground/15 h-3 w-44 rounded-full" />
+                <span className="bg-foreground/15 h-3 w-36 rounded-full" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="border-border absolute right-5 bottom-5 aspect-8.5/11 h-82 max-h-[calc(100%-3rem)] overflow-hidden rounded-sm border bg-white shadow-[0_28px_70px_-38px_rgba(15,23,42,0.85)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:rotate-1">
+            <Image
+              fill
+              src={template.previewImage}
+              alt={previewAlt}
+              sizes="(min-width: 1024px) 260px, 80vw"
+              className="object-contain object-top"
+            />
+          </div>
+        )}
 
         <div className="border-border/50 absolute right-16 bottom-1 h-8 w-36 rounded-[50%] border bg-black/10 blur-xl" />
       </Link>
@@ -86,13 +110,24 @@ const TemplateCard = ({ template }: TemplateCardProps) => {
             ))}
           </ul>
 
-          <Link
-            className="text-accent hover:text-accent/80 focus-visible:ring-accent inline-flex w-fit items-center gap-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-            href={getTemplateHref(template)}
-          >
-            Review template
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          <div className="flex flex-wrap gap-4">
+            <Link
+              className="text-accent hover:text-accent/80 focus-visible:ring-accent inline-flex w-fit items-center gap-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              href={getTemplateHref(template)}
+            >
+              Review template
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            {previewUrl && (
+              <a
+                className="text-foreground hover:text-accent focus-visible:ring-accent inline-flex w-fit items-center gap-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                href={previewUrl}
+              >
+                Live preview
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

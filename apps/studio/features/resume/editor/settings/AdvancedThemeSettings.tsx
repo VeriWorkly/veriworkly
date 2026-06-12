@@ -2,6 +2,8 @@
 
 import type { ResumeCustomization } from "@/types/resume";
 
+import { ChevronDown, RotateCcw } from "lucide-react";
+
 import { Button } from "@veriworkly/ui";
 
 import { SettingsColor, SettingsRange } from "./SettingControls";
@@ -22,18 +24,17 @@ const AdvancedThemeSettings = ({
   onUpdateCustomization,
 }: AdvancedThemeSettingsProps) => {
   return (
-    <div className="space-y-3 rounded-2xl border border-dashed border-[color-mix(in_oklab,var(--border)_75%,transparent)] p-4">
+    <div className="border-border bg-background/70 space-y-3 rounded-2xl border p-3">
       <div className="flex items-center justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <p className="text-foreground text-sm font-semibold">Advanced Theme</p>
 
-          <p className="text-muted text-xs">
-            Full color control for resume surface and typography.
-          </p>
+          <p className="text-muted text-xs">Fine tune surfaces, borders, and text.</p>
         </div>
 
-        <Button onClick={onToggleOpen} size="sm" variant="ghost">
+        <Button className="rounded-xl" onClick={onToggleOpen} size="sm" variant="ghost">
           {advancedOpen ? "Hide" : "Show"}
+          <ChevronDown className={`ml-2 h-4 w-4 transition ${advancedOpen ? "rotate-180" : ""}`} />
         </Button>
       </div>
 
@@ -99,7 +100,13 @@ const AdvancedThemeSettings = ({
           />
 
           <div className="md:col-span-2">
-            <Button onClick={onResetThemeDefaults} size="sm" variant="secondary">
+            <Button
+              className="w-full rounded-xl"
+              onClick={onResetThemeDefaults}
+              size="sm"
+              variant="secondary"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
               Reset Theme Defaults
             </Button>
           </div>

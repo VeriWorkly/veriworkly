@@ -7,6 +7,7 @@ import { Button } from "@veriworkly/ui";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { validateExperience } from "@/features/resume/utils/validation";
+import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
 
 import { Field, TextArea, invalidClass, DelimitedTextArea } from "../EditorFormPrimitives";
 import DraggableSection from "./DraggableSection";
@@ -21,6 +22,7 @@ const ExperienceSection = ({
   onToggle,
 }: BaseSectionProps) => {
   const experience = useResumeStore((state) => state.resume.experience);
+  const resumeId = useResumeStore((state) => state.resume.id);
   const addExperience = useResumeStore((state) => state.addExperience);
   const removeExperience = useResumeStore((state) => state.removeExperience);
   const updateExperience = useResumeStore((state) => state.updateExperience);
@@ -172,6 +174,17 @@ const ExperienceSection = ({
                 value={activeExperience.summary}
               />
             </Field>
+            <AiFieldAssist
+              action={activeExperience.summary ? "rewrite_section" : "generate_section"}
+              context={JSON.stringify({
+                role: activeExperience.role,
+                company: activeExperience.company,
+                highlights: activeExperience.highlights,
+              })}
+              documentId={resumeId}
+              onApply={(summary) => updateExperience(safeExperienceIndex, { summary })}
+              text={activeExperience.summary}
+            />
 
             <Field label="Highlights (comma separated)">
               <DelimitedTextArea

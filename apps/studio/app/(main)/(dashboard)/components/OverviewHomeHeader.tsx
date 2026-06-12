@@ -29,6 +29,15 @@ const OverviewHomeHeader = ({
     return name.split(" ")[0] || "builder";
   }, [user]);
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 17) return "Good afternoon";
+
+    return "Good evening";
+  }, []);
+
   return (
     <header className="border-border bg-card rounded-2xl border p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -36,7 +45,7 @@ const OverviewHomeHeader = ({
           <p className="text-accent text-xs font-bold tracking-[0.2em] uppercase">Overview</p>
 
           <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-            Good morning, {firstName}.
+            {greeting}, {firstName}.
           </h1>
 
           <p className="text-muted mt-2 max-w-2xl text-base">

@@ -66,33 +66,42 @@ export default function GenericCustomSection({
       onDragOver={onDragOver}
       onDragStart={onDragStart}
     >
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 grid gap-2">
         {section.items.length ? (
-          <select
-            className="border-border bg-background h-10 rounded-xl border px-3 text-sm"
-            onChange={(event) => setSelectedIndex(Number(event.target.value))}
-            value={safeIndex}
+          <div className="flex flex-wrap gap-2">
+            <select
+              className="border-border bg-background h-10 min-w-0 flex-1 rounded-xl border px-3 text-sm"
+              onChange={(event) => setSelectedIndex(Number(event.target.value))}
+              value={safeIndex}
+            >
+              {section.items.map((item, index) => (
+                <option key={item.id} value={index}>
+                  {item.name || `${fallbackItemLabel} ${index + 1}`}
+                </option>
+              ))}
+            </select>
+
+            <Button onClick={() => addCustomSectionItem(kind)} size="sm" variant="secondary">
+              {addLabel}
+            </Button>
+
+            <Button
+              onClick={() => removeCustomSectionItem(kind, safeIndex)}
+              size="sm"
+              variant="ghost"
+            >
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <Button
+            className="w-full justify-center"
+            onClick={() => addCustomSectionItem(kind)}
+            variant="secondary"
           >
-            {section.items.map((item, index) => (
-              <option key={item.id} value={index}>
-                {item.name || `${fallbackItemLabel} ${index + 1}`}
-              </option>
-            ))}
-          </select>
-        ) : null}
-
-        <Button onClick={() => addCustomSectionItem(kind)} size="sm" variant="secondary">
-          {addLabel}
-        </Button>
-
-        <Button
-          disabled={section.items.length === 0}
-          onClick={() => removeCustomSectionItem(kind, safeIndex)}
-          size="sm"
-          variant="ghost"
-        >
-          Remove
-        </Button>
+            {addLabel}
+          </Button>
+        )}
       </div>
 
       {activeItem ? (

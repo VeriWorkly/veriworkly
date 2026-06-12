@@ -5,6 +5,7 @@ export const AVAILABLE_API_KEY_SCOPES = [
   "resume:write",
   "roadmap:read",
   "github:read",
+  "ai:write",
 ] as const;
 
 export const API_KEY_SCOPE_OPTIONS = [
@@ -43,6 +44,11 @@ export const API_KEY_SCOPE_OPTIONS = [
     label: "GitHub read",
     description: "Read synced GitHub issue and stats data.",
   },
+  {
+    value: "ai:write",
+    label: "AI generation",
+    description: "Generate and rewrite content using the account's AI credits.",
+  },
 ] as const;
 
 export const API_KEY_SCOPE_GROUPS = [
@@ -72,6 +78,12 @@ export const API_KEY_SCOPE_GROUPS = [
     label: "GitHub",
     description: "Synced GitHub stats and issue APIs are read-only.",
     scopes: ["github:read"],
+  },
+  {
+    key: "ai",
+    label: "AI",
+    description: "AI generation spends credits from the account.",
+    scopes: ["ai:write"],
   },
 ] as const;
 

@@ -43,6 +43,8 @@ function DataLine({
 export default function ProfileDataPanel({ profile }: { profile: AccountProfile | null }) {
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
+  const canEditAccount = Boolean(profile);
+
   const email = profile?.email || "No email saved";
   const name = profile?.name || profile?.email?.split("@")[0] || "Local builder";
 
@@ -69,9 +71,11 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
               {name}
               <button
                 aria-label="Edit name"
+                disabled={!canEditAccount}
                 id="edit-profile-name-header-btn"
-                onClick={() => setIsEditModalOpen(true)}
-                className="text-muted hover:text-accent hover:bg-muted/20 cursor-pointer rounded-lg p-1 transition"
+                onClick={() => canEditAccount && setIsEditModalOpen(true)}
+                title={canEditAccount ? "Edit name" : "Sign in to edit your account name"}
+                className="text-muted hover:text-accent hover:bg-muted/20 cursor-pointer rounded-lg p-1 transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Pencil className="h-4 w-4" />
               </button>
@@ -88,14 +92,15 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
 
         <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
           <div
-            tabIndex={0}
-            role="button"
             aria-label="Edit display name"
+            aria-disabled={!canEditAccount}
             id="edit-profile-name-card-trigger"
-            onClick={() => setIsEditModalOpen(true)}
-            className="border-accent/20 bg-accent/3 hover:border-accent/40 hover:bg-accent/8 group min-w-0 cursor-pointer rounded-xl border p-3 shadow-sm transition-all duration-200"
+            tabIndex={canEditAccount ? 0 : undefined}
+            role={canEditAccount ? "button" : undefined}
+            onClick={() => canEditAccount && setIsEditModalOpen(true)}
+            className="border-accent/20 bg-accent/3 hover:border-accent/40 hover:bg-accent/8 group min-w-0 rounded-xl border p-3 shadow-sm transition-all duration-200 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
+              if (canEditAccount && (e.key === "Enter" || e.key === " ")) {
                 e.preventDefault();
                 setIsEditModalOpen(true);
               }
@@ -108,7 +113,7 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
               </p>
 
               <span className="text-accent group-hover:text-accent/80 flex items-center gap-1 text-xs font-bold transition-colors">
-                Edit <Pencil className="h-3 w-3" />
+                {canEditAccount ? "Edit" : "Sign in required"} <Pencil className="h-3 w-3" />
               </span>
             </div>
 
@@ -128,11 +133,13 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
         </div>
       </section>
 
-      <EditProfileNameModal
-        currentName={name}
-        open={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-      />
+      {canEditAccount ? (
+        <EditProfileNameModal
+          currentName={name}
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

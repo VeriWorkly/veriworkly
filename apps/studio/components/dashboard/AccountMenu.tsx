@@ -1,38 +1,35 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Moon, Settings, Sun, User } from "lucide-react";
+import { ChevronDown, Coins, CreditCard, LogIn, LogOut, User, UserRound, Settings } from "lucide-react";
+
+import { signOutCurrentUser } from "@/features/auth/services/current-user";
 
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
+
+import AccountMenuItem from "./AccountMenuItem";
+import AccountMenuTheme from "./AccountMenuTheme";
+
+import { useUserStore } from "@/store/useUserStore";
 
 export function AccountMenu({
   collapsed,
   displayName,
   email,
   version,
-  onProfile,
-  onSettings,
-  onLogout,
 }: {
   collapsed: boolean;
   displayName: string;
   email: string;
   version: string;
-  onProfile: () => void;
-  onSettings: () => void;
-  onLogout: () => void;
 }) {
-  const { resolvedTheme, setTheme } = useTheme();
-
-  const themeLabel = resolvedTheme === "dark" ? "Light mode" : "Dark mode";
-
-  const onToggleTheme = () => {
-    setTheme(resolvedTheme === "dark" ? "light" : "dark");
-  };
+  const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  const { logout, isLoggedIn } = useUserStore();
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -52,7 +49,14 @@ export function AccountMenu({
     };
   }, []);
 
-  const close = () => setOpen(false);
+  const handleLogout = async () => {
+    await signOutCurrentUser();
+
+    logout();
+
+    router.push("/login");
+    router.refresh();
+  };
 
   return (
     <div className="relative" ref={rootRef}>
@@ -62,48 +66,73 @@ export function AccountMenu({
           role="menu"
         >
           <div className="border-border/70 flex items-center gap-3 border-b px-2 py-2.5">
-            <span className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
-              {displayName.slice(0, 1).toUpperCase()}
+            <span
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
+                isLoggedIn ? "bg-accent/10 text-accent" : "bg-muted/30 text-muted",
+              )}
+            >
+              {isLoggedIn ? (
+                displayName.slice(0, 1).toUpperCase()
+              ) : (
+                <UserRound className="h-5 w-5" />
+              )}
             </span>
+
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold">{displayName}</span>
               <span className="text-muted block truncate text-xs">{email}</span>
             </span>
           </div>
 
-          <AccountMenuItem
-            icon={User}
-            label="Profile"
-            onClick={() => {
-              close();
-              onProfile();
-            }}
-          />
+          {isLoggedIn ? (
+            <>
+              <AccountMenuItem
+                icon={User}
+                label="Profile"
+                onClick={() => {
+                  router.push("/profile");
+                }}
+              />
+
+              <AccountMenuItem
+                icon={CreditCard}
+                label="Billing"
+                onClick={() => {
+                  router.push("/billing");
+                }}
+              />
+              <AccountMenuItem
+                icon={Coins}
+                label="AI credits"
+                onClick={() => {
+                  router.push("/credits");
+                }}
+              />
+            </>
+          ) : null}
+
           <AccountMenuItem
             icon={Settings}
             label="Settings"
             onClick={() => {
-              close();
-              onSettings();
+              router.push("/settings");
             }}
           />
-          <AccountMenuItem
-            icon={themeLabel === "Light mode" ? Sun : Moon}
-            label={themeLabel}
-            onClick={() => {
-              close();
-              onToggleTheme();
-            }}
-          />
-          <AccountMenuItem
-            danger
-            icon={LogOut}
-            label="Logout"
-            onClick={async () => {
-              close();
-              await onLogout();
-            }}
-          />
+
+          <AccountMenuTheme setOpen={setOpen} />
+
+          {isLoggedIn ? (
+            <AccountMenuItem danger icon={LogOut} label="Logout" onClick={handleLogout} />
+          ) : (
+            <AccountMenuItem
+              icon={LogIn}
+              label="Log In"
+              onClick={() => {
+                router.push("/login");
+              }}
+            />
+          )}
 
           <div className="text-muted border-border/70 mt-1 border-t px-3 pt-2 text-[11px]">
             {version} - Terms
@@ -113,55 +142,39 @@ export function AccountMenu({
 
       <button
         type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Open account menu"
+        onClick={() => setOpen((value) => !value)}
         className={cn(
           "border-border bg-card hover:bg-background flex w-full items-center gap-2 rounded-lg border p-2 text-left shadow-sm transition",
           collapsed && "justify-center p-1.5",
         )}
-        aria-label="Open account menu"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((value) => !value)}
       >
-        <span className="bg-accent/10 text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold">
-          {displayName.slice(0, 1).toUpperCase()}
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+            isLoggedIn ? "bg-accent/10 text-accent" : "bg-muted/30 text-muted",
+          )}
+        >
+          {isLoggedIn ? (
+            displayName.slice(0, 1).toUpperCase()
+          ) : (
+            <UserRound className="h-4 w-4" />
+          )}
         </span>
+
         {!collapsed ? (
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold">{displayName}</span>
               <span className="text-muted block truncate text-[11px]">{email}</span>
             </span>
+
             <ChevronDown className="text-muted h-4 w-4" />
           </>
         ) : null}
       </button>
     </div>
-  );
-}
-
-function AccountMenuItem({
-  danger,
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  danger?: boolean;
-  icon: typeof User;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "hover:bg-accent/10 focus-visible:bg-accent/10 flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm outline-none",
-        danger && "text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10",
-      )}
-      onClick={onClick}
-      role="menuitem"
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
   );
 }

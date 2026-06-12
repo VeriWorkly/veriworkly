@@ -13,6 +13,9 @@ const userProfileSelect = {
   email: true,
   emailVerified: true,
   autoSyncEnabled: true,
+  portfolioPlan: true,
+  portfolioCanPublish: true,
+  portfolioAccessEndsAt: true,
   createdAt: true,
   updatedAt: true,
   _count: {

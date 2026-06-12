@@ -8,11 +8,32 @@ import {
   BadgeCheck,
   Fingerprint,
   ShieldCheck,
+  Trophy,
+  Coins,
+  CreditCard,
 } from "lucide-react";
 
 import Link from "next/link";
 
 const profileLinks = [
+  {
+    href: "/billing",
+    icon: CreditCard,
+    title: "Billing and plan",
+    text: "Manage your current plan, renewals, billing activity, and extra credits.",
+  },
+  {
+    href: "/credits",
+    icon: Coins,
+    title: "AI credit usage",
+    text: "Review credit balance, expiry, action costs, and usage history.",
+  },
+  {
+    href: "/affiliate",
+    icon: Trophy,
+    title: "Affiliate program",
+    text: "Join or manage referrals, commissions, tiers, and payouts.",
+  },
   {
     href: "/profile/master",
     icon: Database,

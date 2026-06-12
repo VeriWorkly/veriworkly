@@ -107,6 +107,12 @@ export default async function AdminPage() {
         </section>
 
         <section className="grid gap-4 md:grid-cols-2">
+          <Link href="/admin/monetization">
+            <Card className="border-border/80 bg-card/90 h-full cursor-pointer rounded-4xl p-6 transition duration-200 hover:-translate-y-0.5">
+              <div className="space-y-3"><Badge className="bg-background/70">Revenue</Badge><h3 className="text-foreground text-xl font-semibold">Monetization Operations</h3><p className="text-muted text-sm leading-6">Review affiliate withdrawals, credit adjustments, entitlements, and audit activity.</p></div>
+              <div className="text-accent mt-5 text-sm font-semibold">Open Monetization</div>
+            </Card>
+          </Link>
           <Link href="/admin/roadmap">
             <Card className="border-border/80 bg-card/90 h-full cursor-pointer rounded-4xl p-6 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_70px_-38px_rgba(0,0,0,0.5)]">
               <div className="space-y-3">

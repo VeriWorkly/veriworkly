@@ -13,20 +13,15 @@ import { FONT_FAMILY_MAP } from "@/features/documents/constants/fonts";
 import { formatDateRange } from "@/features/resume/services/resume-formatters";
 import {
   cleanResumeText,
-  getContactItems,
   getEducationMeta,
   getEducationTitle,
   getLinkDisplayText,
   getProjectLinkText,
   getProjectTitle,
+  getResumeRenderModel,
   getResumeRenderStyle,
   hasCustomItemContent,
-  hasCustomSectionContent,
-  hasEducationContent,
-  hasExperienceContent,
-  hasProjectContent,
   hasResumeSectionContent,
-  hasSkillGroupContent,
   normalizeLinkHref,
 } from "@/features/documents/rendering/resume-rendering";
 import { SOCIAL_ICON_SRC_BY_TYPE } from "../../shared/social-icons";
@@ -63,17 +58,17 @@ function Section({
 
 export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
   if (!resume) return null;
-  const style = getResumeRenderStyle(resume);
+  const {
+    style,
+    contactItems,
+    renderedLinks,
+    visibleExperience,
+    visibleEducation,
+    visibleProjects,
+    visibleSkills,
+    visibleCustomSections,
+  } = getResumeRenderModel(resume);
   const pagePadding = Math.max(24, style.pagePadding * 0.85);
-  const contactItems = getContactItems(resume.basics);
-  const renderedLinks = resume.links.items.filter((link) => normalizeLinkHref(link.url));
-  const visibleExperience = resume.experience.filter(hasExperienceContent);
-  const visibleEducation = resume.education.filter(hasEducationContent);
-  const visibleProjects = resume.projects.filter(hasProjectContent);
-  const visibleSkills = resume.skills.filter(hasSkillGroupContent);
-  const visibleCustomSections = resume.customSections.filter(
-    (section) => hasResumeSectionContent(resume, section.kind) && hasCustomSectionContent(section),
-  );
 
   return (
     <div

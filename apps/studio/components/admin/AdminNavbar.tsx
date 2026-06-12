@@ -4,6 +4,7 @@ const navItems = [
   { href: "/admin", label: "Home" },
   { href: "/admin/roadmap", label: "Roadmap" },
   { href: "/admin/roadmap/new", label: "Create Item" },
+  { href: "/admin/monetization", label: "Monetization" },
   { href: "/", label: "Overview" },
 ];
 

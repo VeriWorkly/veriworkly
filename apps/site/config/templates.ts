@@ -1,4 +1,4 @@
-export type TemplateDocumentType = "resume" | "cover-letter";
+export type TemplateDocumentType = "resume" | "cover-letter" | "portfolio-website";
 
 export type TemplateStatus = "available" | "planned";
 
@@ -111,18 +111,134 @@ export const documentTypeSummaries: DocumentTypeSummary[] = [
     label: "Portfolio Website",
     pluralLabel: "Portfolio Website Templates",
     description:
-      "Website templates for personal portfolios are coming soon. Fill information, publish portfolio site, and share it.",
+      "Live website templates for personal portfolios. Fill information once, switch designs, publish on a subdomain, and share the finished site.",
     href: "/templates/portfolio-website",
-    status: "planned",
-    cta: "Coming soon",
+    status: "available",
+    cta: "Explore Portfolio Templates",
     seoTitle: "Portfolio Website Templates | VeriWorkly",
     seoDescription:
-      "Portfolio website templates are coming soon for VeriWorkly, with hosted subdomain publishing.",
-    highlights: ["Hosted subdomain", "Project sections", "Public website"],
+      "Browse VeriWorkly portfolio website templates with live previews, hosted subdomain publishing, and reusable profile content.",
+    highlights: ["Hosted subdomain", "Project sections", "Live website previews"],
   },
 ];
 
 export const templateSummaries: TemplateSummary[] = [
+  {
+    id: "portfolio-signal",
+    editorTemplateId: "signal",
+    legacyIds: ["signal"],
+    name: "Signal",
+    documentType: "portfolio-website",
+    documentTypeLabel: "Portfolio Website",
+    description:
+      "A sharp, proof-first portfolio website for builders, product engineers, and founders who want their work to feel credible quickly.",
+    shortDescription:
+      "A structured public portfolio for project proof, technical credibility, and clear contact intent.",
+    accentColor: "#2563eb",
+    previewImage: "/veriworkly-logo.png",
+    tags: ["Website", "Subdomain", "Project proof", "Builder"],
+    family: "Portfolio Websites",
+    layout: "Live site",
+    audience: ["Product builders", "Engineers", "Founders", "Independent operators"],
+    bestFor: [
+      "Publishing a professional portfolio from one reusable profile.",
+      "Showing selected work, experience, writing, and contact details without code.",
+      "Builders who want a clean subdomain and metadata controls.",
+    ],
+    designVision:
+      "Signal treats a portfolio like an evidence system: crisp hierarchy, fast project scanning, and a strong path from proof to contact.",
+    typography: [
+      "Large identity section for immediate recognition.",
+      "Structured project cards for proof-first reading.",
+      "Compact metadata rhythm for quick evaluation.",
+    ],
+    structure: [
+      {
+        title: "Identity and proof",
+        description: "The opening area explains who the builder is and why the work matters.",
+        items: ["Name and headline", "Availability", "Social links"],
+      },
+      {
+        title: "Selected work",
+        description: "Projects are shaped for quick scanning and deeper review.",
+        items: ["Project summaries", "Tags", "External links"],
+      },
+      {
+        title: "Publish controls",
+        description: "The same content can be published with subdomain and SEO settings.",
+        items: ["Subdomain", "Meta title", "Social description"],
+      },
+    ],
+    proofPoints: [
+      "Best for builders who need credibility before decorative flourish.",
+      "Strong fit for Gautam Raj style founder and product-builder portfolios.",
+      "Live preview available through the portfolio app template route.",
+    ],
+    seo: {
+      title: "Signal Portfolio Template | VeriWorkly Portfolio Website",
+      description:
+        "Use the Signal portfolio website template to publish a proof-first personal portfolio on a VeriWorkly subdomain.",
+    },
+  },
+
+  {
+    id: "portfolio-atelier",
+    editorTemplateId: "atelier",
+    legacyIds: ["atelier"],
+    name: "Atelier",
+    documentType: "portfolio-website",
+    documentTypeLabel: "Portfolio Website",
+    description:
+      "An editorial portfolio website for creative builders who want warmer storytelling without rebuilding their content.",
+    shortDescription:
+      "An expressive portfolio website direction for narrative work, case studies, and personal positioning.",
+    accentColor: "#2563eb",
+    previewImage: "/veriworkly-logo.png",
+    tags: ["Website", "Editorial", "Template switching", "Creative"],
+    family: "Portfolio Websites",
+    layout: "Live site",
+    audience: ["Designers", "Creative builders", "Consultants", "Product storytellers"],
+    bestFor: [
+      "Presenting work with a stronger editorial voice.",
+      "Switching the portfolio mood while preserving the same data.",
+      "Creators who want a public website without maintaining a custom site.",
+    ],
+    designVision:
+      "Atelier makes the same portfolio data feel more narrative and personal, with a warmer rhythm for work that benefits from story.",
+    typography: [
+      "Editorial title scale for stronger first impression.",
+      "Warmer section pacing for project narratives.",
+      "Flexible content blocks that still come from one form.",
+    ],
+    structure: [
+      {
+        title: "Personal introduction",
+        description: "The hero frames the builder with a warmer voice and clear position.",
+        items: ["Name", "Story", "Availability"],
+      },
+      {
+        title: "Narrative work",
+        description: "Projects and writing can breathe without losing structure.",
+        items: ["Case studies", "Notes", "Testimonials"],
+      },
+      {
+        title: "Reusable content",
+        description: "Template switching preserves content, links, and metadata.",
+        items: ["One profile", "Live previews", "Subdomain publish"],
+      },
+    ],
+    proofPoints: [
+      "Best for portfolios where taste and story help sell the work.",
+      "Useful when a builder wants a more expressive website without hand-designing one.",
+      "Pairs with the same portfolio editor data used by Signal.",
+    ],
+    seo: {
+      title: "Atelier Portfolio Template | VeriWorkly Portfolio Website",
+      description:
+        "Use the Atelier portfolio website template for an editorial personal portfolio with reusable content and hosted publishing.",
+    },
+  },
+
   {
     id: "resume-executive-clarity",
     editorTemplateId: "executive-clarity",

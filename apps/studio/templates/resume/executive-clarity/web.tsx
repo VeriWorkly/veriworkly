@@ -15,16 +15,9 @@ import { ExperienceItem } from "./ExperienceItem";
 import { EducationItem } from "./EducationItem";
 import { ProjectItem } from "./ProjectItem";
 import { stripEmoji } from "@/features/documents/utils/strip-emoji";
-import { isSectionVisible } from "@/features/documents/utils/section-helpers";
 import {
   cleanResumeText,
-  getResumeRenderStyle,
-  hasCustomSectionContent,
-  hasEducationContent,
-  hasExperienceContent,
-  hasProjectContent,
-  hasResumeSectionContent,
-  hasSkillGroupContent,
+  getResumeRenderModel,
 } from "@/features/documents/rendering/resume-rendering";
 
 function renderCustomSection(
@@ -93,40 +86,28 @@ function renderCustomSection(
 
 export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
   if (!resume) return null;
-  const {
-    basics,
-    experience,
-    education,
-    projects,
-    skills,
-    summary,
-    customization,
-    sections,
-    customSections,
-    links,
-  } = resume;
+  const { basics, summary, customization, sections, links } = resume;
 
   const accentColor = customization?.accentColor || "#000000";
   const textColor = customization?.textColor || "#1f2937";
   const mutedTextColor = customization?.mutedTextColor || "#6b7280";
   const borderColor = customization?.borderColor || "#e5e7eb";
   const bodyLineHeight = customization?.bodyLineHeight || RESUME_LAYOUT.bodyLineHeight;
-  const renderStyle = getResumeRenderStyle(resume);
+  const {
+    style: renderStyle,
+    visibleExperience,
+    visibleEducation,
+    visibleProjects,
+    visibleSkills,
+    visibleCustomSections,
+    showBasics,
+    showSummary,
+    showExperience,
+    showEducation,
+    showProjects,
+    showSkills,
+  } = getResumeRenderModel(resume);
   const itemHeadingColor = renderStyle.sectionHeadingColor;
-  const visibleExperience = experience.filter(hasExperienceContent);
-  const visibleEducation = education.filter(hasEducationContent);
-  const visibleProjects = projects.filter(hasProjectContent);
-  const visibleSkills = skills.filter(hasSkillGroupContent);
-  const visibleCustomSections = customSections.filter(
-    (section) => isSectionVisible(sections, section.kind) && hasCustomSectionContent(section),
-  );
-
-  const showBasics = hasResumeSectionContent(resume, "basics");
-  const showSummary = hasResumeSectionContent(resume, "summary");
-  const showExperience = hasResumeSectionContent(resume, "experience");
-  const showEducation = hasResumeSectionContent(resume, "education");
-  const showProjects = hasResumeSectionContent(resume, "projects");
-  const showSkills = hasResumeSectionContent(resume, "skills");
 
   return (
     <div

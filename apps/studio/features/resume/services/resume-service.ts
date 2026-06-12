@@ -39,4 +39,6 @@ export {
   getResumeFileBaseName,
 } from "./resume-formatters";
 
+export { importResumeFromMarkdownFile, parseResumeMarkdown } from "./resume-markdown-import";
+
 export type { SaveResumeResult, SaveResumeOptions } from "./resume-core";
