@@ -3,11 +3,14 @@
 import type { LucideIcon } from "lucide-react";
 
 import * as React from "react";
-import { Mail, RefreshCw, UserRound, CheckCircle2, CalendarClock, Pencil } from "lucide-react";
+import { Mail, RefreshCw, UserRound, CheckCircle2, CalendarClock, Pencil, AtSign, Lock } from "lucide-react";
+
+import { Tooltip } from "@veriworkly/ui";
 
 import type { AccountProfile } from "@/features/profile/services/account-profile";
 
 import EditProfileNameModal from "./EditProfileNameModal";
+import SetUsernameModal from "./SetUsernameModal";
 
 function formatDate(value?: string) {
   if (!value) return "Not available";
@@ -42,6 +45,7 @@ function DataLine({
 
 export default function ProfileDataPanel({ profile }: { profile: AccountProfile | null }) {
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isSetUsernameModalOpen, setIsSetUsernameModalOpen] = React.useState(false);
 
   const canEditAccount = Boolean(profile);
 
@@ -122,6 +126,53 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
             </p>
           </div>
 
+          {profile?.username ? (
+            <Tooltip
+              side="top"
+              content="Usernames are permanent and cannot be changed after being set."
+            >
+              <div className="bg-muted/10 min-w-0 rounded-xl p-3">
+                <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+                  <AtSign className="h-3.5 w-3.5" />
+                  Username
+                  <Lock className="ml-auto h-3 w-3 opacity-50" />
+                </p>
+                <p className="mt-1 truncate text-sm font-bold">@{profile.username}</p>
+              </div>
+            </Tooltip>
+          ) : (
+            <div
+              aria-label="Set username"
+              aria-disabled={!canEditAccount}
+              id="set-username-card-trigger"
+              tabIndex={canEditAccount ? 0 : undefined}
+              role={canEditAccount ? "button" : undefined}
+              onClick={() => canEditAccount && setIsSetUsernameModalOpen(true)}
+              className="border-accent/20 bg-accent/3 hover:border-accent/40 hover:bg-accent/8 group min-w-0 rounded-xl border p-3 shadow-sm transition-all duration-200 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+              onKeyDown={(e) => {
+                if (canEditAccount && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  setIsSetUsernameModalOpen(true);
+                }
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+                  <AtSign className="h-3.5 w-3.5" />
+                  Username
+                </p>
+
+                <span className="text-accent group-hover:text-accent/80 flex items-center gap-1 text-xs font-bold transition-colors">
+                  {canEditAccount ? "Set" : "Sign in required"} <Pencil className="h-3 w-3" />
+                </span>
+              </div>
+
+              <p className="text-muted group-hover:text-accent mt-1 truncate text-sm font-bold transition-colors">
+                Not set
+              </p>
+            </div>
+          )}
+
           <DataLine icon={Mail} label="Email" value={email} />
           <DataLine
             icon={RefreshCw}
@@ -138,6 +189,13 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
           currentName={name}
           open={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
+        />
+      ) : null}
+
+      {canEditAccount && !profile?.username ? (
+        <SetUsernameModal
+          open={isSetUsernameModalOpen}
+          onClose={() => setIsSetUsernameModalOpen(false)}
         />
       ) : null}
     </>

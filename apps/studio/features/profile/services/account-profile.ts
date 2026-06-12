@@ -5,6 +5,7 @@ import { backendApiUrl } from "@/lib/constants";
 export type AccountProfile = {
   id: string;
   name: string | null;
+  username: string | null;
   email: string;
   emailVerified: boolean;
   autoSyncEnabled: boolean;

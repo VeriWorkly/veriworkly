@@ -95,7 +95,7 @@ export class UserService {
       select: { id: true },
     });
 
-    const available = !existing || existing.id === currentUserId;
+    const available = !existing;
 
     return {
       available,
