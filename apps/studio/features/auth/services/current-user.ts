@@ -7,6 +7,7 @@ export type SessionUser = {
   id: string;
   email: string;
   name?: string;
+  username?: string;
   image?: string | null;
   createdAt?: string;
   emailVerified?: boolean;
@@ -19,6 +20,7 @@ type AccountProfileResponse = {
     id: string;
     email: string;
     name?: string | null;
+    username?: string | null;
     createdAt?: string;
     emailVerified?: boolean;
     autoSyncEnabled?: boolean;
@@ -62,6 +64,7 @@ async function fetchAccountProfileSummary(cookieHeader?: string) {
       id: user.id,
       email: user.email,
       name: user.name ?? undefined,
+      username: user.username ?? undefined,
       createdAt: user.createdAt,
       emailVerified: user.emailVerified,
       autoSyncEnabled: user.autoSyncEnabled,

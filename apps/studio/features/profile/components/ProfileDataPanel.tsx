@@ -3,23 +3,13 @@
 import type { LucideIcon } from "lucide-react";
 
 import * as React from "react";
-import {
-  Mail,
-  RefreshCw,
-  UserRound,
-  CheckCircle2,
-  CalendarClock,
-  Pencil,
-  AtSign,
-  Lock,
-} from "lucide-react";
-
-import { Tooltip } from "@veriworkly/ui";
+import { Mail, RefreshCw, UserRound, CheckCircle2, CalendarClock, Pencil, AtSign } from "lucide-react";
 
 import type { AccountProfile } from "@/features/profile/services/account-profile";
 
 import EditProfileNameModal from "./EditProfileNameModal";
-import SetUsernameModal from "./SetUsernameModal";
+import EditProfileUsernameModal from "./EditProfileUsernameModal";
+import UsernameLockedModal from "./UsernameLockedModal";
 
 function formatDate(value?: string) {
   if (!value) return "Not available";
@@ -54,7 +44,8 @@ function DataLine({
 
 export default function ProfileDataPanel({ profile }: { profile: AccountProfile | null }) {
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
-  const [isSetUsernameModalOpen, setIsSetUsernameModalOpen] = React.useState(false);
+  const [isUsernameModalOpen, setIsUsernameModalOpen] = React.useState(false);
+  const [isLockedModalOpen, setIsLockedModalOpen] = React.useState(false);
 
   const canEditAccount = Boolean(profile);
 
@@ -135,52 +126,60 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
             </p>
           </div>
 
-          {profile?.username ? (
-            <Tooltip
-              side="top"
-              content="Usernames are permanent and cannot be changed after being set."
-            >
-              <div className="bg-muted/10 min-w-0 rounded-xl p-3">
-                <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
-                  <AtSign className="h-3.5 w-3.5" />
-                  Username
-                  <Lock className="ml-auto h-3 w-3 opacity-50" />
-                </p>
-                <p className="mt-1 truncate text-sm font-bold">@{profile.username}</p>
-              </div>
-            </Tooltip>
-          ) : (
-            <div
-              aria-label="Set username"
-              aria-disabled={!canEditAccount}
-              id="set-username-card-trigger"
-              tabIndex={canEditAccount ? 0 : undefined}
-              role={canEditAccount ? "button" : undefined}
-              onClick={() => canEditAccount && setIsSetUsernameModalOpen(true)}
-              className="border-accent/20 bg-accent/3 hover:border-accent/40 hover:bg-accent/8 group min-w-0 rounded-xl border p-3 shadow-sm transition-all duration-200 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-              onKeyDown={(e) => {
-                if (canEditAccount && (e.key === "Enter" || e.key === " ")) {
-                  e.preventDefault();
-                  setIsSetUsernameModalOpen(true);
+          <div
+            aria-label={profile?.username ? "View username (locked)" : "Configure username"}
+            aria-disabled={!canEditAccount}
+            id="edit-profile-username-card-trigger"
+            tabIndex={canEditAccount ? 0 : undefined}
+            role={canEditAccount ? "button" : undefined}
+            onClick={() => {
+              if (!canEditAccount) return;
+              if (profile?.username) {
+                setIsLockedModalOpen(true);
+              } else {
+                setIsUsernameModalOpen(true);
+              }
+            }}
+            className={`group min-w-0 rounded-xl border p-3 shadow-sm transition-all duration-200 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 cursor-pointer ${
+              profile?.username
+                ? "border-zinc-200/60 bg-zinc-50/5 hover:border-zinc-300 dark:border-zinc-800/60 dark:bg-zinc-950/10"
+                : "border-amber-200/40 bg-amber-500/5 hover:border-amber-300 hover:bg-amber-500/10 dark:border-amber-500/20"
+            }`}
+            onKeyDown={(e) => {
+              if (canEditAccount && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                if (profile?.username) {
+                  setIsLockedModalOpen(true);
+                } else {
+                  setIsUsernameModalOpen(true);
                 }
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
-                  <AtSign className="h-3.5 w-3.5" />
-                  Username
-                </p>
-
-                <span className="text-accent group-hover:text-accent/80 flex items-center gap-1 text-xs font-bold transition-colors">
-                  {canEditAccount ? "Set" : "Sign in required"} <Pencil className="h-3 w-3" />
-                </span>
-              </div>
-
-              <p className="text-muted group-hover:text-accent mt-1 truncate text-sm font-bold transition-colors">
-                Not set
+              }
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+                <AtSign className="h-3.5 w-3.5" />
+                Username
               </p>
+
+              <span className={`flex items-center gap-1 text-xs font-bold transition-colors ${
+                profile?.username
+                  ? "text-muted-foreground group-hover:text-foreground"
+                  : "text-amber-600 group-hover:text-amber-500 dark:text-amber-400 dark:group-hover:text-amber-300"
+              }`}>
+                {canEditAccount ? (profile?.username ? "Locked" : "Configure") : "Sign in required"}{" "}
+                <Pencil className="h-3 w-3" />
+              </span>
             </div>
-          )}
+
+            <p className={`mt-1 truncate text-sm font-bold transition-colors ${
+              profile?.username
+                ? "text-foreground group-hover:text-accent"
+                : "text-amber-700 dark:text-amber-400 font-extrabold"
+            }`}>
+              {profile?.username ? `@${profile.username}` : "Not set"}
+            </p>
+          </div>
 
           <DataLine icon={Mail} label="Email" value={email} />
           <DataLine
@@ -194,19 +193,31 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
       </section>
 
       {canEditAccount ? (
-        <EditProfileNameModal
-          currentName={name}
-          open={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-        />
+        <>
+          <EditProfileNameModal
+            currentName={name}
+            open={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+          />
+
+          <EditProfileUsernameModal
+            open={isUsernameModalOpen}
+            onClose={() => setIsUsernameModalOpen(false)}
+          />
+
+          <UsernameLockedModal
+            open={isLockedModalOpen}
+            onClose={() => setIsLockedModalOpen(false)}
+          />
+        </>
       ) : null}
 
-      {canEditAccount && !profile?.username ? (
+      {/* {canEditAccount && !profile?.username ? (
         <SetUsernameModal
           open={isSetUsernameModalOpen}
           onClose={() => setIsSetUsernameModalOpen(false)}
         />
-      ) : null}
+      ) : null} */}
     </>
   );
 }

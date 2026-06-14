@@ -54,12 +54,12 @@ paths:
           - degraded
           - down
       responses:
-        "200":
+        '200':
           description: Server is healthy
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthResponse"
+                $ref: '#/components/schemas/HealthResponse'
               example:
                 success: true
                 message: Server is healthy
@@ -67,13 +67,13 @@ paths:
                   status: ok
                   database: connected
                   redis: connected
-                  timestamp: "2026-04-26T10:00:00.000Z"
-        "503":
+                  timestamp: '2026-04-26T10:00:00.000Z'
+        '503':
           description: Service unavailable
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
                 statusCode: 503
@@ -90,12 +90,12 @@ paths:
       summary: Get Current User
       description: Retrieves detailed profile information for the currently authenticated user.
       responses:
-        "200":
+        '200':
           description: User information fetched successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponse"
+                $ref: '#/components/schemas/UserResponse'
               example:
                 success: true
                 message: User information fetched successfully
@@ -105,19 +105,19 @@ paths:
                   email: info@veriworkly.com
                   emailVerified: true
                   autoSyncEnabled: false
-                  createdAt: "2026-04-11T10:37:35.584Z"
-                  updatedAt: "2026-04-25T19:35:44.409Z"
+                  createdAt: '2026-04-11T10:37:35.584Z'
+                  updatedAt: '2026-04-25T19:35:44.409Z'
                   _count:
                     resumeShareLinks: 4
                     resumes: 4
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "404":
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
           description: User not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
                 statusCode: 404
@@ -151,12 +151,12 @@ paths:
             example:
               name: VeriWorkly
       responses:
-        "200":
+        '200':
           description: User name updated successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponse"
+                $ref: '#/components/schemas/UserResponse'
               example:
                 success: true
                 message: User name updated successfully
@@ -166,17 +166,17 @@ paths:
                   email: info@veriworkly.com
                   emailVerified: true
                   autoSyncEnabled: false
-                  createdAt: "2026-04-11T10:37:35.584Z"
-                  updatedAt: "2026-04-26T02:00:00.000Z"
+                  createdAt: '2026-04-11T10:37:35.584Z'
+                  updatedAt: '2026-04-26T02:00:00.000Z'
                   _count:
                     resumeShareLinks: 4
                     resumes: 4
-        "400":
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 emptyName:
                   summary: Name is empty
@@ -196,14 +196,14 @@ paths:
                     details:
                       - path: name
                         message: Name is too long
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "404":
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
           description: User not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
                 statusCode: 404
@@ -258,12 +258,12 @@ paths:
           required: false
           description: Offset for pagination
       responses:
-        "200":
+        '200':
           description: Roadmap features fetched successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RoadmapListResponse"
+                $ref: '#/components/schemas/RoadmapListResponse'
               example:
                 success: true
                 message: Roadmap features fetched successfully
@@ -277,11 +277,11 @@ paths:
                       tags:
                         - ai
                         - resume
-                      createdAt: "2026-04-01T00:00:00.000Z"
-                      startedAt: "2026-04-10T00:00:00.000Z"
+                      createdAt: '2026-04-01T00:00:00.000Z'
+                      startedAt: '2026-04-10T00:00:00.000Z'
                       completedAt: null
                       completedQuarter: null
-                      updatedAt: "2026-04-20T00:00:00.000Z"
+                      updatedAt: '2026-04-20T00:00:00.000Z'
                       timeline: Started development
                   total: 1
                   limit: 20
@@ -291,12 +291,12 @@ paths:
                     mode: offset
                     nextOffset: null
                     nextCursor: null
-        "400":
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
                 statusCode: 400
@@ -316,12 +316,12 @@ paths:
         - ProdSession: []
       description: Retrieve aggregated roadmap statistics.
       responses:
-        "200":
+        '200':
           description: Roadmap stats fetched successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RoadmapStatsResponse"
+                $ref: '#/components/schemas/RoadmapStatsResponse'
               example:
                 success: true
                 message: Roadmap stats fetched successfully
@@ -330,7 +330,7 @@ paths:
                   todo: 3
                   inProgress: 4
                   done: 3
-                  completionRate: "30.00"
+                  completionRate: '30.00'
   /api/v1/roadmap/{id}:
     get:
       tags:
@@ -350,12 +350,12 @@ paths:
             type: string
           description: Feature ID
       responses:
-        "200":
+        '200':
           description: Feature fetched successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RoadmapFeatureResponse"
+                $ref: '#/components/schemas/RoadmapFeatureResponse'
               example:
                 success: true
                 message: Feature fetched successfully
@@ -367,29 +367,29 @@ paths:
                   eta: Q3 2026
                   tags:
                     - ai
-                  createdAt: "2026-04-01T00:00:00.000Z"
-                  updatedAt: "2026-04-20T00:00:00.000Z"
+                  createdAt: '2026-04-01T00:00:00.000Z'
+                  updatedAt: '2026-04-20T00:00:00.000Z'
                   fullDescription: Full feature details
                   whyItMatters: Improves productivity
                   timeline: In progress
                   details: null
                   interactions: []
-        "400":
+        '400':
           description: Missing feature ID
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
                 statusCode: 400
                 message: Feature ID is required
-        "404":
+        '404':
           description: Feature not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
                 statusCode: 404
@@ -406,12 +406,12 @@ paths:
         - ProdSession: []
       description: Fetch aggregated GitHub issue statistics for the configured repository.
       responses:
-        "200":
+        '200':
           description: Stats fetched successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GitHubStatsResponse"
+                $ref: '#/components/schemas/GitHubStatsResponse'
               example:
                 success: true
                 message: Stats fetched successfully
@@ -422,8 +422,8 @@ paths:
                     todo: 40
                     inProgress: 30
                     done: 50
-                    completionRate: "41.67"
-                  syncedAt: "2026-04-26T10:00:00.000Z"
+                    completionRate: '41.67'
+                  syncedAt: '2026-04-26T10:00:00.000Z'
   /api/v1/github/issues:
     get:
       tags:
@@ -466,12 +466,12 @@ paths:
             minimum: 0
             default: 0
       responses:
-        "200":
+        '200':
           description: Issues fetched successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GitHubIssuesResponse"
+                $ref: '#/components/schemas/GitHubIssuesResponse'
               example:
                 success: true
                 message: Issues fetched successfully
@@ -485,13 +485,13 @@ paths:
                       url: https://github.com/owner/repo/issues/42
                       labels:
                         - enhancement
-                      createdAt: "2026-04-20T10:00:00.000Z"
-                      updatedAt: "2026-04-25T10:00:00.000Z"
+                      createdAt: '2026-04-20T10:00:00.000Z'
+                      updatedAt: '2026-04-25T10:00:00.000Z'
                   total: 1
                   limit: 20
                   offset: 0
-        "400":
-          $ref: "#/components/responses/ValidationError"
+        '400':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/github/admin/sync:
     post:
       tags:
@@ -503,19 +503,19 @@ paths:
       summary: (Admin) Sync GitHub
       description: Manually trigger GitHub stats synchronization. Intended for admin use.
       responses:
-        "200":
+        '200':
           description: Manual sync completed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericSuccessResponse"
+                $ref: '#/components/schemas/GenericSuccessResponse'
               example:
                 success: true
                 message: Manual sync completed
                 data:
                   id: sync_123
                   projectUrl: https://github.com/owner/repo
-                  syncedAt: "2026-04-26T10:00:00.000Z"
+                  syncedAt: '2026-04-26T10:00:00.000Z'
   /api/v1/auth/email-otp/send-otp:
     post:
       tags:
@@ -536,7 +536,7 @@ paths:
                   type: string
                   format: email
       responses:
-        "200":
+        '200':
           description: OTP sent successfully
   /api/v1/auth/email-otp/verify-otp:
     post:
@@ -561,7 +561,7 @@ paths:
                 otp:
                   type: string
       responses:
-        "200":
+        '200':
           description: OTP verified successfully. Sets session cookies.
   /api/v1/auth/get-session:
     get:
@@ -574,10 +574,10 @@ paths:
         - ProdSession: []
       description: Retrieves the current active session based on cookies.
       responses:
-        "200":
+        '200':
           description: Session information retrieved successfully.
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
   /api/v1/auth/sign-out:
     post:
       tags:
@@ -586,7 +586,7 @@ paths:
       summary: Sign Out
       description: Terminates the current session and clears cookies.
       responses:
-        "200":
+        '200':
           description: Signed out successfully.
   /api/v1/api-keys:
     get:
@@ -599,14 +599,14 @@ paths:
         - LocalSession: []
         - ProdSession: []
       responses:
-        "200":
+        '200':
           description: A list of API keys.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiKeyListResponse"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
+                $ref: '#/components/schemas/ApiKeyListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
     post:
       tags:
         - API Keys
@@ -645,16 +645,16 @@ paths:
                   format: date-time
                   description: Optional ISO timestamp for expiration.
       responses:
-        "201":
+        '201':
           description: API key created successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiKeyCreateResponse"
-        "400":
-          $ref: "#/components/responses/BadRequestError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
+                $ref: '#/components/schemas/ApiKeyCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
   /api/v1/api-keys/{id}/rotate:
     post:
       tags:
@@ -697,18 +697,18 @@ paths:
                   format: date-time
                   description: Optional ISO timestamp for expiration.
       responses:
-        "201":
+        '201':
           description: API key rotated successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiKeyCreateResponse"
-        "400":
-          $ref: "#/components/responses/BadRequestError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "404":
-          $ref: "#/components/responses/NotFoundError"
+                $ref: '#/components/schemas/ApiKeyCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/api-keys/{id}/revoke:
     post:
       tags:
@@ -727,16 +727,16 @@ paths:
             type: string
           description: The ID of the API key to revoke.
       responses:
-        "200":
+        '200':
           description: API key revoked successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericSuccessResponse"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "404":
-          $ref: "#/components/responses/NotFoundError"
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/api-keys/{id}:
     delete:
       tags:
@@ -755,16 +755,16 @@ paths:
             type: string
           description: The ID of the API key to delete.
       responses:
-        "200":
+        '200':
           description: API key deleted successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericSuccessResponse"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "404":
-          $ref: "#/components/responses/NotFoundError"
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -815,7 +815,7 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/HealthData"
+          $ref: '#/components/schemas/HealthData'
     ErrorResponse:
       type: object
       required:
@@ -889,7 +889,7 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/UserObject"
+          $ref: '#/components/schemas/UserObject'
     RoadmapFeature:
       type: object
       required:
@@ -952,7 +952,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/RoadmapFeature"
+            $ref: '#/components/schemas/RoadmapFeature'
         total:
           type: integer
         limit:
@@ -986,7 +986,7 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/RoadmapListData"
+          $ref: '#/components/schemas/RoadmapListData'
     RoadmapStats:
       type: object
       properties:
@@ -1012,10 +1012,10 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/RoadmapStats"
+          $ref: '#/components/schemas/RoadmapStats'
     RoadmapFeatureDetail:
       allOf:
-        - $ref: "#/components/schemas/RoadmapFeature"
+        - $ref: '#/components/schemas/RoadmapFeature'
         - type: object
           properties:
             fullDescription:
@@ -1062,7 +1062,7 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/RoadmapFeatureDetail"
+          $ref: '#/components/schemas/RoadmapFeatureDetail'
     GitHubStatsResponse:
       type: object
       properties:
@@ -1071,8 +1071,8 @@ components:
         message:
           type: string
         data:
-          - $ref: "#/GitHubStatsData"
-          - type: "null"
+          - $ref: '#/GitHubStatsData'
+          - type: 'null'
     GitHubItem:
       type: object
       properties:
@@ -1111,7 +1111,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/GitHubItem"
+            $ref: '#/components/schemas/GitHubItem'
         total:
           type: integer
         limit:
@@ -1126,7 +1126,7 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/GitHubIssuesData"
+          $ref: '#/components/schemas/GitHubIssuesData'
     GenericSuccessResponse:
       type: object
       properties:
@@ -1184,7 +1184,7 @@ components:
         data:
           type: array
           items:
-            $ref: "#/components/schemas/ApiKeyObject"
+            $ref: '#/components/schemas/ApiKeyObject'
     ApiKeyCreateResponse:
       type: object
       required:
@@ -1197,7 +1197,7 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/ApiKeyObject"
+          $ref: '#/components/schemas/ApiKeyObject'
     GitHubStats:
       type: object
       properties:
@@ -1217,7 +1217,7 @@ components:
         projectName:
           type: string
         stats:
-          $ref: "#/components/schemas/GitHubStats"
+          $ref: '#/components/schemas/GitHubStats'
         syncedAt:
           type: string
           format: date-time
@@ -1227,7 +1227,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
           example:
             success: false
             statusCode: 401
@@ -1237,16 +1237,16 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
     BadRequestError:
       description: Bad Request - The request parameters or body are invalid.
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
     NotFoundError:
       description: Not Found - The requested resource does not exist.
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'

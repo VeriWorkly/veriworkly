@@ -9,10 +9,12 @@ import {
   Trash2,
   Loader2,
   Calendar,
+  UserRound,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,8 @@ import { getDocumentDefinition } from "@/features/documents/core/registry";
 
 import { trackUsageEvent } from "@/features/analytics/services/usage-metrics";
 import { loadDocumentById } from "@/features/documents/services/document-workspace-service";
+
+import { useUserStore } from "@/store/useUserStore";
 
 interface ShareDocumentModalProps {
   documentId: string | null;
@@ -161,6 +165,9 @@ const ShareDocumentModal = ({
   document,
   onClose,
 }: ShareDocumentModalProps) => {
+  const router = useRouter();
+  const user = useUserStore((state) => state.user);
+  const isMissingUsername = !user?.username;
   const [busy, setBusy] = useState(false);
   const [expiry, setExpiry] = useState("");
   const [password, setPassword] = useState("");
@@ -331,6 +338,49 @@ const ShareDocumentModal = ({
         </div>
 
         <Modal.Body className="space-y-4 p-4">
+          {isMissingUsername ? (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10">
+                <UserRound className="h-7 w-7 text-amber-500" />
+              </div>
+
+              <div className="space-y-2 text-center">
+                <h3 className="text-base font-bold text-foreground">Username Required</h3>
+
+                <p className="text-muted-foreground mx-auto max-w-xs text-sm leading-relaxed">
+                  You need to set a username in your profile settings before you can share documents
+                  publicly.
+                </p>
+              </div>
+
+              <div className="w-full rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+
+                  <p className="text-[11px] leading-relaxed font-medium text-amber-600 dark:text-amber-400">
+                    Your username is used in share link URLs (e.g.{" "}
+                    <code className="rounded bg-zinc-500/10 px-1 py-0.5 font-mono text-[10px] text-foreground">
+                      /share/your-username/document-slug
+                    </code>
+                    ) and can only be set once.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                id="go-to-profile-settings-btn"
+                onClick={() => {
+                  onClose();
+                  router.push("/profile");
+                }}
+                className="shadow-accent/10 w-full shadow-md transition-all active:scale-[0.98]"
+              >
+                Go to Profile Settings
+              </Button>
+            </div>
+          ) : (
+            <>
           {hasActiveLink && isSlugOutofSync && activeLink && (
             <div className="flex flex-col gap-2 rounded-xl border border-orange-500/25 bg-orange-500/5 p-3">
               <div className="flex gap-2.5">
@@ -501,6 +551,8 @@ const ShareDocumentModal = ({
               )}
             </div>
           </div>
+            </>
+          )}
         </Modal.Body>
 
         <Modal.Footer className="bg-zinc-50/50 dark:bg-zinc-900/50">
