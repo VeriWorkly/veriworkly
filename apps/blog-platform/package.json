@@ -1,6 +1,6 @@
 {
   "name": "@veriworkly/blog-platform",
-  "version": "3.17.0",
+  "version": "3.18.2",
   "private": true,
   "scripts": {
     "dev": "next dev",

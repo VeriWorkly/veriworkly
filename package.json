@@ -1,6 +1,6 @@
 {
   "name": "veriworkly",
-  "version": "3.17.0",
+  "version": "3.18.2",
   "private": true,
   "repository": {
     "type": "git",
@@ -49,7 +49,7 @@
     "typescript": "^6"
   },
   "overrides": {
-    "postcss": "8.5.14",
+    "postcss": "8.5.15",
     "prisma": {
       "@prisma/dev": {
         "@hono/node-server": "2.0.2"

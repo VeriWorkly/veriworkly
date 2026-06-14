@@ -1,6 +1,6 @@
 {
   "name": "@veriworkly/site",
-  "version": "3.17.0",
+  "version": "3.18.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -28,7 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "postcss": "8.5.14",
+    "postcss": "8.5.15",
     "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "typescript": "^6"
