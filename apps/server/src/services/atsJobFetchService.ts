@@ -24,8 +24,14 @@ function isPrivateIp(address: string) {
 
 async function validateUrl(value: string) {
   const url = new URL(value);
-  if (url.protocol !== "https:" || url.port) throw new ApiError(400, "Job URL must use HTTPS on the standard port.");
-  if (url.username || url.password || url.hostname === "localhost" || url.hostname.endsWith(".local"))
+  if (url.protocol !== "https:" || url.port)
+    throw new ApiError(400, "Job URL must use HTTPS on the standard port.");
+  if (
+    url.username ||
+    url.password ||
+    url.hostname === "localhost" ||
+    url.hostname.endsWith(".local")
+  )
     throw new ApiError(400, "Job URL host is not allowed.");
   const addresses = isIP(url.hostname)
     ? [{ address: url.hostname }]
@@ -56,16 +62,19 @@ export class AtsJobFetchService {
       const response = await requestPage(target);
       if (response.status >= 300 && response.status < 400) {
         const location = response.location;
-        if (!location || redirect === MAX_REDIRECTS) throw new ApiError(400, "Job page redirect limit exceeded.");
+        if (!location || redirect === MAX_REDIRECTS)
+          throw new ApiError(400, "Job page redirect limit exceeded.");
         target = await validateUrl(new URL(location, target.url).toString());
         continue;
       }
-      if (response.status < 200 || response.status >= 300) throw new ApiError(400, "Job page could not be retrieved.");
+      if (response.status < 200 || response.status >= 300)
+        throw new ApiError(400, "Job page could not be retrieved.");
       const contentType = response.contentType.toLowerCase();
       if (!contentType.includes("text/html") && !contentType.includes("text/plain"))
         throw new ApiError(400, "Job page must be HTML or plain text.");
       const text = visibleText(response.body);
-      if (text.length < 100) throw new ApiError(400, "Job page did not contain enough readable text.");
+      if (text.length < 100)
+        throw new ApiError(400, "Job page did not contain enough readable text.");
       return text;
     }
     throw new ApiError(400, "Job page could not be retrieved.");
@@ -82,7 +91,11 @@ function requestPage(target: Awaited<ReturnType<typeof validateUrl>>) {
           lookup: ((
             _hostname: string,
             _options: unknown,
-            callback: (error: NodeJS.ErrnoException | null, address: string, family: number) => void,
+            callback: (
+              error: NodeJS.ErrnoException | null,
+              address: string,
+              family: number,
+            ) => void,
           ) => callback(null, target.address, target.family)) as never,
         },
         (response) => {
@@ -114,7 +127,9 @@ function requestPage(target: Awaited<ReturnType<typeof validateUrl>>) {
           response.on("error", reject);
         },
       );
-      req.setTimeout(TIMEOUT_MS, () => req.destroy(new ApiError(400, "Job page request timed out.")));
+      req.setTimeout(TIMEOUT_MS, () =>
+        req.destroy(new ApiError(400, "Job page request timed out.")),
+      );
       req.on("error", reject);
       req.end();
     },

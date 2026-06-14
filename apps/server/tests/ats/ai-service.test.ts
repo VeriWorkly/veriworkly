@@ -150,12 +150,7 @@ describe("ATS AI service", () => {
       "ai_credits",
       expect.stringContaining("active AI Credits"),
     );
-    expect(reserve).toHaveBeenCalledWith(
-      "user_1",
-      25,
-      "ats_resume_conversion",
-      "request_convert",
-    );
+    expect(reserve).toHaveBeenCalledWith("user_1", 25, "ats_resume_conversion", "request_convert");
     expect(result.resume.basics.fullName).toBe("Avery Shah");
     expect(result.creditsSpent).toBe(25);
   });

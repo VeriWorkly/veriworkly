@@ -37,12 +37,14 @@ export class AtsController {
     try {
       const input = atsCheckSchema.parse(req.body);
       const quota = await AtsQuotaService.consume(req.authUser?.id, ip(req));
-      res.json(createSuccessResponse({
-        report: AtsScoringService.check(input.resume, input.jobDescription),
-        ai: null,
-        creditsSpent: 0,
-        quota,
-      }));
+      res.json(
+        createSuccessResponse({
+          report: AtsScoringService.check(input.resume, input.jobDescription),
+          ai: null,
+          creditsSpent: 0,
+          quota,
+        }),
+      );
     } catch (error) {
       next(error instanceof z.ZodError ? handleValidationError(error) : error);
     }
@@ -52,10 +54,12 @@ export class AtsController {
     try {
       const user = requireAuthUser(req);
       const input = atsAnalyzeSchema.parse(req.body);
-      if (input.fetchJobUrl && !input.jobUrl) throw new ApiError(400, "Provide a job URL to analyze online.");
-      const jobDescription = input.fetchJobUrl && input.jobUrl
-        ? await AtsJobFetchService.fetch(input.jobUrl)
-        : input.jobDescription;
+      if (input.fetchJobUrl && !input.jobUrl)
+        throw new ApiError(400, "Provide a job URL to analyze online.");
+      const jobDescription =
+        input.fetchJobUrl && input.jobUrl
+          ? await AtsJobFetchService.fetch(input.jobUrl)
+          : input.jobDescription;
       const quota = await AtsQuotaService.consume(user.id, ip(req));
       const report = AtsScoringService.check(input.resume, jobDescription);
       const result = await AtsAiService.analyze(

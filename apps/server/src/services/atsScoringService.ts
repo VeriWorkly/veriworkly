@@ -40,8 +40,20 @@ function words(text: string) {
 
 function keywordMatch(resume: string, job: string) {
   const stop = new Set([
-    "and", "are", "for", "from", "have", "job", "our", "that", "the", "this", "with", "will",
-    "you", "your",
+    "and",
+    "are",
+    "for",
+    "from",
+    "have",
+    "job",
+    "our",
+    "that",
+    "the",
+    "this",
+    "with",
+    "will",
+    "you",
+    "your",
   ]);
   const jobWords = [...new Set(words(job).filter((word) => !stop.has(word)))];
   if (!jobWords.length) return null;
@@ -60,32 +72,113 @@ export class AtsScoringService {
     const text = this.extractText(resume);
     const wordCount = words(text).length;
     const rules = [
-      result("ats-v1.parse.text", wordCount >= 120, "error", 18, `${wordCount} readable words`, "Provide a complete text-based resume."),
-      result("ats-v1.contact.email", EMAIL.test(text), "error", 5, EMAIL.test(text) ? "Email detected" : "No email detected", "Add a professional email address."),
-      result("ats-v1.contact.phone", PHONE.test(text), "warning", 4, PHONE.test(text) ? "Phone detected" : "No phone detected", "Add a reachable phone number."),
-      result("ats-v1.contact.link", LINK.test(text), "info", 2, LINK.test(text) ? "Professional link detected" : "No professional link detected", "Add LinkedIn, GitHub, or a portfolio URL."),
-      ...Object.entries(SECTION_PATTERNS).map(([name, pattern]) =>
-        result(`ats-v1.structure.${name}`, pattern.test(text), "error", 6, pattern.test(text) ? `${name} section detected` : `${name} section not detected`, `Add a clearly labeled ${name} section.`),
+      result(
+        "ats-v1.parse.text",
+        wordCount >= 120,
+        "error",
+        18,
+        `${wordCount} readable words`,
+        "Provide a complete text-based resume.",
       ),
-      result("ats-v1.content.action-verbs", ACTION_VERBS.test(text), "warning", 7, ACTION_VERBS.test(text) ? "Action-oriented language detected" : "Few action verbs detected", "Start achievement bullets with specific action verbs."),
-      result("ats-v1.content.metrics", METRIC.test(text), "warning", 9, METRIC.test(text) ? "Measurable evidence detected" : "No measurable evidence detected", "Add numbers, percentages, scope, or outcomes."),
-      result("ats-v1.length", wordCount >= 250 && wordCount <= 1_200, "warning", 6, `${wordCount} words`, "Keep the resume concise while including enough evidence."),
-      result("ats-v1.format.tables", !/[│┌┐└┘]/.test(text), "warning", 5, /[│┌┐└┘]/.test(text) ? "Table-like characters detected" : "No table characters detected", "Avoid tables and complex columns for ATS compatibility."),
-      result("ats-v1.format.headers", !/\b(page \d+ of \d+)\b/i.test(text), "info", 2, "Header/footer risk check complete", "Remove repeated page headers and footers."),
+      result(
+        "ats-v1.contact.email",
+        EMAIL.test(text),
+        "error",
+        5,
+        EMAIL.test(text) ? "Email detected" : "No email detected",
+        "Add a professional email address.",
+      ),
+      result(
+        "ats-v1.contact.phone",
+        PHONE.test(text),
+        "warning",
+        4,
+        PHONE.test(text) ? "Phone detected" : "No phone detected",
+        "Add a reachable phone number.",
+      ),
+      result(
+        "ats-v1.contact.link",
+        LINK.test(text),
+        "info",
+        2,
+        LINK.test(text) ? "Professional link detected" : "No professional link detected",
+        "Add LinkedIn, GitHub, or a portfolio URL.",
+      ),
+      ...Object.entries(SECTION_PATTERNS).map(([name, pattern]) =>
+        result(
+          `ats-v1.structure.${name}`,
+          pattern.test(text),
+          "error",
+          6,
+          pattern.test(text) ? `${name} section detected` : `${name} section not detected`,
+          `Add a clearly labeled ${name} section.`,
+        ),
+      ),
+      result(
+        "ats-v1.content.action-verbs",
+        ACTION_VERBS.test(text),
+        "warning",
+        7,
+        ACTION_VERBS.test(text) ? "Action-oriented language detected" : "Few action verbs detected",
+        "Start achievement bullets with specific action verbs.",
+      ),
+      result(
+        "ats-v1.content.metrics",
+        METRIC.test(text),
+        "warning",
+        9,
+        METRIC.test(text) ? "Measurable evidence detected" : "No measurable evidence detected",
+        "Add numbers, percentages, scope, or outcomes.",
+      ),
+      result(
+        "ats-v1.length",
+        wordCount >= 250 && wordCount <= 1_200,
+        "warning",
+        6,
+        `${wordCount} words`,
+        "Keep the resume concise while including enough evidence.",
+      ),
+      result(
+        "ats-v1.format.tables",
+        !/[│┌┐└┘]/.test(text),
+        "warning",
+        5,
+        /[│┌┐└┘]/.test(text) ? "Table-like characters detected" : "No table characters detected",
+        "Avoid tables and complex columns for ATS compatibility.",
+      ),
+      result(
+        "ats-v1.format.headers",
+        !/\b(page \d+ of \d+)\b/i.test(text),
+        "info",
+        2,
+        "Header/footer risk check complete",
+        "Remove repeated page headers and footers.",
+      ),
     ];
-    const readinessScore = Math.max(0, 100 - rules.reduce((sum, rule) => sum + rule.scoreImpact, 0));
+    const readinessScore = Math.max(
+      0,
+      100 - rules.reduce((sum, rule) => sum + rule.scoreImpact, 0),
+    );
     const jobMatchScore = jobDescription?.trim() ? keywordMatch(text, jobDescription) : null;
     const failedChecks = rules.filter((rule) => !rule.passed);
-    const strengths = rules.filter((rule) => rule.passed).slice(0, 5).map((rule) => rule.evidence);
+    const strengths = rules
+      .filter((rule) => rule.passed)
+      .slice(0, 5)
+      .map((rule) => rule.evidence);
 
     return {
       version: "ats-v1",
       readinessScore,
       jobMatchScore,
-      parsingWarnings: rules.filter((rule) => !rule.passed && rule.id.includes("parse")).map((rule) => rule.evidence),
+      parsingWarnings: rules
+        .filter((rule) => !rule.passed && rule.id.includes("parse"))
+        .map((rule) => rule.evidence),
       strengths,
       failedChecks,
-      prioritizedFixes: [...failedChecks].sort((a, b) => b.scoreImpact - a.scoreImpact).slice(0, 6).map((rule) => rule.fix),
+      prioritizedFixes: [...failedChecks]
+        .sort((a, b) => b.scoreImpact - a.scoreImpact)
+        .slice(0, 6)
+        .map((rule) => rule.fix),
       rules,
     };
   }

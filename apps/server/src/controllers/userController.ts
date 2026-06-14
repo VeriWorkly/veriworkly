@@ -97,4 +97,24 @@ export class UserController {
       next(error);
     }
   }
+
+  static async updateAutoSync(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = requireAuthUser(req);
+      const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
+
+      const updated = await UserService.updateAutoSync(user.id, enabled);
+
+      const cookieHeader = req.headers.cookie || "";
+      if (cookieHeader) {
+        await invalidateSessionCache(cookieHeader);
+      }
+
+      res.json(createSuccessResponse(updated, "Auto sync preference updated successfully"));
+    } catch (error) {
+      if (error instanceof z.ZodError) return next(handleValidationError(error));
+
+      next(error);
+    }
+  }
 }

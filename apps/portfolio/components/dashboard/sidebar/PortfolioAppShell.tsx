@@ -24,7 +24,9 @@ export function PortfolioAppShell({
   draftSlug?: string;
 }) {
   const [collapsed, setCollapsed] = useState(
-    () => typeof window !== "undefined" && window.localStorage.getItem("portfolio-sidebar-collapsed") === "true",
+    () =>
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("portfolio-sidebar-collapsed") === "true",
   );
 
   const toggleSidebar = () => {

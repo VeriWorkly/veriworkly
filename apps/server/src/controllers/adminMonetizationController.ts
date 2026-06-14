@@ -24,7 +24,9 @@ async function audit(
   reason: string | undefined,
   metadata?: object,
 ) {
-  await prisma.adminAuditEntry.create({ data: { actorId, action, targetType, targetId, reason, metadata } });
+  await prisma.adminAuditEntry.create({
+    data: { actorId, action, targetType, targetId, reason, metadata },
+  });
 }
 
 export class AdminMonetizationController {
@@ -35,7 +37,9 @@ export class AdminMonetizationController {
         prisma.adminAuditEntry.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
       ]);
       res.json(createSuccessResponse({ affiliate, audits }));
-    } catch (error) { next(error); }
+    } catch (error) {
+      next(error);
+    }
   }
 
   static async grantCredits(req: Request, res: Response, next: NextFunction) {
@@ -47,9 +51,13 @@ export class AdminMonetizationController {
         reason: input.reason,
         action: "admin_adjustment",
       });
-      await audit(actor.id, "credit.grant", "User", input.userId, input.reason, { amount: input.amount });
+      await audit(actor.id, "credit.grant", "User", input.userId, input.reason, {
+        amount: input.amount,
+      });
       res.json(createSuccessResponse(transaction));
-    } catch (error) { next(error instanceof z.ZodError ? handleValidationError(error) : error); }
+    } catch (error) {
+      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+    }
   }
 
   static async grantEntitlement(req: Request, res: Response, next: NextFunction) {
@@ -66,9 +74,13 @@ export class AdminMonetizationController {
           metadata: { reason: input.reason, actorId: actor.id },
         },
       });
-      await audit(actor.id, "entitlement.grant", "User", input.userId, input.reason, { key: input.key });
+      await audit(actor.id, "entitlement.grant", "User", input.userId, input.reason, {
+        key: input.key,
+      });
       res.json(createSuccessResponse(grant));
-    } catch (error) { next(error instanceof z.ZodError ? handleValidationError(error) : error); }
+    } catch (error) {
+      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+    }
   }
 
   static async createCommission(req: Request, res: Response, next: NextFunction) {
@@ -76,19 +88,39 @@ export class AdminMonetizationController {
       const actor = requireAuthUser(req);
       const input = adminCommissionSchema.parse(req.body);
       const commission = await AffiliateService.createCommission(input);
-      await audit(actor.id, "affiliate.commission.create", "AffiliateCommission", commission.id, input.reason);
+      await audit(
+        actor.id,
+        "affiliate.commission.create",
+        "AffiliateCommission",
+        commission.id,
+        input.reason,
+      );
       res.json(createSuccessResponse(commission));
-    } catch (error) { next(error instanceof z.ZodError ? handleValidationError(error) : error); }
+    } catch (error) {
+      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+    }
   }
 
   static async updateWithdrawal(req: Request, res: Response, next: NextFunction) {
     try {
       const actor = requireAuthUser(req);
       const input = adminWithdrawalStatusSchema.parse(req.body);
-      const withdrawal = await AffiliateService.updateWithdrawal(req.params.id, input.status, input.payoutNote);
-      await audit(actor.id, `affiliate.withdrawal.${input.status.toLowerCase()}`, "AffiliateWithdrawal", withdrawal.id, input.payoutNote);
+      const withdrawal = await AffiliateService.updateWithdrawal(
+        req.params.id,
+        input.status,
+        input.payoutNote,
+      );
+      await audit(
+        actor.id,
+        `affiliate.withdrawal.${input.status.toLowerCase()}`,
+        "AffiliateWithdrawal",
+        withdrawal.id,
+        input.payoutNote,
+      );
       res.json(createSuccessResponse(withdrawal));
-    } catch (error) { next(error instanceof z.ZodError ? handleValidationError(error) : error); }
+    } catch (error) {
+      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+    }
   }
 
   static async updateAffiliate(req: Request, res: Response, next: NextFunction) {
@@ -98,16 +130,30 @@ export class AdminMonetizationController {
       const affiliate = await AffiliateService.updateAffiliate(req.params.id, input);
       await audit(actor.id, "affiliate.update", "User", affiliate.id, undefined, input);
       res.json(createSuccessResponse(affiliate));
-    } catch (error) { next(error instanceof z.ZodError ? handleValidationError(error) : error); }
+    } catch (error) {
+      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+    }
   }
 
   static async updateCommission(req: Request, res: Response, next: NextFunction) {
     try {
       const actor = requireAuthUser(req);
       const input = adminCommissionStatusSchema.parse(req.body);
-      const commission = await AffiliateService.updateCommission(req.params.id, input.status, input.reason);
-      await audit(actor.id, `affiliate.commission.${input.status.toLowerCase()}`, "AffiliateCommission", commission.id, input.reason);
+      const commission = await AffiliateService.updateCommission(
+        req.params.id,
+        input.status,
+        input.reason,
+      );
+      await audit(
+        actor.id,
+        `affiliate.commission.${input.status.toLowerCase()}`,
+        "AffiliateCommission",
+        commission.id,
+        input.reason,
+      );
       res.json(createSuccessResponse(commission));
-    } catch (error) { next(error instanceof z.ZodError ? handleValidationError(error) : error); }
+    } catch (error) {
+      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+    }
   }
 }

@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-const resumeSchema = z.union([
-  z.string().trim().min(1).max(50_000),
-  z.record(z.unknown()),
-]);
+const resumeSchema = z.union([z.string().trim().min(1).max(50_000), z.record(z.unknown())]);
 
 export const atsCheckSchema = z.object({
   resume: resumeSchema,

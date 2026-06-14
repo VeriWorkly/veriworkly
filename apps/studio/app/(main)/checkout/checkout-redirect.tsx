@@ -47,10 +47,13 @@ export function CheckoutRedirect({
             </div>
             <h1 className="mt-6 text-2xl font-black tracking-tight">Checkout could not start</h1>
             <p className="text-muted mt-3 text-sm leading-6">{error}</p>
-            <Button className="mt-7 w-full" onClick={() => {
-              setError("");
-              setAttempt((value) => value + 1);
-            }}>
+            <Button
+              className="mt-7 w-full"
+              onClick={() => {
+                setError("");
+                setAttempt((value) => value + 1);
+              }}
+            >
               Try secure checkout again
             </Button>
           </>

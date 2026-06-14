@@ -175,12 +175,7 @@ export class CreditService {
     return result;
   }
 
-  static async reserveAction(
-    userId: string,
-    action: AiActionKey,
-    mode: AiMode,
-    requestId: string,
-  ) {
+  static async reserveAction(userId: string, action: AiActionKey, mode: AiMode, requestId: string) {
     const cost = this.costFor(action, mode);
     return this.reserve(userId, cost, action, requestId);
   }
@@ -195,8 +190,10 @@ export class CreditService {
       if (existing) {
         if (existing.userId !== userId || existing.action !== action || existing.cost !== cost)
           throw new ApiError(409, "AI request id was already used for another operation.");
-        if (existing.status === "PENDING") throw new ApiError(409, "This AI request is processing.");
-        if (existing.status === "COMMITTED") throw new ApiError(409, "This AI request already completed.");
+        if (existing.status === "PENDING")
+          throw new ApiError(409, "This AI request is processing.");
+        if (existing.status === "COMMITTED")
+          throw new ApiError(409, "This AI request already completed.");
         throw new ApiError(409, "This AI request id can no longer be reused.");
       }
 
@@ -349,14 +346,20 @@ export class CreditService {
     await this.expireCredits(userId);
 
     const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.creditTransaction.findUnique({ where: { requestId: context.requestId } });
+      const existing = await tx.creditTransaction.findUnique({
+        where: { requestId: context.requestId },
+      });
       if (existing) {
         if (existing.userId !== userId || existing.amount !== -cost)
           throw new ApiError(409, "Credit request id was already used for another operation.");
         return existing;
       }
 
-      const wallet = await tx.creditWallet.upsert({ where: { userId }, create: { userId }, update: {} });
+      const wallet = await tx.creditWallet.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
+      });
       if (wallet.balance < cost) throw new ApiError(402, "Not enough AI credits.");
 
       const grants = await tx.creditGrant.findMany({
@@ -387,7 +390,14 @@ export class CreditService {
         data: { balance: { decrement: cost }, lifetimeDebited: { increment: cost } },
       });
       const transaction = await tx.creditTransaction.create({
-        data: { walletId: wallet.id, userId, type: "DEBIT", amount: -cost, balanceAfter: updated.balance, ...context },
+        data: {
+          walletId: wallet.id,
+          userId,
+          type: "DEBIT",
+          amount: -cost,
+          balanceAfter: updated.balance,
+          ...context,
+        },
       });
       await tx.creditUsageAllocation.createMany({
         data: allocations.map((item) => ({ transactionId: transaction.id, ...item })),
@@ -402,7 +412,9 @@ export class CreditService {
     validateAmount(amount);
     try {
       const result = await prisma.$transaction(async (tx) => {
-        const existing = await tx.creditTransaction.findUnique({ where: { requestId: context.requestId } });
+        const existing = await tx.creditTransaction.findUnique({
+          where: { requestId: context.requestId },
+        });
         if (existing) return existing;
         const wallet = await tx.creditWallet.upsert({
           where: { userId },
@@ -441,7 +453,9 @@ export class CreditService {
       return result;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        const existing = await prisma.creditTransaction.findUnique({ where: { requestId: context.requestId } });
+        const existing = await prisma.creditTransaction.findUnique({
+          where: { requestId: context.requestId },
+        });
         if (existing) return existing;
       }
       throw error;

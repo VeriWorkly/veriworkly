@@ -13,7 +13,9 @@ export function TemplateDetailHero({
   details: TemplateDetails;
 }) {
   return (
-    <header className={`${templatesShell} grid gap-10 pt-20 pb-14 lg:grid-cols-[1fr_26rem] lg:items-end`}>
+    <header
+      className={`${templatesShell} grid gap-10 pt-20 pb-14 lg:grid-cols-[1fr_26rem] lg:items-end`}
+    >
       <div>
         <p className="bg-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black text-white">
           <LayoutTemplate size={13} /> Live portfolio template

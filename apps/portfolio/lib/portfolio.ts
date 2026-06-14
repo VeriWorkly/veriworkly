@@ -328,7 +328,8 @@ export function isPortfolioSectionType(value: unknown): value is PortfolioSectio
 export function parsePortfolioContent(input: unknown, fallback = demoPortfolio): PortfolioContent {
   if (!input || typeof input !== "object") return fallback;
   const value = input as Record<string, unknown>;
-  if (value.schemaVersion !== 1 || !value.identity || !Array.isArray(value.sections)) return fallback;
+  if (value.schemaVersion !== 1 || !value.identity || !Array.isArray(value.sections))
+    return fallback;
   const identity = value.identity as Record<string, unknown>;
   const seo = (value.seo ?? {}) as Record<string, unknown>;
   return {

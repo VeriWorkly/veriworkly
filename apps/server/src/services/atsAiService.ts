@@ -27,52 +27,67 @@ const convertedResumeSchema = z.object({
     phone: z.string().max(100).default(""),
     location: z.string().max(300).default(""),
   }),
-  links: z.array(
-    z.object({
-      label: z.string().max(100),
-      url: z.string().max(2_048),
-    }),
-  ).max(20).default([]),
+  links: z
+    .array(
+      z.object({
+        label: z.string().max(100),
+        url: z.string().max(2_048),
+      }),
+    )
+    .max(20)
+    .default([]),
   summary: z.string().max(4_000).default(""),
-  experience: z.array(
-    z.object({
-      company: z.string().max(300).default(""),
-      role: z.string().max(300).default(""),
-      location: z.string().max(300).default(""),
-      startDate: z.string().max(20).default(""),
-      endDate: z.string().max(20).default(""),
-      current: z.boolean().default(false),
-      summary: z.string().max(2_000).default(""),
-      highlights: z.array(z.string().max(1_000)).max(20).default([]),
-    }),
-  ).max(30).default([]),
-  education: z.array(
-    z.object({
-      school: z.string().max(300).default(""),
-      degree: z.string().max(300).default(""),
-      field: z.string().max(300).default(""),
-      startDate: z.string().max(20).default(""),
-      endDate: z.string().max(20).default(""),
-      current: z.boolean().default(false),
-      summary: z.string().max(2_000).default(""),
-    }),
-  ).max(20).default([]),
-  projects: z.array(
-    z.object({
-      name: z.string().max(300).default(""),
-      role: z.string().max(300).default(""),
-      link: z.string().max(2_048).default(""),
-      summary: z.string().max(2_000).default(""),
-      highlights: z.array(z.string().max(1_000)).max(20).default([]),
-      skills: z.array(z.string().max(100)).max(30).default([]),
-    }),
-  ).max(30).default([]),
-  skills: z.array(
-    z.object({
-      name: z.string().max(200),
-      keywords: z.array(z.string().max(100)).max(50),
-    }),
-  ).max(30).default([]),
+  experience: z
+    .array(
+      z.object({
+        company: z.string().max(300).default(""),
+        role: z.string().max(300).default(""),
+        location: z.string().max(300).default(""),
+        startDate: z.string().max(20).default(""),
+        endDate: z.string().max(20).default(""),
+        current: z.boolean().default(false),
+        summary: z.string().max(2_000).default(""),
+        highlights: z.array(z.string().max(1_000)).max(20).default([]),
+      }),
+    )
+    .max(30)
+    .default([]),
+  education: z
+    .array(
+      z.object({
+        school: z.string().max(300).default(""),
+        degree: z.string().max(300).default(""),
+        field: z.string().max(300).default(""),
+        startDate: z.string().max(20).default(""),
+        endDate: z.string().max(20).default(""),
+        current: z.boolean().default(false),
+        summary: z.string().max(2_000).default(""),
+      }),
+    )
+    .max(20)
+    .default([]),
+  projects: z
+    .array(
+      z.object({
+        name: z.string().max(300).default(""),
+        role: z.string().max(300).default(""),
+        link: z.string().max(2_048).default(""),
+        summary: z.string().max(2_000).default(""),
+        highlights: z.array(z.string().max(1_000)).max(20).default([]),
+        skills: z.array(z.string().max(100)).max(30).default([]),
+      }),
+    )
+    .max(30)
+    .default([]),
+  skills: z
+    .array(
+      z.object({
+        name: z.string().max(200),
+        keywords: z.array(z.string().max(100)).max(50),
+      }),
+    )
+    .max(30)
+    .default([]),
 });
 
 function complexity(report: AtsReport, resumeChars: number, jobChars: number): AtsComplexity {
