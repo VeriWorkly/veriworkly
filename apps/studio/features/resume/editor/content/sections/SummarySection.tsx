@@ -45,7 +45,11 @@ const SummarySection = ({
       </Field>
       <AiFieldAssist
         action={summary ? "rewrite_section" : "generate_section"}
-        context={JSON.stringify({ basics: resume.basics, experience: resume.experience, skills: resume.skills })}
+        context={JSON.stringify({
+          basics: resume.basics,
+          experience: resume.experience,
+          skills: resume.skills,
+        })}
         documentId={resume.id}
         onApply={updateSummary}
         text={summary}

@@ -29,7 +29,10 @@ const LoginPage = () => {
     sessionStorage.setItem(`affiliate-click:${code}`, "1");
     void fetchApiData("/affiliates/click", {
       method: "POST",
-      body: JSON.stringify({ code, referrerHost: document.referrer ? new URL(document.referrer).hostname : undefined }),
+      body: JSON.stringify({
+        code,
+        referrerHost: document.referrer ? new URL(document.referrer).hostname : undefined,
+      }),
     }).catch(() => sessionStorage.removeItem(`affiliate-click:${code}`));
   }, []);
 

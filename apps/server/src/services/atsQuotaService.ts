@@ -87,7 +87,8 @@ export class AtsQuotaService {
         { keys: [key], arguments: [String(summary.limit), String(ttl)] },
       ),
     );
-    if (used < 0) throw new ApiError(429, "ATS scan quota exceeded.", await this.summary(userId, ip));
+    if (used < 0)
+      throw new ApiError(429, "ATS scan quota exceeded.", await this.summary(userId, ip));
     return this.summary(userId, ip);
   }
 }

@@ -2,7 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Coins, CreditCard, LogIn, LogOut, User, UserRound, Settings } from "lucide-react";
+import {
+  ChevronDown,
+  Coins,
+  CreditCard,
+  LogIn,
+  LogOut,
+  User,
+  UserRound,
+  Settings,
+} from "lucide-react";
 
 import { signOutCurrentUser } from "@/features/auth/services/current-user";
 
@@ -157,11 +166,7 @@ export function AccountMenu({
             isLoggedIn ? "bg-accent/10 text-accent" : "bg-muted/30 text-muted",
           )}
         >
-          {isLoggedIn ? (
-            displayName.slice(0, 1).toUpperCase()
-          ) : (
-            <UserRound className="h-4 w-4" />
-          )}
+          {isLoggedIn ? displayName.slice(0, 1).toUpperCase() : <UserRound className="h-4 w-4" />}
         </span>
 
         {!collapsed ? (

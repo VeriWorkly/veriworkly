@@ -26,3 +26,11 @@ export async function checkUsernameAvailability(
     { method: "GET", errorMessage: "Failed to check username availability" },
   );
 }
+
+export async function updateAutoSyncPreference(enabled: boolean): Promise<AccountProfile> {
+  return fetchApiData<AccountProfile>("/users/me/sync", {
+    method: "PUT",
+    body: JSON.stringify({ enabled }),
+    errorMessage: "Failed to update sync preference",
+  });
+}

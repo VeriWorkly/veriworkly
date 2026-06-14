@@ -3,7 +3,16 @@
 import type { LucideIcon } from "lucide-react";
 
 import * as React from "react";
-import { Mail, RefreshCw, UserRound, CheckCircle2, CalendarClock, Pencil, AtSign, Lock } from "lucide-react";
+import {
+  Mail,
+  RefreshCw,
+  UserRound,
+  CheckCircle2,
+  CalendarClock,
+  Pencil,
+  AtSign,
+  Lock,
+} from "lucide-react";
 
 import { Tooltip } from "@veriworkly/ui";
 

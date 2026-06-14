@@ -20,6 +20,8 @@ import { Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 
+import { useUserStore } from "@/store/useUserStore";
+
 export interface DocumentActionsMenuProps {
   doc: DocumentLibraryItem;
   syncing: boolean;
@@ -44,7 +46,9 @@ export function DocumentActionsMenu({
   triggerClassName,
 }: DocumentActionsMenuProps) {
   const router = useRouter();
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const editorPath = getDocumentEditorPath(doc.type, doc.id);
+  const hasCloudId = Boolean(doc.sync?.cloudDocumentId);
 
   return (
     <div className={className}>
@@ -108,24 +112,50 @@ export function DocumentActionsMenu({
               }}
             >
               <Share2 className="h-4 w-4" />
-              Create public link
+              Share Document
             </MenuItem>
 
             <MenuItem
-              className="h-8 rounded-lg text-xs"
-              disabled={syncing}
-              onClick={() => {
+              className={cn(
+                "h-8 rounded-lg text-xs",
+                !isLoggedIn &&
+                  "cursor-not-allowed opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+              )}
+              disabled={isLoggedIn && syncing}
+              onClick={(e) => {
+                if (!isLoggedIn) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toast.error("Please log in to sync documents.");
+                  return;
+                }
                 close();
                 onSyncNowAction(doc.id);
               }}
             >
               <RefreshCw className="h-4 w-4" />
-              {syncing ? "Syncing..." : "Sync now"}
+              {syncing ? "Syncing..." : hasCloudId ? "Sync Again" : "Upload to Cloud"}
             </MenuItem>
 
             <MenuItem
-              className="h-8 rounded-lg text-xs"
-              onClick={() => {
+              className={cn(
+                "h-8 rounded-lg text-xs",
+                (!isLoggedIn || !hasCloudId) &&
+                  "cursor-not-allowed opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+              )}
+              onClick={(e) => {
+                if (!isLoggedIn) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toast.error("Please log in to sync documents.");
+                  return;
+                }
+                if (!hasCloudId) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toast.error("This document is not synced to the cloud yet.");
+                  return;
+                }
                 close();
                 onSyncDetailsAction(doc.id);
               }}

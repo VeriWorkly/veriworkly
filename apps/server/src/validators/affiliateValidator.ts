@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 export const referralCodeSchema = z.object({
-  code: z.string().trim().min(4).max(32).regex(/^[a-z0-9-]+$/i),
+  code: z
+    .string()
+    .trim()
+    .min(4)
+    .max(32)
+    .regex(/^[a-z0-9-]+$/i),
 });
 
 export const clickSchema = referralCodeSchema.extend({
@@ -14,7 +19,12 @@ export const withdrawalSchema = z.object({
 
 export const adminCreditAdjustmentSchema = z.object({
   userId: z.string().trim().min(1),
-  amount: z.number().int().min(-1_000_000).max(1_000_000).refine((value) => value !== 0),
+  amount: z
+    .number()
+    .int()
+    .min(-1_000_000)
+    .max(1_000_000)
+    .refine((value) => value !== 0),
   reason: z.string().trim().min(3).max(500),
 });
 
@@ -46,10 +56,12 @@ export const adminWithdrawalStatusSchema = z.object({
   payoutNote: z.string().trim().max(500).optional(),
 });
 
-export const adminAffiliateSchema = z.object({
-  status: z.enum(["PENDING", "ACTIVE", "SUSPENDED"]).optional(),
-  tier: z.enum(["TIER_1", "TIER_2", "TIER_3"]).optional(),
-}).refine((value) => value.status || value.tier, "Status or tier is required");
+export const adminAffiliateSchema = z
+  .object({
+    status: z.enum(["PENDING", "ACTIVE", "SUSPENDED"]).optional(),
+    tier: z.enum(["TIER_1", "TIER_2", "TIER_3"]).optional(),
+  })
+  .refine((value) => value.status || value.tier, "Status or tier is required");
 
 export const adminCommissionStatusSchema = z.object({
   status: z.enum(["AVAILABLE", "REVERSED"]),

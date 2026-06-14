@@ -12,7 +12,11 @@ export const checkoutSchema = z.object({
 
 export const creditPackCheckoutSchema = z.object({
   packKey: z.literal("credit_pack_100"),
-  redirectUrl: z.string().trim().regex(/^\/(?!\/)/).optional(),
+  redirectUrl: z
+    .string()
+    .trim()
+    .regex(/^\/(?!\/)/)
+    .optional(),
 });
 
 export const dodoWebhookHeaderSchema = z.object({

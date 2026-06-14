@@ -10,9 +10,27 @@ const tierRateBps = { TIER_1: 200, TIER_2: 300, TIER_3: 500 } as const;
 const AFFILIATE_DASHBOARD_TTL_SECONDS = 60;
 const AFFILIATE_LEADERBOARD_TTL_SECONDS = 300;
 const AFFILIATE_TIERS = [
-  { key: "TIER_1", name: "Starter", rateBps: 200, requiredConversions: 0, perks: ["2% commission", "Monthly leaderboard access"] },
-  { key: "TIER_2", name: "Growth", rateBps: 300, requiredConversions: 10, perks: ["3% commission", "Priority payout review"] },
-  { key: "TIER_3", name: "Partner", rateBps: 500, requiredConversions: 50, perks: ["5% commission", "Priority support", "Partner campaigns"] },
+  {
+    key: "TIER_1",
+    name: "Starter",
+    rateBps: 200,
+    requiredConversions: 0,
+    perks: ["2% commission", "Monthly leaderboard access"],
+  },
+  {
+    key: "TIER_2",
+    name: "Growth",
+    rateBps: 300,
+    requiredConversions: 10,
+    perks: ["3% commission", "Priority payout review"],
+  },
+  {
+    key: "TIER_3",
+    name: "Partner",
+    rateBps: 500,
+    requiredConversions: 50,
+    perks: ["5% commission", "Priority support", "Partner campaigns"],
+  },
 ] as const;
 
 function dashboardCacheKey(userId: string) {
@@ -284,7 +302,11 @@ export class AffiliateService {
     return result;
   }
 
-  static async updateWithdrawal(id: string, status: "APPROVED" | "REJECTED" | "PAID", note?: string) {
+  static async updateWithdrawal(
+    id: string,
+    status: "APPROVED" | "REJECTED" | "PAID",
+    note?: string,
+  ) {
     const result = await prisma.$transaction(async (tx) => {
       const withdrawal = await tx.affiliateWithdrawal.findUnique({ where: { id } });
       if (!withdrawal) throw new ApiError(404, "Withdrawal not found.");
@@ -324,12 +346,15 @@ export class AffiliateService {
     const result = await prisma.$transaction(async (tx) => {
       const commission = await tx.affiliateCommission.findUnique({ where: { id } });
       if (!commission) throw new ApiError(404, "Commission not found.");
-      if (commission.status !== "PENDING") throw new ApiError(409, "Only pending commissions can be updated.");
+      if (commission.status !== "PENDING")
+        throw new ApiError(409, "Only pending commissions can be updated.");
       await tx.affiliateWallet.update({
         where: { userId: commission.affiliateId },
         data: {
           pendingCents: { decrement: commission.amountCents },
-          ...(status === "AVAILABLE" ? { availableCents: { increment: commission.amountCents } } : {}),
+          ...(status === "AVAILABLE"
+            ? { availableCents: { increment: commission.amountCents } }
+            : {}),
         },
       });
       return tx.affiliateCommission.update({

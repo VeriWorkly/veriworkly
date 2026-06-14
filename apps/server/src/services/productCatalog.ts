@@ -106,8 +106,8 @@ export function publicCatalog() {
   return PRODUCT_KEYS.map((key) => ({
     key,
     ...productCatalog[key],
-    configuredIntervals: (["one_day", "seven_day", "monthly", "annual"] as const).filter((interval) =>
-      Boolean(getProviderProductId(key, interval)),
+    configuredIntervals: (["one_day", "seven_day", "monthly", "annual"] as const).filter(
+      (interval) => Boolean(getProviderProductId(key, interval)),
     ),
     currency: "USD",
   }));

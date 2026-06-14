@@ -4,10 +4,15 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
+import { Input, Badge, Button } from "@veriworkly/ui";
+
 import { authClient } from "@/lib/auth-client";
 import { getSafeAuthCallback } from "@/lib/auth-redirect";
-import { Input, Badge, Button } from "@veriworkly/ui";
+
 import { fetchApiData } from "@/utils/fetchApiData";
+
+import { setAllDocumentsSyncEnabled } from "@/features/documents/services/document-sync";
+import { setAutoSyncEnabledInLocalStorage } from "@/features/documents/services/workspace-settings";
 
 import { AuthCard } from "./AuthCard";
 
@@ -52,15 +57,27 @@ const OtpForm = ({
       }
 
       toast.success("Successfully signed in!");
+
+      setAutoSyncEnabledInLocalStorage(true);
+      setAllDocumentsSyncEnabled(true);
+
+      await fetchApiData("/users/me/sync", {
+        method: "PUT",
+        body: JSON.stringify({ enabled: true }),
+      }).catch(() => undefined);
+
       const searchParams = new URLSearchParams(window.location.search);
       const referralCode = searchParams.get("ref");
+
       if (referralCode) {
         await fetchApiData("/affiliates/referral", {
           method: "POST",
           body: JSON.stringify({ code: referralCode }),
         }).catch(() => undefined);
       }
+
       const callbackURL = searchParams.get("callbackURL");
+
       router.push(getSafeAuthCallback(callbackURL));
       router.refresh();
     } catch (err: unknown) {

@@ -36,7 +36,9 @@ export function AiFieldAssist({
 
   useEffect(() => {
     if (!open || actions) return;
-    void getAiActions().then(setActions).catch(() => undefined);
+    void getAiActions()
+      .then(setActions)
+      .catch(() => undefined);
   }, [actions, open]);
 
   const cost = actions?.[action]?.costs[mode];
@@ -62,7 +64,12 @@ export function AiFieldAssist({
 
   if (!open) {
     return (
-      <Button className="mt-2 justify-self-start" onClick={() => setOpen(true)} size="sm" variant="ghost">
+      <Button
+        className="mt-2 justify-self-start"
+        onClick={() => setOpen(true)}
+        size="sm"
+        variant="ghost"
+      >
         <Sparkles className="h-3.5 w-3.5" /> Improve with AI
       </Button>
     );
@@ -127,7 +134,12 @@ export function AiFieldAssist({
           </div>
         </>
       ) : (
-        <Button disabled={loading || cost == null} loading={loading} onClick={() => void generate()} size="sm">
+        <Button
+          disabled={loading || cost == null}
+          loading={loading}
+          onClick={() => void generate()}
+          size="sm"
+        >
           Generate draft{cost == null ? "" : ` · ${cost} credits`}
         </Button>
       )}

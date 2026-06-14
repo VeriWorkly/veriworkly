@@ -6,8 +6,13 @@ import { ApiError } from "#utils/errors";
 const MAX_TEXT_CHARS = 50_000;
 
 function normalize(text: string) {
-  const value = text.replace(/\0/g, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-  if (value.length < 50) throw new ApiError(400, "Resume file did not contain enough readable text.");
+  const value = text
+    .replace(/\0/g, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (value.length < 50)
+    throw new ApiError(400, "Resume file did not contain enough readable text.");
   return value.slice(0, MAX_TEXT_CHARS);
 }
 
@@ -29,10 +34,7 @@ export class AtsResumeExtractService {
       return normalize((await mammoth.extractRawText({ buffer: file.buffer })).value);
     }
 
-    if (
-      file.mimetype.startsWith("text/") ||
-      /\.(txt|md|json)$/i.test(file.originalname)
-    ) {
+    if (file.mimetype.startsWith("text/") || /\.(txt|md|json)$/i.test(file.originalname)) {
       return normalize(file.buffer.toString("utf8"));
     }
 

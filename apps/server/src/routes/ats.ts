@@ -15,6 +15,11 @@ router.get("/quota", flexibleAuth, AtsController.quota);
 router.post("/extract", flexibleAuth, upload.single("resume"), AtsController.extract);
 router.post("/check", flexibleAuth, AtsController.check);
 router.post("/analyze", flexibleAuth, requireApiKeyScopes("ai:write"), AtsController.analyze);
-router.post("/convert-resume", flexibleAuth, requireApiKeyScopes("ai:write"), AtsController.convertResume);
+router.post(
+  "/convert-resume",
+  flexibleAuth,
+  requireApiKeyScopes("ai:write"),
+  AtsController.convertResume,
+);
 
 export default router;

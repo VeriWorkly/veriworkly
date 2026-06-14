@@ -87,7 +87,8 @@ export function resetAiPolicyForTests() {
 
 export function validateAiRuntimeConfig() {
   if (config.nodeEnv !== "production") return;
-  if (!config.ai.apiKey) throw new Error("AI provider credentials must be configured in production.");
+  if (!config.ai.apiKey)
+    throw new Error("AI provider credentials must be configured in production.");
   loadPolicy();
   for (const action of AI_ACTION_KEYS) {
     getAiModePolicy(action, "standard");

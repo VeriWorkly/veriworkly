@@ -188,9 +188,9 @@ export class BillingService {
   }
 
   static async getHistory(userId: string) {
-    const cached = await cacheGet<
-      Awaited<ReturnType<typeof prisma.billingWebhookEvent.findMany>>
-    >(billingHistoryCacheKey(userId));
+    const cached = await cacheGet<Awaited<ReturnType<typeof prisma.billingWebhookEvent.findMany>>>(
+      billingHistoryCacheKey(userId),
+    );
     if (cached) return cached;
     const result = await prisma.billingWebhookEvent.findMany({
       where: { userId, status: "PROCESSED" },
@@ -463,10 +463,10 @@ export class BillingService {
       product.interval === "one_day"
         ? ("ONE_DAY" as const)
         : product.interval === "seven_day"
-        ? ("SEVEN_DAY" as const)
-        : product.interval === "annual"
-          ? ("ANNUAL" as const)
-          : ("MONTHLY" as const);
+          ? ("SEVEN_DAY" as const)
+          : product.interval === "annual"
+            ? ("ANNUAL" as const)
+            : ("MONTHLY" as const);
     const pastDue = normalizedStatus === "PAST_DUE";
     const graceEndsAt = pastDue ? addDays(eventTime, config.portfolio.graceDays) : null;
     const currentPeriodEnd = subscription.next_billing_date
@@ -625,9 +625,9 @@ export class BillingService {
           ? "annual"
           : subscription.interval === "ONE_DAY"
             ? "one_day"
-          : subscription.interval === "SEVEN_DAY"
-            ? "seven_day"
-            : "monthly";
+            : subscription.interval === "SEVEN_DAY"
+              ? "seven_day"
+              : "monthly";
       const allowance = productCatalog[subscription.productKey].creditAllowance?.[interval] ?? 0;
       if (allowance > 0) {
         await CreditService.grant(userId, allowance, {

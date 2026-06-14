@@ -19,6 +19,7 @@ import {
   loadWorkspaceSettingsFromLocalStorage,
 } from "@/features/documents/services/workspace-settings";
 import { getAutoSyncControlState } from "./sync-section-state";
+import { updateAutoSyncPreference } from "@/features/profile/services/update-profile";
 
 interface TelemetryState {
   lastAttemptAt: string | null;
@@ -64,6 +65,12 @@ export default function SyncSection() {
     setAutoSync(checked);
     setAutoSyncEnabledInLocalStorage(checked);
     setAllDocumentsSyncEnabled(checked);
+
+    try {
+      await updateAutoSyncPreference(checked);
+    } catch (err) {
+      console.error("Failed to sync preference with server", err);
+    }
 
     if (checked) {
       setLoading(true);

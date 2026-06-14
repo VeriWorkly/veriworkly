@@ -4,12 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Sparkles, X } from "lucide-react";
 
-import {
-  generateAiContent,
-  getAiActions,
-  type AiActionPolicy,
-  type AiMode,
-} from "@/lib/ai-client";
+import { generateAiContent, getAiActions, type AiActionPolicy, type AiMode } from "@/lib/ai-client";
 
 import { actionClass, inputClass } from "./constants";
 
@@ -34,7 +29,9 @@ export function PortfolioAiAssist({
 
   useEffect(() => {
     if (!open || actions) return;
-    void getAiActions().then(setActions).catch((error) => setMessage(error.message));
+    void getAiActions()
+      .then(setActions)
+      .catch((error) => setMessage(error.message));
   }, [actions, open]);
 
   if (!open) {
@@ -125,7 +122,9 @@ export function PortfolioAiAssist({
                 documentId,
               });
               setResult(response.content);
-              setMessage(`${response.credits.spent} credits used. Balance ${response.credits.balance}.`);
+              setMessage(
+                `${response.credits.spent} credits used. Balance ${response.credits.balance}.`,
+              );
             } catch (error) {
               setMessage(error instanceof Error ? error.message : "AI generation failed.");
             } finally {

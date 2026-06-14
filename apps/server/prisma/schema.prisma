@@ -18,7 +18,7 @@ model User {
   username              String?               @unique
   emailVerified         Boolean               @default(false)
   image                 String?
-  autoSyncEnabled       Boolean               @default(false)
+  autoSyncEnabled       Boolean               @default(true)
   affiliateStatus       AffiliateStatus       @default(NOT_ENROLLED)
   affiliateTier         AffiliateTier         @default(TIER_1)
   affiliateCode         String?               @unique

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { TemplateRenderProps } from "@/types/template";
 
 import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
+import type { CoverLetterSectionId } from "@/features/cover-letter/types";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { loadTemplateComponentById, templateRegistry } from "@/templates";
 import { buildCoverLetterHtml } from "@/templates/cover-letter/web";
@@ -158,7 +159,7 @@ describe("template render contract", () => {
       },
       appearance: {
         ...createDefaultCoverLetter("cover-letter-hidden-sections").content.appearance,
-        hiddenSections: ["letter", "profile", "links", "target"] as const,
+        hiddenSections: ["letter", "profile", "links", "target"] as CoverLetterSectionId[],
       },
     };
 

@@ -128,4 +128,15 @@ export class UserService {
       throw error;
     }
   }
+
+  static async updateAutoSync(userId: string, enabled: boolean) {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { autoSyncEnabled: enabled },
+      select: userProfileSelect,
+    });
+
+    await cacheSet(`user:profile:v2:${userId}`, updated, 1800);
+    return updated;
+  }
 }
