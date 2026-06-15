@@ -77,17 +77,12 @@ const EditProfileNameModal = ({ open, onClose, currentName }: EditProfileNameMod
             <UserRound className="text-accent h-4.5 w-4.5" />
           </div>
 
-          <div className="min-w-0 flex-1">
-            <Modal.Title
-              className="text-foreground text-base font-black tracking-tight"
-              id="edit-name-title"
-            >
+          <div>
+            <Modal.Title id="edit-name-title" className="text-lg font-bold">
               Edit Display Name
             </Modal.Title>
 
-            <p className="text-muted-foreground text-[10px] font-black tracking-widest uppercase opacity-80">
-              Account settings
-            </p>
+            <p className="text-muted-foreground text-xs">Account settings</p>
           </div>
         </div>
 
@@ -110,13 +105,9 @@ const EditProfileNameModal = ({ open, onClose, currentName }: EditProfileNameMod
                 onChange={(e) => setName(e.target.value)}
               />
 
-              {error ? (
+              {error && (
                 <p id="profile-name-error" className="text-destructive pl-1 text-xs font-semibold">
                   {error}
-                </p>
-              ) : (
-                <p className="text-muted-foreground/70 pl-1 text-[11px] leading-relaxed font-medium">
-                  This name will be displayed across the studio workspace and shared resume links.
                 </p>
               )}
             </div>
@@ -139,7 +130,7 @@ const EditProfileNameModal = ({ open, onClose, currentName }: EditProfileNameMod
               type="submit"
               loading={isSaving}
               id="save-edit-name-btn"
-              className="bg-accent text-accent-foreground w-full px-6 text-xs font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] sm:w-auto"
+              className="bg-accent text-accent-foreground w-full text-xs font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] sm:w-auto"
             >
               Save Changes
             </Button>

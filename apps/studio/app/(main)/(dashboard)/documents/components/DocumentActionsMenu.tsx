@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 
 import { Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
 
-import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { useUserStore } from "@/store/useUserStore";
 
@@ -46,8 +46,10 @@ export function DocumentActionsMenu({
   triggerClassName,
 }: DocumentActionsMenuProps) {
   const router = useRouter();
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
   const editorPath = getDocumentEditorPath(doc.type, doc.id);
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
   const hasCloudId = Boolean(doc.sync?.cloudDocumentId);
 
   return (
@@ -105,8 +107,20 @@ export function DocumentActionsMenu({
             </MenuItem>
 
             <MenuItem
-              className="h-8 rounded-lg text-xs"
-              onClick={() => {
+              className={cn(
+                "h-8 rounded-lg text-xs",
+                !isLoggedIn && "opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+              )}
+              onClick={(e) => {
+                if (!isLoggedIn) {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  toast.error("Please log in to share documents.");
+
+                  return;
+                }
+
                 close();
                 onShareAction(doc);
               }}
@@ -118,8 +132,7 @@ export function DocumentActionsMenu({
             <MenuItem
               className={cn(
                 "h-8 rounded-lg text-xs",
-                !isLoggedIn &&
-                  "cursor-not-allowed opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+                !isLoggedIn && "opacity-50 hover:bg-transparent focus-visible:bg-transparent",
               )}
               disabled={isLoggedIn && syncing}
               onClick={(e) => {
@@ -141,13 +154,13 @@ export function DocumentActionsMenu({
               className={cn(
                 "h-8 rounded-lg text-xs",
                 (!isLoggedIn || !hasCloudId) &&
-                  "cursor-not-allowed opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+                  "opacity-50 hover:bg-transparent focus-visible:bg-transparent",
               )}
               onClick={(e) => {
                 if (!isLoggedIn) {
                   e.preventDefault();
                   e.stopPropagation();
-                  toast.error("Please log in to sync documents.");
+                  toast.error("Please log in to view sync details.");
                   return;
                 }
                 if (!hasCloudId) {

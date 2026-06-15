@@ -2,22 +2,22 @@
 
 import type { LucideIcon } from "lucide-react";
 
-import * as React from "react";
 import {
   Mail,
+  Pencil,
+  AtSign,
   RefreshCw,
   UserRound,
   CheckCircle2,
   CalendarClock,
-  Pencil,
-  AtSign,
 } from "lucide-react";
+import * as React from "react";
 
 import type { AccountProfile } from "@/features/profile/services/account-profile";
 
+import UsernameLockedModal from "./UsernameLockedModal";
 import EditProfileNameModal from "./EditProfileNameModal";
 import EditProfileUsernameModal from "./EditProfileUsernameModal";
-import UsernameLockedModal from "./UsernameLockedModal";
 
 function formatDate(value?: string) {
   if (!value) return "Not available";

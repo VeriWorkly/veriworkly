@@ -43,6 +43,7 @@ interface ResumeStoreState {
   hydrateFromStorage: () => void;
   saveToStorage: (options?: SaveResumeOptions) => SaveResumeResult;
   resetResume: () => void;
+  emptyResume: () => void;
   selectSection: (section: ResumeSectionId) => void;
   setSectionVisibility: (section: ResumeSectionId, visible: boolean) => void;
   reorderSections: (fromIndex: number, toIndex: number) => void;
@@ -113,6 +114,45 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
 
     saveResumeToLocalStorage(resetResumeValue);
     set({ resume: resetResumeValue, selectedSection: "basics" });
+  },
+
+  emptyResume: () => {
+    const activeResume = get().resume;
+
+    const emptyResumeValue = withTimestamp(
+      normalizeResumeData({
+        ...defaultResume,
+        id: activeResume.id,
+        basics: {
+          fullName: "",
+          role: "",
+          headline: "",
+          email: "",
+          phone: "",
+          location: "",
+          linkEmail: true,
+          linkPhone: true,
+          linkLocation: false,
+        },
+        links: {
+          displayMode: "icon-username",
+          items: [],
+        },
+        summary: "",
+        experience: [],
+        education: [],
+        projects: [],
+        skills: [],
+        customSections: defaultResume.customSections.map((section) => ({
+          ...section,
+          items: [],
+        })),
+        sync: activeResume.sync,
+      }),
+    );
+
+    saveResumeToLocalStorage(emptyResumeValue);
+    set({ resume: emptyResumeValue, selectedSection: "basics" });
   },
 
   selectSection: (selectedSection) => set({ selectedSection }),

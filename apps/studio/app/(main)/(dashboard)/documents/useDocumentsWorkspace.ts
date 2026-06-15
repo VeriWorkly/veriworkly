@@ -69,14 +69,17 @@ export function useDocumentsWorkspace() {
     [docs, syncDetailsTargetId],
   );
 
-  const syncTelemetryById = useMemo(() => getDocumentSyncTelemetryByDocs(docs), [docs]);
+  const syncTelemetryById = useMemo(() => {
+    if (!isLoggedIn) return {};
+    return getDocumentSyncTelemetryByDocs(docs);
+  }, [docs, isLoggedIn]);
 
   const syncTargetTelemetry = useMemo(
     () =>
-      syncDetailsTarget
+      isLoggedIn && syncDetailsTarget
         ? getDocumentSyncTelemetry(syncDetailsTarget.type, syncDetailsTarget.id)
         : null,
-    [syncDetailsTarget],
+    [syncDetailsTarget, isLoggedIn],
   );
 
   const handleSyncNow = useCallback(

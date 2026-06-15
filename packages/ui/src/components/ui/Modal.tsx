@@ -147,7 +147,7 @@ function ModalHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 }
 
 function ModalTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn("text-foreground text-base font-semibold", className)} {...props} />;
+  return <h2 className={cn("text-foreground text-lg font-bold", className)} {...props} />;
 }
 
 function ModalDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {

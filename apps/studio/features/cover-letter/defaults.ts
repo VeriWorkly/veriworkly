@@ -79,3 +79,48 @@ export function createDefaultCoverLetter(id: string): BaseDocument<CoverLetterCo
     },
   };
 }
+
+export function createEmptyCoverLetter(id: string): BaseDocument<CoverLetterContent> {
+  const now = new Date().toISOString();
+  const defaultDoc = createDefaultCoverLetter(id);
+  return {
+    ...defaultDoc,
+    title: "Untitled Cover Letter",
+    updatedAt: now,
+    content: {
+      ...defaultDoc.content,
+
+      senderName: "",
+      senderTitle: "",
+      senderEmail: "",
+      senderPhone: "",
+      senderLocation: "",
+      senderWebsite: "",
+
+      links: {
+        displayMode: "icon-username",
+        items: [],
+      },
+
+      date: new Intl.DateTimeFormat("en", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(new Date()),
+
+      recipientName: "",
+      recipientTitle: "",
+      companyName: "",
+      companyLocation: "",
+      jobTitle: "",
+      subject: "",
+      greeting: "",
+      opening: "",
+      body: "",
+      highlights: "",
+      closing: "",
+      signature: "",
+      postscript: "",
+    },
+  };
+}

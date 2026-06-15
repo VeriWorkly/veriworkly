@@ -9,9 +9,9 @@ import { useUserStore } from "@/store/useUserStore";
 import { Switch } from "@veriworkly/ui";
 
 import {
-  setAllDocumentsSyncEnabled,
   syncAllPendingDocuments,
   getWorkspaceSyncTelemetry,
+  setAllDocumentsSyncEnabled,
   DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT,
 } from "@/features/documents/services/document-sync";
 import {
@@ -19,6 +19,7 @@ import {
   loadWorkspaceSettingsFromLocalStorage,
 } from "@/features/documents/services/workspace-settings";
 import { getAutoSyncControlState } from "./sync-section-state";
+
 import { updateAutoSyncPreference } from "@/features/profile/services/update-profile";
 
 interface TelemetryState {
@@ -53,6 +54,7 @@ export default function SyncSection() {
     update();
 
     window.addEventListener(DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT, update);
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener(DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT, update);

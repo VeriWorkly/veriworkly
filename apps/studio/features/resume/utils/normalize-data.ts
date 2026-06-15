@@ -1,7 +1,7 @@
 import type { ResumeData, ResumeLinkType } from "@/types/resume";
 
-import { defaultResume, defaultSections } from "@/features/resume/constants/default-resume";
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
+import { defaultResume, defaultSections } from "@/features/resume/constants/default-resume";
 
 function isKnownLinkType(value: string): value is ResumeLinkType {
   return [
@@ -120,31 +120,35 @@ export function normalizeResumeData(value: Partial<ResumeData> | null | undefine
       ...value?.basics,
     },
     links: normalizeLinks(value),
-    experience: value?.experience
-      ? value.experience.map((item) => ({
-          ...item,
-          startDate: normalizeMonthDate(item.startDate),
-          endDate: normalizeMonthDate(item.endDate),
-          current: item.current ?? item.endDate?.trim().toLowerCase() === "present",
-        }))
-      : defaultResume.experience,
-    education: value?.education?.length
-      ? value.education.map((item) => ({
-          ...item,
-          startDate: normalizeNumericDate(item.startDate, 4),
-          endDate: normalizeNumericDate(item.endDate, 4),
-          current: item.current ?? item.endDate?.trim().toLowerCase() === "present",
-        }))
-      : defaultResume.education,
-    projects: value?.projects
-      ? value.projects.map((project) => ({
-          ...project,
-          linkLabel: project.linkLabel || "Link",
-          showLinkAsText: project.showLinkAsText ?? true,
-          skills: project.skills ?? [],
-        }))
-      : defaultResume.projects,
-    skills: value?.skills?.length ? value.skills : defaultResume.skills,
+    experience:
+      value?.experience !== undefined && value?.experience !== null
+        ? value.experience.map((item) => ({
+            ...item,
+            startDate: normalizeMonthDate(item.startDate),
+            endDate: normalizeMonthDate(item.endDate),
+            current: item.current ?? item.endDate?.trim().toLowerCase() === "present",
+          }))
+        : defaultResume.experience,
+    education:
+      value?.education !== undefined && value?.education !== null
+        ? value.education.map((item) => ({
+            ...item,
+            startDate: normalizeNumericDate(item.startDate, 4),
+            endDate: normalizeNumericDate(item.endDate, 4),
+            current: item.current ?? item.endDate?.trim().toLowerCase() === "present",
+          }))
+        : defaultResume.education,
+    projects:
+      value?.projects !== undefined && value?.projects !== null
+        ? value.projects.map((project) => ({
+            ...project,
+            linkLabel: project.linkLabel || "Link",
+            showLinkAsText: project.showLinkAsText ?? true,
+            skills: project.skills ?? [],
+          }))
+        : defaultResume.projects,
+    skills:
+      value?.skills !== undefined && value?.skills !== null ? value.skills : defaultResume.skills,
     customSections: normalizeCustomSections(value),
     sections: normalizeSections(value),
     customization: {

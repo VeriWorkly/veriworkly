@@ -1,16 +1,23 @@
 "use client";
 
 import {
+  Cloud,
   Trash2,
   Share2,
+  Eraser,
   RotateCcw,
   Settings2,
   FileCode2,
-  ChevronDown,
   FolderInput,
+  ChevronDown,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button, Menu, MenuItem, MenuSeparator } from "@veriworkly/ui";
+
+import { cn } from "@/lib/utils";
+
+import { useUserStore } from "@/store/useUserStore";
 
 interface ToolbarActionsMenuProps {
   onDelete: () => void;
@@ -18,6 +25,8 @@ interface ToolbarActionsMenuProps {
   onImportMarkdown: () => void;
   onReset: () => void;
   onShare: () => void;
+  onSync: () => void;
+  onEmptyFields: () => void;
 }
 
 const ToolbarActionsMenu = ({
@@ -26,7 +35,11 @@ const ToolbarActionsMenu = ({
   onImportMarkdown,
   onReset,
   onShare,
+  onSync,
+  onEmptyFields,
 }: ToolbarActionsMenuProps) => {
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
   return (
     <Menu
       panelClassName="min-w-52"
@@ -71,13 +84,47 @@ const ToolbarActionsMenu = ({
           <MenuSeparator />
 
           <MenuItem
-            onClick={() => {
+            className={cn(
+              !isLoggedIn && "opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+            )}
+            onClick={(e) => {
+              if (!isLoggedIn) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                toast.error("Please log in to share documents.");
+
+                return;
+              }
+
               close();
               onShare();
             }}
           >
             <Share2 className="h-4 w-4" />
             Create Share Link
+          </MenuItem>
+
+          <MenuItem
+            className={cn(
+              !isLoggedIn && "opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+            )}
+            onClick={(e) => {
+              if (!isLoggedIn) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                toast.error("Please log in to sync documents.");
+
+                return;
+              }
+
+              close();
+              onSync();
+            }}
+          >
+            <Cloud className="h-4 w-4" />
+            Upload to Cloud
           </MenuItem>
 
           <MenuSeparator />
@@ -89,8 +136,20 @@ const ToolbarActionsMenu = ({
             }}
           >
             <RotateCcw className="h-4 w-4" />
-            Reset
+            Reset to Defaults
           </MenuItem>
+
+          <MenuItem
+            onClick={() => {
+              close();
+              onEmptyFields();
+            }}
+          >
+            <Eraser className="h-4 w-4" />
+            Empty Fields
+          </MenuItem>
+
+          <MenuSeparator />
 
           <MenuItem
             className="text-red-600 hover:text-red-700"

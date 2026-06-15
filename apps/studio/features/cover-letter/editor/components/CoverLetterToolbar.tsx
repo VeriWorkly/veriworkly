@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toast } from "sonner";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, FileSearch, Save } from "lucide-react";
@@ -14,9 +15,12 @@ import ToolbarHeader from "@/features/documents/editor/toolbar/ToolbarHeader";
 import ToolbarActionsMenu from "@/features/documents/editor/toolbar/ToolbarActionsMenu";
 import ToolbarDownloadMenu from "@/features/documents/editor/toolbar/ToolbarDownloadMenu";
 
+import { useUserStore } from "@/store/useUserStore";
+
 import { getDocumentPreviewPath } from "@/features/documents/core/routes";
-import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
+import { syncDocumentNow } from "@/features/documents/services/document-sync";
 import { exportDocumentByType } from "@/features/documents/export/export-dispatcher";
+import { createDefaultCoverLetter, createEmptyCoverLetter } from "@/features/cover-letter/defaults";
 
 interface CoverLetterToolbarProps {
   document: BaseDocument<CoverLetterContent>;
@@ -50,6 +54,27 @@ export function CoverLetterToolbar({
   const markdownInputRef = useRef<HTMLInputElement>(null);
   const [activeDownload, setActiveDownload] = useState<ExportFormat | null>(null);
 
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
+  async function handleSync() {
+    if (!isLoggedIn) {
+      toast.error("Please log in to sync documents.");
+      return;
+    }
+
+    onSetMessage("Syncing with cloud...");
+
+    try {
+      await syncDocumentNow("COVER_LETTER", document.id);
+      onSetMessage("Synced successfully");
+      toast.success("Synced successfully");
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : "Sync failed";
+      onSetMessage(`Sync failed: ${errMsg}`);
+      toast.error(errMsg);
+    }
+  }
+
   async function download(format: ExportFormat) {
     setActiveDownload(format);
 
@@ -75,9 +100,9 @@ export function CoverLetterToolbar({
         {process.env.NODE_ENV === "development" ? (
           <Button asChild size="sm" variant="ghost" className="rounded-xl">
             <Link
-              href={`/pdf-debug/cover-letter/${document.templateId}?id=${document.id}`}
               target="_blank"
               rel="noreferrer"
+              href={`/pdf-debug/cover-letter/${document.templateId}?id=${document.id}`}
             >
               <FileSearch className="mr-2 h-4 w-4" />
               PDF Debug
@@ -144,6 +169,12 @@ export function CoverLetterToolbar({
             onUpdateDocument({ ...reset, updatedAt: new Date().toISOString() }, { flush: true });
             onSetMessage("Cover letter reset to defaults");
           }}
+          onEmptyFields={() => {
+            const empty = createEmptyCoverLetter(document.id);
+            onUpdateDocument({ ...empty, updatedAt: new Date().toISOString() }, { flush: true });
+            onSetMessage("All fields cleared");
+          }}
+          onSync={handleSync}
         />
       </div>
     </header>

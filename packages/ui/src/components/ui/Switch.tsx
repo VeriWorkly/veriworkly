@@ -25,15 +25,16 @@ export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
         )}
       >
         <input
-          type="checkbox"
-          id={switchId}
           ref={ref}
+          id={switchId}
+          type="checkbox"
           checked={checked}
+          className="sr-only"
           disabled={disabled}
           onChange={(e) => onCheckedChange(e.target.checked)}
-          className="sr-only" // Hide native checkbox visually but keep it accessible
           {...props}
         />
+
         <span
           className={cn(
             "bg-background pointer-events-none block h-5 w-5 rounded-full shadow-lg ring-0 transition-transform duration-200 ease-in-out",

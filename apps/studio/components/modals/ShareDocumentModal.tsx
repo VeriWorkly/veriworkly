@@ -13,8 +13,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -231,8 +231,9 @@ const ShareDocumentModal = ({
   }, []);
 
   useEffect(() => {
-    if (documentId) void Promise.resolve().then(() => refreshShareLinks(documentId));
-  }, [documentId, refreshShareLinks]);
+    if (documentId && !isMissingUsername)
+      void Promise.resolve().then(() => refreshShareLinks(documentId));
+  }, [documentId, isMissingUsername, refreshShareLinks]);
 
   const handleCreate = async () => {
     if (!documentId || busy) return;
@@ -331,7 +332,7 @@ const ShareDocumentModal = ({
           </div>
 
           <div>
-            <Modal.Title className="text-lg font-bold">Share {documentLabel}</Modal.Title>
+            <Modal.Title>Share {documentLabel}</Modal.Title>
 
             <p className="text-muted-foreground text-xs">Create public links for {documentTitle}</p>
           </div>
