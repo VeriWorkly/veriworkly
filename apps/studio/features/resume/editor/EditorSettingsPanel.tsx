@@ -88,6 +88,19 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
           }
         />
 
+        <SettingsRange
+          min={1}
+          max={2}
+          step={0.05}
+          value={customization.bodyLineHeight}
+          label={`Body line-height (${customization.bodyLineHeight.toFixed(2)})`}
+          onChange={(event) =>
+            updateCustomization({
+              bodyLineHeight: Number(event.target.value),
+            })
+          }
+        />
+
         <SettingsColor
           label="Accent color"
           value={customization.accentColor}

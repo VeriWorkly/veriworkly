@@ -14,6 +14,7 @@ import { Section } from "./Section";
 import { ExperienceItem } from "./ExperienceItem";
 import { EducationItem } from "./EducationItem";
 import { ProjectItem } from "./ProjectItem";
+import { BODY_TEXT_CLASS, BODY_TEXT_SM_CLASS } from "./shared-classes";
 import { stripEmoji } from "@/features/documents/utils/strip-emoji";
 import {
   cleanResumeText,
@@ -53,23 +54,23 @@ function renderCustomSection(
                   {stripEmoji(item.name)}
                 </h3>
                 {item.date && (
-                  <p className="text-sm" style={{ color: mutedTextColor }}>
+                  <p className={BODY_TEXT_CLASS} style={{ color: mutedTextColor }}>
                     {stripEmoji(item.date)}
                   </p>
                 )}
               </div>
               {item.issuer && (
-                <p className="text-sm" style={{ color: mutedTextColor }}>
+                <p className={BODY_TEXT_CLASS} style={{ color: mutedTextColor }}>
                   {stripEmoji(item.issuer)}
                 </p>
               )}
               {item.description && (
-                <p className="text-sm" style={{ color: textColor }}>
+                <p className={BODY_TEXT_CLASS} style={{ color: textColor }}>
                   {stripEmoji(item.description)}
                 </p>
               )}
               {item.details?.length > 0 && (
-                <ul className="space-y-1 pl-5 text-sm" style={{ color: textColor }}>
+                <ul className={`space-y-1 pl-5 ${BODY_TEXT_CLASS}`} style={{ color: textColor }}>
                   {item.details.map((detail, index) => (
                     <li key={index} className="list-disc">
                       {stripEmoji(detail)}
@@ -112,7 +113,7 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
   return (
     <div
       id="resume-container"
-      className="resume-page-preview mx-auto bg-white text-[0.9375rem] leading-relaxed"
+      className="resume-page-preview mx-auto bg-white text-[0.9375rem]"
       style={
         {
           "--resume-page-height": `${RESUME_PAGE_HEIGHT_PX}px`,
@@ -122,6 +123,7 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
           padding: `${renderStyle.pagePadding}px`,
           backgroundColor: renderStyle.pageBackgroundColor,
           color: textColor,
+          lineHeight: bodyLineHeight,
           fontFamily:
             FONT_FAMILY_MAP[customization?.fontFamily as keyof typeof FONT_FAMILY_MAP] ||
             "system-ui, -apple-system, sans-serif",
@@ -140,7 +142,7 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
           borderColor={borderColor}
           sectionSpacing={renderStyle.sectionSpacing}
         >
-          <p style={{ color: textColor, lineHeight: bodyLineHeight }}>{stripEmoji(summary)}</p>
+          <p style={{ color: textColor }}>{stripEmoji(summary)}</p>
         </Section>
       )}
 
@@ -160,7 +162,6 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
                 headingColor={itemHeadingColor}
                 textColor={textColor}
                 mutedTextColor={mutedTextColor}
-                bodyLineHeight={bodyLineHeight}
               />
             ))}
           </div>
@@ -221,7 +222,7 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
         >
           <div className="flex flex-wrap gap-2">
             {visibleSkills.map((skill) => (
-              <div key={skill.id || skill.name} className="w-full text-sm">
+              <div key={skill.id || skill.name} className={`w-full ${BODY_TEXT_CLASS}`}>
                 <strong style={{ color: textColor }}>{cleanResumeText(skill.name)}:</strong>{" "}
                 <span style={{ color: textColor }}>
                   {skill.keywords
