@@ -10,6 +10,8 @@ import {
   getEducationTitle,
 } from "@/features/documents/rendering/resume-rendering";
 
+import { BODY_TEXT_CLASS } from "./shared-classes";
+
 interface EducationItemProps {
   education: ResumeData["education"][0];
   headingColor: string;
@@ -29,17 +31,17 @@ export const EducationItem: React.FC<EducationItemProps> = ({
         <h3 className="text-base leading-tight font-semibold" style={{ color: headingColor }}>
           {getEducationTitle(education) || "Education"}
         </h3>
-        <p className="text-sm" style={{ color: mutedTextColor }}>
+        <p className={BODY_TEXT_CLASS} style={{ color: mutedTextColor }}>
           {getEducationMeta(education)}
         </p>
       </div>
       {getEducationSchool(education) && (
-        <p className="text-sm font-medium" style={{ color: mutedTextColor }}>
+        <p className={`${BODY_TEXT_CLASS} font-medium`} style={{ color: mutedTextColor }}>
           {getEducationSchool(education)}
         </p>
       )}
       {education.summary && (
-        <p className="text-sm" style={{ color: textColor }}>
+        <p className={BODY_TEXT_CLASS} style={{ color: textColor }}>
           {cleanResumeText(education.summary)}
         </p>
       )}

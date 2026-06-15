@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { AtSign, AlertTriangle, Check, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Modal, Button, Input } from "@veriworkly/ui";
 
@@ -51,8 +51,9 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
 
   React.useEffect(() => {
     const trimmed = username.trim().toLowerCase();
-
-    if (!trimmed || validateUsernameFormat(trimmed)) return;
+    if (!trimmed || validateUsernameFormat(trimmed)) {
+      return;
+    }
 
     const delayDebounce = setTimeout(async () => {
       try {
@@ -109,7 +110,7 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Modal.Content className="overflow-hidden p-0">
+      <Modal.Content className="w-full overflow-hidden border border-zinc-200/50 p-0 shadow-2xl backdrop-blur-xl sm:rounded-2xl dark:border-zinc-800/50">
         <div className="relative flex items-center gap-4 border-b border-zinc-100 p-4 md:bg-zinc-500/2 dark:border-zinc-900">
           <div className="bg-accent/10 pointer-events-none absolute -top-10 -left-10 h-24 w-24 rounded-full opacity-10 blur-2xl" />
 
@@ -117,20 +118,25 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
             <AtSign className="text-accent h-4.5 w-4.5" />
           </div>
 
-          <div>
-            <Modal.Title id="edit-username-title" className="text-lg font-bold">
+          <div className="min-w-0 flex-1">
+            <Modal.Title
+              className="text-foreground text-base font-black tracking-tight"
+              id="edit-username-title"
+            >
               Configure Username
             </Modal.Title>
 
-            <p className="text-muted-foreground text-xs">Account settings</p>
+            <p className="text-muted-foreground text-[10px] font-black tracking-widest uppercase opacity-80">
+              Account settings
+            </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit}>
           <Modal.Body className="space-y-4 p-5">
+            {/* Warning Banner */}
             <div className="flex gap-3 rounded-xl border border-amber-200/30 bg-amber-500/10 p-3 text-amber-600 dark:border-amber-500/20 dark:text-amber-400">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-
               <div className="text-xs leading-relaxed font-semibold">
                 Choose carefully. Your username can only be set once and cannot be changed later.
               </div>
@@ -219,7 +225,7 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
               loading={isSaving}
               disabled={isChecking || !isAvailable || isSaving}
               id="save-edit-username-btn"
-              className="bg-accent text-accent-foreground w-full text-xs font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] sm:w-auto"
+              className="bg-accent text-accent-foreground w-full px-6 text-xs font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] sm:w-auto"
             >
               Set Username
             </Button>

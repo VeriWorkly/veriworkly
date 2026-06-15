@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import type { LucideIcon } from "lucide-react";
 
 import {
@@ -11,13 +13,13 @@ import {
   CheckCircle2,
   CalendarClock,
 } from "lucide-react";
-import * as React from "react";
 
 import type { AccountProfile } from "@/features/profile/services/account-profile";
 
 import UsernameLockedModal from "./UsernameLockedModal";
 import EditProfileNameModal from "./EditProfileNameModal";
 import EditProfileUsernameModal from "./EditProfileUsernameModal";
+
 
 function formatDate(value?: string) {
   if (!value) return "Not available";

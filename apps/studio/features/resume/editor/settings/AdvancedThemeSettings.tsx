@@ -86,19 +86,6 @@ const AdvancedThemeSettings = ({
             value={customization.sectionHeadingColor}
           />
 
-          <SettingsRange
-            label={`Body line-height (${customization.bodyLineHeight.toFixed(2)})`}
-            max={2}
-            min={1}
-            onChange={(event) =>
-              onUpdateCustomization({
-                bodyLineHeight: Number(event.target.value),
-              })
-            }
-            step={0.05}
-            value={customization.bodyLineHeight}
-          />
-
           <div className="md:col-span-2">
             <Button
               className="w-full rounded-xl"
