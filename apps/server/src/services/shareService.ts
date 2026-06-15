@@ -295,19 +295,31 @@ export class ShareService {
 
     const item = await prisma.shareLink.findUnique({
       where: { userId_documentId: { userId, documentId } },
+      include: {
+        document: {
+          select: {
+            slug: true,
+          },
+        },
+      },
     });
 
     const username = await UserService.requireUsernameForUser(userId);
 
-    const items = item
-      ? [
-          {
-            ...item,
-            token: item.slug,
-            username,
-          },
-        ]
-      : [];
+    if (!item) {
+      return { items: [], total: 0 };
+    }
+
+    const { document, ...shareLinkData } = item;
+
+    const items = [
+      {
+        ...shareLinkData,
+        token: item.slug,
+        username,
+        documentSlug: document.slug,
+      },
+    ];
 
     return { items, total: items.length };
   }

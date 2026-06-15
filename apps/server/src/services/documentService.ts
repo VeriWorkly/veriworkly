@@ -119,6 +119,21 @@ export class DocumentService {
     }
 
     const title = input.title || `Untitled ${input.type.toLowerCase().replace("_", " ")}`;
+
+    if (input.id) {
+      const existing = await prisma.document.findUnique({
+        where: { id: input.id },
+      });
+
+      if (existing) {
+        if (existing.userId !== userId) throw new ApiError(400, "Document ID already in use");
+
+        logger.info(`Document ${input.id} already exists for user ${userId}. Returning existing.`);
+
+        return existing;
+      }
+    }
+
     const slug = await this.buildUniqueSlug(userId, input.slug || title);
 
     const document = await prisma.document.create({
