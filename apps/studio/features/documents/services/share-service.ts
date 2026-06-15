@@ -36,6 +36,7 @@ export type ShareLinkItem = {
   lastViewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  documentSlug?: string;
 };
 
 export type ShareLinksPage = {

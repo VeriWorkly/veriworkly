@@ -311,10 +311,10 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     } as T;
   }
 
-  async hydrateById(id: string): Promise<SyncResult> {
+  async hydrateById(id: string, force = false): Promise<SyncResult> {
     try {
       const record = await DocumentApi.get(id);
-      const merged = this.mergeCloudDocumentsIntoLocalStorage([record]);
+      const merged = this.mergeCloudDocumentsIntoLocalStorage([record], force);
       return merged.ok
         ? { ok: true, message: "Cloud document loaded successfully." }
         : { ok: false, message: "Unable to merge the cloud document." };
@@ -345,7 +345,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     }
   }
 
-  private mergeCloudDocumentsIntoLocalStorage(records: CloudDocument[]) {
+  private mergeCloudDocumentsIntoLocalStorage(records: CloudDocument[], force = false) {
     let mergedCount = 0;
 
     const collection = this.config.localStorage.loadCollection();
@@ -359,7 +359,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       const localUpdatedAt = this.toTimestamp(localItem?.updatedAt);
       const cloudUpdatedAt = this.toTimestamp(record.updatedAt);
 
-      if (!localItem || cloudUpdatedAt > localUpdatedAt) {
+      if (force || !localItem || cloudUpdatedAt > localUpdatedAt) {
         collection.items[cloudItem.id] = this.applyCloudSyncMetadata(cloudItem, record);
         mergedCount += 1;
       }
@@ -393,11 +393,36 @@ export class DocumentSyncService<T extends BaseDocumentData> {
   }
 
   async resolveConflictUseLocal(id: string) {
+    try {
+      const record = await DocumentApi.get(id);
+      const item = this.config.localStorage.loadById(id);
+      if (item) {
+        this.config.localStorage.persist({
+          ...item,
+          sync: {
+            ...item.sync,
+            revision: record.revision,
+          },
+        } as T);
+      }
+    } catch {
+      const item = this.config.localStorage.loadById(id);
+      if (item) {
+        this.config.localStorage.persist({
+          ...item,
+          sync: {
+            ...item.sync,
+            cloudDocumentId: null,
+            revision: 1,
+          },
+        } as T);
+      }
+    }
     return this.syncNow(id);
   }
 
   async resolveConflictUseCloud(id: string) {
-    const result = await this.hydrateById(id);
+    const result = await this.hydrateById(id, true);
     if (result.ok) SyncEngine.removeOutboxItem(id, this.config.documentType);
 
     return result;

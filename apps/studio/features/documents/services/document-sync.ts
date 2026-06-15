@@ -32,7 +32,7 @@ type SharedDocumentSyncService = {
   startWorker(options: SyncWorkerOptions): void;
   syncAllPending(): Promise<SyncResult[]>;
   setAllSyncEnabled(enabled: boolean): SaveDocumentResult;
-  hydrateById(id: string): Promise<SyncResult>;
+  hydrateById(id: string, force?: boolean): Promise<SyncResult>;
   hydrate(options?: { force?: boolean; minIntervalMs?: number }): Promise<SyncResult>;
 };
 
@@ -142,8 +142,12 @@ export function setAllDocumentsSyncEnabled(enabled: boolean): SaveDocumentResult
   return lastResult;
 }
 
-export async function hydrateCloudDocumentByIdToLocalStorage(type: DocumentType, id: string) {
-  return getService(type).hydrateById(id);
+export async function hydrateCloudDocumentByIdToLocalStorage(
+  type: DocumentType,
+  id: string,
+  force?: boolean,
+) {
+  return getService(type).hydrateById(id, force);
 }
 
 export async function hydrateCloudDocumentsToLocalStorage(

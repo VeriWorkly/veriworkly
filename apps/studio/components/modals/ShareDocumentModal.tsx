@@ -61,6 +61,22 @@ const slugify = (text: string) =>
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const isSlugMatching = (token: string, documentTitle: string) => {
+  const baseSlug = slugify(documentTitle);
+  if (!token) return false;
+
+  const tokenSlug = slugify(token);
+  if (tokenSlug === baseSlug) return true;
+
+  const prefix = baseSlug + "-";
+  if (tokenSlug.startsWith(prefix)) {
+    const suffix = tokenSlug.slice(prefix.length);
+    return /^\d+$/.test(suffix);
+  }
+
+  return false;
+};
+
 const ActiveLinkRow = ({
   link,
   onRevoke,
@@ -188,11 +204,10 @@ const ShareDocumentModal = ({
   const hasActiveLink = shareLinks.length > 0;
   const activeLink = shareLinks[0];
 
-  const documentSlug = useMemo(() => slugify(documentTitle), [documentTitle]);
   const isSlugOutofSync = useMemo(() => {
     if (!activeLink) return false;
-    return slugify(activeLink.token) !== documentSlug;
-  }, [activeLink, documentSlug]);
+    return !isSlugMatching(activeLink.token, documentTitle);
+  }, [activeLink, documentTitle]);
 
   const refreshShareLinks = useCallback(async (id: string) => {
     setLinksLoading(true);
