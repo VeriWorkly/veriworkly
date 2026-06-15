@@ -211,13 +211,6 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
           />
         </>
       ) : null}
-
-      {/* {canEditAccount && !profile?.username ? (
-        <SetUsernameModal
-          open={isSetUsernameModalOpen}
-          onClose={() => setIsSetUsernameModalOpen(false)}
-        />
-      ) : null} */}
     </>
   );
 }
