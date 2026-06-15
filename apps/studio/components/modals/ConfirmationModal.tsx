@@ -85,7 +85,7 @@ const ConfirmationModal = ({
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Modal.Content className="w-full overflow-hidden border border-zinc-200/50 p-0 shadow-2xl backdrop-blur-xl sm:rounded-2xl dark:border-zinc-800/50">
+      <Modal.Content className="overflow-hidden p-0">
         <div
           className={cn(
             "relative flex items-start gap-4 border-b p-4",

@@ -50,7 +50,7 @@ const DestructiveModal = ({
 
   return (
     <Modal open={open} onClose={onCloseAction}>
-      <Modal.Content className="w-full overflow-hidden p-0 sm:rounded-2xl">
+      <Modal.Content className="overflow-hidden p-0">
         <div className="border-destructive/10 bg-destructive/5 flex items-center gap-3 border-b p-4 md:bg-red-50/50 dark:md:bg-red-950/10">
           <div className="bg-destructive/10 text-destructive flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-2 ring-red-500/10 ring-inset">
             <Trash2 className="h-4.5 w-4.5" />

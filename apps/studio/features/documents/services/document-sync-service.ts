@@ -121,10 +121,11 @@ export class DocumentSyncService<T extends BaseDocumentData> {
   private attachWorkerListeners() {
     if (!this.isBrowser() || this.listenersAttached) return;
 
-    const requeueAndRun = () => {
+    const requeueAndRun = (event: Event) => {
       if (!this.workerEnabled) return;
 
-      this.queuePendingForSync();
+      const isManualSave = event.type === this.config.updatedEventName;
+      this.queuePendingForSync(isManualSave);
 
       const nextDue = this.getNextDueOutboxItem();
 
@@ -139,7 +140,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     this.listenersAttached = true;
   }
 
-  private queuePendingForSync() {
+  private queuePendingForSync(forceImmediate = false) {
     const collection = this.config.localStorage.loadCollection();
 
     const pending = Object.values(collection.items).filter(
@@ -147,7 +148,15 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     );
 
     for (const item of pending) {
-      SyncEngine.upsertOutboxItem(item.id, {}, this.config.documentType);
+      if (forceImmediate) {
+        SyncEngine.upsertOutboxItem(
+          item.id,
+          { nextAttemptAt: Date.now() },
+          this.config.documentType,
+        );
+      } else {
+        SyncEngine.upsertOutboxItem(item.id, {}, this.config.documentType);
+      }
     }
   }
 
@@ -157,7 +166,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     this.attachWorkerListeners();
 
     if (this.workerEnabled) {
-      this.queuePendingForSync();
+      this.queuePendingForSync(false);
       const nextDue = this.getNextDueOutboxItem();
       if (nextDue) this.scheduleWorkerTick(nextDue.delayMs);
     }

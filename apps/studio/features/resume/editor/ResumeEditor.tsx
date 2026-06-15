@@ -124,7 +124,7 @@ const ResumeEditor = ({ documentId }: ResumeEditorProps) => {
       enabled: isLoggedIn && workspaceSettings.autoSyncEnabled,
       idleDelayMs: 12_000,
     });
-  }, [isLoggedIn, resume.updatedAt]);
+  }, [isLoggedIn, resume.id]);
 
   useEffect(() => {
     let cancelled = false;

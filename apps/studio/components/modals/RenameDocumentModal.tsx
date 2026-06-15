@@ -79,7 +79,7 @@ export default function RenameDocumentModal({
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Modal.Content className="w-full overflow-hidden p-0 sm:rounded-2xl">
+      <Modal.Content className="overflow-hidden p-0">
         <form onSubmit={handleRename}>
           <div className="border-border/10 bg-accent/5 flex items-center gap-3 border-b p-4 md:bg-zinc-50/50 dark:md:bg-zinc-900/10">
             <div className="bg-accent/15 text-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-2 ring-zinc-500/10 ring-inset">

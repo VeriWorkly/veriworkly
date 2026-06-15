@@ -59,7 +59,7 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
       enabled: isLoggedIn && workspaceSettings.autoSyncEnabled,
       idleDelayMs: 12_000,
     });
-  }, [hydrated, isLoggedIn, doc?.updatedAt]);
+  }, [hydrated, isLoggedIn, doc?.id]);
 
   const links = useMemo(
     () => doc?.content.links ?? { displayMode: "icon-username" as const, items: [] },

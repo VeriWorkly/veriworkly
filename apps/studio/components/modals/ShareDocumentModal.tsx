@@ -325,7 +325,7 @@ const ShareDocumentModal = ({
 
   return (
     <Modal open={true} onClose={handleClose}>
-      <Modal.Content className="w-full overflow-hidden p-0 sm:rounded-2xl">
+      <Modal.Content className="overflow-hidden p-0">
         <div className="flex items-center gap-3 border-b p-4 md:bg-zinc-50/50 dark:bg-zinc-900/50">
           <div className="bg-accent/10 flex h-9 w-9 items-center justify-center rounded-xl">
             <Link2 className="text-accent h-4.5 w-4.5" />

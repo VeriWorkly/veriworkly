@@ -80,7 +80,7 @@ export function DocumentTemplatePickerModal({
 }: DocumentTemplatePickerModalProps) {
   return (
     <Modal open={open} onClose={onClose}>
-      <Modal.Content className="w-full overflow-hidden p-0 sm:rounded-2xl md:max-w-4xl">
+      <Modal.Content className="overflow-hidden p-0 md:max-w-4xl">
         <div className="flex items-center gap-3 border-b p-4 md:bg-zinc-50/50 dark:bg-zinc-900/50">
           <div className="bg-accent/10 text-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
             <LayoutTemplate className="h-4.5 w-4.5" />

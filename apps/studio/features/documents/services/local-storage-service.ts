@@ -50,6 +50,21 @@ export class LocalStorageService<T extends BaseDocumentData> {
     const { updatedAt, sync, ...payload } = item;
     void updatedAt;
     void sync;
+
+    if (payload && typeof payload === "object" && "content" in payload) {
+      const content = (payload as { content: unknown }).content;
+
+      if (content && typeof content === "object") {
+        const contentPayload = { ...(content as Record<string, unknown>) };
+        delete contentPayload.updatedAt;
+        delete contentPayload.sync;
+        return {
+          ...payload,
+          content: contentPayload,
+        };
+      }
+    }
+
     return payload;
   }
 

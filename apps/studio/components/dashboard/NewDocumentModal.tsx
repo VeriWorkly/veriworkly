@@ -46,8 +46,8 @@ export function NewDocumentModal({
     <Modal open={open} onClose={onClose}>
       <Modal.Content
         titleId="new-document-title"
+        className="overflow-hidden p-0"
         descriptionId="new-document-description"
-        className="w-full max-w-2xl overflow-hidden rounded-2xl p-0"
       >
         <div className="border-border/70 flex items-start justify-between gap-4 border-b p-5 sm:p-6">
           <div>

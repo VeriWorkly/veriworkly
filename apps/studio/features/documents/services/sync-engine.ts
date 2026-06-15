@@ -86,7 +86,7 @@ export class SyncEngine {
       scope: scope ?? existing?.scope ?? null,
       state: patch.state ?? existing?.state ?? "pending",
       attempts: patch.attempts ?? existing?.attempts ?? 0,
-      nextAttemptAt: patch.nextAttemptAt ?? now,
+      nextAttemptAt: patch.nextAttemptAt ?? existing?.nextAttemptAt ?? now,
       updatedAt: now,
     };
 

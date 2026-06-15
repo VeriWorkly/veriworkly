@@ -20,7 +20,7 @@ const PasswordGateModal = ({
   return (
     <main className="bg-background surface-grid min-h-screen">
       <Modal open onClose={() => {}}>
-        <Modal.Content className="border-border bg-background w-[95vw] max-w-md overflow-hidden rounded-3xl p-0 shadow-2xl md:w-full md:rounded-4xl">
+        <Modal.Content className="overflow-hidden p-0">
           <div className="surface-grid border-border bg-card/30 relative flex h-24 items-center justify-center border-b md:h-32">
             <div className="bg-card border-border rotate-2 rounded-xl border p-3 shadow-sm md:rounded-2xl md:p-5">
               <Lock className="text-accent h-6 w-6 md:h-8 md:w-8" />

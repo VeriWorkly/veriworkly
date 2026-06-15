@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { AtSign, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { AtSign, AlertTriangle } from "lucide-react";
 
 import { Modal, Button, Input } from "@veriworkly/ui";
 
@@ -32,6 +32,7 @@ const SetUsernameModal = ({ open, onClose }: SetUsernameModalProps) => {
   const [prevOpen, setPrevOpen] = React.useState(open);
   const [isSaving, setIsSaving] = React.useState(false);
   const [validation, setValidation] = React.useState<ValidationState>({ status: "idle" });
+
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (open !== prevOpen) {
@@ -117,7 +118,7 @@ const SetUsernameModal = ({ open, onClose }: SetUsernameModalProps) => {
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Modal.Content className="w-full overflow-hidden border border-zinc-200/50 p-0 shadow-2xl backdrop-blur-xl sm:rounded-2xl dark:border-zinc-800/50">
+      <Modal.Content className="overflow-hidden p-0">
         <div className="relative flex items-center gap-4 border-b border-zinc-100 p-4 md:bg-zinc-500/2 dark:border-zinc-900">
           <div className="bg-accent/10 pointer-events-none absolute -top-10 -left-10 h-24 w-24 rounded-full opacity-10 blur-2xl" />
 

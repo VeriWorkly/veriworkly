@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { ArrowRightLeft, Calendar, Key, TrendingUp, UserPen, Loader2 } from "lucide-react";
@@ -107,7 +107,7 @@ export default function ApiKeyRotateModal({
 
   return (
     <Modal open={open} onClose={handleClose}>
-      <Modal.Content className="w-full overflow-hidden p-0 sm:rounded-xl">
+      <Modal.Content className="overflow-hidden p-0">
         <div className="flex items-center gap-3 border-b px-4 pt-2 pb-4 md:bg-zinc-50/50 md:pt-4 dark:bg-zinc-900/50">
           <div className="ring-offset-background bg-accent/10 ring-accent/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300">
             <ArrowRightLeft className="text-accent h-4.5 w-4.5" />
