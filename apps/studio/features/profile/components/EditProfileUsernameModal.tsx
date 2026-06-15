@@ -51,25 +51,9 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
 
   React.useEffect(() => {
     const trimmed = username.trim().toLowerCase();
-
-    if (!trimmed) {
-      setIsAvailable(null);
-      setValidationError(null);
-      setIsChecking(false);
+    if (!trimmed || validateUsernameFormat(trimmed)) {
       return;
     }
-
-    const formatError = validateUsernameFormat(trimmed);
-    if (formatError) {
-      setValidationError(formatError);
-      setIsAvailable(null);
-      setIsChecking(false);
-      return;
-    }
-
-    setValidationError(null);
-    setIsChecking(true);
-    setIsAvailable(null);
 
     const delayDebounce = setTimeout(async () => {
       try {
@@ -79,10 +63,10 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
           setValidationError(
             response.reason === "taken"
               ? "This username is already taken"
-              : "This username is reserved or invalid"
+              : "This username is reserved or invalid",
           );
         }
-      } catch (err) {
+      } catch {
         setValidationError("Could not verify username availability. Please try again.");
       } finally {
         setIsChecking(false);
@@ -152,14 +136,17 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
           <Modal.Body className="space-y-4 p-5">
             {/* Warning Banner */}
             <div className="flex gap-3 rounded-xl border border-amber-200/30 bg-amber-500/10 p-3 text-amber-600 dark:border-amber-500/20 dark:text-amber-400">
-              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-              <div className="text-xs font-semibold leading-relaxed">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="text-xs leading-relaxed font-semibold">
                 Choose carefully. Your username can only be set once and cannot be changed later.
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="profile-username-input" className="text-foreground text-sm font-semibold">
+              <label
+                htmlFor="profile-username-input"
+                className="text-foreground text-sm font-semibold"
+              >
                 Username
               </label>
 
@@ -173,21 +160,43 @@ const EditProfileUsernameModal = ({ open, onClose }: EditProfileUsernameModalPro
                   disabled={isSaving}
                   id="profile-username-input"
                   placeholder="e.g. john_doe"
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setUsername(value);
+                    const trimmed = value.trim().toLowerCase();
+                    if (!trimmed) {
+                      setIsChecking(false);
+                      setIsAvailable(null);
+                      setValidationError(null);
+                    } else {
+                      setIsAvailable(null);
+                      const formatError = validateUsernameFormat(trimmed);
+                      if (formatError) {
+                        setValidationError(formatError);
+                        setIsChecking(false);
+                      } else {
+                        setValidationError(null);
+                        setIsChecking(true);
+                      }
+                    }
+                  }}
                 />
 
-                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                  {isChecking && <Loader2 className="animate-spin text-muted-foreground h-4 w-4" />}
-                  {isAvailable && <Check className="text-emerald-500 h-4.5 w-4.5" />}
+                <div className="absolute top-1/2 right-3.5 flex -translate-y-1/2 items-center justify-center">
+                  {isChecking && <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />}
+                  {isAvailable && <Check className="h-4.5 w-4.5 text-emerald-500" />}
                 </div>
               </div>
 
               {validationError ? (
-                <p id="profile-username-error" className="text-destructive pl-1 text-xs font-semibold">
+                <p
+                  id="profile-username-error"
+                  className="text-destructive pl-1 text-xs font-semibold"
+                >
                   {validationError}
                 </p>
               ) : isAvailable ? (
-                <p className="text-emerald-600 dark:text-emerald-400 pl-1 text-xs font-semibold">
+                <p className="pl-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                   Username is available!
                 </p>
               ) : (

@@ -3,7 +3,15 @@
 import type { LucideIcon } from "lucide-react";
 
 import * as React from "react";
-import { Mail, RefreshCw, UserRound, CheckCircle2, CalendarClock, Pencil, AtSign } from "lucide-react";
+import {
+  Mail,
+  RefreshCw,
+  UserRound,
+  CheckCircle2,
+  CalendarClock,
+  Pencil,
+  AtSign,
+} from "lucide-react";
 
 import type { AccountProfile } from "@/features/profile/services/account-profile";
 
@@ -140,7 +148,7 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
                 setIsUsernameModalOpen(true);
               }
             }}
-            className={`group min-w-0 rounded-xl border p-3 shadow-sm transition-all duration-200 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 cursor-pointer ${
+            className={`group min-w-0 cursor-pointer rounded-xl border p-3 shadow-sm transition-all duration-200 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 ${
               profile?.username
                 ? "border-zinc-200/60 bg-zinc-50/5 hover:border-zinc-300 dark:border-zinc-800/60 dark:bg-zinc-950/10"
                 : "border-amber-200/40 bg-amber-500/5 hover:border-amber-300 hover:bg-amber-500/10 dark:border-amber-500/20"
@@ -162,21 +170,25 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
                 Username
               </p>
 
-              <span className={`flex items-center gap-1 text-xs font-bold transition-colors ${
-                profile?.username
-                  ? "text-muted-foreground group-hover:text-foreground"
-                  : "text-amber-600 group-hover:text-amber-500 dark:text-amber-400 dark:group-hover:text-amber-300"
-              }`}>
+              <span
+                className={`flex items-center gap-1 text-xs font-bold transition-colors ${
+                  profile?.username
+                    ? "text-muted-foreground group-hover:text-foreground"
+                    : "text-amber-600 group-hover:text-amber-500 dark:text-amber-400 dark:group-hover:text-amber-300"
+                }`}
+              >
                 {canEditAccount ? (profile?.username ? "Locked" : "Configure") : "Sign in required"}{" "}
                 <Pencil className="h-3 w-3" />
               </span>
             </div>
 
-            <p className={`mt-1 truncate text-sm font-bold transition-colors ${
-              profile?.username
-                ? "text-foreground group-hover:text-accent"
-                : "text-amber-700 dark:text-amber-400 font-extrabold"
-            }`}>
+            <p
+              className={`mt-1 truncate text-sm font-bold transition-colors ${
+                profile?.username
+                  ? "text-foreground group-hover:text-accent"
+                  : "font-extrabold text-amber-700 dark:text-amber-400"
+              }`}
+            >
               {profile?.username ? `@${profile.username}` : "Not set"}
             </p>
           </div>
