@@ -10,8 +10,6 @@ import {
   normalizeLinkHref,
 } from "@/features/documents/rendering/resume-rendering";
 
-import { BODY_TEXT_CLASS, BODY_TEXT_SM_CLASS } from "./shared-classes";
-
 interface ProjectItemProps {
   project: ResumeData["projects"][0];
   headingColor: string;
@@ -36,7 +34,7 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
         {projectHref && (
           <a
             href={projectHref}
-            className={`${BODY_TEXT_CLASS} underline`}
+            className="text-sm underline leading-[inherit]"
             style={{ color: mutedTextColor }}
             target="_blank"
             rel="noopener noreferrer"
@@ -46,7 +44,7 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
         )}
       </div>
       {project.skills?.length > 0 && (
-        <p className={`${BODY_TEXT_SM_CLASS} font-medium`} style={{ color: mutedTextColor }}>
+        <p className="text-xs font-medium leading-[inherit]" style={{ color: mutedTextColor }}>
           {project.skills
             .map((skill) => cleanResumeText(skill))
             .filter(Boolean)
@@ -54,12 +52,12 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
         </p>
       )}
       {project.summary && (
-        <p className={BODY_TEXT_CLASS} style={{ color: textColor }}>
+        <p className="text-sm leading-[inherit]" style={{ color: textColor }}>
           {cleanResumeText(project.summary)}
         </p>
       )}
       {project.highlights?.length > 0 && (
-        <ul className={`space-y-1 pl-5 ${BODY_TEXT_CLASS}`} style={{ color: textColor }}>
+        <ul className="space-y-1 pl-5 text-sm leading-[inherit]" style={{ color: textColor }}>
           {project.highlights.map((highlight, index) => (
             <li key={index} className="list-disc">
               {cleanResumeText(highlight)}

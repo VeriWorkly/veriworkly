@@ -5,7 +5,6 @@ import React from "react";
 import type { ResumeData } from "@/types/resume";
 import { formatDateRange } from "@/features/resume/services/resume-formatters";
 import { cleanResumeText } from "@/features/documents/rendering/resume-rendering";
-import { BODY_TEXT_CLASS } from "./shared-classes";
 
 interface ExperienceItemProps {
   experience: ResumeData["experience"][0];
@@ -30,22 +29,22 @@ export const ExperienceItem: React.FC<ExperienceItemProps> = ({
         <h3 className="text-base leading-tight font-semibold" style={{ color: headingColor }}>
           {cleanResumeText(experience.role)}
         </h3>
-        <p className={BODY_TEXT_CLASS} style={{ color: mutedTextColor }}>
+        <p className="text-sm leading-[inherit]" style={{ color: mutedTextColor }}>
           {formatDateRange(experience.startDate, experience.endDate, experience.current)}
         </p>
       </div>
       {meta && (
-        <p className={BODY_TEXT_CLASS} style={{ color: mutedTextColor }}>
+        <p className="text-sm leading-[inherit]" style={{ color: mutedTextColor }}>
           {meta}
         </p>
       )}
       {experience.summary && (
-        <p className={BODY_TEXT_CLASS} style={{ color: textColor }}>
+        <p className="text-sm leading-[inherit]" style={{ color: textColor }}>
           {cleanResumeText(experience.summary)}
         </p>
       )}
       {experience.highlights?.length > 0 && (
-        <ul className={`space-y-1 pl-5 ${BODY_TEXT_CLASS}`} style={{ color: textColor }}>
+        <ul className="space-y-1 pl-5 text-sm leading-[inherit]" style={{ color: textColor }}>
           {experience.highlights.map((highlight, index) => (
             <li key={index} className="list-disc">
               {cleanResumeText(highlight)}

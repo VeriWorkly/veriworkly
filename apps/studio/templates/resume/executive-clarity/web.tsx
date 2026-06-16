@@ -14,7 +14,6 @@ import { Section } from "./Section";
 import { ExperienceItem } from "./ExperienceItem";
 import { EducationItem } from "./EducationItem";
 import { ProjectItem } from "./ProjectItem";
-import { BODY_TEXT_CLASS } from "./shared-classes";
 import { stripEmoji } from "@/features/documents/utils/strip-emoji";
 import {
   cleanResumeText,
@@ -54,23 +53,23 @@ function renderCustomSection(
                   {stripEmoji(item.name)}
                 </h3>
                 {item.date && (
-                  <p className={BODY_TEXT_CLASS} style={{ color: mutedTextColor }}>
+                  <p className="text-sm leading-[inherit]" style={{ color: mutedTextColor }}>
                     {stripEmoji(item.date)}
                   </p>
                 )}
               </div>
               {item.issuer && (
-                <p className={BODY_TEXT_CLASS} style={{ color: mutedTextColor }}>
+                <p className="text-sm leading-[inherit]" style={{ color: mutedTextColor }}>
                   {stripEmoji(item.issuer)}
                 </p>
               )}
               {item.description && (
-                <p className={BODY_TEXT_CLASS} style={{ color: textColor }}>
+                <p className="text-sm leading-[inherit]" style={{ color: textColor }}>
                   {stripEmoji(item.description)}
                 </p>
               )}
               {item.details?.length > 0 && (
-                <ul className={`space-y-1 pl-5 ${BODY_TEXT_CLASS}`} style={{ color: textColor }}>
+                <ul className="space-y-1 pl-5 text-sm leading-[inherit]" style={{ color: textColor }}>
                   {item.details.map((detail, index) => (
                     <li key={index} className="list-disc">
                       {stripEmoji(detail)}
@@ -222,7 +221,7 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
         >
           <div className="flex flex-wrap gap-2">
             {visibleSkills.map((skill) => (
-              <div key={skill.id || skill.name} className={`w-full ${BODY_TEXT_CLASS}`}>
+              <div key={skill.id || skill.name} className="w-full text-sm leading-[inherit]">
                 <strong style={{ color: textColor }}>{cleanResumeText(skill.name)}:</strong>{" "}
                 <span style={{ color: textColor }}>
                   {skill.keywords
