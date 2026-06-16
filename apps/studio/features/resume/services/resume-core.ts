@@ -76,7 +76,7 @@ export function saveResume(resume: ResumeData, options?: SaveResumeOptions): Sav
   const doc: BaseDocument = {
     id: normalized.id,
     type: "RESUME",
-    title: normalized.basics.fullName || "Untitled Resume",
+    title: normalized.title || normalized.basics.fullName || "Untitled Resume",
     templateId: normalized.templateId,
     content: normalized,
     updatedAt: now,

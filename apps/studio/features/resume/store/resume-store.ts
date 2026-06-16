@@ -50,6 +50,7 @@ interface ResumeStoreState {
   setTemplateId: (templateId: string) => void;
   updateCustomization: (values: Partial<ResumeCustomization>) => void;
   updateBasics: (values: Partial<ResumeBasics>) => void;
+  updateTitle: (title: string) => void;
   updateSummary: (summary: string) => void;
   updateLinkDisplayMode: (displayMode: ResumeLinkDisplayMode) => void;
   updateLinkItem: (index: number, values: Partial<ResumeLinkItem>) => void;
@@ -211,6 +212,14 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
           ...state.resume.basics,
           ...values,
         },
+      }),
+    })),
+
+  updateTitle: (title) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        title,
       }),
     })),
 

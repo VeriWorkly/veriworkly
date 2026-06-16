@@ -58,7 +58,7 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
   const TemplateComponent = templateComponent;
   const found = type === "RESUME" ? Boolean(routeResume) : Boolean(routeDocument);
   const title =
-    type === "RESUME" ? resume.basics.fullName || "Untitled Resume" : routeDocument?.title;
+    type === "RESUME" ? resume.title || resume.basics.fullName || "Untitled Resume" : routeDocument?.title;
   const editorPath = getDocumentEditorPath(type, documentId);
   const debugType = type === "COVER_LETTER" ? "cover-letter" : type.toLowerCase();
   const debugTemplateId = type === "RESUME" ? resume.templateId : routeDocument?.templateId;
