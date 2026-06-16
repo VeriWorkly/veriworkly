@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Eye,
   Cloud,
   Trash2,
   Share2,
@@ -8,6 +9,7 @@ import {
   RotateCcw,
   Settings2,
   FileCode2,
+  FileSearch,
   FolderInput,
   ChevronDown,
 } from "lucide-react";
@@ -27,6 +29,8 @@ interface ToolbarActionsMenuProps {
   onShare: () => void;
   onSync: () => void;
   onEmptyFields: () => void;
+  onFullPreview?: () => void;
+  onPdfDebug?: () => void;
 }
 
 const ToolbarActionsMenu = ({
@@ -37,6 +41,8 @@ const ToolbarActionsMenu = ({
   onShare,
   onSync,
   onEmptyFields,
+  onFullPreview,
+  onPdfDebug,
 }: ToolbarActionsMenuProps) => {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
 
@@ -61,6 +67,32 @@ const ToolbarActionsMenu = ({
     >
       {({ close }) => (
         <>
+          {onFullPreview ? (
+            <MenuItem
+              onClick={() => {
+                close();
+                onFullPreview();
+              }}
+            >
+              <Eye className="h-4 w-4" />
+              Full Preview
+            </MenuItem>
+          ) : null}
+
+          {onPdfDebug ? (
+            <MenuItem
+              onClick={() => {
+                close();
+                onPdfDebug();
+              }}
+            >
+              <FileSearch className="h-4 w-4" />
+              PDF Debug
+            </MenuItem>
+          ) : null}
+
+          {(onFullPreview || onPdfDebug) ? <MenuSeparator /> : null}
+
           <MenuItem
             onClick={() => {
               close();

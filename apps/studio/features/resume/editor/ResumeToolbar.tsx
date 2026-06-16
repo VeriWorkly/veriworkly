@@ -1,12 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
-import { FileSearch } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-import { Button } from "@veriworkly/ui";
 
 import { useUserStore } from "@/store/useUserStore";
 
@@ -25,7 +21,7 @@ import ToolbarSecondaryActions from "@/features/resume/editor/toolbar/ToolbarSec
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 
-import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import { getDocumentEditorPath, getDocumentPreviewPath } from "@/features/documents/core/routes";
 
 interface ToolbarProps {
   resumeId: string;
@@ -44,6 +40,7 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
   const resetResume = useResumeStore((state) => state.resetResume);
   const emptyResume = useResumeStore((state) => state.emptyResume);
   const setResume = useResumeStore((state) => state.setResume);
+  const updateTitle = useResumeStore((state) => state.updateTitle);
 
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [message, setMessage] = useState("Autosave ready");
@@ -128,26 +125,13 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
     <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
       <ToolbarHeader
         message={message}
-        title="Resume Editor"
+        title={resume.title ?? "Untitled Resume"}
         onBack={() => router.push("/documents")}
+        onTitleChange={updateTitle}
       />
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {process.env.NODE_ENV === "development" ? (
-          <Button asChild size="sm" variant="ghost" className="rounded-xl">
-            <Link
-              href={`/pdf-debug/resume/${resume.templateId}?id=${resume.id}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <FileSearch className="mr-2 h-4 w-4" />
-              PDF Debug
-            </Link>
-          </Button>
-        ) : null}
-
         <ToolbarSecondaryActions
-          resumeId={resumeId}
           onMessage={setMessage}
           getSaveFailureMessage={getSaveFailureMessage}
         />
@@ -200,6 +184,12 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
             setMessage("All fields cleared");
           }}
           onSync={handleSync}
+          onFullPreview={() => router.push(getDocumentPreviewPath("RESUME", resumeId))}
+          onPdfDebug={
+            process.env.NODE_ENV === "development"
+              ? () => window.open(`/pdf-debug/resume/${resume.templateId}?id=${resume.id}`, "_blank")
+              : undefined
+          }
         />
       </div>
     </div>
