@@ -14,7 +14,7 @@ import { Section } from "./Section";
 import { ExperienceItem } from "./ExperienceItem";
 import { EducationItem } from "./EducationItem";
 import { ProjectItem } from "./ProjectItem";
-import { BODY_TEXT_CLASS, BODY_TEXT_SM_CLASS } from "./shared-classes";
+import { BODY_TEXT_CLASS } from "./shared-classes";
 import { stripEmoji } from "@/features/documents/utils/strip-emoji";
 import {
   cleanResumeText,

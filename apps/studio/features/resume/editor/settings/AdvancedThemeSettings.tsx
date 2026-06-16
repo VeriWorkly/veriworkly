@@ -6,7 +6,7 @@ import { ChevronDown, RotateCcw } from "lucide-react";
 
 import { Button } from "@veriworkly/ui";
 
-import { SettingsColor, SettingsRange } from "./SettingControls";
+import { SettingsColor } from "./SettingControls";
 
 interface AdvancedThemeSettingsProps {
   advancedOpen: boolean;
