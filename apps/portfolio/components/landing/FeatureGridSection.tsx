@@ -2,7 +2,7 @@ import { Check, Globe2, MousePointer2, PencilLine, Search, Sparkles } from "luci
 
 const FeatureGridSection = () => {
   return (
-    <section className="bg-[#11110f] py-32 text-[#f4f2e9] md:py-48">
+    <section className="bg-ink-2 py-32 text-[#f4f2e9] md:py-48">
       <div className="mx-auto w-[min(1360px,calc(100%-48px))] max-sm:w-[min(calc(100%-30px),1360px)]">
         <div className="mb-18 space-y-8" data-reveal>
           <p className="mb-5 text-[0.72rem] font-black tracking-[0.16em] uppercase">
@@ -10,6 +10,7 @@ const FeatureGridSection = () => {
           </p>
 
           <h2 className="max-w-4xl text-[clamp(3.4rem,7vw,7rem)] leading-[0.9] tracking-tighter wrap-normal">
+            <span className="sr-only">Portfolio features: </span>
             Your professional presence, already handled.
           </h2>
         </div>
@@ -33,12 +34,12 @@ const FeatureGridSection = () => {
               </div>
             </div>
 
-            <div className="absolute right-8 -bottom-16.25 left-[10%] -rotate-2 rounded-t-2xl bg-[#f4f2e9] p-6 text-[#11110f] max-sm:right-6 max-sm:left-6">
+            <div className="text-ink-2 absolute right-8 -bottom-16.25 left-[10%] -rotate-2 rounded-t-2xl bg-[#f4f2e9] p-6 max-sm:right-6 max-sm:left-6">
               <span className="mb-2 flex justify-between text-[9px] font-black uppercase">
                 Headline <span>64 / 80</span>
               </span>
 
-              <div className="rounded-lg border border-[#11110f]/15 p-3 text-xs">
+              <div className="border-ink-2/15 rounded-lg border p-3 text-xs">
                 Building VeriWorkly into a product ecosystem.
               </div>
 
@@ -46,7 +47,7 @@ const FeatureGridSection = () => {
                 Featured product
               </span>
 
-              <div className="flex items-center gap-2 rounded-lg border border-[#11110f]/15 p-3 text-xs">
+              <div className="border-ink-2/15 flex items-center gap-2 rounded-lg border p-3 text-xs">
                 <span className="bg-accent h-6 w-8 rounded" aria-hidden="true" />
                 <b>Portfolio Builder</b>
                 <Check size={15} className="ml-auto" aria-hidden="true" />
@@ -98,12 +99,12 @@ const FeatureGridSection = () => {
               </p>
             </div>
 
-            <div className="rotate-2 rounded-2xl bg-white p-5 text-[#11110f]">
+            <div className="text-ink-2 rotate-2 rounded-2xl bg-white p-5">
               <span className="text-[10px] text-[#237b38]">gautam.veriworkly.com</span>
 
               <b className="text-accent mt-2 block text-base">Gautam Raj - Builder of VeriWorkly</b>
 
-              <p className="mt-1 text-xs leading-6 text-[#11110f]/60">
+              <p className="text-ink-2/60 mt-1 text-xs leading-6">
                 Portfolio builder, resume tools, publishing workflows, and product experiments.
               </p>
             </div>
@@ -125,7 +126,7 @@ const FeatureGridSection = () => {
               </p>
             </div>
 
-            <div className="flex h-3/4 w-[27%] -rotate-3 flex-col justify-between rounded-2xl bg-[#f2efe5] p-5 text-[#11110f] transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
+            <div className="text-ink-2 flex h-3/4 w-[27%] -rotate-3 flex-col justify-between rounded-2xl bg-[#f2efe5] p-5 transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
               <span className="text-[9px] font-black uppercase">Signal</span>
               <strong className="text-6xl tracking-[-0.08em]">Aa</strong>
             </div>

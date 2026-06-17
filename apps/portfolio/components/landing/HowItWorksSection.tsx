@@ -7,12 +7,14 @@ const steps = [
     copy: "Add work, links, services, experience, testimonials, SEO, and publishing details from one calm workspace.",
     icon: PencilLine,
   },
+
   {
     number: "02",
     title: "Preview real templates",
     copy: "Check the live template before committing. Your content stays intact while the presentation changes.",
     icon: LayoutTemplate,
   },
+
   {
     number: "03",
     title: "Publish with confidence",
@@ -33,22 +35,23 @@ const HowItWorksSection = () => {
             The shortest path from work to website
           </p>
 
-          <h2 className="max-w-4xl text-[clamp(3.4rem,7vw,7rem)] leading-[0.9] tracking-tighter wrap-normal">
+          <h2 className="text-[clamp(3.4rem,7vw,7rem)] leading-[0.9] tracking-tighter wrap-normal">
+            <span className="sr-only">How the portfolio builder works: </span>
             Build it once. Keep it alive.
           </h2>
         </div>
 
-        <p className="max-w-sm text-sm leading-7 text-[#11110f]/60">
+        <p className="text-ink-2/60 max-w-sm text-sm leading-7">
           Your content is the source of truth. Templates are different lenses for the same proof.
         </p>
       </div>
 
-      <div className="grid border-t-2 border-[#11110f] lg:grid-cols-3">
+      <div className="border-ink-2 grid border-t-2 lg:grid-cols-3">
         {steps.map(({ number, title, copy, icon: Icon }) => (
           <article
-            key={number}
             data-reveal
-            className="group hover:bg-accent flex min-h-102.5 flex-col justify-between border-[#11110f]/20 p-6 transition-colors duration-500 hover:text-white max-lg:min-h-77.5 max-lg:border-b lg:border-r lg:last:border-r-0"
+            key={number}
+            className="group hover:bg-accent border-ink-2/20 flex min-h-102.5 flex-col justify-between p-6 transition-colors duration-500 hover:text-white max-lg:min-h-77.5 max-lg:border-b lg:border-r lg:last:border-r-0"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-black">{number}</span>
@@ -60,7 +63,7 @@ const HowItWorksSection = () => {
                 {title}
               </h3>
 
-              <p className="mt-4 max-w-xs text-sm leading-7 text-[#11110f]/58 group-hover:text-white/70">
+              <p className="text-ink-2/58 mt-4 max-w-xs text-sm leading-7 group-hover:text-white/70">
                 {copy}
               </p>
             </div>

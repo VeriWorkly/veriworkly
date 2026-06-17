@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const PLATFORM_HOST = "portfolio.veriworkly.com";
-const publicPlatformPaths = ["/", "/pricing", "/portfolios", "/user", "/templates"];
+const publicPlatformPaths = ["/", "/pricing", "/portfolios", "/user", "/templates", "/faq"];
 const SESSION_COOKIE_NAMES = [
   "__Secure-veriworkly-auth.session_token",
   "veriworkly-auth.session_token",

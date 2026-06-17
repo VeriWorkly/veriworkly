@@ -10,7 +10,7 @@ const CtaSection = () => {
       <div className="mx-auto w-[min(1360px,calc(100%-48px))] max-sm:w-[min(calc(100%-30px),1360px)]">
         <div
           data-reveal
-          className="relative grid min-h-170 place-content-center overflow-hidden rounded-[28px] bg-[#11110f] px-8 py-16 text-center text-white"
+          className="bg-ink-2 relative grid min-h-170 place-content-center overflow-hidden rounded-[28px] px-8 py-16 text-center text-white"
         >
           <div
             aria-hidden="true"
@@ -24,6 +24,7 @@ const CtaSection = () => {
           </p>
 
           <h2 className="relative z-2 mx-auto max-w-5xl text-[clamp(4rem,9vw,9rem)] leading-[0.9] tracking-[-0.06em] wrap-normal">
+            <span className="sr-only">Start your professional portfolio: </span>
             Now make it impossible to overlook.
           </h2>
 
@@ -34,7 +35,7 @@ const CtaSection = () => {
 
           <div className="relative z-2 mt-9 flex flex-wrap justify-center gap-3">
             <Link href="/dashboard" className={`${action} bg-accent text-white`}>
-              Create my portfolio <ArrowRight size={16} />
+              Create my portfolio <ArrowRight size={16} aria-hidden="true" />
             </Link>
 
             <Link
