@@ -4,16 +4,15 @@ const capabilities = [
   "VeriWorkly subdomain",
   "Live template previews",
   "One-time content updates",
-  "Template switching",
-  "Project sections",
-  "Privacy-first analytics",
+  "Unlimited template switching",
+  "Customizable project sections",
 ];
 
 const MarqueeSection = () => {
   return (
     <section
-      className="bg-accent scale-105 rotate-1 overflow-hidden border-y-2 border-[#11110f] py-4 text-white"
       aria-label="Portfolio features"
+      className="bg-accent border-ink-2 scale-105 rotate-1 overflow-hidden border-y-2 py-4 text-white"
     >
       <div data-marquee className="flex w-max gap-5 will-change-transform">
         {[...capabilities, ...capabilities, ...capabilities].map((item, index) => (

@@ -1,6 +1,7 @@
 {
   "name": "VeriWorkly",
-  "short_name": "VeriWork",
+  "short_name": "VeriWorkly",
+
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -8,6 +9,7 @@
       "type": "image/png",
       "purpose": "maskable"
     },
+
     {
       "src": "/web-app-manifest-512x512.png",
       "sizes": "512x512",
@@ -15,6 +17,7 @@
       "purpose": "maskable"
     }
   ],
+
   "theme_color": "#dffcff",
   "background_color": "#dffcff",
   "display": "standalone"

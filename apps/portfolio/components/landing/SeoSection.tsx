@@ -38,7 +38,7 @@ const SeoSection = () => {
           More than a pretty portfolio page.
         </h2>
 
-        <p className="mt-10 max-w-md text-sm leading-5 text-[#11110f]/60">
+        <p className="text-ink-2/60 mt-10 max-w-md text-sm leading-5">
           VeriWorkly Portfolio gives your work a public home with enough structure for search
           engines and enough personality for real people.
         </p>
@@ -49,7 +49,7 @@ const SeoSection = () => {
           <article
             data-reveal
             key={topic.title}
-            className="rounded-4xl border border-[#11110f]/15 bg-white/72 p-7 shadow-[10px_12px_0_rgba(37,99,235,0.08)]"
+            className="border-ink-2/15 rounded-4xl border bg-white/72 p-7 shadow-[10px_12px_0_rgba(37,99,235,0.08)]"
           >
             <span className="text-accent text-xs font-black" aria-hidden="true">
               0{index + 1}
@@ -59,7 +59,7 @@ const SeoSection = () => {
               {topic.title}
             </h3>
 
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-[#11110f]/62">{topic.copy}</p>
+            <p className="text-ink-2/62 mt-5 max-w-2xl text-sm leading-7">{topic.copy}</p>
           </article>
         ))}
 
@@ -67,7 +67,7 @@ const SeoSection = () => {
           {proofPoints.map((point) => (
             <div
               key={point.id}
-              className="flex items-center gap-3 rounded-2xl border border-[#11110f]/12 bg-[#11110f] px-4 py-4 text-sm font-black text-white"
+              className="border-ink-2/12 bg-ink-2 flex items-center gap-3 rounded-2xl border px-4 py-4 text-sm font-black text-white"
             >
               <Check className="size-4 text-[#93c5fd]" aria-hidden="true" />
               {point.text}

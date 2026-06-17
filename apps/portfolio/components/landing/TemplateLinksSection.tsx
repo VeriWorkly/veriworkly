@@ -18,6 +18,7 @@ const TemplateLinksSection = () => {
           </p>
 
           <h2 className="max-w-xl text-[clamp(3rem,6vw,6.2rem)] leading-[0.9] tracking-tighter wrap-normal">
+            <span className="sr-only">Portfolio website templates: </span>
             Switch templates without starting over.
           </h2>
 
@@ -31,7 +32,7 @@ const TemplateLinksSection = () => {
               <Link
                 key={template.id}
                 href={`/templates/${template.id}`}
-                className="group flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-black transition hover:bg-white hover:text-[#11110f]"
+                className="group hover:text-ink-2 flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-black transition hover:bg-white"
               >
                 {template.name}
                 <span className="text-xs font-bold opacity-65">{template.mood}</span>
@@ -39,8 +40,8 @@ const TemplateLinksSection = () => {
             ))}
           </div>
 
-          <Link className={`${action} mt-8 bg-white text-[#11110f]`} href="/templates">
-            Browse all templates <ArrowRight size={16} />
+          <Link className={`${action} text-ink-2 mt-8 bg-white`} href="/templates">
+            Browse all templates <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </div>
 
@@ -50,7 +51,7 @@ const TemplateLinksSection = () => {
               data-stack-card
               key={template.id}
               style={{ top: `${110 + index * 22}px` }}
-              className="group sticky top-27.5 overflow-hidden rounded-3xl bg-transparent pr-4 text-[#11110f]"
+              className="group text-ink-2 sticky top-27.5 overflow-hidden rounded-3xl bg-transparent pr-4"
             >
               <PortfolioTemplatePreviewFrame
                 compact
@@ -63,14 +64,14 @@ const TemplateLinksSection = () => {
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
                   href={`/templates/${template.id}/preview`}
-                  className={`${action} min-h-11 bg-[#11110f] text-white`}
+                  className={`${action} bg-ink-2 min-h-11 text-white`}
                 >
                   Full page review <ExternalLink size={15} aria-hidden="true" />
                 </Link>
 
                 <Link
                   href={`/templates/${template.id}`}
-                  className={`${action} min-h-11 border border-white/35 bg-white text-[#11110f]`}
+                  className={`${action} text-ink-2 min-h-11 border border-white/35 bg-white`}
                 >
                   Template details <ArrowRight size={15} aria-hidden="true" />
                 </Link>

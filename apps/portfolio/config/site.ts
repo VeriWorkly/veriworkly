@@ -28,6 +28,14 @@ export const siteConfig = {
     "developer portfolio",
     "designer portfolio",
     "online portfolio builder",
+    "portfolio builder for developers",
+    "portfolio builder for designers",
+    "subdomain portfolio",
+    "no-code portfolio builder",
+    "developer portfolio template",
+    "designer portfolio website",
+    "interactive portfolio website",
+    "SEO optimized portfolio",
   ],
 
   twitter: {

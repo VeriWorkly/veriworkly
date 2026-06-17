@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Professional Portfolio Builder | VeriWorkly",
     description: siteConfig.description,
-    images: ["/og/dashboard-page-og.png"],
+    images: ["/og/landing-page-og.png"],
     creator: siteConfig.twitter.handle,
   },
 
@@ -91,7 +91,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   };
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
