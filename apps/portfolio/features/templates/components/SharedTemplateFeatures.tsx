@@ -71,7 +71,7 @@ const SharedTemplateFeatures = () => {
             {sharedFeaturesList.map(({ title, description }) => (
               <li
                 key={title}
-                className="group flex flex-col justify-between rounded-3xl border border-white/5 bg-white/[0.02] p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.04]"
+                className="group flex flex-col justify-between rounded-3xl border border-white/2 p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/4"
               >
                 <div>
                   <div className="flex items-center gap-3">
