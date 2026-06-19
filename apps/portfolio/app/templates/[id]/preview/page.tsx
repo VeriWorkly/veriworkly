@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { DraftPreview } from "@/components/DraftPreview";
 import { isTemplateId, templates } from "@/templates/catalog/templates";
-import { siteConfig } from "@/config/site";
 
 export async function generateMetadata({
   params,

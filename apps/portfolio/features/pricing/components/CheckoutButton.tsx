@@ -7,11 +7,7 @@ interface CheckoutButtonProps {
   href: string;
 }
 
-export function CheckoutButton({
-  children,
-  className = "",
-  href,
-}: CheckoutButtonProps) {
+export function CheckoutButton({ children, className = "", href }: CheckoutButtonProps) {
   return (
     <Link
       href={href}

@@ -91,7 +91,7 @@ const ToolbarActionsMenu = ({
             </MenuItem>
           ) : null}
 
-          {(onFullPreview || onPdfDebug) ? <MenuSeparator /> : null}
+          {onFullPreview || onPdfDebug ? <MenuSeparator /> : null}
 
           <MenuItem
             onClick={() => {

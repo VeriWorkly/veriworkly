@@ -187,7 +187,8 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
           onFullPreview={() => router.push(getDocumentPreviewPath("RESUME", resumeId))}
           onPdfDebug={
             process.env.NODE_ENV === "development"
-              ? () => window.open(`/pdf-debug/resume/${resume.templateId}?id=${resume.id}`, "_blank")
+              ? () =>
+                  window.open(`/pdf-debug/resume/${resume.templateId}?id=${resume.id}`, "_blank")
               : undefined
           }
         />

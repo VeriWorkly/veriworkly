@@ -152,7 +152,7 @@ export const landingFaqs = [
   faqs.find((f) => f.id === "domain"),
   faqs.find((f) => f.id === "templates"),
   faqs.find((f) => f.id === "build-before-paying"),
-].filter((f): f is typeof faqs[number] => !!f);
+].filter((f): f is (typeof faqs)[number] => !!f);
 
 export const pricingFaqs = [
   faqs.find((f) => f.id === "credits"),
@@ -162,4 +162,4 @@ export const pricingFaqs = [
   faqs.find((f) => f.id === "upgrade"),
   faqs.find((f) => f.id === "cancel"),
   faqs.find((f) => f.id === "secure"),
-].filter((f): f is typeof faqs[number] => !!f);
+].filter((f): f is (typeof faqs)[number] => !!f);

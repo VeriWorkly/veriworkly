@@ -98,7 +98,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   };
 
   return (
-    <html lang="en" className={outfit.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={outfit.variable}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <script
           type="application/ld+json"

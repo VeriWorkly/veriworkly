@@ -34,7 +34,7 @@ export const EducationItem: React.FC<EducationItemProps> = ({
         </p>
       </div>
       {getEducationSchool(education) && (
-        <p className="text-sm font-medium leading-[inherit]" style={{ color: mutedTextColor }}>
+        <p className="text-sm leading-[inherit] font-medium" style={{ color: mutedTextColor }}>
           {getEducationSchool(education)}
         </p>
       )}

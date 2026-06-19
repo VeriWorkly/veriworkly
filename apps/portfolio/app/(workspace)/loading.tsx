@@ -26,11 +26,11 @@ const steps = [
 
 export default function LoadingPage() {
   const [currentStep, setCurrentStep] = useState(0);
-  const [logMessages, setLogMessages] = useState<string[]>([]);
+  const [logMessages, setLogMessages] = useState<string[]>([
+    "[SYSTEM] Booting portfolio container...",
+  ]);
 
   useEffect(() => {
-    setLogMessages([`[SYSTEM] Booting portfolio container...`]);
-
     let step = 0;
     const stepInterval = setInterval(() => {
       if (step < steps.length - 1) {
