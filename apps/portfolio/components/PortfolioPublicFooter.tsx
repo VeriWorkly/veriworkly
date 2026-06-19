@@ -32,19 +32,19 @@ const products = [
 
 const PortfolioPublicFooter = () => {
   return (
-    <footer className="bg-[#11110f] text-white">
+    <footer className="bg-ink-2 text-white">
       <div className="mx-auto grid w-[min(1360px,calc(100%-48px))] gap-12 py-16 max-sm:w-[min(calc(100%-30px),1360px)] lg:grid-cols-[1.1fr_1.4fr]">
         <div>
-          <Link href="/" className="flex items-center gap-3 text-sm font-black tracking-[-.04em]">
-            <Image src="/veriworkly-logo.png" width={30} height={30} alt="" />
+          <Link href="/" className="flex items-center gap-3 text-sm font-medium tracking-[-.04em]">
+            <Image src="/veriworkly-logo.png" width={30} height={30} alt="VeriWorkly Logo" />
             VeriWorkly Portfolio
           </Link>
 
-          <h2 className="mt-8 max-w-xl text-[clamp(2.7rem,5vw,5.5rem)] leading-[0.88] font-black tracking-[-0.08em]">
+          <h2 className="mt-8 max-w-xl text-[clamp(2.7rem,5vw,5.5rem)] leading-none font-medium tracking-tighter">
             One profile, many ways to present your work.
           </h2>
 
-          <p className="mt-6 max-w-md text-sm leading-7 text-white/55">
+          <p className="mt-6 max-w-md text-sm leading-6 text-white/55">
             Portfolio is part of the VeriWorkly ecosystem for building documents, publishing proof,
             and keeping your professional presence current.
           </p>
@@ -55,11 +55,14 @@ const PortfolioPublicFooter = () => {
             const content = (
               <>
                 <div className="flex items-center justify-between gap-4">
-                  <h3 className="text-xl font-black tracking-[-0.04em]">{product.name}</h3>
-                  <ArrowUpRight className="size-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  <h3 className="text-xl font-bold">{product.name}</h3>
+                  <ArrowUpRight
+                    className="size-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                    aria-hidden="true"
+                  />
                 </div>
 
-                <p className="mt-8 max-w-xs text-sm leading-6 text-white/55 group-hover:text-white/80">
+                <p className="mt-4 max-w-xs text-sm leading-6 text-white/55 group-hover:text-white/80">
                   {product.copy}
                 </p>
               </>

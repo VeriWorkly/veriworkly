@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 const action =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-black transition duration-300 hover:-translate-y-1";
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition duration-300 hover:-translate-y-1";
 
 const CtaSection = () => {
   return (
@@ -19,7 +19,7 @@ const CtaSection = () => {
             className="bg-accent absolute top-1/2 left-1/2 h-[42vw] w-[42vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-25 blur-[100px]"
           />
 
-          <p className="relative z-2 mb-5 text-[0.72rem] font-black tracking-[0.16em] text-[#93c5fd] uppercase">
+          <p className="relative z-2 mb-5 text-[0.72rem] font-bold tracking-[0.16em] text-[#93c5fd] uppercase">
             You already did the work.
           </p>
 

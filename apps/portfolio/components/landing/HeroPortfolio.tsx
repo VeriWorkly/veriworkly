@@ -9,7 +9,7 @@ const HeroPortfolio = () => {
       className="relative z-4 mx-auto mt-14 w-[min(1080px,84vw)] -rotate-2 transition-transform duration-300 max-lg:w-[92vw]"
     >
       <div className="border-ink-2 overflow-hidden rounded-3xl border-8 bg-white shadow-[25px_30px_0_rgba(17,17,15,0.13)] max-sm:rounded-2xl max-sm:border-[3px]">
-        <div className="border-ink-2 flex h-12 items-center justify-between gap-4 border-b-2 px-4 text-[10px] font-black">
+        <div className="border-ink-2 flex h-12 items-center justify-between gap-4 border-b-2 px-4 text-[10px] font-medium">
           <span className="flex gap-1.5">
             <i className="border-ink-2 size-2 rounded-full border" aria-hidden="true" />
             <i className="border-ink-2 size-2 rounded-full border" aria-hidden="true" />
@@ -24,18 +24,18 @@ const HeroPortfolio = () => {
         </div>
 
         <div className="relative h-135 overflow-hidden bg-[#e9e8e1] p-8 max-lg:h-105 max-lg:p-5 max-sm:h-92.5">
-          <div className="text-ink-2/55 flex items-center justify-between text-[10px] font-black tracking-[0.16em] uppercase">
+          <div className="text-ink-2/55 flex items-center justify-between text-[10px] font-medium tracking-[0.16em] uppercase">
             <span>Builder console</span>
             <span className="rounded-full bg-white px-3 py-1">Live draft</span>
           </div>
 
           <div className="mt-12 grid gap-8 max-lg:mt-8 lg:grid-cols-[1.02fr_0.98fr]">
             <div>
-              <span className="bg-accent inline-flex rounded-full px-4 py-2 text-[10px] font-black tracking-[0.14em] text-white uppercase">
+              <span className="bg-accent inline-flex rounded-full px-4 py-2 text-[10px] font-medium tracking-[0.14em] text-white uppercase">
                 Gautam Raj profile
               </span>
 
-              <h2 className="mt-6 max-w-xl text-[clamp(2.7rem,5.8vw,5.8rem)] leading-[0.84] font-black tracking-[-0.065em]">
+              <h2 className="mt-6 max-w-xl text-[clamp(2.7rem,5.8vw,5.8rem)] leading-[0.84] font-medium tracking-[-0.065em]">
                 Generate a site from one clean source.
               </h2>
 
@@ -45,7 +45,7 @@ const HeroPortfolio = () => {
                     className="border-ink-2/15 rounded-2xl border bg-white/72 p-4 text-left shadow-[6px_7px_0_rgba(17,17,15,0.08)]"
                     key={item}
                   >
-                    <span className="text-accent text-[10px] font-black" aria-hidden="true">
+                    <span className="text-accent text-[10px] font-medium" aria-hidden="true">
                       0{index + 1}
                     </span>
 
@@ -62,12 +62,12 @@ const HeroPortfolio = () => {
               />
 
               <div className="text-ink-2 relative z-2 rounded-3xl bg-white p-5">
-                <div className="flex items-center justify-between text-[10px] font-black uppercase">
+                <div className="flex items-center justify-between text-[10px] font-medium uppercase">
                   <span>VeriWorkly</span>
                   <span>Signal</span>
                 </div>
 
-                <h3 className="mt-10 text-5xl leading-[0.88] font-black tracking-[-0.08em]">
+                <h3 className="mt-10 text-5xl leading-[0.88] font-medium tracking-[-0.08em]">
                   You build proof, clarity, and systems.
                 </h3>
 
@@ -77,11 +77,11 @@ const HeroPortfolio = () => {
               </div>
 
               <div className="relative z-2 mt-4 grid grid-cols-2 gap-3">
-                <span className="bg-ink-2 rounded-2xl p-4 text-xs font-black">
+                <span className="bg-ink-2 rounded-2xl p-4 text-xs font-medium">
                   gautam.veriworkly.com
                 </span>
 
-                <span className="rounded-2xl bg-white/15 p-4 text-xs font-black">
+                <span className="rounded-2xl bg-white/15 p-4 text-xs font-medium">
                   Meta preview ready
                 </span>
               </div>

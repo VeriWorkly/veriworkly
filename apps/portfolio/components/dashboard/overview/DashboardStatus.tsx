@@ -33,7 +33,7 @@ export function DashboardStatus({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-muted text-xs font-extrabold">Current portfolio</p>
-              <h2 className="mt-2 text-3xl font-black tracking-[-.04em]">{portfolioName}</h2>
+              <h2 className="mt-2 text-3xl font-bold tracking-[-.04em]">{portfolioName}</h2>
             </div>
             <span
               className={`px-2.5 py-1 text-[10px] font-extrabold ${isLive ? "bg-success-soft text-success" : "bg-warning-soft text-warning"}`}
@@ -57,7 +57,7 @@ export function DashboardStatus({
             <p className="text-accent-ink/60 font-[family-name:var(--font-mono)] text-[10px] tracking-[.12em] uppercase">
               Portfolio health
             </p>
-            <p className="mt-5 text-7xl font-black tracking-[-.04em] tabular-nums">
+            <p className="mt-5 text-7xl font-bold tracking-[-.04em] tabular-nums">
               {readiness}
               <span className="text-accent-ink/45 text-2xl">%</span>
             </p>

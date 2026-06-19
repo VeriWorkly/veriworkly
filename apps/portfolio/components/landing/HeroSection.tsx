@@ -4,7 +4,7 @@ import { ArrowRight, ArrowDownRight } from "lucide-react";
 import HeroPortfolio from "./HeroPortfolio";
 
 const action =
-  "inline-flex min-h-10 md:min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-black transition duration-300 hover:-translate-y-0.5 shadow-[0_5px_0_#11110f] active:scale-[0.97]";
+  "inline-flex min-h-10 md:min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition duration-300 hover:-translate-y-0.5 shadow-[0_5px_0_#11110f] active:scale-[0.97]";
 
 const HeroSection = () => {
   return (
@@ -17,7 +17,7 @@ const HeroSection = () => {
       <div className="border-ink-2/10 absolute top-[15vw] right-[-33vw] h-[45vw] w-[45vw] rounded-full border" />
 
       <div className="relative z-2 mb-14 w-[min(1220px,100%)] text-center" data-reveal>
-        <p className="mb-5 text-[0.72rem] font-black tracking-[0.16em] uppercase">
+        <p className="mb-5 text-[0.72rem] font-bold tracking-[0.16em] uppercase">
           Portfolio builder by VeriWorkly
         </p>
 

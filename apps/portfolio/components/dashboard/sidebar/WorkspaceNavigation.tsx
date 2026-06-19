@@ -86,7 +86,7 @@ export function WorkspaceNavigation({
                 onMouseDown={(event) => event.stopPropagation()}
               >
                 <div className="border-line flex min-h-17 items-center justify-between border-b px-4">
-                  <p className="text-sm font-black">Portfolio workspace</p>
+                  <p className="text-sm font-bold">Portfolio workspace</p>
 
                   <button
                     onClick={() => setOpen(false)}

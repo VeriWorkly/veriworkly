@@ -8,7 +8,7 @@ export function DashboardProductLinks() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-muted text-xs font-extrabold">Across VeriWorkly</p>
-          <h2 className="mt-1 text-xl font-black tracking-[-.04em]">Your career workspace</h2>
+          <h2 className="mt-1 text-xl font-bold tracking-[-.04em]">Your career workspace</h2>
         </div>
         <a className="text-accent text-xs font-extrabold" href={veriworklyProductLinks.studio}>
           Open Studio

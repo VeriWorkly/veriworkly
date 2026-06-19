@@ -16,7 +16,7 @@ export function Metric({ label, value, detail, icon }: MetricProps) {
           {icon}
         </span>
       </div>
-      <p className="mt-6 truncate text-3xl font-black tracking-[-.04em] tabular-nums">{value}</p>
+      <p className="mt-6 truncate text-3xl font-bold tracking-[-.04em] tabular-nums">{value}</p>
       <p className="text-muted mt-2 truncate text-[11px]">{detail}</p>
     </article>
   );

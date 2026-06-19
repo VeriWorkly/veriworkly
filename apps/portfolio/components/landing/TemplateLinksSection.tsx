@@ -6,14 +6,14 @@ import { PortfolioTemplatePreviewFrame } from "@/components/PortfolioTemplatePre
 import { templates } from "@/lib/portfolio";
 
 const action =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-black transition duration-300 hover:-translate-y-1";
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition duration-300 hover:-translate-y-1";
 
 const TemplateLinksSection = () => {
   return (
     <section className="bg-accent py-32 text-white md:py-48" id="templates">
       <div className="mx-auto grid w-[min(1360px,calc(100%-48px))] items-start gap-[7vw] max-sm:w-[min(calc(100%-30px),1360px)] lg:grid-cols-[0.75fr_1.25fr]">
         <div className="top-27.5 rounded-4xl border border-white/20 bg-white/10 p-6 backdrop-blur lg:sticky">
-          <p className="mb-5 text-[0.72rem] font-black tracking-[0.16em] uppercase">
+          <p className="mb-5 text-[0.72rem] font-bold tracking-[0.16em] uppercase">
             Live template links
           </p>
 
@@ -32,7 +32,7 @@ const TemplateLinksSection = () => {
               <Link
                 key={template.id}
                 href={`/templates/${template.id}`}
-                className="group hover:text-ink-2 flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-black transition hover:bg-white"
+                className="group hover:text-ink-2 flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold transition hover:bg-white"
               >
                 {template.name}
                 <span className="text-xs font-bold opacity-65">{template.mood}</span>

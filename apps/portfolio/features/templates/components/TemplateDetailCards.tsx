@@ -31,10 +31,10 @@ function DetailCard({
   children: ReactNode;
 }) {
   return (
-    <article className="rounded-3xl border border-[#11110f]/15 bg-white p-6">
+    <article className="border-ink-2/15 rounded-3xl border bg-white p-6">
       {icon}
-      <h3 className="mt-8 text-3xl font-black tracking-[-0.06em]">{title}</h3>
-      <p className="mt-4 text-sm leading-7 text-[#11110f]/60">{children}</p>
+      <h3 className="mt-8 text-3xl font-bold tracking-[-0.06em]">{title}</h3>
+      <p className="text-ink-2/60 mt-4 text-sm leading-7">{children}</p>
     </article>
   );
 }

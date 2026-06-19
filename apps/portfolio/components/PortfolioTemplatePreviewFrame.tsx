@@ -20,12 +20,12 @@ export function PortfolioTemplatePreviewFrame({
   href?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-3xl border-[3px] border-[#11110f] bg-white shadow-[16px_18px_0_rgba(17,17,15,0.14)]">
-      <div className="flex min-h-12 items-center justify-between gap-4 border-b-2 border-[#11110f] bg-white px-4 text-[10px] font-black tracking-[0.12em] text-[#11110f] uppercase">
+    <div className="border-ink-2 overflow-hidden rounded-3xl border-[3px] bg-white shadow-[16px_18px_0_rgba(17,17,15,0.14)]">
+      <div className="border-ink-2 text-ink-2 flex min-h-12 items-center justify-between gap-4 border-b-2 bg-white px-4 text-[10px] font-bold tracking-[0.12em] uppercase">
         <span>{title}</span>
 
         <Link
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#11110f] px-3 py-1.5 text-white"
+          className="bg-ink-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-white"
           href={`/templates/${templateId}/preview`}
         >
           Full page <ExternalLink size={12} />
@@ -40,14 +40,15 @@ export function PortfolioTemplatePreviewFrame({
         {interactive ? (
           <iframe
             loading="lazy"
-            className="size-full border-0 bg-white"
             src={`/templates/${templateId}/preview`}
+            className="size-full border-0 bg-white"
             title={`${title} live portfolio template preview`}
           />
         ) : image ? (
           <Image
             fill
             src={href}
+            sizes="(max-width: 768px) 95vw, (max-width: 1200px) 80vw, 60vw"
             alt={`${title} portfolio template preview`}
             className="size-full border-0 bg-white object-cover"
           />
@@ -71,11 +72,11 @@ export function TemplatePreviewArt({ templateId }: { templateId: TemplateId }) {
       aria-label={`View ${templateId} portfolio template details`}
     >
       <div
-        className={`relative mx-auto h-full max-w-190 overflow-hidden rounded-[1.8rem] border-2 border-[#11110f] bg-white shadow-[12px_14px_0_rgba(17,17,15,0.16)] ${
+        className={`border-ink-2 relative mx-auto h-full max-w-190 overflow-hidden rounded-[1.8rem] border-2 bg-white shadow-[12px_14px_0_rgba(17,17,15,0.16)] ${
           isSignal ? "rotate-[-1.5deg]" : "rotate-[1.5deg]"
         }`}
       >
-        <div className="flex h-11 items-center justify-between border-b-2 border-[#11110f] px-4 text-[10px] font-black tracking-[0.12em] uppercase">
+        <div className="border-ink-2 flex h-11 items-center justify-between border-b-2 px-4 text-[10px] font-bold tracking-[0.12em] uppercase">
           <span>{isSignal ? "Signal" : "Atelier"}</span>
           <span>{isSignal ? "Structured / technical" : "Expressive / editorial"}</span>
         </div>
@@ -90,23 +91,23 @@ function SignalPreview() {
   return (
     <div className="relative h-full bg-[#efeee8] p-8">
       <div className="bg-accent absolute right-[-18%] bottom-[-20%] size-[46%] rounded-full" />
-      <p className="text-[10px] font-black tracking-[0.2em] uppercase">
+      <p className="text-[10px] font-bold tracking-[0.2em] uppercase">
         Engineers and product leaders
       </p>
 
-      <h3 className="mt-10 max-w-xl text-[clamp(2.4rem,6vw,5.5rem)] leading-[0.82] font-black tracking-[-0.09em]">
+      <h3 className="mt-10 max-w-xl text-[clamp(2.4rem,6vw,5.5rem)] leading-[0.82] font-bold tracking-[-0.09em]">
         You will build proof, clarity, and strong systems.
       </h3>
 
       <div className="mt-8 flex gap-3">
-        <span className="h-12 w-32 rounded-full bg-[#11110f]" />
-        <span className="h-12 w-40 rounded-full border border-[#11110f]/20 bg-white" />
+        <span className="bg-ink-2 h-12 w-32 rounded-full" />
+        <span className="border-ink-2/20 h-12 w-40 rounded-full border bg-white" />
       </div>
 
       <div className="mt-10 grid max-w-xl grid-cols-3 gap-3">
         {["Work", "Systems", "Proof"].map((item) => (
           <span
-            className="rounded-2xl border border-[#11110f]/15 bg-white p-4 text-xs font-black"
+            className="border-ink-2/15 rounded-2xl border bg-white p-4 text-xs font-bold"
             key={item}
           >
             {item}
@@ -129,12 +130,12 @@ function AtelierPreview() {
       </h3>
 
       <div className="mt-10 grid max-w-xl grid-cols-[1.2fr_0.8fr] gap-4">
-        <div className="min-h-28 rounded-4xl bg-[#11110f] p-5 text-white">
-          <span className="text-xs font-black">Case study</span>
+        <div className="bg-ink-2 min-h-28 rounded-4xl p-5 text-white">
+          <span className="text-xs font-bold">Case study</span>
         </div>
 
-        <div className="min-h-28 rounded-4xl border border-[#11110f]/15 bg-white p-5">
-          <span className="text-accent text-xs font-black">Voice</span>
+        <div className="border-ink-2/15 min-h-28 rounded-4xl border bg-white p-5">
+          <span className="text-accent text-xs font-bold">Voice</span>
         </div>
       </div>
     </div>

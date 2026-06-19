@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { portfolioPublicUrl } from "@/config/site";
+import { portfolioPublicUrl, siteConfig } from "@/config/site";
 
 import { getPublishedPortfolio } from "@/lib/published-portfolio";
 import { renderTemplate } from "@/templates/runtime/registry";
@@ -17,13 +17,39 @@ export async function generateMetadata({
   const publication = await getPublishedPortfolio(username);
   if (!publication)
     return { title: "Portfolio not found", robots: { index: false, follow: false } };
+
   const project = publication.snapshot;
   const url = portfolioPublicUrl(publication.subdomain);
   const title = project.seo.title || `${project.identity.name} | Portfolio`;
-  const images = project.seo.socialImage ? [{ url: project.seo.socialImage.url }] : undefined;
+
+  const defaultDesc = `${project.identity.name} - ${project.identity.headline || "Professional Portfolio"}. View projects, experience, and contact information.`;
+  const description = project.seo.description || defaultDesc;
+
+  let imageUrl = project.seo.socialImage?.url;
+  if (imageUrl && !imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
+    const prefix = imageUrl.startsWith("/") ? "" : "/";
+    imageUrl = `${siteConfig.links.portfolio}${prefix}${imageUrl}`;
+  }
+
+  let images = imageUrl ? [{ url: imageUrl }] : undefined;
+  if (!images) {
+    const ogParams = new URLSearchParams({
+      name: project.identity.name,
+      headline: project.identity.headline || "",
+      bio: project.identity.bio || "",
+      availability: project.identity.availability || "",
+      location: project.identity.location || "",
+      subdomain: publication.subdomain,
+    });
+    const templateId = project.templateId || "signal";
+    images = [
+      { url: `${siteConfig.links.portfolio}/api/template/${templateId}/og?${ogParams.toString()}` },
+    ];
+  }
+
   return {
     title,
-    description: project.seo.description,
+    description,
     alternates: { canonical: url },
     robots: {
       index: true,
@@ -40,14 +66,14 @@ export async function generateMetadata({
       type: "profile",
       url,
       title,
-      description: project.seo.description,
+      description,
       siteName: "VeriWorkly Portfolio",
       images,
     },
     twitter: {
-      card: images ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
-      description: project.seo.description,
+      description,
       images,
     },
   };
@@ -58,6 +84,7 @@ export default async function Portfolio({ params }: { params: Promise<{ username
   const publication = await getPublishedPortfolio(username);
   if (!publication) notFound();
   const project = publication.snapshot;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
@@ -69,6 +96,7 @@ export default async function Portfolio({ params }: { params: Promise<{ username
       jobTitle: project.identity.headline,
       email: project.identity.email,
       address: project.identity.location,
+      sameAs: project.socialLinks?.map((link) => link.url) || [],
     },
   };
   return (

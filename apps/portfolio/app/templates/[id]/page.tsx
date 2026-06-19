@@ -24,10 +24,45 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!template) return { title: "Template Not Found" };
 
+  const title = `${template.name} Portfolio Template | VeriWorkly`;
+  const description = `${template.note} Preview the live ${template.name} portfolio template, design direction, SEO behavior, and best-fit use cases.`;
+
+  const imageUrl = `/og/templates/${template.id}-template-page-og.png`;
+
   return {
-    title: `${template.name} Portfolio Template | VeriWorkly`,
-    description: `${template.note} Preview the live ${template.name} portfolio template, design direction, SEO behavior, and best-fit use cases.`,
+    title,
+    description,
+
+    openGraph: {
+      type: "website",
+      url: `/templates/${template.id}`,
+      title,
+      description,
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${template.name} Portfolio Template`,
+        },
+      ],
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
+    },
+
     robots: { index: true, follow: true },
+
+    alternates: {
+      canonical: `/templates/${template.id}`,
+      languages: {
+        "en-US": `/templates/${template.id}`,
+      },
+    },
   };
 }
 
@@ -51,7 +86,7 @@ export default async function PortfolioTemplateDetailPage({ params }: PageProps)
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(templateSchema) }}
       />
-      <main className="min-h-dvh overflow-x-hidden bg-[#f1efe7] font-['Outfit','Avenir_Next','Trebuchet_MS',sans-serif] text-[#11110f]">
+      <main className="text-ink-2 bg-paper min-h-dvh overflow-x-hidden pt-28 font-['Outfit','Avenir_Next','Trebuchet_MS',sans-serif]">
         <TemplatesNavigation backHref="/templates" backLabel="All templates" />
         <TemplateDetailHero template={template} details={details} />
         <TemplatePreviewSection template={template} details={details} />
