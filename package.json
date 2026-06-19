@@ -59,6 +59,8 @@
     "fast-uri": "3.1.2"
   },
   "optionalDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "^1.1.2"
+    "@esbuild/linux-x64": "^0.28.1",
+    "@rolldown/binding-linux-x64-gnu": "^1.1.2",
+    "lightningcss-linux-x64-gnu": "^1.32.0"
   }
 }
