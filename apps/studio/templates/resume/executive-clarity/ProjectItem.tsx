@@ -34,7 +34,7 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
         {projectHref && (
           <a
             href={projectHref}
-            className="text-sm underline leading-[inherit]"
+            className="text-sm leading-[inherit] underline"
             style={{ color: mutedTextColor }}
             target="_blank"
             rel="noopener noreferrer"
@@ -44,7 +44,7 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
         )}
       </div>
       {project.skills?.length > 0 && (
-        <p className="text-xs font-medium leading-[inherit]" style={{ color: mutedTextColor }}>
+        <p className="text-xs leading-[inherit] font-medium" style={{ color: mutedTextColor }}>
           {project.skills
             .map((skill) => cleanResumeText(skill))
             .filter(Boolean)

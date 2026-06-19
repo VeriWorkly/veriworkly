@@ -26,7 +26,7 @@ const NotFoundPage = () => {
                 <div className="border-muted absolute right-2 bottom-2 size-2 border-r border-b opacity-30" />
               </div>
 
-              <h1 className="text-ink mt-8 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
+              <h1 className="text-ink mt-8 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
                 Project #404: The Missing Link
               </h1>
 
@@ -39,7 +39,7 @@ const NotFoundPage = () => {
             <div className="border-line/60 mt-8 flex flex-wrap items-center gap-4 border-t pt-6">
               <Button
                 asChild
-                className="bg-accent hover:bg-accent-strong inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-xs font-black tracking-wider text-white uppercase transition-transform active:scale-[0.97]"
+                className="bg-accent hover:bg-accent-strong inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-xs font-bold tracking-wider text-white uppercase transition-transform active:scale-[0.97]"
               >
                 <Link href="/">
                   <ArrowLeft className="size-4" /> Go Back Home
@@ -49,7 +49,7 @@ const NotFoundPage = () => {
               <Button
                 asChild
                 variant="ghost"
-                className="border-line text-ink hover:bg-paper-2 inline-flex min-h-12 items-center gap-2 rounded-full border px-6 text-xs font-black tracking-wider uppercase transition-transform active:scale-[0.97]"
+                className="border-line text-ink hover:bg-paper-2 inline-flex min-h-12 items-center gap-2 rounded-full border px-6 text-xs font-bold tracking-wider uppercase transition-transform active:scale-[0.97]"
               >
                 <Link href="/templates">
                   <LayoutGrid className="size-4" /> View Templates
@@ -60,19 +60,19 @@ const NotFoundPage = () => {
 
           <aside className="border-line bg-panel/30 flex flex-col gap-6 rounded-4xl border-2 p-6 backdrop-blur">
             <div>
-              <div className="text-muted text-[10px] font-black tracking-widest uppercase">
+              <div className="text-muted text-[10px] font-bold tracking-widest uppercase">
                 Metadata
               </div>
 
               <div className="mt-4 space-y-4">
                 <div>
                   <div className="text-[10px] font-bold opacity-50">CLIENT</div>
-                  <div className="text-ink mt-0.5 text-xs font-black">Anonymous Guest</div>
+                  <div className="text-ink mt-0.5 text-xs font-bold">Anonymous Guest</div>
                 </div>
 
                 <div>
                   <div className="text-[10px] font-bold opacity-50">STATUS</div>
-                  <div className="text-danger mt-0.5 flex items-center gap-1.5 text-xs font-black">
+                  <div className="text-danger mt-0.5 flex items-center gap-1.5 text-xs font-bold">
                     <span className="bg-danger size-1.5 animate-ping rounded-full" />
                     404 Disconnected
                   </div>
@@ -80,7 +80,7 @@ const NotFoundPage = () => {
 
                 <div>
                   <div className="text-[10px] font-bold opacity-50">RELEASE</div>
-                  <div className="text-ink mt-0.5 text-xs font-black">Build #v3.18.2</div>
+                  <div className="text-ink mt-0.5 text-xs font-bold">Build #v3.18.2</div>
                 </div>
               </div>
             </div>

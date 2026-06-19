@@ -147,9 +147,7 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
                 <SettingsColor
                   compact
                   label="Muted text color"
-                  onChange={(event) =>
-                    updateCustomization({ mutedTextColor: event.target.value })
-                  }
+                  onChange={(event) => updateCustomization({ mutedTextColor: event.target.value })}
                   value={customization.mutedTextColor}
                 />
 

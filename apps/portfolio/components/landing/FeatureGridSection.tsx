@@ -5,7 +5,7 @@ const FeatureGridSection = () => {
     <section className="bg-ink-2 py-32 text-[#f4f2e9] md:py-48">
       <div className="mx-auto w-[min(1360px,calc(100%-48px))] max-sm:w-[min(calc(100%-30px),1360px)]">
         <div className="mb-18 space-y-8" data-reveal>
-          <p className="mb-5 text-[0.72rem] font-black tracking-[0.16em] uppercase">
+          <p className="mb-5 text-[0.72rem] font-bold tracking-[0.16em] uppercase">
             Everything required. Nothing to maintain.
           </p>
 
@@ -35,7 +35,7 @@ const FeatureGridSection = () => {
             </div>
 
             <div className="text-ink-2 absolute right-8 -bottom-16.25 left-[10%] -rotate-2 rounded-t-2xl bg-[#f4f2e9] p-6 max-sm:right-6 max-sm:left-6">
-              <span className="mb-2 flex justify-between text-[9px] font-black uppercase">
+              <span className="mb-2 flex justify-between text-[9px] font-bold uppercase">
                 Headline <span>64 / 80</span>
               </span>
 
@@ -43,7 +43,7 @@ const FeatureGridSection = () => {
                 Building VeriWorkly into a product ecosystem.
               </div>
 
-              <span className="mt-4 mb-2 block text-[9px] font-black uppercase">
+              <span className="mt-4 mb-2 block text-[9px] font-bold uppercase">
                 Featured product
               </span>
 
@@ -76,7 +76,7 @@ const FeatureGridSection = () => {
                 Claim a clean address the moment you publish.
               </p>
 
-              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-2 text-[10px] font-black">
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-2 text-[10px] font-bold">
                 <span className="size-1.75 rounded-full bg-[#50d672]" aria-hidden="true" />
                 gautam.veriworkly.com
               </div>
@@ -127,12 +127,12 @@ const FeatureGridSection = () => {
             </div>
 
             <div className="text-ink-2 flex h-3/4 w-[27%] -rotate-3 flex-col justify-between rounded-2xl bg-[#f2efe5] p-5 transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
-              <span className="text-[9px] font-black uppercase">Signal</span>
+              <span className="text-[9px] font-bold uppercase">Signal</span>
               <strong className="text-6xl tracking-[-0.08em]">Aa</strong>
             </div>
 
             <div className="bg-accent flex h-3/4 w-[27%] rotate-3 flex-col justify-between rounded-2xl p-5 text-white transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
-              <span className="text-[9px] font-black uppercase">Atelier</span>
+              <span className="text-[9px] font-bold uppercase">Atelier</span>
               <strong className="text-6xl tracking-[-0.08em]">Aa</strong>
             </div>
           </article>

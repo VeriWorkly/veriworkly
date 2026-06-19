@@ -27,8 +27,8 @@
   --color-shadow: oklch(10% 0.03 258 / 20%);
   --color-paper-glass: rgb(245 244 239 / 92%);
 
-  --font-body: "Geist", "Inter", Arial, Helvetica, sans-serif;
-  --font-display: "Geist", "Inter", Arial, Helvetica, sans-serif;
+  --font-body: var(--font-outfit), "Geist", "Inter", Arial, Helvetica, sans-serif;
+  --font-display: var(--font-outfit), "Geist", "Inter", Arial, Helvetica, sans-serif;
   --font-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
 
   --space-xs: 4px;

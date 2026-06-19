@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
 
 import "./globals.css";
 
 import { siteConfig } from "@/config/site";
 
 import { ThemeProvider } from "@/provider/ThemeProvider";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -91,7 +98,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   };
 
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={outfit.variable}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <script
           type="application/ld+json"

@@ -14,7 +14,7 @@ export function SettingsHeader({ status, onSave }: SettingsHeaderProps) {
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <p className="text-accent text-xs font-extrabold">Publishing controls</p>
-        <h1 className="mt-2 text-3xl font-black tracking-[-.04em] sm:text-4xl">
+        <h1 className="mt-2 text-3xl font-bold tracking-[-.04em] sm:text-4xl">
           Own every shared impression.
         </h1>
         <p className="text-muted mt-2 max-w-2xl text-sm">

@@ -57,7 +57,7 @@ export function PortfolioAppShell({
 
             {!collapsed ? (
               <span>
-                <span className="block text-sm font-black tracking-[-.03em]">Portfolio</span>
+                <span className="block text-sm font-bold tracking-[-.03em]">Portfolio</span>
                 <span className="text-muted block text-[10px] font-bold">by VeriWorkly</span>
               </span>
             ) : null}

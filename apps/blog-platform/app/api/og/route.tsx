@@ -116,7 +116,7 @@ export async function GET(request: Request) {
                 backgroundRepeat: "no-repeat",
               }}
             />
-            <span style={{ fontWeight: 700 }}>VeriWorkly Blog</span>
+            <span style={{ fontFamily: "monospace", fontWeight: 700 }}>VeriWorkly Blog</span>
           </div>
 
           <div

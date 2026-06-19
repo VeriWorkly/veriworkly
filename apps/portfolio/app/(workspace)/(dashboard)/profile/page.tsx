@@ -20,7 +20,7 @@ export default function ProfilePage() {
     <main className="mx-auto max-w-[1200px] px-4 py-7 sm:px-6 sm:py-9 xl:px-10">
       <header>
         <p className="text-accent text-xs font-extrabold">Public identity</p>
-        <h1 className="mt-2 text-3xl font-black tracking-[-.04em] sm:text-4xl">
+        <h1 className="mt-2 text-3xl font-bold tracking-[-.04em] sm:text-4xl">
           Make the person behind the work clear.
         </h1>
         <p className="text-muted mt-2 max-w-2xl text-sm leading-6">
@@ -31,11 +31,11 @@ export default function ProfilePage() {
       <section className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <article className="bg-panel rounded-2xl p-6 shadow-[0_4px_0_var(--color-line-strong)] sm:p-8">
           <div className="flex flex-wrap items-start gap-5">
-            <span className="bg-accent-soft text-accent grid size-16 place-items-center rounded-xl text-xl font-black">
+            <span className="bg-accent-soft text-accent grid size-16 place-items-center rounded-xl text-xl font-bold">
               <UserRound size={25} />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-black tracking-[-.04em]">
+              <h2 className="text-2xl font-bold tracking-[-.04em]">
                 {content?.identity.name || user?.name || "Your profile"}
               </h2>
               <p className="text-muted mt-2 max-w-xl text-sm leading-6">
@@ -67,7 +67,7 @@ export default function ProfilePage() {
         </article>
         <aside className="bg-accent text-accent-ink rounded-2xl p-6">
           <p className="text-accent-ink/60 text-xs font-extrabold">Profile system</p>
-          <h2 className="mt-3 text-xl font-black tracking-[-.04em]">
+          <h2 className="mt-3 text-xl font-bold tracking-[-.04em]">
             Keep the source of truth in Studio.
           </h2>
           <p className="text-accent-ink/65 mt-3 text-xs leading-6">

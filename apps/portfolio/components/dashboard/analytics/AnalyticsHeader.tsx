@@ -6,7 +6,7 @@ export function AnalyticsHeader() {
     <header className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
       <div>
         <p className="text-accent text-xs font-extrabold">Portfolio analytics</p>
-        <h1 className="mt-2 text-3xl font-black tracking-[-.04em] sm:text-4xl">
+        <h1 className="mt-2 text-3xl font-bold tracking-[-.04em] sm:text-4xl">
           A clear view of your reach.
         </h1>
         <p className="text-muted mt-2 max-w-2xl text-sm leading-6">

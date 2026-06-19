@@ -82,6 +82,14 @@ export const faqs = [
   },
 
   {
+    id: "pricing",
+    category: "billing",
+    question: "What plans are available and how do AI writing credits work?",
+    answer:
+      "We offer flexible options: 1-Day Pass ($0.69, 25 AI credits) and 7-Day Sprint ($3.99, 220 AI credits) where credits expire when the pass ends. For long-term use, the Full Bundle subscription is $11.99/mo (or $9.99/mo annual) with 1,000 monthly AI credits that reset each billing cycle. You can also purchase Portfolio Pro only ($8.99/mo) or AI Credits only ($4.99/mo) if you prefer a single service. Unused credits do not roll over.",
+  },
+
+  {
     id: "credits",
     category: "billing",
     question: "How do AI writing credits work and when do they reset?",
@@ -137,3 +145,21 @@ export const faqs = [
       "Yes. All payment processing is managed securely by Dodo Payments, adhering to strict PCI-DSS standards. VeriWorkly never stores or handles your credit card credentials directly on our servers.",
   },
 ];
+
+export const landingFaqs = [
+  faqs.find((f) => f.id === "diff"),
+  faqs.find((f) => f.id === "pricing"),
+  faqs.find((f) => f.id === "domain"),
+  faqs.find((f) => f.id === "templates"),
+  faqs.find((f) => f.id === "build-before-paying"),
+].filter((f): f is (typeof faqs)[number] => !!f);
+
+export const pricingFaqs = [
+  faqs.find((f) => f.id === "credits"),
+  faqs.find((f) => f.id === "rollover"),
+  faqs.find((f) => f.id === "standalone"),
+  faqs.find((f) => f.id === "subdomain-cost"),
+  faqs.find((f) => f.id === "upgrade"),
+  faqs.find((f) => f.id === "cancel"),
+  faqs.find((f) => f.id === "secure"),
+].filter((f): f is (typeof faqs)[number] => !!f);

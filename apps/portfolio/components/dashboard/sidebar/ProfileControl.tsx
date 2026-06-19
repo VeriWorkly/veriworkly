@@ -20,7 +20,7 @@ export function ProfileControl({
         collapsed ? "justify-center p-1" : "gap-3 p-2.5"
       }`}
     >
-      <span className="bg-accent text-accent-ink grid size-9 shrink-0 place-items-center rounded-lg text-xs font-black">
+      <span className="bg-accent text-accent-ink grid size-9 shrink-0 place-items-center rounded-lg text-xs font-bold">
         {initials}
       </span>
 

@@ -11,7 +11,7 @@ export function DashboardRecommendations({ projectCount }: DashboardRecommendati
       <div className="flex items-center justify-between">
         <div>
           <p className="text-muted text-xs font-extrabold">This week</p>
-          <h2 className="mt-1 text-lg font-black tracking-[-.04em]">Recommended next steps</h2>
+          <h2 className="mt-1 text-lg font-bold tracking-[-.04em]">Recommended next steps</h2>
         </div>
         <MoveUpRight size={16} className="text-accent" />
       </div>

@@ -69,7 +69,10 @@ function renderCustomSection(
                 </p>
               )}
               {item.details?.length > 0 && (
-                <ul className="space-y-1 pl-5 text-sm leading-[inherit]" style={{ color: textColor }}>
+                <ul
+                  className="space-y-1 pl-5 text-sm leading-[inherit]"
+                  style={{ color: textColor }}
+                >
                   {item.details.map((detail, index) => (
                     <li key={index} className="list-disc">
                       {stripEmoji(detail)}

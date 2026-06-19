@@ -11,7 +11,7 @@ export function AnalyticsTrend({ daily }: AnalyticsTrendProps) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-muted text-xs font-extrabold">View trend</p>
-          <h2 className="mt-1 text-xl font-black tracking-[-.04em]">Recent portfolio views</h2>
+          <h2 className="mt-1 text-xl font-bold tracking-[-.04em]">Recent portfolio views</h2>
         </div>
         <span className="bg-accent-soft text-accent rounded-full px-3 py-1.5 text-xs font-extrabold">
           Last 30 active days

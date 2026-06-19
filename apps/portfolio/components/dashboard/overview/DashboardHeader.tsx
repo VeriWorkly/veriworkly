@@ -20,7 +20,7 @@ export function DashboardHeader({ userName, draft }: DashboardHeaderProps) {
     <header className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
       <div>
         <p className="text-accent text-xs font-extrabold">Your portfolio today</p>
-        <h1 className="mt-2 max-w-4xl text-3xl font-black tracking-[-.04em] text-balance sm:text-4xl">
+        <h1 className="mt-2 max-w-4xl text-3xl font-bold tracking-[-.04em] text-balance sm:text-4xl">
           Good {getTimeOfDay()}, {firstName(userName)}.
         </h1>
         <p className="text-muted mt-2 max-w-2xl text-sm leading-6">

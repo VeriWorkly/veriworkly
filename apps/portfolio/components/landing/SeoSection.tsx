@@ -30,7 +30,7 @@ const SeoSection = () => {
   return (
     <section className="mx-auto grid w-[min(1360px,calc(100%-48px))] gap-12 py-32 max-sm:w-[min(calc(100%-30px),1360px)] md:py-44 lg:grid-cols-[0.82fr_1.18fr]">
       <div data-reveal className="lg:sticky lg:top-30 lg:self-start">
-        <p className="mb-5 text-[0.72rem] font-black tracking-[0.16em] uppercase">
+        <p className="mb-5 text-[0.72rem] font-medium tracking-[0.16em] uppercase">
           Built for search and humans
         </p>
 
@@ -51,11 +51,11 @@ const SeoSection = () => {
             key={topic.title}
             className="border-ink-2/15 rounded-4xl border bg-white/72 p-7 shadow-[10px_12px_0_rgba(37,99,235,0.08)]"
           >
-            <span className="text-accent text-xs font-black" aria-hidden="true">
+            <span className="text-accent text-xs font-medium" aria-hidden="true">
               0{index + 1}
             </span>
 
-            <h3 className="mt-4 text-[clamp(2rem,4vw,4rem)] leading-[0.92] font-black tracking-[-0.07em]">
+            <h3 className="mt-4 text-[clamp(2rem,4vw,4rem)] leading-[0.92] font-medium tracking-[-0.07em]">
               {topic.title}
             </h3>
 
@@ -67,7 +67,7 @@ const SeoSection = () => {
           {proofPoints.map((point) => (
             <div
               key={point.id}
-              className="border-ink-2/12 bg-ink-2 flex items-center gap-3 rounded-2xl border px-4 py-4 text-sm font-black text-white"
+              className="border-ink-2/12 bg-ink-2 flex items-center gap-3 rounded-2xl border px-4 py-4 text-sm font-medium text-white"
             >
               <Check className="size-4 text-[#93c5fd]" aria-hidden="true" />
               {point.text}

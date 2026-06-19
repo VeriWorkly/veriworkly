@@ -8,7 +8,7 @@ export function AnalyticsReferrers({ referrers = [] }: AnalyticsReferrersProps) 
   return (
     <aside className="border-line bg-panel rounded-[2rem] border p-6">
       <p className="text-muted text-xs font-extrabold">Discovery</p>
-      <h2 className="mt-1 text-xl font-black tracking-[-.04em]">Referring sites</h2>
+      <h2 className="mt-1 text-xl font-bold tracking-[-.04em]">Referring sites</h2>
       <p className="text-muted mt-2 text-xs leading-5">
         We store only the referring website hostname with an aggregated daily view count.
       </p>
@@ -20,7 +20,7 @@ export function AnalyticsReferrers({ referrers = [] }: AnalyticsReferrersProps) 
                 <Globe2 size={14} />
               </span>
               <span className="min-w-0 flex-1 truncate text-xs font-bold">{item.host}</span>
-              <span className="text-xs font-black tabular-nums">{item.count}</span>
+              <span className="text-xs font-bold tabular-nums">{item.count}</span>
             </div>
           ))
         ) : (

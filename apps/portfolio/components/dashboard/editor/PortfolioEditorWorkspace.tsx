@@ -9,12 +9,8 @@ import { ContentCanvas } from "@/components/dashboard/editor/ContentCanvas";
 import { PreviewStage } from "@/components/dashboard/editor/PreviewStage";
 import { TemplatePicker } from "@/components/dashboard/editor/TemplatePicker";
 import { WorkspaceNotice } from "@/components/dashboard/editor/WorkspaceNotice";
-import { useWorkspace } from "@/components/WorkspaceProvider";
 
 export function PortfolioEditorWorkspace() {
-  const initialData = useWorkspace();
-  const hydrate = usePortfolioStore((state) => state.hydrateWorkspace);
-  const load = usePortfolioStore((state) => state.loadWorkspace);
   const save = usePortfolioStore((state) => state.saveDraft);
   const ready = usePortfolioStore((state) => state.ready);
   const sections = usePortfolioStore((state) => state.content.sections);
@@ -27,11 +23,6 @@ export function PortfolioEditorWorkspace() {
     selectedSectionId === "profile" || sections.some((section) => section.id === selectedSectionId)
       ? selectedSectionId
       : "profile";
-
-  useEffect(() => {
-    if (initialData.workspace) hydrate(initialData);
-    else void load();
-  }, [hydrate, initialData, load]);
 
   useEffect(() => {
     if (!ready || usePortfolioStore.getState().draft) return;

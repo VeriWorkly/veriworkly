@@ -31,7 +31,7 @@ const HowItWorksSection = () => {
     >
       <div className="mb-18 grid items-end gap-8 lg:grid-cols-[1fr_1.2fr_0.8fr]" data-reveal>
         <div>
-          <p className="mb-5 text-[0.72rem] font-black tracking-[0.16em] uppercase">
+          <p className="mb-5 text-[0.72rem] font-bold tracking-[0.16em] uppercase">
             The shortest path from work to website
           </p>
 
@@ -54,12 +54,12 @@ const HowItWorksSection = () => {
             className="group hover:bg-accent border-ink-2/20 flex min-h-102.5 flex-col justify-between p-6 transition-colors duration-500 hover:text-white max-lg:min-h-77.5 max-lg:border-b lg:border-r lg:last:border-r-0"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black">{number}</span>
+              <span className="text-xs font-bold">{number}</span>
               <Icon size={22} aria-hidden="true" />
             </div>
 
             <div>
-              <h3 className="max-w-xs text-3xl leading-none font-black tracking-[-0.055em]">
+              <h3 className="max-w-xs text-3xl leading-none font-medium tracking-[-0.055em]">
                 {title}
               </h3>
 

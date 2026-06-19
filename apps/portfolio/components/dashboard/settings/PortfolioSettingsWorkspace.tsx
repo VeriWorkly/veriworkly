@@ -1,23 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePortfolioStore } from "@/store/portfolio-store";
-import { useWorkspace } from "@/components/WorkspaceProvider";
 import { SettingsHeader } from "./SettingsHeader";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsPreviews } from "./SettingsPreviews";
 
 export function PortfolioSettingsWorkspace() {
-  const initialData = useWorkspace();
-  const hydrate = usePortfolioStore((state) => state.hydrateWorkspace);
-  const load = usePortfolioStore((state) => state.loadWorkspace);
-  const { content, slug, updateSlug, updateContent, saveDraft, status } = usePortfolioStore();
+  const { content, slug, updateSlug, updateContent, saveDraft, publish, publication, status } =
+    usePortfolioStore();
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    if (initialData.workspace) hydrate(initialData);
-    else void load();
-  }, [hydrate, initialData, load]);
+  const handleSave = async () => {
+    if (publication && (publication.status === "LIVE" || publication.status === "GRACE")) {
+      await publish();
+    } else {
+      await saveDraft();
+    }
+  };
 
   const updateSeo = (patch: Partial<typeof content.seo>) =>
     updateContent({ seo: { ...content.seo, ...patch } });
@@ -54,7 +54,7 @@ export function PortfolioSettingsWorkspace() {
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 xl:px-10">
-      <SettingsHeader status={status} onSave={() => void saveDraft()} />
+      <SettingsHeader status={status} onSave={() => void handleSave()} />
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(24rem,1.15fr)]">
         <SettingsForm

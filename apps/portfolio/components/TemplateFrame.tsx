@@ -19,7 +19,7 @@ export function TemplateFrame() {
             Template library
           </p>
 
-          <h2 className="text-[clamp(2.2rem,5vw,4.5rem)] font-black tracking-[-.04em]">
+          <h2 className="text-[clamp(2.2rem,5vw,4.5rem)] font-bold tracking-[-.04em]">
             Choose a voice, not a skin.
           </h2>
         </div>
