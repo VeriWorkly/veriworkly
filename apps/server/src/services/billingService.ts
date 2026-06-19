@@ -285,6 +285,12 @@ export class BillingService {
     }
   }
 
+  static async cancelCheckout(userId: string) {
+    const checkoutLockKey = `billing:checkout:${userId}`;
+    await getRedis().del(checkoutLockKey);
+    return { success: true };
+  }
+
   static async createPortal(userId: string) {
     const subscription = await this.getLatestSubscription(userId);
 

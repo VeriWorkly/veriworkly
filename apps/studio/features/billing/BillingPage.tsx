@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { CalendarClock, Coins, ExternalLink, FileClock, ShieldCheck } from "lucide-react";
 import { Button } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
-import { buyCreditPack, openBillingPortal } from "@/features/billing/billing-api";
+import { buyCreditPack, openBillingPortal, cancelCheckout } from "@/features/billing/billing-api";
 import type { BillingActivity, BillingSummary } from "@/features/billing/types";
 
 const planNames = {
@@ -35,6 +36,34 @@ export function BillingPage({
 }) {
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
+  const [clearingLock, setClearingLock] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkoutStatus = searchParams?.get("checkout");
+    if (checkoutStatus === "cancelled") {
+      void cancelCheckout()
+        .then(() => {
+          router.replace("/billing");
+        })
+        .catch((err) => {
+          console.error("Failed to cancel checkout lock", err);
+        });
+    }
+  }, [searchParams, router]);
+
+  const handleClearLock = async () => {
+    setClearingLock(true);
+    try {
+      await cancelCheckout();
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not clear checkout lock.");
+    } finally {
+      setClearingLock(false);
+    }
+  };
 
   const openPortal = async () => {
     setLoading("portal");
@@ -88,9 +117,19 @@ export function BillingPage({
       </header>
 
       {error ? (
-        <p className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-3 text-sm">
-          {error}
-        </p>
+        <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-4 text-sm flex flex-wrap items-center justify-between gap-4">
+          <p className="flex-1">{error}</p>
+          {error.includes("checkout is already active") && (
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={clearingLock}
+              onClick={() => void handleClearLock()}
+            >
+              Reset checkout lock
+            </Button>
+          )}
+        </div>
       ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
