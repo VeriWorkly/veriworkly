@@ -67,6 +67,14 @@ export class BillingController {
     }
   }
 
+  static async cancelCheckout(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(createSuccessResponse(await BillingService.cancelCheckout(requireAuthUser(req).id)));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async portal(req: Request, res: Response, next: NextFunction) {
     try {
       res.json(createSuccessResponse(await BillingService.createPortal(requireAuthUser(req).id)));

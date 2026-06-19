@@ -21,3 +21,10 @@ export function buyCreditPack(packKey: "credit_pack_100") {
     body: JSON.stringify({ packKey, redirectUrl: "/billing" }),
   });
 }
+
+export function cancelCheckout() {
+  return fetchApiData<{ success: boolean }>("/billing/checkout/cancel", {
+    method: "POST",
+    body: "{}",
+  });
+}

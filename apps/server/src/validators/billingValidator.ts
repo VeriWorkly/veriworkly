@@ -36,6 +36,7 @@ export const dodoSubscriptionSchema = z.object({
     .object({
       veriworkly_user_id: z.string().trim().optional(),
       veriworkly_product: z.string().trim().optional(),
+      veriworkly_interval: z.string().trim().optional(),
     })
     .catchall(z.any())
     .default({}),

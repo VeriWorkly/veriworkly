@@ -6,7 +6,7 @@ import { ArrowLeft, LoaderCircle, RotateCw, ShieldCheck } from "lucide-react";
 import { Button } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
-import { beginCheckout } from "@/features/billing/billing-api";
+import { beginCheckout, cancelCheckout } from "@/features/billing/billing-api";
 import type { BillingCycle, ProductKey } from "@/features/billing/types";
 
 type CheckoutInterval = BillingCycle | "one_day" | "seven_day";
@@ -20,6 +20,7 @@ export function CheckoutRedirect({
 }) {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -47,15 +48,36 @@ export function CheckoutRedirect({
             </div>
             <h1 className="mt-6 text-2xl font-black tracking-tight">Checkout could not start</h1>
             <p className="text-muted mt-3 text-sm leading-6">{error}</p>
-            <Button
-              className="mt-7 w-full"
-              onClick={() => {
-                setError("");
-                setAttempt((value) => value + 1);
-              }}
-            >
-              Try secure checkout again
-            </Button>
+            {error.includes("checkout is already active") ? (
+              <Button
+                className="mt-7 w-full"
+                loading={resetting}
+                onClick={async () => {
+                  setResetting(true);
+                  try {
+                    await cancelCheckout();
+                    setError("");
+                    setAttempt((value) => value + 1);
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Could not reset checkout lock.");
+                  } finally {
+                    setResetting(false);
+                  }
+                }}
+              >
+                Reset active lock & try again
+              </Button>
+            ) : (
+              <Button
+                className="mt-7 w-full"
+                onClick={() => {
+                  setError("");
+                  setAttempt((value) => value + 1);
+                }}
+              >
+                Try secure checkout again
+              </Button>
+            )}
           </>
         ) : (
           <>

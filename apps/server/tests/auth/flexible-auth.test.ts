@@ -1,26 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { flexibleAuth } from "../../src/middleware/flexibleAuth";
+import { flexibleAuth } from "#middleware/flexibleAuth";
 import type { Request, Response, NextFunction } from "express";
-import { getSessionUserFromRequest } from "../../src/middleware/auth";
-import { apiKeyAuth } from "../../src/middleware/apiKeyAuth";
-import { apiKeyRateLimit } from "../../src/middleware/apiKeyRateLimit";
+import { getSessionUserFromRequest } from "#middleware/auth";
+import { apiKeyAuth } from "#middleware/apiKeyAuth";
+import { apiKeyRateLimit } from "#middleware/apiKeyRateLimit";
 
-vi.mock("../../src/config", () => ({
+vi.mock("#config", () => ({
   config: {
     allowedOrigins: ["https://trusted.example.com"],
   },
   isDevelopment: false,
 }));
 
-vi.mock("../../src/middleware/apiKeyAuth", () => ({
+vi.mock("#middleware/apiKeyAuth", () => ({
   apiKeyAuth: vi.fn((req, res, next) => next()),
 }));
 
-vi.mock("../../src/middleware/auth", () => ({
+vi.mock("#middleware/auth", () => ({
   getSessionUserFromRequest: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock("../../src/middleware/apiKeyRateLimit", () => ({
+vi.mock("#middleware/apiKeyRateLimit", () => ({
   apiKeyRateLimit: vi.fn((req, res, next) => next()),
 }));
 

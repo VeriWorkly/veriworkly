@@ -13,6 +13,7 @@ router.get("/credits/history", authMiddleware, BillingController.creditHistory);
 
 router.post("/portal", authMiddleware, BillingController.portal);
 router.post("/checkout", authMiddleware, BillingController.checkout);
+router.post("/checkout/cancel", authMiddleware, BillingController.cancelCheckout);
 router.post("/credits/checkout", authMiddleware, BillingController.creditPackCheckout);
 
 export default router;

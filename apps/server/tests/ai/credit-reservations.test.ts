@@ -35,13 +35,13 @@ const prisma = {
   $transaction: vi.fn((callback) => callback(tx)),
 };
 
-vi.mock("../../src/utils/prisma", () => ({ prisma, default: prisma }));
-vi.mock("../../src/utils/redis", () => ({
+vi.mock("#utils/prisma", () => ({ prisma, default: prisma }));
+vi.mock("#utils/redis", () => ({
   cacheDel: vi.fn(),
   cacheGet: vi.fn(),
   cacheSet: vi.fn(),
 }));
-vi.mock("../../src/services/aiPolicy", () => ({
+vi.mock("#services/aiPolicy", () => ({
   getAiModePolicy: vi.fn(() => ({ credits: 7 })),
 }));
 

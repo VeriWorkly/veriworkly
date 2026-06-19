@@ -12,7 +12,7 @@ vi.mock("openai", () => ({
   },
 }));
 
-vi.mock("../../src/config", () => ({
+vi.mock("#config", () => ({
   config: {
     ai: {
       apiKey: "test-key",
@@ -23,7 +23,7 @@ vi.mock("../../src/config", () => ({
   },
 }));
 
-vi.mock("../../src/services/atsAiPolicy", () => ({
+vi.mock("#services/atsAiPolicy", () => ({
   getAtsAiPolicy: vi.fn(() => ({
     prompts: {
       standardAnalysis: "standard-analysis-prompt",
@@ -55,11 +55,11 @@ vi.mock("../../src/services/atsAiPolicy", () => ({
   })),
 }));
 
-vi.mock("../../src/services/creditService", () => ({
+vi.mock("#services/creditService", () => ({
   CreditService: { reserve, commitReservation, releaseReservation },
 }));
 
-vi.mock("../../src/services/entitlementService", () => ({
+vi.mock("#services/entitlementService", () => ({
   EntitlementService: { require: requireEntitlement },
 }));
 

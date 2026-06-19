@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cacheGetMock = vi.fn();
 const cacheSetMock = vi.fn();
-vi.mock("../../src/config", () => ({
+vi.mock("#config", () => ({
   config: {
     apiKeys: {
       defaultScopes: ["user:read"],
@@ -15,7 +15,7 @@ vi.mock("../../src/config", () => ({
   },
 }));
 
-vi.mock("../../src/utils/redis", () => ({
+vi.mock("#utils/redis", () => ({
   cacheGet: cacheGetMock,
   cacheSet: cacheSetMock,
   getRedis: () => ({
@@ -24,7 +24,7 @@ vi.mock("../../src/utils/redis", () => ({
 }));
 
 const prismaFindMock = vi.fn();
-vi.mock("../../src/utils/prisma", () => ({
+vi.mock("#utils/prisma", () => ({
   prisma: {
     apiKey: {
       findFirst: (...args: unknown[]) => prismaFindMock(...args),

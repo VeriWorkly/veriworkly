@@ -23,11 +23,13 @@ import {
   ENTITLEMENT_KEYS,
   getProductFromProviderId,
   getProviderProductId,
+  isProductKey,
   productCatalog,
   publicCatalog,
   publicCreditEconomics,
   type CreditPackKey,
   type ProductKey,
+  type CatalogInterval,
 } from "#services/productCatalog";
 import {
   revalidatePublicPortfolios,
@@ -59,6 +61,18 @@ function getDodoClient() {
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function addMonths(date: Date, months: number) {
+  const d = new Date(date.getTime());
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
+function addYears(date: Date, years: number) {
+  const d = new Date(date.getTime());
+  d.setFullYear(d.getFullYear() + years);
+  return d;
 }
 
 function statusFromDodo(rawStatus: string) {
@@ -149,11 +163,15 @@ export class BillingService {
             ? "AI_CREDITS"
             : "FREE";
 
+    const now = new Date();
+    const isExpired = Boolean(subscription?.currentPeriodEnd && subscription.currentPeriodEnd < now);
+    const resolvedStatus = isExpired ? "INACTIVE" : (subscription?.status ?? "INACTIVE");
+
     return {
       plan,
       productKey: subscription?.productKey ?? null,
       activeProductKeys: [...new Set(activeSubscriptions.map((item) => item.productKey))],
-      status: subscription?.status ?? "INACTIVE",
+      status: resolvedStatus,
       interval: subscription?.interval ?? null,
       currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
       cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
@@ -267,7 +285,7 @@ export class BillingService {
       const checkout = await getDodoClient().checkoutSessions.create({
         product_cart: [{ product_id: productId, quantity: 1 }],
         customer: { email: user.email, name: user.name || "VeriWorkly User" },
-        metadata: { veriworkly_user_id: userId, veriworkly_product: productKey },
+        metadata: { veriworkly_user_id: userId, veriworkly_product: productKey, veriworkly_interval: interval },
         ...(productKey === "portfolio_pro" && interval === "monthly" && !previousSubscription
           ? { subscription_data: { trial_period_days: 7 } }
           : {}),
@@ -283,6 +301,12 @@ export class BillingService {
       await getRedis().del(checkoutLockKey);
       throw error;
     }
+  }
+
+  static async cancelCheckout(userId: string) {
+    const checkoutLockKey = `billing:checkout:${userId}`;
+    await getRedis().del(checkoutLockKey);
+    return { success: true };
   }
 
   static async createPortal(userId: string) {
@@ -365,7 +389,7 @@ export class BillingService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      if (error instanceof Error && ((error as any).code === "P2002" || error.constructor.name === "PrismaClientKnownRequestError")) {
         const existing = await prisma.billingWebhookEvent.findUnique({
           where: { providerEventId },
         });
@@ -457,21 +481,43 @@ export class BillingService {
     if (existing?.lastWebhookAt && existing.lastWebhookAt >= eventTime) return userId;
 
     const normalizedStatus = statusFromDodo(subscription.status);
-    const product = getProductFromProviderId(subscription.product_id);
-    if (!product) throw new ApiError(400, "Subscription webhook references an unknown product.");
+
+    let productKey: ProductKey;
+    let rawInterval: CatalogInterval;
+
+    const metaProduct = subscription.metadata.veriworkly_product;
+    const metaInterval = subscription.metadata.veriworkly_interval;
+
+    if (metaProduct && isProductKey(metaProduct) && metaInterval) {
+      productKey = metaProduct;
+      rawInterval = metaInterval as CatalogInterval;
+    } else {
+      const product = getProductFromProviderId(subscription.product_id);
+      if (!product) throw new ApiError(400, "Subscription webhook references an unknown product.");
+      productKey = product.productKey;
+      rawInterval = product.interval;
+    }
+
     const interval =
-      product.interval === "one_day"
+      rawInterval === "one_day"
         ? ("ONE_DAY" as const)
-        : product.interval === "seven_day"
+        : rawInterval === "seven_day"
           ? ("SEVEN_DAY" as const)
-          : product.interval === "annual"
+          : rawInterval === "annual"
             ? ("ANNUAL" as const)
             : ("MONTHLY" as const);
+
     const pastDue = normalizedStatus === "PAST_DUE";
     const graceEndsAt = pastDue ? addDays(eventTime, config.portfolio.graceDays) : null;
     const currentPeriodEnd = subscription.next_billing_date
       ? new Date(subscription.next_billing_date)
-      : null;
+      : rawInterval === "one_day"
+        ? addDays(eventTime, 1)
+        : rawInterval === "seven_day"
+          ? addDays(eventTime, 7)
+          : rawInterval === "annual"
+            ? addYears(eventTime, 1)
+            : addMonths(eventTime, 1);
 
     await prisma.$transaction(async (tx) => {
       const updateResult = await tx.subscription.updateMany({
@@ -482,7 +528,7 @@ export class BillingService {
         data: {
           providerCustomerId: subscription.customer.customer_id,
           providerPriceId: subscription.product_id,
-          productKey: product.productKey,
+          productKey,
           interval,
           rawStatus: subscription.status,
           status: normalizedStatus,
@@ -508,7 +554,7 @@ export class BillingService {
             providerCustomerId: subscription.customer.customer_id,
             providerPriceId: subscription.product_id,
             providerSubId: subscription.subscription_id,
-            productKey: product.productKey,
+            productKey,
             interval,
             rawStatus: subscription.status,
             status: normalizedStatus,
@@ -527,7 +573,7 @@ export class BillingService {
       });
 
       if (access.canPublish) {
-        for (const key of productCatalog[product.productKey].entitlements) {
+        for (const key of productCatalog[productKey].entitlements) {
           await tx.entitlementGrant.upsert({
             where: {
               userId_key_source_sourceId: {
@@ -544,13 +590,13 @@ export class BillingService {
               sourceId: subscription.subscription_id,
               startsAt: eventTime,
               endsAt: currentPeriodEnd,
-              metadata: { productKey: product.productKey },
+              metadata: { productKey },
             },
             update: {
               startsAt: eventTime,
               endsAt: currentPeriodEnd,
               revokedAt: null,
-              metadata: { productKey: product.productKey },
+              metadata: { productKey },
             },
           });
         }
@@ -616,27 +662,52 @@ export class BillingService {
         expiresAt: addDays(new Date(), pack.expiresInDays),
         reason: pack.name,
       });
-    } else if (
-      subscription &&
-      (subscription.productKey === "ai_credits" || subscription.productKey === "bundle")
-    ) {
-      const interval =
-        subscription.interval === "ANNUAL"
-          ? "annual"
-          : subscription.interval === "ONE_DAY"
-            ? "one_day"
-            : subscription.interval === "SEVEN_DAY"
-              ? "seven_day"
-              : "monthly";
-      const allowance = productCatalog[subscription.productKey].creditAllowance?.[interval] ?? 0;
-      if (allowance > 0) {
-        await CreditService.grant(userId, allowance, {
-          requestId: `subscription-credit:${payment.payment_id}`,
-          source: "subscription_payment",
-          sourceId: payment.payment_id,
-          expiresAt: subscription.currentPeriodEnd,
-          reason: `${productCatalog[subscription.productKey].name} credit allowance`,
-        });
+    } else {
+      let productKey: ProductKey | null =
+        subscription?.productKey && isProductKey(subscription.productKey)
+          ? subscription.productKey
+          : null;
+      let intervalInput: CatalogInterval | null = null;
+      let expiresAt: Date | null = subscription?.currentPeriodEnd ?? null;
+
+      if (subscription) {
+        intervalInput =
+          subscription.interval === "ANNUAL"
+            ? "annual"
+            : subscription.interval === "ONE_DAY"
+              ? "one_day"
+              : subscription.interval === "SEVEN_DAY"
+                ? "seven_day"
+                : "monthly";
+      } else {
+        const metaProduct = payment.metadata.veriworkly_product;
+        const metaInterval = payment.metadata.veriworkly_interval;
+        if (metaProduct && isProductKey(metaProduct) && metaInterval) {
+          productKey = metaProduct;
+          intervalInput = metaInterval as CatalogInterval;
+          const now = new Date();
+          expiresAt =
+            intervalInput === "one_day"
+              ? addDays(now, 1)
+              : intervalInput === "seven_day"
+                ? addDays(now, 7)
+                : intervalInput === "annual"
+                  ? addYears(now, 1)
+                  : addMonths(now, 1);
+        }
+      }
+
+      if (productKey && (productKey === "ai_credits" || productKey === "bundle") && intervalInput) {
+        const allowance = productCatalog[productKey].creditAllowance?.[intervalInput] ?? 0;
+        if (allowance > 0) {
+          await CreditService.grant(userId, allowance, {
+            requestId: `subscription-credit:${payment.payment_id}`,
+            source: "subscription_payment",
+            sourceId: payment.payment_id,
+            expiresAt,
+            reason: `${productCatalog[productKey].name} credit allowance`,
+          });
+        }
       }
     }
 

@@ -4,7 +4,7 @@ const cacheGetMock = vi.fn();
 const cacheSetMock = vi.fn();
 const getSessionMock = vi.fn();
 
-vi.mock("../../src/config", () => ({
+vi.mock("#config", () => ({
   config: {
     auth: {
       sessionCacheMaxAgeSeconds: 123,
@@ -12,12 +12,12 @@ vi.mock("../../src/config", () => ({
   },
 }));
 
-vi.mock("../../src/utils/redis", () => ({
+vi.mock("#utils/redis", () => ({
   cacheGet: cacheGetMock,
   cacheSet: cacheSetMock,
 }));
 
-vi.mock("../../src/auth/index", () => ({
+vi.mock("#auth/index", () => ({
   convertNodeHeadersToWebHeaders: (headers: unknown) => headers,
   getSessionFromRequestHeaders: getSessionMock,
 }));
@@ -39,7 +39,7 @@ describe("session auth cache", () => {
       },
     });
 
-    const { getSessionUserFromRequest } = await import("../../src/middleware/auth");
+    const { getSessionUserFromRequest } = await import("#middleware/auth");
 
     const user = await getSessionUserFromRequest({
       headers: {
