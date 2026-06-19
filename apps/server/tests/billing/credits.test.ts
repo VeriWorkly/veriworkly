@@ -39,18 +39,18 @@ const prismaMock = {
   $transaction: vi.fn((callback) => callback(txMock)),
 };
 
-vi.mock("../../src/utils/prisma", () => ({
+vi.mock("#utils/prisma", () => ({
   prisma: prismaMock,
   default: prismaMock,
 }));
 
-vi.mock("../../src/utils/redis", () => ({
+vi.mock("#utils/redis", () => ({
   cacheDel: vi.fn().mockResolvedValue(undefined),
   cacheGet: vi.fn().mockResolvedValue(null),
   cacheSet: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../src/services/aiPolicy", () => ({
+vi.mock("#services/aiPolicy", () => ({
   getAiModePolicy: vi.fn((action: string) => ({
     credits: action === "rewrite_short_text" ? 7 : 11,
   })),

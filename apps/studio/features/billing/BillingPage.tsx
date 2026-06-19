@@ -117,7 +117,7 @@ export function BillingPage({
       </header>
 
       {error ? (
-        <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-4 text-sm flex flex-wrap items-center justify-between gap-4">
+        <div className="border-destructive/30 bg-destructive/5 text-destructive flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 text-sm">
           <p className="flex-1">{error}</p>
           {error.includes("checkout is already active") && (
             <Button
@@ -157,7 +157,7 @@ export function BillingPage({
             <div className="mt-3 flex flex-wrap gap-2">
               {(billing?.entitlements ?? []).map((item) => (
                 <span
-                  className="bg-background border-border rounded-lg border px-2.5 py-1.5 text-xs font-bold capitalize uppercase"
+                  className="bg-background border-border rounded-lg border px-2.5 py-1.5 text-xs font-bold uppercase"
                   key={item}
                 >
                   {item.replaceAll("_", " ")}

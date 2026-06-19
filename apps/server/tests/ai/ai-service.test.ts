@@ -5,7 +5,7 @@ const reserveAction = vi.fn();
 const commitReservation = vi.fn();
 const releaseReservation = vi.fn();
 
-vi.mock("../../src/config", () => ({
+vi.mock("#config", () => ({
   config: {
     ai: {
       apiKey: "test-key",
@@ -16,7 +16,7 @@ vi.mock("../../src/config", () => ({
   },
 }));
 
-vi.mock("../../src/services/aiPolicy", () => ({
+vi.mock("#services/aiPolicy", () => ({
   getAiActionPolicy: vi.fn(() => ({
     maxTextChars: 4000,
     maxContextChars: 8000,
@@ -38,7 +38,7 @@ vi.mock("openai", () => ({
   },
 }));
 
-vi.mock("../../src/services/creditService", () => ({
+vi.mock("#services/creditService", () => ({
   CreditService: {
     reserveAction,
     commitReservation,

@@ -8,7 +8,7 @@ const { mockIncrementUsageMetric } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../../src/services/analyticsService", async (importOriginal) => {
+vi.mock("#services/analyticsService", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
@@ -16,7 +16,7 @@ vi.mock("../../src/services/analyticsService", async (importOriginal) => {
   };
 });
 
-vi.mock("../../src/config", () => ({
+vi.mock("#config", () => ({
   config: {
     github: {
       syncApiKey: "secret-sync-key",

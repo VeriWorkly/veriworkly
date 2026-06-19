@@ -32,32 +32,32 @@ const prismaMock = {
   $transaction: vi.fn((cb) => cb(prismaMock)),
 };
 
-vi.mock("../../src/utils/prisma", () => ({
+vi.mock("#utils/prisma", () => ({
   prisma: prismaMock,
   default: prismaMock,
 }));
 
-vi.mock("../../src/utils/portfolioPublicationCache", () => ({
+vi.mock("#utils/portfolioPublicationCache", () => ({
   invalidatePublicPortfolioCaches: vi.fn().mockResolvedValue(undefined),
   revalidatePublicPortfolios: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../src/utils/redis", () => ({
+vi.mock("#utils/redis", () => ({
   cacheDel: vi.fn().mockResolvedValue(undefined),
   cacheGet: vi.fn().mockResolvedValue(null),
   cacheSet: vi.fn().mockResolvedValue(undefined),
   getRedis: vi.fn(),
 }));
 
-vi.mock("../../src/services/affiliateService", () => ({
+vi.mock("#services/affiliateService", () => ({
   AffiliateService: affiliateMock,
 }));
 
-vi.mock("../../src/services/creditService", () => ({
+vi.mock("#services/creditService", () => ({
   CreditService: creditMock,
 }));
 
-vi.mock("../../src/config", () => ({
+vi.mock("#config", () => ({
   config: {
     portfolio: {
       graceDays: 7,
