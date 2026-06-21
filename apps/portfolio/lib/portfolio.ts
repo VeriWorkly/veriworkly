@@ -43,7 +43,7 @@ export interface PortfolioSection {
   title: string;
   visible: boolean;
   items: Array<Record<string, unknown>>;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
 }
 
 export interface PortfolioContent {

@@ -184,7 +184,7 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
                   </thead>
 
                   <tbody className="divide-ink-2/5 divide-y">
-                    {system.typography.hierarchy.map((row: any) => (
+                    {system.typography.hierarchy.map((row) => (
                       <tr key={row.token} className="text-sm">
                         <td className="text-accent py-4 font-mono font-bold">{row.token}</td>
                         <td className="text-ink-2 py-4 font-semibold">{row.size}</td>
@@ -305,7 +305,7 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
                     </thead>
 
                     <tbody className="divide-ink-2/5 divide-y">
-                      {system.responsive.breakpoints.map((bp: any) => (
+                      {system.responsive.breakpoints.map((bp) => (
                         <tr key={bp.name} className="text-sm">
                           <td className="text-accent py-4 font-mono font-bold uppercase">
                             {bp.name}
@@ -327,7 +327,7 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
 
           {activeTab === "components" && (
             <div className="animate-fade-in grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {Object.entries(system.components || {}).map(([key, comp]: [string, any]) => (
+              {Object.entries(system.components || {}).map(([key, comp]) => (
                 <div
                   key={key}
                   className="border-ink-2/10 dark:bg-panel flex flex-col justify-between rounded-3xl border bg-white p-6"

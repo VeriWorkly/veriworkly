@@ -397,7 +397,7 @@ export class BillingService {
     } catch (error) {
       if (
         error instanceof Error &&
-        ((error as any).code === "P2002" ||
+        ((error as { code?: unknown }).code === "P2002" ||
           error.constructor.name === "PrismaClientKnownRequestError")
       ) {
         const existing = await prisma.billingWebhookEvent.findUnique({
