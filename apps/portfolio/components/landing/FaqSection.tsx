@@ -33,7 +33,7 @@ const FaqSection = () => {
         <div className="mt-10">
           <Link
             href="/faq"
-            className="border-ink-2 bg-ink-2 hover:text-ink-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 px-6 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-1 hover:bg-transparent active:scale-[0.97]"
+            className="border-ink-2 bg-ink-2 hover:text-ink-2 text-paper inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 px-6 text-sm font-bold transition-all duration-300 hover:-translate-y-1 hover:bg-transparent active:scale-[0.97]"
           >
             Browse all FAQs <ArrowRight size={15} />
           </Link>

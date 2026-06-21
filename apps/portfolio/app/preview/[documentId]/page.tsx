@@ -35,7 +35,7 @@ export async function generateMetadata({
     // Fail silently
   }
   return {
-    title: "Private Portfolio Preview | VeriWorkly",
+    title: "Private Portfolio Preview",
     robots: { index: false, follow: false },
   };
 }

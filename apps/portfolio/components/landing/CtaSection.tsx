@@ -10,7 +10,7 @@ const CtaSection = () => {
       <div className="mx-auto w-[min(1360px,calc(100%-48px))] max-sm:w-[min(calc(100%-30px),1360px)]">
         <div
           data-reveal
-          className="bg-[#11110f] dark:bg-panel relative grid min-h-170 place-content-center overflow-hidden rounded-[28px] px-8 py-16 text-center text-[#f5f4ef]"
+          className="dark:bg-panel relative grid min-h-170 place-content-center overflow-hidden rounded-[28px] bg-[#11110f] px-8 py-16 text-center text-[#f5f4ef]"
         >
           <div
             aria-hidden="true"
@@ -19,7 +19,7 @@ const CtaSection = () => {
             className="bg-accent absolute top-1/2 left-1/2 h-[42vw] w-[42vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-25 blur-[100px]"
           />
 
-          <p className="relative z-2 mb-5 text-[0.72rem] font-bold tracking-[0.16em] text-[#93c5fd] dark:text-accent uppercase">
+          <p className="dark:text-accent relative z-2 mb-5 text-[0.72rem] font-bold tracking-[0.16em] text-[#93c5fd] uppercase">
             You already did the work.
           </p>
 

@@ -12,7 +12,7 @@ const TemplateCatalog = ({ templates }: { templates: TemplateSummary[] }) => {
     <section className={`${templatesShell} grid gap-8 pb-24`}>
       {templates.map((template, index) => (
         <article
-          className="border-ink-2 grid gap-6 rounded-4xl border-2 bg-white/55 p-4 shadow-[14px_16px_0_rgba(37,99,235,0.12)] lg:grid-cols-[minmax(0,1fr)_24rem]"
+          className="border-ink-2 bg-panel/55 grid gap-6 rounded-4xl border-2 p-4 shadow-[14px_16px_0_rgba(37,99,235,0.12)] lg:grid-cols-[minmax(0,1fr)_24rem] dark:border-white/15"
           key={template.id}
         >
           <PortfolioTemplatePreviewFrame
@@ -46,14 +46,14 @@ const TemplateCatalog = ({ templates }: { templates: TemplateSummary[] }) => {
             <div className="mt-auto grid gap-3 pt-8">
               <Link
                 href={`/templates/${template.id}`}
-                className={`${templateAction} bg-ink-2 text-white`}
+                className={`${templateAction} bg-ink-2 text-paper`}
               >
                 Review template details <ArrowRight size={15} />
               </Link>
 
               <Link
                 href={`/templates/${template.id}/preview`}
-                className={`${templateAction} border-ink-2/15 text-ink-2 border bg-white`}
+                className={`${templateAction} border-ink-2/15 text-ink-2 bg-panel border`}
               >
                 Open full page preview <ExternalLink size={15} />
               </Link>
