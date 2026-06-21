@@ -1,4 +1,5 @@
 import type { PortfolioContent } from "@/lib/portfolio";
+
 import { renderTemplate } from "@/templates/runtime/registry";
 
 /**

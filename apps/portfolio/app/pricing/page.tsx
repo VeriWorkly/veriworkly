@@ -12,14 +12,14 @@ import CustomPlansSection from "@/components/pricing/CustomPlansSection";
 import BundlePricingSection from "@/components/pricing/BundlePricingSection";
 
 export const metadata: Metadata = {
-  title: "Portfolio Builder Pricing | VeriWorkly",
+  title: "Portfolio Builder Pricing",
   description:
     "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, SEO metadata, analytics, and hosted media.",
 
   openGraph: {
     type: "website",
     url: "/pricing",
-    title: "Portfolio Builder Pricing | VeriWorkly",
+    title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
     description:
       "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, SEO metadata, analytics, and hosted media.",
     images: [
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Portfolio Builder Pricing | VeriWorkly",
+    title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
     description:
       "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, SEO metadata, analytics, and hosted media.",
     images: ["/og/pricing-page-og.png"],

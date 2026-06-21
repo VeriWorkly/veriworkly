@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
 
   title: {
-    default: "Professional Portfolio Builder | VeriWorkly",
-    template: "%s | VeriWorkly",
+    default: "Professional Portfolio Builder | VeriWorkly Portfolio",
+    template: "%s | VeriWorkly Portfolio",
   },
   description: siteConfig.description,
 
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: siteConfig.url,
-    title: "Professional Portfolio Builder | VeriWorkly",
+    title: "Professional Portfolio Builder | VeriWorkly Portfolio",
     description: siteConfig.description,
     siteName: siteConfig.name,
     images: [
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Professional Portfolio Builder | VeriWorkly",
+    title: "Professional Portfolio Builder | VeriWorkly Portfolio",
     description: siteConfig.description,
     images: ["/og/landing-page-og.png"],
     creator: siteConfig.twitter.handle,

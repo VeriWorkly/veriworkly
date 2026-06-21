@@ -32,7 +32,7 @@ const TemplateLinksSection = () => {
               <Link
                 key={template.id}
                 href={`/templates/${template.id}`}
-                className="group hover:text-ink-2 flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold transition hover:bg-white"
+                className="group hover:text-[#11110f] flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold transition hover:bg-white"
               >
                 {template.name}
                 <span className="text-xs font-bold opacity-65">{template.mood}</span>
@@ -40,7 +40,7 @@ const TemplateLinksSection = () => {
             ))}
           </div>
 
-          <Link className={`${action} text-ink-2 mt-8 bg-white`} href="/templates">
+          <Link className={`${action} text-[#11110f] mt-8 bg-white`} href="/templates">
             Browse all templates <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </div>
@@ -64,14 +64,14 @@ const TemplateLinksSection = () => {
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
                   href={`/templates/${template.id}/preview`}
-                  className={`${action} bg-ink-2 min-h-11 text-white`}
+                  className={`${action} bg-[#11110f] min-h-11 text-white hover:bg-neutral-800`}
                 >
                   Full page review <ExternalLink size={15} aria-hidden="true" />
                 </Link>
 
                 <Link
                   href={`/templates/${template.id}`}
-                  className={`${action} text-ink-2 min-h-11 border border-white/35 bg-white`}
+                  className={`${action} text-[#11110f] min-h-11 border border-white/35 bg-white`}
                 >
                   Template details <ArrowRight size={15} aria-hidden="true" />
                 </Link>

@@ -49,7 +49,7 @@ const SeoSection = () => {
           <article
             data-reveal
             key={topic.title}
-            className="border-ink-2/15 rounded-4xl border bg-white/72 p-7 shadow-[10px_12px_0_rgba(37,99,235,0.08)]"
+            className="border-ink-2/15 rounded-4xl border bg-panel/72 p-7 shadow-[10px_12px_0_rgba(37,99,235,0.08)]"
           >
             <span className="text-accent text-xs font-medium" aria-hidden="true">
               0{index + 1}
@@ -67,9 +67,9 @@ const SeoSection = () => {
           {proofPoints.map((point) => (
             <div
               key={point.id}
-              className="border-ink-2/12 bg-ink-2 flex items-center gap-3 rounded-2xl border px-4 py-4 text-sm font-medium text-white"
+              className="border-ink-2/12 bg-ink-2 flex items-center gap-3 rounded-2xl border px-4 py-4 text-sm font-medium text-paper"
             >
-              <Check className="size-4 text-[#93c5fd]" aria-hidden="true" />
+              <Check className="size-4 text-[#93c5fd] dark:text-[#2563eb]" aria-hidden="true" />
               {point.text}
             </div>
           ))}

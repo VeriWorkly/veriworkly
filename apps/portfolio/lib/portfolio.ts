@@ -43,6 +43,7 @@ export interface PortfolioSection {
   title: string;
   visible: boolean;
   items: Array<Record<string, unknown>>;
+  settings?: Record<string, any>;
 }
 
 export interface PortfolioContent {
@@ -361,6 +362,7 @@ export function parsePortfolioContent(input: unknown, fallback = demoPortfolio):
         title: text(section.title, "Section", 120),
         visible: section.visible !== false,
         items: Array.isArray(section.items) ? section.items.slice(0, 24) : [],
+        settings: section.settings && typeof section.settings === "object" ? section.settings : undefined,
       })),
   };
 }

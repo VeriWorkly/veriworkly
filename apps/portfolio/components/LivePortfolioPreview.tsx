@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+
 import { parsePortfolioContent, type PortfolioContent } from "@/lib/portfolio";
 
 const templates = {
@@ -11,6 +12,7 @@ const templates = {
 
 export function LivePortfolioPreview({ initialContent }: { initialContent: PortfolioContent }) {
   const [content, setContent] = useState(initialContent);
+
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (
@@ -20,9 +22,13 @@ export function LivePortfolioPreview({ initialContent }: { initialContent: Portf
         return;
       setContent((current) => parsePortfolioContent(event.data.content, current));
     };
+
     window.addEventListener("message", receive);
+
     return () => window.removeEventListener("message", receive);
   }, []);
+
   const Template = templates[content.templateId];
+
   return <Template project={content} />;
 }

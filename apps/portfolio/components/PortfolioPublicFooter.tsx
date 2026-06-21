@@ -32,7 +32,7 @@ const products = [
 
 const PortfolioPublicFooter = () => {
   return (
-    <footer className="bg-ink-2 text-white">
+    <footer className="bg-[#11110f] dark:bg-panel text-[#f5f4ef]">
       <div className="mx-auto grid w-[min(1360px,calc(100%-48px))] gap-12 py-16 max-sm:w-[min(calc(100%-30px),1360px)] lg:grid-cols-[1.1fr_1.4fr]">
         <div>
           <Link href="/" className="flex items-center gap-3 text-sm font-medium tracking-[-.04em]">
@@ -44,7 +44,7 @@ const PortfolioPublicFooter = () => {
             One profile, many ways to present your work.
           </h2>
 
-          <p className="mt-6 max-w-md text-sm leading-6 text-white/55">
+          <p className="mt-6 max-w-md text-sm leading-6 text-[#f5f4ef]/55">
             Portfolio is part of the VeriWorkly ecosystem for building documents, publishing proof,
             and keeping your professional presence current.
           </p>
@@ -62,7 +62,7 @@ const PortfolioPublicFooter = () => {
                   />
                 </div>
 
-                <p className="mt-4 max-w-xs text-sm leading-6 text-white/55 group-hover:text-white/80">
+                <p className="mt-4 max-w-xs text-sm leading-6 text-[#f5f4ef]/55 group-hover:text-[#f5f4ef]/80">
                   {product.copy}
                 </p>
               </>
@@ -72,7 +72,7 @@ const PortfolioPublicFooter = () => {
               <Link
                 key={product.name}
                 href={product.href}
-                className="group hover:border-accent hover:bg-accent rounded-3xl border border-white/12 bg-white/4 p-5 transition duration-300 hover:-translate-y-1"
+                className="group hover:text-accent-ink hover:border-accent hover:bg-accent rounded-3xl border border-white/12 bg-white/4 p-5 transition duration-300 hover:-translate-y-1"
               >
                 {content}
               </Link>
@@ -81,7 +81,7 @@ const PortfolioPublicFooter = () => {
         </div>
       </div>
 
-      <div className="mx-auto flex w-[min(1360px,calc(100%-48px))] flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 text-xs text-white/45 max-sm:w-[min(calc(100%-30px),1360px)]">
+      <div className="mx-auto flex w-[min(1360px,calc(100%-48px))] flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 text-xs text-[#f5f4ef]/45 max-sm:w-[min(calc(100%-30px),1360px)]">
         <span>&copy; {new Date().getFullYear()} VeriWorkly</span>
 
         <div className="flex flex-wrap gap-5">

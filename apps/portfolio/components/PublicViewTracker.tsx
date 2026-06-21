@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+
 import { backendApiUrl } from "@/lib/backend";
 
 export function PublicViewTracker({ subdomain }: { subdomain: string }) {
@@ -16,11 +17,13 @@ export function PublicViewTracker({ subdomain }: { subdomain: string }) {
     const track = () => {
       try {
         const url = backendApiUrl(`/portfolios/public/${encodeURIComponent(subdomain)}/view`);
+
         const body = JSON.stringify({ referrer: document.referrer });
 
         if (navigator.sendBeacon) {
           const blob = new Blob([body], { type: "application/json" });
           navigator.sendBeacon(url, blob);
+
           return;
         }
 
@@ -41,6 +44,7 @@ export function PublicViewTracker({ subdomain }: { subdomain: string }) {
         return () => window.cancelIdleCallback(idleId);
       }
       const timeoutId = globalThis.setTimeout(track, 1500);
+
       return () => globalThis.clearTimeout(timeoutId);
     } catch {
       // Analytics must never interrupt the published portfolio.

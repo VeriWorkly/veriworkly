@@ -5,7 +5,9 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-export default function Navigation() {
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+const Navigation = () => {
   const pathname = usePathname();
 
   const isLinkActive = (path: string) => {
@@ -49,12 +51,18 @@ export default function Navigation() {
         </Link>
       </div>
 
-      <Link
-        href="/dashboard"
-        className="bg-ink hover:bg-ink-soft inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
-      >
-        Start building <ArrowRight size={15} aria-hidden="true" />
-      </Link>
+      <div className="flex items-center gap-3">
+        <ThemeToggle />
+
+        <Link
+          href="/dashboard"
+          className="bg-ink hover:bg-ink-soft text-paper inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
+        >
+          Start building <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      </div>
     </nav>
   );
-}
+};
+
+export default Navigation;

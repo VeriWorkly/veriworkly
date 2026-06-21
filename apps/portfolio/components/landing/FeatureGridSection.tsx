@@ -2,7 +2,7 @@ import { Check, Globe2, MousePointer2, PencilLine, Search, Sparkles } from "luci
 
 const FeatureGridSection = () => {
   return (
-    <section className="bg-ink-2 py-32 text-[#f4f2e9] md:py-48">
+    <section className="bg-[#11110f] dark:bg-paper-2 py-32 text-[#f4f2e9] md:py-48">
       <div className="mx-auto w-[min(1360px,calc(100%-48px))] max-sm:w-[min(calc(100%-30px),1360px)]">
         <div className="mb-18 space-y-8" data-reveal>
           <p className="mb-5 text-[0.72rem] font-bold tracking-[0.16em] uppercase">
@@ -18,7 +18,7 @@ const FeatureGridSection = () => {
         <div className="grid grid-flow-dense auto-rows-[430px] grid-cols-12 gap-3 max-lg:auto-rows-auto max-lg:grid-cols-1">
           <article
             data-reveal
-            className="hover:border-accent relative col-span-7 flex overflow-hidden rounded-3xl border border-white/15 bg-[#191916] p-8 transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-107.5"
+            className="hover:border-accent relative col-span-7 flex overflow-hidden rounded-3xl border border-white/10 bg-[#191916] dark:bg-panel p-8 transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-107.5"
           >
             <div className="flex items-start gap-4">
               <PencilLine size={20} aria-hidden="true" />
@@ -34,7 +34,7 @@ const FeatureGridSection = () => {
               </div>
             </div>
 
-            <div className="text-ink-2 absolute right-8 -bottom-16.25 left-[10%] -rotate-2 rounded-t-2xl bg-[#f4f2e9] p-6 max-sm:right-6 max-sm:left-6">
+            <div className="text-[#11110f] absolute right-8 -bottom-16.25 left-[10%] -rotate-2 rounded-t-2xl bg-[#f4f2e9] p-6 max-sm:right-6 max-sm:left-6">
               <span className="mb-2 flex justify-between text-[9px] font-bold uppercase">
                 Headline <span>64 / 80</span>
               </span>
@@ -61,9 +61,9 @@ const FeatureGridSection = () => {
 
           <article
             data-reveal
-            className="bg-accent border-accent/25 relative col-span-5 flex flex-col justify-between overflow-hidden rounded-3xl border p-8 text-white transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-107.5"
+            className="bg-accent border-accent/25 relative col-span-5 flex flex-col justify-between overflow-hidden rounded-3xl border p-8 text-accent-ink transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-107.5"
           >
-            <div className="self-end rounded-full border border-white/25 p-6">
+            <div className="self-end rounded-full border border-accent-ink/25 p-6">
               <Globe2 size={88} strokeWidth={1} aria-hidden="true" />
             </div>
 
@@ -72,11 +72,11 @@ const FeatureGridSection = () => {
                 A subdomain with your name on it
               </h3>
 
-              <p className="mt-3 text-xs leading-7 text-white/70">
+              <p className="mt-3 text-xs leading-7 text-accent-ink/70">
                 Claim a clean address the moment you publish.
               </p>
 
-              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-2 text-[10px] font-bold">
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-accent-ink/25 bg-accent-ink/15 px-3 py-2 text-[10px] font-bold">
                 <span className="size-1.75 rounded-full bg-[#50d672]" aria-hidden="true" />
                 gautam.veriworkly.com
               </div>
@@ -85,7 +85,7 @@ const FeatureGridSection = () => {
 
           <article
             data-reveal
-            className="hover:border-accent col-span-5 flex flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-[#191916] p-8 transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-107.5"
+            className="hover:border-accent col-span-5 flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#191916] dark:bg-panel p-8 transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-107.5"
           >
             <div>
               <Search size={20} aria-hidden="true" />
@@ -99,12 +99,12 @@ const FeatureGridSection = () => {
               </p>
             </div>
 
-            <div className="text-ink-2 rotate-2 rounded-2xl bg-white p-5">
+            <div className="text-[#11110f] rotate-2 rounded-2xl bg-white p-5">
               <span className="text-[10px] text-[#237b38]">gautam.veriworkly.com</span>
 
               <b className="text-accent mt-2 block text-base">Gautam Raj - Builder of VeriWorkly</b>
 
-              <p className="text-ink-2/60 mt-1 text-xs leading-6">
+              <p className="text-[#11110f]/60 mt-1 text-xs leading-6">
                 Portfolio builder, resume tools, publishing workflows, and product experiments.
               </p>
             </div>
@@ -112,7 +112,7 @@ const FeatureGridSection = () => {
 
           <article
             data-reveal
-            className="hover:border-accent col-span-7 flex items-end gap-3 overflow-hidden rounded-3xl border border-white/15 bg-[#191916] p-8 transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-130 max-sm:flex-wrap"
+            className="hover:border-accent col-span-7 flex items-end gap-3 overflow-hidden rounded-3xl border border-white/10 bg-[#191916] dark:bg-panel p-8 transition-all! duration-500 hover:-translate-y-1.5 max-lg:col-auto max-lg:min-h-130 max-sm:flex-wrap"
           >
             <div className="w-[35%] self-start max-sm:w-full">
               <Sparkles size={20} aria-hidden="true" />
@@ -126,12 +126,12 @@ const FeatureGridSection = () => {
               </p>
             </div>
 
-            <div className="text-ink-2 flex h-3/4 w-[27%] -rotate-3 flex-col justify-between rounded-2xl bg-[#f2efe5] p-5 transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
+            <div className="text-[#11110f] flex h-3/4 w-[27%] -rotate-3 flex-col justify-between rounded-2xl bg-[#f2efe5] p-5 transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
               <span className="text-[9px] font-bold uppercase">Signal</span>
               <strong className="text-6xl tracking-[-0.08em]">Aa</strong>
             </div>
 
-            <div className="bg-accent flex h-3/4 w-[27%] rotate-3 flex-col justify-between rounded-2xl p-5 text-white transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
+            <div className="bg-accent flex h-3/4 w-[27%] rotate-3 flex-col justify-between rounded-2xl p-5 text-accent-ink transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
               <span className="text-[9px] font-bold uppercase">Atelier</span>
               <strong className="text-6xl tracking-[-0.08em]">Aa</strong>
             </div>

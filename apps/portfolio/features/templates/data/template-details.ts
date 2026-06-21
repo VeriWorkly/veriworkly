@@ -1,4 +1,5 @@
 import type { TemplateId } from "@/templates/catalog/templates";
+import { design as signalDesign } from "@/template-library/signal/design";
 
 export type TemplateDetails = {
   positioning: string;
@@ -11,44 +12,11 @@ export type TemplateDetails = {
   colorScheme: Array<{ name: string; value: string; className: string }>;
   bestFor: string[];
   designNotes: string[];
+  system?: any;
 };
 
 export const templateDetails: Record<TemplateId, TemplateDetails> = {
-  signal: {
-    positioning: "A precise, proof-first portfolio for product engineers and technical builders.",
-
-    fonts: "Tight geometric sans typography with oversized claims and compact evidence labels.",
-    motion: "Scroll should feel direct: stacked proof, fast reveals, and minimal decorative delay.",
-
-    palette: "Warm paper, sharp black, and VeriWorkly blue for credibility and action.",
-
-    layout:
-      "Dense editorial hero, compact evidence modules, crisp project cards, and short scanning paths.",
-    componentLanguage:
-      "Hard borders, browser chrome, evidence chips, metric cards, and direct call-to-action buttons.",
-
-    contentModel: [
-      "A strong one-line positioning statement",
-      "Three to six outcome-led projects",
-      "Technical credibility, skills, and systems thinking",
-      "Contact and availability that are easy to find",
-    ],
-
-    colorScheme: [
-      { name: "Paper", value: "#f1efe7", className: "bg-paper" },
-      { name: "Ink", value: "#11110f", className: "bg-ink-2" },
-      { name: "VeriWorkly blue", value: "#2563eb", className: "bg-accent" },
-      { name: "Panel", value: "#ffffff", className: "bg-white" },
-    ],
-
-    bestFor: ["Product engineers", "Founder-builders", "Technical consultants", "Product leaders"],
-
-    designNotes: [
-      "Large opening claim makes the builder's positioning impossible to miss.",
-      "Project blocks prioritize outcomes, systems, and credibility before decoration.",
-      "Compact navigation and evidence chips keep the page easy to scan.",
-    ],
-  },
+  signal: signalDesign,
 
   atelier: {
     positioning:

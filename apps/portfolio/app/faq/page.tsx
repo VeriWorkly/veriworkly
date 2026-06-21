@@ -9,7 +9,7 @@ import SupportSidebar from "@/features/faq/components/SupportSidebar";
 import FaqInteractiveSection from "@/features/faq/components/FaqInteractiveSection";
 
 export const metadata: Metadata = {
-  title: "Frequently Asked Questions | VeriWorkly Portfolio",
+  title: "Frequently Asked Questions",
   description:
     "Got questions about our portfolio builder, pricing plans, subdomains, or media hosting? Read our detailed FAQ list and find out how we can help you build your presence.",
 

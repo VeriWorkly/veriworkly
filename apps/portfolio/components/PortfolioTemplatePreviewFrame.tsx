@@ -11,6 +11,7 @@ export function PortfolioTemplatePreviewFrame({
   compact = false,
   interactive = false,
   href = `/templates/${templateId}/preview`,
+  ariaHidden = false,
 }: {
   templateId: TemplateId;
   title: string;
@@ -18,15 +19,20 @@ export function PortfolioTemplatePreviewFrame({
   image?: boolean;
   interactive?: boolean;
   href?: string;
+  ariaHidden?: boolean;
 }) {
   return (
-    <div className="border-ink-2 overflow-hidden rounded-3xl border-[3px] bg-white shadow-[16px_18px_0_rgba(17,17,15,0.14)]">
-      <div className="border-ink-2 text-ink-2 flex min-h-12 items-center justify-between gap-4 border-b-2 bg-white px-4 text-[10px] font-bold tracking-[0.12em] uppercase">
+    <div
+      className="border-ink-2 bg-panel overflow-hidden rounded-3xl border-[3px] shadow-[16px_18px_0_rgba(17,17,15,0.14)]"
+      aria-hidden={ariaHidden ? "true" : undefined}
+    >
+      <div className="border-ink-2 text-ink-2 bg-panel flex min-h-12 items-center justify-between gap-4 border-b-2 px-4 text-[10px] font-bold tracking-[0.12em] uppercase">
         <span>{title}</span>
 
         <Link
-          className="bg-ink-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-white"
+          className="bg-ink-2 text-paper inline-flex items-center gap-1.5 rounded-full px-3 py-1.5"
           href={`/templates/${templateId}/preview`}
+          tabIndex={ariaHidden ? -1 : undefined}
         >
           Full page <ExternalLink size={12} />
         </Link>
@@ -43,6 +49,8 @@ export function PortfolioTemplatePreviewFrame({
             src={`/templates/${templateId}/preview`}
             className="size-full border-0 bg-white"
             title={`${title} live portfolio template preview`}
+            tabIndex={ariaHidden ? -1 : undefined}
+            aria-hidden={ariaHidden ? "true" : undefined}
           />
         ) : image ? (
           <Image
@@ -72,7 +80,7 @@ export function TemplatePreviewArt({ templateId }: { templateId: TemplateId }) {
       aria-label={`View ${templateId} portfolio template details`}
     >
       <div
-        className={`border-ink-2 relative mx-auto h-full max-w-190 overflow-hidden rounded-[1.8rem] border-2 bg-white shadow-[12px_14px_0_rgba(17,17,15,0.16)] ${
+        className={`border-ink-2 bg-panel relative mx-auto h-full max-w-190 overflow-hidden rounded-[1.8rem] border-2 shadow-[12px_14px_0_rgba(17,17,15,0.16)] ${
           isSignal ? "rotate-[-1.5deg]" : "rotate-[1.5deg]"
         }`}
       >
