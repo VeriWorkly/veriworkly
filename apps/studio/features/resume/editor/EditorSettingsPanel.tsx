@@ -1,16 +1,11 @@
 "use client";
 
 import { memo, useState } from "react";
-
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Button,
-} from "@veriworkly/ui";
+import { ChevronDown, RotateCcw } from "lucide-react";
+import { Button } from "@veriworkly/ui";
 
 import type { FontFamilyId } from "@/features/documents/constants/fonts";
+import { cn } from "@/lib/utils";
 
 import { templateCatalogByType } from "@/features/documents/core/template-catalog";
 import {
@@ -24,10 +19,42 @@ import { SettingsColor, SettingsRange, SettingsSelect } from "./settings/Setting
 import { fontOptions } from "@/features/documents/constants/fonts";
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { defaultResume } from "@/features/resume/constants/default-resume";
-import { RotateCcw } from "lucide-react";
+
+const SettingsSectionAccordion = ({
+  children,
+  isOpen,
+  label,
+  onToggle,
+}: {
+  children: React.ReactNode;
+  isOpen: boolean;
+  label: string;
+  onToggle: () => void;
+}) => {
+  return (
+    <div className="border-border bg-background/70 overflow-hidden border-b transition last:border-b-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={cn(
+          "flex w-full cursor-pointer items-center justify-between px-3 py-3 text-left text-sm font-semibold transition",
+          isOpen ? "bg-card text-foreground" : "text-muted hover:bg-card hover:text-foreground",
+        )}
+      >
+        <span className="min-w-0 truncate">{label}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 transition", isOpen ? "rotate-180" : "")} />
+      </button>
+
+      {isOpen ? <div className="bg-card border-border/70 border-t p-3">{children}</div> : null}
+    </div>
+  );
+};
 
 const EditorSettingsPanel = memo(function EditorSettingsPanel() {
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<"typography" | "colors" | "visibility" | null>(
+    "typography",
+  );
 
   const sections = useResumeStore((state) => state.resume.sections);
   const templateId = useResumeStore((state) => state.resume.templateId);
@@ -37,10 +64,17 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
   const reorderSections = useResumeStore((state) => state.reorderSections);
   const updateCustomization = useResumeStore((state) => state.updateCustomization);
   const setSectionVisibility = useResumeStore((state) => state.setSectionVisibility);
+  const updateSectionColumn = useResumeStore((state) => state.updateSectionColumn);
 
   const selectedTemplate = templateCatalogByType.RESUME.find(
     (template) => template.id === templateId,
   );
+
+  const isTwoColumnTemplate = !!selectedTemplate?.tags.includes("Two columns");
+
+  const handleToggle = (section: "typography" | "colors" | "visibility") => {
+    setOpenSection((curr) => (curr === section ? null : section));
+  };
 
   return (
     <div>
@@ -55,156 +89,165 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
         onOpen={() => setTemplateModalOpen(true)}
       />
 
-      <div className="p-3">
-        <Accordion type="multiple" defaultValue={["typography"]} className="gap-2">
-          <AccordionItem value="typography">
-            <AccordionTrigger>Typography &amp; Spacing</AccordionTrigger>
-            <AccordionContent className="text-foreground space-y-4">
-              <SettingsSelect
-                label="Font style"
-                value={customization.fontFamily}
-                onChange={(event) =>
-                  updateCustomization({
-                    fontFamily: event.target.value as FontFamilyId,
-                  })
-                }
-              >
-                {fontOptions.map((font) => (
-                  <option key={font.value} value={font.value}>
-                    {font.label}
-                  </option>
-                ))}
-              </SettingsSelect>
+      <div className="flex flex-col">
+        <SettingsSectionAccordion
+          label="Typography & Spacing"
+          isOpen={openSection === "typography"}
+          onToggle={() => handleToggle("typography")}
+        >
+          <div className="text-foreground space-y-4">
+            <SettingsSelect
+              label="Font style"
+              value={customization.fontFamily}
+              onChange={(event) =>
+                updateCustomization({
+                  fontFamily: event.target.value as FontFamilyId,
+                })
+              }
+            >
+              {fontOptions.map((font) => (
+                <option key={font.value} value={font.value}>
+                  {font.label}
+                </option>
+              ))}
+            </SettingsSelect>
 
-              <SettingsRange
-                min={0}
-                max={44}
-                value={customization.sectionSpacing}
-                label={`Section gap (${customization.sectionSpacing}px)`}
+            <SettingsRange
+              min={0}
+              max={44}
+              value={customization.sectionSpacing}
+              label={`Section gap (${customization.sectionSpacing}px)`}
+              onChange={(event) =>
+                updateCustomization({
+                  sectionSpacing: Number(event.target.value),
+                })
+              }
+            />
+
+            <SettingsRange
+              max={52}
+              min={16}
+              value={customization.pagePadding}
+              label={`Page margin (${customization.pagePadding}px)`}
+              onChange={(event) =>
+                updateCustomization({
+                  pagePadding: Number(event.target.value),
+                })
+              }
+            />
+
+            <SettingsRange
+              min={1}
+              max={2}
+              step={0.05}
+              value={customization.bodyLineHeight}
+              label={`Body line-height (${customization.bodyLineHeight.toFixed(2)})`}
+              onChange={(event) =>
+                updateCustomization({
+                  bodyLineHeight: Number(event.target.value),
+                })
+              }
+            />
+          </div>
+        </SettingsSectionAccordion>
+
+        <SettingsSectionAccordion
+          label="Color Theme"
+          isOpen={openSection === "colors"}
+          onToggle={() => handleToggle("colors")}
+        >
+          <div className="text-foreground space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SettingsColor
+                compact
+                label="Accent color"
+                value={customization.accentColor}
                 onChange={(event) =>
                   updateCustomization({
-                    sectionSpacing: Number(event.target.value),
+                    accentColor: event.target.value,
                   })
                 }
               />
 
-              <SettingsRange
-                max={52}
-                min={16}
-                value={customization.pagePadding}
-                label={`Page margin (${customization.pagePadding}px)`}
+              <SettingsColor
+                compact
+                label="Border color"
+                onChange={(event) => updateCustomization({ borderColor: event.target.value })}
+                value={customization.borderColor}
+              />
+
+              <SettingsColor
+                compact
+                label="Text color"
+                onChange={(event) => updateCustomization({ textColor: event.target.value })}
+                value={customization.textColor}
+              />
+
+              <SettingsColor
+                compact
+                label="Muted text color"
+                onChange={(event) => updateCustomization({ mutedTextColor: event.target.value })}
+                value={customization.mutedTextColor}
+              />
+
+              <SettingsColor
+                compact
+                label="Page background"
+                onChange={(event) =>
+                  updateCustomization({ pageBackgroundColor: event.target.value })
+                }
+                value={customization.pageBackgroundColor}
+              />
+
+              <SettingsColor
+                compact
+                label="Section background"
                 onChange={(event) =>
                   updateCustomization({
-                    pagePadding: Number(event.target.value),
+                    sectionBackgroundColor: event.target.value,
                   })
                 }
+                value={customization.sectionBackgroundColor}
               />
 
-              <SettingsRange
-                min={1}
-                max={2}
-                step={0.05}
-                value={customization.bodyLineHeight}
-                label={`Body line-height (${customization.bodyLineHeight.toFixed(2)})`}
+              <SettingsColor
+                compact
+                label="Item heading color"
                 onChange={(event) =>
-                  updateCustomization({
-                    bodyLineHeight: Number(event.target.value),
-                  })
+                  updateCustomization({ sectionHeadingColor: event.target.value })
                 }
+                value={customization.sectionHeadingColor}
               />
-            </AccordionContent>
-          </AccordionItem>
+            </div>
 
-          <AccordionItem value="colors">
-            <AccordionTrigger>Color Theme</AccordionTrigger>
-            <AccordionContent className="text-foreground space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SettingsColor
-                  compact
-                  label="Accent color"
-                  value={customization.accentColor}
-                  onChange={(event) =>
-                    updateCustomization({
-                      accentColor: event.target.value,
-                    })
-                  }
-                />
+            <Button
+              className="w-full rounded-xl"
+              onClick={() => updateCustomization({ ...defaultResume.customization })}
+              size="sm"
+              variant="secondary"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset Theme Defaults
+            </Button>
+          </div>
+        </SettingsSectionAccordion>
 
-                <SettingsColor
-                  compact
-                  label="Border color"
-                  onChange={(event) => updateCustomization({ borderColor: event.target.value })}
-                  value={customization.borderColor}
-                />
-
-                <SettingsColor
-                  compact
-                  label="Text color"
-                  onChange={(event) => updateCustomization({ textColor: event.target.value })}
-                  value={customization.textColor}
-                />
-
-                <SettingsColor
-                  compact
-                  label="Muted text color"
-                  onChange={(event) => updateCustomization({ mutedTextColor: event.target.value })}
-                  value={customization.mutedTextColor}
-                />
-
-                <SettingsColor
-                  compact
-                  label="Page background"
-                  onChange={(event) =>
-                    updateCustomization({ pageBackgroundColor: event.target.value })
-                  }
-                  value={customization.pageBackgroundColor}
-                />
-
-                <SettingsColor
-                  compact
-                  label="Section background"
-                  onChange={(event) =>
-                    updateCustomization({
-                      sectionBackgroundColor: event.target.value,
-                    })
-                  }
-                  value={customization.sectionBackgroundColor}
-                />
-
-                <SettingsColor
-                  compact
-                  label="Item heading color"
-                  onChange={(event) =>
-                    updateCustomization({ sectionHeadingColor: event.target.value })
-                  }
-                  value={customization.sectionHeadingColor}
-                />
-              </div>
-
-              <Button
-                className="w-full rounded-xl"
-                onClick={() => updateCustomization({ ...defaultResume.customization })}
-                size="sm"
-                variant="secondary"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Reset Theme Defaults
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="visibility">
-            <AccordionTrigger>Section Visibility</AccordionTrigger>
-            <AccordionContent className="text-foreground">
-              <SectionVisibilitySettings
-                embedded
-                sections={sections}
-                onMove={reorderSections}
-                onToggle={setSectionVisibility}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <SettingsSectionAccordion
+          label="Section Visibility"
+          isOpen={openSection === "visibility"}
+          onToggle={() => handleToggle("visibility")}
+        >
+          <div className="text-foreground">
+            <SectionVisibilitySettings
+              embedded
+              sections={sections}
+              onMove={reorderSections}
+              onToggle={setSectionVisibility}
+              isTwoColumn={isTwoColumnTemplate}
+              onUpdateSectionColumn={updateSectionColumn}
+            />
+          </div>
+        </SettingsSectionAccordion>
       </div>
 
       <DocumentTemplatePickerModal

@@ -24,6 +24,7 @@ export interface ResumeSection {
   label: string;
   visible: boolean;
   order: number;
+  column?: "left" | "right";
 }
 
 export interface ResumeBasics {
