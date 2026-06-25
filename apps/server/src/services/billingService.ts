@@ -164,7 +164,9 @@ export class BillingService {
             : "FREE";
 
     const now = new Date();
-    const isExpired = Boolean(subscription?.currentPeriodEnd && subscription.currentPeriodEnd < now);
+    const isExpired = Boolean(
+      subscription?.currentPeriodEnd && subscription.currentPeriodEnd < now,
+    );
     const resolvedStatus = isExpired ? "INACTIVE" : (subscription?.status ?? "INACTIVE");
 
     return {
@@ -285,7 +287,11 @@ export class BillingService {
       const checkout = await getDodoClient().checkoutSessions.create({
         product_cart: [{ product_id: productId, quantity: 1 }],
         customer: { email: user.email, name: user.name || "VeriWorkly User" },
-        metadata: { veriworkly_user_id: userId, veriworkly_product: productKey, veriworkly_interval: interval },
+        metadata: {
+          veriworkly_user_id: userId,
+          veriworkly_product: productKey,
+          veriworkly_interval: interval,
+        },
         ...(productKey === "portfolio_pro" && interval === "monthly" && !previousSubscription
           ? { subscription_data: { trial_period_days: 7 } }
           : {}),
@@ -389,7 +395,11 @@ export class BillingService {
         },
       });
     } catch (error) {
-      if (error instanceof Error && ((error as any).code === "P2002" || error.constructor.name === "PrismaClientKnownRequestError")) {
+      if (
+        error instanceof Error &&
+        ((error as { code?: unknown }).code === "P2002" ||
+          error.constructor.name === "PrismaClientKnownRequestError")
+      ) {
         const existing = await prisma.billingWebhookEvent.findUnique({
           where: { providerEventId },
         });

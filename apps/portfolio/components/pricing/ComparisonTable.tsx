@@ -18,7 +18,7 @@ const ComparisonTable = () => {
   const checkoutUrl = `${siteConfig.links.app}/checkout?productKey=bundle&interval=annual`;
 
   return (
-    <section className="bg-[#171717] dark:bg-paper-2 text-[#f5f4ef] relative py-24 lg:py-32">
+    <section className="dark:bg-paper-2 relative bg-[#171717] py-24 text-[#f5f4ef] lg:py-32">
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(rgba(255,255,255,0.12)_0.8px,transparent_0.8px)] bg-size-[24px_24px] opacity-40" />
       <div className="relative z-10 mx-auto w-[min(1160px,calc(100%-32px))]">
         <div className="grid items-end gap-8 lg:grid-cols-[1fr_.65fr]">
@@ -32,7 +32,7 @@ const ComparisonTable = () => {
             </h2>
           </div>
 
-          <p className="text-[#f5f4ef]/70 border-t border-white/20 pt-5 text-base leading-7">
+          <p className="border-t border-white/20 pt-5 text-base leading-7 text-[#f5f4ef]/70">
             Core document building remains free. Upgrade when you need publishing, focused AI
             assistance, or both.
           </p>
@@ -45,7 +45,7 @@ const ComparisonTable = () => {
         >
           <div className="min-w-[760px]">
             <div
-              className="text-[#f5f4ef]/85 grid grid-cols-[minmax(250px,1fr)_repeat(4,130px)] bg-white/10 px-6 py-5 text-xs font-bold tracking-[0.15em] uppercase"
+              className="grid grid-cols-[minmax(250px,1fr)_repeat(4,130px)] bg-white/10 px-6 py-5 text-xs font-bold tracking-[0.15em] text-[#f5f4ef]/85 uppercase"
               role="row"
             >
               <span role="columnheader">What&apos;s included</span>
@@ -73,7 +73,7 @@ const ComparisonTable = () => {
                 key={label}
                 className="grid grid-cols-[minmax(250px,1fr)_repeat(4,130px)] items-center border-t border-white/10 px-6 py-4.5 text-xs tracking-normal transition-colors hover:bg-white/5 sm:text-base"
               >
-                <span className="text-[#f5f4ef]/90 font-medium" role="cell">
+                <span className="font-medium text-[#f5f4ef]/90" role="cell">
                   {label}
                 </span>
 

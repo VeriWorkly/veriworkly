@@ -1,6 +1,8 @@
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
 import { DraftPreview } from "@/components/DraftPreview";
+
 import { isTemplateId, templates } from "@/templates/catalog/templates";
 
 export async function generateMetadata({
@@ -9,16 +11,16 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+
   const template = templates.find((t) => t.id === id);
 
-  if (!template) {
+  if (!template)
     return {
-      title: "Template Preview | VeriWorkly",
+      title: "Template Preview",
       robots: { index: true, follow: true },
     };
-  }
 
-  const title = `${template.name} Template Live Preview | VeriWorkly`;
+  const title = `${template.name} Template Live Preview`;
   const description = `See a live interactive preview of the ${template.name} template. Switch styles, layouts, and visualize your portfolio.`;
 
   const imageUrl = `/og/templates/preview/${template.id}-preview-page-og.png`;
@@ -59,6 +61,8 @@ export async function generateMetadata({
 
 export default async function Preview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
   if (!isTemplateId(id)) notFound();
+
   return <DraftPreview templateId={id} />;
 }

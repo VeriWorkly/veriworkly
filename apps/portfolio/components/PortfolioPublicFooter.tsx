@@ -32,7 +32,7 @@ const products = [
 
 const PortfolioPublicFooter = () => {
   return (
-    <footer className="bg-[#11110f] dark:bg-panel text-[#f5f4ef]">
+    <footer className="dark:bg-panel bg-[#11110f] text-[#f5f4ef]">
       <div className="mx-auto grid w-[min(1360px,calc(100%-48px))] gap-12 py-16 max-sm:w-[min(calc(100%-30px),1360px)] lg:grid-cols-[1.1fr_1.4fr]">
         <div>
           <Link href="/" className="flex items-center gap-3 text-sm font-medium tracking-[-.04em]">

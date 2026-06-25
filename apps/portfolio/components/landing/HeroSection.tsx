@@ -8,9 +8,7 @@ const action =
 
 const HeroSection = () => {
   return (
-    <section
-      className="relative flex min-h-svh flex-col items-center overflow-hidden bg-[radial-gradient(circle_at_var(--pointer-x,78%)_var(--pointer-y,18%),rgba(37,99,235,0.24),transparent_31%),radial-gradient(circle_at_10%_70%,rgba(255,255,255,0.12),transparent_28%),var(--color-paper-2)] px-6 pt-52 pb-28 max-sm:px-4 md:pt-44 md:pb-20"
-    >
+    <section className="relative flex min-h-svh flex-col items-center overflow-hidden bg-[radial-gradient(circle_at_var(--pointer-x,78%)_var(--pointer-y,18%),rgba(37,99,235,0.24),transparent_31%),radial-gradient(circle_at_10%_70%,rgba(255,255,255,0.12),transparent_28%),var(--color-paper-2)] px-6 pt-52 pb-28 max-sm:px-4 md:pt-44 md:pb-20">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#11110f_0.7px,transparent_0.7px)] mask-[linear-gradient(to_bottom,black,transparent_75%)] bg-size-[7px_7px] opacity-[0.18]" />
       <div className="border-ink-2/10 absolute top-[-30vw] left-[-15vw] h-[54vw] w-[54vw] rounded-full border" />
       <div className="border-ink-2/10 absolute top-[15vw] right-[-33vw] h-[45vw] w-[45vw] rounded-full border" />
@@ -41,7 +39,7 @@ const HeroSection = () => {
 
           <Link
             href="/templates"
-            className={`${action} border-ink-2/20 text-ink-2 border bg-panel/65`}
+            className={`${action} border-ink-2/20 text-ink-2 bg-panel/65 border`}
           >
             Check live templates <ArrowDownRight size={16} aria-hidden="true" />
           </Link>

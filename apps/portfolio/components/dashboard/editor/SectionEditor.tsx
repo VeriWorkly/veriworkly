@@ -44,6 +44,30 @@ export function SectionEditor({ section }: SectionEditorProps) {
           The contact section uses your public email and availability from Introduction.
         </p>
       ) : null}
+      {section.type === "writing" ? (
+        <div className="border-line bg-panel mb-4 rounded-xl border p-4">
+          <label className="flex cursor-pointer items-start gap-3 select-none">
+            <input
+              type="checkbox"
+              className="border-line bg-paper text-accent focus:ring-accent mt-0.5 rounded"
+              checked={section.settings?.showNewsletter !== false}
+              onChange={(e) =>
+                updateSection(section.id, {
+                  settings: { ...section.settings, showNewsletter: e.target.checked },
+                })
+              }
+            />
+            <div>
+              <span className="text-ink block text-sm font-semibold">
+                Include newsletter signup
+              </span>
+              <span className="text-muted text-xs">
+                Display a subscription card at the bottom of your writing section.
+              </span>
+            </div>
+          </label>
+        </div>
+      ) : null}
       <div className="space-y-3">
         {section.items.map((item, index) => (
           <div
