@@ -3,17 +3,16 @@
 import type { LucideIcon } from "lucide-react";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
 import { BookOpen, FolderOpen, ArrowRight, BriefcaseBusiness } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
 
-import {
-  getDocumentLibrarySnapshot,
-  subscribeToDocumentLibrary,
-  DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
-} from "@/features/documents/services/document-library";
+import DestructiveModal from "@/components/modals/DestructiveModal";
+import SyncDetailsModal from "@/components/modals/SyncDetailsModal";
+import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
+import RenameDocumentModal from "@/components/modals/RenameDocumentModal";
 
+import { useDocumentsWorkspace } from "../documents/useDocumentsWorkspace";
 import RecentCard from "./RecentCard";
 import OverviewHomeHeader from "./OverviewHomeHeader";
 import OverviewReferenceCard from "./OverviewReferenceCard";
@@ -32,18 +31,33 @@ function MiniLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon;
 }
 
 const OverviewHome = () => {
-  const snapshot = useSyncExternalStore(
-    subscribeToDocumentLibrary,
-    () => getDocumentLibrarySnapshot(),
-    () => DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
-  );
+  const {
+    counts,
+    handleSyncNow,
+    handleConfirmDelete,
+    handleKeepLocalOnly,
+    handleResolveUseCloud,
+    handleResolveUseLocal,
+    isDeleting,
+    deleteTarget,
+    shareTarget,
+    renameTarget,
+    syncDetailsTarget,
+    setDeleteTarget,
+    setShareTarget,
+    setRenameTarget,
+    setSyncDetailsTargetId,
+    syncingDocumentId,
+    syncTargetTelemetry,
+    totalCount,
+    visibleDocs,
+    bump,
+  } = useDocumentsWorkspace();
 
-  const totalCount = Object.values(snapshot.counts).reduce((sum, count) => sum + count, 0);
+  const resumeCount = counts.RESUME;
+  const coverLetterCount = counts.COVER_LETTER;
 
-  const resumeCount = snapshot.counts.RESUME;
-  const coverLetterCount = snapshot.counts.COVER_LETTER;
-
-  const recentDocs = snapshot.docs.slice(0, 6);
+  const recentDocs = visibleDocs.slice(0, 6);
 
   return (
     <section className="space-y-7" aria-label="Studio overview">
@@ -71,7 +85,18 @@ const OverviewHome = () => {
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {recentDocs.length > 0 ? (
-                recentDocs.map((doc) => <RecentCard key={`${doc.type}-${doc.id}`} doc={doc} />)
+                recentDocs.map((doc) => (
+                  <RecentCard
+                    key={`${doc.type}-${doc.id}`}
+                    doc={doc}
+                    syncing={syncingDocumentId === doc.id}
+                    onDeleteAction={setDeleteTarget}
+                    onShareAction={setShareTarget}
+                    onRenameAction={setRenameTarget}
+                    onSyncNowAction={handleSyncNow}
+                    onSyncDetailsAction={setSyncDetailsTargetId}
+                  />
+                ))
               ) : (
                 <div className="border-border bg-background/70 col-span-full rounded-xl border p-5">
                   <p className="font-bold">No files yet</p>
@@ -100,6 +125,45 @@ const OverviewHome = () => {
           </aside>
         </div>
       </Card>
+
+      <DestructiveModal
+        loading={isDeleting}
+        open={Boolean(deleteTarget)}
+        onConfirmAction={handleConfirmDelete}
+        onCloseAction={() => setDeleteTarget(null)}
+        entityName={deleteTarget?.title ?? "document"}
+      />
+
+      {syncDetailsTarget ? (
+        <SyncDetailsModal
+          document={syncDetailsTarget}
+          onSyncNow={handleSyncNow}
+          telemetry={syncTargetTelemetry}
+          syncingDocumentId={syncingDocumentId}
+          onKeepLocalOnly={handleKeepLocalOnly}
+          onResolveUseCloud={handleResolveUseCloud}
+          onResolveUseLocal={handleResolveUseLocal}
+          onClose={() => setSyncDetailsTargetId(null)}
+        />
+      ) : null}
+
+      {shareTarget ? (
+        <ShareDocumentModal
+          document={shareTarget}
+          documentId={shareTarget.id}
+          documentTitle={shareTarget.title}
+          onClose={() => setShareTarget(null)}
+        />
+      ) : null}
+
+      {renameTarget ? (
+        <RenameDocumentModal
+          open={Boolean(renameTarget)}
+          doc={renameTarget}
+          onClose={() => setRenameTarget(null)}
+          onSuccess={bump}
+        />
+      ) : null}
     </section>
   );
 };

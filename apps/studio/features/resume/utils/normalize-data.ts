@@ -88,13 +88,22 @@ function normalizeSections(value: Partial<ResumeData> | null | undefined) {
     };
   });
 
-  return merged
-    .slice()
-    .sort((left, right) => left.order - right.order)
-    .map((section, index) => ({
+  const basicsSection = merged.find((s) => s.id === "basics") || defaultSections[0];
+  const linksSection = merged.find((s) => s.id === "links") || defaultSections[1];
+  const otherSections = merged
+    .filter((s) => s.id !== "basics" && s.id !== "links")
+    .sort((left, right) => left.order - right.order);
+
+  const finalSections = [
+    { ...basicsSection, order: 0 },
+    { ...linksSection, order: 1 },
+    ...otherSections.map((section, index) => ({
       ...section,
-      order: index,
-    }));
+      order: index + 2,
+    })),
+  ];
+
+  return finalSections;
 }
 
 function normalizeNumericDate(value: string | undefined, maxLength: number) {

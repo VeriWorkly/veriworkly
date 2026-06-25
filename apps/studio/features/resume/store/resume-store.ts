@@ -47,6 +47,7 @@ interface ResumeStoreState {
   selectSection: (section: ResumeSectionId) => void;
   setSectionVisibility: (section: ResumeSectionId, visible: boolean) => void;
   reorderSections: (fromIndex: number, toIndex: number) => void;
+  updateSectionColumn: (sectionId: ResumeSectionId, column: "left" | "right") => void;
   setTemplateId: (templateId: string) => void;
   updateCustomization: (values: Partial<ResumeCustomization>) => void;
   updateBasics: (values: Partial<ResumeBasics>) => void;
@@ -170,6 +171,9 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
 
   reorderSections: (fromIndex, toIndex) =>
     set((state) => {
+      if (fromIndex < 2 || toIndex < 2) {
+        return {};
+      }
       const reorderedSections = reorderItems(state.resume.sections, fromIndex, toIndex).map(
         (section, index) => ({
           ...section,
@@ -184,6 +188,16 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
         }),
       };
     }),
+
+  updateSectionColumn: (sectionId, column) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        sections: state.resume.sections.map((section) =>
+          section.id === sectionId ? { ...section, column } : section,
+        ),
+      }),
+    })),
 
   setTemplateId: (templateId) =>
     set((state) => ({
