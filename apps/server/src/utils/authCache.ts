@@ -9,9 +9,7 @@ export function extractStableAuthCookieFingerprint(cookieHeader: string): string
     .filter(Boolean)
     .filter((c) => c.includes("veriworkly-auth"));
 
-  if (!authCookies.length) {
-    return null;
-  }
+  if (!authCookies.length) return null;
 
   const stableSessionCookie = authCookies.find(
     (cookie) =>
@@ -19,9 +17,7 @@ export function extractStableAuthCookieFingerprint(cookieHeader: string): string
       cookie.startsWith("__Secure-veriworkly-auth.session_token="),
   );
 
-  if (stableSessionCookie) {
-    return stableSessionCookie;
-  }
+  if (stableSessionCookie) return stableSessionCookie;
 
   return authCookies.sort().join(";");
 }
@@ -38,9 +34,7 @@ export function getSessionCacheKey(cookieHeader: string): string | null {
 export async function invalidateSessionCache(cookieHeader: string): Promise<void> {
   const cacheKey = getSessionCacheKey(cookieHeader);
 
-  if (cacheKey) {
-    await cacheDel(cacheKey);
-  }
+  if (cacheKey) await cacheDel(cacheKey);
 }
 
 export async function invalidateCacheByToken(token: string): Promise<void> {

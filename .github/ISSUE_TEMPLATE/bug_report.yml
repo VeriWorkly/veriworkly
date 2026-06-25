@@ -17,10 +17,10 @@ body:
         - "Site (apps/site)"
         - "Studio (apps/studio)"
         - "Server (apps/server)"
+        - "Portfolio (apps/portfolio)"
         - "Docs Platform (apps/docs-platform)"
         - "Blog Platform (apps/blog-platform)"
         - "UI Library (packages/ui)"
-        - "API Client (packages/api-client)"
         - "Infrastructure / Other"
     validations:
       required: true
