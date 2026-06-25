@@ -130,7 +130,7 @@ describe("portfolio content contract", () => {
       expect(atelier).toContain(`data-section="${section}"`);
     }
     expect(signal).toContain("signal-timeline");
-    expect(signal).toContain("signal-quote-grid");
+    expect(signal).toContain("signal-quotes-grid");
     expect(atelier).toContain("atelier-service-list");
     expect(atelier).toContain("atelier-testimonial-list");
   });

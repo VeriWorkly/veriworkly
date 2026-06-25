@@ -1,0 +1,52 @@
+name: Build Apps
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NEXT_PUBLIC_BACKEND_URL: "http://localhost:8080/api/v1"
+  BACKEND_INTERNAL_URL: "http://localhost:8080/api/v1"
+  SITE_URL: "http://localhost:3000"
+  AUTH_SECRET: "dummy-secret-for-build-purposes-only"
+  AUTH_BASE_URL: "http://localhost:8080"
+  JWT_SECRET: "dummy-jwt-secret"
+  DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+
+jobs:
+  build:
+    name: Build (${{ matrix.workspace }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - "@veriworkly/site"
+          - "@veriworkly/studio"
+          - "@veriworkly/portfolio"
+          - "@veriworkly/blog-platform"
+          - "@veriworkly/docs-platform"
+          - "@veriworkly/server"
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Prisma Generate
+        run: npm exec -w @veriworkly/server -- prisma generate --schema=prisma/schema.prisma
+
+      - name: Mock Portfolio Template Library
+        run: node scripts/mock-template-library.mjs
+
+      - name: Build Application
+        run: npm run build -w ${{ matrix.workspace }}

@@ -8,6 +8,7 @@ import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
 import { config } from "#config";
 
 import { prisma } from "#utils/prisma";
+import { getRedis } from "#utils/redis";
 import { sendAuthOtpEmail } from "#auth/mailer";
 
 import { createAuthMiddleware } from "better-auth/api";
@@ -18,6 +19,38 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  secondaryStorage: {
+    get: async (key) => {
+      try {
+        const redis = getRedis();
+        return (await redis.get(key)) || null;
+      } catch (error) {
+        console.error("better-auth secondaryStorage get error:", error);
+        return null;
+      }
+    },
+
+    set: async (key, value, ttl) => {
+      try {
+        const redis = getRedis();
+
+        if (ttl) await redis.set(key, value, { EX: ttl });
+        else await redis.set(key, value);
+      } catch (error) {
+        console.error("better-auth secondaryStorage set error:", error);
+      }
+    },
+
+    delete: async (key) => {
+      try {
+        const redis = getRedis();
+        await redis.del(key);
+      } catch (error) {
+        console.error("better-auth secondaryStorage delete error:", error);
+      }
+    },
+  },
+
   appName: "Veriworkly",
 
   secret: config.auth.secret,
@@ -26,12 +59,30 @@ export const auth = betterAuth({
   basePath: "/api/v1/auth",
   trustedOrigins: config.allowedOrigins,
 
+  rateLimit: {
+    enabled: true,
+    window: Math.max(1, Math.ceil(config.rateLimit.authWindowMs / 1000)),
+    max: config.rateLimit.authMaxRequests,
+    storage: "secondary-storage",
+    customRules: {
+      "/email-otp/send-verification-otp": {
+        window: 60,
+        max: 3,
+      },
+      "/email-otp/verify-otp": {
+        window: 60,
+        max: 5,
+      },
+    },
+  },
+
   advanced: {
     trustedProxyHeaders: true,
+    cookiePrefix: "veriworkly-auth",
+    useSecureCookies: config.nodeEnv === "production",
     ipAddress: {
       ipAddressHeaders: config.auth.ipAddressHeaders,
     },
-    cookiePrefix: "veriworkly-auth",
     crossSubDomainCookies: {
       enabled: !!config.auth.cookieDomain,
       domain: config.auth.cookieDomain,
@@ -39,6 +90,7 @@ export const auth = betterAuth({
   },
 
   session: {
+    storeSessionInDatabase: true,
     expiresIn: config.auth.sessionTtlSeconds,
     updateAge: config.auth.sessionResetTtlOnUse,
     cookieCache: {
@@ -77,9 +129,8 @@ export const auth = betterAuth({
 
       if (shouldInvalidate) {
         const cookieHeader = ctx.headers?.get("cookie") || "";
-        if (cookieHeader) {
-          await invalidateSessionCache(cookieHeader);
-        }
+
+        if (cookieHeader) await invalidateSessionCache(cookieHeader);
       }
     }),
   },
