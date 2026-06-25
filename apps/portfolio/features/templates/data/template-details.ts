@@ -1,5 +1,5 @@
 import type { TemplateId } from "@/templates/catalog/templates";
-import { design as signalDesign } from "@/template-library/signal/design.ts";
+import { design as signalDesign } from "@/template-library/signal/design";
 
 export interface TemplateSystemOverview {
   genre: string;
