@@ -123,6 +123,23 @@ export default function SignalTemplate({ project }: { project: PortfolioProject 
 fs.writeFileSync(path.join(templateLibPath, "signal", "SignalTemplate.tsx"), signalContent);
 fs.writeFileSync(path.join(templateLibPath, "signal", "styles.css"), "/* Mock styles */");
 
+// SignalDesign
+const signalDesignContent = `export const design = {
+  positioning: "Mock signal positioning",
+  fonts: "Mock signal fonts",
+  motion: "Mock signal motion",
+  palette: "Mock signal palette",
+  layout: "Mock signal layout",
+  componentLanguage: "Mock signal componentLanguage",
+  contentModel: ["Mock signal contentModel"],
+  colorScheme: [{ name: "Mock", value: "#000", className: "bg-black" }],
+  bestFor: ["Mock signal bestFor"],
+  designNotes: ["Mock signal designNotes"],
+};
+`;
+
+fs.writeFileSync(path.join(templateLibPath, "signal", "design.ts"), signalDesignContent);
+
 console.log("Mock templates set up successfully.");
 
 try {
