@@ -22,7 +22,13 @@ Before getting started, please **star our repository** to show your support for 
 
 - Browse our open issues.
 - If you find an issue you want to work on, comment on it expressing your interest and wait to be officially assigned by a maintainer.
-- ⚠️ **Do not start coding or open a Pull Request before being assigned to the issue.** Unassigned PRs or PRs targeting unclaimed issues may be closed without review to avoid duplicate work.
+- ⚠️ **Do not start coding or open a Pull Request before being assigned to the issue.**
+- **Strict Issue Claiming & Pull Request Rules:**
+  - **Claim Before Coding:** You must officially claim and be assigned an issue before you start working on it or submit a Pull Request.
+  - **Priority for Rule Followers:** If a contributor submits a PR without being assigned to the issue, and another contributor subsequently requests to claim/work on that issue following the correct procedure (commenting on the issue to request assignment), priority will be given to the contributor who requested the claim.
+  - **Unassigned PR Procedure:** If a PR is opened without an associated claim/assignment, maintainers will post a comment on the corresponding issue directing the author to claim it.
+  - **7-Day Grace Period:** Maintainers will wait for up to **7 days** for the PR author to claim the issue. If the author fails to comment on the issue and claim it within 7 days, the PR may not be merged (even if the code is correct) and may be closed.
+  - **Claim Priority:** If another contributor claims the issue during this grace period, the contributor who officially requested the claim will be considered first.
 
 ### 3. Fork & Clone 🍴
 

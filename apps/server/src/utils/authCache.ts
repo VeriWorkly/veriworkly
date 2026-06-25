@@ -42,3 +42,13 @@ export async function invalidateSessionCache(cookieHeader: string): Promise<void
     await cacheDel(cacheKey);
   }
 }
+
+export async function invalidateCacheByToken(token: string): Promise<void> {
+  const prefix1 = `veriworkly-auth.session_token=${token}`;
+  const prefix2 = `__Secure-veriworkly-auth.session_token=${token}`;
+
+  const hash1 = createHash("md5").update(prefix1).digest("hex");
+  const hash2 = createHash("md5").update(prefix2).digest("hex");
+
+  await Promise.all([cacheDel(`auth:session:${hash1}`), cacheDel(`auth:session:${hash2}`)]);
+}

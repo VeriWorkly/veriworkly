@@ -168,7 +168,7 @@ VeriWorkly is built on open-source principles, and we welcome community contribu
 > Before checking out a branch or creating a pull request, please review our full **[Contributing Guidelines](CONTRIBUTING.md)**.
 >
 > 1. 🌟 **Star the repository** to show your support.
-> 2. 📋 **Claim an issue** by commenting on it and waiting to be assigned before starting work.
+> 2. 📋 **Claim an issue** by commenting on it and waiting to be assigned before starting work. **PRs submitted for unclaimed/unassigned issues will not be merged unless claimed. Authors have a 7-day grace period to claim them, otherwise they may be closed. Priority always goes to the contributor who officially requested the claim.**
 > 3. 📝 Ensure your **PR titles** follow the standard naming convention.
 
 ### Ways to Help Out

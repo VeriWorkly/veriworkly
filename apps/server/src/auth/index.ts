@@ -11,7 +11,7 @@ import { prisma } from "#utils/prisma";
 import { sendAuthOtpEmail } from "#auth/mailer";
 
 import { createAuthMiddleware } from "better-auth/api";
-import { invalidateSessionCache } from "#utils/authCache";
+import { invalidateSessionCache, invalidateCacheByToken } from "#utils/authCache";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -82,6 +82,37 @@ export const auth = betterAuth({
         }
       }
     }),
+  },
+
+  databaseHooks: {
+    user: {
+      delete: {
+        before: async (user) => {
+          try {
+            const sessions = await prisma.session.findMany({
+              where: { userId: user.id },
+              select: { token: true },
+            });
+
+            await Promise.all(sessions.map((session) => invalidateCacheByToken(session.token)));
+          } catch {
+            // Ignore database hook errors to avoid blocking deletes
+          }
+        },
+      },
+    },
+
+    session: {
+      delete: {
+        after: async (session) => {
+          try {
+            await invalidateCacheByToken(session.token);
+          } catch {
+            // Ignore database hook errors to avoid blocking deletes
+          }
+        },
+      },
+    },
   },
 });
 
