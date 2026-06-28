@@ -7,6 +7,7 @@ import { CalendarClock, Coins, ExternalLink, FileClock, ShieldCheck } from "luci
 import { Button } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
+import { useUserStore } from "@/store/useUserStore";
 import { buyCreditPack, openBillingPortal, cancelCheckout } from "@/features/billing/billing-api";
 import type { BillingActivity, BillingSummary } from "@/features/billing/types";
 
@@ -39,6 +40,14 @@ export function BillingPage({
   const [clearingLock, setClearingLock] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  const { user } = useUserStore();
+  const isProd = process.env.NODE_ENV === "production";
+  const adminEmail = (
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || "ashragautam25@gmail.com"
+  ).toLowerCase();
+  const isAdmin = user && user.email && user.email.toLowerCase() === adminEmail;
+  const paymentsBlocked = isProd && !isAdmin;
 
   useEffect(() => {
     const checkoutStatus = searchParams?.get("checkout");
@@ -103,6 +112,7 @@ export function BillingPage({
               <Button
                 variant="secondary"
                 loading={loading === "portal"}
+                disabled={paymentsBlocked}
                 onClick={() => void openPortal()}
               >
                 Manage subscription <ExternalLink className="ml-2 h-4 w-4" />
@@ -115,6 +125,15 @@ export function BillingPage({
           </div>
         </div>
       </header>
+
+      {paymentsBlocked ? (
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm font-semibold text-amber-600 dark:text-amber-400">
+          <p className="flex-1">
+            Payments are disabled in production during this phase. Only administrators can perform
+            purchases or manage subscriptions.
+          </p>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="border-destructive/30 bg-destructive/5 text-destructive flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 text-sm">
@@ -187,12 +206,14 @@ export function BillingPage({
           <Button
             className="mt-5 w-full"
             loading={loading === "credit_pack_100"}
-            disabled={!billing?.creditEconomics.packs[0]?.configured}
+            disabled={!billing?.creditEconomics.packs[0]?.configured || paymentsBlocked}
             onClick={() => void buyPack()}
           >
-            {billing?.creditEconomics.packs[0]?.configured
-              ? "Buy 100 extra credits"
-              : "Extra credits coming soon"}
+            {paymentsBlocked
+              ? "Payments disabled in production"
+              : billing?.creditEconomics.packs[0]?.configured
+                ? "Buy 100 extra credits"
+                : "Extra credits coming soon"}
           </Button>
           <Link className="text-accent mt-3 block text-center text-xs font-bold" href="/credits">
             View usage and action costs
