@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowRight,
   Check,
@@ -67,6 +67,25 @@ export function PricingExperience() {
   const [customPlan, setCustomPlan] = useState<"portfolio_pro" | "ai_credits">("portfolio_pro");
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
+  const [user, setUser] = useState<{ email?: string | null } | null>(null);
+  const [checkingUser, setCheckingUser] = useState(true);
+
+  useEffect(() => {
+    fetchApiData<{ email: string | null; name: string | null }>("/users/me")
+      .then((data) => {
+        setUser(data);
+        setCheckingUser(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setCheckingUser(false);
+      });
+  }, []);
+
+  const isProd = process.env.NODE_ENV === "production";
+  const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "ashragautam25@gmail.com").toLowerCase();
+  const isAdmin = user && user.email && user.email.toLowerCase() === adminEmail;
+  const paymentsBlocked = isProd && !isAdmin;
 
   const checkout = async (productKey: ProductKey, interval: BillingInterval) => {
     const checkoutKey = `${productKey}:${interval}`;
@@ -131,6 +150,12 @@ export function PricingExperience() {
             </div>
           </div>
 
+          {paymentsBlocked ? (
+            <div className="mt-8 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm font-bold text-amber-800 dark:text-amber-300">
+              Payments are disabled in production during this phase. Only system administrators can perform checkouts.
+            </div>
+          ) : null}
+
           {error ? (
             <p className="mt-8 rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm font-bold text-red-700 dark:text-red-300">
               {error}
@@ -146,6 +171,7 @@ export function PricingExperience() {
               description="A tiny commitment for one focused application, portfolio update, or deadline."
               features={primaryFeatures}
               loading={loading === "bundle:one_day"}
+              disabled={paymentsBlocked}
               onCheckout={() => void checkout("bundle", "one_day")}
             />
             <PriceCard
@@ -156,6 +182,7 @@ export function PricingExperience() {
               description="Enough runway to refine the full story, apply broadly, and publish with confidence."
               features={primaryFeatures}
               loading={loading === "bundle:seven_day"}
+              disabled={paymentsBlocked}
               onCheckout={() => void checkout("bundle", "seven_day")}
             />
             <PriceCard
@@ -169,6 +196,7 @@ export function PricingExperience() {
               note={bundlePrice.note}
               badge={bundlePrice.savings}
               loading={loading === `bundle:${bundleInterval}`}
+              disabled={paymentsBlocked}
               onCheckout={() => void checkout("bundle", bundleInterval)}
               toggle={<IntervalToggle value={bundleInterval} onChange={setBundleInterval} />}
             />
@@ -239,9 +267,10 @@ export function PricingExperience() {
                 <CheckoutButton
                   className="mt-5 w-full bg-[#171713] text-white dark:bg-[#f7f4ec] dark:text-[#171713]"
                   loading={loading === `${customPlan}:monthly`}
+                  disabled={paymentsBlocked}
                   onClick={() => void checkout(customPlan, "monthly")}
                 >
-                  Choose {selectedCustom.title}
+                  {paymentsBlocked ? "Payments disabled" : `Choose ${selectedCustom.title}`}
                 </CheckoutButton>
               </div>
             </div>
@@ -305,9 +334,10 @@ export function PricingExperience() {
             <CheckoutButton
               className="bg-[#171713] text-white"
               loading={loading === "bundle:annual"}
+              disabled={paymentsBlocked}
               onClick={() => void checkout("bundle", "annual")}
             >
-              Get the yearly bundle
+              {paymentsBlocked ? "Payments disabled" : "Get the yearly bundle"}
             </CheckoutButton>
           </div>
         </div>
@@ -354,6 +384,7 @@ function PriceCard({
   loading,
   toggle,
   onCheckout,
+  disabled,
 }: {
   marker: string;
   title: string;
@@ -367,6 +398,7 @@ function PriceCard({
   loading: boolean;
   toggle?: React.ReactNode;
   onCheckout: () => void;
+  disabled?: boolean;
 }) {
   return (
     <article
@@ -410,9 +442,10 @@ function PriceCard({
             : "bg-[#171713] text-white dark:bg-[#f7f4ec] dark:text-[#171713]"
         }`}
         loading={loading}
+        disabled={disabled}
         onClick={onCheckout}
       >
-        Choose {title}
+        {disabled ? "Payments disabled" : `Choose ${title}`}
       </CheckoutButton>
     </article>
   );
@@ -423,16 +456,18 @@ function CheckoutButton({
   className,
   loading,
   onClick,
+  disabled,
 }: {
   children: React.ReactNode;
   className: string;
   loading: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-black transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-65 ${className}`}
-      disabled={loading}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      disabled={loading || disabled}
       onClick={onClick}
       type="button"
     >
