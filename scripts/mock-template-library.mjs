@@ -99,11 +99,59 @@ fs.writeFileSync(registryFilePath, registryContent);
 
 // AtelierTemplate
 const atelierContent = `import React from "react";
-import type { PortfolioProject } from "../types";
+import { safeExternalUrl, itemText, type PortfolioProject } from "../types";
 import "./styles.css";
 
 export default function AtelierTemplate({ project }: { project: PortfolioProject }) {
-  return React.createElement("div", null, "Mock Atelier Template: " + project.identity.name);
+  const visibleSections = project.sections.filter((s) => s.visible);
+  return (
+    <div>
+      <div>Mock Atelier Template: {project.identity.name}</div>
+      {visibleSections.map((section) => {
+        if (section.type === "projects") {
+          return (
+            <div key={section.id} data-section={section.type}>
+              <h2>{section.title}</h2>
+              {section.items.map((item, idx) => (
+                <div key={idx}>
+                  <h3>{itemText(item, "title") || itemText(item, "name")}</h3>
+                  <p>{itemText(item, "summary")}</p>
+                </div>
+              ))}
+            </div>
+          );
+        }
+        if (section.type === "contact") {
+          return (
+            <div key={section.id} data-section={section.type}>
+              <h2>{section.title}</h2>
+              {project.socialLinks.map((link) => {
+                const href = safeExternalUrl(link.url);
+                return href && link.label.trim() ? (
+                  <a key={link.id} href={href}>
+                    {link.label}
+                  </a>
+                ) : null;
+              })}
+            </div>
+          );
+        }
+        return (
+          <div key={section.id} data-section={section.type}>
+            <h2>{section.title}</h2>
+            {section.type === "services" && <div className="atelier-service-list" />}
+            {section.type === "testimonials" && <div className="atelier-testimonial-list" />}
+            {section.items.map((item, idx) => (
+              <div key={idx}>
+                <h3>{itemText(item, "title") || itemText(item, "name")}</h3>
+                <p>{itemText(item, "summary")}</p>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 `;
 
@@ -112,11 +160,59 @@ fs.writeFileSync(path.join(templateLibPath, "atelier", "styles.css"), "/* Mock s
 
 // SignalTemplate
 const signalContent = `import React from "react";
-import type { PortfolioProject } from "../types";
+import { safeExternalUrl, itemText, type PortfolioProject } from "../types";
 import "./styles.css";
 
 export default function SignalTemplate({ project }: { project: PortfolioProject }) {
-  return React.createElement("div", null, "Mock Signal Template: " + project.identity.name);
+  const visibleSections = project.sections.filter((s) => s.visible);
+  return (
+    <div>
+      <div>Mock Signal Template: {project.identity.name}</div>
+      {visibleSections.map((section) => {
+        if (section.type === "projects") {
+          return (
+            <div key={section.id} data-section={section.type}>
+              <h2>{section.title}</h2>
+              {section.items.map((item, idx) => (
+                <div key={idx}>
+                  <h3>{itemText(item, "title") || itemText(item, "name")}</h3>
+                  <p>{itemText(item, "summary")}</p>
+                </div>
+              ))}
+            </div>
+          );
+        }
+        if (section.type === "contact") {
+          return (
+            <div key={section.id} data-section={section.type}>
+              <h2>{section.title}</h2>
+              {project.socialLinks.map((link) => {
+                const href = safeExternalUrl(link.url);
+                return href && link.label.trim() ? (
+                  <a key={link.id} href={href}>
+                    {link.label}
+                  </a>
+                ) : null;
+              })}
+            </div>
+          );
+        }
+        return (
+          <div key={section.id} data-section={section.type}>
+            <h2>{section.title}</h2>
+            {section.type === "experience" && <div className="signal-timeline" />}
+            {section.type === "testimonials" && <div className="signal-quotes-grid" />}
+            {section.items.map((item, idx) => (
+              <div key={idx}>
+                <h3>{itemText(item, "title") || itemText(item, "name")}</h3>
+                <p>{itemText(item, "summary")}</p>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 `;
 

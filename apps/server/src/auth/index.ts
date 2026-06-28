@@ -9,7 +9,7 @@ import { config } from "#config";
 
 import { prisma } from "#utils/prisma";
 import { getRedis } from "#utils/redis";
-import { sendAuthOtpEmail } from "#auth/mailer";
+import { sendAuthOtpEmail, sendWelcomeEmail, sendLoginAlertEmail } from "#auth/mailer";
 
 import { createAuthMiddleware } from "better-auth/api";
 import { invalidateSessionCache, invalidateCacheByToken } from "#utils/authCache";
@@ -137,6 +137,16 @@ export const auth = betterAuth({
 
   databaseHooks: {
     user: {
+      create: {
+        after: async (user) => {
+          try {
+            await sendWelcomeEmail(user.email, user.name || "there");
+          } catch (error) {
+            console.error("Failed to send welcome email for user:", user.email, error);
+          }
+        },
+      },
+
       delete: {
         before: async (user) => {
           try {
@@ -154,6 +164,26 @@ export const auth = betterAuth({
     },
 
     session: {
+      create: {
+        after: async (session) => {
+          try {
+            const user = await prisma.user.findUnique({
+              where: { id: session.userId },
+              select: { email: true },
+            });
+
+            if (user?.email)
+              await sendLoginAlertEmail(user.email, {
+                ip: session.ipAddress || "Unknown",
+                device: session.userAgent || "Unknown",
+                timestamp: session.createdAt.toISOString(),
+              });
+          } catch (error) {
+            console.error("Failed to send login alert email for session:", session.id, error);
+          }
+        },
+      },
+
       delete: {
         after: async (session) => {
           try {
