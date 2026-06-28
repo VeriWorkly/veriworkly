@@ -155,6 +155,64 @@ describe("ATS AI service", () => {
     expect(result.creditsSpent).toBe(25);
   });
 
+  it("resiliently parses LLM conversion outputs containing nulls or missing fields", async () => {
+    completionCreate.mockResolvedValue({
+      id: "conversion_resilient",
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              basics: {
+                fullName: "Jane Doe",
+                role: null,
+                headline: undefined,
+                email: "jane@example.com",
+                phone: null,
+                location: null,
+              },
+              links: null,
+              summary: null,
+              experience: [
+                {
+                  company: "Corp",
+                  role: null,
+                  location: undefined,
+                  startDate: "2020",
+                  endDate: null,
+                  current: null,
+                  summary: null,
+                  highlights: [null, "achieved sales target", undefined],
+                },
+              ],
+              education: null,
+              projects: undefined,
+              skills: null,
+            }),
+          },
+        },
+      ],
+    });
+    const { AtsAiService } = await import("../../src/services/atsAiService");
+
+    const result = await AtsAiService.convertResume("user_1", "request_resilient", "Old resume");
+
+    expect(result.resume.basics.fullName).toBe("Jane Doe");
+    expect(result.resume.basics.role).toBe("");
+    expect(result.resume.basics.headline).toBe("");
+    expect(result.resume.basics.phone).toBe("");
+    expect(result.resume.basics.location).toBe("");
+    expect(result.resume.links).toEqual([]);
+    expect(result.resume.summary).toBe("");
+    expect(result.resume.experience[0].role).toBe("");
+    expect(result.resume.experience[0].location).toBe("");
+    expect(result.resume.experience[0].endDate).toBe("");
+    expect(result.resume.experience[0].current).toBe(false);
+    expect(result.resume.experience[0].highlights).toEqual(["", "achieved sales target", ""]);
+    expect(result.resume.education).toEqual([]);
+    expect(result.resume.projects).toEqual([]);
+    expect(result.resume.skills).toEqual([]);
+  });
+
   it("releases conversion credits when provider output is invalid", async () => {
     completionCreate.mockResolvedValue({
       id: "conversion_2",

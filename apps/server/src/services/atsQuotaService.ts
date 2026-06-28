@@ -53,15 +53,16 @@ export class AtsQuotaService {
     const key = paid?.key ?? `ats:quota:${tier}:${userId ?? anonymousId(ip)}`;
     const redis = getRedis();
     const used = Number((await redis.get(key)) ?? 0);
-    const ttl = paid
+    const rawTtl = paid
       ? Math.max(1, Math.ceil((paid.end.getTime() - Date.now()) / 1000))
-      : Math.max(1, await redis.ttl(key));
+      : await redis.ttl(key);
+    const ttl = rawTtl > 0 ? rawTtl : windowSeconds;
     return {
       tier,
       limit,
       used,
       remaining: Math.max(0, limit - used),
-      resetsAt: new Date(Date.now() + (ttl > 0 ? ttl : windowSeconds) * 1000).toISOString(),
+      resetsAt: new Date(Date.now() + ttl * 1000).toISOString(),
       canConvertResume: Boolean(paid),
       pricing: publicAtsPolicy(),
     };

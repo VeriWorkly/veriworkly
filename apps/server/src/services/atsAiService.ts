@@ -10,84 +10,123 @@ import { EntitlementService } from "#services/entitlementService";
 import { ApiError } from "#utils/errors";
 import { logger } from "#utils/logger";
 
+const nullableString = (maxLen: number) =>
+  z
+    .string()
+    .max(maxLen)
+    .nullable()
+    .optional()
+    .transform((val) => val ?? "");
+
+const nullableBoolean = z
+  .boolean()
+  .nullable()
+  .optional()
+  .transform((val) => val ?? false);
+
+const nullableStringArray = (maxItemLen: number, maxItems: number) =>
+  z
+    .array(
+      z
+        .string()
+        .max(maxItemLen)
+        .nullable()
+        .optional()
+        .transform((val) => val ?? ""),
+    )
+    .max(maxItems)
+    .nullable()
+    .optional()
+    .transform((val) => val ?? []);
+
 const insightsSchema = z.object({
-  explanation: z.string().min(1).max(4_000),
-  missingEvidence: z.array(z.string().min(1).max(500)).max(12),
-  keywordOpportunities: z.array(z.string().min(1).max(200)).max(20),
-  recommendedImprovements: z.array(z.string().min(1).max(500)).max(12),
-  priorityOrder: z.array(z.string().min(1).max(500)).max(12),
+  explanation: nullableString(4_000),
+  missingEvidence: nullableStringArray(500, 12),
+  keywordOpportunities: nullableStringArray(200, 20),
+  recommendedImprovements: nullableStringArray(500, 12),
+  priorityOrder: nullableStringArray(500, 12),
 });
 
 const convertedResumeSchema = z.object({
   basics: z.object({
-    fullName: z.string().max(200).default(""),
-    role: z.string().max(200).default(""),
-    headline: z.string().max(500).default(""),
-    email: z.string().max(320).default(""),
-    phone: z.string().max(100).default(""),
-    location: z.string().max(300).default(""),
+    fullName: nullableString(200),
+    role: nullableString(200),
+    headline: nullableString(500),
+    email: nullableString(320),
+    phone: nullableString(100),
+    location: nullableString(300),
   }),
   links: z
     .array(
       z.object({
-        label: z.string().max(100),
-        url: z.string().max(2_048),
+        label: nullableString(100),
+        url: nullableString(2_048),
       }),
     )
     .max(20)
-    .default([]),
-  summary: z.string().max(4_000).default(""),
+    .nullable()
+    .optional()
+    .transform((val) => val ?? []),
+  summary: nullableString(4_000),
   experience: z
     .array(
       z.object({
-        company: z.string().max(300).default(""),
-        role: z.string().max(300).default(""),
-        location: z.string().max(300).default(""),
-        startDate: z.string().max(20).default(""),
-        endDate: z.string().max(20).default(""),
-        current: z.boolean().default(false),
-        summary: z.string().max(2_000).default(""),
-        highlights: z.array(z.string().max(1_000)).max(20).default([]),
+        company: nullableString(300),
+        role: nullableString(300),
+        location: nullableString(300),
+        startDate: nullableString(20),
+        endDate: nullableString(20),
+        current: nullableBoolean,
+        summary: nullableString(2_000),
+        highlights: nullableStringArray(1_000, 20),
       }),
     )
     .max(30)
-    .default([]),
+    .nullable()
+    .optional()
+    .transform((val) => val ?? []),
   education: z
     .array(
       z.object({
-        school: z.string().max(300).default(""),
-        degree: z.string().max(300).default(""),
-        field: z.string().max(300).default(""),
-        startDate: z.string().max(20).default(""),
-        endDate: z.string().max(20).default(""),
-        current: z.boolean().default(false),
-        summary: z.string().max(2_000).default(""),
+        school: nullableString(300),
+        degree: nullableString(300),
+        field: nullableString(300),
+        startDate: nullableString(20),
+        endDate: nullableString(20),
+        current: nullableBoolean,
+        summary: nullableString(2_000),
       }),
     )
     .max(20)
-    .default([]),
+    .nullable()
+    .optional()
+    .transform((val) => val ?? []),
   projects: z
     .array(
       z.object({
-        name: z.string().max(300).default(""),
-        role: z.string().max(300).default(""),
-        link: z.string().max(2_048).default(""),
-        summary: z.string().max(2_000).default(""),
-        highlights: z.array(z.string().max(1_000)).max(20).default([]),
-        skills: z.array(z.string().max(100)).max(30).default([]),
+        name: nullableString(300),
+        role: nullableString(300),
+        link: nullableString(2_048),
+        summary: nullableString(2_000),
+        highlights: nullableStringArray(1_000, 20),
+        skills: nullableStringArray(100, 30),
       }),
     )
     .max(30)
-    .default([]),
+    .nullable()
+    .optional()
+    .transform((val) => val ?? []),
   skills: z
     .array(
       z.object({
-        name: z.string().max(200),
-        keywords: z.array(z.string().max(100)).max(50),
+        name: nullableString(200),
+        keywords: nullableStringArray(100, 50),
       }),
     )
     .max(30)
-    .default([]),
+    .nullable()
+    .optional()
+    .transform((val) => val ?? []),
 });
 
 function complexity(report: AtsReport, resumeChars: number, jobChars: number): AtsComplexity {
