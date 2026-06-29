@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
+import { fetchServerApiData } from "@/lib/server-api";
 
 import { pricingFaqs } from "@/features/faq/constants";
 
@@ -48,7 +49,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const user = await fetchServerApiData<{ email: string | null }>("/users/me");
+  const isProd = process.env.NODE_ENV === "production";
+  const adminEmail = (process.env.ADMIN_EMAIL || "ashragautam25@gmail.com").toLowerCase();
+  const isAdmin = user && user.email && user.email.toLowerCase() === adminEmail;
+  const paymentsBlocked = isProd && !isAdmin;
+
   const pricingSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -167,6 +174,11 @@ export default function PricingPage() {
         <Navigation />
 
         <main className="relative z-10 w-full max-w-full overflow-x-clip pt-28">
+          {paymentsBlocked && (
+            <div className="mx-auto w-[min(1160px,calc(100%-32px))] mt-8 rounded-2xl border border-warning bg-warning-soft/30 p-4 text-sm font-semibold text-warning">
+              Payments are disabled in production during this phase. Only system administrators can perform checkouts.
+            </div>
+          )}
           <BundlePricingSection />
           <CustomPlansSection />
           <ComparisonTable />
