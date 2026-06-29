@@ -1,3 +1,4 @@
+import "./polyfills";
 import helmet from "helmet";
 import express, { raw } from "express";
 
