@@ -1,4 +1,4 @@
-import "./polyfills";
+import "./polyfills.js";
 import helmet from "helmet";
 import express, { raw } from "express";
 

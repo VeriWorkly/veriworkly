@@ -7,6 +7,7 @@ import {
   resolvePrivateAiModel,
 } from "#services/aiPrivateConfig";
 import { ApiError } from "#utils/errors";
+import { logger } from "#utils/logger";
 
 const modelSchema = z.object({
   model: z.string().min(1),
@@ -53,7 +54,14 @@ function loadAtsAiPolicy() {
       cached = atsPolicySchema.parse(getPrivateAiConfig()).ats;
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(503, "AI ATS policy is invalid.");
+      logger.error("AI ATS policy parsing failed", error);
+      let details = "";
+      if (error instanceof z.ZodError) {
+        details = ": " + error.errors.map((err) => `${err.path.join(".")}: ${err.message}`).join(", ");
+      } else if (error instanceof Error) {
+        details = ": " + error.message;
+      }
+      throw new ApiError(503, `AI ATS policy is invalid${details}`);
     }
   }
   return cached;
