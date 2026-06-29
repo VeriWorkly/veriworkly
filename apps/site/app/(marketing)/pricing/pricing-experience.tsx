@@ -62,17 +62,14 @@ export function PricingExperience() {
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
   const [user, setUser] = useState<{ email?: string | null } | null>(null);
-  const [checkingUser, setCheckingUser] = useState(true);
 
   useEffect(() => {
     fetchApiData<{ email: string | null; name: string | null }>("/users/me")
       .then((data) => {
         setUser(data);
-        setCheckingUser(false);
       })
       .catch(() => {
         setUser(null);
-        setCheckingUser(false);
       });
   }, []);
 
