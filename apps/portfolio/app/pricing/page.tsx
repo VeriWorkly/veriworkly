@@ -175,8 +175,9 @@ export default async function PricingPage() {
 
         <main className="relative z-10 w-full max-w-full overflow-x-clip pt-28">
           {paymentsBlocked && (
-            <div className="mx-auto w-[min(1160px,calc(100%-32px))] mt-8 rounded-2xl border border-warning bg-warning-soft/30 p-4 text-sm font-semibold text-warning">
-              Payments are disabled in production during this phase. Only system administrators can perform checkouts.
+            <div className="border-warning bg-warning-soft/30 text-warning mx-auto mt-8 w-[min(1160px,calc(100%-32px))] rounded-2xl border p-4 text-sm font-semibold">
+              Payments are disabled in production during this phase. Only system administrators can
+              perform checkouts.
             </div>
           )}
           <BundlePricingSection />

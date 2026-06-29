@@ -77,7 +77,9 @@ export function PricingExperience() {
   }, []);
 
   const isProd = process.env.NODE_ENV === "production";
-  const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "ashragautam25@gmail.com").toLowerCase();
+  const adminEmail = (
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || "ashragautam25@gmail.com"
+  ).toLowerCase();
   const isAdmin = user && user.email && user.email.toLowerCase() === adminEmail;
   const paymentsBlocked = isProd && !isAdmin;
 
@@ -150,7 +152,8 @@ export function PricingExperience() {
 
           {paymentsBlocked ? (
             <div className="mt-8 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm font-bold text-amber-800 dark:text-amber-300">
-              Payments are disabled in production during this phase. Only system administrators can perform checkouts.
+              Payments are disabled in production during this phase. Only system administrators can
+              perform checkouts.
             </div>
           ) : null}
 
