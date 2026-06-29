@@ -20,17 +20,20 @@ const HeroSection = () => {
             id="hero-heading"
             className="text-foreground text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl"
           >
-            Build professional resumes in minutes - no login required.
+            Build professional resumes, cover letters & portfolios in minutes.
           </h1>
 
           <p className="text-muted max-w-2xl text-base leading-8 md:text-lg">
-            A modern, ATS-friendly resume builder with full control over layout, sections, and
-            structure. Fast by default. Private by design.
+            A modern, privacy-first career workspace. Sync documents from your Master Profile,
+            custom-tailor sections, and publish responsive portfolios to custom subdomains.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center justify-start gap-3">
             <Button asChild size="lg" variant="primary">
-              <Link href={siteConfig.links.app} aria-label="Start building resume">
+              <Link
+                href={siteConfig.links.app}
+                aria-label="Start building documents and portfolios"
+              >
                 Start Building Free
               </Link>
             </Button>
@@ -46,7 +49,7 @@ const HeroSection = () => {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <Card className="bg-background/70 p-5 backdrop-blur">
             <p className="text-foreground text-2xl font-semibold">No</p>
-            <p className="text-muted mt-1 text-sm">Accounts required</p>
+            <p className="text-muted mt-1 text-sm">Accounts required to start</p>
           </Card>
 
           <Card className="bg-background/70 p-5 backdrop-blur">

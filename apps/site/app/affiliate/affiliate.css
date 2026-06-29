@@ -1,0 +1,135 @@
+/* Custom keyframes and specialized styling for the VeriWorkly Affiliate Page */
+
+@keyframes float-slow {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes float-reverse {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(-30px, 40px) scale(0.9);
+  }
+  66% {
+    transform: translate(25px, -20px) scale(1.1);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-float-1 {
+  animation: float-slow 20s infinite ease-in-out;
+}
+
+.animate-float-2 {
+  animation: float-reverse 25s infinite ease-in-out;
+}
+
+.animate-float-3 {
+  animation: float-slow 15s infinite ease-in-out 2s;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 25s infinite linear;
+}
+
+/* Custom styles for the interactive range slider to make it look premium and smooth */
+.custom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 9999px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.dark .custom-slider {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2563eb;
+  cursor: pointer;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+  transition:
+    transform 0.1s ease,
+    background-color 0.2s ease;
+}
+
+.dark .custom-slider::-webkit-slider-thumb {
+  background: #60a5fa;
+  border: 3px solid #0d1117;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+}
+
+.custom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.custom-slider::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+  background: #1d4ed8;
+}
+
+.dark .custom-slider::-webkit-slider-thumb:active {
+  background: #3b82f6;
+}
+
+.custom-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2563eb;
+  cursor: pointer;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+  transition:
+    transform 0.1s ease,
+    background-color 0.2s ease;
+}
+
+.dark .custom-slider::-moz-range-thumb {
+  background: #60a5fa;
+  border: 3px solid #0d1117;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+}
+
+.custom-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Glassmorphism custom classes */
+.glass-effect {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}

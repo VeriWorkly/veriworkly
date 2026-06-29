@@ -1,7 +1,7 @@
 export const trustItems = [
   "No login required",
-  "Free resume builder",
+  "Free career documents",
+  "Web portfolio hosting",
   "ATS-friendly templates",
   "Open source",
-  "Real-time preview",
 ];

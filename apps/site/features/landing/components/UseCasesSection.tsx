@@ -3,22 +3,25 @@ const UseCasesSection = () => {
     {
       title: "Entry-Level Job Seekers",
       description:
-        "Create your first professional resume with guided sections and clean templates.",
+        "Create your first professional resume & cover letter with guided sections and clean templates.",
     },
 
     {
       title: "Career Switchers",
-      description: "Highlight transferable skills and tailor your resume for different industries.",
+      description:
+        "Highlight transferable skills and tailor your documents and portfolio for different industries.",
     },
 
     {
       title: "Job Hunters",
-      description: "Maintain multiple tailored resumes for different positions and companies.",
+      description:
+        "Maintain multiple tailored resumes and cover letters for different positions and companies.",
     },
 
     {
       title: "Freelancers & Consultants",
-      description: "Showcase projects and achievements with customizable portfolio sections.",
+      description:
+        "Showcase projects and services with visual templates, and publish a live web portfolio.",
     },
 
     {
@@ -42,12 +45,13 @@ const UseCasesSection = () => {
         </h2>
 
         <p className="text-muted -mt-1 text-base leading-7">
-          Whether you&apos;re just starting out or an experienced professional, build resumes
-          tailored to your career stage and goals.
+          Whether you&apos;re just starting out or an experienced professional, build documents and
+          portfolios tailored to your career stage and goals.
         </p>
 
         <p className="sr-only">
-          Resume builder for freshers, students, professionals, freelancers, and career switchers.
+          Document and portfolio builder for freshers, students, professionals, freelancers, and
+          career switchers.
         </p>
       </div>
 
@@ -64,8 +68,7 @@ const UseCasesSection = () => {
       </div>
 
       <p className="sr-only">
-        Resume builder for freshers, job seekers, freelancers, and professionals across different
-        industries.
+        Resume, cover letter, and portfolio builder for job seekers, freelancers, and professionals.
       </p>
     </section>
   );

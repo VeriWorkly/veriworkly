@@ -522,7 +522,7 @@ export class BillingService {
     const currentPeriodEnd = subscription.next_billing_date
       ? new Date(subscription.next_billing_date)
       : rawInterval === "one_day"
-        ? addDays(eventTime, 1)
+        ? addDays(eventTime, 3)
         : rawInterval === "seven_day"
           ? addDays(eventTime, 7)
           : rawInterval === "annual"
@@ -698,7 +698,7 @@ export class BillingService {
           const now = new Date();
           expiresAt =
             intervalInput === "one_day"
-              ? addDays(now, 1)
+              ? addDays(now, 3)
               : intervalInput === "seven_day"
                 ? addDays(now, 7)
                 : intervalInput === "annual"

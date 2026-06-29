@@ -18,8 +18,9 @@ export const siteConfig = {
 
     main: isDev ? "http://localhost:3000" : "https://veriworkly.com",
     app: isDev ? "http://localhost:3001" : "https://app.veriworkly.com",
-    blog: isDev ? "http://localhost:3003" : "https://blog.veriworkly.com",
     docs: isDev ? "http://localhost:3002" : "https://docs.veriworkly.com",
+    blog: isDev ? "http://localhost:3003" : "https://blog.veriworkly.com",
+    portfolio: isDev ? "http://localhost:3004" : "https://portfolio.veriworkly.com",
   },
 
   keywords: ["VeriWorkly", "blog", "career tips", "architecture"],

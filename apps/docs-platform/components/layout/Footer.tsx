@@ -22,6 +22,7 @@ const Footer = () => {
           title: "Platform",
           links: [
             { name: "Resume Builder", href: siteConfig.links.app, external: true },
+            { name: "Portfolio Builder", href: siteConfig.links.portfolio, external: true },
             {
               name: "Template Gallery",
               href: `${siteConfig.links.main}/templates`,

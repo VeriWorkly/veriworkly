@@ -117,3 +117,29 @@ export async function sendLoginAlertEmail(email: string, meta: LoginAlertMeta): 
 
   await sendMail({ to: email, subject, text, html });
 }
+
+/**
+ * Send contact form submission to admin
+ */
+export async function sendContactEmail(payload: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<void> {
+  const adminEmail = config.admin.email || "admin@veriworkly.com";
+  const mailSubject = `[VeriWorkly Contact] ${payload.subject} from ${payload.name}`;
+  const text = `Contact Form Submission:\n\nName: ${payload.name}\nEmail: ${payload.email}\nSubject: ${payload.subject}\nMessage:\n${payload.message}`;
+  const html = `
+    <h2>New Contact Form Submission</h2>
+    <p><strong>Name:</strong> ${payload.name}</p>
+    <p><strong>Email:</strong> ${payload.email}</p>
+    <p><strong>Subject:</strong> ${payload.subject}</p>
+    <p><strong>Message:</strong></p>
+    <blockquote style="background: #f9f9f9; padding: 10px; border-left: 3px solid #ccc; white-space: pre-wrap;">
+      ${payload.message.replace(/\n/g, "<br>")}
+    </blockquote>
+  `;
+
+  await sendMail({ to: adminEmail, subject: mailSubject, text, html });
+}

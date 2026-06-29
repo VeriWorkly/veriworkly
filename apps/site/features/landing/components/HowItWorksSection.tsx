@@ -4,27 +4,27 @@ const HowItWorksSection = () => {
   const steps = [
     {
       number: "01",
-      title: "Create Your Profile",
+      title: "Import Your Data",
       description:
-        "Start with your master profile containing all your information - experience, skills, and more.",
+        "Connect your GitHub or LinkedIn profile, or upload your old resume PDF/DOCX to extract facts instantly.",
     },
     {
       number: "02",
       title: "Choose Templates",
       description:
-        "Select from our collection of professionally designed resume templates to match your style.",
+        "Select from our professionally designed collection of ATS-optimized resume, cover letter, or web portfolio templates.",
     },
     {
       number: "03",
-      title: "Customize & Refine",
+      title: "Master Profile Sync",
       description:
-        "Tailor colors, fonts, sections, and layout to create a unique resume that stands out.",
+        "Keep a single secure database of your accomplishments. Seed or update any document from one dashboard.",
     },
     {
       number: "04",
-      title: "Export & Share",
+      title: "Export & Publish",
       description:
-        "Download as PDF or share directly with employers. All changes stay private on your device.",
+        "Download your resume and cover letter as high-fidelity PDFs, and publish your web portfolio to a custom subdomain.",
     },
   ];
 
@@ -37,11 +37,11 @@ const HowItWorksSection = () => {
           id="how-it-works-heading"
           className="text-foreground text-3xl font-semibold tracking-tight"
         >
-          How to create a resume online
+          How VeriWorkly works
         </h2>
 
         <p className="text-muted -mt-1 text-base leading-7">
-          Start with your master profile to create and manage your resume details...
+          Start with a single Master Profile to generate resumes, cover letters, and web portfolios.
         </p>
       </div>
 

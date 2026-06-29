@@ -11,12 +11,12 @@ const SecuritySection = () => {
         </p>
 
         <h2 id="security-heading" className="text-foreground text-3xl font-semibold tracking-tight">
-          Built with privacy-first resume security
+          Built with privacy-first career data security
         </h2>
 
         <p className="text-muted text-base leading-7">
-          Your resume data is sensitive. Our resume builder is designed to keep your information
-          private and secure.
+          Your career data is sensitive. Our platform is designed to keep your information private
+          and secure.
         </p>
       </div>
 
@@ -25,8 +25,8 @@ const SecuritySection = () => {
           <h3 className="text-foreground text-lg font-semibold">Local-First Architecture</h3>
 
           <p className="text-muted text-sm leading-6">
-            All your resume data is stored locally on your device, making this a privacy-first
-            resume builder.
+            All your career data is stored locally on your device, making this a privacy-first
+            workspace.
           </p>
         </Card>
 
@@ -34,8 +34,8 @@ const SecuritySection = () => {
           <h3 className="text-foreground text-lg font-semibold">Minimal Product Analytics</h3>
 
           <p className="text-muted text-sm leading-6">
-            We measure essential product events, like sign-in, dashboard usage, and resume actions,
-            to improve reliability and roadmap decisions. We do not sell resume data.
+            We measure essential product events, like sign-in, dashboard usage, and document syncs,
+            to improve reliability and roadmap decisions. We do not sell your career data.
           </p>
         </Card>
 
@@ -52,8 +52,8 @@ const SecuritySection = () => {
           <h3 className="text-foreground text-lg font-semibold">End-to-End Encryption</h3>
 
           <p className="text-muted text-sm leading-6">
-            When sharing resumes, optional password protection ensures only intended recipients can
-            view.
+            When sharing documents or portfolios, optional password protection ensures only intended
+            recipients can view.
           </p>
         </Card>
       </div>

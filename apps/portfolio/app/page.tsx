@@ -27,7 +27,7 @@ const HomePage = () => {
       "@type": "AggregateOffer",
       priceCurrency: "USD",
       lowPrice: "0",
-      highPrice: "11.99",
+      highPrice: "14.99",
       offerCount: "7",
       offers: [
         {
@@ -39,38 +39,21 @@ const HomePage = () => {
 
         {
           "@type": "Offer",
-          name: "1-Day Pass",
-          price: "0.69",
+          name: "3-Day Sprint Pass",
+          price: "2.99",
           priceCurrency: "USD",
         },
 
         {
           "@type": "Offer",
-          name: "7-Day Sprint",
-          price: "3.99",
+          name: "7-Day Hunt Pass",
+          price: "5.99",
           priceCurrency: "USD",
         },
 
         {
           "@type": "Offer",
-          name: "Full Bundle (Annual)",
-          price: "9.99",
-          priceCurrency: "USD",
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: "9.99",
-            priceCurrency: "USD",
-            referenceQuantity: {
-              "@type": "QuantitativeValue",
-              value: "1",
-              unitCode: "MON",
-            },
-          },
-        },
-
-        {
-          "@type": "Offer",
-          name: "Full Bundle (Monthly)",
+          name: "Job Hunter Bundle (Annual)",
           price: "11.99",
           priceCurrency: "USD",
           priceSpecification: {
@@ -87,12 +70,12 @@ const HomePage = () => {
 
         {
           "@type": "Offer",
-          name: "Portfolio Pro Only",
-          price: "8.99",
+          name: "Job Hunter Bundle (Monthly)",
+          price: "14.99",
           priceCurrency: "USD",
           priceSpecification: {
             "@type": "UnitPriceSpecification",
-            price: "8.99",
+            price: "14.99",
             priceCurrency: "USD",
             referenceQuantity: {
               "@type": "QuantitativeValue",
@@ -104,12 +87,29 @@ const HomePage = () => {
 
         {
           "@type": "Offer",
-          name: "AI Credits Only",
-          price: "4.99",
+          name: "Creator Pro (Monthly)",
+          price: "9.99",
           priceCurrency: "USD",
           priceSpecification: {
             "@type": "UnitPriceSpecification",
-            price: "4.99",
+            price: "9.99",
+            priceCurrency: "USD",
+            referenceQuantity: {
+              "@type": "QuantitativeValue",
+              value: "1",
+              unitCode: "MON",
+            },
+          },
+        },
+
+        {
+          "@type": "Offer",
+          name: "AI Credits Standalone (Monthly)",
+          price: "5.99",
+          priceCurrency: "USD",
+          priceSpecification: {
+            "@type": "UnitPriceSpecification",
+            price: "5.99",
             priceCurrency: "USD",
             referenceQuantity: {
               "@type": "QuantitativeValue",

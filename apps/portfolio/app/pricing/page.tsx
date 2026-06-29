@@ -14,14 +14,14 @@ import BundlePricingSection from "@/components/pricing/BundlePricingSection";
 export const metadata: Metadata = {
   title: "Portfolio Builder Pricing",
   description:
-    "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, SEO metadata, analytics, and hosted media.",
+    "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, CDN hosting, custom metadata, and no watermark.",
 
   openGraph: {
     type: "website",
     url: "/pricing",
     title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
     description:
-      "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, SEO metadata, analytics, and hosted media.",
+      "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, CDN hosting, custom metadata, and no watermark.",
     images: [
       {
         url: "/og/pricing-page-og.png",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
     description:
-      "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, SEO metadata, analytics, and hosted media.",
+      "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, CDN hosting, custom metadata, and no watermark.",
     images: ["/og/pricing-page-og.png"],
   },
 
@@ -66,12 +66,12 @@ export default function PricingPage() {
       "@type": "AggregateOffer",
       priceCurrency: "USD",
       lowPrice: "0",
-      highPrice: "11.99",
-      offerCount: "7",
+      highPrice: "14.99",
+      offerCount: "8",
       offers: [
         {
           "@type": "Offer",
-          name: "Draft",
+          name: "Free Plan",
           price: "0",
           priceCurrency: "USD",
           url: `${siteConfig.links.portfolio}/pricing`,
@@ -79,23 +79,31 @@ export default function PricingPage() {
 
         {
           "@type": "Offer",
-          name: "Day Pass",
-          price: "0.69",
+          name: "3-Day Sprint",
+          price: "2.99",
           priceCurrency: "USD",
           url: `${siteConfig.links.portfolio}/pricing`,
         },
 
         {
           "@type": "Offer",
-          name: "Week Sprint",
-          price: "3.99",
+          name: "7-Day Hunt",
+          price: "5.99",
           priceCurrency: "USD",
           url: `${siteConfig.links.portfolio}/pricing`,
         },
 
         {
           "@type": "Offer",
-          name: "Full Bundle (Annual)",
+          name: "Creator Pro (Annual)",
+          price: "7.99",
+          priceCurrency: "USD",
+          url: `${siteConfig.links.portfolio}/pricing`,
+        },
+
+        {
+          "@type": "Offer",
+          name: "Creator Pro (Monthly)",
           price: "9.99",
           priceCurrency: "USD",
           url: `${siteConfig.links.portfolio}/pricing`,
@@ -103,7 +111,7 @@ export default function PricingPage() {
 
         {
           "@type": "Offer",
-          name: "Full Bundle (Monthly)",
+          name: "Job Hunter Bundle (Annual)",
           price: "11.99",
           priceCurrency: "USD",
           url: `${siteConfig.links.portfolio}/pricing`,
@@ -111,8 +119,8 @@ export default function PricingPage() {
 
         {
           "@type": "Offer",
-          name: "Portfolio Pro Standalone",
-          price: "8.99",
+          name: "Job Hunter Bundle (Monthly)",
+          price: "14.99",
           priceCurrency: "USD",
           url: `${siteConfig.links.portfolio}/pricing`,
         },
@@ -120,7 +128,7 @@ export default function PricingPage() {
         {
           "@type": "Offer",
           name: "AI Credits Standalone",
-          price: "4.99",
+          price: "5.99",
           priceCurrency: "USD",
           url: `${siteConfig.links.portfolio}/pricing`,
         },

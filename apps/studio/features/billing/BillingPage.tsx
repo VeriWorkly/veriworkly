@@ -13,8 +13,8 @@ import type { BillingActivity, BillingSummary } from "@/features/billing/types";
 const planNames = {
   FREE: "Free",
   AI_CREDITS: "AI Credits",
-  PORTFOLIO_PRO: "Portfolio Pro",
-  BUNDLE: "VeriWorkly Bundle",
+  PORTFOLIO_PRO: "Creator Pro",
+  BUNDLE: "Job Hunter Bundle",
 } as const;
 
 function displayDate(value: string | null) {
