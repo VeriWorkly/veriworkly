@@ -1,3 +1,5 @@
+"use client";
+
 import { siteConfig } from "@/config/site";
 
 import { GithubIcon, LinkedInIcon, MarketingFooter, TwitterXIcon } from "@veriworkly/ui";

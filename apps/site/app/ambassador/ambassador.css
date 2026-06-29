@@ -1,0 +1,234 @@
+/* Premium visual styling and blurs for VeriWorkly Ambassador Page V6 - Theme-Responsive */
+
+/* General base scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Modern background noise grid pattern */
+.ambassador-bg-noise {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    radial-gradient(rgba(99, 102, 241, 0.015) 1.5px, transparent 1.5px);
+  background-size:
+    32px 32px,
+    64px 64px;
+  transition: background-color 0.3s ease;
+}
+
+.dark .ambassador-bg-noise {
+  background-color: #09090b;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    radial-gradient(rgba(99, 102, 241, 0.02) 1.5px, transparent 1.5px);
+}
+
+/* Split-navigation hover effects & transitions */
+.nav-pill-item {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-pill-item::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #6366f1;
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(-50%);
+  opacity: 0;
+}
+
+.nav-pill-item:hover::after {
+  width: 12px;
+  opacity: 1;
+}
+
+/* Glassmorphism styling with clean refraction borders - responsive */
+.glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 10px 40px -10px rgba(0, 0, 0, 0.04),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .glass-card {
+  background: rgba(18, 18, 22, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 10px 40px -10px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+.glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow:
+    0 25px 60px -12px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(99, 102, 241, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+
+.dark .glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow:
+    0 25px 60px -12px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(99, 102, 241, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+/* Asymmetric Bento Tile Highlights */
+.bento-glow-indigo {
+  background: radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
+}
+
+.dark .bento-glow-indigo {
+  background: radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.1) 0%, transparent 60%);
+}
+
+.bento-glow-emerald {
+  background: radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 60%);
+}
+
+.dark .bento-glow-emerald {
+  background: radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 60%);
+}
+
+.bento-glow-purple {
+  background: radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.05) 0%, transparent 60%);
+}
+
+.dark .bento-glow-purple {
+  background: radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+}
+
+/* Stepper Counter buttons */
+.stepper-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #1f2937;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.dark .stepper-btn {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #f3f4f6;
+}
+
+.stepper-btn:hover:not(:disabled) {
+  border-color: #6366f1;
+  background-color: rgba(99, 102, 241, 0.08);
+  transform: translateY(-1px);
+}
+
+.stepper-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Rounded range slider styling for interactive console */
+.rounded-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.dark .rounded-slider {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rounded-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #6366f1;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+  transition:
+    transform 0.15s cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.dark .rounded-slider::-webkit-slider-thumb {
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+}
+
+.rounded-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+}
+
+.dark .rounded-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.8);
+}
+
+.rounded-slider::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+  background: #4f46e5;
+}
+
+/* Animations */
+@keyframes float-slow {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+.animate-float {
+  animation: float-slow 8s infinite ease-in-out;
+}
+
+/* Timeline card-stack overlay classes */
+.timeline-card-wrapper {
+  transform-origin: top center;
+  will-change: transform, opacity;
+}
+
+/* Custom indicator lines and highlights */
+.cyber-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.dark .cyber-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
