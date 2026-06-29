@@ -7,39 +7,47 @@ import { siteConfig } from "@/config/site";
 
 import { PriceCard } from "@/features/pricing/components/PriceCard";
 import { IntervalToggle } from "@/features/pricing/components/IntervalToggle";
+import { CheckoutButton } from "@/features/pricing/components/CheckoutButton";
 
-const dayPassFeatures = [
-  "Portfolio Pro publishing",
-  "25 AI writing credits",
-  "ATS and document tools",
-  "No auto-renewal",
-];
-
-const weekSprintFeatures = [
-  "Portfolio Pro publishing",
-  "220 AI writing credits",
-  "ATS and document tools",
-  "No auto-renewal",
+const creatorProFeatures = [
+  "Custom subdomain mapping",
+  "CDN media hosting & storage",
+  "Watermark & branding removed",
+  "1.5% commerce checkout fee",
+  "1 active resume & cover letter",
+  "No AI credits included",
 ];
 
 const bundleFeatures = [
-  "Portfolio Pro publishing",
+  "Everything in Creator Pro",
+  "Unlimited resumes & cover letters",
+  "Master Profile unlocked",
+  "GitHub & LinkedIn generators",
+  "Legacy PDF/DOCX importer",
   "1,000 monthly AI credits",
-  "ATS and document tools",
-  "Cancel anytime",
 ];
 
 const BundlePricingSection = () => {
   const [bundleInterval, setBundleInterval] = useState<"monthly" | "annual">("annual");
 
-  const bundlePrice =
+  const creatorProPrice =
     bundleInterval === "annual"
-      ? { amount: "$9.99", cadence: "/ month", note: "$120 billed yearly", savings: "Save 15%" }
+      ? { amount: "$7.99", cadence: "/ month", note: "$95.88 billed yearly", savings: "Save 20%" }
       : {
-          amount: "$11.99",
+          amount: "$9.99",
           cadence: "/ month",
           note: "Billed monthly",
-          savings: "Flexible monthly",
+          savings: undefined,
+        };
+
+  const bundlePrice =
+    bundleInterval === "annual"
+      ? { amount: "$11.99", cadence: "/ month", note: "$143.88 billed yearly", savings: "Save 20%" }
+      : {
+          amount: "$14.99",
+          cadence: "/ month",
+          note: "Billed monthly",
+          savings: "Recommended",
         };
 
   return (
@@ -48,23 +56,23 @@ const BundlePricingSection = () => {
       <div className="bg-accent/6 pointer-events-none absolute top-40 -left-32 size-96 rounded-full blur-3xl" />
 
       <div className="mx-auto w-[min(1160px,calc(100%-32px))]">
-        <div className="grid items-end gap-12 lg:grid-cols-[1.35fr_.65fr]">
+        <div className="grid items-end gap-12 lg:grid-cols-[1.3fr_.7fr]">
           <div>
             <p className="border-line bg-panel/60 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold tracking-[0.12em] uppercase backdrop-blur">
-              <Sparkles className="text-accent size-3.5" /> Pay for the pace you need
+              <Sparkles className="text-accent size-3.5" /> Premium Career Platform
             </p>
 
-            <h1 className="text-ink mt-8 max-w-5xl text-[clamp(3.5rem,9vw,7.6rem)] leading-none font-bold tracking-tighter">
+            <h1 className="text-ink mt-8 max-w-5xl text-[clamp(3.5rem,9vw,6.5rem)] leading-none font-bold tracking-tighter">
               <span className="sr-only">VeriWorkly Portfolio Pricing: </span>
-              One toolkit. <br />{" "}
-              <span className="text-accent block sm:inline">Your timeline.</span>
+              Flexible plans. <br />{" "}
+              <span className="text-accent block sm:inline">Built for growth.</span>
             </h1>
           </div>
 
           <div className="border-line-strong border-t-2 pt-6">
             <p className="text-ink/75 max-w-md text-base leading-7">
-              Get Portfolio Pro and AI credits together for a day, a week, or a full year. No
-              oversized commitment before the work earns it.
+              Publish a premium portfolio webpage and write tailormade resumes with our advanced AI
+              suite. Select a flexible plan tailored to your timeline.
             </p>
 
             <div className="text-accent mt-6 flex items-center gap-3 text-xs font-bold uppercase">
@@ -73,42 +81,131 @@ const BundlePricingSection = () => {
           </div>
         </div>
 
-        <div className="mt-16 grid items-stretch gap-8 md:grid-cols-2 lg:grid-cols-[0.8fr_0.9fr_1.25fr]">
-          <PriceCard
-            marker="01"
-            price="$0.69"
-            title="Day Pass"
-            cadence="for 24 hours"
-            features={dayPassFeatures}
-            badge="Single Application"
-            href={`${siteConfig.links.app}/checkout?productKey=bundle&interval=one_day`}
-            description="A tiny commitment for one focused application, portfolio update, or deadline."
-          />
+        {/* Centered Interval Toggle */}
+        <div className="mt-14 flex justify-center">
+          <div className="w-full max-w-xs">
+            <IntervalToggle value={bundleInterval} onChange={setBundleInterval} />
+          </div>
+        </div>
 
+        {/* Subscription Plans Grid */}
+        <div className="mx-auto mt-10 grid max-w-4xl items-stretch gap-8 md:grid-cols-2">
           <PriceCard
-            marker="07"
-            price="$3.99"
-            title="Week Sprint"
-            cadence="for 7 days"
-            badge="Active Job Hunt"
-            features={weekSprintFeatures}
-            href={`${siteConfig.links.app}/checkout?productKey=bundle&interval=seven_day`}
-            description="Enough runway to refine the full story, apply broadly, and publish with confidence."
+            marker="PRO"
+            title="Creator Pro"
+            note={creatorProPrice.note}
+            features={creatorProFeatures}
+            price={creatorProPrice.amount}
+            badge={creatorProPrice.savings}
+            cadence={creatorProPrice.cadence}
+            href={`${siteConfig.links.app}/checkout?productKey=portfolio_pro&interval=${bundleInterval}`}
+            description="The dedicated web hosting suite for developers, designers, and professional creators."
           />
 
           <PriceCard
             featured
-            marker="365"
-            title="Full Bundle"
+            marker="BUNDLE"
+            title="Job Hunter Bundle"
             note={bundlePrice.note}
             features={bundleFeatures}
             price={bundlePrice.amount}
             badge={bundlePrice.savings}
             cadence={bundlePrice.cadence}
             href={`${siteConfig.links.app}/checkout?productKey=bundle&interval=${bundleInterval}`}
-            description="The complete VeriWorkly workspace for consistent career momentum all year."
-            toggle={<IntervalToggle value={bundleInterval} onChange={setBundleInterval} featured />}
+            description="The complete workspace for active job searches, unlocking AI document tailoring and importers."
           />
+        </div>
+
+        {/* Transactional Passes Horizontal Strip */}
+        <div className="border-line bg-panel mt-20 rounded-[2.2rem] border-2 p-6 shadow-[0_12px_30px_rgba(17,17,15,0.02)] transition-all duration-300 hover:shadow-[0_16px_40px_rgba(17,17,15,0.04)] sm:p-8">
+          <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_1.9fr]">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="bg-accent absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+                  <span className="bg-accent relative inline-flex h-2 w-2 rounded-full"></span>
+                </span>
+                <p className="text-accent text-[10px] font-bold tracking-[0.14em] uppercase">
+                  Zero Commitment
+                </p>
+              </div>
+              <h3 className="text-ink mt-3 text-xl font-bold tracking-tight sm:text-2xl">
+                Just need a quick fix?
+              </h3>
+              <p className="text-ink/75 mt-2 max-w-sm text-sm leading-6">
+                Tailor resumes for that dream role this weekend, or publish a quick update. Our
+                passes automatically expire—no recurring charges, no strings attached.
+              </p>
+            </div>
+
+            <div className="grid w-full gap-4 sm:grid-cols-2">
+              {/* 3-Day Sprint */}
+              <div className="border-line from-paper to-panel/50 hover:to-panel hover:border-line-strong flex flex-col justify-between rounded-3xl border bg-gradient-to-br p-5 transition-all duration-250 hover:shadow-[0_8px_20px_rgba(17,17,15,0.02)]">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="bg-accent/10 border-accent/25 text-accent rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+                      3-Day Sprint
+                    </span>
+                    <span className="text-muted/60 font-mono text-xs font-bold">03</span>
+                  </div>
+                  <h4 className="text-ink mt-4 text-base font-bold">3-Day Sprint</h4>
+                  <p className="text-muted mt-2 text-[11px] leading-5">
+                    Portfolio Pro hosting, ATS optimization tools, unlimited downloads, and 150 AI
+                    credits.
+                  </p>
+                </div>
+
+                {/* Dashed Ticket Divider */}
+                <div className="border-line my-4 flex items-end justify-between gap-4 border-t border-dashed pt-4">
+                  <div>
+                    <span className="text-ink text-2xl font-bold tracking-tight">$2.99</span>
+                    <span className="text-muted mt-0.5 block text-[9px] leading-none font-bold">
+                      one-time
+                    </span>
+                  </div>
+                  <CheckoutButton
+                    href={`${siteConfig.links.app}/checkout?productKey=bundle&interval=one_day`}
+                    className="bg-accent hover:bg-accent-strong rounded-xl px-4 py-2.5 text-[10px] font-bold text-white transition-all duration-150 active:scale-[0.97]"
+                  >
+                    Get Pass
+                  </CheckoutButton>
+                </div>
+              </div>
+
+              {/* 7-Day Hunt */}
+              <div className="border-line from-paper to-panel/50 hover:to-panel hover:border-line-strong flex flex-col justify-between rounded-3xl border bg-gradient-to-br p-5 transition-all duration-250 hover:shadow-[0_8px_20px_rgba(17,17,15,0.02)]">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="bg-accent/10 border-accent/25 text-accent rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+                      7-Day Hunt
+                    </span>
+                    <span className="text-muted/60 font-mono text-xs font-bold">07</span>
+                  </div>
+                  <h4 className="text-ink mt-4 text-base font-bold">7-Day Hunt</h4>
+                  <p className="text-muted mt-2 text-[11px] leading-5">
+                    Portfolio Pro hosting, ATS optimization tools, unlimited downloads, and 400 AI
+                    credits.
+                  </p>
+                </div>
+
+                {/* Dashed Ticket Divider */}
+                <div className="border-line my-4 flex items-end justify-between gap-4 border-t border-dashed pt-4">
+                  <div>
+                    <span className="text-ink text-2xl font-bold tracking-tight">$5.99</span>
+                    <span className="text-muted mt-0.5 block text-[9px] leading-none font-bold">
+                      one-time
+                    </span>
+                  </div>
+                  <CheckoutButton
+                    href={`${siteConfig.links.app}/checkout?productKey=bundle&interval=seven_day`}
+                    className="bg-accent hover:bg-accent-strong rounded-xl px-4 py-2.5 text-[10px] font-bold text-white transition-all duration-150 active:scale-[0.97]"
+                  >
+                    Get Pass
+                  </CheckoutButton>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </header>

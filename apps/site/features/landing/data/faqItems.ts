@@ -2,48 +2,48 @@ export const faqs = [
   {
     question: "Is my data really private?",
     answer:
-      "Your resume content is local-first by default. Cloud sync and share links are optional features you enable deliberately.",
+      "Your documents and portfolio content are local-first. Cloud sync, subdomain publishing, and share links are optional features you enable deliberately.",
   },
 
   {
-    question: "Do I need an account to use this resume builder?",
+    question: "Do I need an account to use VeriWorkly?",
     answer:
-      "No. Core resume creation and editing are available without mandatory sign-up. Account features are for sync and sharing workflows.",
+      "No. Core document creation and editing are available without mandatory sign-up. Account features are required for cloud sync, portfolio hosting, and sharing workflows.",
   },
 
   {
     question: "Can I customize templates deeply?",
     answer:
-      "Yes. You can tune layout choices, colors, spacing, typography, section order, and section visibility to match your target role.",
+      "Yes. You can tune layout choices, colors, spacing, typography, section order, and section visibility to match your target role or style.",
   },
 
   {
-    question: "Is this resume builder ATS-friendly?",
+    question: "Are the resume templates ATS-friendly?",
     answer:
-      "Templates are designed to stay clean and readable, with a strong focus on practical, recruiter-friendly structure.",
+      "Yes. Our document templates are designed to stay clean and highly readable, ensuring compliance with recruiter-friendly parsing engines.",
   },
 
   {
-    question: "What formats can I export my resume in?",
+    question: "What formats can I export my documents in?",
     answer:
-      "You can export for hiring workflows and keep portable backups so you are never locked into one format.",
+      "You can download your documents as high-quality PDFs for free, or host your responsive web portfolio directly on a custom subdomain.",
   },
 
   {
-    question: "Can I use one master profile for many resumes?",
+    question: "Can I use one Master Profile for all documents & portfolios?",
     answer:
-      "Yes. Build a base profile once, then create targeted resume variants for different jobs and industries.",
+      "Yes. Build your core professional profile once, then generate targeted resumes, cover letters, and web portfolios instantly.",
   },
 
   {
     question: "How is analytics handled?",
     answer:
-      "We use limited product analytics to understand usage quality and improve the builder. The goal is product reliability, not ad-tech profiling.",
+      "We track visitor views and referral sources in aggregate to show you portfolio traffic statistics. We do not use cookies or sell your career data.",
   },
 
   {
     question: "Is VeriWorkly free?",
     answer:
-      "Yes, the builder is free to use. The project is focused on broad access and practical output quality.",
+      "Yes, the core document builder is free. Portfolio hosting and AI credits are available in paid subscription tiers and short-term passes.",
   },
 ];

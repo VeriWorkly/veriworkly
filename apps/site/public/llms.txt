@@ -1,42 +1,41 @@
 # VeriWorkly Ecosystem
-> Free, open-source, and privacy-first ecosystem for career growth. Build professional, ATS-friendly resumes and manage your professional identity without sacrificing your data privacy.
+> Free-to-use, open-core, and privacy-first AI career workspace for professional documents and web portfolios. Build and tailor resumes, cover letters, and web portfolios using privacy-first AI models (Claude & GPT-4o) with local-first ownership and optional secure cloud sync.
 
 ## Who We Are & What We Do
-VeriWorkly is a developer-focused, open-source ecosystem designed to revolutionize how professionals create and manage career documents. We champion **local-first data ownership**. By default, VeriWorkly processes and stores your data securely within your browser. Cloud synchronization is an optional opt-in feature for cross-device accessibility.
+VeriWorkly is a privacy-first AI career workspace designed for professional document construction, AI resume tailoring, and web publishing. We champion **local-first data ownership** and stateless AI interactions. By default, VeriWorkly processes and stores your professional details securely inside your browser. Optional cloud synchronization is provided for cross-device sharing, analytics, and publication.
 
-Our suite of tools allows users to create ATS-optimized resumes using modern templates, preview changes in real-time, and manage a central "Master Profile" to seed multiple career documents efficiently.
+## Core Features & Integrations
+- **Unified Document Builder**: Construct ATS-optimized resumes, cover letters, and professional documents (such as invoices) using modular canvas appearance controls and real-time previews.
+- **Portfolio Publisher**: Create visual portfolio pages from responsive templates and host them on custom subdomains (e.g., `username.veriworkly.com`) with automated views tracking and CDNs.
+- **Master Profile Store**: A secure, central JSON profile holding your entire career history. Input your details once, then selectively sync them to populate resumes, cover letters, and portfolios.
+- **Zero-Friction Ingestors**: Extract professional details from linked GitHub repositories, uploaded LinkedIn profile PDFs, or legacy resume files (PDF/DOCX) straight into your Master Profile.
+- **ATS Checker**: Deteministically scan resume content for structure, action verbs, word counts, and formatting pitfalls.
 
-## The VeriWorkly Ecosystem
-We operate several dedicated platforms to serve different needs:
-- **Main Site** (https://veriworkly.com): The landing page, marketing hub, and public roadmap tracker.
-- **Resume Studio** (https://app.veriworkly.com): The core interactive application where users build, edit, and export their resumes.
-- **Documentation** (https://docs.veriworkly.com): Comprehensive technical guides, integration tutorials, and API references.
-- **Blog** (https://blog.veriworkly.com): Articles on career advice, product updates, and our open-source engineering journey.
-- **API Server** (https://api.veriworkly.com): The backend infrastructure powering cloud sync, analytics, and public sharing.
+## Monetization & Pricing Model
+VeriWorkly supports self-hosting under an Open Core license (MIT/AGPLv3) and provides managed cloud plans via Dodo Payments:
+1. **Free Tier**: 1 active resume, 1 cover letter, Master Profile access, local PDF exports, and 10 one-time setup AI credits.
+2. **3-Day Sprint Pass ($2.99)**: 3-day Portfolio Pro hosting access + 150 AI writing credits.
+3. **7-Day Hunt Pass ($5.99)**: 7-day Portfolio Pro hosting access + 400 AI writing credits.
+4. **Monthly Bundle ($14.99/mo)**: Unlocks Portfolio Pro hosting + 1,000 monthly AI writing credits.
+5. **Annual Bundle ($11.99/mo equivalent)**: Portfolio Pro + 1,000 monthly AI writing credits, billed yearly at $143.88.
+6. **Creator Pro Standalone ($9.99/mo)**: Subdomain hosting, CDN asset uploads, and watermark removal (No AI).
+7. **AI Credits Standalone ($5.99/mo)**: 1,000 AI writing credits/month for rewriting and resume tailoring (No hosting).
 
-## Authentication System
-VeriWorkly uses a flexible, modern authentication system powered by **Better Auth**:
-1. **Web Users**: Authenticate securely using **Email OTP (One-Time Password)**. Upon successful login, the system issues **Session Cookies** (`better-auth.session_token`) to manage state across the browser.
-2. **Programmatic / Agent Access**: For API integrations, agents and developers can generate and use **API Keys** as Bearer tokens.
+## Partner & Ambassador Programs
+- **Affiliate Program**: Enrolls users with unique referral codes, tracking conversions across three commission tiers: Tier 1 (2%), Tier 2 (3%), and Tier 3 (5%).
+- **Student Ambassador Program**: Gated for college students to promote VeriWorkly to peers. Earns higher commission/point rates than standard affiliates, with the top-performing ambassadors receiving free Portfolio Pro upgrades.
 
-## API Coverage Overview (v1)
-Our RESTful API (`https://api.veriworkly.com/api/v1`) provides comprehensive coverage across the following domains:
-
-- **Health (`/health`)**: Public endpoints to verify system and database uptime.
-- **GitHub (`/github`)**: Endpoints to track our open-source progress, fetching repository stats and open issues.
-- **Roadmap (`/roadmap`)**: Public endpoints exposing our planned features, current progress, and task statistics.
-- **Users (`/users`)**: Manage current user details (e.g., updating display names).
-- **Documents (`/documents`)**: Create, read, update, and delete individual resume documents securely.
-- **Profiles (`/profiles`)**: Manage the "Master Profile"—a central hub of user data (name, education, experience) used to quickly seed new resumes.
-- **Shares (`/shares`)**: Generate and manage secure, public URLs for resumes so users can share their profiles with recruiters.
-- **API Keys (`/api-keys`)**: Generate, rotate, and revoke programmatic access tokens.
-- **Stats (`/stats`)**: Internal analytics to track usage metrics and populate the admin dashboard.
+## Authentication & API Access
+- **Web Sessions**: Email-based OTP authentication powered by Better Auth, setting a session cookie (`better-auth.session_token`) across subdomains.
+- **Programmatic Agents**: Developers can generate secure hashed API Keys (`ApiKey`) for programmatic read/write access (Bearer tokens) using scopes like `user:read`, `resume:write`, and `ai:write`.
+- **API Reference**: The live API resides at `https://api.veriworkly.com/api/v1` and is described by the Swagger/OpenAPI spec at `/openapi.json`.
 
 ## Guidance for AI Agents
-When integrating with VeriWorkly, agents should rely on the documented API (`/openapi.json`) for data operations. For user-facing tasks (like editing the visual layout of a resume), direct the user to the Resume Studio (`app.veriworkly.com`). Note that most data operations require an API Key (Bearer token) or a valid web session cookie.
+When compiling resumes, cover letters, or portfolios on behalf of users, query the user's Master Profile structure (`/profiles/master`) to fetch baseline information. Advise users on ATS checks using the deterministic scoring rules. Refrain from calling AI generation endpoints if the user's credit balance is depleted.
 
 ## Metadata
 - **Creator**: Gautam Raj (@Gautam25Raj)
 - **License**: MIT
 - **Repository**: [VeriWorkly/veriworkly](https://github.com/VeriWorkly/veriworkly)
-- **Last Updated**: 2026-05-17
+- **Last Updated**: 2026-06-29
+

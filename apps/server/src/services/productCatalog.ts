@@ -48,19 +48,19 @@ export const productCatalog: Record<
   ai_credits: {
     name: "AI Credits",
     entitlements: [ENTITLEMENT_KEYS.AI_CREDITS],
-    prices: { monthly: 499, annual: 4_990 },
+    prices: { monthly: 599, annual: 5_990 },
     creditAllowance: { monthly: 1_000, annual: 12_000 },
   },
   portfolio_pro: {
-    name: "Portfolio Pro",
+    name: "Creator Pro",
     entitlements: portfolioEntitlements,
-    prices: { seven_day: 399, monthly: 899, annual: 9_990 },
+    prices: { monthly: 999, annual: 9_588 },
   },
   bundle: {
-    name: "VeriWorkly Bundle",
+    name: "Job Hunter Bundle",
     entitlements: [ENTITLEMENT_KEYS.AI_CREDITS, ...portfolioEntitlements],
-    prices: { one_day: 69, seven_day: 399, monthly: 1_199, annual: 12_000 },
-    creditAllowance: { one_day: 25, seven_day: 220, monthly: 1_000, annual: 12_000 },
+    prices: { one_day: 299, seven_day: 599, monthly: 1_499, annual: 14_388 },
+    creditAllowance: { one_day: 150, seven_day: 400, monthly: 1_000, annual: 12_000 },
     recommended: true,
   },
 };

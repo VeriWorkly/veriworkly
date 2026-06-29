@@ -31,14 +31,15 @@ export function PublicPageShell({
   return (
     <main className="surface-grid min-h-screen pt-28 pb-20 lg:pt-36">
       <Container className="space-y-10 md:space-y-12">
-        <section className="border-border bg-card relative overflow-hidden rounded-4xl border px-6 py-10 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.45)] md:px-10 md:py-14">
+        <section className="border-border bg-card relative overflow-hidden rounded-4xl border px-6 py-10 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.15)] md:px-10 md:py-14">
+          <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(currentColor_0.7px,transparent_0.7px)] [background-size:16px_16px] opacity-[0.06] dark:opacity-[0.03]" />
           <div className="bg-accent/12 pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full blur-3xl" />
           <div className="bg-accent/10 pointer-events-none absolute -bottom-20 left-10 h-56 w-56 rounded-full blur-3xl" />
 
           <div className="relative space-y-6">
             <Link
               href="/"
-              className="text-muted hover:text-foreground text-xs font-semibold tracking-[0.28em] uppercase transition-colors"
+              className="text-muted hover:text-foreground text-xs font-bold tracking-[0.28em] uppercase transition-colors"
             >
               {siteConfig.shortName}
             </Link>
@@ -48,7 +49,7 @@ export function PublicPageShell({
                 {eyebrow}
               </p>
 
-              <h1 className="text-foreground max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
+              <h1 className="text-foreground text-wrap-balance max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
                 {title}
               </h1>
 

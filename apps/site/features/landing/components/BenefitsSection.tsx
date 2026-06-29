@@ -1,46 +1,70 @@
 import { Card } from "@veriworkly/ui";
-import { Zap, Shield, Smartphone, Paintbrush, Layers, RefreshCw } from "lucide-react";
+import {
+  Zap,
+  Shield,
+  Smartphone,
+  Paintbrush,
+  Layers,
+  RefreshCw,
+  Database,
+  Sparkles,
+} from "lucide-react";
 
 const BenefitsSection = () => {
   const benefits = [
     {
       icon: Zap,
       title: "Lightning Fast",
-      description: "Create professional resumes in seconds with a fast, modern builder.",
+      description: "Create professional resumes, cover letters, and web portfolios in seconds.",
     },
 
     {
       icon: Shield,
       title: "100% Private",
       description:
-        "Your resume data stays local-first by default. No mandatory account and no data selling.",
+        "Your career data stays local-first by default. No mandatory account and no data selling.",
     },
 
     {
       icon: Smartphone,
       title: "Works Everywhere",
       description:
-        "Desktop, tablet, or mobile - your resume editing experience is seamless across all devices.",
+        "Desktop, tablet, or mobile - your editing experience is seamless across all devices.",
     },
 
     {
       icon: Paintbrush,
       title: "Fully Customizable",
-      description: "Complete control over colors, fonts, spacing, and layout. Make it truly yours.",
+      description:
+        "Complete control over colors, fonts, spacing, and layouts. Make it truly yours.",
     },
 
     {
       icon: Layers,
-      title: "Multiple Sections",
+      title: "Multiple Formats",
       description:
-        "Add languages, interests, awards, certificates, publications, volunteer work, and more.",
+        "Add experience, projects, skills, certificates, custom domains, and portfolio sections.",
     },
 
     {
       icon: RefreshCw,
       title: "Smart Sync",
       description:
-        "Update your master profile once and sync across all your resumes automatically.",
+        "Update your Master Profile once and sync across all your documents and portfolios automatically.",
+    },
+
+    {
+      icon: Database,
+      title: "One-Click Ingestion",
+      description:
+        "Import history from GitHub contributions, LinkedIn profiles, or upload PDF resumes instantly.",
+    },
+
+    {
+      icon: Sparkles,
+      title: "AI & ATS Scanner",
+      description:
+        "Optimize points with AI writing credits and scan documents against ATS compliance rules.",
     },
   ];
 
@@ -52,15 +76,22 @@ const BenefitsSection = () => {
         </p>
 
         <h2 id="benefits-heading" className="text-foreground text-3xl font-semibold tracking-tight">
-          Everything you need to build a professional resume
+          Everything you need to build your professional presence
         </h2>
 
         <p className="text-muted -mt-1 text-base leading-7">
-          Powerful features designed to help you create the perfect resume.
+          Powerful features designed to help you create resumes, cover letters, and web portfolios.
+        </p>
+
+        <p className="sr-only">
+          Features of VeriWorkly: Fast creation editor, offline local data privacy, mobile-first
+          responsive editing interface, custom color palette customizer, master profile sync
+          channel, automatic LinkedIn import, GitHub repository synchronization, and AI ATS checker
+          scoring.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {benefits.map((benefit) => {
           const Icon = benefit.icon;
 

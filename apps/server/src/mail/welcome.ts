@@ -1,4 +1,4 @@
-import { getBaseLayout, escapeHtml } from "./layout";
+import { getBaseLayout, escapeHtml } from "./layout.js";
 
 export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
   const sanitizedName = escapeHtml(name || "there");
@@ -14,7 +14,6 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
       We're thrilled to have you. VeriWorkly is designed to help you construct pristine, ATS-optimized resumes and publish premium developer portfolios.
     </p>
 
-    <!-- Visual Interactive Resume Grid Mockup (Unique, modern out-of-the-box element) -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px 0;background-color:#faf9f5;border:1px solid rgba(23, 23, 23, 0.06);border-radius:16px;padding:24px;box-shadow:inset 0 1px 2px rgba(0,0,0,0.01);">
       <tr>
         <td>
@@ -44,7 +43,6 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
       </tr>
     </table>
     
-    <!-- Feature Checklist (Centered container block, left-aligned bullet items) -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px auto;max-width:440px;">
       <tr>
         <td style="padding-bottom:16px;">
@@ -87,7 +85,6 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
       </tr>
     </table>
     
-    <!-- CTA Button -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:36px 0;text-align:center;">
       <tr>
         <td align="center">

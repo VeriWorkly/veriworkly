@@ -15,23 +15,23 @@ const CTASection = () => {
         id="cta-heading"
         className="text-foreground mt-3 text-3xl font-semibold tracking-tight md:text-4xl"
       >
-        Start building your resume now — no login required.
+        Start building your career identity now — no login required.
       </h2>
 
       <p className="text-muted mx-auto mt-3 max-w-2xl text-sm leading-6 md:text-base">
-        No sign-up. No lock-in. Just open the editor and create a professional resume that feels
-        like yours.
+        No sign-up. No lock-in. Just open the editor and create professional resumes, cover letters,
+        and web portfolios.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <Button asChild size="lg" variant="primary">
-          <Link href={siteConfig.links.app} aria-label="Start building resume">
+          <Link href={siteConfig.links.app} aria-label="Start building documents and portfolios">
             Start Building Now
           </Link>
         </Button>
 
         <Button asChild size="lg" variant="secondary">
-          <Link href="/templates" aria-label="Browse resume templates">
+          <Link href="/templates" aria-label="Browse templates">
             Explore Templates
           </Link>
         </Button>

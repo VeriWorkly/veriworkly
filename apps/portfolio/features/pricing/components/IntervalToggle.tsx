@@ -36,7 +36,7 @@ export function IntervalToggle({ value, onChange, featured }: IntervalToggleProp
               : "text-ink/65 hover:text-accent font-bold"
         }`}
       >
-        Yearly (Save 15%)
+        Yearly (Save 20%)
       </button>
 
       <button

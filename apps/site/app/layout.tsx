@@ -6,12 +6,11 @@ import { siteConfig } from "@/config/site";
 import { globalFontVariables } from "@veriworkly/ui";
 
 import { ThemeProvider } from "@/providers/theme-provider";
-import { MainLayout } from "@/components/layout/MainLayout";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
 
-  title: "VeriWorkly Resume Builder",
+  title: "VeriWorkly | Privacy-First AI Resume Builder & Portfolio Platform",
   description: siteConfig.description,
 
   keywords: [...siteConfig.keywords],
@@ -25,24 +24,25 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: siteConfig.url,
-    title: "Free Resume Builder with No Login | VeriWorkly",
+    title: "Free AI Resumes, Cover Letters & Web Portfolios | VeriWorkly",
     description:
-      "Create professional resumes instantly with VeriWorkly. No login required. 100% free, open-source, and privacy-first — your data stays on your device.",
+      "Build and tailor professional resumes, cover letters, and web portfolios instantly using privacy-first AI tools (Claude & GPT-4o). Free, open-core, and no signup required.",
     siteName: "VeriWorkly",
     images: [
       {
         url: "/og/landing-page-og.png",
         width: 1200,
         height: 630,
-        alt: "VeriWorkly Resume Builder Preview",
+        alt: "VeriWorkly Platform Preview",
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "Free Resume Builder (No Login) | VeriWorkly",
-    description: "Build resumes instantly with no login. Free, open-source, and privacy-first.",
+    title: "Free AI Resumes, Cover Letters & Web Portfolios | VeriWorkly",
+    description:
+      "Build career documents and portfolios instantly with private AI assistance. Free, open-core, and privacy-first.",
     images: ["/og/landing-page-og.png"],
     creator: "@noober_boy",
   },
@@ -88,10 +88,10 @@ const RootLayout = ({
     "@context": "https://schema.org",
     "@type": ["WebApplication", "SoftwareApplication"],
 
-    name: "VeriWorkly Resume Builder",
+    name: "VeriWorkly",
     url: "https://veriworkly.com",
     description:
-      "Free resume builder with no login. Create professional ATS-friendly resumes instantly with full privacy.",
+      "Free privacy-first career workspace with AI resume builder, cover letter writer, and portfolio builder. No signup required. Create, tailor, and export professional resumes, cover letters, and web portfolios privately.",
 
     applicationCategory: "BusinessApplication",
     operatingSystem: "All",
@@ -114,11 +114,13 @@ const RootLayout = ({
     },
 
     featureList: [
-      "No login required",
-      "Privacy-first",
-      "ATS-friendly templates",
-      "Real-time preview",
-      "Open-source",
+      "No login required & local-first",
+      "Privacy-first AI resume builder & tailoring",
+      "AI cover letter generator",
+      "AI portfolio publishing with subdomain hosting",
+      "GitHub & LinkedIn profile imports",
+      "Master Profile dynamic data sync",
+      "ATS-friendly visual customizers",
     ],
   };
 
@@ -156,7 +158,7 @@ const RootLayout = ({
           disableTransitionOnChange
           storageKey="veriworkly-theme"
         >
-          <MainLayout>{children}</MainLayout>
+          {children}
         </ThemeProvider>
       </body>
     </html>

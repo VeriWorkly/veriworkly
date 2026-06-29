@@ -1,3 +1,5 @@
+"use client";
+
 import { siteConfig } from "@/config/site";
 
 import { GithubIcon, LinkedInIcon, MarketingFooter, TwitterXIcon } from "@veriworkly/ui";
@@ -23,6 +25,9 @@ const Footer = () => {
           title: "Platform",
           links: [
             { name: "Resume Builder", href: siteConfig.links.app, external: true },
+            { name: "Portfolio Builder", href: siteConfig.links.portfolio, external: true },
+            { name: "Core Features", href: "/features" },
+            { name: "How It Works", href: "/how-it-works" },
             { name: "Template Gallery", href: "/templates" },
             { name: "Pricing", href: "/pricing" },
             { name: "Product Roadmap", href: "/roadmap" },
@@ -38,6 +43,8 @@ const Footer = () => {
             { name: "System Security", href: "/security" },
             { name: "Design System", href: "/style-guide" },
             { name: "FAQ & Help", href: "/faq" },
+            { name: "Affiliate Program", href: "/affiliate" },
+            { name: "Student Ambassador", href: "/ambassador" },
           ],
         },
         {

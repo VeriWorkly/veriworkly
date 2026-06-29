@@ -52,14 +52,14 @@ export const documentTypeSummaries: DocumentTypeSummary[] = [
     label: "Resume",
     pluralLabel: "Resume Templates",
     description:
-      "ATS-safe resume systems with real PDF exports, recruiter-friendly hierarchy, and strong first-page scanning.",
+      "ATS-safe AI resume systems with real PDF exports, recruiter-friendly hierarchy, and built-in AI resume tailoring.",
     href: "/templates/resume",
     status: "available",
     cta: "Explore Resume Templates",
-    seoTitle: "Free Resume Templates | ATS-Friendly Resume Designs",
+    seoTitle: "Free AI Resume Templates | ATS-Friendly Resume Designs",
     seoDescription:
-      "Browse free, ATS-friendly resume templates for modern job applications. Compare structure, typography, layout, and target use cases.",
-    highlights: ["ATS-aware layouts", "PDF-ready previews", "Recruiter scan paths"],
+      "Browse free, ATS-friendly AI resume templates. Compare structures, and use our built-in privacy-first AI to tailor your resume for any job description.",
+    highlights: ["ATS-aware layouts", "Privacy-first AI tailoring", "PDF-ready previews"],
   },
 
   {
@@ -67,14 +67,14 @@ export const documentTypeSummaries: DocumentTypeSummary[] = [
     label: "Cover Letter",
     pluralLabel: "Cover Letter Templates",
     description:
-      "Cover letter formats built for polished applications, clear intent, and consistent branding beside your resume.",
+      "Cover letter formats built for polished applications, customized instantly with our privacy-first AI cover letter generator.",
     href: "/templates/cover-letter",
     status: "available",
     cta: "Explore Cover Letters",
-    seoTitle: "Free Cover Letter Templates | Professional Letter Designs",
+    seoTitle: "Free AI Cover Letter Templates | Professional AI Writer",
     seoDescription:
-      "Browse free cover letter templates with professional structure, letterhead treatments, and editor-ready layouts.",
-    highlights: ["Letterhead systems", "Formal spacing", "Resume pairing"],
+      "Browse free cover letter templates and generate personalized cover letters with our built-in AI writing assistant.",
+    highlights: ["AI cover letter generator", "Formal spacing", "Resume pairing"],
   },
 
   {
@@ -110,14 +110,14 @@ export const documentTypeSummaries: DocumentTypeSummary[] = [
     label: "Portfolio Website",
     pluralLabel: "Portfolio Website Templates",
     description:
-      "Live website templates for personal portfolios. Fill information once, switch designs, publish on a subdomain, and share the finished site.",
+      "Live website templates for personal portfolios. Generate portfolio copy with AI, customize design layouts, and publish on a subdomain.",
     href: "/templates/portfolio-website",
     status: "available",
     cta: "Explore Portfolio Templates",
-    seoTitle: "Portfolio Website Templates | VeriWorkly",
+    seoTitle: "AI Portfolio Website Templates | VeriWorkly",
     seoDescription:
-      "Browse VeriWorkly portfolio website templates with live previews, hosted subdomain publishing, and reusable profile content.",
-    highlights: ["Hosted subdomain", "Project sections", "Live website previews"],
+      "Browse VeriWorkly portfolio website templates with built-in AI copywriting support, hosted subdomain publishing, and live previews.",
+    highlights: ["AI portfolio copywriter", "Hosted subdomain", "Live website previews"],
   },
 ];
 
@@ -173,9 +173,9 @@ export const templateSummaries: TemplateSummary[] = [
       "Live preview available through the portfolio app template route.",
     ],
     seo: {
-      title: "Signal Portfolio Template | VeriWorkly Portfolio Website",
+      title: "Signal AI Portfolio Template | VeriWorkly Personal Website",
       description:
-        "Use the Signal portfolio website template to publish a proof-first personal portfolio on a VeriWorkly subdomain.",
+        "Use the Signal template and privacy-first AI copywriter to publish a proof-first professional portfolio on a VeriWorkly subdomain.",
     },
   },
 
@@ -230,9 +230,9 @@ export const templateSummaries: TemplateSummary[] = [
       "Pairs with the same portfolio editor data used by Signal.",
     ],
     seo: {
-      title: "Atelier Portfolio Template | VeriWorkly Portfolio Website",
+      title: "Atelier AI Portfolio Template | VeriWorkly Editorial Website",
       description:
-        "Use the Atelier portfolio website template for an editorial personal portfolio with reusable content and hosted publishing.",
+        "Use the Atelier template and built-in AI copywriting tools to create an editorial personal portfolio with hosted publishing.",
     },
   },
 
@@ -298,9 +298,9 @@ export const templateSummaries: TemplateSummary[] = [
       "Pairs well with the Professional cover letter template for conservative applications.",
     ],
     seo: {
-      title: "Executive Clarity Resume Template | ATS-Friendly Senior Resume",
+      title: "Executive Clarity AI Resume Template | ATS-Friendly Senior Resume",
       description:
-        "Use the Executive Clarity resume template for senior, management, consulting, and professional resumes that need a polished ATS-safe layout.",
+        "Use the Executive Clarity resume template and AI tailoring tools for senior, management, and consulting resumes that need a polished ATS-safe layout.",
     },
   },
 
@@ -361,9 +361,9 @@ export const templateSummaries: TemplateSummary[] = [
       "Strong fit for technical resumes with many tools, projects, and measurable results.",
     ],
     seo: {
-      title: "Precision ATS Resume Template | Compact ATS Resume Format",
+      title: "Precision ATS AI Resume Template | Compact ATS Resume Format",
       description:
-        "Use the Precision ATS resume template for compact, keyword-friendly resumes that prioritize clean parsing and recruiter readability.",
+        "Use the Precision ATS resume template with AI keyword optimization to create a compact, parser-safe resume that targets specific jobs.",
     },
   },
 
@@ -423,9 +423,9 @@ export const templateSummaries: TemplateSummary[] = [
       "Pairs well with Precision ATS for a clean, conservative application set.",
     ],
     seo: {
-      title: "Professional Cover Letter Template | Formal Letterhead Design",
+      title: "Professional AI Cover Letter Template | Formal Letterhead Design",
       description:
-        "Use the Professional cover letter template for formal applications with a clean letterhead, readable body structure, and PDF-ready layout.",
+        "Use the Professional cover letter template and AI writer to generate polished formal job applications with a matching letterhead.",
     },
   },
 
@@ -487,9 +487,9 @@ export const templateSummaries: TemplateSummary[] = [
       "Pairs well with Executive Clarity for a polished modern application set.",
     ],
     seo: {
-      title: "VeriWorkly Special Cover Letter Template | Branded Application Letter",
+      title: "VeriWorkly Special AI Cover Letter Template | Branded Application",
       description:
-        "Use the VeriWorkly Special cover letter template for a branded two-column application letter with identity rail and structured proof points.",
+        "Use the VeriWorkly Special cover letter template and AI generation tools for a distinctive, two-column job application letter.",
     },
   },
 ];

@@ -38,68 +38,73 @@ export function PriceCard({
           : "border-line bg-panel z-0 shadow-[8px_10px_0_rgba(17,17,15,0.12)] hover:shadow-[10px_12px_0_rgba(17,17,15,0.15)] dark:shadow-[8px_10px_0_rgba(255,255,255,0.05)] hover:dark:shadow-[10px_12px_0_rgba(255,255,255,0.07)]"
       }`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <span
-          className={`font-mono text-xs font-bold ${featured ? "text-white/60" : "text-muted/60"}`}
-        >
-          {marker}
-        </span>
-
-        {badge ? (
+      {featured && (
+        <div className="pointer-events-none absolute inset-0 z-0 rounded-[2rem] bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_55%)]" />
+      )}
+      <div className="relative z-10 flex flex-1 flex-col">
+        <div className="flex items-center justify-between gap-3">
           <span
-            className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wider uppercase ${
-              featured
-                ? "text-accent animate-pulse bg-white"
-                : "bg-accent/10 text-accent border-accent/20 border"
-            }`}
+            className={`font-mono text-xs font-bold ${featured ? "text-white/60" : "text-muted/60"}`}
           >
-            {badge}
+            {marker}
           </span>
-        ) : (
-          <Clock3 className={`size-4 ${featured ? "text-white/60" : "text-muted/40"}`} />
-        )}
-      </div>
 
-      <h2 className="mt-8 text-2xl font-bold tracking-[-0.04em] sm:text-3xl">{title}</h2>
+          {badge ? (
+            <span
+              className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wider uppercase ${
+                featured
+                  ? "text-accent animate-pulse bg-white"
+                  : "bg-accent/10 text-accent border-accent/20 border"
+              }`}
+            >
+              {badge}
+            </span>
+          ) : (
+            <Clock3 className={`size-4 ${featured ? "text-white/60" : "text-muted/40"}`} />
+          )}
+        </div>
 
-      <div className="mt-5">
-        <p
-          className={`${
-            featured ? "text-[clamp(3.4rem,6.5vw,4.8rem)]" : "text-[clamp(2.6rem,5.5vw,3.6rem)]"
-          } leading-none font-bold tracking-[-0.07em]`}
-        >
-          {price}
+        <h2 className="mt-8 text-2xl font-bold tracking-[-0.04em] sm:text-3xl">{title}</h2>
+
+        <div className="mt-5">
+          <p
+            className={`${
+              featured ? "text-[clamp(3.4rem,6.5vw,4.8rem)]" : "text-[clamp(2.6rem,5.5vw,3.6rem)]"
+            } leading-none font-bold tracking-[-0.07em]`}
+          >
+            {price}
+          </p>
+
+          <p className="mt-2 text-xs font-bold opacity-70">{cadence}</p>
+
+          {note ? <p className="mt-1 text-xs font-bold opacity-80">{note}</p> : null}
+        </div>
+
+        {toggle ? <div className="mt-5">{toggle}</div> : null}
+
+        <p className={`mt-6 text-base leading-7 ${featured ? "text-white/90" : "text-muted"}`}>
+          {description}
         </p>
 
-        <p className="mt-2 text-xs font-bold opacity-70">{cadence}</p>
+        <ul className="mt-7 mb-8 space-y-3.5 text-xs font-bold">
+          {features.map((feature) => (
+            <li className="flex items-center gap-2" key={feature}>
+              <Check className="size-3.5" /> {feature}
+            </li>
+          ))}
+        </ul>
 
-        {note ? <p className="mt-1 text-xs font-bold opacity-80">{note}</p> : null}
+        <CheckoutButton
+          href={href}
+          className={`mt-auto w-full transition-all duration-200 active:scale-[0.97] ${
+            featured
+              ? "text-accent hover:bg-paper-2 bg-white shadow-[0_8px_20px_rgba(255,255,255,0.1)]"
+              : "bg-accent hover:bg-accent-strong text-white shadow-[0_8px_20px_rgba(37,99,235,0.15)]"
+          }`}
+        >
+          Choose {title}
+        </CheckoutButton>
       </div>
-
-      {toggle ? <div className="mt-5">{toggle}</div> : null}
-
-      <p className={`mt-6 text-base leading-7 ${featured ? "text-white/90" : "text-muted"}`}>
-        {description}
-      </p>
-
-      <ul className="mt-7 mb-8 space-y-3.5 text-xs font-bold">
-        {features.map((feature) => (
-          <li className="flex items-center gap-2" key={feature}>
-            <Check className="size-3.5" /> {feature}
-          </li>
-        ))}
-      </ul>
-
-      <CheckoutButton
-        href={href}
-        className={`mt-auto w-full transition-all duration-200 active:scale-[0.97] ${
-          featured
-            ? "text-accent hover:bg-paper-2 bg-white shadow-[0_8px_20px_rgba(255,255,255,0.1)]"
-            : "bg-accent hover:bg-accent-strong text-white shadow-[0_8px_20px_rgba(37,99,235,0.15)]"
-        }`}
-      >
-        Choose {title}
-      </CheckoutButton>
     </article>
   );
 }

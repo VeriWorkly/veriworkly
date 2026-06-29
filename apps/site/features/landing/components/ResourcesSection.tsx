@@ -1,13 +1,21 @@
 import Link from "next/link";
 
 import { Card } from "@veriworkly/ui";
+import { siteConfig } from "@/config/site";
 
 const resources = [
+  {
+    title: "Portfolio",
+    href: siteConfig.links.portfolio,
+    description:
+      "Create your personal showcase website from a template and publish it instantly on our subdomain.",
+  },
+
   {
     title: "About",
     href: "/about",
     description:
-      "Learn why VeriWorkly exists and how this resume builder is designed around privacy and control.",
+      "Learn why VeriWorkly exists and how this career documents and portfolio publisher is designed around privacy and control.",
   },
 
   {
@@ -21,7 +29,7 @@ const resources = [
     title: "Privacy",
     href: "/privacy",
     description:
-      "See how your resume data, sharing, and optional sync features are handled securely.",
+      "See how your career documents data, sharing, and optional sync features are handled securely.",
   },
 
   {
@@ -34,7 +42,7 @@ const resources = [
     title: "Blog",
     href: "https://blog.veriworkly.com",
     description:
-      "Expert resume tips, ATS strategies, and career insights to help you land your next job.",
+      "Expert career tips, ATS tailoring strategies, and portfolio advice to help you land your next job.",
   },
 
   {
@@ -61,7 +69,7 @@ const resources = [
     title: "FAQ",
     href: "/faq",
     description:
-      "Get answers about using the resume builder, templates, exports, and account-free usage.",
+      "Get answers about using the document builder, templates, exports, portfolio subdomains, and account-free usage.",
   },
 ];
 
@@ -75,7 +83,7 @@ const ResourcesSection = () => {
           id="resources-heading"
           className="text-foreground text-3xl font-semibold tracking-tight"
         >
-          Learn more about the resume builder before you trust it
+          Learn more about the platform before you trust it
         </h2>
 
         <p className="text-muted -mt-1 text-base leading-7">
@@ -100,8 +108,8 @@ const ResourcesSection = () => {
       </div>
 
       <p className="sr-only">
-        Learn about the resume builder, privacy policy, security, templates, and how to create
-        resumes online.
+        Learn about the document builder, portfolio publisher, privacy policy, security, templates,
+        and how to create resumes online.
       </p>
     </section>
   );

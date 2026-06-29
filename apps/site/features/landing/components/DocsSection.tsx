@@ -6,7 +6,8 @@ import { Card } from "@veriworkly/ui";
 const featuredDocs = [
   {
     title: "Getting Started",
-    description: "Learn how to build your first resume in minutes with our step-by-step guide.",
+    description:
+      "Learn how to build your first career document or web portfolio in minutes with our step-by-step guide.",
     href: "https://docs.veriworkly.com/docs/getting-started",
     icon: Zap,
     color: "text-amber-500",
@@ -24,7 +25,7 @@ const featuredDocs = [
 
   {
     title: "API Reference",
-    description: "Explore our developer-first API to automate your resume workflows.",
+    description: "Explore our developer-first API to automate your career document workflows.",
     href: "https://docs.veriworkly.com/api-reference",
     icon: Code,
     color: "text-blue-500",

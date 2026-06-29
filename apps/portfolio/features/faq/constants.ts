@@ -36,9 +36,9 @@ export const faqs = [
   {
     id: "pro-for",
     category: "general",
-    question: "Who is Portfolio Pro meant for?",
+    question: "Who is Creator Pro meant for?",
     answer:
-      "Portfolio Pro is for builders, developers, designers, and founders who want a public VeriWorkly subdomain, better sharing controls, analytics, hosted media, and no watermark.",
+      "Creator Pro is for builders, developers, designers, and founders who want a public VeriWorkly subdomain, better sharing controls, CDN media hosting, watermark removal, and low checkout fees.",
   },
 
   {
@@ -70,7 +70,7 @@ export const faqs = [
     category: "domains",
     question: "How do custom subdomains work?",
     answer:
-      "With Portfolio Pro, you can choose a unique VeriWorkly subdomain (like yourname.veriworkly.com) to share your site with the world. All subdomains include automatic, secure SSL certificates.",
+      "With Creator Pro, you can choose a unique VeriWorkly subdomain (like yourname.veriworkly.com) to share your site with the world. All subdomains include automatic, secure SSL certificates.",
   },
 
   {
@@ -86,7 +86,7 @@ export const faqs = [
     category: "billing",
     question: "What plans are available and how do AI writing credits work?",
     answer:
-      "We offer flexible options: 1-Day Pass ($0.69, 25 AI credits) and 7-Day Sprint ($3.99, 220 AI credits) where credits expire when the pass ends. For long-term use, the Full Bundle subscription is $11.99/mo (or $9.99/mo annual) with 1,000 monthly AI credits that reset each billing cycle. You can also purchase Portfolio Pro only ($8.99/mo) or AI Credits only ($4.99/mo) if you prefer a single service. Unused credits do not roll over.",
+      "We offer flexible options: 3-Day Sprint ($2.99, 150 AI credits) and 7-Day Hunt ($5.99, 400 AI credits) where credits expire when the pass ends. For long-term use, the Job Hunter Bundle subscription is $14.99/mo (or $11.99/mo annual) with 1,000 monthly AI credits that reset each billing cycle. You can also purchase Creator Pro only ($9.99/mo or $7.99/mo annual) for subdomain hosting, or AI Credits Standalone only ($5.99/mo) if you prefer a single service. Unused subscription credits do not roll over.",
   },
 
   {
@@ -94,7 +94,7 @@ export const faqs = [
     category: "billing",
     question: "How do AI writing credits work and when do they reset?",
     answer:
-      "AI credits are consumed when generating or tailoring resumes, cover letters, and portfolio bios. If you choose the Full Bundle (either $11.99/mo monthly or $9.99/mo annual) or the standalone AI Credits plan ($4.99/mo), your allowance of 1,000 credits resets at the start of each billing cycle. Unused credits do not roll over. Single-purchase 1-Day ($0.69) and 7-Day ($3.99) passes provide fixed credit amounts (25 and 220 credits) that expire when the plan term ends.",
+      "AI credits are consumed when generating or tailoring resumes, cover letters, and portfolio bios. If you choose the Job Hunter Bundle (either $14.99/mo monthly or $11.99/mo annual) or the standalone AI Credits plan ($5.99/mo), your allowance of 1,000 credits resets at the start of each billing cycle. Unused subscription credits do not roll over. Single-purchase 3-Day Sprint ($2.99) and 7-Day Hunt ($5.99) passes provide fixed credit amounts (150 and 400 credits) that expire when the plan term ends.",
   },
 
   {
@@ -102,15 +102,15 @@ export const faqs = [
     category: "billing",
     question: "Do unused AI credits roll over to the next month?",
     answer:
-      "No, unused credits do not roll over. For monthly subscriptions (like the Full Bundle or standalone AI Credits), credits reset at the start of each billing cycle and any remaining credits from the previous month are cleared. For 1-day and 7-day passes, all credits expire and are gone as soon as the pass duration expires.",
+      "No, unused subscription credits do not roll over; they reset at the start of each billing cycle. However, one-time add-on credit packs (250 credits for $2.99, 500 credits for $4.99) expire exactly 90 days from purchase, or immediately if you cancel your active paid subscription. For 3-day and 7-day passes, all credits expire when the pass duration ends.",
   },
 
   {
     id: "standalone",
     category: "billing",
-    question: "Can I buy Portfolio Pro or AI Credits separately?",
+    question: "Can I buy Creator Pro or AI Credits separately?",
     answer:
-      "Yes, if you do not need the full bundle, you can buy single add-on plans. Portfolio Pro is available standalone for $8.99/month, which gives you full publishing on your own custom subdomain, visitor analytics, and no watermark. Standalone AI Credits are available for $4.99/month, providing 1,000 monthly credits for resume and writing tools without website hosting.",
+      "Yes, if you do not need the full bundle, you can buy single add-on plans. Creator Pro is available standalone for $9.99/month (or $7.99/month annual), which gives you full publishing on your own custom subdomain, visitor analytics, and no watermark. Standalone AI Credits are available for $5.99/month, providing 1,000 monthly credits for resume and writing tools without website hosting.",
   },
 
   {
@@ -118,7 +118,7 @@ export const faqs = [
     category: "billing",
     question: "Do I have to pay extra for a custom subdomain?",
     answer:
-      "No. Choosing a custom VeriWorkly subdomain (e.g., yourname.veriworkly.com) with automatic SSL certificates is fully included in the Portfolio Pro standalone plan ($8.99/mo) and the Full Bundle ($11.99/mo monthly, $9.99/mo annual) at no extra cost.",
+      "No. Choosing a custom VeriWorkly subdomain (e.g., yourname.veriworkly.com) with automatic SSL certificates is fully included in the Creator Pro plan ($9.99/mo or $7.99/mo annual) and the Job Hunter Bundle ($14.99/mo or $11.99/mo annual) at no extra cost.",
   },
 
   {
@@ -134,7 +134,7 @@ export const faqs = [
     category: "billing",
     question: "What happens if I decide to cancel my subscription?",
     answer:
-      "If you cancel your active Portfolio Pro or Full Bundle subscription, your custom subdomain mapping and public publishing will be paused at the end of your billing cycle. However, all of your saved resume documents, cover letters, and portfolio drafts remain securely stored in your account so you can reactivate them whenever you're ready.",
+      "If you cancel your active Creator Pro or Job Hunter Bundle subscription, your custom subdomain mapping and public publishing will be paused at the end of your billing cycle. However, all of your saved resume documents, cover letters, and portfolio drafts remain securely stored in your account so you can reactivate them whenever you're ready.",
   },
 
   {

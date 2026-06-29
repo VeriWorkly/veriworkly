@@ -1,4 +1,4 @@
-import { getBaseLayout, escapeHtml } from "./layout";
+import { getBaseLayout, escapeHtml } from "./layout.js";
 
 export function renderOtpEmail(
   otp: string,
@@ -25,7 +25,6 @@ export function renderOtpEmail(
       ${desc}
     </p>
     
-    <!-- Code Box Container (Editorial tech card with soft lighting) -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:36px 0;text-align:center;">
       <tr>
         <td align="center">

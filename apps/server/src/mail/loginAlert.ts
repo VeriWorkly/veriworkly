@@ -1,4 +1,4 @@
-import { getBaseLayout, escapeHtml } from "./layout";
+import { getBaseLayout, escapeHtml } from "./layout.js";
 
 export interface LoginAlertMeta {
   ip: string;
@@ -20,7 +20,6 @@ export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): stri
       We detected a new sign-in to your VeriWorkly account (<strong>${sanitizedEmail}</strong>). Please review the session details below.
     </p>
     
-    <!-- Session Details Table Card -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px auto;max-width:440px;background-color:#faf9f5;border:1px solid rgba(23, 23, 23, 0.06);border-radius:12px;padding:24px;box-shadow:inset 0 1px 2px rgba(0,0,0,0.01);">
       <tr>
         <td style="padding-bottom:12px;font-size:13px;color:#8f8c85;">Device / Browser:</td>
@@ -46,7 +45,6 @@ export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): stri
       </tr>
     </table>
     
-    <!-- Warning Alert Box -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px auto;max-width:440px;background-color:#fff5f5;border:1px solid rgba(220, 38, 38, 0.15);border-radius:10px;padding:20px;text-align:left;">
       <tr>
         <td valign="top" style="font-size:14px;line-height:1.5;color:#b91c1c;">

@@ -47,6 +47,26 @@ const publicRoutes = [
     priority: 0.7,
   },
   {
+    url: `${siteConfig.url}/features`,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  },
+  {
+    url: `${siteConfig.url}/how-it-works`,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  },
+  {
+    url: `${siteConfig.url}/affiliate`,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  },
+  {
+    url: `${siteConfig.url}/ambassador`,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  },
+  {
     url: `${siteConfig.url}/contact`,
     changeFrequency: "monthly" as const,
     priority: 0.65,

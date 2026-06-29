@@ -21,14 +21,15 @@ const TemplatesPreview = () => {
           </h2>
 
           <p className="sr-only">
-            Free resume templates for creating professional and ATS-friendly resumes online.
+            Free document and portfolio templates for creating professional and ATS-friendly
+            formats.
           </p>
         </div>
 
         <Link
           className="text-accent text-sm font-medium"
           href="/templates"
-          aria-label="View all resume templates"
+          aria-label="View all templates"
         >
           View all templates
         </Link>
@@ -42,9 +43,9 @@ const TemplatesPreview = () => {
             role="listitem"
           >
             <div className="flex items-center justify-between gap-3">
-              <Tooltip content={`${template.name} Resume Template`} onlyShowIfTruncated>
+              <Tooltip content={`${template.name} Template`} onlyShowIfTruncated>
                 <h3 className="text-foreground line-clamp-1 cursor-help text-lg font-semibold">
-                  {template.name} Resume Template
+                  {template.name} Template
                 </h3>
               </Tooltip>
 
@@ -70,7 +71,7 @@ const TemplatesPreview = () => {
             <Link
               href={`/templates/${template.documentType}/${template.id}`}
               className="text-accent text-sm font-medium"
-              aria-label={`Preview ${template.name} resume template`}
+              aria-label={`Preview ${template.name} template`}
             >
               Preview
             </Link>
@@ -79,7 +80,7 @@ const TemplatesPreview = () => {
       </div>
 
       <p className="sr-only">
-        Browse free resume templates including Executive Clarity and Precision ATS layouts.
+        Browse free templates including Executive Clarity, Precision ATS, and portfolio layouts.
       </p>
     </section>
   );

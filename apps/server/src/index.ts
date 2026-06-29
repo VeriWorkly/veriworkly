@@ -29,6 +29,7 @@ import affiliateRoutes from "#routes/affiliates";
 import adminMonetizationRoutes from "#routes/adminMonetization";
 import aiRoutes from "#routes/ai";
 import atsRoutes from "#routes/ats";
+import contactRoutes from "#routes/contact";
 
 import { authNodeHandler } from "#auth/index";
 import { BillingController } from "#controllers/billingController";
@@ -85,6 +86,7 @@ app.use("/api/v1/affiliates", affiliateRoutes);
 app.use("/api/v1/admin/monetization", adminMonetizationRoutes);
 app.use("/api/v1/ai", aiRoutes);
 app.use("/api/v1/ats", atsRoutes);
+app.use("/api/v1/contact", contactRoutes);
 
 app.all("/api/v1/auth", authRequestDiagnosticsMiddleware, authNodeHandler);
 app.all("/api/v1/auth/*", authRequestDiagnosticsMiddleware, authNodeHandler);
