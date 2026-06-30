@@ -89,6 +89,25 @@ const PortfolioTemplateDetailPage = async ({ params }: PageProps) => {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(templateSchema) }}
       />
+      {details.faqs && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: details.faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.question,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: faq.answer,
+                },
+              })),
+            }),
+          }}
+        />
+      )}
 
       <div className="text-ink-2 bg-paper min-h-dvh overflow-x-clip pt-28 font-['Outfit','Avenir_Next','Trebuchet_MS',sans-serif]">
         <TemplatesNavigation showPricing={true} backHref="/templates" backLabel="All templates" />

@@ -1,6 +1,8 @@
-export const templateIds = ["signal", "atelier"] as const;
+import { type PrivateTemplateId, templatesRegistry } from "@/template-library/registry";
 
-export type TemplateId = (typeof templateIds)[number];
+export type TemplateId = PrivateTemplateId;
+
+export const templateIds = Object.keys(templatesRegistry) as unknown as readonly TemplateId[];
 
 export interface TemplateSummary {
   id: TemplateId;
@@ -12,28 +14,18 @@ export interface TemplateSummary {
   strengths: string[];
 }
 
-export const templates: TemplateSummary[] = [
-  {
-    id: "signal",
-    name: "Signal",
-    note: "A precise, proof-first profile for product engineers.",
-    mood: "Structured / technical",
-    audience: "Engineers and product leaders",
-    strengths: ["Project proof", "Clear timelines", "Technical credibility"],
-    image: "/templates/signal-template-preview.png",
-  },
-
-  {
-    id: "atelier",
-    name: "Atelier",
-    note: "An editorial canvas for designers and independent builders.",
-    mood: "Expressive / editorial",
-    audience: "Designers and creative builders",
-    strengths: ["Visual storytelling", "Editorial rhythm", "Distinctive voice"],
-    image: "/templates/atelier-template-preview.png",
-  },
-];
+export const templates: TemplateSummary[] = Object.entries(templatesRegistry).map(
+  ([id, entry]) => ({
+    id: id as TemplateId,
+    name: entry.name,
+    note: entry.note,
+    mood: entry.mood,
+    audience: entry.audience,
+    strengths: entry.strengths,
+    image: entry.image,
+  }),
+);
 
 export function isTemplateId(value: string): value is TemplateId {
-  return templateIds.includes(value as TemplateId);
+  return value in templatesRegistry;
 }

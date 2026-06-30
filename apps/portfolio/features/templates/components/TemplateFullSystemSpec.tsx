@@ -3,24 +3,46 @@
 import { useState } from "react";
 
 import type { TemplateDetails } from "../data/template-details";
+import TemplateGuidelines from "./TemplateGuidelines";
 
 type SystemSpecProps = {
   details: TemplateDetails;
+  templateId: string;
 };
 
-const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
+const TemplateFullSystemSpec = ({ details, templateId }: SystemSpecProps) => {
   const { system } = details;
 
-  const [activeTab, setActiveTab] = useState<"blueprint" | "layout" | "components" | "json">(
-    "blueprint",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "blueprint" | "layout" | "components" | "json" | "guidelines"
+  >("blueprint");
 
   if (!system) return null;
+
+  const sanitizedSystem = {
+    overview: {
+      genre: system.overview?.genre,
+      canvas: system.overview?.canvas,
+      anchorHue: system.overview?.anchorHue,
+    },
+    colors: system.colors,
+    typography: {
+      fonts: system.typography?.fonts,
+      hierarchy:
+        system.typography?.hierarchy?.map((h) => ({
+          token: h.token,
+          size: h.size,
+          weight: h.weight,
+        })) || [],
+    },
+    shapes: system.shapes,
+  };
 
   const tabs = [
     { id: "blueprint", label: "Visual Blueprint" },
     { id: "layout", label: "Layout & Shapes" },
     { id: "components", label: "Component Spec" },
+    { id: "guidelines", label: "Guidelines" },
     { id: "json", label: "JSON Spec" },
   ] as const;
 
@@ -131,7 +153,10 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="border-ink-2/10 dark:bg-paper-2 rounded-2xl border bg-[#faf9f6] p-4.5">
-                    <div className="border-ink-2/10 mb-3 h-10 rounded-xl border bg-[#39e5a1]" />
+                    <div
+                      className="border-ink-2/10 mb-3 h-10 rounded-xl border"
+                      style={{ backgroundColor: system.colors.brand.accentDark || "#39e5a1" }}
+                    />
                     <h4 className="text-ink-2 text-sm font-bold">Accent (Dark)</h4>
                     <p className="text-ink-2/62 mt-1 font-mono text-[11px]">
                       {system.colors.brand.accentDark}
@@ -139,7 +164,10 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
                   </div>
 
                   <div className="border-ink-2/10 dark:bg-paper-2 rounded-2xl border bg-[#faf9f6] p-4.5">
-                    <div className="border-ink-2/10 mb-3 h-10 rounded-xl border bg-[#1a8f65]" />
+                    <div
+                      className="border-ink-2/10 mb-3 h-10 rounded-xl border"
+                      style={{ backgroundColor: system.colors.brand.accentLight || "#1a8f65" }}
+                    />
                     <h4 className="text-ink-2 text-sm font-bold">Accent (Light)</h4>
                     <p className="text-ink-2/62 mt-1 font-mono text-[11px]">
                       {system.colors.brand.accentLight}
@@ -147,7 +175,10 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
                   </div>
 
                   <div className="border-ink-2/10 dark:bg-paper-2 rounded-2xl border bg-[#faf9f6] p-4.5">
-                    <div className="border-ink-2/10 mb-3 h-10 rounded-xl border bg-[#0c100e]" />
+                    <div
+                      className="border-ink-2/10 mb-3 h-10 rounded-xl border"
+                      style={{ backgroundColor: system.colors.surface.paperDark || "#0c100e" }}
+                    />
                     <h4 className="text-ink-2 text-sm font-bold">Obsidian Paper</h4>
                     <p className="text-ink-2/62 mt-1 font-mono text-[11px]">
                       {system.colors.surface.paperDark}
@@ -155,7 +186,10 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
                   </div>
 
                   <div className="border-ink-2/10 dark:bg-paper-2 rounded-2xl border bg-[#faf9f6] p-4.5">
-                    <div className="border-ink-2/10 mb-3 h-10 rounded-xl border bg-[#fbfcf9]" />
+                    <div
+                      className="border-ink-2/10 mb-3 h-10 rounded-xl border"
+                      style={{ backgroundColor: system.colors.surface.paperLight || "#fbfcf9" }}
+                    />
                     <h4 className="text-ink-2 text-sm font-bold">Chalk Paper</h4>
                     <p className="text-ink-2/62 mt-1 font-mono text-[11px]">
                       {system.colors.surface.paperLight}
@@ -348,7 +382,7 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
                     <span>Target Class</span>
 
                     <span className="bg-ink-2/5 text-ink-2/80 rounded px-1.5 py-0.5">
-                      .signal-{key}
+                      .{templateId}-{key}
                     </span>
                   </div>
                 </div>
@@ -356,18 +390,29 @@ const TemplateFullSystemSpec = ({ details }: SystemSpecProps) => {
             </div>
           )}
 
+          {activeTab === "guidelines" && (
+            <TemplateGuidelines
+              guidelines={details.guidelines}
+              templateName={details.positioning}
+            />
+          )}
+
           {activeTab === "json" && (
             <div className="border-ink-2/10 animate-fade-in max-h-[500px] overflow-x-auto rounded-3xl border bg-[#0f1412] p-6 font-mono text-xs text-emerald-400 shadow-inner">
               <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3 text-[11px] text-white/50">
                 <span>programmatic_design_spec.json</span>
                 <button
-                  onClick={() => navigator.clipboard.writeText(JSON.stringify(system, null, 2))}
+                  onClick={() =>
+                    navigator.clipboard.writeText(JSON.stringify(sanitizedSystem, null, 2))
+                  }
                   className="cursor-pointer rounded border border-white/10 bg-white/5 px-2.5 py-1 font-bold text-white transition hover:bg-white/10 active:scale-95"
                 >
                   Copy JSON
                 </button>
               </div>
-              <pre className="leading-5">{JSON.stringify(system, null, 2)}</pre>
+              <pre className="leading-5 break-words whitespace-pre-wrap">
+                {JSON.stringify(sanitizedSystem, null, 2)}
+              </pre>
             </div>
           )}
         </div>

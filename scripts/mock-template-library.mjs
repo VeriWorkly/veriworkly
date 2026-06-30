@@ -80,18 +80,55 @@ fs.writeFileSync(path.join(templateLibPath, "types.ts"), typesContent);
 // Registry
 const registryContent = `import type { ComponentType } from "react";
 import type { PortfolioProject } from "./types";
+import type { TemplateDetails } from "../features/templates/data/template-details";
+
+import { design as signalDesign } from "./signal/design";
+import { design as atelierDesign } from "./atelier/design";
 
 export type TemplateComponent = ComponentType<{ project: PortfolioProject }>;
 
-export const templateLoaders = {
-  atelier: () => import("./atelier/AtelierTemplate"),
-  signal: () => import("./signal/SignalTemplate"),
-} satisfies Record<string, () => Promise<{ default: TemplateComponent }>>;
+export interface TemplateRegistryEntry {
+  name: string;
+  note: string;
+  mood: string;
+  audience: string;
+  strengths: string[];
+  image: string;
+  loader: () => Promise<{ default: TemplateComponent }>;
+  design: TemplateDetails;
+}
 
-export type PrivateTemplateId = keyof typeof templateLoaders;
+export const templatesRegistry = {
+  signal: {
+    name: "Signal",
+    note: "Mock signal note",
+    mood: "Mock signal mood",
+    audience: "Mock signal audience",
+    strengths: ["Mock signal strengths"],
+    image: "/templates/signal-template-preview.png",
+    loader: () => import("./signal/SignalTemplate"),
+    design: signalDesign,
+  },
+  atelier: {
+    name: "Atelier",
+    note: "Mock atelier note",
+    mood: "Mock atelier mood",
+    audience: "Mock atelier audience",
+    strengths: ["Mock atelier strengths"],
+    image: "/templates/atelier-template-preview.png",
+    loader: () => import("./atelier/AtelierTemplate"),
+    design: atelierDesign,
+  },
+} satisfies Record<string, TemplateRegistryEntry>;
+
+export type PrivateTemplateId = keyof typeof templatesRegistry;
+
+export const templateLoaders = Object.fromEntries(
+  Object.entries(templatesRegistry).map(([id, entry]) => [id, entry.loader])
+) as Record<PrivateTemplateId, () => Promise<{ default: TemplateComponent }>>;
 
 export function hasPrivateTemplate(id: string): id is PrivateTemplateId {
-  return id in templateLoaders;
+  return id in templatesRegistry;
 }
 `;
 
@@ -157,6 +194,21 @@ export default function AtelierTemplate({ project }: { project: PortfolioProject
 
 fs.writeFileSync(path.join(templateLibPath, "atelier", "AtelierTemplate.tsx"), atelierContent);
 fs.writeFileSync(path.join(templateLibPath, "atelier", "styles.css"), "/* Mock styles */");
+
+const atelierDesignContent = `export const design = {
+  positioning: "Mock atelier positioning",
+  fonts: "Mock atelier fonts",
+  motion: "Mock atelier motion",
+  palette: "Mock atelier palette",
+  layout: "Mock atelier layout",
+  componentLanguage: "Mock atelier componentLanguage",
+  contentModel: ["Mock atelier contentModel"],
+  colorScheme: [{ name: "Mock", value: "#000", className: "bg-black" }],
+  bestFor: ["Mock atelier bestFor"],
+  designNotes: ["Mock atelier designNotes"],
+};
+`;
+fs.writeFileSync(path.join(templateLibPath, "atelier", "design.ts"), atelierDesignContent);
 
 // SignalTemplate
 const signalContent = `import React from "react";

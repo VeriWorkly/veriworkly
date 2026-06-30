@@ -25,11 +25,21 @@ if (typeof globalThis.DOMMatrix === "undefined") {
       }
     }
 
-    multiply() { return this; }
-    translate() { return this; }
-    scale() { return this; }
-    rotate() { return this; }
-    inverse() { return this; }
+    multiply() {
+      return this;
+    }
+    translate() {
+      return this;
+    }
+    scale() {
+      return this;
+    }
+    rotate() {
+      return this;
+    }
+    inverse() {
+      return this;
+    }
     toString() {
       return `matrix(${this.a}, ${this.b}, ${this.c}, ${this.d}, ${this.e}, ${this.f})`;
     }
