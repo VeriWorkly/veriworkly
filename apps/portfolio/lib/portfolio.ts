@@ -1,4 +1,4 @@
-import type { TemplateId } from "@/templates/catalog/templates";
+import { type TemplateId, isTemplateId } from "@/templates/catalog/templates";
 
 export { templates } from "@/templates/catalog/templates";
 export type { TemplateId } from "@/templates/catalog/templates";
@@ -335,7 +335,10 @@ export function parsePortfolioContent(input: unknown, fallback = demoPortfolio):
   const seo = (value.seo ?? {}) as Record<string, unknown>;
   return {
     schemaVersion: 1,
-    templateId: value.templateId === "atelier" ? "atelier" : "signal",
+    templateId:
+      typeof value.templateId === "string" && isTemplateId(value.templateId)
+        ? value.templateId
+        : "signal",
     identity: {
       name: text(identity.name, fallback.identity.name, 120),
       headline: text(identity.headline, fallback.identity.headline, 240),

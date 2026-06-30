@@ -8,7 +8,6 @@ import {
 } from "#services/aiPrivateConfig";
 import { AI_ACTION_KEYS, type AiActionKey, type AiMode } from "#services/aiTypes";
 import { ApiError } from "#utils/errors";
-import { logger } from "#utils/logger";
 
 const modePolicySchema = z.object({
   credits: z.number().int().positive(),
@@ -49,14 +48,7 @@ function loadPolicy() {
     return cachedPolicy;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    logger.error("AI policy parsing failed", error);
-    let details = "";
-    if (error instanceof z.ZodError) {
-      details = ": " + error.errors.map((err) => `${err.path.join(".")}: ${err.message}`).join(", ");
-    } else if (error instanceof Error) {
-      details = ": " + error.message;
-    }
-    throw new ApiError(503, `AI generation policy is invalid${details}`);
+    throw new ApiError(503, "AI generation policy is invalid.");
   }
 }
 

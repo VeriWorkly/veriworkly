@@ -4,11 +4,14 @@ import { useEffect } from "react";
 import dynamic from "next/dynamic";
 
 import { demoPortfolio, type TemplateId } from "@/lib/portfolio";
+import { templateLoaders } from "@/template-library/registry";
 
-const templates = {
-  signal: dynamic(() => import("@/template-library/signal/SignalTemplate")),
-  atelier: dynamic(() => import("@/template-library/atelier/AtelierTemplate")),
-};
+const templates = Object.fromEntries(
+  Object.entries(templateLoaders).map(([id, loader]) => [id, dynamic(loader)]),
+) as Record<
+  TemplateId,
+  React.ComponentType<{ project: import("@/lib/portfolio").PortfolioContent }>
+>;
 
 export function DraftPreview({ templateId }: { templateId: TemplateId }) {
   const Template = templates[templateId];
@@ -74,6 +77,8 @@ export function DraftPreview({ templateId }: { templateId: TemplateId }) {
       document.removeEventListener("dragstart", handleDragStart);
     };
   }, []);
+
+  if (!Template) return null;
 
   return (
     <div className="select-none" style={{ userSelect: "none", WebkitUserSelect: "none" }}>

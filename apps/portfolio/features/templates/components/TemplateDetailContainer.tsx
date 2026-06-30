@@ -7,6 +7,7 @@ import type { TemplateDetails } from "../data/template-details";
 import type { TemplateSummary } from "@/templates/catalog/templates";
 
 import TemplateCta from "./TemplateCta";
+import TemplateFaqs from "./TemplateFaqs";
 import TemplateBestFit from "./TemplateBestFit";
 import TemplateDetailHero from "./TemplateDetailHero";
 import TemplateStyleGuide from "./TemplateStyleGuide";
@@ -52,7 +53,7 @@ const TemplateDetailContainer = ({ template, details }: ContainerProps) => {
       <div ref={specAnchorRef} className="scroll-mt-28" />
 
       <div className={devMode ? "block" : "hidden"}>
-        <TemplateFullSystemSpec details={details} />
+        <TemplateFullSystemSpec details={details} templateId={template.id} />
       </div>
 
       <div className={devMode ? "hidden" : "block"}>
@@ -82,6 +83,8 @@ const TemplateDetailContainer = ({ template, details }: ContainerProps) => {
       </div>
 
       <TemplateBestFit template={template} details={details} />
+
+      {details.faqs && <TemplateFaqs faqs={details.faqs} templateName={template.name} />}
 
       <TemplateCta template={template} />
 
