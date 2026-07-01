@@ -72,7 +72,7 @@ const PortfolioPublicFooter = () => {
               <Link
                 key={product.name}
                 href={product.href}
-                className="group hover:text-accent-ink hover:border-accent hover:bg-accent rounded-3xl border border-white/12 bg-white/4 p-5 transition duration-300 hover:-translate-y-1"
+                className="group hover:text-accent-ink hover:border-accent hover:bg-accent rounded-3xl border border-white/12 bg-white/4 p-5 transition duration-300 hover:-translate-y-1 max-h-[180px] overflow-hidden"
               >
                 {content}
               </Link>
