@@ -16,7 +16,7 @@ describe("portfolio content contract", () => {
     const hidden = createDefaultPortfolio();
     hidden.sections[0].visible = false;
     expect(renderToStaticMarkup(<SignalTemplate project={hidden} />)).not.toContain(
-      "Your strongest project",
+      "Your primary project",
     );
 
     const empty = createDefaultPortfolio();
@@ -51,7 +51,7 @@ describe("portfolio content contract", () => {
     const atelier = renderToStaticMarkup(<AtelierTemplate project={content} />);
     expect(signal.indexOf("Services first")).toBeLessThan(signal.indexOf("Selected work"));
     expect(atelier.indexOf("Services first")).toBeLessThan(
-      atelier.indexOf("Your strongest project"),
+      atelier.indexOf("Your primary project"),
     );
   });
 
@@ -86,11 +86,21 @@ describe("portfolio content contract", () => {
     expect(demoPortfolio.sections.map((section) => section.type)).toEqual([
       "projects",
       "experience",
+      "education",
       "services",
       "skills",
+      "certifications",
+      "languages",
+      "interests",
+      "publications",
+      "patents",
+      "testScores",
+      "achievements",
+      "volunteer",
       "writing",
       "testimonials",
       "awards",
+      "custom",
       "contact",
     ]);
     expect(

@@ -10,7 +10,7 @@ type GuidelinesProps = {
   templateName: string;
 };
 
-export default function TemplateGuidelines({ guidelines, templateName }: GuidelinesProps) {
+export default function TemplateGuidelines({ guidelines }: GuidelinesProps) {
   if (!guidelines) return null;
 
   return (
