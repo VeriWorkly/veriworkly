@@ -1,10 +1,28 @@
-import { getBaseLayout, escapeHtml } from "./layout.js";
+import { getBaseLayout, escapeHtml } from "../shared/layout.js";
 
 export interface LoginAlertMeta {
   ip: string;
   device: string;
   timestamp: string;
   location?: string;
+  provider?: string;
+}
+
+function formatProvider(provider: string): string {
+  if (!provider) return "";
+
+  switch (provider.toLowerCase()) {
+    case "google":
+      return "Google";
+    case "github":
+      return "GitHub";
+    case "linkedin":
+      return "LinkedIn";
+    case "email-otp":
+      return "Email (Verification Code)";
+    default:
+      return provider.charAt(0).toUpperCase() + provider.slice(1);
+  }
 }
 
 export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): string {
@@ -16,6 +34,7 @@ export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): stri
     <h2 style="margin:0 0 12px 0;font-size:26px;line-height:1.2;font-weight:800;color:#171717;letter-spacing:-0.03em;text-align:center;">
       New Login Alert
     </h2>
+
     <p style="margin:0 auto 28px auto;font-size:15px;line-height:1.6;color:#5f5c54;text-align:center;max-width:440px;">
       We detected a new sign-in to your VeriWorkly account (<strong>${sanitizedEmail}</strong>). Please review the session details below.
     </p>
@@ -25,10 +44,21 @@ export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): stri
         <td style="padding-bottom:12px;font-size:13px;color:#8f8c85;">Device / Browser:</td>
         <td style="padding-bottom:12px;font-size:13px;color:#171717;font-weight:600;text-align:right;">${escapeHtml(meta.device)}</td>
       </tr>
+      
       <tr>
         <td style="padding-bottom:12px;font-size:13px;color:#8f8c85;">IP Address:</td>
         <td style="padding-bottom:12px;font-size:13px;color:#171717;font-weight:600;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escapeHtml(meta.ip)}</td>
       </tr>
+      ${
+        meta.provider
+          ? `
+      <tr>
+        <td style="padding-bottom:12px;font-size:13px;color:#8f8c85;">Login Method:</td>
+        <td style="padding-bottom:12px;font-size:13px;color:#171717;font-weight:600;text-align:right;">${escapeHtml(formatProvider(meta.provider))}</td>
+      </tr>
+      `
+          : ""
+      }
       ${
         meta.location
           ? `

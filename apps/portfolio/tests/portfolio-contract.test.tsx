@@ -50,9 +50,7 @@ describe("portfolio content contract", () => {
     const signal = renderToStaticMarkup(<SignalTemplate project={content} />);
     const atelier = renderToStaticMarkup(<AtelierTemplate project={content} />);
     expect(signal.indexOf("Services first")).toBeLessThan(signal.indexOf("Selected work"));
-    expect(atelier.indexOf("Services first")).toBeLessThan(
-      atelier.indexOf("Your primary project"),
-    );
+    expect(atelier.indexOf("Services first")).toBeLessThan(atelier.indexOf("Your primary project"));
   });
 
   it("does not render unsafe or incomplete social links", () => {

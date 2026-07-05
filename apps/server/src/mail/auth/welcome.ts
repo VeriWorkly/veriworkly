@@ -1,4 +1,4 @@
-import { getBaseLayout, escapeHtml } from "./layout.js";
+import { getBaseLayout, escapeHtml } from "../shared/layout.js";
 
 export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
   const sanitizedName = escapeHtml(name || "there");
@@ -10,6 +10,7 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
     <h2 style="margin:0 0 12px 0;font-size:26px;line-height:1.2;font-weight:800;color:#171717;letter-spacing:-0.03em;text-align:center;">
       Welcome to VeriWorkly, ${sanitizedName}!
     </h2>
+    
     <p style="margin:0 auto 28px auto;font-size:15px;line-height:1.6;color:#5f5c54;text-align:center;max-width:460px;">
       We're thrilled to have you. VeriWorkly is designed to help you construct pristine, ATS-optimized resumes and publish premium developer portfolios.
     </p>
@@ -23,13 +24,16 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
                 <div style="height:12px;width:120px;background-color:#2563eb;border-radius:2px;margin-bottom:8px;"></div>
                 <div style="height:6px;width:80px;background-color:#5f5c54;opacity:0.3;border-radius:2px;"></div>
               </td>
+
               <td width="30%" valign="top" align="right">
                 <div style="height:6px;width:50px;background-color:#5f5c54;opacity:0.2;border-radius:2px;margin-bottom:4px;"></div>
                 <div style="height:6px;width:70px;background-color:#5f5c54;opacity:0.2;border-radius:2px;"></div>
               </td>
             </tr>
           </table>
+
           <div style="height:1px;background-color:rgba(23, 23, 23, 0.08);margin:16px 0;"></div>
+          
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
             <tr>
               <td valign="top" style="padding-bottom:8px;">
@@ -57,6 +61,7 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
           </table>
         </td>
       </tr>
+
       <tr>
         <td style="padding-bottom:16px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -70,6 +75,7 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
           </table>
         </td>
       </tr>
+      
       <tr>
         <td>
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">

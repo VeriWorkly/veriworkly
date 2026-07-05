@@ -118,7 +118,11 @@ export function createDefaultPortfolio(user?: {
       availability: "Available for contract roles",
       avatar: null,
     },
-    seo: { title: `${name} | Portfolio`, description: "Professional portfolio site", socialImage: null },
+    seo: {
+      title: `${name} | Portfolio`,
+      description: "Professional portfolio site",
+      socialImage: null,
+    },
     socialLinks: [],
     sections: [
       {
@@ -134,7 +138,8 @@ export function createDefaultPortfolio(user?: {
             link: "https://veriworkly.com",
             linkLabel: "Link",
             showLinkAsText: true,
-            summary: "Describe the key problem you solved and the resulting performance metrics here.",
+            summary:
+              "Describe the key problem you solved and the resulting performance metrics here.",
             highlights: ["Shipped fully responsive interface using React and Tailwind CSS."],
             skills: ["React", "CSS", "TypeScript"],
             coverImage: null,
@@ -182,10 +187,11 @@ export const demoPortfolio: PortfolioContent = {
           link: "https://veriworkly.com",
           linkLabel: "Live Site",
           showLinkAsText: true,
-          summary: "A builder that turns structured profile data into a live site with instant previews and custom subdomains.",
+          summary:
+            "A builder that turns structured profile data into a live site with instant previews and custom subdomains.",
           highlights: [
             "Created responsive template engine displaying data in real time.",
-            "Wrote clean interfaces with GSAP animations and static page generation."
+            "Wrote clean interfaces with GSAP animations and static page generation.",
           ],
           skills: ["Next.js", "GSAP", "TypeScript"],
           coverImage: null,
@@ -197,10 +203,11 @@ export const demoPortfolio: PortfolioContent = {
           link: "https://veriworkly.com",
           linkLabel: "Live Editor",
           showLinkAsText: true,
-          summary: "A privacy-first editor with real-time markdown parsing, print layouts, and local-only browser storage.",
+          summary:
+            "A privacy-first editor with real-time markdown parsing, print layouts, and local-only browser storage.",
           highlights: [
             "Designed a print CSS system to ensure PDF output matches ATS standards.",
-            "Implemented IndexedDB caching, reducing save operations from database to client."
+            "Implemented IndexedDB caching, reducing save operations from database to client.",
           ],
           skills: ["React", "Tailwind CSS", "IndexedDB"],
           coverImage: null,
@@ -212,10 +219,11 @@ export const demoPortfolio: PortfolioContent = {
           link: "https://veriworkly.com",
           linkLabel: "GitHub Repository",
           showLinkAsText: true,
-          summary: "A desktop-grade markdown note app that saves document state in the browser and syncs with external drives via file system handles.",
+          summary:
+            "A desktop-grade markdown note app that saves document state in the browser and syncs with external drives via file system handles.",
           highlights: [
             "Designed canvas-based document outline tree with fluid interactive physics.",
-            "Built local-first synchronization pipeline using the File System Access API."
+            "Built local-first synchronization pipeline using the File System Access API.",
           ],
           skills: ["TypeScript", "Canvas API", "IndexedDB"],
           coverImage: null,
@@ -236,10 +244,11 @@ export const demoPortfolio: PortfolioContent = {
           startDate: "2025-01",
           endDate: "",
           current: true,
-          summary: "Directing product design and system engineering across publishing, document tools, and user analytics.",
+          summary:
+            "Directing product design and system engineering across publishing, document tools, and user analytics.",
           highlights: [
             "Shipped local-first state architecture, saving monthly infrastructure costs.",
-            "Designed five responsive templates with modular CSS systems."
+            "Designed five responsive templates with modular CSS systems.",
           ],
           coverImage: null,
         },
@@ -251,10 +260,11 @@ export const demoPortfolio: PortfolioContent = {
           startDate: "2023-03",
           endDate: "2024-12",
           current: false,
-          summary: "Created accessible web interfaces, customized UI components, and improved client-side bundle size.",
+          summary:
+            "Created accessible web interfaces, customized UI components, and improved client-side bundle size.",
           highlights: [
             "Reduced load times by splitting CSS modules and optimizing static resources.",
-            "Implemented WCAG AA accessibility compliance across core client dashboards."
+            "Implemented WCAG AA accessibility compliance across core client dashboards.",
           ],
           coverImage: null,
         },
@@ -266,10 +276,11 @@ export const demoPortfolio: PortfolioContent = {
           startDate: "2021-02",
           endDate: "2023-02",
           current: false,
-          summary: "Shipped modular styling systems and interactive features for consumer websites and early stage startups.",
+          summary:
+            "Shipped modular styling systems and interactive features for consumer websites and early stage startups.",
           highlights: [
             "Developed canvas-based charting libraries, reducing reliance on heavy third party charting packages.",
-            "Ported three jQuery applications to React and clean CSS, reducing client bundle weight by half."
+            "Ported three jQuery applications to React and clean CSS, reducing client bundle weight by half.",
           ],
           coverImage: null,
         },
@@ -284,7 +295,7 @@ export const demoPortfolio: PortfolioContent = {
           summary: "Contributed to internal web tooling and automated build processes.",
           highlights: [
             "Wrote Node.js automation scripts to detect and prune unused asset files before deployment.",
-            "Refactored styling of internal admin panel, improving load performance on legacy office laptops."
+            "Refactored styling of internal admin panel, improving load performance on legacy office laptops.",
           ],
           coverImage: null,
         },
@@ -304,7 +315,8 @@ export const demoPortfolio: PortfolioContent = {
           startDate: "2019-06",
           endDate: "2023-01",
           current: false,
-          summary: "Learned web protocols, database management, and system architecture through codebases, documentation, and open source work.",
+          summary:
+            "Learned web protocols, database management, and system architecture through codebases, documentation, and open source work.",
           coverImage: null,
         },
         {
@@ -315,7 +327,8 @@ export const demoPortfolio: PortfolioContent = {
           startDate: "2017-06",
           endDate: "2019-05",
           current: false,
-          summary: "Focused on web protocols, database management systems, structures, and systems programming.",
+          summary:
+            "Focused on web protocols, database management systems, structures, and systems programming.",
           coverImage: null,
         },
       ],
@@ -332,7 +345,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Contract",
           date: "Ongoing",
           link: "https://veriworkly.com",
-          description: "Integrating spring physics, canvas widgets, and GSAP layouts into existing web pages.",
+          description:
+            "Integrating spring physics, canvas widgets, and GSAP layouts into existing web pages.",
           details: ["Scroll-based pinning", "Responsive fluid grids", "Fluid micro-interactions"],
           coverImage: null,
         },
@@ -342,7 +356,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Contract",
           date: "Ongoing",
           link: "https://veriworkly.com",
-          description: "Diagnosing rendering blocks, client-side lag, and styling bugs to hit maximum Lighthouse score.",
+          description:
+            "Diagnosing rendering blocks, client-side lag, and styling bugs to hit maximum Lighthouse score.",
           details: ["Hydration fix", "Image pipelines", "Bundle splitting"],
           coverImage: null,
         },
@@ -352,7 +367,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Contract",
           date: "Ongoing",
           link: "https://veriworkly.com",
-          description: "Converting ad-hoc stylesheet configurations into modular, maintainable utility frameworks or plain CSS systems.",
+          description:
+            "Converting ad-hoc stylesheet configurations into modular, maintainable utility frameworks or plain CSS systems.",
           details: ["Tailwind config setup", "Classname cleanup", "Performance auditing"],
           coverImage: null,
         },
@@ -398,7 +414,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Web Standards Authority",
           date: "2024-09",
           link: "",
-          description: "Advanced optimization strategies for Core Web Vitals, SSR caching, and image optimization.",
+          description:
+            "Advanced optimization strategies for Core Web Vitals, SSR caching, and image optimization.",
           details: [],
           coverImage: null,
         },
@@ -408,7 +425,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "CSS Working Group Partner Program",
           date: "2025-01",
           link: "",
-          description: "Expert level techniques for CSS Grid, Subgrid, Flexbox, custom property systems, and native scroll-driven animations.",
+          description:
+            "Expert level techniques for CSS Grid, Subgrid, Flexbox, custom property systems, and native scroll-driven animations.",
           details: [],
           coverImage: null,
         },
@@ -464,7 +482,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Personal Research",
           date: "Ongoing",
           link: "",
-          description: "Building physical gestures, canvas rendering layers, and spring-based layouts for browser sites.",
+          description:
+            "Building physical gestures, canvas rendering layers, and spring-based layouts for browser sites.",
           details: [],
           coverImage: null,
         },
@@ -474,7 +493,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Personal Hobby",
           date: "Ongoing",
           link: "",
-          description: "Studying the history of lead type and applying grid systems from mid-century print design to modern web layouts.",
+          description:
+            "Studying the history of lead type and applying grid systems from mid-century print design to modern web layouts.",
           details: [],
           coverImage: null,
         },
@@ -492,7 +512,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "VeriWorkly Engineering Blog",
           date: "2025-02",
           link: "https://veriworkly.com",
-          description: "A comprehensive guide on storing state in IndexedDB and synchronization protocols for zero-server architectures.",
+          description:
+            "A comprehensive guide on storing state in IndexedDB and synchronization protocols for zero-server architectures.",
           details: [],
           coverImage: null,
         },
@@ -502,7 +523,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Web Engineering Journal",
           date: "2025-11",
           link: "https://veriworkly.com",
-          description: "A technical study on using aspect-ratio boxes and placeholder skeletons to stabilize layout rendering on slow connections.",
+          description:
+            "A technical study on using aspect-ratio boxes and placeholder skeletons to stabilize layout rendering on slow connections.",
           details: [],
           coverImage: null,
         },
@@ -520,7 +542,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "WIPO",
           date: "2025-05",
           link: "",
-          description: "Patent application for real-time sandbox client-side print-friendly CSS and PDF serialization.",
+          description:
+            "Patent application for real-time sandbox client-side print-friendly CSS and PDF serialization.",
           details: [],
           coverImage: null,
         },
@@ -530,7 +553,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "WIPO",
           date: "2026-03",
           link: "",
-          description: "Patent application for registering render-loop timestamps on elements to prevent frame misalignment.",
+          description:
+            "Patent application for registering render-loop timestamps on elements to prevent frame misalignment.",
           details: [],
           coverImage: null,
         },
@@ -548,7 +572,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Lighthouse Audit Suite",
           date: "2025-01",
           link: "",
-          description: "Score: 100/100 across Performance, Accessibility, Best Practices, and SEO audits.",
+          description:
+            "Score: 100/100 across Performance, Accessibility, Best Practices, and SEO audits.",
           details: [],
           coverImage: null,
         },
@@ -558,7 +583,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Resume Parser Suite",
           date: "2026-05",
           link: "",
-          description: "Score: 98% readability score across major ATS engines, verifying syntax structure parsing.",
+          description:
+            "Score: 98% readability score across major ATS engines, verifying syntax structure parsing.",
           details: [],
           coverImage: null,
         },
@@ -576,7 +602,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "VeriWorkly Core",
           date: "2025-02",
           link: "",
-          description: "Successfully shipped the entire resume builder using purely local-first state, reducing hosting overhead.",
+          description:
+            "Successfully shipped the entire resume builder using purely local-first state, reducing hosting overhead.",
           details: [],
           coverImage: null,
         },
@@ -586,7 +613,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Web Standards League",
           date: "2024-07",
           link: "",
-          description: "Voted top developer entry out of 300 projects for building a lightweight canvas physics library under 10KB.",
+          description:
+            "Voted top developer entry out of 300 projects for building a lightweight canvas physics library under 10KB.",
           details: [],
           coverImage: null,
         },
@@ -596,7 +624,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "GreenSock Lab",
           date: "2025-10",
           link: "",
-          description: "Contributed minor patches to improve element tick calculation speeds on high refresh-rate monitors.",
+          description:
+            "Contributed minor patches to improve element tick calculation speeds on high refresh-rate monitors.",
           details: [],
           coverImage: null,
         },
@@ -614,7 +643,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Free Code Camp",
           date: "2023 - 2024",
           link: "https://freecodecamp.org",
-          description: "Helped translate documentation and build interactive challenges for beginner web developers.",
+          description:
+            "Helped translate documentation and build interactive challenges for beginner web developers.",
           details: [],
           coverImage: null,
         },
@@ -624,7 +654,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Bangalore Community Learning Center",
           date: "2024 - 2025",
           link: "",
-          description: "Taught weekly introductory programming classes and reviewed projects for students starting careers in engineering.",
+          description:
+            "Taught weekly introductory programming classes and reviewed projects for students starting careers in engineering.",
           details: [],
           coverImage: null,
         },
@@ -652,7 +683,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "VeriWorkly Notes",
           date: "2026-05",
           link: "https://veriworkly.com",
-          description: "Discussing how new spec additions like native nesting and variables reduce the need for build steps in small projects.",
+          description:
+            "Discussing how new spec additions like native nesting and variables reduce the need for build steps in small projects.",
           details: [],
           coverImage: null,
         },
@@ -662,7 +694,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "VeriWorkly Notes",
           date: "2026-06",
           link: "https://veriworkly.com",
-          description: "Analyzing battery drain and rendering latency on mobile browsers caused by high frequency animation loops.",
+          description:
+            "Analyzing battery drain and rendering latency on mobile browsers caused by high frequency animation loops.",
           details: [],
           coverImage: null,
         },
@@ -680,7 +713,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Product Lead at Acme Corp",
           date: "2025",
           link: "",
-          description: "Gautam has a rare ability to bridge the gap between design and engineering. The interfaces he builds are fast, accessible, and detailed.",
+          description:
+            "Gautam has a rare ability to bridge the gap between design and engineering. The interfaces he builds are fast, accessible, and detailed.",
           details: [],
           coverImage: null,
         },
@@ -690,7 +724,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Lead Frontend Developer at DevFlow Studio",
           date: "2025",
           link: "",
-          description: "Working with Gautam on our build tooling redesign was a breeze. He identified three rendering blocks in the first hour and shaved seconds off our bundle load.",
+          description:
+            "Working with Gautam on our build tooling redesign was a breeze. He identified three rendering blocks in the first hour and shaved seconds off our bundle load.",
           details: [],
           coverImage: null,
         },
@@ -700,7 +735,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Director of Engineering at GridSystems",
           date: "2026",
           link: "",
-          description: "Gautam delivered clean, well-tested code that integrated perfectly into our stack. His attention to detail in motion design is rare.",
+          description:
+            "Gautam delivered clean, well-tested code that integrated perfectly into our stack. His attention to detail in motion design is rare.",
           details: [],
           coverImage: null,
         },
@@ -728,7 +764,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "DesignCon 2025",
           date: "2025-05",
           link: "",
-          description: "Received top jury recognition for our experimental matrix-rain styled CLI terminal lab.",
+          description:
+            "Received top jury recognition for our experimental matrix-rain styled CLI terminal lab.",
           details: [],
           coverImage: null,
         },
@@ -746,7 +783,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Experimental Lab",
           date: "2026-01",
           link: "https://github.com",
-          description: "Built a fully draggable, matrix-rain styled interactive terminal component in vanilla canvas.",
+          description:
+            "Built a fully draggable, matrix-rain styled interactive terminal component in vanilla canvas.",
           details: [],
           coverImage: null,
         },
@@ -756,7 +794,8 @@ export const demoPortfolio: PortfolioContent = {
           issuer: "Experimental Lab",
           date: "2026-03",
           link: "https://github.com",
-          description: "Built an interactive node link graph layout that simulates spring tension and charge dynamics in real time.",
+          description:
+            "Built an interactive node link graph layout that simulates spring tension and charge dynamics in real time.",
           details: [],
           coverImage: null,
         },
