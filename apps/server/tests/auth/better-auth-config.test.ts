@@ -26,10 +26,11 @@ vi.mock("#utils/prisma", () => ({
   prisma: mockPrisma,
 }));
 
-vi.mock("#auth/mailer", () => ({
+vi.mock("#services/mail", () => ({
   sendAuthOtpEmail: vi.fn(),
   sendWelcomeEmail: mockSendWelcomeEmail,
   sendLoginAlertEmail: mockSendLoginAlertEmail,
+  sendAccountDeletedEmail: vi.fn(),
 }));
 
 import { auth } from "#auth/index";
@@ -114,6 +115,7 @@ describe("Better Auth configuration", () => {
 
     mockPrisma.user.findUnique.mockResolvedValue({
       email: "user@example.com",
+      createdAt: new Date("2026-06-20T12:00:00.000Z"),
     });
 
     const mockSession = {
@@ -127,12 +129,31 @@ describe("Better Auth configuration", () => {
     await sessionCreateAfter(mockSession);
     expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
       where: { id: "user-123" },
-      select: { email: true },
+      select: { email: true, createdAt: true },
     });
     expect(mockSendLoginAlertEmail).toHaveBeenCalledWith("user@example.com", {
       ip: "192.168.1.1",
       device: "Mozilla/5.0",
       timestamp: mockSession.createdAt.toISOString(),
+      provider: "unknown",
     });
+  });
+
+  it("has Google, GitHub, and LinkedIn social providers configured", () => {
+    expect(options.socialProviders).toBeDefined();
+    expect(options.socialProviders?.google).toBeDefined();
+    expect(options.socialProviders?.github).toBeDefined();
+    expect(options.socialProviders?.linkedin).toBeDefined();
+  });
+
+  it("has account linking enabled with trusted providers", () => {
+    expect(options.account).toBeDefined();
+    expect(options.account?.accountLinking).toBeDefined();
+    expect(options.account?.accountLinking?.enabled).toBe(true);
+    expect(options.account?.accountLinking?.trustedProviders).toEqual([
+      "google",
+      "github",
+      "linkedin",
+    ]);
   });
 });

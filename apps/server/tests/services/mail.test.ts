@@ -49,9 +49,14 @@ vi.mock("#config", () => ({
   isDevelopment: true,
 }));
 
-import { sendAuthOtpEmail, sendWelcomeEmail, sendLoginAlertEmail } from "#auth/mailer";
+import {
+  sendAuthOtpEmail,
+  sendWelcomeEmail,
+  sendLoginAlertEmail,
+  sendAccountDeletedEmail,
+} from "#services/mail";
 
-describe("mailer services", () => {
+describe("mail service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConfig.auth.emailProvider = "console";
@@ -100,6 +105,18 @@ describe("mailer services", () => {
         expect.objectContaining({
           to: "alert@example.com",
           subject: "Security Alert: New Sign-in Detected",
+        }),
+      );
+    });
+
+    it("logs Account Deleted email to the console in development mode", async () => {
+      await sendAccountDeletedEmail("deleted@example.com", "John Doe");
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining("Email sent to console"),
+        expect.objectContaining({
+          to: "deleted@example.com",
+          subject: "Your VeriWorkly Account Has Been Deleted",
         }),
       );
     });

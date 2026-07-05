@@ -24,14 +24,13 @@ const INCREMENT_WITH_EXPIRY_SCRIPT = `
 export const apiKeyRateLimit = async (req: Request, res: Response, next: NextFunction) => {
   const apiKey = req.apiKey;
 
-  if (!apiKey) {
-    return next();
-  }
+  if (!apiKey) return next();
 
   const keyId = apiKey.id;
   const redisKey = `rate-limit:apikey:${keyId}`;
 
   const now = Date.now();
+  let shouldContinue = false;
 
   try {
     const redis = getRedis();
@@ -69,9 +68,11 @@ export const apiKeyRateLimit = async (req: Request, res: Response, next: NextFun
     res.set("X-RateLimit-Remaining", String(limit - count));
     res.set("X-RateLimit-Reset", String(Math.ceil((now + ttl) / 1000)));
 
-    next();
+    shouldContinue = true;
   } catch (error) {
     logger.error("API Key rate limit middleware error", error);
-    next();
+    shouldContinue = true;
   }
+
+  if (shouldContinue) next();
 };

@@ -1,4 +1,4 @@
-import { getBaseLayout, escapeHtml } from "./layout.js";
+import { getBaseLayout, escapeHtml } from "../shared/layout.js";
 
 export function renderOtpEmail(
   otp: string,
@@ -13,6 +13,14 @@ export function renderOtpEmail(
     title = "Verify your email";
     headline = "Verify email address";
     desc = "Use this code to confirm your email address and activate your VeriWorkly profile.";
+  } else if (type === "forget-password") {
+    title = "Reset your password";
+    headline = "Reset password code";
+    desc = "Use this code to confirm your password reset request and set a new password.";
+  } else if (type === "change-email") {
+    title = "Confirm your email change";
+    headline = "Confirm email change";
+    desc = "Use this code to verify your new email address and update your VeriWorkly credentials.";
   }
 
   const formattedOtp = otp.length === 6 ? `${otp.slice(0, 3)} ${otp.slice(3)}` : otp;
@@ -21,6 +29,7 @@ export function renderOtpEmail(
     <h2 style="margin:0 0 12px 0;font-size:26px;line-height:1.2;font-weight:800;color:#171717;letter-spacing:-0.03em;text-align:center;">
       ${headline}
     </h2>
+    
     <p style="margin:0 auto 32px auto;font-size:15px;line-height:1.6;color:#5f5c54;text-align:center;max-width:440px;">
       ${desc}
     </p>

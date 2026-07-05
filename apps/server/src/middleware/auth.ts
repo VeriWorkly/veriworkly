@@ -44,9 +44,7 @@ export async function getSessionUserFromRequest(req: Request): Promise<Authentic
 
     req._authChecked = true;
 
-    if (!session?.user) {
-      return null;
-    }
+    if (!session?.user) return null;
 
     const user = session.user as {
       id?: string;
@@ -54,9 +52,7 @@ export async function getSessionUserFromRequest(req: Request): Promise<Authentic
       name?: string | null;
     };
 
-    if (!user.id) {
-      return null;
-    }
+    if (!user.id) return null;
 
     const authUser: AuthenticatedUser = {
       id: user.id,
@@ -75,28 +71,24 @@ export async function getSessionUserFromRequest(req: Request): Promise<Authentic
 }
 
 export async function authMiddleware(req: Request, _res: Response, next: NextFunction) {
+  let user: AuthenticatedUser | null = null;
   try {
-    const user = await getSessionUserFromRequest(req);
+    user = await getSessionUserFromRequest(req);
 
-    if (!user) {
-      throw new ApiError(401, "Authentication required");
-    }
+    if (!user) throw new ApiError(401, "Authentication required");
 
     req.authUser = user;
-    next();
   } catch (error) {
-    if (error instanceof ApiError) {
-      return next(error);
-    }
+    if (error instanceof ApiError) return next(error);
 
     return next(new ApiError(401, "Invalid or expired session"));
   }
+
+  next();
 }
 
 export function requireAuthUser(req: Request): AuthenticatedUser {
-  if (!req.authUser?.id) {
-    throw new ApiError(401, "Authentication required");
-  }
+  if (!req.authUser?.id) throw new ApiError(401, "Authentication required");
 
   return req.authUser;
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Router } from "express";
 
-import { sendContactEmail } from "#auth/mailer";
+import { sendContactEmail } from "#services/mail";
 
 import { logger } from "#utils/logger";
 import { createSuccessResponse, createErrorResponse } from "#utils/errors";

@@ -1,39 +1,11 @@
 import "./polyfills.js";
-import helmet from "helmet";
-import express, { raw } from "express";
-
+import throng from "throng";
 import { config, isDevelopment } from "#config";
 
 import { logger } from "#utils/logger";
 import { prisma } from "#utils/prisma";
 import { initRedis, closeRedis } from "#utils/redis";
 
-import { corsMiddleware } from "#middleware/cors";
-import { loggingMiddleware } from "#middleware/logging";
-import { rateLimitMiddleware } from "#middleware/rateLimit";
-import { errorHandler, notFoundHandler } from "#middleware/errorHandler";
-import { authRequestDiagnosticsMiddleware } from "#middleware/authRequestDiagnostics";
-
-import userRoutes from "#routes/users";
-import statsRoutes from "#routes/stats";
-import githubRoutes from "#routes/github";
-import healthRoutes from "#routes/health";
-import sharesRoutes from "#routes/shares";
-import apiKeyRoutes from "#routes/apiKeys";
-import roadmapRoutes from "#routes/roadmap";
-import billingRoutes from "#routes/billing";
-import profileRoutes from "#routes/profiles";
-import documentRoutes from "#routes/documents";
-import portfolioRoutes from "#routes/portfolios";
-import portfolioAssetRoutes from "#routes/portfolioAssets";
-import affiliateRoutes from "#routes/affiliates";
-import adminMonetizationRoutes from "#routes/adminMonetization";
-import aiRoutes from "#routes/ai";
-import atsRoutes from "#routes/ats";
-import contactRoutes from "#routes/contact";
-
-import { authNodeHandler } from "#auth/index";
-import { BillingController } from "#controllers/billingController";
 import { validateAiRuntimeConfig } from "#services/aiPolicy";
 import { validateAtsAiRuntimeConfig } from "#services/atsAiPolicy";
 import { ensureAdminUserExists, validateAuthRuntimeConfig } from "#auth/runtime";
@@ -43,152 +15,181 @@ import { startViewsFlushJob, stopViewsFlushJob } from "#jobs/viewsFlushJob";
 import { startUsageMetricsJob, stopUsageMetricsJob } from "#jobs/usageMetricsJob";
 import { startPortfolioAccessJob, stopPortfolioAccessJob } from "#jobs/portfolioAccessJob";
 
-const app = express();
-
-// Security middleware
-app.use(helmet());
-
-// CORS middleware
-app.use(corsMiddleware);
-
-// Rate limiting
-app.use(rateLimitMiddleware);
-
-// Logging middleware
-app.use(loggingMiddleware);
-
-// Body parser middleware
-app.post(
-  "/api/v1/billing/webhooks/dodo",
-  raw({ type: "application/json", limit: "1mb" }),
-  BillingController.dodoWebhook,
-);
-
-app.use(express.json({ limit: "4mb" }));
-app.use(express.urlencoded({ extended: true, limit: "4mb" }));
-
-// Trust proxy (for accurate IP addresses behind reverse proxies)
-app.set("trust proxy", config.server.trustProxy);
-
-// Versioned API routes
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/stats", statsRoutes);
-app.use("/api/v1/github", githubRoutes);
-app.use("/api/v1/health", healthRoutes);
-app.use("/api/v1/shares", sharesRoutes);
-app.use("/api/v1/roadmap", roadmapRoutes);
-app.use("/api/v1/api-keys", apiKeyRoutes);
-app.use("/api/v1/billing", billingRoutes);
-app.use("/api/v1/profiles", profileRoutes);
-app.use("/api/v1/documents", documentRoutes);
-app.use("/api/v1/portfolios", portfolioRoutes);
-app.use("/api/v1/portfolio-assets", portfolioAssetRoutes);
-app.use("/api/v1/affiliates", affiliateRoutes);
-app.use("/api/v1/admin/monetization", adminMonetizationRoutes);
-app.use("/api/v1/ai", aiRoutes);
-app.use("/api/v1/ats", atsRoutes);
-app.use("/api/v1/contact", contactRoutes);
-
-app.all("/api/v1/auth", authRequestDiagnosticsMiddleware, authNodeHandler);
-app.all("/api/v1/auth/*", authRequestDiagnosticsMiddleware, authNodeHandler);
-
-// Root GET route
-app.get("/", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "VeriWorkly API Server",
-  });
-});
-
-// 404 handler
-app.use(notFoundHandler);
-
-// Error handler (must be last)
-app.use(errorHandler);
+import { app } from "./app.js";
 
 let serverInstance: ReturnType<typeof app.listen> | null = null;
 
-// Graceful shutdown
-async function shutdown() {
-  logger.info("Shutting down gracefully...");
+let exitCode = 0;
+let isShuttingDown = false;
+
+// Graceful shutdown function inside worker
+async function shutdownWorker(id: number, disconnect: () => void) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logger.info(`Worker ${id}: Shutting down gracefully...`);
 
   if (serverInstance) {
-    logger.info("Stopping HTTP server from accepting new requests...");
+    logger.info(`Worker ${id}: Stopping HTTP server from accepting new requests...`);
+
     await new Promise<void>((resolve) => {
       serverInstance!.close(() => {
-        logger.info("HTTP server stopped.");
+        logger.info(`Worker ${id}: HTTP server stopped.`);
         resolve();
       });
 
       // Force timeout shutdown in 10s
       setTimeout(() => {
-        logger.warn("Graceful HTTP shutdown timeout reached. Continuing.");
+        logger.warn(`Worker ${id}: Graceful HTTP shutdown timeout reached. Continuing.`);
         resolve();
       }, 10000);
     });
   }
 
   try {
-    stopGitHubSyncJob();
-    stopViewsFlushJob();
-    stopUsageMetricsJob();
-    stopPortfolioAccessJob();
+    if (id === 1) {
+      logger.info(`Worker ${id}: Stopping background cron jobs...`);
+      stopGitHubSyncJob();
+      stopViewsFlushJob();
+      stopUsageMetricsJob();
+      stopPortfolioAccessJob();
+    }
 
     await closeRedis();
     await prisma.$disconnect();
-    process.exit(0);
+
+    logger.info(`Worker ${id}: Disconnecting worker.`);
+
+    disconnect();
+
+    if (exitCode !== 0) process.exit(exitCode);
   } catch (error) {
-    logger.error("Error during shutdown:", error);
+    logger.error(`Worker ${id}: Error during shutdown:`, error);
+    disconnect();
     process.exit(1);
   }
 }
 
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+// Worker process function
+async function startWorker(id: number, disconnect: () => void) {
+  logger.info(`Worker ${id} starting...`);
 
-// Start server
-async function main() {
+  // Handle process signals in worker
+  process.on("SIGTERM", () => void shutdownWorker(id, disconnect));
+  process.on("SIGINT", () => void shutdownWorker(id, disconnect));
+
+  // Handle uncaught exceptions and unhandled rejections in worker
+  process.on("uncaughtException", (error) => {
+    logger.error(`Worker ${id}: Uncaught Exception:`, error);
+    exitCode = 1;
+    void shutdownWorker(id, disconnect);
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    logger.error(`Worker ${id}: Unhandled Rejection:`, {
+      reason: reason instanceof Error ? reason.message : reason,
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+
+    exitCode = 1;
+
+    void shutdownWorker(id, disconnect);
+  });
+
   try {
-    validateAuthRuntimeConfig();
-    validateAiRuntimeConfig();
-    validateAtsAiRuntimeConfig();
-
+    // Each worker initializes its own Redis connection
     await initRedis();
-    logger.info("Redis initialized");
+    logger.info(`Worker ${id}: Redis connected`);
 
-    logger.info("Database connected");
+    // Worker 1 handles initialization routines and cron jobs
+    if (id === 1) {
+      await ensureAdminUserExists();
 
-    await ensureAdminUserExists();
-
-    serverInstance = app.listen(config.port, () => {
-      logger.info(`Server running on port ${config.port} (${config.nodeEnv})`);
-
-      logger.info("IP/rate-limit configuration", {
-        trustProxy: config.server.trustProxy,
-        authIpAddressHeaders: config.auth.ipAddressHeaders,
-      });
+      logger.info(`Worker ${id}: Database connected and admin user checked`);
 
       startGitHubSyncJob();
       startViewsFlushJob();
       startUsageMetricsJob();
       startPortfolioAccessJob();
 
-      if (isDevelopment) {
+      logger.info(`Worker ${id}: Background cron jobs started`);
+    }
+
+    // Start Express server in worker
+    serverInstance = app.listen(config.port, () => {
+      logger.info(`Worker ${id}: Server running on port ${config.port} (${config.nodeEnv})`);
+
+      logger.info(`Worker ${id}: IP/rate-limit configuration`, {
+        trustProxy: config.server.trustProxy,
+        authIpAddressHeaders: config.auth.ipAddressHeaders,
+      });
+
+      if (isDevelopment && id === 1) {
         logger.info(`Allowed origins: ${config.allowedOrigins.join(", ")}`);
         logger.info(`http://localhost:${config.port}/api/v1/health`);
       }
     });
 
     serverInstance.on("error", (err) => {
-      logger.error("Server error:", err);
-      process.exit(1);
+      logger.error(`Worker ${id}: Server error:`, err);
+      exitCode = 1;
+      void shutdownWorker(id, disconnect);
     });
   } catch (error) {
-    logger.error("Failed to start server:", error);
+    logger.error(`Worker ${id}: Failed to start:`, error);
+    exitCode = 1;
+    void shutdownWorker(id, disconnect);
+  }
+}
+
+// Master process configuration check and bootstrap
+function main() {
+  // Handle uncaught exceptions and unhandled rejections in master process
+  process.on("uncaughtException", (error) => {
+    logger.error("Master Process: Uncaught Exception:", error);
+    process.exit(1);
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    logger.error("Master Process: Unhandled Rejection:", {
+      reason: reason instanceof Error ? reason.message : reason,
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+
+    process.exit(1);
+  });
+
+  try {
+    // Validate runtime environment configs in master process first (fail-fast)
+    validateAuthRuntimeConfig();
+    validateAiRuntimeConfig();
+    validateAtsAiRuntimeConfig();
+
+    const { clusteringEnabled, workers } = config.server;
+
+    if (clusteringEnabled) {
+      logger.info(`Master process starting cluster with ${workers} workers...`);
+
+      throng({
+        worker: startWorker,
+        count: workers,
+        grace: 15000,
+      });
+    } else {
+      logger.info("Clustering disabled. Starting single process worker...");
+
+      // For single process, mock disconnect as noop
+      void startWorker(1, () => {
+        process.exit(exitCode);
+      });
+    }
+  } catch (error) {
+    logger.error("Failed to bootstrap master process:", error);
     process.exit(1);
   }
 }
 
 main();
 
+export { app };
 export default app;

@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
 import { IncomingHttpHeaders } from "node:http";
+import { AsyncLocalStorage } from "node:async_hooks";
 
-import { emailOTP } from "better-auth/plugins";
+import { createAuthMiddleware } from "better-auth/api";
+import { emailOTP } from "better-auth/plugins/email-otp";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
 
@@ -9,10 +11,20 @@ import { config } from "#config";
 
 import { prisma } from "#utils/prisma";
 import { getRedis } from "#utils/redis";
-import { sendAuthOtpEmail, sendWelcomeEmail, sendLoginAlertEmail } from "#auth/mailer";
-
-import { createAuthMiddleware } from "better-auth/api";
 import { invalidateSessionCache, invalidateCacheByToken } from "#utils/authCache";
+
+import {
+  sendAuthOtpEmail,
+  sendWelcomeEmail,
+  sendLoginAlertEmail,
+  sendAccountDeletedEmail,
+} from "#services/mail";
+
+export const authRequestContext = new AsyncLocalStorage<{
+  ip: string;
+  userAgent: string;
+  provider?: string;
+}>();
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -100,6 +112,40 @@ export const auth = betterAuth({
     },
   },
 
+  socialProviders: {
+    ...(config.auth.googleClientId && config.auth.googleClientSecret
+      ? {
+          google: {
+            clientId: config.auth.googleClientId,
+            clientSecret: config.auth.googleClientSecret,
+          },
+        }
+      : {}),
+    ...(config.auth.githubClientId && config.auth.githubClientSecret
+      ? {
+          github: {
+            clientId: config.auth.githubClientId,
+            clientSecret: config.auth.githubClientSecret,
+          },
+        }
+      : {}),
+    ...(config.auth.linkedinClientId && config.auth.linkedinClientSecret
+      ? {
+          linkedin: {
+            clientId: config.auth.linkedinClientId,
+            clientSecret: config.auth.linkedinClientSecret,
+          },
+        }
+      : {}),
+  },
+
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "github", "linkedin"],
+    },
+  },
+
   plugins: [
     emailOTP({
       expiresIn: config.auth.otpTtlSeconds,
@@ -147,8 +193,29 @@ export const auth = betterAuth({
         },
       },
 
+      update: {
+        after: async (user) => {
+          try {
+            const sessions = await prisma.session.findMany({
+              where: { userId: user.id },
+              select: { token: true },
+            });
+
+            await Promise.all(sessions.map((session) => invalidateCacheByToken(session.token)));
+          } catch {
+            // Ignore database hook errors
+          }
+        },
+      },
+
       delete: {
         before: async (user) => {
+          try {
+            await sendAccountDeletedEmail(user.email, user.name || "there");
+          } catch (error) {
+            console.error("Failed to send account deleted email for user:", user.email, error);
+          }
+
           try {
             const sessions = await prisma.session.findMany({
               where: { userId: user.id },
@@ -167,17 +234,29 @@ export const auth = betterAuth({
       create: {
         after: async (session) => {
           try {
+            const context = authRequestContext.getStore();
+            const provider = context?.provider || "unknown";
+            const ip = context?.ip || session.ipAddress || "Unknown";
+            const device = context?.userAgent || session.userAgent || "Unknown";
+
             const user = await prisma.user.findUnique({
               where: { id: session.userId },
-              select: { email: true },
+              select: { email: true, createdAt: true },
             });
 
-            if (user?.email)
-              await sendLoginAlertEmail(user.email, {
-                ip: session.ipAddress || "Unknown",
-                device: session.userAgent || "Unknown",
-                timestamp: session.createdAt.toISOString(),
-              });
+            if (user?.email) {
+              const timeSinceCreated = Date.now() - user.createdAt.getTime();
+
+              // Skip alert on fresh signup (first 15 seconds) to avoid spamming
+              if (timeSinceCreated > 15000) {
+                await sendLoginAlertEmail(user.email, {
+                  ip,
+                  device,
+                  timestamp: session.createdAt.toISOString(),
+                  provider,
+                });
+              }
+            }
           } catch (error) {
             console.error("Failed to send login alert email for session:", session.id, error);
           }

@@ -22,7 +22,7 @@ export const apiKeyAuth = async (req: Request, res: Response, next: NextFunction
   const bearerApiKey = authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
   const credential = apiKeyHeader ?? bearerApiKey;
 
-  if (!credential) {
+  if (!credential)
     return res
       .status(401)
       .json(
@@ -31,28 +31,31 @@ export const apiKeyAuth = async (req: Request, res: Response, next: NextFunction
           "API key is missing. Please provide it in the X-API-Key header or Authorization bearer token.",
         ),
       );
-  }
 
   const normalizedApiKey = credential.trim();
   const apiKeyPattern = /^vw_[a-f0-9]{64}$/i;
 
-  if (!apiKeyPattern.test(normalizedApiKey)) {
+  if (!apiKeyPattern.test(normalizedApiKey))
     return res.status(401).json(createErrorResponse(401, "Invalid or inactive API key."));
-  }
+
+  let authenticated = false;
 
   try {
     const apiKey = await ApiKeyService.validateKey(normalizedApiKey);
 
-    if (!apiKey) {
+    if (!apiKey)
       return res.status(401).json(createErrorResponse(401, "Invalid or inactive API key."));
-    }
 
-    req.authUser = apiKey.user;
     req.apiKey = apiKey;
+    req.authUser = apiKey.user;
 
-    next();
+    authenticated = true;
   } catch (error) {
     logger.error("API Key authentication error", error);
-    res.status(500).json(createErrorResponse(500, "Internal server error during authentication."));
+    return res
+      .status(500)
+      .json(createErrorResponse(500, "Internal server error during authentication."));
   }
+
+  if (authenticated) next();
 };

@@ -20,5 +20,13 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     restoreMocks: true,
+    env: {
+      GOOGLE_CLIENT_ID: "dummy-google-client-id",
+      GOOGLE_CLIENT_SECRET: "dummy-google-client-secret",
+      GITHUB_CLIENT_ID: "dummy-github-client-id",
+      GITHUB_CLIENT_SECRET: "dummy-github-client-secret",
+      LINKEDIN_CLIENT_ID: "dummy-linkedin-client-id",
+      LINKEDIN_CLIENT_SECRET: "dummy-linkedin-client-secret",
+    },
   },
 });

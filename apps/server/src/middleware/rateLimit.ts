@@ -30,41 +30,38 @@ function getSanitizedPath(path: string): string {
         /^\d+$/.test(segment) ||
         /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(segment) ||
         (segment.length >= 10 && /[a-zA-Z]/.test(segment) && /[0-9]/.test(segment))
-      ) {
+      )
         return ":id";
-      }
+
       return segment;
     })
     .join("/");
 }
 
 function getRouteLimitConfig(req: Request) {
-  const isAuthRoute = req.path.startsWith("/api/v1/auth");
   const isAiRoute = req.path.startsWith("/api/v1/ai");
+  const isAuthRoute = req.path.startsWith("/api/v1/auth");
   const isStatsEventsRoute = req.path.startsWith("/api/v1/stats/events");
 
   const isShareVerifyRoute = /\/shares\/public\/[^/]+\/[^/]+\/verify$/.test(req.path);
 
-  if (isShareVerifyRoute) {
+  if (isShareVerifyRoute)
     return {
       windowMs: 60 * 5000, // 5 minutes
       maxRequests: 3, // 3 requests per 5 minutes
     };
-  }
 
-  if (isStatsEventsRoute) {
+  if (isStatsEventsRoute)
     return {
       windowMs: 60 * 1000, // 1 minute
       maxRequests: 15, // 15 requests per minute
     };
-  }
 
-  if (isAiRoute) {
+  if (isAiRoute)
     return {
       windowMs: config.ai.rateLimitWindowMs,
       maxRequests: config.ai.rateLimitMaxRequests,
     };
-  }
 
   return {
     windowMs: isAuthRoute ? config.rateLimit.authWindowMs : config.rateLimit.windowMs,
@@ -76,9 +73,7 @@ function pruneExpiredEntries() {
   const now = Date.now();
 
   for (const [key, entry] of bucket.entries()) {
-    if (entry.resetAt <= now) {
-      bucket.delete(key);
-    }
+    if (entry.resetAt <= now) bucket.delete(key);
   }
 }
 
@@ -94,10 +89,8 @@ const INCREMENT_WITH_EXPIRY_SCRIPT = `
   return {count, ttl}
 `;
 
-export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  if (config.nodeEnv === "development") {
-    return next();
-  }
+export const rateLimitMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  if (config.nodeEnv === "development") return next();
 
   const now = Date.now();
 
@@ -141,22 +134,28 @@ export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunct
     }
   };
 
-  checkWithFallback()
-    .then(({ count, ttl }) => {
-      if (count <= maxRequests) {
-        next();
-        return;
-      }
+  let shouldContinue = false;
+  let isLimitExceeded = false;
+  let retryAfter = 0;
 
-      logger.warn(`Rate limit exceeded for IP: ${key}`);
+  try {
+    const { count, ttl } = await checkWithFallback();
 
-      const retryAfter = ttl > 0 ? Math.ceil(ttl / 1000) : Math.ceil(windowMs / 1000);
+    if (count <= maxRequests) shouldContinue = true;
+    else {
+      isLimitExceeded = true;
+      retryAfter = ttl > 0 ? Math.ceil(ttl / 1000) : Math.ceil(windowMs / 1000);
+    }
+  } catch (err) {
+    logger.error("Rate limit middleware failure", err);
+    shouldContinue = true;
+  }
 
-      res.set("Retry-After", String(retryAfter));
-      res.status(429).json(createErrorResponse(429, "Too many requests. Please try again later."));
-    })
-    .catch((err) => {
-      logger.error("Rate limit middleware failure", err);
-      next();
-    });
+  if (shouldContinue) next();
+  else if (isLimitExceeded) {
+    logger.warn(`Rate limit exceeded for IP: ${key}`);
+
+    res.set("Retry-After", String(retryAfter));
+    res.status(429).json(createErrorResponse(429, "Too many requests. Please try again later."));
+  }
 };

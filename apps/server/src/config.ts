@@ -1,6 +1,13 @@
+import os from "node:os";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+function getCpuCount(): number {
+  if (typeof os.availableParallelism === "function") return os.availableParallelism();
+
+  return os.cpus().length || 1;
+}
 
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   if (value == null) return fallback;
@@ -34,7 +41,7 @@ export const config = {
 
   allowedOrigins: (
     process.env.ALLOWED_ORIGINS ||
-    "http://localhost:3000,http://localhost:3001,http://localhost:3004"
+    "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:8080"
   )
     .split(",")
     .map((origin) => origin.trim())
@@ -78,6 +85,12 @@ export const config = {
     smtpUser: process.env.AUTH_SMTP_USER || "",
     smtpPass: process.env.AUTH_SMTP_PASS || "",
     cookieDomain: process.env.AUTH_COOKIE_DOMAIN || undefined,
+    googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    githubClientId: process.env.GITHUB_CLIENT_ID || "",
+    githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+    linkedinClientId: process.env.LINKEDIN_CLIENT_ID || "",
+    linkedinClientSecret: process.env.LINKEDIN_CLIENT_SECRET || "",
   },
 
   apiKeys: {
@@ -97,6 +110,13 @@ export const config = {
 
   server: {
     trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+    clusteringEnabled: parseBoolean(
+      process.env.CLUSTERING_ENABLED,
+      (process.env.NODE_ENV || "development") === "production",
+    ),
+    workers:
+      parseInt(process.env.WEB_CONCURRENCY || process.env.SERVER_WORKERS || "", 10) ||
+      getCpuCount(),
   },
 
   admin: {
