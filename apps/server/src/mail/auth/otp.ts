@@ -42,7 +42,7 @@ export function renderOtpEmail(
             <div style="font-size:42px;letter-spacing:0.15em;font-weight:800;color:#2563eb;line-height:1;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;margin-bottom:8px;text-align:center;">${escapeHtml(formattedOtp)}</div>
             <div style="height:1px;background-color:rgba(23, 23, 23, 0.06);margin:16px 0 12px 0;"></div>
             <div style="font-size:12px;color:#8f8c85;line-height:1.5;text-align:center;">
-              This code will expire in <strong style="color:#171717;">10 minutes</strong> and can only be used once. If you didn't request this sign-in, you can safely ignore this email.
+              This code will expire in <strong style="color:#171717;">5 minutes</strong> and can only be used once. If you didn't request this sign-in, you can safely ignore this email.
             </div>
           </div>
         </td>

@@ -11,6 +11,7 @@ import { config } from "#config";
 
 import { prisma } from "#lib/prisma";
 import { getRedis } from "#lib/redis";
+
 import { invalidateSessionCache, invalidateCacheByToken } from "#utils/authCache";
 
 import {
@@ -140,6 +141,7 @@ export const auth = betterAuth({
   },
 
   account: {
+    storeStateStrategy: "cookie",
     accountLinking: {
       enabled: true,
       trustedProviders: ["google", "github", "linkedin"],

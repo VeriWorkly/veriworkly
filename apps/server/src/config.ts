@@ -75,7 +75,7 @@ export const config = {
       process.env.AUTH_SESSION_CACHE_MAX_AGE_SECONDS || "900",
       10,
     ),
-    otpTtlSeconds: parseInt(process.env.AUTH_OTP_TTL_SECONDS || "600", 10),
+    otpTtlSeconds: parseInt(process.env.AUTH_OTP_TTL_SECONDS || "300", 10),
     otpAllowedAttempts: parseInt(process.env.AUTH_OTP_ALLOWED_ATTEMPTS || "3", 10),
     emailProvider: process.env.AUTH_EMAIL_PROVIDER || "console",
     emailFrom: process.env.AUTH_EMAIL_FROM || "VeriWorkly <no-reply@veriworkly.com>",
