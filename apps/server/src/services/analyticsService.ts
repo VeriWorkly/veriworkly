@@ -4,8 +4,8 @@ import { Prisma } from "@prisma/client";
 
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { cacheDel, cacheGet, cacheSet, getRedis } from "#utils/redis";
+import { prisma } from "#lib/prisma";
+import { cacheDel, cacheGet, cacheSet, getRedis } from "#lib/redis";
 
 /**
  * List of officially tracked events to ensure consistency.

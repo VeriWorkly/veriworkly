@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 
 import { config } from "#config";
 
-import { createErrorResponse } from "#utils/errors";
+import { createErrorResponse } from "#lib/errors";
 import { getSessionUserFromRequest } from "#middleware/auth";
 
 export async function adminAuthMiddleware(req: Request, res: Response, next: NextFunction) {

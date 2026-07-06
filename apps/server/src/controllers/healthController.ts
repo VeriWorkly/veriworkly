@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 
-import prisma from "#utils/prisma";
-import { logger } from "#utils/logger";
-import { getRedis } from "#utils/redis";
-import { createErrorResponse, createSuccessResponse } from "#utils/errors";
+import prisma from "#lib/prisma";
+import { logger } from "#lib/logger";
+import { getRedis } from "#lib/redis";
+import { createErrorResponse, createSuccessResponse } from "#lib/errors";
 
 export class HealthController {
   /**

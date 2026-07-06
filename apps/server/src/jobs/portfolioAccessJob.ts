@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import cron from "node-cron";
 
-import { logger } from "#utils/logger";
-import { prisma } from "#utils/prisma";
-import { getRedis } from "#utils/redis";
+import { logger } from "#lib/logger";
+import { prisma } from "#lib/prisma";
+import { getRedis } from "#lib/redis";
 import { PortfolioAssetService } from "#services/portfolioAssetService";
 import {
   invalidatePublicPortfolioCaches,

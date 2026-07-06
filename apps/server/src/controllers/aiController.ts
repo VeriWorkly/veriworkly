@@ -6,7 +6,7 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { AiService } from "#services/aiService";
 
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
 import { aiGenerateSchema } from "#validators/aiValidator";
 

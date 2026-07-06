@@ -72,3 +72,52 @@ export function createOffsetPaginationMeta(total: number, pagination: OffsetPagi
     },
   };
 }
+
+export type CursorPaginationInput = {
+  cursor?: unknown;
+  limit?: unknown;
+};
+
+export type CursorPagination = {
+  cursor: string | null;
+  limit: number;
+};
+
+export function parseCursorPagination(
+  query: CursorPaginationInput,
+  config: PaginationConfig = {},
+): CursorPagination {
+  const defaultPageSize = config.defaultPageSize ?? 20;
+  const maxPageSize = config.maxPageSize ?? 50;
+
+  const parsedLimit = toPositiveInt(query.limit);
+  const limit = Math.min(parsedLimit ?? defaultPageSize, maxPageSize);
+
+  const cursor =
+    typeof query.cursor === "string" && query.cursor.trim().length > 0 ? query.cursor.trim() : null;
+
+  return { cursor, limit };
+}
+
+export function createCursorPaginationMeta<T>(
+  items: T[],
+  limit: number,
+  getCursor: (item: T) => string,
+) {
+  const hasMore = items.length > limit;
+  const slicedItems = hasMore ? items.slice(0, limit) : items;
+  const nextCursor =
+    hasMore && slicedItems.length > 0 ? getCursor(slicedItems[slicedItems.length - 1]) : null;
+
+  return {
+    limit,
+    hasMore,
+    nextCursor,
+    pagination: {
+      mode: "cursor" as const,
+      nextOffset: null as number | null,
+      nextCursor,
+    },
+    items: slicedItems,
+  };
+}

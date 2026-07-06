@@ -5,10 +5,10 @@ import { Prisma } from "@prisma/client";
 
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { getRedis } from "#utils/redis";
-import { ApiError } from "#utils/errors";
-import { logger } from "#utils/logger";
+import { prisma } from "#lib/prisma";
+import { getRedis } from "#lib/redis";
+import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
 import { normalizeSlug, normalizeUsername, buildUniqueSlugHelper } from "#utils/slugs";
 
 import { UserService } from "#services/userService";

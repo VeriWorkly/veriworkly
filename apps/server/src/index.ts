@@ -1,10 +1,13 @@
-import "./polyfills.js";
 import throng from "throng";
+
+import "./polyfills.js";
+import { app } from "./app.js";
+
 import { config, isDevelopment } from "#config";
 
-import { logger } from "#utils/logger";
-import { prisma } from "#utils/prisma";
-import { initRedis, closeRedis } from "#utils/redis";
+import { logger } from "#lib/logger";
+import { prisma } from "#lib/prisma";
+import { initRedis, closeRedis } from "#lib/redis";
 
 import { validateAiRuntimeConfig } from "#services/aiPolicy";
 import { validateAtsAiRuntimeConfig } from "#services/atsAiPolicy";
@@ -14,8 +17,6 @@ import { startGitHubSyncJob, stopGitHubSyncJob } from "#jobs/githubSyncJob";
 import { startViewsFlushJob, stopViewsFlushJob } from "#jobs/viewsFlushJob";
 import { startUsageMetricsJob, stopUsageMetricsJob } from "#jobs/usageMetricsJob";
 import { startPortfolioAccessJob, stopPortfolioAccessJob } from "#jobs/portfolioAccessJob";
-
-import { app } from "./app.js";
 
 let serverInstance: ReturnType<typeof app.listen> | null = null;
 

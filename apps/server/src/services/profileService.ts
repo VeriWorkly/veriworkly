@@ -1,9 +1,9 @@
 import { Prisma } from "@prisma/client";
 
-import { prisma } from "#utils/prisma";
-import { ApiError } from "#utils/errors";
+import { prisma } from "#lib/prisma";
+import { ApiError } from "#lib/errors";
 
-import { cacheGet, cacheSet, cacheDel } from "#utils/redis";
+import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
 
 export class ProfileService {
   /**

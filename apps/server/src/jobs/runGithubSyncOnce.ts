@@ -1,8 +1,8 @@
 import { config } from "#config";
 
-import { logger } from "#utils/logger";
-import { prisma } from "#utils/prisma";
-import { initRedis, closeRedis } from "#utils/redis";
+import { logger } from "#lib/logger";
+import { prisma } from "#lib/prisma";
+import { initRedis, closeRedis } from "#lib/redis";
 
 import { syncGitHubStatsFromGitHub } from "#services/githubService";
 

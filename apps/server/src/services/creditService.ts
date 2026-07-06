@@ -2,9 +2,9 @@ import { Prisma } from "@prisma/client";
 
 import { getAiModePolicy } from "#services/aiPolicy";
 import type { AiActionKey, AiMode } from "#services/aiTypes";
-import { ApiError } from "#utils/errors";
-import { prisma } from "#utils/prisma";
-import { cacheDel, cacheGet, cacheSet } from "#utils/redis";
+import { ApiError } from "#lib/errors";
+import { prisma } from "#lib/prisma";
+import { cacheDel, cacheGet, cacheSet } from "#lib/redis";
 
 const CREDIT_SUMMARY_TTL_SECONDS = 30;
 const CREDIT_HISTORY_TTL_SECONDS = 60;

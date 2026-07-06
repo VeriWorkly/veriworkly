@@ -4,8 +4,8 @@ import { createAiClient } from "#services/aiClient";
 import { getAiActionPolicy, getAiModePolicy, publicAiActionPolicy } from "#services/aiPolicy";
 import { CreditService } from "#services/creditService";
 
-import { ApiError } from "#utils/errors";
-import { logger } from "#utils/logger";
+import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
 
 import type { AiGenerateInput } from "#validators/aiValidator";
 

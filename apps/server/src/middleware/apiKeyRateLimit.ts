@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 
-import { logger } from "#utils/logger";
-import { getRedis } from "#utils/redis";
-import { createErrorResponse } from "#utils/errors";
+import { logger } from "#lib/logger";
+import { getRedis } from "#lib/redis";
+import { createErrorResponse } from "#lib/errors";
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_REQUESTS = 20;

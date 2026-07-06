@@ -15,14 +15,14 @@ const { mockGetRedis, mockSendWelcomeEmail, mockSendLoginAlertEmail, mockPrisma 
   },
 );
 
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/redis", () => ({
   getRedis: mockGetRedis,
   cacheGet: vi.fn(),
   cacheSet: vi.fn(),
   cacheDel: vi.fn(),
 }));
 
-vi.mock("#utils/prisma", () => ({
+vi.mock("#lib/prisma", () => ({
   prisma: mockPrisma,
 }));
 

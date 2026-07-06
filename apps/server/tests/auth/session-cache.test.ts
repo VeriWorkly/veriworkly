@@ -12,7 +12,7 @@ vi.mock("#config", () => ({
   },
 }));
 
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/redis", () => ({
   cacheGet: cacheGetMock,
   cacheSet: cacheSetMock,
 }));

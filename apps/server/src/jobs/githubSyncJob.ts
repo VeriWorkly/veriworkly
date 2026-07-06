@@ -1,8 +1,8 @@
 import cron, { ScheduledTask } from "node-cron";
 
 import { config } from "#config";
-import { logger } from "#utils/logger";
-import { ApiError } from "#utils/errors";
+import { logger } from "#lib/logger";
+import { ApiError } from "#lib/errors";
 
 import { shouldSyncGitHubStats, syncGitHubStatsFromGitHub } from "#services/githubService";
 

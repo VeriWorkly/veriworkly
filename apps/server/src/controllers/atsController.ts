@@ -7,7 +7,7 @@ import { AtsJobFetchService } from "#services/atsJobFetchService";
 import { AtsQuotaService } from "#services/atsQuotaService";
 import { AtsResumeExtractService } from "#services/atsResumeExtractService";
 import { AtsScoringService } from "#services/atsScoringService";
-import { createSuccessResponse, handleValidationError, ApiError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError, ApiError } from "#lib/errors";
 import { getRequestIpDetails } from "#utils/requestIp";
 import { atsAnalyzeSchema, atsCheckSchema, atsConvertResumeSchema } from "#validators/atsValidator";
 

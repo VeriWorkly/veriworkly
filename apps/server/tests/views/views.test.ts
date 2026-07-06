@@ -29,7 +29,7 @@ const prismaMock = {
   $transaction: vi.fn((cb) => cb(prismaMock)),
 };
 
-vi.mock("#utils/prisma", () => ({
+vi.mock("#lib/prisma", () => ({
   prisma: prismaMock,
   default: prismaMock,
 }));
@@ -123,7 +123,7 @@ const mockRedis = {
   }),
 };
 
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/redis", () => ({
   getRedis: () => mockRedis,
   cacheGet: vi.fn(),
   cacheSet: vi.fn(),

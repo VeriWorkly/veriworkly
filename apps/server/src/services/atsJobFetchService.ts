@@ -2,7 +2,7 @@ import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import { isIP } from "node:net";
 
-import { ApiError } from "#utils/errors";
+import { ApiError } from "#lib/errors";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 3;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 
 vi.mock("#config", () => ({
   config: {
@@ -28,7 +28,7 @@ vi.mock("#config", () => ({
   isDevelopment: false,
 }));
 
-vi.mock("#utils/logger", () => ({
+vi.mock("#lib/logger", () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -37,7 +37,7 @@ vi.mock("#utils/logger", () => ({
   },
 }));
 
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/redis", () => ({
   getRedis: () => ({
     isOpen: true,
     eval: vi.fn().mockResolvedValue([1, 60000]),

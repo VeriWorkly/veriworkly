@@ -8,7 +8,7 @@ import { config } from "#config";
 import { BillingService } from "#services/billingService";
 import { CreditService } from "#services/creditService";
 
-import { ApiError, createSuccessResponse, handleValidationError } from "#utils/errors";
+import { ApiError, createSuccessResponse, handleValidationError } from "#lib/errors";
 
 import {
   checkoutSchema,

@@ -26,7 +26,7 @@ const { mockLogger } = vi.hoisted(() => {
   };
 });
 
-vi.mock("#utils/logger", () => ({
+vi.mock("#lib/logger", () => ({
   logger: mockLogger,
 }));
 

@@ -4,8 +4,8 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { ApiKeyService } from "#services/apiKeyService";
 
-import { logger } from "#utils/logger";
-import { ApiError, createSuccessResponse, createErrorResponse } from "#utils/errors";
+import { logger } from "#lib/logger";
+import { ApiError, createSuccessResponse, createErrorResponse } from "#lib/errors";
 import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 
 const DEFAULT_ALLOWED_SCOPES = [

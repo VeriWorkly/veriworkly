@@ -2,9 +2,9 @@ import { randomBytes } from "node:crypto";
 
 import { Prisma } from "@prisma/client";
 
-import { ApiError } from "#utils/errors";
-import { prisma } from "#utils/prisma";
-import { cacheDel, cacheGet, cacheSet } from "#utils/redis";
+import { ApiError } from "#lib/errors";
+import { prisma } from "#lib/prisma";
+import { cacheDel, cacheGet, cacheSet } from "#lib/redis";
 
 const tierRateBps = { TIER_1: 200, TIER_2: 300, TIER_3: 500 } as const;
 const AFFILIATE_DASHBOARD_TTL_SECONDS = 60;

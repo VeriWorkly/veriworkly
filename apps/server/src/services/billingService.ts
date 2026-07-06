@@ -11,10 +11,10 @@ import {
   dodoSubscriptionSchema,
 } from "#validators/billingValidator";
 
-import { prisma } from "#utils/prisma";
-import { logger } from "#utils/logger";
-import { ApiError } from "#utils/errors";
-import { cacheDel, cacheGet, cacheSet, getRedis } from "#utils/redis";
+import { prisma } from "#lib/prisma";
+import { logger } from "#lib/logger";
+import { ApiError } from "#lib/errors";
+import { cacheDel, cacheGet, cacheSet, getRedis } from "#lib/redis";
 import { EntitlementService } from "#services/entitlementService";
 import { AffiliateService } from "#services/affiliateService";
 import { CreditService } from "#services/creditService";

@@ -9,9 +9,9 @@ import { requireAuthUser } from "#middleware/auth";
 import { ShareService } from "#services/shareService";
 
 import { normalizeSlug, normalizeUsername } from "#utils/slugs";
-import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#utils/redis";
+import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#lib/redis";
 import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
-import { createSuccessResponse, handleValidationError, ApiError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError, ApiError } from "#lib/errors";
 
 /**
  * Validation schemas for sharing-related requests

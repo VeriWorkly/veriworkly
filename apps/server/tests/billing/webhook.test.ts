@@ -32,7 +32,7 @@ const prismaMock = {
   $transaction: vi.fn((cb) => cb(prismaMock)),
 };
 
-vi.mock("#utils/prisma", () => ({
+vi.mock("#lib/prisma", () => ({
   prisma: prismaMock,
   default: prismaMock,
 }));
@@ -42,7 +42,7 @@ vi.mock("#utils/portfolioPublicationCache", () => ({
   revalidatePublicPortfolios: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/redis", () => ({
   cacheDel: vi.fn().mockResolvedValue(undefined),
   cacheGet: vi.fn().mockResolvedValue(null),
   cacheSet: vi.fn().mockResolvedValue(undefined),

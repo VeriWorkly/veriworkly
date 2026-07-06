@@ -11,7 +11,7 @@ import {
   updateUsernameSchema,
   usernameAvailabilityParamsSchema,
 } from "#validators/userValidator";
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
 export class UserController {
   /**

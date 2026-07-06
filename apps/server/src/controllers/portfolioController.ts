@@ -12,7 +12,7 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { PortfolioService } from "#services/portfolioService";
 
-import { ApiError, createSuccessResponse, handleValidationError } from "#utils/errors";
+import { ApiError, createSuccessResponse, handleValidationError } from "#lib/errors";
 
 const publicPortfolioListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),

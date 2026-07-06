@@ -41,6 +41,8 @@ export const RESERVED_USERNAMES = new Set([
 
 export function normalizeSlug(value: string, fallback = "document") {
   const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")

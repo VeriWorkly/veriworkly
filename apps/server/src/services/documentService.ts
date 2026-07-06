@@ -2,11 +2,11 @@ import { DocumentType, Visibility, Prisma } from "@prisma/client";
 
 import { ShareService } from "#services/shareService";
 
-import { prisma } from "#utils/prisma";
-import { logger } from "#utils/logger";
-import { ApiError } from "#utils/errors";
+import { prisma } from "#lib/prisma";
+import { logger } from "#lib/logger";
+import { ApiError } from "#lib/errors";
 import { buildUniqueSlugHelper } from "#utils/slugs";
-import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#utils/redis";
+import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#lib/redis";
 
 export type DocumentCreateInput = {
   id?: string;

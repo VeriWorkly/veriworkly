@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireAuthUser } from "#middleware/auth";
 import { AffiliateService } from "#services/affiliateService";
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 import { clickSchema, referralCodeSchema, withdrawalSchema } from "#validators/affiliateValidator";
 
 export class AffiliateController {

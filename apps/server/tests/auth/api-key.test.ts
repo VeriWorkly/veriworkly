@@ -15,7 +15,7 @@ vi.mock("#config", () => ({
   },
 }));
 
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/redis", () => ({
   cacheGet: cacheGetMock,
   cacheSet: cacheSetMock,
   getRedis: () => ({
@@ -24,7 +24,7 @@ vi.mock("#utils/redis", () => ({
 }));
 
 const prismaFindMock = vi.fn();
-vi.mock("#utils/prisma", () => ({
+vi.mock("#lib/prisma", () => ({
   prisma: {
     apiKey: {
       findFirst: (...args: unknown[]) => prismaFindMock(...args),

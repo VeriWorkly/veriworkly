@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 import { config } from "#config";
-import { ApiError } from "#utils/errors";
+import { ApiError } from "#lib/errors";
 
 let client: OpenAI | null = null;
 

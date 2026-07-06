@@ -7,7 +7,7 @@ import { getSessionUserFromRequest } from "#middleware/auth";
 import { apiKeyRateLimit } from "#middleware/apiKeyRateLimit";
 import { isWildcardPortfolioOrigin } from "#middleware/cors";
 
-import { logger } from "#utils/logger";
+import { logger } from "#lib/logger";
 
 interface FlexibleAuthOptions {
   skipSession?: boolean;

@@ -7,7 +7,7 @@ vi.mock("#services/mail", () => ({
   sendContactEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("#utils/logger", () => ({
+vi.mock("#lib/logger", () => ({
   logger: {
     error: vi.fn(),
     info: vi.fn(),

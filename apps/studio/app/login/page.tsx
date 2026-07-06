@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Input, Badge, Button } from "@veriworkly/ui";
 
 import OtpForm from "./component/OtpForm";
+import SocialAuth from "./component/SocialAuth";
 
 import { AuthCard } from "./component/AuthCard";
 import { LoginFeatures } from "./component/LoginFeatures";
@@ -14,6 +15,7 @@ import { LoginFeatures } from "./component/LoginFeatures";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { fetchApiData } from "@/utils/fetchApiData";
+import { getSafeAuthCallback } from "@/lib/auth-redirect";
 
 const LoginPage = () => {
   const router = useRouter();
@@ -27,17 +29,29 @@ const LoginPage = () => {
     const code = new URLSearchParams(window.location.search).get("ref");
     if (!code || sessionStorage.getItem(`affiliate-click:${code}`)) return;
     sessionStorage.setItem(`affiliate-click:${code}`, "1");
+
+    let referrerHost: string | undefined = undefined;
+    if (document.referrer) {
+      try {
+        referrerHost = new URL(document.referrer).hostname;
+      } catch {
+        // Safe fallback for malformed referrer URLs
+      }
+    }
+
     void fetchApiData("/affiliates/click", {
       method: "POST",
       body: JSON.stringify({
         code,
-        referrerHost: document.referrer ? new URL(document.referrer).hostname : undefined,
+        referrerHost,
       }),
     }).catch(() => sessionStorage.removeItem(`affiliate-click:${code}`));
   }, []);
 
   const handleGuestAccess = () => {
-    router.push("/");
+    const searchParams = new URLSearchParams(window.location.search);
+    const callbackURL = searchParams.get("callbackURL");
+    router.push(getSafeAuthCallback(callbackURL));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -110,10 +124,17 @@ const LoginPage = () => {
           />
         </div>
 
-        <Button size="md" type="submit" className="w-full" disabled={isLoading || !email}>
+        <Button
+          size="md"
+          type="submit"
+          className="w-full transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+          disabled={isLoading || !email}
+        >
           {isLoading ? "Sending Code..." : "Send Sign-in Code"}
         </Button>
       </form>
+
+      <SocialAuth isLoading={isLoading} setIsLoading={setIsLoading} />
 
       <p className="text-muted text-center text-xs md:text-sm">
         Want to continue immediately?

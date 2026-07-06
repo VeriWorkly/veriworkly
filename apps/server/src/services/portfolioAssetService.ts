@@ -9,10 +9,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { ApiError } from "#utils/errors";
-import { logger } from "#utils/logger";
-import { getRedis } from "#utils/redis";
+import { prisma } from "#lib/prisma";
+import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
+import { getRedis } from "#lib/redis";
 
 const allowedTypes = new Map([
   ["image/jpeg", "jpg"],
