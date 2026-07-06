@@ -2,10 +2,10 @@ import { v4 as uuidv4 } from "uuid";
 import type { Prisma } from "@prisma/client";
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { ApiError } from "#utils/errors";
-import { cacheDel, cacheDelByPrefix, cacheGet, cacheSet, getRedis } from "#utils/redis";
-import { logger } from "#utils/logger";
+import { prisma } from "#lib/prisma";
+import { ApiError } from "#lib/errors";
+import { cacheDel, cacheDelByPrefix, cacheGet, cacheSet, getRedis } from "#lib/redis";
+import { logger } from "#lib/logger";
 
 export type GitHubStatus = "todo" | "in-progress" | "done";
 export type GitHubItemKind = "issue" | "pull-request";

@@ -4,9 +4,9 @@ import { config } from "#config";
 import { EntitlementService } from "#services/entitlementService";
 import { publicAtsPolicy } from "#services/atsAiPolicy";
 import type { AtsQuotaSummary } from "#services/atsTypes";
-import { ApiError } from "#utils/errors";
-import { prisma } from "#utils/prisma";
-import { getRedis } from "#utils/redis";
+import { ApiError } from "#lib/errors";
+import { prisma } from "#lib/prisma";
+import { getRedis } from "#lib/redis";
 
 const ANONYMOUS_WINDOW_SECONDS = 48 * 60 * 60;
 const FREE_WINDOW_SECONDS = 24 * 60 * 60;

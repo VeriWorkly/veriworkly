@@ -7,8 +7,8 @@ import { AtsScoringService } from "#services/atsScoringService";
 import type { AtsAiInsights, AtsReport } from "#services/atsTypes";
 import { CreditService } from "#services/creditService";
 import { EntitlementService } from "#services/entitlementService";
-import { ApiError } from "#utils/errors";
-import { logger } from "#utils/logger";
+import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
 
 const nullableString = (maxLen: number) =>
   z

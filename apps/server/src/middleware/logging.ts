@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from "express";
 
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { logger } from "#utils/logger";
+import { prisma } from "#lib/prisma";
+import { logger } from "#lib/logger";
 import { getRequestIpDetails } from "#utils/requestIp";
 
 export function loggingMiddleware(req: Request, res: Response, next: NextFunction) {

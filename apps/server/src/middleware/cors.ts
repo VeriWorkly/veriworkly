@@ -2,7 +2,7 @@ import cors from "cors";
 
 import { config } from "#config";
 
-import { ApiError } from "#utils/errors";
+import { ApiError } from "#lib/errors";
 
 function isWildcardPortfolioOrigin(origin: string | undefined, allowedOrigins: string[]): boolean {
   if (!origin || allowedOrigins.includes(origin)) {

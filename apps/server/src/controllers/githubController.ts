@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from "express";
 import * as githubService from "#services/githubService";
 
 import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
 /**
  * Validation schema for GitHub query parameters.

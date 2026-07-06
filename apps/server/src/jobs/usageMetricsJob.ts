@@ -2,8 +2,8 @@ import cron, { ScheduledTask } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
 
 import { config } from "#config";
-import { logger } from "#utils/logger";
-import { getRedis } from "#utils/redis";
+import { logger } from "#lib/logger";
+import { getRedis } from "#lib/redis";
 
 import { flushUsageMetricsForDate, getPendingUsageMetricDates } from "#services/analyticsService";
 

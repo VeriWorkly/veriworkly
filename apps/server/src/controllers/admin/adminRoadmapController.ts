@@ -10,7 +10,7 @@ import { type RoadmapStatus } from "#services/roadmapService";
 
 import { roadmapAdminCreateSchema, roadmapAdminUpdateSchema } from "#validators/roadmapValidator";
 
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
 /**
  * Create a new roadmap feature (admin only).

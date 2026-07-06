@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Request, Response, NextFunction } from "express";
 
 import { config } from "#config";
-import { createSuccessResponse, createErrorResponse } from "#utils/errors";
+import { createSuccessResponse, createErrorResponse } from "#lib/errors";
 
 import {
   KNOWN_EVENTS,

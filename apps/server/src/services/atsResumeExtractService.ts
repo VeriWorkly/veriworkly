@@ -1,7 +1,7 @@
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 
-import { ApiError } from "#utils/errors";
+import { ApiError } from "#lib/errors";
 
 const MAX_TEXT_CHARS = 50_000;
 

@@ -1,8 +1,8 @@
 import cron, { ScheduledTask } from "node-cron";
 import { randomUUID } from "node:crypto";
 
-import { logger } from "#utils/logger";
-import { getRedis } from "#utils/redis";
+import { logger } from "#lib/logger";
+import { getRedis } from "#lib/redis";
 
 import { ShareService } from "#services/shareService";
 import { PortfolioService } from "#services/portfolioService";

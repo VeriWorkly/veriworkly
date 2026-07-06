@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { prisma } from "#utils/prisma";
-import { ApiError } from "#utils/errors";
-import { cacheDelByPrefix } from "#utils/redis";
+import { prisma } from "#lib/prisma";
+import { ApiError } from "#lib/errors";
+import { cacheDelByPrefix } from "#lib/redis";
 
 import { Prisma } from "@prisma/client";
 

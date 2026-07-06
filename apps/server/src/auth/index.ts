@@ -9,8 +9,8 @@ import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
 
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { getRedis } from "#utils/redis";
+import { prisma } from "#lib/prisma";
+import { getRedis } from "#lib/redis";
 import { invalidateSessionCache, invalidateCacheByToken } from "#utils/authCache";
 
 import {

@@ -6,7 +6,7 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { PortfolioAssetService } from "#services/portfolioAssetService";
 
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
 const uploadSchema = z.object({
   kind: z.enum(["AVATAR", "PROJECT_COVER", "SOCIAL_IMAGE"]),

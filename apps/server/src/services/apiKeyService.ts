@@ -2,9 +2,9 @@ import crypto from "crypto";
 
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { logger } from "#utils/logger";
-import { cacheDel, cacheGet, cacheSet, getRedis } from "#utils/redis";
+import { prisma } from "#lib/prisma";
+import { logger } from "#lib/logger";
+import { cacheDel, cacheGet, cacheSet, getRedis } from "#lib/redis";
 
 const MAX_API_KEY_RATE_LIMIT = 20;
 

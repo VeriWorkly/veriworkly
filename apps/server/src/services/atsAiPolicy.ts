@@ -6,7 +6,7 @@ import {
   resetPrivateAiConfigForTests,
   resolvePrivateAiModel,
 } from "#services/aiPrivateConfig";
-import { ApiError } from "#utils/errors";
+import { ApiError } from "#lib/errors";
 
 const modelSchema = z.object({
   model: z.string().min(1),

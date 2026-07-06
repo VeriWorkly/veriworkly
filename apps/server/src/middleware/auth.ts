@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 
-import { ApiError } from "#utils/errors";
+import { ApiError } from "#lib/errors";
 import { config } from "#config";
 
 import { convertNodeHeadersToWebHeaders, getSessionFromRequestHeaders } from "#auth/index";
 
-import { cacheGet, cacheSet } from "#utils/redis";
+import { cacheGet, cacheSet } from "#lib/redis";
 import { getSessionCacheKey } from "#utils/authCache";
 
 export async function getSessionUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {

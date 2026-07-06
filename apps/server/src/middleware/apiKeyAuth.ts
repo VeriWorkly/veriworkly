@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from "express";
 
 import { ApiKeyService } from "#services/apiKeyService";
 
-import { logger } from "#utils/logger";
-import { createErrorResponse } from "#utils/errors";
+import { logger } from "#lib/logger";
+import { createErrorResponse } from "#lib/errors";
 
 /**
  * Middleware to authenticate requests using an API key.

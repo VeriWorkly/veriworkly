@@ -37,17 +37,15 @@ const OtpForm = ({
     return () => clearInterval(timerId);
   }, [timeLeft]);
 
-  const handleVerifyOtp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!sentTo || otp.length !== 6) return;
+  const verifyCode = async (code: string) => {
+    if (!sentTo || code.length !== 6 || isLoading) return;
 
     setIsLoading(true);
 
     try {
       const { error: authError } = await authClient.signIn.emailOtp({
         email: sentTo,
-        otp: otp,
+        otp: code,
         name: "Veriworkly User",
       });
 
@@ -76,7 +74,17 @@ const OtpForm = ({
         }).catch(() => undefined);
       }
 
-      const callbackURL = searchParams.get("callbackURL");
+      let callbackURL = searchParams.get("callbackURL");
+      if (!callbackURL && typeof document !== "undefined" && document.referrer) {
+        try {
+          const refUrl = new URL(document.referrer);
+          if (refUrl.pathname !== "/login" && refUrl.origin === window.location.origin) {
+            callbackURL = document.referrer;
+          }
+        } catch {
+          // Safe fallback for malformed referrer URLs
+        }
+      }
 
       router.push(getSafeAuthCallback(callbackURL));
       router.refresh();
@@ -87,6 +95,11 @@ const OtpForm = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await verifyCode(otp);
   };
 
   const handleResend = async () => {
@@ -175,15 +188,23 @@ const OtpForm = ({
             inputMode="numeric"
             placeholder="000000"
             autoComplete="one-time-code"
-            className="text-center font-mono text-2xl tracking-[0.5em]"
+            className="text-center font-mono text-2xl tracking-[0.5em] transition-all duration-200 focus:scale-[1.01]"
             onChange={(event) => {
               const val = event.target.value.replace(/\D/g, "").slice(0, 6);
               setOtp(val);
+              if (val.length === 6) {
+                void verifyCode(val);
+              }
             }}
           />
         </div>
 
-        <Button size="md" type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
+        <Button
+          size="md"
+          type="submit"
+          className="w-full transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+          disabled={isLoading || otp.length !== 6}
+        >
           {isLoading ? "Verifying..." : "Verify & Sign In"}
         </Button>
       </form>

@@ -1,7 +1,7 @@
 import { config, isProduction } from "#config";
 
-import { logger } from "#utils/logger";
-import { prisma } from "#utils/prisma";
+import { logger } from "#lib/logger";
+import { prisma } from "#lib/prisma";
 
 function ensure(condition: boolean, message: string): asserts condition {
   if (!condition) {

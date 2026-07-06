@@ -6,7 +6,7 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { DocumentService } from "#services/documentService";
 
-import { createSuccessResponse, handleValidationError, ApiError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError, ApiError } from "#lib/errors";
 
 import { documentCreateSchema, documentUpdateSchema } from "#validators/documentValidator";
 

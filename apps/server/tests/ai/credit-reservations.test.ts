@@ -35,8 +35,8 @@ const prisma = {
   $transaction: vi.fn((callback) => callback(tx)),
 };
 
-vi.mock("#utils/prisma", () => ({ prisma, default: prisma }));
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/prisma", () => ({ prisma, default: prisma }));
+vi.mock("#lib/redis", () => ({
   cacheDel: vi.fn(),
   cacheGet: vi.fn(),
   cacheSet: vi.fn(),

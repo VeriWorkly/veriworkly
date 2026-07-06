@@ -1,8 +1,8 @@
 import { config } from "#config";
 
-import { prisma } from "#utils/prisma";
-import { ApiError } from "#utils/errors";
-import { cacheGet, cacheSet } from "#utils/redis";
+import { prisma } from "#lib/prisma";
+import { ApiError } from "#lib/errors";
+import { cacheGet, cacheSet } from "#lib/redis";
 
 export type RoadmapStatus = "todo" | "in-progress" | "done";
 export type RoadmapSort = "newest" | "oldest" | "recently-completed";

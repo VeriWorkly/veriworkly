@@ -5,8 +5,8 @@ import { z } from "zod";
 import { requireAuthUser } from "#middleware/auth";
 import { AffiliateService } from "#services/affiliateService";
 import { CreditService } from "#services/creditService";
-import { prisma } from "#utils/prisma";
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { prisma } from "#lib/prisma";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 import {
   adminCommissionSchema,
   adminCreditAdjustmentSchema,

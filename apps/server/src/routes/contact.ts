@@ -3,8 +3,8 @@ import { Router } from "express";
 
 import { sendContactEmail } from "#services/mail";
 
-import { logger } from "#utils/logger";
-import { createSuccessResponse, createErrorResponse } from "#utils/errors";
+import { logger } from "#lib/logger";
+import { createSuccessResponse, createErrorResponse } from "#lib/errors";
 
 const router = Router();
 

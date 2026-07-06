@@ -9,11 +9,11 @@ import {
   revalidatePublicPortfolios,
 } from "#utils/portfolioPublicationCache";
 
-import { prisma } from "#utils/prisma";
-import { logger } from "#utils/logger";
-import { ApiError } from "#utils/errors";
+import { prisma } from "#lib/prisma";
+import { logger } from "#lib/logger";
+import { ApiError } from "#lib/errors";
 import { normalizeSlug, RESERVED_USERNAMES } from "#utils/slugs";
-import { cacheGet, cacheSet, cacheDel, getRedis } from "#utils/redis";
+import { cacheGet, cacheSet, cacheDel, getRedis } from "#lib/redis";
 
 import { portfolioContentSchema, type PortfolioContentInput } from "#validators/portfolioValidator";
 

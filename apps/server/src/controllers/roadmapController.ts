@@ -12,7 +12,7 @@ import {
 import { roadmapQuerySchema } from "#validators/roadmapValidator";
 
 import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
-import { ApiError, createSuccessResponse, handleValidationError } from "#utils/errors";
+import { ApiError, createSuccessResponse, handleValidationError } from "#lib/errors";
 
 export class RoadmapController {
   /**

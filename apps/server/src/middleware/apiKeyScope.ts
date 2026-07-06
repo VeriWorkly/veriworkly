@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 
-import { createErrorResponse } from "#utils/errors";
+import { createErrorResponse } from "#lib/errors";
 
 export function requireApiKeyScopes(...requiredScopes: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {

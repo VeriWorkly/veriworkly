@@ -5,7 +5,7 @@ import { requireAuthUser } from "#middleware/auth";
 
 import { ProfileService } from "#services/profileService";
 
-import { createSuccessResponse, handleValidationError } from "#utils/errors";
+import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
 import { masterProfilePayloadSchema } from "#validators/masterProfileValidator";
 

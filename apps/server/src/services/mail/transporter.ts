@@ -2,7 +2,7 @@ import nodemailer, { Transporter } from "nodemailer";
 
 import { config, isDevelopment } from "#config";
 
-import { logger } from "#utils/logger";
+import { logger } from "#lib/logger";
 
 function validateSmtpConfig() {
   return Boolean(config.auth.smtpHost && config.auth.smtpUser && config.auth.smtpPass);

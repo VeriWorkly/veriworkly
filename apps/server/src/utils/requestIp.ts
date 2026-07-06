@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { logger } from "#utils/logger";
+import { logger } from "#lib/logger";
 
 function normalizeIpValue(value: string): string {
   const trimmed = value.trim();
@@ -43,14 +43,17 @@ export function getRequestIpDetails(req: Request) {
 
     const socketIp = remoteAddress ? normalizeIpValue(remoteAddress) : undefined;
 
-    const resolvedIp =
-      requestIp ||
-      (clientIpHeader ? normalizeIpValue(clientIpHeader) : undefined) ||
-      (forwardedForCandidate ? normalizeIpValue(forwardedForCandidate) : undefined) ||
-      (realIp ? normalizeIpValue(realIp) : undefined) ||
-      (cfConnectingIp ? normalizeIpValue(cfConnectingIp) : undefined) ||
-      socketIp ||
-      "unknown";
+    const isProxyTrusted = req.app ? !!req.app.get("trust proxy") : true;
+
+    const resolvedIp = isProxyTrusted
+      ? requestIp ||
+        (clientIpHeader ? normalizeIpValue(clientIpHeader) : undefined) ||
+        (forwardedForCandidate ? normalizeIpValue(forwardedForCandidate) : undefined) ||
+        (realIp ? normalizeIpValue(realIp) : undefined) ||
+        (cfConnectingIp ? normalizeIpValue(cfConnectingIp) : undefined) ||
+        socketIp ||
+        "unknown"
+      : socketIp || "unknown";
 
     return {
       requestIp: requestIp || "unknown",

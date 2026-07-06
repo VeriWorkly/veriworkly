@@ -1,5 +1,5 @@
-import { ApiError } from "#utils/errors";
-import { prisma } from "#utils/prisma";
+import { ApiError } from "#lib/errors";
+import { prisma } from "#lib/prisma";
 
 import type { EntitlementKey } from "#services/productCatalog";
 

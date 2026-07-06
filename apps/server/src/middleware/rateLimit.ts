@@ -2,9 +2,9 @@ import { Request, Response, NextFunction } from "express";
 
 import { config } from "#config";
 
-import { logger } from "#utils/logger";
-import { getRedis } from "#utils/redis";
-import { createErrorResponse } from "#utils/errors";
+import { logger } from "#lib/logger";
+import { getRedis } from "#lib/redis";
+import { createErrorResponse } from "#lib/errors";
 import { getRequestIpDetails } from "#utils/requestIp";
 
 type RateLimitEntry = {

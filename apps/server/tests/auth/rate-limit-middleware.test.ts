@@ -23,11 +23,11 @@ vi.mock("#config", () => ({
   },
 }));
 
-vi.mock("#utils/redis", () => ({
+vi.mock("#lib/redis", () => ({
   getRedis: mockGetRedis,
 }));
 
-vi.mock("#utils/logger", () => ({
+vi.mock("#lib/logger", () => ({
   logger: {
     warn: vi.fn(),
     error: vi.fn(),

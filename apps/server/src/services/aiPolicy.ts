@@ -7,7 +7,7 @@ import {
   resolvePrivateAiModel,
 } from "#services/aiPrivateConfig";
 import { AI_ACTION_KEYS, type AiActionKey, type AiMode } from "#services/aiTypes";
-import { ApiError } from "#utils/errors";
+import { ApiError } from "#lib/errors";
 
 const modePolicySchema = z.object({
   credits: z.number().int().positive(),
