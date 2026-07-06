@@ -18,7 +18,7 @@ export async function invalidatePublicPortfolioCaches(subdomains: string[]) {
 
 export async function revalidatePublicPortfolios(subdomains: string[]) {
   const unique = uniqueSubdomains(subdomains);
-  
+
   if (unique.length === 0) return;
 
   const CHUNK_SIZE = 50;

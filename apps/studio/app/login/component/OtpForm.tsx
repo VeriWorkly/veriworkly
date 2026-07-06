@@ -4,17 +4,18 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
-import { Input, Badge, Button } from "@veriworkly/ui";
+import { Input, Button } from "@veriworkly/ui";
+import { Shield, Lock, Check } from "lucide-react";
+
+import AuthCard from "./AuthCard";
+
+import { setAllDocumentsSyncEnabled } from "@/features/documents/services/document-sync";
+import { setAutoSyncEnabledInLocalStorage } from "@/features/documents/services/workspace-settings";
 
 import { authClient } from "@/lib/auth-client";
 import { getSafeAuthCallback } from "@/lib/auth-redirect";
 
 import { fetchApiData } from "@/utils/fetchApiData";
-
-import { setAllDocumentsSyncEnabled } from "@/features/documents/services/document-sync";
-import { setAutoSyncEnabledInLocalStorage } from "@/features/documents/services/workspace-settings";
-
-import { AuthCard } from "./AuthCard";
 
 const OtpForm = ({
   sentTo,
@@ -67,20 +68,20 @@ const OtpForm = ({
       const searchParams = new URLSearchParams(window.location.search);
       const referralCode = searchParams.get("ref");
 
-      if (referralCode) {
+      if (referralCode)
         await fetchApiData("/affiliates/referral", {
           method: "POST",
           body: JSON.stringify({ code: referralCode }),
         }).catch(() => undefined);
-      }
 
       let callbackURL = searchParams.get("callbackURL");
+
       if (!callbackURL && typeof document !== "undefined" && document.referrer) {
         try {
           const refUrl = new URL(document.referrer);
-          if (refUrl.pathname !== "/login" && refUrl.origin === window.location.origin) {
+
+          if (refUrl.pathname !== "/login" && refUrl.origin === window.location.origin)
             callbackURL = document.referrer;
-          }
         } catch {
           // Safe fallback for malformed referrer URLs
         }
@@ -113,9 +114,8 @@ const OtpForm = ({
         type: "sign-in",
       });
 
-      if (resendError) {
-        toast.error(resendError.message || "Failed to resend code.");
-      } else {
+      if (resendError) toast.error(resendError.message || "Failed to resend code.");
+      else {
         setTimeLeft(60);
         setOtp("");
         toast.success("A new code has been sent to your email.");
@@ -131,101 +131,114 @@ const OtpForm = ({
 
   return (
     <AuthCard blurPosition="top-right">
-      <div className="space-y-4">
-        <Badge className="bg-background/70">Secure Verification</Badge>
+      <div className="space-y-3">
+        <h1 className="text-foreground text-3xl font-semibold tracking-tight">Check your email</h1>
 
-        <div className="space-y-3">
-          <h1 className="text-foreground text-3xl font-semibold tracking-tight">
-            Check your email
-          </h1>
-
-          <p className="text-muted text-sm leading-6 md:text-base">
-            We sent a secure sign-in code to
-            <span className="text-foreground mx-1.5 font-semibold">{sentTo}</span>
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => setSent(false)}
-              className="cursor-pointer text-sm font-medium text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-400 disabled:opacity-50"
-            >
-              Change
-            </button>
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className="border-border/80 bg-background/65 rounded-2xl border p-3 backdrop-blur">
-          <p className="text-muted text-sm">
-            Enter the 6-digit code below. If you do not see the email, check your spam or promotions
-            folder.
-          </p>
-        </div>
-
-        <div className="border-border/80 rounded-2xl border bg-yellow-100/65 p-3 backdrop-blur dark:bg-yellow-300/5">
-          <p className="text-muted text-sm">
-            <span className="text-foreground font-medium">Tip:</span> Keep this tab open while you
-            check your inbox.
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleVerifyOtp} className="space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="otp" className="text-foreground text-sm font-medium">
-            Verification Code
-          </label>
-
-          <Input
-            id="otp"
-            required
-            autoFocus
-            type="text"
-            value={otp}
-            minLength={6}
-            maxLength={6}
-            pattern="\d{6}"
-            inputMode="numeric"
-            placeholder="000000"
-            autoComplete="one-time-code"
-            className="text-center font-mono text-2xl tracking-[0.5em] transition-all duration-200 focus:scale-[1.01]"
-            onChange={(event) => {
-              const val = event.target.value.replace(/\D/g, "").slice(0, 6);
-              setOtp(val);
-              if (val.length === 6) {
-                void verifyCode(val);
-              }
-            }}
-          />
-        </div>
-
-        <Button
-          size="md"
-          type="submit"
-          className="w-full transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-          disabled={isLoading || otp.length !== 6}
-        >
-          {isLoading ? "Verifying..." : "Verify & Sign In"}
-        </Button>
-      </form>
-
-      <div className="text-center text-sm">
-        <span className="text-muted">Didn&apos;t receive the code? </span>
-
-        {timeLeft > 0 ? (
-          <span className="text-muted-foreground font-medium" aria-live="polite">
-            Resend in {timeLeft}s
-          </span>
-        ) : (
+        <p className="text-muted text-sm leading-relaxed md:text-base">
+          We sent a secure sign-in code to
+          <span className="text-foreground mx-1.5 font-semibold">{sentTo}</span>
           <button
             type="button"
             disabled={isLoading}
-            onClick={handleResend}
-            className="cursor-pointer font-medium text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => setSent(false)}
+            className="text-accent focus-visible:ring-accent/40 cursor-pointer rounded px-1 text-sm font-semibold underline underline-offset-4 transition-all hover:opacity-80 focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
           >
-            Resend Code
+            Change
           </button>
-        )}
+        </p>
+      </div>
+
+      <div className="my-auto flex flex-1 flex-col justify-center space-y-5">
+        <div className="border-border/80 bg-background/65 space-y-2.5 rounded-2xl border p-4 backdrop-blur">
+          <p className="text-muted text-xs leading-relaxed">
+            Enter the 6-digit code below. This code is valid for{" "}
+            <span className="text-foreground font-semibold">5 minutes</span>. If you don&apos;t see
+            the email, please check your spam or junk folder.
+          </p>
+
+          <div className="bg-border/40 h-px w-full" />
+
+          <p className="text-muted text-xs leading-relaxed">
+            <span className="text-foreground font-semibold">Tip:</span> Keep this page open while
+            you check your inbox.
+          </p>
+        </div>
+
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="otp" className="text-foreground text-sm font-medium">
+              Verification Code
+            </label>
+
+            <Input
+              id="otp"
+              required
+              autoFocus
+              type="text"
+              value={otp}
+              minLength={6}
+              maxLength={6}
+              pattern="\d{6}"
+              inputMode="numeric"
+              placeholder="000000"
+              autoComplete="one-time-code"
+              className="text-center font-mono text-2xl tracking-[0.5em] transition-all duration-200 focus:scale-[1.01]"
+              onChange={(event) => {
+                const val = event.target.value.replace(/\D/g, "").slice(0, 6);
+                setOtp(val);
+                if (val.length === 6) {
+                  void verifyCode(val);
+                }
+              }}
+            />
+          </div>
+
+          <Button
+            size="md"
+            type="submit"
+            disabled={isLoading || otp.length !== 6}
+            className="w-full transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+          >
+            {isLoading ? "Verifying..." : "Verify & Sign In"}
+          </Button>
+        </form>
+      </div>
+
+      <div className="mt-auto space-y-4 pt-4">
+        <p className="text-center text-sm">
+          <span className="text-muted">Didn&apos;t receive the code? </span>
+
+          {timeLeft > 0 ? (
+            <span className="text-muted-foreground font-medium">Resend in {timeLeft}s</span>
+          ) : (
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={handleResend}
+              className="text-accent focus-visible:ring-accent/40 cursor-pointer rounded px-1 font-semibold underline underline-offset-4 transition-all hover:opacity-80 focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Resend Code
+            </button>
+          )}
+        </p>
+
+        <div className="sr-only" aria-live="polite">
+          {timeLeft === 0 && "Verification code resend is now available."}
+        </div>
+
+        <div className="text-muted-foreground/60 border-border/40 flex items-center justify-center gap-5 border-t pt-4 text-[10px] select-none">
+          <span className="flex items-center gap-1">
+            <Check className="h-3.5 w-3.5 text-emerald-500" /> Local First
+          </span>
+
+          <span className="flex items-center gap-1">
+            <Shield className="h-3.5 w-3.5 text-blue-500" /> Encrypted Sync
+          </span>
+
+          <span className="flex items-center gap-1">
+            <Lock className="h-3.5 w-3.5 text-orange-500" /> Privacy First
+          </span>
+        </div>
       </div>
     </AuthCard>
   );

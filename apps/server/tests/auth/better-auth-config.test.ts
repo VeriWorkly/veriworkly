@@ -146,8 +146,9 @@ describe("Better Auth configuration", () => {
     expect(options.socialProviders?.linkedin).toBeDefined();
   });
 
-  it("has account linking enabled with trusted providers", () => {
+  it("has account linking enabled with trusted providers and uses cookie state strategy", () => {
     expect(options.account).toBeDefined();
+    expect(options.account?.storeStateStrategy).toBe("cookie");
     expect(options.account?.accountLinking).toBeDefined();
     expect(options.account?.accountLinking?.enabled).toBe(true);
     expect(options.account?.accountLinking?.trustedProviders).toEqual([
