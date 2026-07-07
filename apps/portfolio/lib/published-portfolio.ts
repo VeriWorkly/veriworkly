@@ -7,6 +7,7 @@ export interface PublishedPortfolio {
   snapshot: PortfolioContent;
   templateId: string;
   updatedAt: string;
+  isPremium?: boolean;
 }
 
 export const getPublishedPortfolio = cache(
@@ -26,6 +27,7 @@ export const getPublishedPortfolio = cache(
       snapshot: parsePortfolioContent(payload.data.snapshot),
       templateId: String(payload.data.templateId ?? ""),
       updatedAt: String(payload.data.updatedAt ?? ""),
+      isPremium: Boolean(payload.data.isPremium),
     };
   },
 );

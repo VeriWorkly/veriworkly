@@ -1,7 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const PLATFORM_HOST = "portfolio.veriworkly.com";
-const publicPlatformPaths = ["/", "/pricing", "/portfolios", "/user", "/templates", "/faq"];
+const publicPlatformPaths = [
+  "/",
+  "/pricing",
+  "/portfolios",
+  "/user",
+  "/portfolio",
+  "/templates",
+  "/faq",
+  "/dashboard",
+  "/editor",
+  "/preview",
+  "/analytics",
+  "/settings",
+  "/profile",
+];
 const SESSION_COOKIE_NAMES = [
   "__Secure-veriworkly-auth.session_token",
   "veriworkly-auth.session_token",
@@ -44,7 +58,7 @@ export default function proxy(request: NextRequest) {
     return NextResponse.next();
 
   if (isPlatformHost) {
-    const match = path.match(/^\/user\/([^/]+)(.*)$/);
+    const match = path.match(/^\/(?:user|portfolio)\/([^/]+)(.*)$/);
 
     return match
       ? NextResponse.rewrite(new URL(`/portfolios/${match[1]}${match[2]}`, request.url))

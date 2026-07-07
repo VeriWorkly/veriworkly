@@ -5,12 +5,19 @@ import { useEffect, useState } from "react";
 
 import { parsePortfolioContent, type PortfolioContent, type TemplateId } from "@/lib/portfolio";
 import { templateLoaders } from "@/template-library/registry";
+import { Watermark } from "@/components/Watermark";
 
 const templates = Object.fromEntries(
   Object.entries(templateLoaders).map(([id, loader]) => [id, dynamic(loader)]),
 ) as Record<TemplateId, React.ComponentType<{ project: PortfolioContent }>>;
 
-export function LivePortfolioPreview({ initialContent }: { initialContent: PortfolioContent }) {
+export function LivePortfolioPreview({
+  initialContent,
+  isPremium,
+}: {
+  initialContent: PortfolioContent;
+  isPremium: boolean;
+}) {
   const [content, setContent] = useState(initialContent);
 
   useEffect(() => {
@@ -31,5 +38,10 @@ export function LivePortfolioPreview({ initialContent }: { initialContent: Portf
   const Template = templates[content.templateId];
   if (!Template) return null;
 
-  return <Template project={content} />;
+  return (
+    <>
+      <Template project={content} />
+      {!isPremium ? <Watermark /> : null}
+    </>
+  );
 }

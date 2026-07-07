@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect } from "react";
 import type { PortfolioWorkspaceBootstrap } from "@/store/portfolio-store";
 
 import { usePortfolioStore } from "@/store/portfolio-store";
+import { loadPortfolioCache } from "@/lib/portfolio-storage";
 
 interface WorkspaceContextType {
   user: PortfolioWorkspaceBootstrap["user"];
@@ -26,8 +27,31 @@ export function WorkspaceProvider({
 
   // Hydrate the Zustand store with the server-fetched data or trigger client load if null
   useEffect(() => {
-    if (initialData.workspace) hydrate(initialData);
-    else void load();
+    if (initialData.user || initialData.workspace) {
+      if (initialData.workspace) hydrate(initialData);
+      else void load();
+    } else {
+      // Guest mode! Hydrate using local data only, do not load from server
+      const cached = loadPortfolioCache();
+      hydrate({
+        user: null,
+        workspace: cached
+          ? {
+              draft: {
+                id: "guest",
+                slug: cached.slug,
+                templateId: cached.content.templateId,
+                content: cached.content,
+                revision: 1,
+                updatedAt: new Date().toISOString(),
+              },
+              billing: { canPublish: false, status: "INACTIVE" },
+              publication: null,
+            }
+          : null,
+        analytics: null,
+      });
+    }
   }, [hydrate, initialData, load]);
 
   // Read state reactively from Zustand store so that any client-side loading updates the context dynamically

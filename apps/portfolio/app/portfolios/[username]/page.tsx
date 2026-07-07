@@ -1,10 +1,12 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { portfolioPublicUrl, siteConfig } from "@/config/site";
 
 import { getPublishedPortfolio } from "@/lib/published-portfolio";
 import { renderTemplate } from "@/templates/runtime/registry";
 import { PublicViewTracker } from "@/components/PublicViewTracker";
+import { Watermark } from "@/components/Watermark";
 
 export const revalidate = 3600;
 
@@ -83,6 +85,25 @@ export default async function Portfolio({ params }: { params: Promise<{ username
   const { username } = await params;
   const publication = await getPublishedPortfolio(username);
   if (!publication) notFound();
+
+  const hostHeader = (await headers()).get("host") || "";
+  const hostname = hostHeader.split(":")[0];
+
+  const isCustomSubdomain =
+    hostname !== "portfolio.veriworkly.com" &&
+    hostname !== "localhost" &&
+    hostname !== "portfolio.localhost" &&
+    hostname !== "127.0.0.1";
+
+  if (isCustomSubdomain && !publication.isPremium) {
+    const port = hostHeader.split(":")[1];
+    const mainUrl =
+      process.env.NODE_ENV === "development"
+        ? `http://localhost:${port || "3000"}`
+        : "https://portfolio.veriworkly.com";
+    redirect(`${mainUrl}/portfolio/${username}`);
+  }
+
   const project = publication.snapshot;
 
   const jsonLd = {
@@ -107,6 +128,7 @@ export default async function Portfolio({ params }: { params: Promise<{ username
       />
       <PublicViewTracker subdomain={publication.subdomain} />
       {await renderTemplate(project)}
+      {!publication.isPremium ? <Watermark /> : null}
     </>
   );
 }

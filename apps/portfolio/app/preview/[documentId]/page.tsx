@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
-import { parsePortfolioContent } from "@/lib/portfolio";
+import { fetchServerApiData } from "@/lib/server-api";
+import { parsePortfolioContent, createDefaultPortfolio } from "@/lib/portfolio";
 import { LivePortfolioPreview } from "@/components/LivePortfolioPreview";
 import { Metadata } from "next";
 
@@ -12,6 +13,12 @@ export async function generateMetadata({
   params: Promise<{ documentId: string }>;
 }): Promise<Metadata> {
   const { documentId } = await params;
+  if (documentId === "guest") {
+    return {
+      title: "Guest Portfolio Preview",
+      robots: { index: false, follow: false },
+    };
+  }
   try {
     const cookieStore = await cookies();
     const response = await fetch(
@@ -42,6 +49,13 @@ export async function generateMetadata({
 
 export default async function PreviewPage({ params }: { params: Promise<{ documentId: string }> }) {
   const { documentId } = await params;
+  if (documentId === "guest") {
+    return <LivePortfolioPreview initialContent={createDefaultPortfolio()} isPremium={false} />;
+  }
+
+  const billingData = await fetchServerApiData<{ billing: { canPublish: boolean } }>("/portfolios/me").catch(() => null);
+  const isPremium = billingData?.billing?.canPublish ?? false;
+
   let response: Response;
   try {
     response = await fetch(
@@ -57,7 +71,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ docume
   if (response.status === 404) notFound();
   if (!response.ok) return <PreviewUnavailable />;
   const payload = await response.json();
-  return <LivePortfolioPreview initialContent={parsePortfolioContent(payload.data.content)} />;
+  return <LivePortfolioPreview initialContent={parsePortfolioContent(payload.data.content)} isPremium={isPremium} />;
 }
 
 function PreviewUnavailable() {

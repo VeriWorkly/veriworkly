@@ -1,21 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { SettingsHeader } from "./SettingsHeader";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsPreviews } from "./SettingsPreviews";
 
 export function PortfolioSettingsWorkspace() {
-  const { content, slug, updateSlug, updateContent, saveDraft, publish, publication, status } =
+  const { content, slug, updateSlug, updateContent, saveDraft, publish, publication, status, billing, user } =
     usePortfolioStore();
   const [uploading, setUploading] = useState(false);
 
+  const isPremium = billing.canPublish;
+
   const handleSave = async () => {
-    if (publication && (publication.status === "LIVE" || publication.status === "GRACE")) {
+    if (!user) {
+      await saveDraft();
+      toast.success("Settings saved locally.");
+      return;
+    }
+
+    const isPremiumTemplate = content.templateId === "nimbus" || content.templateId === "cipher";
+    const isLive = publication && (publication.status === "LIVE" || publication.status === "GRACE");
+
+    if (isLive) {
+      if (isPremiumTemplate && !isPremium) {
+        toast.error(`"${content.templateId}" is a premium template. Upgrade to Portfolio Pro to save live settings.`);
+        return;
+      }
       await publish();
+      toast.success("Settings updated and published successfully!");
     } else {
       await saveDraft();
+      toast.success("Settings saved successfully!");
     }
   };
 
@@ -24,6 +42,14 @@ export function PortfolioSettingsWorkspace() {
 
   const upload = async (file?: File) => {
     if (!file) return;
+    if (!user) {
+      toast.error("Please log in to upload social images.");
+      return;
+    }
+    if (!isPremium) {
+      toast.error("Uploading custom sharing images requires an active Portfolio Pro subscription.");
+      return;
+    }
     setUploading(true);
     try {
       const { authenticatedFetch } = await import("@/lib/authenticated-fetch");
@@ -43,6 +69,9 @@ export function PortfolioSettingsWorkspace() {
         body: JSON.stringify({ assetId: prepared.data.assetId }),
       }).then((r) => r.json());
       updateSeo({ socialImage: completed.data });
+      toast.success("Social sharing image uploaded successfully!");
+    } catch {
+      toast.error("Failed to upload image. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -50,7 +79,7 @@ export function PortfolioSettingsWorkspace() {
 
   const title = content.seo.title || `${content.identity.name} | Portfolio`;
   const description = content.seo.description || content.identity.bio;
-  const url = `${slug}.veriworkly.com`;
+  const url = isPremium ? `${slug}.veriworkly.com` : `portfolio.veriworkly.com/portfolio/${slug}`;
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 xl:px-10">
@@ -64,6 +93,7 @@ export function PortfolioSettingsWorkspace() {
           updateSeo={updateSeo}
           uploading={uploading}
           onUpload={(file) => void upload(file)}
+          isPremium={isPremium}
         />
 
         <SettingsPreviews

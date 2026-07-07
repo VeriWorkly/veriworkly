@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { backendApiUrl } from "@/lib/backend";
 import {
   createDefaultPortfolio,
   createId,
@@ -209,6 +210,8 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
 
       if (restored) savePortfolioCache(restored);
 
+      const isGuest = !user;
+
       set({
         user,
         draft: restored,
@@ -218,10 +221,10 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
         billing: workspace?.billing ?? { canPublish: false, status: "INACTIVE" },
         analytics: analytics?.totalViews ?? 0,
         analyticsData: analytics,
-        message: workspace ? "" : "Could not load your portfolio workspace.",
+        message: isGuest ? "" : (workspace ? "" : "Could not load your portfolio workspace."),
         previewIssue: "",
-        workspaceState: workspace ? "ready" : "error",
-        status: workspace ? "Saved" : "Offline",
+        workspaceState: "ready",
+        status: isGuest ? "Saved" : (workspace ? "Saved" : "Offline"),
         ready: true,
         isDirty: false,
       });
@@ -234,36 +237,84 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
       }
       set({ workspaceState: "loading", previewIssue: "" });
       try {
+        // Standard check to see if user has a session without triggering redirect
+        const response = await fetch(backendApiUrl("/users/me"), { credentials: "include" });
+        if (response.status === 401 || response.status === 404) {
+          // Guest mode!
+          set({
+            user: null,
+            draft: null,
+            publication: null,
+            billing: { canPublish: false, status: "INACTIVE" },
+            analytics: 0,
+            analyticsData: null,
+            message: "",
+            workspaceState: "ready",
+            status: "Saved",
+            ready: true,
+          });
+          return;
+        }
+
+        // User is logged in, continue with fetching data
         const [userPayload, portfolioPayload, analyticsPayload] = await Promise.all([
-          fetchPayload("/users/me", "Could not load your account.").catch(() => null),
+          response.json().then((r) => r.data).catch(() => null),
           fetchPayload("/portfolios/me", "Could not load your portfolio workspace."),
           fetchPayload("/portfolios/analytics", "Could not load portfolio analytics.").catch(
             () => null,
           ),
         ]);
-        const user = userPayload?.data ?? null;
+        const user = userPayload ?? null;
         const analytics = analyticsPayload?.data ?? null;
         const cloud = portfolioPayload?.data?.draft;
+
+        let draftToSet: CloudPortfolioDraft | null = null;
+        let contentToSet = cached?.content ?? createDefaultPortfolio(user ?? undefined);
+        let slugToSet = cached?.slug ?? (normalizeSlug(user?.name || "portfolio") || "portfolio");
+        let shouldSyncLocalToCloud = false;
+
         if (cloud) {
-          const restored = {
+          const restoredCloud = {
             ...cloud,
             content: parsePortfolioContent(cloud.content),
           } as CloudPortfolioDraft;
-          set({
-            draft: restored,
-            content: restored.content,
-            slug: restored.slug,
-          });
-          savePortfolioCache(restored);
-        } else if (!cached) {
-          const seeded = createDefaultPortfolio(user);
-          set({
-            content: seeded,
-            slug: normalizeSlug(user?.name || "portfolio") || "portfolio",
-          });
+
+          draftToSet = restoredCloud;
+
+          if (cached) {
+            // Compare local cache with cloud content to see if there are local guest edits
+            const localSerialized = JSON.stringify(cached.content);
+            const cloudSerialized = JSON.stringify(restoredCloud.content);
+            if (localSerialized !== cloudSerialized || cached.slug !== restoredCloud.slug) {
+              // Local is different. Sync guest changes to cloud.
+              contentToSet = cached.content;
+              slugToSet = cached.slug;
+              shouldSyncLocalToCloud = true;
+            } else {
+              contentToSet = restoredCloud.content;
+              slugToSet = restoredCloud.slug;
+            }
+          } else {
+            contentToSet = restoredCloud.content;
+            slugToSet = restoredCloud.slug;
+          }
+        } else {
+          // No cloud draft exists yet.
+          if (cached) {
+            shouldSyncLocalToCloud = true;
+          } else {
+            const seeded = createDefaultPortfolio(user ?? undefined);
+            contentToSet = seeded;
+            slugToSet = normalizeSlug(user?.name || "portfolio") || "portfolio";
+            shouldSyncLocalToCloud = true;
+          }
         }
+
         set({
           user,
+          draft: draftToSet,
+          content: contentToSet,
+          slug: slugToSet,
           publication: portfolioPayload?.data?.publication ?? null,
           billing: portfolioPayload?.data?.billing ?? { canPublish: false, status: "INACTIVE" },
           analytics: analytics?.totalViews ?? 0,
@@ -272,6 +323,10 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
           workspaceState: "ready",
           ready: true,
         });
+
+        if (shouldSyncLocalToCloud) {
+          void get().saveDraft();
+        }
       } catch (error) {
         set({
           status: "Offline",
@@ -288,6 +343,14 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
       const current = get();
       set({ status: "Saving" });
       savePortfolioCache({ slug: current.slug, content: current.content });
+      if (!current.user) {
+        set({
+          status: "Saved",
+          isDirty: false,
+          message: "Saved locally. Log in to sync to cloud.",
+        });
+        return null;
+      }
       try {
         const response = await authenticatedFetch("/portfolios/draft", {
           method: "PUT",

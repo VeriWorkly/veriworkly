@@ -22,6 +22,7 @@ export function PreviewStage({
   const [viewport, setViewport] = useState<"mobile" | "tablet" | "desktop">("desktop");
   const content = usePortfolioStore((state) => state.content);
   const draft = usePortfolioStore((state) => state.draft);
+  const ready = usePortfolioStore((state) => state.ready);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const width = { mobile: 390, tablet: 768, desktop: "100%" }[viewport];
 
@@ -87,11 +88,11 @@ export function PreviewStage({
         </div>
       </div>
       <div className="bg-paper-2 flex h-[calc(100%-2.75rem)] justify-center overflow-auto p-3">
-        {draft ? (
+        {draft || ready ? (
           <iframe
             ref={frameRef}
             title="Live portfolio preview"
-            src={`/preview/${draft.id}`}
+            src={`/preview/${draft ? draft.id : "guest"}`}
             onLoad={() =>
               frameRef.current?.contentWindow?.postMessage(
                 { type: "veriworkly:portfolio-preview", content },
@@ -103,7 +104,7 @@ export function PreviewStage({
           />
         ) : (
           <div className="text-muted grid h-full w-full place-items-center text-center text-xs font-bold">
-            Saving the first draft to start live preview...
+            Loading preview...
           </div>
         )}
       </div>

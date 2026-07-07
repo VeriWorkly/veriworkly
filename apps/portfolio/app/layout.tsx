@@ -7,6 +7,8 @@ import { siteConfig } from "@/config/site";
 
 import { ThemeProvider } from "@/provider/ThemeProvider";
 
+import { Toaster } from "@/components/Toaster";
+
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
@@ -112,7 +114,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
 
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <Toaster position="bottom-right" richColors />
+        </ThemeProvider>
       </body>
     </html>
   );
