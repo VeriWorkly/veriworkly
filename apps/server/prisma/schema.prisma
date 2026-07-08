@@ -23,6 +23,12 @@ model User {
   affiliateTier         AffiliateTier         @default(TIER_1)
   affiliateCode         String?               @unique
   affiliateEnrolledAt   DateTime?
+  role                  Role                  @default(USER)
+  ambassadorStatus      String                @default("NONE")
+  collegeName           String?
+  graduationYear        String?
+  lastLinkedinImportAt  DateTime?
+  lastGithubImportAt    DateTime?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   sessions              Session[]
@@ -50,6 +56,12 @@ model User {
   portfolioAssets       PortfolioAsset[]
 
   @@index([email])
+}
+
+enum Role {
+  USER
+  AMBASSADOR
+  ADMIN
 }
 
 enum AffiliateStatus {

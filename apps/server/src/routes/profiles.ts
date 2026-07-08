@@ -14,4 +14,8 @@ router
   .get(requireApiKeyScopes("resume:read"), ProfileController.getMasterProfile)
   .put(requireApiKeyScopes("resume:write"), ProfileController.updateMasterProfile);
 
+router.get("/import/quota", ProfileController.getImportQuota);
+router.post("/import/github", ProfileController.importGithub);
+router.post("/import/linkedin", ProfileController.importLinkedin);
+
 export default router;

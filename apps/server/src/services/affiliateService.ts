@@ -148,6 +148,10 @@ export class AffiliateService {
           affiliateTier: true,
           affiliateCode: true,
           affiliateEnrolledAt: true,
+          role: true,
+          ambassadorStatus: true,
+          collegeName: true,
+          graduationYear: true,
         },
       }),
       prisma.affiliateWallet.findUnique({ where: { userId } }),
@@ -418,5 +422,38 @@ export class AffiliateService {
     });
     await invalidateAffiliate(userId, true);
     return result;
+  }
+
+  static async applyAmbassador(userId: string, collegeName: string, graduationYear: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, ambassadorStatus: true },
+    });
+
+    if (!user) throw new ApiError(404, "User not found.");
+    if (user.role === "AMBASSADOR") {
+      throw new ApiError(400, "You are already a campus ambassador.");
+    }
+    if (user.ambassadorStatus === "PENDING") {
+      throw new ApiError(400, "Your ambassador application is already pending review.");
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ambassadorStatus: "PENDING",
+        collegeName,
+        graduationYear,
+      },
+    });
+
+    await invalidateAffiliate(userId);
+
+    return {
+      success: true,
+      ambassadorStatus: "PENDING",
+      collegeName: updated.collegeName,
+      graduationYear: updated.graduationYear,
+    };
   }
 }

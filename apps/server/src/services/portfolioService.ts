@@ -155,6 +155,8 @@ export class PortfolioService {
       return null;
     }
 
+    const isPremium = !!accessSubscription;
+
     const result = {
       id: publication.id,
       subdomain: publication.subdomain,
@@ -162,6 +164,7 @@ export class PortfolioService {
       snapshot: publication.snapshot,
       status: publication.status,
       updatedAt: publication.updatedAt.toISOString(),
+      isPremium,
     };
 
     let ttl = 600;
@@ -330,9 +333,8 @@ export class PortfolioService {
     userId: string,
     input: { documentId: string; subdomain: string; revision: number },
   ) {
-    await BillingService.requirePublishAccess(userId);
-
-    const subdomain = normalizeSubdomain(input.subdomain);
+    const billing = await BillingService.getSummary(userId);
+    const hasSubscription = billing.canPublish;
 
     const document = await prisma.document.findFirst({
       where: { id: input.documentId, userId, type: "PORTFOLIO", deletedAt: null },
@@ -340,8 +342,20 @@ export class PortfolioService {
 
     if (!document) throw new ApiError(404, "Portfolio draft not found.");
 
-    if (document.revision !== input.revision)
+    const isPremiumTemplate = document.templateId === "nimbus" || document.templateId === "cipher";
+
+    if (isPremiumTemplate && !hasSubscription) {
+      throw new ApiError(
+        403,
+        `Publishing the premium template "${document.templateId}" requires an active Portfolio Pro subscription.`,
+      );
+    }
+
+    if (document.revision !== input.revision) {
       throw new ApiError(409, "Save the latest draft before publishing.");
+    }
+
+    const subdomain = normalizeSubdomain(input.subdomain);
 
     const publishable = portfolioContentSchema.safeParse(document.content);
 

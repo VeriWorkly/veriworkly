@@ -11,5 +11,6 @@ router.get("/me", authMiddleware, AffiliateController.dashboard);
 router.post("/enroll", authMiddleware, AffiliateController.enroll);
 router.post("/referral", authMiddleware, AffiliateController.applyReferral);
 router.post("/withdrawals", authMiddleware, AffiliateController.withdraw);
+router.post("/ambassador/apply", authMiddleware, AffiliateController.applyAmbassador);
 
 export default router;

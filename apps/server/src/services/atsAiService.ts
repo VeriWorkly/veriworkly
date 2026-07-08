@@ -47,7 +47,7 @@ const insightsSchema = z.object({
   priorityOrder: nullableStringArray(500, 12),
 });
 
-const convertedResumeSchema = z.object({
+export const convertedResumeSchema = z.object({
   basics: z.object({
     fullName: nullableString(200),
     role: nullableString(200),

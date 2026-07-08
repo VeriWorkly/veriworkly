@@ -8,6 +8,8 @@ import { ApiError } from "#lib/errors";
 import { buildUniqueSlugHelper } from "#utils/slugs";
 import { cacheGet, cacheSet, cacheDel, cacheDelByPrefix } from "#lib/redis";
 
+import { EntitlementService } from "#services/entitlementService";
+
 export type DocumentCreateInput = {
   id?: string;
   type: DocumentType;
@@ -104,6 +106,28 @@ export class DocumentService {
    */
 
   static async createDocument(userId: string, input: DocumentCreateInput) {
+    // Enforce 1 active document per type limit for free users
+    const isPaid =
+      (await EntitlementService.has(userId, "ai_credits")) ||
+      (await EntitlementService.has(userId, "portfolio_publish"));
+
+    if (!isPaid) {
+      const activeCount = await prisma.document.count({
+        where: {
+          userId,
+          type: input.type,
+          deletedAt: null,
+        },
+      });
+
+      if (activeCount >= 1) {
+        throw new ApiError(
+          403,
+          `Free users can only have 1 active ${input.type.toLowerCase().replace("_", " ")} at a time. Upgrade to Creator Pro for unlimited documents.`
+        );
+      }
+    }
+
     let initialContent = input.content;
 
     // Auto-seed from MasterProfile if no content provided for Resume/Cover Letter
