@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useUserStore } from "@/store/useUserStore";
 import {
   convertResumeWithAi,
   extractResumeFile,
@@ -38,6 +39,7 @@ import { cn } from "@/lib/utils";
 
 export function AtsWorkspace() {
   const router = useRouter();
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [resume, setResume] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -53,16 +55,22 @@ export function AtsWorkspace() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void getAtsQuota()
-      .then(setQuota)
-      .catch(() => undefined);
-  }, []);
+    if (isLoggedIn) {
+      void getAtsQuota()
+        .then(setQuota)
+        .catch(() => undefined);
+    }
+  }, [isLoggedIn]);
 
   const pricing = quota?.pricing;
   const hasResume = Boolean(resume.trim());
   const hasTarget = Boolean(jobDescription.trim() || (useJobUrl && jobUrl.trim()));
 
   async function run(withAi: boolean) {
+    if (!isLoggedIn) {
+      toast.error("Please log in to scan resumes.");
+      return;
+    }
     if (!hasResume) return setError("Add a resume before starting the scan.");
     setBusy(withAi ? "ai" : "check");
     setError("");
@@ -86,6 +94,10 @@ export function AtsWorkspace() {
   }
 
   async function convertResume() {
+    if (!isLoggedIn) {
+      toast.error("Please log in to convert resumes.");
+      return;
+    }
     if (!hasResume) return setError("Add the old resume you want to convert.");
     setBusy("convert");
     setError("");
@@ -156,13 +168,19 @@ export function AtsWorkspace() {
         </div>
       </header>
 
-      <section className="grid gap-8 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
-        <div className="space-y-6">
+      <section className="relative grid gap-8 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
+        <div
+          className={cn("space-y-6", !isLoggedIn && "pointer-events-none opacity-40 blur-[3px]")}
+        >
           <StepSection number="1" title="Choose the resume to review" complete={hasResume}>
             <div className="grid gap-3 sm:grid-cols-2">
               <FileInput
                 busy={busy === "extract"}
                 onFile={async (file) => {
+                  if (!isLoggedIn) {
+                    toast.error("Please log in to analyze resumes.");
+                    return;
+                  }
                   setBusy("extract");
                   setError("");
                   try {
@@ -332,7 +350,12 @@ export function AtsWorkspace() {
           </section>
         </div>
 
-        <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+        <aside
+          className={cn(
+            "space-y-5 xl:sticky xl:top-6 xl:self-start",
+            !isLoggedIn && "pointer-events-none opacity-40 blur-[3px]",
+          )}
+        >
           {converted ? (
             <ConvertedResumeReview resume={converted} onCreate={createConvertedResume} />
           ) : result ? (
@@ -341,6 +364,32 @@ export function AtsWorkspace() {
             <EmptyResults />
           )}
         </aside>
+
+        {!isLoggedIn ? (
+          <div className="border-border bg-card/45 absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border p-6 text-center backdrop-blur-sm">
+            <div className="bg-accent-soft text-accent flex h-12 w-12 items-center justify-center rounded-full">
+              <LockKeyhole size={20} />
+            </div>
+            <h2 className="text-foreground mt-4 text-base font-extrabold">
+              Log in to scan resumes
+            </h2>
+            <p className="text-muted-foreground mt-1.5 max-w-sm text-xs leading-5">
+              ATS scanning, resume conversions, and gap analysis require a VeriWorkly account.
+            </p>
+            <button
+              onClick={() => {
+                const loginUrl =
+                  process.env.NODE_ENV === "development"
+                    ? "http://localhost:3001/login"
+                    : "https://app.veriworkly.com/login";
+                window.location.href = `${loginUrl}?callbackURL=${encodeURIComponent(window.location.href)}`;
+              }}
+              className="bg-accent text-accent-foreground hover:bg-accent/90 mt-5 inline-flex min-h-10 items-center justify-center rounded-lg px-5 text-xs font-bold transition"
+            >
+              Log In
+            </button>
+          </div>
+        ) : null}
       </section>
     </main>
   );
@@ -494,7 +543,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function EmptyResults() {
   return (
-    <div className="bg-card ring-border flex min-h-[28rem] flex-col justify-between rounded-xl p-6 ring-1">
+    <div className="bg-card ring-border flex min-h-112 flex-col justify-between rounded-xl p-6 ring-1">
       <div>
         <span className="bg-background ring-border flex h-10 w-10 items-center justify-center rounded-lg ring-1">
           <ScanSearch className="h-5 w-5" />

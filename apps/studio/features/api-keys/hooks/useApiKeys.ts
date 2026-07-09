@@ -9,6 +9,7 @@ import type {
   OffsetPaginationPayload,
 } from "../components/ApiKeyTypes";
 
+import { useUserStore } from "@/store/useUserStore";
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 type UseApiKeysOptions = {
@@ -28,11 +29,12 @@ export function useApiKeys({
   initialPagination,
   initialKeysLoaded,
 }: UseApiKeysOptions) {
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [page, setPage] = useState(initialPagination?.page ?? 1);
   const [pageSize] = useState(initialPagination?.pageSize ?? 20);
   const [totalPages, setTotalPages] = useState(initialPagination?.totalPages ?? 1);
 
-  const [loading, setLoading] = useState(!initialKeysLoaded);
+  const [loading, setLoading] = useState(!initialKeysLoaded && isLoggedIn);
   const [hasMore, setHasMore] = useState(initialPagination?.hasMore ?? false);
 
   const [keys, setKeys] = useState<ApiKeyRecord[]>(initialKeys);
@@ -75,6 +77,11 @@ export function useApiKeys({
   );
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setLoading(false);
+      return;
+    }
+
     if (initialKeysLoaded && initialPagination) {
       queueMicrotask(() => {
         applyPage(initialPagination);
@@ -87,7 +94,7 @@ export function useApiKeys({
     queueMicrotask(() => {
       void fetchKeys(1);
     });
-  }, [applyPage, fetchKeys, initialKeysLoaded, initialPagination]);
+  }, [applyPage, fetchKeys, initialKeysLoaded, initialPagination, isLoggedIn]);
 
   const rotateKey = async (values: {
     name: string;
