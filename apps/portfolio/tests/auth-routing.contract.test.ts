@@ -10,15 +10,15 @@ describe("portfolio auth routing contract", () => {
     expect(isPublicPlatformPath("/user/gautam")).toBe(true);
     expect(isPublicPlatformPath("/portfolios/gautam")).toBe(true);
     expect(isPublicPlatformPath("/templates/signal/preview")).toBe(true);
+    expect(isPublicPlatformPath("/editor")).toBe(true);
+    expect(isPublicPlatformPath("/settings")).toBe(true);
+    expect(isPublicPlatformPath("/analytics")).toBe(true);
+    expect(isPublicPlatformPath("/dashboard")).toBe(true);
+    expect(isPublicPlatformPath("/preview/document-1")).toBe(true);
   });
 
   it("makes current and future workspace sections private by default", () => {
-    expect(isPublicPlatformPath("/editor")).toBe(false);
-    expect(isPublicPlatformPath("/settings")).toBe(false);
-    expect(isPublicPlatformPath("/analytics")).toBe(false);
-    expect(isPublicPlatformPath("/dashboard")).toBe(false);
     expect(isPublicPlatformPath("/billing")).toBe(false);
-    expect(isPublicPlatformPath("/preview/document-1")).toBe(false);
     expect(isPublicPlatformPath("/future-private-page")).toBe(false);
   });
 
