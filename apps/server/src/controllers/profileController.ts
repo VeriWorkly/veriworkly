@@ -72,8 +72,8 @@ export class ProfileController {
       res.json(
         createSuccessResponse(
           { github: githubQuota, linkedin: linkedinQuota },
-          "Quota status fetched successfully"
-        )
+          "Quota status fetched successfully",
+        ),
       );
     } catch (error) {
       next(error);
@@ -88,7 +88,11 @@ export class ProfileController {
       const user = requireAuthUser(req);
       const { usernameOrUrl, replaceMaster } = importGithubSchema.parse(req.body);
 
-      const doc = await ProfileImportService.importFromGithub(user.id, usernameOrUrl, replaceMaster);
+      const doc = await ProfileImportService.importFromGithub(
+        user.id,
+        usernameOrUrl,
+        replaceMaster,
+      );
 
       res.json(createSuccessResponse(doc, "GitHub profile imported successfully"));
     } catch (error) {
@@ -105,7 +109,11 @@ export class ProfileController {
       const user = requireAuthUser(req);
       const { profileText, replaceMaster } = importLinkedinSchema.parse(req.body);
 
-      const doc = await ProfileImportService.importFromLinkedin(user.id, profileText, replaceMaster);
+      const doc = await ProfileImportService.importFromLinkedin(
+        user.id,
+        profileText,
+        replaceMaster,
+      );
 
       res.json(createSuccessResponse(doc, "LinkedIn profile imported successfully"));
     } catch (error) {
@@ -114,4 +122,3 @@ export class ProfileController {
     }
   }
 }
-

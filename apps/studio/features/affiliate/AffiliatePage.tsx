@@ -19,7 +19,7 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  
+
   // Ambassador application form states
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [collegeName, setCollegeName] = useState("");
@@ -41,8 +41,8 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
       toast.success("Ambassador application submitted successfully!");
       setShowApplyForm(false);
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit application.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit application.");
     } finally {
       setSubmitting(false);
     }
@@ -161,74 +161,95 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
         </article>
       </section>
 
-      <section className="grid gap-4 mt-6">
+      <section className="mt-6 grid gap-4">
         <article className="border-border bg-card rounded-2xl border p-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-bold flex items-center gap-2">
+              <h2 className="flex items-center gap-2 text-xl font-bold">
                 <Trophy className="h-5 w-5 text-amber-500" />
                 Campus Ambassador Program
               </h2>
-              <p className="text-muted mt-2 text-sm leading-6 max-w-2xl">
-                Are you a college student or new grad? Join our Campus Ambassador program to unlock exclusive student-only commission rates, promotional material, and direct support.
+              <p className="text-muted mt-2 max-w-2xl text-sm leading-6">
+                Are you a college student or new grad? Join our Campus Ambassador program to unlock
+                exclusive student-only commission rates, promotional material, and direct support.
               </p>
             </div>
-            
+
             {dashboard.role === "AMBASSADOR" ? (
-              <div className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-4 py-3 rounded-2xl flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider">Active Campus Ambassador</span>
+              <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-500">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                <span className="text-xs font-bold tracking-wider uppercase">
+                  Active Campus Ambassador
+                </span>
               </div>
             ) : dashboard.ambassadorStatus === "PENDING" ? (
-              <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-4 py-3 rounded-2xl flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider">Application Under Review</span>
+              <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-amber-500">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                <span className="text-xs font-bold tracking-wider uppercase">
+                  Application Under Review
+                </span>
               </div>
             ) : (
               <Button onClick={() => setShowApplyForm(true)}>Apply Now</Button>
             )}
           </div>
 
-          {showApplyForm && dashboard.role !== "AMBASSADOR" && dashboard.ambassadorStatus !== "PENDING" && (
-            <form onSubmit={handleAmbassadorApply} className="mt-5 border-t border-border pt-5 space-y-4 max-w-md">
-              <h3 className="text-sm font-bold text-foreground">Ambassador Application Form</h3>
-              
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground font-semibold" htmlFor="college-name">
-                  College / University Name
-                </label>
-                <Input
-                  id="college-name"
-                  value={collegeName}
-                  onChange={(e) => setCollegeName(e.target.value)}
-                  placeholder="e.g., Stanford University"
-                  required
-                />
-              </div>
+          {showApplyForm &&
+            dashboard.role !== "AMBASSADOR" &&
+            dashboard.ambassadorStatus !== "PENDING" && (
+              <form
+                onSubmit={handleAmbassadorApply}
+                className="border-border mt-5 max-w-md space-y-4 border-t pt-5"
+              >
+                <h3 className="text-foreground text-sm font-bold">Ambassador Application Form</h3>
 
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground font-semibold" htmlFor="grad-year">
-                  Graduation Year
-                </label>
-                <Input
-                  id="grad-year"
-                  value={gradYear}
-                  onChange={(e) => setGradYear(e.target.value)}
-                  placeholder="e.g., 2026 or 2027"
-                  required
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <label
+                    className="text-muted-foreground text-xs font-semibold"
+                    htmlFor="college-name"
+                  >
+                    College / University Name
+                  </label>
+                  <Input
+                    id="college-name"
+                    value={collegeName}
+                    onChange={(e) => setCollegeName(e.target.value)}
+                    placeholder="e.g., Stanford University"
+                    required
+                  />
+                </div>
 
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" type="submit" loading={submitting}>
-                  Submit Application
-                </Button>
-                <Button size="sm" variant="secondary" type="button" onClick={() => setShowApplyForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          )}
+                <div className="space-y-1.5">
+                  <label
+                    className="text-muted-foreground text-xs font-semibold"
+                    htmlFor="grad-year"
+                  >
+                    Graduation Year
+                  </label>
+                  <Input
+                    id="grad-year"
+                    value={gradYear}
+                    onChange={(e) => setGradYear(e.target.value)}
+                    placeholder="e.g., 2026 or 2027"
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" type="submit" loading={submitting}>
+                    Submit Application
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    onClick={() => setShowApplyForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
         </article>
       </section>
     </main>

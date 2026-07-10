@@ -17,7 +17,13 @@ export class ProfileImportQuotaService {
       (await EntitlementService.has(userId, "portfolio_publish"));
 
     if (isPaid) {
-      return { isPaid: true, remaining: 9999, limit: 9999, resetsInSeconds: 0, connectedUsername: null };
+      return {
+        isPaid: true,
+        remaining: 9999,
+        limit: 9999,
+        resetsInSeconds: 0,
+        connectedUsername: null,
+      };
     }
 
     const user = await prisma.user.findUnique({
@@ -55,9 +61,10 @@ export class ProfileImportQuotaService {
       }
     }
 
-    const lastImport = provider === "linkedin" ? user?.lastLinkedinImportAt : user?.lastGithubImportAt;
+    const lastImport =
+      provider === "linkedin" ? user?.lastLinkedinImportAt : user?.lastGithubImportAt;
     const limitDuration = provider === "linkedin" ? THIRTY_DAYS_MS : ONE_DAY_MS;
-    
+
     let resetsInSeconds = 0;
     let remaining = 1;
 
@@ -91,7 +98,7 @@ export class ProfileImportQuotaService {
       throw new ApiError(
         429,
         `Free users can only import from ${providerLabel} ${timeframe}. Upgrade to Creator Pro for unlimited imports.`,
-        { resetsInSeconds: status.resetsInSeconds }
+        { resetsInSeconds: status.resetsInSeconds },
       );
     }
 

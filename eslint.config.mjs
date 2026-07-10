@@ -21,9 +21,16 @@ const eslintConfig = defineConfig([
   {
     settings: {
       next: {
-        rootDir: ["apps/site/", "apps/studio/", "apps/docs-platform/", "apps/blog-platform/"],
+        rootDir: [
+          "apps/site/",
+          "apps/studio/",
+          "apps/docs-platform/",
+          "apps/blog-platform/",
+          "apps/portfolio/",
+        ],
       },
     },
+
     rules: {
       "@next/next/no-html-link-for-pages": "off",
     },

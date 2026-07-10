@@ -123,7 +123,7 @@ export class DocumentService {
       if (activeCount >= 1) {
         throw new ApiError(
           403,
-          `Free users can only have 1 active ${input.type.toLowerCase().replace("_", " ")} at a time. Upgrade to Creator Pro for unlimited documents.`
+          `Free users can only have 1 active ${input.type.toLowerCase().replace("_", " ")} at a time. Upgrade to Creator Pro for unlimited documents.`,
         );
       }
     }

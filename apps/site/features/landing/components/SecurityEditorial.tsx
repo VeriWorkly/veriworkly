@@ -10,8 +10,8 @@ export default function SecurityEditorial() {
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-8">
           {/* Left: Huge headline */}
           <div className="lg:col-span-7">
-            <motion.h2 
-              className="text-balance font-sans text-5xl font-medium tracking-tighter sm:text-6xl md:text-8xl"
+            <motion.h2
+              className="font-sans text-5xl font-medium tracking-tighter text-balance sm:text-6xl md:text-8xl"
               initial={{ opacity: 0, x: -40 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -22,7 +22,7 @@ export default function SecurityEditorial() {
               Total Control.
             </motion.h2>
           </div>
-          
+
           {/* Right: Editorial explanation and visual */}
           <div className="flex flex-col justify-end lg:col-span-5">
             <motion.div
@@ -35,25 +35,26 @@ export default function SecurityEditorial() {
               <Lock className="h-8 w-8 text-white" />
             </motion.div>
 
-            <motion.p 
+            <motion.p
               className="max-w-[45ch] text-xl leading-relaxed text-zinc-400"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
-              Your career data is sensitive. That is why VeriWorkly runs an entirely local-first architecture. 
-              We don&apos;t store your resume on our servers. The intelligence runs in your browser, and your data stays on your machine.
+              Your career data is sensitive. That is why VeriWorkly runs an entirely local-first
+              architecture. We don&apos;t store your resume on our servers. The intelligence runs in
+              your browser, and your data stays on your machine.
             </motion.p>
 
-            <motion.div 
+            <motion.div
               className="mt-12 w-full border-t border-white/10 pt-6"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
-              <ul className="space-y-4 font-mono text-sm uppercase tracking-widest text-zinc-500">
+              <ul className="space-y-4 font-mono text-sm tracking-widest text-zinc-500 uppercase">
                 <li className="flex justify-between">
                   <span>Server Storage</span>
                   <span className="text-white">Disconnected</span>

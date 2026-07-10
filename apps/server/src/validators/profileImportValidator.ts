@@ -6,7 +6,10 @@ export const importGithubSchema = z.object({
 });
 
 export const importLinkedinSchema = z.object({
-  profileText: z.string().trim().min(10, "LinkedIn profile text must be at least 10 characters long"),
+  profileText: z
+    .string()
+    .trim()
+    .min(10, "LinkedIn profile text must be at least 10 characters long"),
   replaceMaster: z.boolean().default(false),
 });
 

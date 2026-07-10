@@ -83,7 +83,7 @@ export default function DocumentsWorkspace() {
               size="sm"
               variant="secondary"
               onClick={() => window.dispatchEvent(new CustomEvent("open-import-profile"))}
-              className="h-10 rounded-xl gap-2 font-semibold shadow-none border border-border"
+              className="border-border h-10 gap-2 rounded-xl border font-semibold shadow-none"
             >
               <Upload className="h-4 w-4" />
               <span>Import Profile</span>

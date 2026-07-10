@@ -221,10 +221,10 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
         billing: workspace?.billing ?? { canPublish: false, status: "INACTIVE" },
         analytics: analytics?.totalViews ?? 0,
         analyticsData: analytics,
-        message: isGuest ? "" : (workspace ? "" : "Could not load your portfolio workspace."),
+        message: isGuest ? "" : workspace ? "" : "Could not load your portfolio workspace.",
         previewIssue: "",
         workspaceState: "ready",
-        status: isGuest ? "Saved" : (workspace ? "Saved" : "Offline"),
+        status: isGuest ? "Saved" : workspace ? "Saved" : "Offline",
         ready: true,
         isDirty: false,
       });
@@ -258,7 +258,10 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
 
         // User is logged in, continue with fetching data
         const [userPayload, portfolioPayload, analyticsPayload] = await Promise.all([
-          response.json().then((r) => r.data).catch(() => null),
+          response
+            .json()
+            .then((r) => r.data)
+            .catch(() => null),
           fetchPayload("/portfolios/me", "Could not load your portfolio workspace."),
           fetchPayload("/portfolios/analytics", "Could not load portfolio analytics.").catch(
             () => null,

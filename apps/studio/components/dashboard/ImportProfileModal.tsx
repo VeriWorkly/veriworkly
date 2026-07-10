@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, FileText, Upload, Loader2, Lock, AlertCircle, CheckCircle } from "lucide-react";
+import { X, Upload, Loader2, Lock, AlertCircle } from "lucide-react";
 import { Button, Modal, Input, TextArea, Checkbox, Badge } from "@veriworkly/ui";
 import { toast } from "sonner";
 
@@ -12,7 +12,15 @@ import { extractResumeFile } from "@/features/ats/ats-api";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 
 const LinkedinIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
     <rect x="2" y="9" width="4" height="12" />
     <circle cx="4" cy="4" r="2" />
@@ -20,7 +28,15 @@ const LinkedinIcon = ({ className }: { className?: string }) => (
 );
 
 const GithubIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
     <path d="M9 18c-4.51 2-5-2-7-2" />
   </svg>
@@ -39,6 +55,11 @@ interface QuotaResponse {
   linkedin: QuotaDetails;
 }
 
+interface ImportedDocument {
+  id: string;
+  type: "RESUME" | "COVER_LETTER";
+}
+
 export function ImportProfileModal({
   open,
   onClose,
@@ -49,12 +70,21 @@ export function ImportProfileModal({
   initialProvider?: "linkedin" | "github";
 }) {
   const router = useRouter();
-  const { isLoggedIn, user } = useUserStore();
+  const { isLoggedIn } = useUserStore();
 
   const [activeTab, setActiveTab] = useState<"linkedin" | "github">(initialProvider);
   const [replaceMaster, setReplaceMaster] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+
+  // Sync state during rendering instead of useEffect to avoid synchronous setState inside effects
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setActiveTab(initialProvider);
+    }
+  }
 
   // GitHub state
   const [githubInput, setGithubInput] = useState("");
@@ -66,37 +96,29 @@ export function ImportProfileModal({
 
   // Quota states
   const [quota, setQuota] = useState<QuotaResponse | null>(null);
-  const [fetchingQuota, setFetchingQuota] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setActiveTab(initialProvider);
-    }
-  }, [open, initialProvider]);
+    if (!open || !isLoggedIn) return;
 
-  // Fetch Quota Status
-  const fetchQuota = async () => {
-    if (!isLoggedIn) return;
-    setFetchingQuota(true);
-    try {
-      const data = await fetchApiData<QuotaResponse>("/profiles/import/quota");
-      setQuota(data);
-      // Pre-fill GitHub username for free users if connected
-      if (data?.github?.connectedUsername && !githubInput) {
-        setGithubInput(data.github.connectedUsername);
+    let active = true;
+    const fetchQuota = async () => {
+      try {
+        const data = await fetchApiData<QuotaResponse>("/profiles/import/quota");
+        if (!active) return;
+        setQuota(data);
+        if (data?.github?.connectedUsername && !githubInput) {
+          setGithubInput(data.github.connectedUsername);
+        }
+      } catch (error) {
+        console.error("Failed to fetch import quota:", error);
       }
-    } catch (error) {
-      console.error("Failed to fetch import quota:", error);
-    } finally {
-      setFetchingQuota(false);
-    }
-  };
+    };
 
-  useEffect(() => {
-    if (open && isLoggedIn) {
-      fetchQuota();
-    }
-  }, [open, isLoggedIn]);
+    void fetchQuota();
+    return () => {
+      active = false;
+    };
+  }, [open, isLoggedIn, githubInput]);
 
   if (!open) return null;
 
@@ -120,8 +142,8 @@ export function ImportProfileModal({
       const text = await extractResumeFile(file);
       setLinkedinText(text);
       toast.success("LinkedIn PDF parsed successfully! Check the pasted text below.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to read PDF file.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to read PDF file.");
     } finally {
       setUploadingPdf(false);
       setLoadingStep("");
@@ -140,7 +162,7 @@ export function ImportProfileModal({
     setLoading(true);
     setLoadingStep("Fetching details from GitHub API...");
     try {
-      const doc = await fetchApiData<any>("/profiles/import/github", {
+      const doc = await fetchApiData<ImportedDocument>("/profiles/import/github", {
         method: "POST",
         body: JSON.stringify({
           usernameOrUrl: githubInput.trim(),
@@ -154,8 +176,8 @@ export function ImportProfileModal({
       // Notify library components
       window.dispatchEvent(new Event("storage"));
       router.push(getDocumentEditorPath(doc.type, doc.id));
-    } catch (error: any) {
-      toast.error(error.message || "GitHub import failed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "GitHub import failed.");
     } finally {
       setLoading(false);
       setLoadingStep("");
@@ -173,7 +195,7 @@ export function ImportProfileModal({
     setLoading(true);
     setLoadingStep("Parsing LinkedIn details via AI...");
     try {
-      const doc = await fetchApiData<any>("/profiles/import/linkedin", {
+      const doc = await fetchApiData<ImportedDocument>("/profiles/import/linkedin", {
         method: "POST",
         body: JSON.stringify({
           profileText: linkedinText.trim(),
@@ -186,8 +208,8 @@ export function ImportProfileModal({
       // Notify library components
       window.dispatchEvent(new Event("storage"));
       router.push(getDocumentEditorPath(doc.type, doc.id));
-    } catch (error: any) {
-      toast.error(error.message || "LinkedIn import failed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "LinkedIn import failed.");
     } finally {
       setLoading(false);
       setLoadingStep("");
@@ -207,14 +229,19 @@ export function ImportProfileModal({
     <Modal open={open} onClose={onClose}>
       <Modal.Content
         titleId="import-profile-title"
-        className="w-full max-w-xl overflow-hidden p-0 rounded-2xl"
+        className="w-full max-w-xl overflow-hidden rounded-2xl p-0"
         descriptionId="import-profile-description"
       >
         {/* Header */}
-        <div className="border-border/70 bg-gradient-to-r from-card to-background flex items-start justify-between border-b p-5 sm:p-6">
+        <div className="border-border/70 from-card to-background flex items-start justify-between border-b bg-gradient-to-r p-5 sm:p-6">
           <div>
-            <span className="text-accent text-[10px] font-bold tracking-[0.2em] uppercase">AI Import</span>
-            <h2 id="import-profile-title" className="mt-1.5 text-2xl font-black tracking-tight flex items-center gap-2">
+            <span className="text-accent text-[10px] font-bold tracking-[0.2em] uppercase">
+              AI Import
+            </span>
+            <h2
+              id="import-profile-title"
+              className="mt-1.5 flex items-center gap-2 text-2xl font-black tracking-tight"
+            >
               Import from Profile
             </h2>
             <p id="import-profile-description" className="text-muted mt-1 text-xs">
@@ -235,13 +262,14 @@ export function ImportProfileModal({
 
         {/* Guest Mode Redirect */}
         {!isLoggedIn ? (
-          <div className="p-6 text-center space-y-4">
+          <div className="space-y-4 p-6 text-center">
             <div className="bg-accent/10 text-accent mx-auto flex h-12 w-12 items-center justify-center rounded-2xl">
               <Lock className="h-6 w-6" />
             </div>
             <h3 className="text-lg font-bold">Authentication required</h3>
-            <p className="text-muted max-w-sm mx-auto text-xs leading-5">
-              Profile parsing requires backend AI compute resources. Sign in to import LinkedIn or GitHub profiles.
+            <p className="text-muted mx-auto max-w-sm text-xs leading-5">
+              Profile parsing requires backend AI compute resources. Sign in to import LinkedIn or
+              GitHub profiles.
             </p>
             <div className="pt-2">
               <Button size="sm" variant="primary" onClick={() => router.push("/login")}>
@@ -260,7 +288,7 @@ export function ImportProfileModal({
                 className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-xs font-semibold transition outline-none ${
                   activeTab === "linkedin"
                     ? "border-accent text-accent"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
                 <LinkedinIcon className="h-4 w-4" />
@@ -273,7 +301,7 @@ export function ImportProfileModal({
                 className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-xs font-semibold transition outline-none ${
                   activeTab === "github"
                     ? "border-accent text-accent"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
                 <GithubIcon className="h-4 w-4" />
@@ -283,23 +311,26 @@ export function ImportProfileModal({
 
             {/* Quota Indicators */}
             {quota && (
-              <div className="border-border/60 bg-card/20 border-b px-6 py-2.5 flex items-center justify-between text-[11px]">
+              <div className="border-border/60 bg-card/20 flex items-center justify-between border-b px-6 py-2.5 text-[11px]">
                 <div className="text-muted-foreground flex items-center gap-1">
                   <span>Usage quota:</span>
                   {isPaidUser ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-bold py-0.5 px-1.5 rounded text-[10px]">
+                    <Badge className="rounded border-none bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-500">
                       Creator Pro (Unlimited)
                     </Badge>
                   ) : (
-                    <Badge className="bg-amber-500/10 text-amber-500 border-none font-bold py-0.5 px-1.5 rounded text-[10px]">
+                    <Badge className="rounded border-none bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-500">
                       Free Plan
                     </Badge>
                   )}
                 </div>
 
                 {!isPaidUser && currentTabQuota && (
-                  <span className={`font-semibold ${currentTabQuota.remaining > 0 ? "text-accent" : "text-destructive"}`}>
-                    {currentTabQuota.remaining} / {currentTabQuota.limit} left this {activeTab === "linkedin" ? "month" : "day"}
+                  <span
+                    className={`font-semibold ${currentTabQuota.remaining > 0 ? "text-accent" : "text-destructive"}`}
+                  >
+                    {currentTabQuota.remaining} / {currentTabQuota.limit} left this{" "}
+                    {activeTab === "linkedin" ? "month" : "day"}
                   </span>
                 )}
               </div>
@@ -308,22 +339,25 @@ export function ImportProfileModal({
             <div className="p-6">
               {/* Limit Blocked View */}
               {isTabBlocked ? (
-                <div className="border-destructive/20 bg-destructive/5 text-destructive rounded-xl border p-4 space-y-2">
+                <div className="border-destructive/20 bg-destructive/5 text-destructive space-y-2 rounded-xl border p-4">
                   <div className="flex gap-2">
-                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                     <div>
                       <h4 className="text-sm font-bold">Limit reached</h4>
-                      <p className="text-xs text-muted-foreground mt-1 leading-5">
+                      <p className="text-muted-foreground mt-1 text-xs leading-5">
                         {activeTab === "linkedin"
                           ? "LinkedIn profile imports are limited to once a month for free accounts."
-                          : "GitHub profile imports are limited to once a day for free accounts."}
-                        {" "}Upgrade to a premium plan to remove all limits immediately.
+                          : "GitHub profile imports are limited to once a day for free accounts."}{" "}
+                        Upgrade to a premium plan to remove all limits immediately.
                       </p>
                     </div>
                   </div>
                   {currentTabQuota && currentTabQuota.resetsInSeconds > 0 && (
-                    <p className="text-[10px] text-muted-foreground pt-1">
-                      Quota resets in: <span className="font-bold text-foreground">{formatResetsTime(currentTabQuota.resetsInSeconds)}</span>
+                    <p className="text-muted-foreground pt-1 text-[10px]">
+                      Quota resets in:{" "}
+                      <span className="text-foreground font-bold">
+                        {formatResetsTime(currentTabQuota.resetsInSeconds)}
+                      </span>
                     </p>
                   )}
                   <div className="pt-2">
@@ -339,7 +373,7 @@ export function ImportProfileModal({
                     <form onSubmit={handleLinkedinSubmit} className="space-y-4">
                       {/* LinkedIn Upload PDF */}
                       <div>
-                        <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
+                        <label className="text-muted-foreground mb-2 block text-xs font-bold uppercase">
                           Option 1: Upload LinkedIn Profile PDF
                         </label>
                         <input
@@ -354,32 +388,35 @@ export function ImportProfileModal({
                           type="button"
                           disabled={loading || uploadingPdf}
                           onClick={() => fileInputRef.current?.click()}
-                          className="border-dashed border-2 border-border hover:border-accent/40 bg-card/40 flex flex-col items-center justify-center w-full rounded-2xl py-6 transition group"
+                          className="border-border hover:border-accent/40 bg-card/40 group flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed py-6 transition"
                         >
                           {uploadingPdf ? (
-                            <Loader2 className="h-8 w-8 text-accent animate-spin" />
+                            <Loader2 className="text-accent h-8 w-8 animate-spin" />
                           ) : (
-                            <Upload className="h-8 w-8 text-muted group-hover:text-accent transition" />
+                            <Upload className="text-muted group-hover:text-accent h-8 w-8 transition" />
                           )}
-                          <span className="text-xs font-bold mt-2">
+                          <span className="mt-2 text-xs font-bold">
                             {uploadingPdf ? "Reading file..." : "Upload Profile PDF"}
                           </span>
-                          <span className="text-[10px] text-muted-foreground mt-1">
+                          <span className="text-muted-foreground mt-1 text-[10px]">
                             Go to LinkedIn &gt; More &gt; Save to PDF, then upload here.
                           </span>
                         </button>
                       </div>
 
                       {/* Divider */}
-                      <div className="flex items-center gap-3 text-muted-foreground text-[10px] font-bold uppercase py-1">
-                        <div className="h-px bg-border/80 flex-1"></div>
+                      <div className="text-muted-foreground flex items-center gap-3 py-1 text-[10px] font-bold uppercase">
+                        <div className="bg-border/80 h-px flex-1"></div>
                         <span>or</span>
-                        <div className="h-px bg-border/80 flex-1"></div>
+                        <div className="bg-border/80 h-px flex-1"></div>
                       </div>
 
                       {/* Paste Text */}
                       <div className="space-y-1.5">
-                        <label htmlFor="linkedin-paste" className="block text-xs font-bold text-muted-foreground uppercase">
+                        <label
+                          htmlFor="linkedin-paste"
+                          className="text-muted-foreground block text-xs font-bold uppercase"
+                        >
                           Option 2: Paste LinkedIn Profile Text
                         </label>
                         <TextArea
@@ -392,7 +429,7 @@ export function ImportProfileModal({
                         />
                       </div>
 
-                      <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-4">
+                      <div className="border-border/60 flex items-center justify-between gap-4 border-t pt-2">
                         <Checkbox
                           id="replace-master-linkedin"
                           checked={replaceMaster}
@@ -423,7 +460,10 @@ export function ImportProfileModal({
                     <form onSubmit={handleGithubSubmit} className="space-y-4">
                       {/* GitHub input */}
                       <div className="space-y-2">
-                        <label htmlFor="github-username" className="block text-xs font-bold text-muted-foreground uppercase">
+                        <label
+                          htmlFor="github-username"
+                          className="text-muted-foreground block text-xs font-bold uppercase"
+                        >
                           GitHub Username or URL
                         </label>
                         <div className="relative">
@@ -440,26 +480,28 @@ export function ImportProfileModal({
                             className="pr-10"
                           />
                           {!isPaidUser && (
-                            <span className="absolute right-3 top-3 text-muted-foreground cursor-not-allowed">
+                            <span className="text-muted-foreground absolute top-3 right-3 cursor-not-allowed">
                               <Lock className="h-4 w-4" />
                             </span>
                           )}
                         </div>
 
                         {!isPaidUser && (
-                          <div className="bg-amber-500/5 text-amber-500 border border-amber-500/10 rounded-xl p-3 flex gap-2 text-xs leading-5">
-                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <div className="flex gap-2 rounded-xl border border-amber-500/10 bg-amber-500/5 p-3 text-xs leading-5 text-amber-500">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                             <div>
                               <p className="font-bold">Free Plan Restriction</p>
-                              <p className="text-muted-foreground text-[11px] mt-0.5">
-                                You can only import your own connected GitHub profile ({currentTabQuota?.connectedUsername || "Connecting..."}). Upgrade to a paid plan to import any profile.
+                              <p className="text-muted-foreground mt-0.5 text-[11px]">
+                                You can only import your own connected GitHub profile (
+                                {currentTabQuota?.connectedUsername || "Connecting..."}). Upgrade to
+                                a paid plan to import any profile.
                               </p>
                             </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-4">
+                      <div className="border-border/60 flex items-center justify-between gap-4 border-t pt-2">
                         <Checkbox
                           id="replace-master-github"
                           checked={replaceMaster}

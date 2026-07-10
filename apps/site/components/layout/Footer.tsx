@@ -2,7 +2,12 @@
 
 import React from "react";
 import { siteConfig } from "@/config/site";
-import { LandingFooter, LandingFooterColumn, LandingFooterSocialLink, LandingFooterLink } from "./LandingFooter";
+import {
+  LandingFooter,
+  LandingFooterColumn,
+  LandingFooterSocialLink,
+  LandingFooterLink,
+} from "./LandingFooter";
 
 const footerColumns: LandingFooterColumn[] = [
   {

@@ -10,7 +10,7 @@ export default function MinimalFAQ() {
 
   return (
     <section className="mx-auto w-full max-w-[900px] px-4 py-32 md:px-8 md:py-48">
-      <h2 className="mb-16 text-balance font-sans text-4xl font-medium tracking-tighter text-zinc-950 md:text-5xl dark:text-white">
+      <h2 className="mb-16 font-sans text-4xl font-medium tracking-tighter text-balance text-zinc-950 md:text-5xl dark:text-white">
         Frequently asked questions
       </h2>
 

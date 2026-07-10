@@ -148,8 +148,8 @@ const Home = () => {
         <h2>Free ATS-Friendly Resume Builder</h2>
 
         <p>
-          VeriWorkly helps you create professional ATS-friendly resumes without requiring signup
-          or login. Choose modern resume templates, customize your resume easily, and export
+          VeriWorkly helps you create professional ATS-friendly resumes without requiring signup or
+          login. Choose modern resume templates, customize your resume easily, and export
           ready-to-use resumes for job applications.
         </p>
       </section>

@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CalendarClock, Coins, ExternalLink, FileClock, ShieldCheck, LockKeyhole } from "lucide-react";
+import {
+  CalendarClock,
+  Coins,
+  ExternalLink,
+  FileClock,
+  ShieldCheck,
+  LockKeyhole,
+} from "lucide-react";
 import { Button } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
@@ -99,7 +106,7 @@ export function BillingPage({
 
   return (
     <main className="relative min-h-[400px]">
-      <div className={cn("space-y-5", !user && "blur-[3px] pointer-events-none opacity-40")}>
+      <div className={cn("space-y-5", !user && "pointer-events-none opacity-40 blur-[3px]")}>
         <header className="border-border bg-card rounded-2xl border p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div>
@@ -121,7 +128,9 @@ export function BillingPage({
                 </Button>
               ) : (
                 <Button asChild disabled={!user}>
-                  <Link href={user ? `${siteConfig.links.main}/pricing` : "#"}>View upgrade options</Link>
+                  <Link href={user ? `${siteConfig.links.main}/pricing` : "#"}>
+                    View upgrade options
+                  </Link>
                 </Button>
               )}
             </div>
@@ -217,7 +226,10 @@ export function BillingPage({
                   ? "Buy 100 extra credits"
                   : "Extra credits coming soon"}
             </Button>
-            <Link className="text-accent mt-3 block text-center text-xs font-bold" href={user ? "/credits" : "#"}>
+            <Link
+              className="text-accent mt-3 block text-center text-xs font-bold"
+              href={user ? "/credits" : "#"}
+            >
               View usage and action costs
             </Link>
           </article>
@@ -250,15 +262,16 @@ export function BillingPage({
       </div>
 
       {!user ? (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border border-border bg-card/45 p-6 text-center backdrop-blur-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+        <div className="border-border bg-card/45 absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border p-6 text-center backdrop-blur-sm">
+          <div className="bg-accent-soft text-accent flex h-12 w-12 items-center justify-center rounded-full">
             <LockKeyhole size={20} />
           </div>
-          <h2 className="mt-4 text-base font-extrabold text-foreground">
+          <h2 className="text-foreground mt-4 text-base font-extrabold">
             Log in to view subscriptions
           </h2>
-          <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground">
-            Please log in or create an account to view subscription plans, purchase credits, and manage billing history.
+          <p className="text-muted-foreground mt-1.5 max-w-sm text-xs leading-5">
+            Please log in or create an account to view subscription plans, purchase credits, and
+            manage billing history.
           </p>
           <button
             onClick={() => {
@@ -268,7 +281,7 @@ export function BillingPage({
                   : "https://app.veriworkly.com/login";
               window.location.href = `${loginUrl}?callbackURL=${encodeURIComponent(window.location.href)}`;
             }}
-            className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent text-accent-foreground px-5 text-xs font-bold hover:bg-accent/90 transition"
+            className="bg-accent text-accent-foreground hover:bg-accent/90 mt-5 inline-flex min-h-10 items-center justify-center rounded-lg px-5 text-xs font-bold transition"
           >
             Log In
           </button>

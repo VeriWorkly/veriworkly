@@ -78,7 +78,9 @@ export function useApiKeys({
 
   useEffect(() => {
     if (!isLoggedIn) {
-      setLoading(false);
+      queueMicrotask(() => {
+        setLoading(false);
+      });
       return;
     }
 

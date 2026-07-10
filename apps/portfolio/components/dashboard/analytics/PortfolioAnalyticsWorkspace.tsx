@@ -25,12 +25,12 @@ export function PortfolioAnalyticsWorkspace() {
   const activeDays = daily.filter((item) => item.count > 0).length;
 
   return (
-    <main className="relative surface-grid min-h-[calc(100dvh-4.25rem)] px-4 py-8 sm:px-6 sm:py-10 xl:px-10">
+    <main className="surface-grid relative min-h-[calc(100dvh-4.25rem)] px-4 py-8 sm:px-6 sm:py-10 xl:px-10">
       <div className="mx-auto max-w-7xl">
         <AnalyticsHeader />
 
         <div className={`relative mt-5 ${!isPremium ? "select-none" : ""}`}>
-          <div className={!isPremium ? "blur-[3px] pointer-events-none opacity-40" : ""}>
+          <div className={!isPremium ? "pointer-events-none opacity-40 blur-[3px]" : ""}>
             <AnalyticsMetrics
               totalViews={analytics?.totalViews ?? 0}
               recentViews={recentViews}
@@ -45,21 +45,23 @@ export function PortfolioAnalyticsWorkspace() {
           </div>
 
           {!isPremium ? (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border border-line bg-card/45 p-6 text-center backdrop-blur-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <div className="border-line bg-card/45 absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border p-6 text-center backdrop-blur-sm">
+              <div className="bg-accent-soft text-accent flex h-12 w-12 items-center justify-center rounded-full">
                 <Lock size={20} />
               </div>
-              <h2 className="mt-4 text-base font-extrabold text-ink">
-                {!user ? "Log in to track visitor analytics" : "Visitor analytics is a premium feature"}
+              <h2 className="text-ink mt-4 text-base font-extrabold">
+                {!user
+                  ? "Log in to track visitor analytics"
+                  : "Visitor analytics is a premium feature"}
               </h2>
-              <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted">
+              <p className="text-muted mt-1.5 max-w-sm text-xs leading-5">
                 {!user
                   ? "Create an account or log in to sync your portfolio and enable visitor tracking."
                   : "Upgrade to Portfolio Pro to unlock visitor metrics, referral history, and traffic trends."}
               </p>
               <Link
                 href={!user ? "/login" : "/pricing"}
-                className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent text-accent-foreground px-5 text-xs font-bold hover:bg-accent-strong transition"
+                className="bg-accent text-accent-foreground hover:bg-accent-strong mt-5 inline-flex min-h-10 items-center justify-center rounded-lg px-5 text-xs font-bold transition"
               >
                 {!user ? "Log In" : "Upgrade to Pro"}
               </Link>

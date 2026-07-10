@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "#lib/prisma";
 import { config } from "#config";
 import { ApiError } from "#lib/errors";
@@ -10,7 +11,7 @@ import { ProfileImportQuotaService } from "#services/profileImportQuotaService";
 import { EntitlementService } from "#services/entitlementService";
 
 function cleanGithubUsername(input: string): string {
-  let cleaned = input.trim();
+  const cleaned = input.trim();
   if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) {
     try {
       const url = new URL(cleaned);
@@ -32,39 +33,40 @@ function sanitizePhone(phone?: string | null): string | undefined {
 }
 
 function mapGithubToResumeData(profile: any, repos: any[]): any {
-  const makeId = (prefix: string, index: number) => 
+  const makeId = (prefix: string, index: number) =>
     `${prefix}-${index}-${Math.random().toString(36).substring(2, 9)}`;
 
   // Extract skills from repository main languages (unique list)
   const languages = Array.from(
-    new Set((repos || []).map((r: any) => r.language).filter(Boolean))
+    new Set((repos || []).map((r: any) => r.language).filter(Boolean)),
   ) as string[];
 
-  const skills = languages.length > 0 ? [
-    {
-      id: makeId("skills", 0),
-      name: "Languages & Technologies",
-      keywords: languages,
-    }
-  ] : [];
+  const skills =
+    languages.length > 0
+      ? [
+          {
+            id: makeId("skills", 0),
+            name: "Languages & Technologies",
+            keywords: languages,
+          },
+        ]
+      : [];
 
   // Map up to 15 repositories to projects
-  const projects = (repos || [])
-    .slice(0, 15)
-    .map((repo: any, index: number) => ({
-      id: makeId("proj", index),
-      name: repo.name,
-      role: "Creator / Maintainer",
-      link: repo.html_url,
-      linkLabel: "GitHub Repository",
-      showLinkAsText: true,
-      summary: repo.description || "No description provided.",
-      highlights: [
-        `Stars: ${repo.stargazers_count || 0}`,
-        `Language: ${repo.language || "Not specified"}`,
-      ],
-      skills: repo.language ? [repo.language] : [],
-    }));
+  const projects = (repos || []).slice(0, 15).map((repo: any, index: number) => ({
+    id: makeId("proj", index),
+    name: repo.name,
+    role: "Creator / Maintainer",
+    link: repo.html_url,
+    linkLabel: "GitHub Repository",
+    showLinkAsText: true,
+    summary: repo.description || "No description provided.",
+    highlights: [
+      `Stars: ${repo.stargazers_count || 0}`,
+      `Language: ${repo.language || "Not specified"}`,
+    ],
+    skills: repo.language ? [repo.language] : [],
+  }));
 
   // Set up basic links
   const linksList = [
@@ -73,7 +75,7 @@ function mapGithubToResumeData(profile: any, repos: any[]): any {
       type: "github",
       label: "GitHub",
       url: profile.html_url,
-    }
+    },
   ];
 
   if (profile.blog) {
@@ -117,15 +119,63 @@ function mapGithubToResumeData(profile: any, repos: any[]): any {
     references: [],
     achievements: [],
     customSections: [
-      { id: "certifications-default", kind: "certifications", title: "Certifications", editableTitle: false, items: [] },
+      {
+        id: "certifications-default",
+        kind: "certifications",
+        title: "Certifications",
+        editableTitle: false,
+        items: [],
+      },
       { id: "awards-default", kind: "awards", title: "Awards", editableTitle: false, items: [] },
-      { id: "publications-default", kind: "publications", title: "Publications", editableTitle: false, items: [] },
-      { id: "languages-default", kind: "languages", title: "Languages", editableTitle: false, items: [] },
-      { id: "interests-default", kind: "interests", title: "Interests", editableTitle: false, items: [] },
-      { id: "volunteer-default", kind: "volunteer", title: "Volunteer", editableTitle: false, items: [] },
-      { id: "references-default", kind: "references", title: "References", editableTitle: false, items: [] },
-      { id: "achievements-default", kind: "achievements", title: "Achievements", editableTitle: false, items: [] },
-      { id: "custom-default", kind: "custom", title: "Custom Section", editableTitle: true, items: [] }
+      {
+        id: "publications-default",
+        kind: "publications",
+        title: "Publications",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "languages-default",
+        kind: "languages",
+        title: "Languages",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "interests-default",
+        kind: "interests",
+        title: "Interests",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "volunteer-default",
+        kind: "volunteer",
+        title: "Volunteer",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "references-default",
+        kind: "references",
+        title: "References",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "achievements-default",
+        kind: "achievements",
+        title: "Achievements",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "custom-default",
+        kind: "custom",
+        title: "Custom Section",
+        editableTitle: true,
+        items: [],
+      },
     ],
     sections: [
       { id: "basics", label: "Basics", visible: true, order: 0 },
@@ -143,7 +193,7 @@ function mapGithubToResumeData(profile: any, repos: any[]): any {
       { id: "volunteer", label: "Volunteer", visible: true, order: 12 },
       { id: "references", label: "References", visible: true, order: 13 },
       { id: "achievements", label: "Achievements", visible: true, order: 14 },
-      { id: "custom", label: "Custom", visible: true, order: 15 }
+      { id: "custom", label: "Custom", visible: true, order: 15 },
     ],
     customization: {
       accentColor: "#2563eb",
@@ -171,7 +221,7 @@ function mapGithubToResumeData(profile: any, repos: any[]): any {
 }
 
 function mapParsedToResumeData(parsed: any) {
-  const makeId = (prefix: string, index: number) => 
+  const makeId = (prefix: string, index: number) =>
     `${prefix}-${index}-${Math.random().toString(36).substring(2, 9)}`;
 
   const links = (parsed.links || []).map((link: any, index: number) => {
@@ -184,7 +234,7 @@ function mapParsedToResumeData(parsed: any) {
     else if (url.includes("behance.net")) type = "behance";
     else if (url.includes("medium.com")) type = "medium";
     else if (url.includes("youtube.com")) type = "youtube";
-    
+
     return {
       id: makeId("link", index),
       type,
@@ -265,15 +315,63 @@ function mapParsedToResumeData(parsed: any) {
     references: [],
     achievements: [],
     customSections: [
-      { id: "certifications-default", kind: "certifications", title: "Certifications", editableTitle: false, items: [] },
+      {
+        id: "certifications-default",
+        kind: "certifications",
+        title: "Certifications",
+        editableTitle: false,
+        items: [],
+      },
       { id: "awards-default", kind: "awards", title: "Awards", editableTitle: false, items: [] },
-      { id: "publications-default", kind: "publications", title: "Publications", editableTitle: false, items: [] },
-      { id: "languages-default", kind: "languages", title: "Languages", editableTitle: false, items: [] },
-      { id: "interests-default", kind: "interests", title: "Interests", editableTitle: false, items: [] },
-      { id: "volunteer-default", kind: "volunteer", title: "Volunteer", editableTitle: false, items: [] },
-      { id: "references-default", kind: "references", title: "References", editableTitle: false, items: [] },
-      { id: "achievements-default", kind: "achievements", title: "Achievements", editableTitle: false, items: [] },
-      { id: "custom-default", kind: "custom", title: "Custom Section", editableTitle: true, items: [] }
+      {
+        id: "publications-default",
+        kind: "publications",
+        title: "Publications",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "languages-default",
+        kind: "languages",
+        title: "Languages",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "interests-default",
+        kind: "interests",
+        title: "Interests",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "volunteer-default",
+        kind: "volunteer",
+        title: "Volunteer",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "references-default",
+        kind: "references",
+        title: "References",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "achievements-default",
+        kind: "achievements",
+        title: "Achievements",
+        editableTitle: false,
+        items: [],
+      },
+      {
+        id: "custom-default",
+        kind: "custom",
+        title: "Custom Section",
+        editableTitle: true,
+        items: [],
+      },
     ],
     sections: [
       { id: "basics", label: "Basics", visible: true, order: 0 },
@@ -291,7 +389,7 @@ function mapParsedToResumeData(parsed: any) {
       { id: "volunteer", label: "Volunteer", visible: true, order: 12 },
       { id: "references", label: "References", visible: true, order: 13 },
       { id: "achievements", label: "Achievements", visible: true, order: 14 },
-      { id: "custom", label: "Custom", visible: true, order: 15 }
+      { id: "custom", label: "Custom", visible: true, order: 15 },
     ],
     customization: {
       accentColor: "#2563eb",
@@ -338,7 +436,10 @@ export class ProfileImportService {
       });
 
       if (!account || !account.accessToken) {
-        throw new ApiError(400, "Please connect your GitHub account in settings to import your profile.");
+        throw new ApiError(
+          400,
+          "Please connect your GitHub account in settings to import your profile.",
+        );
       }
 
       token = account.accessToken;
@@ -375,11 +476,13 @@ export class ProfileImportService {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const profileResponse = await fetch(`https://api.github.com/users/${targetUsername}`, { headers });
+    const profileResponse = await fetch(`https://api.github.com/users/${targetUsername}`, {
+      headers,
+    });
     if (!profileResponse.ok) {
       throw new ApiError(
         profileResponse.status === 404 ? 404 : 502,
-        `GitHub profile for "${targetUsername}" not found or API call failed.`
+        `GitHub profile for "${targetUsername}" not found or API call failed.`,
       );
     }
     const profileData = await profileResponse.json();
@@ -387,7 +490,7 @@ export class ProfileImportService {
     // Fetch repositories
     const reposResponse = await fetch(
       `https://api.github.com/users/${targetUsername}/repos?sort=updated&per_page=30`,
-      { headers }
+      { headers },
     );
     const reposData = reposResponse.ok ? await reposResponse.json() : [];
 

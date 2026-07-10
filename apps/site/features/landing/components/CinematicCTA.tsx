@@ -20,11 +20,11 @@ export default function CinematicCTA() {
     const { left, top, width, height } = ref.current.getBoundingClientRect();
     const centerX = left + width / 2;
     const centerY = top + height / 2;
-    
+
     // Calculate distance from center (max 30px pull)
     const distanceX = e.clientX - centerX;
     const distanceY = e.clientY - centerY;
-    
+
     x.set(distanceX * 0.2);
     y.set(distanceY * 0.2);
   };
@@ -36,8 +36,8 @@ export default function CinematicCTA() {
 
   return (
     <section className="mx-auto flex w-full flex-col items-center justify-center px-4 py-32 text-center md:py-48">
-      <motion.h2 
-        className="text-balance font-sans text-5xl font-medium tracking-tighter text-zinc-950 md:text-7xl lg:text-8xl dark:text-white"
+      <motion.h2
+        className="font-sans text-5xl font-medium tracking-tighter text-balance text-zinc-950 md:text-7xl lg:text-8xl dark:text-white"
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
@@ -65,13 +65,13 @@ export default function CinematicCTA() {
           >
             {/* Liquid hover fill */}
             <div className="absolute inset-0 z-0 origin-left scale-x-0 bg-white/20 transition-transform duration-500 ease-[0.16,1,0.3,1] group-hover:scale-x-100 dark:bg-black/10" />
-            
+
             <span className="relative z-10">Launch the Studio</span>
             <ArrowRight className="relative z-10 h-8 w-8 transition-transform duration-300 group-hover:translate-x-2" />
           </motion.div>
         </Link>
       </motion.div>
-      
+
       <motion.p
         className="mt-8 text-lg text-zinc-500"
         initial={{ opacity: 0 }}

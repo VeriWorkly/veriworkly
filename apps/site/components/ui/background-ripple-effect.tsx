@@ -27,11 +27,11 @@ export const BackgroundRippleEffect = ({
         "dark:[--cell-border-color:rgba(255,255,255,0.05)] dark:[--cell-fill-color:rgba(59,130,246,0.5)] dark:[--cell-shadow-color:rgba(255,255,255,0.1)]",
       )}
     >
-      <div className="relative h-full w-full overflow-hidden flex items-start justify-center">
+      <div className="relative flex h-full w-full items-start justify-center overflow-hidden">
         <div className="pointer-events-none absolute inset-0 z-[2] h-full w-full overflow-hidden" />
         <DivGrid
           key={`base-${rippleKey}`}
-          className="opacity-70 [mask-image:radial-gradient(ellipse_100%_100%_at_50%_0%,#000_50%,transparent_100%)]"
+          className="[mask-image:radial-gradient(ellipse_100%_100%_at_50%_0%,#000_50%,transparent_100%)] opacity-70"
           rows={rows}
           cols={cols}
           cellSize={cellSize}
@@ -74,10 +74,7 @@ const DivGrid = ({
   onCellClick = () => {},
   interactive = true,
 }: DivGridProps) => {
-  const cells = useMemo(
-    () => Array.from({ length: rows * cols }, (_, idx) => idx),
-    [rows, cols],
-  );
+  const cells = useMemo(() => Array.from({ length: rows * cols }, (_, idx) => idx), [rows, cols]);
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
@@ -110,21 +107,19 @@ const DivGrid = ({
           <div
             key={idx}
             className={cn(
-              "group cell relative border-[0.5px] transition-all duration-300 ease-out will-change-transform hover:z-10 hover:shadow-[0_0_25px_var(--cell-fill-color)] hover:scale-105 dark:shadow-[0px_0px_40px_1px_var(--cell-shadow-color)_inset]",
+              "group cell relative border-[0.5px] transition-all duration-300 ease-out will-change-transform hover:z-10 hover:scale-105 hover:shadow-[0_0_25px_var(--cell-fill-color)] dark:shadow-[0px_0px_40px_1px_var(--cell-shadow-color)_inset]",
               !interactive && "pointer-events-none",
             )}
             style={{
               borderColor: borderColor,
               ...style,
             }}
-            onClick={
-              interactive ? () => onCellClick?.(rowIdx, colIdx) : undefined
-            }
+            onClick={interactive ? () => onCellClick?.(rowIdx, colIdx) : undefined}
           >
             <div
               className={cn(
                 "absolute inset-0 bg-[var(--cell-fill-color)] opacity-0 transition-opacity duration-500 ease-out will-change-[opacity] group-hover:opacity-100",
-                clickedCell && "animate-cell-ripple [animation-fill-mode:none]"
+                clickedCell && "animate-cell-ripple [animation-fill-mode:none]",
               )}
             />
           </div>

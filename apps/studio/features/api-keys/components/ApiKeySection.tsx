@@ -33,8 +33,13 @@ export default function ApiKeySection({
   const apiKeys = useApiKeys({ initialKeys, initialPagination, initialKeysLoaded });
 
   return (
-    <section id="api-keys" className="relative space-y-6 min-h-[400px]">
-      <div className={cn("flex items-center justify-between", !isLoggedIn && "blur-[3px] pointer-events-none opacity-40")}>
+    <section id="api-keys" className="relative min-h-[400px] space-y-6">
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          !isLoggedIn && "pointer-events-none opacity-40 blur-[3px]",
+        )}
+      >
         <div className="space-y-1">
           <h2 className="text-foreground text-2xl font-bold tracking-tight">Your keys</h2>
 
@@ -51,7 +56,7 @@ export default function ApiKeySection({
         </Button>
       </div>
 
-      <div className={cn("grid gap-6", !isLoggedIn && "blur-[3px] pointer-events-none opacity-40")}>
+      <div className={cn("grid gap-6", !isLoggedIn && "pointer-events-none opacity-40 blur-[3px]")}>
         {apiKeys.generatedKey && (
           <GeneratedApiKeyCard
             generatedKey={apiKeys.generatedKey.key}
@@ -107,15 +112,16 @@ export default function ApiKeySection({
       </div>
 
       {!isLoggedIn ? (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border border-border bg-card/45 p-6 text-center backdrop-blur-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+        <div className="border-border bg-card/45 absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border p-6 text-center backdrop-blur-sm">
+          <div className="bg-accent-soft text-accent flex h-12 w-12 items-center justify-center rounded-full">
             <LockKeyhole size={20} />
           </div>
-          <h2 className="mt-4 text-base font-extrabold text-foreground">
+          <h2 className="text-foreground mt-4 text-base font-extrabold">
             Log in to manage API keys
           </h2>
-          <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground">
-            API keys allow you to integrate your resumes and profile data with developer environments. Please log in to manage your access tokens.
+          <p className="text-muted-foreground mt-1.5 max-w-sm text-xs leading-5">
+            API keys allow you to integrate your resumes and profile data with developer
+            environments. Please log in to manage your access tokens.
           </p>
           <button
             onClick={() => {
@@ -125,7 +131,7 @@ export default function ApiKeySection({
                   : "https://app.veriworkly.com/login";
               window.location.href = `${loginUrl}?callbackURL=${encodeURIComponent(window.location.href)}`;
             }}
-            className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent text-accent-foreground px-5 text-xs font-bold hover:bg-accent/90 transition"
+            className="bg-accent text-accent-foreground hover:bg-accent/90 mt-5 inline-flex min-h-10 items-center justify-center rounded-lg px-5 text-xs font-bold transition"
           >
             Log In
           </button>

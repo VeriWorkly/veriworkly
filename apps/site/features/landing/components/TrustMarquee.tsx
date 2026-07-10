@@ -40,9 +40,7 @@ export default function TrustMarquee() {
                 className="flex items-center gap-4 whitespace-nowrap text-zinc-400 dark:text-zinc-500"
               >
                 <Icon className="h-6 w-6 stroke-[1.5]" />
-                <span className="text-xl font-medium uppercase tracking-widest">
-                  {item.text}
-                </span>
+                <span className="text-xl font-medium tracking-widest uppercase">{item.text}</span>
               </div>
             );
           })}

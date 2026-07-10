@@ -25,7 +25,10 @@ import { NewDocumentButton, NewDocumentModal } from "@/components/dashboard/NewD
 import { ImportProfileModal } from "@/components/dashboard/ImportProfileModal";
 
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
-import { createDocument, listDocuments } from "@/features/documents/services/document-workspace-service";
+import {
+  createDocument,
+  listDocuments,
+} from "@/features/documents/services/document-workspace-service";
 import { fetchApiData } from "@/utils/fetchApiData";
 import type { BillingSummary } from "@/features/billing/types";
 
@@ -71,7 +74,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
 
     if (!isPaid && existingDocs.length >= 1) {
       toast.error(
-        `Free/guest users can only have 1 active ${type.toLowerCase().replace("_", " ")} at a time. Upgrade to Creator Pro to create unlimited documents.`
+        `Free/guest users can only have 1 active ${type.toLowerCase().replace("_", " ")} at a time. Upgrade to Creator Pro to create unlimited documents.`,
       );
       return;
     }

@@ -93,7 +93,9 @@ export const LandingFooter = ({
                         className="group flex w-fit items-center gap-1.5 text-[15px] font-medium text-gray-500 transition-colors duration-300 ease-out hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                       >
                         {link.name}
-                        {link.external && <ArrowUpRight className="h-3.5 w-3.5 opacity-50 transition-opacity group-hover:opacity-100" />}
+                        {link.external && (
+                          <ArrowUpRight className="h-3.5 w-3.5 opacity-50 transition-opacity group-hover:opacity-100" />
+                        )}
                       </Link>
                     </li>
                   ))}
@@ -108,12 +110,12 @@ export const LandingFooter = ({
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="flex h-[1.875rem] w-[1.875rem] items-center justify-center rounded-md">
-              <Image 
-                src={logoSrc} 
-                alt={`${shortName} Logo`} 
-                width={30} 
-                height={30} 
-                className="h-full w-full object-contain dark:invert" 
+              <Image
+                src={logoSrc}
+                alt={`${shortName} Logo`}
+                width={30}
+                height={30}
+                className="h-full w-full object-contain dark:invert"
               />
             </div>
             <span className="text-[1.35rem] font-bold tracking-tight text-gray-900 dark:text-white">
@@ -129,7 +131,7 @@ export const LandingFooter = ({
                   key={link.name}
                   href={link.href}
                   className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-300 ease-out active:scale-95 ${
-                    index === 0 
+                    index === 0
                       ? "bg-white text-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] dark:bg-white/10 dark:text-white"
                       : "text-gray-600 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
                   }`}
@@ -167,7 +169,9 @@ export const LandingFooter = ({
 
         {/* Bottom Section */}
         <div className="relative z-10 flex flex-col items-center justify-between gap-4 pb-16 text-[13px] font-medium text-gray-500 md:flex-row md:pb-24 dark:text-gray-400">
-          <p>© {shortName} by {authorName}</p>
+          <p>
+            © {shortName} by {authorName}
+          </p>
           <div className="flex items-center gap-8">
             {legalLinks.map((link) => (
               <Link
