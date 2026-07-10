@@ -9,12 +9,6 @@ const publicPlatformPaths = [
   "/portfolio",
   "/templates",
   "/faq",
-  "/dashboard",
-  "/editor",
-  "/preview",
-  "/analytics",
-  "/settings",
-  "/profile",
 ];
 const SESSION_COOKIE_NAMES = [
   "__Secure-veriworkly-auth.session_token",

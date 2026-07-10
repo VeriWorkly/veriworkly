@@ -11,6 +11,7 @@ export interface TemplatePickerProps {
 export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
   const activeTemplateId = usePortfolioStore((state) => state.content.templateId);
   const updateContent = usePortfolioStore((state) => state.updateContent);
+  const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -38,40 +39,52 @@ export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
           </button>
         </header>
         <div className="grid gap-4 overflow-y-auto p-4 md:grid-cols-2">
-          {templateCatalog.map((template) => (
-            <button
-              key={template.id}
-              className={`group overflow-hidden rounded-xl border text-left transition ${
-                activeTemplateId === template.id
-                  ? "border-accent ring-accent-soft ring-2"
-                  : "border-line hover:border-line-strong"
-              }`}
-              onClick={() => {
-                updateContent({ templateId: template.id });
-                onClose();
-              }}
-              type="button"
-            >
-              <div className="bg-paper-2 aspect-[16/10] overflow-hidden">
-                <iframe
-                  loading="lazy"
-                  tabIndex={-1}
-                  title={`${template.name} template preview`}
-                  src={`/templates/${template.id}/preview`}
-                  className="bg-panel pointer-events-none h-[200%] w-[200%] origin-top-left scale-50 border-0"
-                />
-              </div>
-              <div className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <strong className="text-sm">{template.name}</strong>
-                  <span className="text-muted text-[10px] font-extrabold tracking-widest uppercase">
-                    {template.mood}
-                  </span>
+          {templateCatalog.map((template) => {
+            const isDisabled = template.isPremium && !isPremiumUser;
+            return (
+              <button
+                key={template.id}
+                disabled={isDisabled}
+                className={`group relative overflow-hidden rounded-xl border text-left transition ${
+                  activeTemplateId === template.id
+                    ? "border-accent ring-accent-soft ring-2"
+                    : isDisabled
+                      ? "border-line cursor-not-allowed opacity-60"
+                      : "border-line hover:border-line-strong"
+                }`}
+                onClick={() => {
+                  if (isDisabled) return;
+                  updateContent({ templateId: template.id });
+                  onClose();
+                }}
+                type="button"
+              >
+                {template.isPremium && (
+                  <div className="bg-accent absolute top-3 right-3 z-10 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-widest text-white">
+                    PRO
+                  </div>
+                )}
+                <div className="bg-paper-2 relative aspect-[16/10] overflow-hidden">
+                  <iframe
+                    loading="lazy"
+                    tabIndex={-1}
+                    title={`${template.name} template preview`}
+                    src={`/templates/${template.id}/preview`}
+                    className={`bg-panel pointer-events-none h-[200%] w-[200%] origin-top-left scale-50 border-0 ${isDisabled ? "opacity-50 grayscale" : ""}`}
+                  />
                 </div>
-                <p className="text-muted mt-2 text-xs leading-5">{template.note}</p>
-              </div>
-            </button>
-          ))}
+                <div className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <strong className="text-sm">{template.name}</strong>
+                    <span className="text-muted text-[10px] font-extrabold tracking-widest uppercase">
+                      {template.mood}
+                    </span>
+                  </div>
+                  <p className="text-muted mt-2 text-xs leading-5">{template.note}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </Modal.Content>
     </Modal>

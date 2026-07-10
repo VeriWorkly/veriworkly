@@ -64,6 +64,13 @@ export interface PortfolioSection {
   settings?: Record<string, unknown>;
 }
 
+export interface PortfolioPage {
+  id: string;
+  slug: string;
+  title: string;
+  sections: PortfolioSection[];
+}
+
 export interface PortfolioContent {
   schemaVersion: 1;
   templateId: TemplateId;
@@ -83,6 +90,8 @@ export interface PortfolioContent {
   };
   socialLinks: PortfolioLink[];
   sections: PortfolioSection[];
+  pages?: PortfolioPage[];
+  removeWatermark?: boolean;
 }
 
 export interface CloudPortfolioDraft {

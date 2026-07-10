@@ -12,6 +12,7 @@ export interface TemplateSummary {
   image: string;
   audience: string;
   strengths: string[];
+  isPremium?: boolean;
 }
 
 export const templates: TemplateSummary[] = Object.entries(templatesRegistry).map(
@@ -23,6 +24,7 @@ export const templates: TemplateSummary[] = Object.entries(templatesRegistry).ma
     audience: entry.audience,
     strengths: entry.strengths,
     image: entry.image,
+    isPremium: (entry as { isPremium?: boolean }).isPremium,
   }),
 );
 

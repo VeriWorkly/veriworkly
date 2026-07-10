@@ -17,6 +17,8 @@ console.log("Template library not found. Setting up mock templates for CI build.
 fs.mkdirSync(templateLibPath, { recursive: true });
 fs.mkdirSync(path.join(templateLibPath, "atelier"), { recursive: true });
 fs.mkdirSync(path.join(templateLibPath, "signal"), { recursive: true });
+fs.mkdirSync(path.join(templateLibPath, "nimbus"), { recursive: true });
+fs.mkdirSync(path.join(templateLibPath, "cipher"), { recursive: true });
 
 // Types
 const typesContent = `export interface PortfolioSection {
@@ -84,6 +86,8 @@ import type { TemplateDetails } from "../features/templates/data/template-detail
 
 import { design as signalDesign } from "./signal/design";
 import { design as atelierDesign } from "./atelier/design";
+import { design as nimbusDesign } from "./nimbus/design";
+import { design as cipherDesign } from "./cipher/design";
 
 export type TemplateComponent = ComponentType<{ project: PortfolioProject }>;
 
@@ -96,6 +100,7 @@ export interface TemplateRegistryEntry {
   image: string;
   loader: () => Promise<{ default: TemplateComponent }>;
   design: TemplateDetails;
+  isPremium?: boolean;
 }
 
 export const templatesRegistry = {
@@ -118,6 +123,28 @@ export const templatesRegistry = {
     image: "/templates/atelier-template-preview.png",
     loader: () => import("./atelier/AtelierTemplate"),
     design: atelierDesign,
+  },
+  nimbus: {
+    name: "Nimbus",
+    note: "Mock nimbus note",
+    mood: "Mock nimbus mood",
+    audience: "Mock nimbus audience",
+    strengths: ["Mock nimbus strengths"],
+    image: "/templates/nimbus-template-preview.png",
+    loader: () => import("./nimbus/NimbusTemplate"),
+    design: nimbusDesign,
+    isPremium: true,
+  },
+  cipher: {
+    name: "Cipher",
+    note: "Mock cipher note",
+    mood: "Mock cipher mood",
+    audience: "Mock cipher audience",
+    strengths: ["Mock cipher strengths"],
+    image: "/templates/cipher-template-preview.png",
+    loader: () => import("./cipher/CipherTemplate"),
+    design: cipherDesign,
+    isPremium: true,
   },
 } satisfies Record<string, TemplateRegistryEntry>;
 
@@ -287,6 +314,66 @@ const signalDesignContent = `export const design = {
 `;
 
 fs.writeFileSync(path.join(templateLibPath, "signal", "design.ts"), signalDesignContent);
+
+// NimbusTemplate
+const nimbusContent = `import React from "react";
+import { type PortfolioProject } from "../types";
+import "./styles.css";
+
+export default function NimbusTemplate({ project }: { project: PortfolioProject }) {
+  return <div>Mock Nimbus Template: {project.identity.name}</div>;
+}
+`;
+
+fs.writeFileSync(path.join(templateLibPath, "nimbus", "NimbusTemplate.tsx"), nimbusContent);
+fs.writeFileSync(path.join(templateLibPath, "nimbus", "styles.css"), "/* Mock styles */");
+
+// NimbusDesign
+const nimbusDesignContent = `export const design = {
+  positioning: "Mock nimbus positioning",
+  fonts: "Mock nimbus fonts",
+  motion: "Mock nimbus motion",
+  palette: "Mock nimbus palette",
+  layout: "Mock nimbus layout",
+  componentLanguage: "Mock nimbus componentLanguage",
+  contentModel: ["Mock nimbus contentModel"],
+  colorScheme: [{ name: "Mock", value: "#000", className: "bg-black" }],
+  bestFor: ["Mock nimbus bestFor"],
+  designNotes: ["Mock nimbus designNotes"],
+};
+`;
+
+fs.writeFileSync(path.join(templateLibPath, "nimbus", "design.ts"), nimbusDesignContent);
+
+// CipherTemplate
+const cipherContent = `import React from "react";
+import { type PortfolioProject } from "../types";
+import "./styles.css";
+
+export default function CipherTemplate({ project }: { project: PortfolioProject }) {
+  return <div>Mock Cipher Template: {project.identity.name}</div>;
+}
+`;
+
+fs.writeFileSync(path.join(templateLibPath, "cipher", "CipherTemplate.tsx"), cipherContent);
+fs.writeFileSync(path.join(templateLibPath, "cipher", "styles.css"), "/* Mock styles */");
+
+// CipherDesign
+const cipherDesignContent = `export const design = {
+  positioning: "Mock cipher positioning",
+  fonts: "Mock cipher fonts",
+  motion: "Mock cipher motion",
+  palette: "Mock cipher palette",
+  layout: "Mock cipher layout",
+  componentLanguage: "Mock cipher componentLanguage",
+  contentModel: ["Mock cipher contentModel"],
+  colorScheme: [{ name: "Mock", value: "#000", className: "bg-black" }],
+  bestFor: ["Mock cipher bestFor"],
+  designNotes: ["Mock cipher designNotes"],
+};
+`;
+
+fs.writeFileSync(path.join(templateLibPath, "cipher", "design.ts"), cipherDesignContent);
 
 console.log("Mock templates set up successfully.");
 
