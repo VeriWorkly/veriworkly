@@ -33,15 +33,16 @@ export function SettingsForm({
     <div className="space-y-5">
       {!isPremium ? (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-5 text-amber-600 dark:text-amber-400">
-          <p className="font-extrabold flex items-center gap-1.5 text-[11px] tracking-widest uppercase">
+          <p className="flex items-center gap-1.5 text-[11px] font-extrabold tracking-widest uppercase">
             <Lock size={12} /> Premium Feature
           </p>
           <p className="mt-1.5">
-            Configuring a custom subdomain, editing search metadata, and uploading social preview images require an active <strong>Portfolio Pro</strong> subscription.
+            Configuring a custom subdomain, editing search metadata, and uploading social preview
+            images require an active <strong>Portfolio Pro</strong> subscription.
           </p>
           <Link
             href="/pricing"
-            className="mt-3 inline-flex min-h-8 items-center rounded-lg bg-amber-500 text-black px-3.5 text-[11px] font-extrabold hover:bg-amber-600 transition"
+            className="mt-3 inline-flex min-h-8 items-center rounded-lg bg-amber-500 px-3.5 text-[11px] font-extrabold text-black transition hover:bg-amber-600"
           >
             Upgrade to Pro
           </Link>
@@ -88,7 +89,9 @@ export function SettingsForm({
       </Panel>
 
       <Panel title="Social sharing image" icon={<ImagePlus size={15} />}>
-        <label className={`border-line text-muted flex items-center gap-3 rounded-lg border border-dashed p-3 text-xs font-bold ${isPremium ? 'cursor-pointer hover:border-accent' : 'opacity-50 cursor-not-allowed'}`}>
+        <label
+          className={`border-line text-muted flex items-center gap-3 rounded-lg border border-dashed p-3 text-xs font-bold ${isPremium ? "hover:border-accent cursor-pointer" : "cursor-not-allowed opacity-50"}`}
+        >
           {seo.socialImage ? (
             <Image
               unoptimized

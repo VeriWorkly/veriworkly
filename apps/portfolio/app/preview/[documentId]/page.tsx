@@ -53,7 +53,9 @@ export default async function PreviewPage({ params }: { params: Promise<{ docume
     return <LivePortfolioPreview initialContent={createDefaultPortfolio()} isPremium={false} />;
   }
 
-  const billingData = await fetchServerApiData<{ billing: { canPublish: boolean } }>("/portfolios/me").catch(() => null);
+  const billingData = await fetchServerApiData<{ billing: { canPublish: boolean } }>(
+    "/portfolios/me",
+  ).catch(() => null);
   const isPremium = billingData?.billing?.canPublish ?? false;
 
   let response: Response;
@@ -71,7 +73,12 @@ export default async function PreviewPage({ params }: { params: Promise<{ docume
   if (response.status === 404) notFound();
   if (!response.ok) return <PreviewUnavailable />;
   const payload = await response.json();
-  return <LivePortfolioPreview initialContent={parsePortfolioContent(payload.data.content)} isPremium={isPremium} />;
+  return (
+    <LivePortfolioPreview
+      initialContent={parsePortfolioContent(payload.data.content)}
+      isPremium={isPremium}
+    />
+  );
 }
 
 function PreviewUnavailable() {

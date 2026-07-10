@@ -13,6 +13,7 @@ import {
   type PortfolioContent,
   type PortfolioSection,
   type PortfolioSectionType,
+  type PortfolioPage,
 } from "@/lib/portfolio";
 import { loadPortfolioCache, savePortfolioCache } from "@/lib/portfolio-storage";
 
@@ -61,6 +62,7 @@ interface PortfolioStoreState {
   previewIssue: string;
   activePanel: EditorPanel;
   isDirty: boolean;
+  selectedPageId: string | null;
 
   // Setters
   setContent: (content: PortfolioContent) => void;
@@ -77,6 +79,7 @@ interface PortfolioStoreState {
   setPreviewIssue: (previewIssue: string) => void;
   setActivePanel: (activePanel: EditorPanel) => void;
   setIsDirty: (isDirty: boolean) => void;
+  setSelectedPageId: (id: string | null) => void;
 
   // State Updaters
   updateContent: (patch: Partial<PortfolioContent>) => void;
@@ -85,6 +88,11 @@ interface PortfolioStoreState {
   moveSection: (index: number, direction: -1 | 1) => void;
   addSection: (type: PortfolioSectionType) => void;
   removeSection: (id: string) => void;
+
+  // Page Management
+  addPage: (slug: string, title: string) => void;
+  removePage: (id: string) => void;
+  updatePage: (id: string, patch: Partial<PortfolioPage>) => void;
 
   // Async Actions
   loadWorkspace: () => Promise<void>;
@@ -111,6 +119,7 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
     previewIssue: "",
     activePanel: "profile",
     isDirty: false,
+    selectedPageId: null,
 
     setContent: (content) => set({ content }),
     setSlug: (slug) => set({ slug }),
@@ -131,6 +140,7 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
     setPreviewIssue: (previewIssue) => set({ previewIssue }),
     setActivePanel: (activePanel) => set({ activePanel }),
     setIsDirty: (isDirty) => set({ isDirty }),
+    setSelectedPageId: (id) => set({ selectedPageId: id }),
 
     updateContent: (patch) =>
       set((state) => ({
@@ -200,6 +210,47 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
         status: state.ready ? "Unsaved changes" : state.status,
       })),
 
+    addPage: (slug, title) =>
+      set((state) => {
+        const newPage: PortfolioPage = {
+          id: createId("page"),
+          slug,
+          title,
+          sections: [],
+        };
+        return {
+          content: {
+            ...state.content,
+            pages: [...(state.content.pages || []), newPage],
+          },
+          isDirty: state.ready ? true : state.isDirty,
+          status: state.ready ? "Unsaved changes" : state.status,
+        };
+      }),
+
+    removePage: (id) =>
+      set((state) => ({
+        content: {
+          ...state.content,
+          pages: (state.content.pages || []).filter((page) => page.id !== id),
+        },
+        selectedPageId: state.selectedPageId === id ? null : state.selectedPageId,
+        isDirty: state.ready ? true : state.isDirty,
+        status: state.ready ? "Unsaved changes" : state.status,
+      })),
+
+    updatePage: (id, patch) =>
+      set((state) => ({
+        content: {
+          ...state.content,
+          pages: (state.content.pages || []).map((page) =>
+            page.id === id ? { ...page, ...patch } : page,
+          ),
+        },
+        isDirty: state.ready ? true : state.isDirty,
+        status: state.ready ? "Unsaved changes" : state.status,
+      })),
+
     hydrateWorkspace: ({ user, workspace, analytics }) => {
       const cloud = workspace?.draft as CloudPortfolioDraft | undefined;
       const restored = cloud
@@ -221,10 +272,10 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
         billing: workspace?.billing ?? { canPublish: false, status: "INACTIVE" },
         analytics: analytics?.totalViews ?? 0,
         analyticsData: analytics,
-        message: isGuest ? "" : (workspace ? "" : "Could not load your portfolio workspace."),
+        message: isGuest ? "" : workspace ? "" : "Could not load your portfolio workspace.",
         previewIssue: "",
         workspaceState: "ready",
-        status: isGuest ? "Saved" : (workspace ? "Saved" : "Offline"),
+        status: isGuest ? "Saved" : workspace ? "Saved" : "Offline",
         ready: true,
         isDirty: false,
       });
@@ -258,7 +309,10 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
 
         // User is logged in, continue with fetching data
         const [userPayload, portfolioPayload, analyticsPayload] = await Promise.all([
-          response.json().then((r) => r.data).catch(() => null),
+          response
+            .json()
+            .then((r) => r.data)
+            .catch(() => null),
           fetchPayload("/portfolios/me", "Could not load your portfolio workspace."),
           fetchPayload("/portfolios/analytics", "Could not load portfolio analytics.").catch(
             () => null,

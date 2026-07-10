@@ -2,6 +2,10 @@ export type AffiliateDashboard = {
   affiliateStatus: "NOT_ENROLLED" | "PENDING" | "ACTIVE" | "SUSPENDED";
   affiliateTier: "TIER_1" | "TIER_2" | "TIER_3";
   affiliateCode: string | null;
+  role: "USER" | "AMBASSADOR" | "ADMIN";
+  ambassadorStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | string;
+  collegeName: string | null;
+  graduationYear: string | null;
   clicks: number;
   conversions: number;
   wallet: { pendingCents: number; availableCents: number; paidCents: number };

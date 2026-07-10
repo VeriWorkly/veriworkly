@@ -1,8 +1,8 @@
 "use client";
 
-import { Grid2X2, LayoutList } from "lucide-react";
+import { Grid2X2, LayoutList, Upload } from "lucide-react";
 
-import { Card, Select } from "@veriworkly/ui";
+import { Card, Select, Button } from "@veriworkly/ui";
 
 import DestructiveModal from "@/components/modals/DestructiveModal";
 import SyncDetailsModal from "@/components/modals/SyncDetailsModal";
@@ -78,7 +78,17 @@ export default function DocumentsWorkspace() {
             <span className="text-foreground text-sm font-semibold">Recently opened</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => window.dispatchEvent(new CustomEvent("open-import-profile"))}
+              className="border-border h-10 gap-2 rounded-xl border font-semibold shadow-none"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Import Profile</span>
+            </Button>
+
             <label className="sr-only" htmlFor="document-type-filter">
               Filter by document type
             </label>

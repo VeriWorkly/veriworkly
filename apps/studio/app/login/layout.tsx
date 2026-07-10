@@ -7,7 +7,7 @@ import { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 import { Badge, Button } from "@veriworkly/ui";
 
-import { ShowcaseCards } from "./component/ShowcaseCards";
+import ShowcaseCards from "./component/ShowcaseCards";
 
 const pageUrl = `${siteConfig.url}/login`;
 const pageOgImage = `${siteConfig.url}/og/login-page-og.png`;

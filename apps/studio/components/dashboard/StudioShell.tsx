@@ -17,13 +17,20 @@ import {
   supportNav,
   StudioNavLink,
 } from "@/components/dashboard/StudioNavigation";
+import { toast } from "sonner";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { AccountMenu } from "@/components/dashboard/AccountMenu";
 import { WorkspaceSearchModal } from "@/components/dashboard/WorkspaceSearchModal";
 import { NewDocumentButton, NewDocumentModal } from "@/components/dashboard/NewDocumentModal";
+import { ImportProfileModal } from "@/components/dashboard/ImportProfileModal";
 
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
-import { createDocument } from "@/features/documents/services/document-workspace-service";
+import {
+  createDocument,
+  listDocuments,
+} from "@/features/documents/services/document-workspace-service";
+import { fetchApiData } from "@/utils/fetchApiData";
+import type { BillingSummary } from "@/features/billing/types";
 
 import { cn } from "@/lib/utils";
 
@@ -46,11 +53,32 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importProvider, setImportProvider] = useState<"linkedin" | "github">("linkedin");
 
   const email = user?.email || "No account connected";
   const displayName = user?.name || user?.email?.split("@")[0] || "Local builder";
 
-  const createNewDocument = (type: DocumentType) => {
+  const createNewDocument = async (type: DocumentType) => {
+    const existingDocs = listDocuments(type);
+
+    let isPaid = false;
+    if (user?.email) {
+      try {
+        const billingData = await fetchApiData<BillingSummary>("/billing/me");
+        isPaid = billingData && billingData.plan !== "FREE";
+      } catch {
+        // ignore fetch failures
+      }
+    }
+
+    if (!isPaid && existingDocs.length >= 1) {
+      toast.error(
+        `Free/guest users can only have 1 active ${type.toLowerCase().replace("_", " ")} at a time. Upgrade to Creator Pro to create unlimited documents.`,
+      );
+      return;
+    }
+
     const document = createDocument(type);
     router.push(getDocumentEditorPath(type, document.id));
   };
@@ -63,9 +91,18 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    const handleOpenImport = () => {
+      setImportProvider("linkedin");
+      setImportModalOpen(true);
+    };
 
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("open-import-profile", handleOpenImport);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("open-import-profile", handleOpenImport);
+    };
   }, []);
 
   return (
@@ -230,6 +267,16 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
           open={newDocumentOpen}
           onCreate={createNewDocument}
           onClose={() => setNewDocumentOpen(false)}
+          onImportAction={(provider) => {
+            setImportProvider(provider);
+            setImportModalOpen(true);
+          }}
+        />
+
+        <ImportProfileModal
+          open={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          initialProvider={importProvider}
         />
 
         <div

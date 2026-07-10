@@ -12,7 +12,7 @@ interface Slide {
   mockup: React.ReactNode;
 }
 
-export const ShowcaseCards = () => {
+const ShowcaseCards = () => {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const slides: Slide[] = [
@@ -199,3 +199,5 @@ export const ShowcaseCards = () => {
     </div>
   );
 };
+
+export default ShowcaseCards;

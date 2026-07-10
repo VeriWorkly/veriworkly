@@ -14,7 +14,7 @@ interface SocialAuthProps {
   setIsLoading: (loading: boolean) => void;
 }
 
-export default function SocialAuth({ isLoading, setIsLoading }: SocialAuthProps) {
+const SocialAuth = ({ isLoading, setIsLoading }: SocialAuthProps) => {
   const [activeProvider, setActiveProvider] = useState<"google" | "github" | "linkedin" | null>(
     null,
   );
@@ -123,4 +123,6 @@ export default function SocialAuth({ isLoading, setIsLoading }: SocialAuthProps)
       </div>
     </div>
   );
-}
+};
+
+export default SocialAuth;

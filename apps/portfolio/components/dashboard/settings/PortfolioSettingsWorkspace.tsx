@@ -8,8 +8,18 @@ import { SettingsForm } from "./SettingsForm";
 import { SettingsPreviews } from "./SettingsPreviews";
 
 export function PortfolioSettingsWorkspace() {
-  const { content, slug, updateSlug, updateContent, saveDraft, publish, publication, status, billing, user } =
-    usePortfolioStore();
+  const {
+    content,
+    slug,
+    updateSlug,
+    updateContent,
+    saveDraft,
+    publish,
+    publication,
+    status,
+    billing,
+    user,
+  } = usePortfolioStore();
   const [uploading, setUploading] = useState(false);
 
   const isPremium = billing.canPublish;
@@ -26,7 +36,9 @@ export function PortfolioSettingsWorkspace() {
 
     if (isLive) {
       if (isPremiumTemplate && !isPremium) {
-        toast.error(`"${content.templateId}" is a premium template. Upgrade to Portfolio Pro to save live settings.`);
+        toast.error(
+          `"${content.templateId}" is a premium template. Upgrade to Portfolio Pro to save live settings.`,
+        );
         return;
       }
       await publish();

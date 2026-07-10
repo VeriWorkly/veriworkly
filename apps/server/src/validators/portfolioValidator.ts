@@ -30,10 +30,18 @@ const sectionTypeSchema = z.enum([
   "contact",
 ]);
 
+const baseSectionSchema = z.object({
+  id: z.string().min(1).max(128),
+  type: sectionTypeSchema,
+  title: z.string().trim().min(1).max(120),
+  visible: z.boolean(),
+  items: z.array(z.record(z.unknown())).max(24),
+});
+
 export const portfolioContentSchema = z.object({
   schemaVersion: z.literal(1),
 
-  templateId: z.enum(["signal", "atelier"]),
+  templateId: z.enum(["signal", "atelier", "nimbus", "cipher"]),
 
   identity: z.object({
     name: z.string().trim().min(1).max(120),
@@ -53,17 +61,21 @@ export const portfolioContentSchema = z.object({
 
   socialLinks: z.array(linkSchema).max(12),
 
-  sections: z
+  sections: z.array(baseSectionSchema).max(24),
+
+  pages: z
     .array(
       z.object({
         id: z.string().min(1).max(128),
-        type: sectionTypeSchema,
+        slug: z.string().trim().min(1).max(63),
         title: z.string().trim().min(1).max(120),
-        visible: z.boolean(),
-        items: z.array(z.record(z.unknown())).max(24),
+        sections: z.array(baseSectionSchema).max(24),
       }),
     )
-    .max(24),
+    .max(10)
+    .optional(),
+
+  removeWatermark: z.boolean().optional(),
 });
 
 export const portfolioDraftContentSchema = portfolioContentSchema.extend({
@@ -85,11 +97,29 @@ export const portfolioDraftContentSchema = portfolioContentSchema.extend({
 
   sections: z
     .array(
-      portfolioContentSchema.shape.sections.element.extend({
+      baseSectionSchema.extend({
         title: z.string().trim().max(120),
       }),
     )
     .max(24),
+
+  pages: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(128),
+        slug: z.string().trim().min(1).max(63),
+        title: z.string().trim().max(120),
+        sections: z
+          .array(
+            baseSectionSchema.extend({
+              title: z.string().trim().max(120),
+            }),
+          )
+          .max(24),
+      }),
+    )
+    .max(10)
+    .optional(),
 });
 
 export const portfolioSaveDraftSchema = z.object({
