@@ -71,7 +71,7 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
 
   const sortedSections = [...resume.sections]
     .filter((s) => s.id !== "basics" && s.id !== "links")
-    .sort((a, b) => a.order - b.order)
+    .sort((a, b) => a.order - b.order);
 
   const pagePadding = Math.max(24, style.pagePadding * 0.85);
 
@@ -94,70 +94,70 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
       }
     >
       {(hasResumeSectionContent(resume, "basics") || hasResumeSectionContent(resume, "links")) && (
-       <header className="mb-4 border-b pb-3" style={{ borderColor: style.borderColor }}>
-         {hasResumeSectionContent(resume, "basics") && (
-           <>
-             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-               <h1
-                 className="text-2xl leading-tight font-bold"
-                 style={{ color: style.accentColor }}
-               >
-                 {cleanResumeText(resume.basics.fullName) || "Your Name"}
-               </h1>
-               {(resume.basics.headline || resume.basics.role) && (
-                 <p className="text-sm font-semibold" style={{ color: style.mutedTextColor }}>
-                   {cleanResumeText(resume.basics.headline || resume.basics.role)}
-                 </p>
-               )}
-             </div>
+        <header className="mb-4 border-b pb-3" style={{ borderColor: style.borderColor }}>
+          {hasResumeSectionContent(resume, "basics") && (
+            <>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h1
+                  className="text-2xl leading-tight font-bold"
+                  style={{ color: style.accentColor }}
+                >
+                  {cleanResumeText(resume.basics.fullName) || "Your Name"}
+                </h1>
+                {(resume.basics.headline || resume.basics.role) && (
+                  <p className="text-sm font-semibold" style={{ color: style.mutedTextColor }}>
+                    {cleanResumeText(resume.basics.headline || resume.basics.role)}
+                  </p>
+                )}
+              </div>
 
-             {contactItems.length > 0 && (
-               <div
-                 className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs"
-                 style={{ color: style.mutedTextColor }}
-               >
-                 {contactItems.map((item, index) => (
-                   <React.Fragment key={item.key}>
-                     {index > 0 && <span>|</span>}
-                     {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
-                   </React.Fragment>
-                 ))}
-               </div>
-             )}
-           </>
-         )}
+              {contactItems.length > 0 && (
+                <div
+                  className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs"
+                  style={{ color: style.mutedTextColor }}
+                >
+                  {contactItems.map((item, index) => (
+                    <React.Fragment key={item.key}>
+                      {index > 0 && <span>|</span>}
+                      {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
-         {hasResumeSectionContent(resume, "links") && renderedLinks.length > 0 && (
-           <div
-             className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
-             style={{ color: style.mutedTextColor }}
-           >
-             {renderedLinks.map((link, index) => (
-               <React.Fragment key={link.id || index}>
-                 {index > 0 && <span>|</span>}
-                 <a
-                   className="inline-flex items-center gap-1 leading-none"
-                   href={normalizeLinkHref(link.url)}
-                   target="_blank"
-                   rel="noopener noreferrer"
-                 >
-                   {resume.links.displayMode !== "url" && (
-                     <img
-                       alt=""
-                       aria-hidden="true"
-                       className="size-3 shrink-0"
-                       src={SOCIAL_ICON_SRC_BY_TYPE[link.type] || SOCIAL_ICON_SRC_BY_TYPE.custom}
-                     />
-                   )}
-                   {resume.links.displayMode !== "icon" &&
-                     getLinkDisplayText(link, resume.links.displayMode)}
-                 </a>
-               </React.Fragment>
-             ))}
-           </div>
-         )}
-       </header>
-     )}
+          {hasResumeSectionContent(resume, "links") && renderedLinks.length > 0 && (
+            <div
+              className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+              style={{ color: style.mutedTextColor }}
+            >
+              {renderedLinks.map((link, index) => (
+                <React.Fragment key={link.id || index}>
+                  {index > 0 && <span>|</span>}
+                  <a
+                    className="inline-flex items-center gap-1 leading-none"
+                    href={normalizeLinkHref(link.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {resume.links.displayMode !== "url" && (
+                      <img
+                        alt=""
+                        aria-hidden="true"
+                        className="size-3 shrink-0"
+                        src={SOCIAL_ICON_SRC_BY_TYPE[link.type] || SOCIAL_ICON_SRC_BY_TYPE.custom}
+                      />
+                    )}
+                    {resume.links.displayMode !== "icon" &&
+                      getLinkDisplayText(link, resume.links.displayMode)}
+                  </a>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </header>
+      )}
       {sortedSections.map((section) => {
         switch (section.id) {
           case "summary":
@@ -167,9 +167,9 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
                 <p>{cleanResumeText(resume.summary)}</p>
               </Section>
             );
-            
-          case "experience": 
-            if(!hasResumeSectionContent(resume, "experience")) return null;
+
+          case "experience":
+            if (!hasResumeSectionContent(resume, "experience")) return null;
             return (
               <Section key={section.id} title="Experience" resume={resume}>
                 {visibleExperience.map((item) => (
@@ -200,7 +200,7 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
               </Section>
             );
           case "education":
-            if(!hasResumeSectionContent(resume, "education")) return null;
+            if (!hasResumeSectionContent(resume, "education")) return null;
             return (
               <Section key={section.id} title="Education" resume={resume}>
                 {visibleEducation.map((item) => (
@@ -219,7 +219,7 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
               </Section>
             );
           case "projects":
-            if(!hasResumeSectionContent(resume, "projects")) return null;
+            if (!hasResumeSectionContent(resume, "projects")) return null;
             return (
               <Section key={section.id} title="Projects" resume={resume}>
                 {visibleProjects.map((item) => (
@@ -261,7 +261,7 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
               </Section>
             );
           case "skills":
-            if(!hasResumeSectionContent(resume, "skills")) return null;
+            if (!hasResumeSectionContent(resume, "skills")) return null;
             return (
               <Section key={section.id} title="Skills" resume={resume}>
                 {visibleSkills.map((skill) => (
@@ -277,7 +277,7 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
             );
           default:
             const customSec = resume.customSections.find((cs) => cs.kind === section.id);
-            if(!customSec || !hasCustomSectionContent(customSec)) return null;
+            if (!customSec || !hasCustomSectionContent(customSec)) return null;
             return (
               <Section key={section.id} title={cleanResumeText(customSec.title)} resume={resume}>
                 {customSec.items.filter(hasCustomItemContent).map((item) => (
@@ -292,8 +292,8 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
                         </p>
                       )}
                     </div>
-                    {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean).length >
-                      0 && (
+                    {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean)
+                      .length > 0 && (
                       <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
                         {[cleanResumeText(item.issuer), cleanResumeText(item.link)]
                           .filter(Boolean)
@@ -311,7 +311,7 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
                   </article>
                 ))}
               </Section>
-            )
+            );
         }
       })}
     </div>

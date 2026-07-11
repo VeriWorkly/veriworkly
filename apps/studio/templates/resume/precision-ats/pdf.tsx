@@ -310,7 +310,9 @@ export function CompactAtsPdf({ resume }: PdfTemplateProps) {
                           .filter(Boolean)
                           .join(" | ")}
                       </Text>
-                      {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
                       <BulletList items={item.highlights} styles={styles} />
                     </View>
                   ))}
@@ -324,10 +326,14 @@ export function CompactAtsPdf({ resume }: PdfTemplateProps) {
                   {visibleEducation.map((item) => (
                     <View key={item.id} style={styles.item} wrap={false}>
                       <View style={styles.itemHead}>
-                        <Text style={styles.itemTitle}>{getEducationTitle(item) || "Education"}</Text>
+                        <Text style={styles.itemTitle}>
+                          {getEducationTitle(item) || "Education"}
+                        </Text>
                         <Text style={styles.meta}>{getEducationMeta(item)}</Text>
                       </View>
-                      {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
                     </View>
                   ))}
                 </SectionBlock>
@@ -355,7 +361,9 @@ export function CompactAtsPdf({ resume }: PdfTemplateProps) {
                             .join(", ")}
                         </Text>
                       )}
-                      {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
                       <BulletList items={item.highlights} styles={styles} />
                     </View>
                   ))}
@@ -384,15 +392,19 @@ export function CompactAtsPdf({ resume }: PdfTemplateProps) {
               const customSec = resume.customSections.find((cs) => cs.kind === section.id);
               if (!customSec || !hasCustomSectionContent(customSec)) return null;
               return (
-                <SectionBlock key={section.id} title={cleanResumeText(customSec.title)} styles={styles}>
+                <SectionBlock
+                  key={section.id}
+                  title={cleanResumeText(customSec.title)}
+                  styles={styles}
+                >
                   {customSec.items.filter(hasCustomItemContent).map((item) => (
                     <View key={item.id} style={styles.item} wrap={false}>
                       <View style={styles.itemHead}>
                         <Text style={styles.itemTitle}>{cleanResumeText(item.name) || "Item"}</Text>
                         {item.date && <Text style={styles.meta}>{cleanResumeText(item.date)}</Text>}
                       </View>
-                      {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean).length >
-                        0 && (
+                      {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean)
+                        .length > 0 && (
                         <Text style={styles.meta}>
                           {[cleanResumeText(item.issuer), cleanResumeText(item.link)]
                             .filter(Boolean)

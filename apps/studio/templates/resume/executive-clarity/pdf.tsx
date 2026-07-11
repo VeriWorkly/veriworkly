@@ -355,7 +355,9 @@ export function CleanProfessionalPdf({ resume }: PdfTemplateProps) {
                           .filter(Boolean)
                           .join(" | ")}
                       </Text>
-                      {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
                       <BulletList items={item.highlights} styles={styles} />
                     </View>
                   ))}
@@ -377,7 +379,9 @@ export function CleanProfessionalPdf({ resume }: PdfTemplateProps) {
                       {getEducationSchool(item) && (
                         <Text style={styles.meta}>{getEducationSchool(item)}</Text>
                       )}
-                      {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
                     </View>
                   ))}
                 </SectionBlock>
@@ -407,7 +411,9 @@ export function CleanProfessionalPdf({ resume }: PdfTemplateProps) {
                             .join(", ")}
                         </Text>
                       )}
-                      {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
                       <BulletList items={item.highlights} styles={styles} />
                     </View>
                   ))}
@@ -437,7 +443,11 @@ export function CleanProfessionalPdf({ resume }: PdfTemplateProps) {
               const customSec = resume.customSections.find((cs) => cs.kind === section.id);
               if (!customSec || !hasCustomSectionContent(customSec)) return null;
               return (
-                <SectionBlock key={section.id} title={cleanResumeText(customSec.title)} styles={styles}>
+                <SectionBlock
+                  key={section.id}
+                  title={cleanResumeText(customSec.title)}
+                  styles={styles}
+                >
                   {customSec.items.filter(hasCustomItemContent).map((item) => (
                     <View key={item.id} style={styles.item} wrap={false}>
                       <View style={styles.itemHead}>
@@ -446,8 +456,8 @@ export function CleanProfessionalPdf({ resume }: PdfTemplateProps) {
                         </Text>
                         {item.date && <Text style={styles.meta}>{cleanResumeText(item.date)}</Text>}
                       </View>
-                      {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean).length >
-                        0 && (
+                      {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean)
+                        .length > 0 && (
                         <Text style={styles.meta}>
                           {[cleanResumeText(item.issuer), cleanResumeText(item.link)]
                             .filter(Boolean)
