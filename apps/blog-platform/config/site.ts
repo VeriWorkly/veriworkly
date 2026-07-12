@@ -9,7 +9,7 @@ export const siteConfig = {
 
   tagline: "Career platform ideas and architecture stories.",
   description: "Insights, product notes, and career guidance from the VeriWorkly team.",
-  url: process.env.SITE_URL || (isDev ? "http://localhost:3003" : "https://blog.veriworkly.com"),
+  url: process.env.SITE_URL || "https://blog.veriworkly.com",
 
   links: {
     twitter: "https://x.com/veriworkly",

@@ -1,5 +1,17 @@
 const isDev = process.env.NODE_ENV === "development";
 
+const links = {
+  github: "https://github.com/VeriWorkly/veriworkly",
+  twitter: "https://x.com/veriworkly",
+  linkedin: "https://linkedin.com/company/veriworkly",
+
+  main: isDev ? "http://localhost:3000" : "https://veriworkly.com",
+  app: isDev ? "http://localhost:3001" : "https://app.veriworkly.com",
+  docs: isDev ? "http://localhost:3002" : "https://docs.veriworkly.com",
+  blog: isDev ? "http://localhost:3003" : "https://blog.veriworkly.com",
+  portfolio: isDev ? "http://localhost:3004" : "https://portfolio.veriworkly.com",
+} as const;
+
 export const siteConfig = {
   name: "VeriWorkly Studio",
   shortName: "VeriWorkly",
@@ -13,17 +25,7 @@ export const siteConfig = {
 
   tagline: "Build career assets. No login. 100% private.",
 
-  links: {
-    github: "https://github.com/VeriWorkly/veriworkly",
-    twitter: "https://x.com/veriworkly",
-    linkedin: "https://linkedin.com/company/veriworkly",
-
-    main: isDev ? "http://localhost:3000" : "https://veriworkly.com",
-    app: isDev ? "http://localhost:3001" : "https://app.veriworkly.com",
-    docs: isDev ? "http://localhost:3002" : "https://docs.veriworkly.com",
-    blog: isDev ? "http://localhost:3003" : "https://blog.veriworkly.com",
-    portfolio: isDev ? "http://localhost:3004" : "https://portfolio.veriworkly.com",
-  },
+  links,
 
   keywords: [
     "free resume builder",
@@ -62,9 +64,9 @@ export const siteConfig = {
 
   navigation: [
     { href: "/", label: "Overview" },
-    { href: "https://veriworkly.com/templates", label: "Templates" },
+    { href: `${links.main}/templates`, label: "Templates" },
     { href: "/profile", label: "Profile" },
-    { href: "https://veriworkly.com/roadmap", label: "Roadmap" },
-    { href: "https://veriworkly.com/stats", label: "Development" },
+    { href: `${links.main}/roadmap`, label: "Roadmap" },
+    { href: `${links.main}/stats`, label: "Development" },
   ],
 } as const;

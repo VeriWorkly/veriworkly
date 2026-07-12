@@ -3,9 +3,7 @@ const isDev = process.env.NODE_ENV === "development";
 export const siteConfig = {
   name: "VeriWorkly Portfolio",
 
-  url:
-    process.env.SITE_URL ||
-    (isDev ? "http://portfolio.localhost:3004" : "https://portfolio.veriworkly.com"),
+  url: process.env.SITE_URL || "https://portfolio.veriworkly.com",
 
   description:
     "Build and publish a professional developer or designer portfolio website in minutes. Switch templates freely, configure custom SEO controls, track analytics, and showcase your best projects.",
