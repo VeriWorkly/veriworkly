@@ -13,7 +13,12 @@ import { WorkspaceNotice } from "@/components/dashboard/editor/WorkspaceNotice";
 export function PortfolioEditorWorkspace() {
   const save = usePortfolioStore((state) => state.saveDraft);
   const ready = usePortfolioStore((state) => state.ready);
-  const sections = usePortfolioStore((state) => state.content.sections);
+  const selectedPageIdState = usePortfolioStore((state) => state.selectedPageId);
+  const pages = usePortfolioStore((state) => state.content.pages || []);
+  const rootSections = usePortfolioStore((state) => state.content.sections);
+  const sections = selectedPageIdState
+    ? pages.find(p => p.id === selectedPageIdState)?.sections || []
+    : rootSections;
   const [selectedSectionId, setSelectedSectionId] = useState("profile");
   const [structureOpen, setStructureOpen] = useState(true);
   const [contentOpen, setContentOpen] = useState(true);

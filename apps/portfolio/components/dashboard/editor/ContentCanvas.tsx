@@ -14,9 +14,17 @@ export interface ContentCanvasProps {
 
 export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps) {
   const content = usePortfolioStore((state) => state.content);
+  const updateContent = usePortfolioStore((state) => state.updateContent);
   const updateIdentity = usePortfolioStore((state) => state.updateIdentity);
   const documentId = usePortfolioStore((state) => state.draft?.id);
-  const selectedSection = content.sections.find((section) => section.id === selectedSectionId);
+  const selectedPageId = usePortfolioStore((state) => state.selectedPageId);
+  const pages = usePortfolioStore((state) => state.content.pages || []);
+  const rootSections = usePortfolioStore((state) => state.content.sections);
+  const sections = selectedPageId 
+    ? pages.find(p => p.id === selectedPageId)?.sections || []
+    : rootSections;
+  const selectedSection = sections.find((section) => section.id === selectedSectionId);
+  const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
 
   return (
     <section className="border-line bg-paper hidden min-h-0 overflow-y-auto border-r p-3 lg:block">
@@ -107,6 +115,33 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
             value={content.identity.avatar?.url}
             onUploaded={(avatar) => updateIdentity({ avatar })}
           />
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <Field label="Remove 'Made by VeriWorkly' badge">
+              <label className="mt-1 flex items-center gap-3 cursor-pointer">
+                <div className="relative inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={content.removeWatermark ?? false}
+                    disabled={!isPremiumUser}
+                    onChange={(e) => {
+                      if (!isPremiumUser) return;
+                      updateContent({ removeWatermark: e.target.checked });
+                    }}
+                  />
+                  <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent disabled:opacity-50"></div>
+                </div>
+                <span className="text-xs text-white/70">
+                  Hide the badge from your portfolio
+                  {!isPremiumUser && (
+                    <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold text-white tracking-widest uppercase">
+                      PRO
+                    </span>
+                  )}
+                </span>
+              </label>
+            </Field>
+          </div>
         </EditorPanel>
       ) : selectedSection ? (
         <SectionEditor section={selectedSection} />

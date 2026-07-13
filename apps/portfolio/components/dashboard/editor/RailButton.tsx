@@ -1,10 +1,11 @@
+import React from "react";
 import type { ReactNode } from "react";
 
 export interface RailButtonProps {
   label: string;
   danger?: boolean;
   selected?: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   children: ReactNode;
 }
 

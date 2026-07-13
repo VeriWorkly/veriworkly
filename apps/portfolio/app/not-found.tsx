@@ -80,7 +80,7 @@ const NotFoundPage = () => {
 
                 <div>
                   <div className="text-[10px] font-bold opacity-50">RELEASE</div>
-                  <div className="text-ink mt-0.5 text-xs font-bold">Build #v3.20.0</div>
+                  <div className="text-ink mt-0.5 text-xs font-bold">Build #v3.21.0</div>
                 </div>
               </div>
             </div>

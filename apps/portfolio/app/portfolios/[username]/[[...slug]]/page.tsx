@@ -13,16 +13,25 @@ export const revalidate = 3600;
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ username: string }>;
+  params: Promise<{ username: string; slug?: string[] }>;
 }): Promise<Metadata> {
-  const { username } = await params;
+  const { username, slug } = await params;
   const publication = await getPublishedPortfolio(username);
   if (!publication)
     return { title: "Portfolio not found", robots: { index: false, follow: false } };
 
   const project = publication.snapshot;
-  const url = portfolioPublicUrl(publication.subdomain);
-  const title = project.seo.title || `${project.identity.name} | Portfolio`;
+  let url = portfolioPublicUrl(publication.subdomain);
+  let title = project.seo.title || `${project.identity.name} | Portfolio`;
+
+  if (slug && slug.length > 0 && publication.isPremium) {
+    const pageSlug = slug.join("/");
+    const page = project.pages?.find((p) => p.slug === pageSlug);
+    if (page) {
+      title = `${page.title} | ${project.identity.name}`;
+      url = `${url}/${pageSlug}`;
+    }
+  }
 
   const defaultDesc = `${project.identity.name} - ${project.identity.headline || "Professional Portfolio"}. View projects, experience, and contact information.`;
   const description = project.seo.description || defaultDesc;
@@ -81,8 +90,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function Portfolio({ params }: { params: Promise<{ username: string }> }) {
-  const { username } = await params;
+export default async function Portfolio({ params }: { params: Promise<{ username: string; slug?: string[] }> }) {
+  const { username, slug } = await params;
   const publication = await getPublishedPortfolio(username);
   if (!publication) notFound();
 
@@ -106,11 +115,31 @@ export default async function Portfolio({ params }: { params: Promise<{ username
 
   const project = publication.snapshot;
 
+  let currentSections = project.sections;
+  let pageUrl = portfolioPublicUrl(publication.subdomain);
+
+  if (slug && slug.length > 0) {
+    if (!publication.isPremium) notFound();
+
+    const pageSlug = slug.join("/");
+    const page = project.pages?.find((p) => p.slug === pageSlug);
+    
+    if (!page) notFound();
+
+    currentSections = page.sections;
+    pageUrl = `${pageUrl}/${pageSlug}`;
+  }
+
+  const pageProject = {
+    ...project,
+    sections: currentSections,
+  };
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
     name: `${project.identity.name} portfolio`,
-    url: portfolioPublicUrl(publication.subdomain),
+    url: pageUrl,
     mainEntity: {
       "@type": "Person",
       name: project.identity.name,
@@ -127,8 +156,8 @@ export default async function Portfolio({ params }: { params: Promise<{ username
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <PublicViewTracker subdomain={publication.subdomain} />
-      {await renderTemplate(project)}
-      {!publication.isPremium ? <Watermark /> : null}
+      {await renderTemplate(pageProject)}
+      {!publication.isPremium || !project.removeWatermark ? <Watermark /> : null}
     </>
   );
 }

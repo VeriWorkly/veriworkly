@@ -8,6 +8,8 @@ import {
   PanelLeftClose,
   Plus,
   Trash2,
+  FileText,
+  FilePlus,
 } from "lucide-react";
 import { portfolioSectionTypes } from "@/lib/portfolio";
 import { usePortfolioStore } from "@/store/portfolio-store";
@@ -21,6 +23,13 @@ export interface StructureRailProps {
   onOpenTemplates: () => void;
 }
 
+const PREDEFINED_PAGES = [
+  { slug: "work", title: "Work" },
+  { slug: "writing", title: "Writing" },
+  { slug: "about", title: "About" },
+  { slug: "contact", title: "Contact" },
+];
+
 export function StructureRail({
   selectedSectionId,
   onSelect,
@@ -28,12 +37,34 @@ export function StructureRail({
   onOpenTemplates,
 }: StructureRailProps) {
   const templateId = usePortfolioStore((state) => state.content.templateId);
-  const sections = usePortfolioStore((state) => state.content.sections);
+  const pages = usePortfolioStore((state) => state.content.pages || []);
+  const selectedPageId = usePortfolioStore((state) => state.selectedPageId);
+  const setSelectedPageId = usePortfolioStore((state) => state.setSelectedPageId);
+  const addPage = usePortfolioStore((state) => state.addPage);
+  const removePage = usePortfolioStore((state) => state.removePage);
+  const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
+
+  const rootSections = usePortfolioStore((state) => state.content.sections);
+  const sections = selectedPageId 
+    ? pages.find(p => p.id === selectedPageId)?.sections || []
+    : rootSections;
+
   const addSection = usePortfolioStore((state) => state.addSection);
   const updateSection = usePortfolioStore((state) => state.updateSection);
   const moveSection = usePortfolioStore((state) => state.moveSection);
   const removeSection = usePortfolioStore((state) => state.removeSection);
   const [open, setOpen] = useState(false);
+  const [openPages, setOpenPages] = useState(false);
+
+  const projectsSection = rootSections.find(s => s.type === "projects");
+  const projectItems = projectsSection?.items || [];
+  const projectDetailPages = projectItems.map((item, index) => {
+    const title = (item.title as string) || `Project ${index + 1}`;
+    const slug = `work/${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || index}`;
+    return { slug, title: `Detail: ${title}` };
+  });
+
+  const availablePages = [...PREDEFINED_PAGES, ...projectDetailPages];
 
   return (
     <aside className="border-line bg-panel hidden min-h-0 flex-col overflow-y-auto border-r p-2 lg:flex">
@@ -55,6 +86,100 @@ export function StructureRail({
         </span>
         <span className="text-[10px] font-extrabold text-white/70">Change</span>
       </button>
+
+      {isPremiumUser && (
+        <div className="border-line border-b pb-2 mb-2 px-2 relative">
+          <div className="flex items-center justify-between py-2">
+            <h2 className="text-xs font-extrabold">Pages</h2>
+            <button
+              className="text-accent hover:bg-accent-soft grid size-7 place-items-center rounded-lg"
+              onClick={() => setOpenPages(!openPages)}
+              aria-label="Add page"
+              type="button"
+            >
+              <FilePlus size={15} aria-hidden="true" />
+            </button>
+          </div>
+          {openPages && (
+            <div className="border-line mb-3 border-t p-2">
+              <p className="text-muted mb-2 text-[10px] font-extrabold tracking-[.12em] uppercase">
+                Add predefined page
+              </p>
+              <div className="grid gap-1">
+                {availablePages.map((pageOption) => {
+                  const isAdded = pages.some((p) => p.slug === pageOption.slug);
+                  return (
+                    <button
+                      key={pageOption.slug}
+                      className={`rounded-lg px-2 py-2 text-left text-xs font-bold ${
+                        isAdded ? "opacity-50 cursor-not-allowed" : "hover:bg-paper cursor-pointer"
+                      }`}
+                      onClick={() => {
+                        if (isAdded) return;
+                        addPage(pageOption.slug, pageOption.title);
+                        setOpenPages(false);
+                      }}
+                      disabled={isAdded}
+                      type="button"
+                    >
+                      {pageOption.title}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="space-y-1">
+            <div
+              className={`group flex items-center gap-2 rounded-lg px-2 py-2 ${
+                selectedPageId === null ? "bg-accent text-accent-ink" : "hover:bg-paper cursor-pointer"
+              }`}
+              onClick={() => setSelectedPageId(null)}
+            >
+              <FileText size={14} className={selectedPageId === null ? "text-accent-ink/65" : "text-muted"} />
+              <button
+                className="min-w-0 flex-1 truncate text-left text-xs font-bold"
+                type="button"
+              >
+                Home
+              </button>
+            </div>
+            {pages.map((page) => (
+              <div
+                key={page.id}
+                className={`group flex items-center gap-2 rounded-lg px-2 py-2 ${
+                  selectedPageId === page.id ? "bg-accent text-accent-ink" : "hover:bg-paper cursor-pointer"
+                }`}
+                onClick={() => setSelectedPageId(page.id)}
+              >
+                <FileText size={14} className={selectedPageId === page.id ? "text-accent-ink/65" : "text-muted"} />
+                <button
+                  className="min-w-0 flex-1 truncate text-left text-xs font-bold"
+                  type="button"
+                >
+                  {page.title}
+                </button>
+                {selectedPageId === page.id && (
+                  <RailButton
+                    selected={true}
+                    label="Delete page"
+                    danger
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm("Delete this page?")) {
+                        removePage(page.id);
+                      }
+                    }}
+                  >
+                    <Trash2 size={12} aria-hidden="true" />
+                  </RailButton>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-2 py-2">
         <h2 className="text-xs font-extrabold">Page structure</h2>
         <div className="flex">

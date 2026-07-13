@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Eye, Globe2, Save } from "lucide-react";
 import { toast } from "sonner";
-import { portfolioPublicUrl } from "@/config/site";
+import { portfolioPublicUrl, siteConfig } from "@/config/site";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { actionClass as action } from "./constants";
 
@@ -16,10 +16,7 @@ export function EditorCommandBar() {
         action: {
           label: "Log in",
           onClick: () => {
-            const loginUrl =
-              process.env.NODE_ENV === "development"
-                ? "http://localhost:3001/login"
-                : "https://app.veriworkly.com/login";
+            const loginUrl = `${siteConfig.links.app}/login`;
             window.location.href = `${loginUrl}?callbackURL=${encodeURIComponent(window.location.href)}`;
           },
         },
@@ -72,7 +69,7 @@ export function EditorCommandBar() {
 
   const urlPath = billing.canPublish
     ? portfolioPublicUrl(slug)
-    : `https://portfolio.veriworkly.com/portfolio/${slug}`;
+    : `${siteConfig.links.portfolio}/portfolio/${slug}`;
 
   const urlDisplay = billing.canPublish
     ? `${slug}.veriworkly.com`
