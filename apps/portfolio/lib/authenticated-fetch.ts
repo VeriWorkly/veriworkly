@@ -1,6 +1,7 @@
 "use client";
 
 import { backendApiUrl } from "@/lib/backend";
+import { siteConfig } from "@/config/site";
 
 let cleanupPromise: Promise<void> | null = null;
 
@@ -20,10 +21,7 @@ async function clearInvalidSessionAndRedirect() {
         body: JSON.stringify({}),
       });
     } finally {
-      const loginUrl =
-        process.env.NODE_ENV === "development"
-          ? "http://localhost:3001/login"
-          : "https://app.veriworkly.com/login";
+      const loginUrl = `${siteConfig.links.app}/login`;
       window.location.replace(
         `${loginUrl}?callbackURL=${encodeURIComponent(window.location.href)}`,
       );

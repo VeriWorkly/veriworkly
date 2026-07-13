@@ -160,25 +160,47 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
       })),
 
     updateSection: (id, patch) =>
-      set((state) => ({
-        content: {
-          ...state.content,
-          sections: state.content.sections.map((section) =>
-            section.id === id ? { ...section, ...patch } : section,
-          ),
-        },
-        isDirty: state.ready ? true : state.isDirty,
-        status: state.ready ? "Unsaved changes" : state.status,
-      })),
+      set((state) => {
+        const updateSections = (sections: PortfolioSection[]) => sections.map((s) => s.id === id ? { ...s, ...patch } : s);
+        if (state.selectedPageId && state.content.pages) {
+          return {
+            content: {
+              ...state.content,
+              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: updateSections(p.sections) } : p),
+            },
+            isDirty: state.ready ? true : state.isDirty,
+            status: state.ready ? "Unsaved changes" : state.status,
+          };
+        }
+        return {
+          content: { ...state.content, sections: updateSections(state.content.sections) },
+          isDirty: state.ready ? true : state.isDirty,
+          status: state.ready ? "Unsaved changes" : state.status,
+        };
+      }),
 
     moveSection: (index, direction) =>
       set((state) => {
-        const sections = [...state.content.sections];
-        const target = index + direction;
-        if (target < 0 || target >= sections.length) return {};
-        [sections[index], sections[target]] = [sections[target], sections[index]];
+        const mutateSections = (sections: PortfolioSection[]) => {
+          const arr = [...sections];
+          const target = index + direction;
+          if (target >= 0 && target < arr.length) {
+            [arr[index], arr[target]] = [arr[target], arr[index]];
+          }
+          return arr;
+        };
+        if (state.selectedPageId && state.content.pages) {
+          return {
+            content: {
+              ...state.content,
+              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: mutateSections(p.sections) } : p),
+            },
+            isDirty: state.ready ? true : state.isDirty,
+            status: state.ready ? "Unsaved changes" : state.status,
+          };
+        }
         return {
-          content: { ...state.content, sections },
+          content: { ...state.content, sections: mutateSections(state.content.sections) },
           isDirty: state.ready ? true : state.isDirty,
           status: state.ready ? "Unsaved changes" : state.status,
         };
@@ -187,28 +209,43 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
     addSection: (type) =>
       set((state) => {
         const label = type[0].toUpperCase() + type.slice(1);
+        const newSection: PortfolioSection = { id: createId("section"), type, title: label, visible: true, items: [] };
+        if (state.selectedPageId && state.content.pages) {
+          return {
+            content: {
+              ...state.content,
+              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: [...p.sections, newSection] } : p),
+            },
+            isDirty: state.ready ? true : state.isDirty,
+            status: state.ready ? "Unsaved changes" : state.status,
+          };
+        }
         return {
-          content: {
-            ...state.content,
-            sections: [
-              ...state.content.sections,
-              { id: createId("section"), type, title: label, visible: true, items: [] },
-            ],
-          },
+          content: { ...state.content, sections: [...state.content.sections, newSection] },
           isDirty: state.ready ? true : state.isDirty,
           status: state.ready ? "Unsaved changes" : state.status,
         };
       }),
 
     removeSection: (id) =>
-      set((state) => ({
-        content: {
-          ...state.content,
-          sections: state.content.sections.filter((item) => item.id !== id),
-        },
-        isDirty: state.ready ? true : state.isDirty,
-        status: state.ready ? "Unsaved changes" : state.status,
-      })),
+      set((state) => {
+        if (state.selectedPageId && state.content.pages) {
+          return {
+            content: {
+              ...state.content,
+              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: p.sections.filter(s => s.id !== id) } : p),
+            },
+            isDirty: state.ready ? true : state.isDirty,
+            status: state.ready ? "Unsaved changes" : state.status,
+          };
+        }
+        return {
+          content: { ...state.content, sections: state.content.sections.filter((item) => item.id !== id) },
+          isDirty: state.ready ? true : state.isDirty,
+          status: state.ready ? "Unsaved changes" : state.status,
+        };
+      }),
+
 
     addPage: (slug, title) =>
       set((state) => {
