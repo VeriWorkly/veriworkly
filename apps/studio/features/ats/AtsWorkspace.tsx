@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { siteConfig } from "@/config/site";
+
 import { useUserStore } from "@/store/useUserStore";
 import {
   convertResumeWithAi,
@@ -378,10 +380,7 @@ export function AtsWorkspace() {
             </p>
             <button
               onClick={() => {
-                const loginUrl =
-                  process.env.NODE_ENV === "development"
-                    ? "http://localhost:3001/login"
-                    : "https://app.veriworkly.com/login";
+                const loginUrl = `${siteConfig.links.app}/login`;
                 window.location.href = `${loginUrl}?callbackURL=${encodeURIComponent(window.location.href)}`;
               }}
               className="bg-accent text-accent-foreground hover:bg-accent/90 mt-5 inline-flex min-h-10 items-center justify-center rounded-lg px-5 text-xs font-bold transition"
