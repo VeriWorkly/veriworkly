@@ -44,42 +44,42 @@ const Footer = () => {
           </Link>
 
           <Link
-            href="https://veriworkly.com/templates"
+            href={`${siteConfig.links.main}/templates`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Templates
           </Link>
 
           <Link
-            href="https://veriworkly.com/roadmap"
+            href={`${siteConfig.links.main}/roadmap`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Roadmap
           </Link>
 
           <Link
-            href="https://veriworkly.com/stats"
+            href={`${siteConfig.links.main}/stats`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Development
           </Link>
 
           <Link
-            href="https://blog.veriworkly.com"
+            href={siteConfig.links.blog}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Blog
           </Link>
 
           <Link
-            href="https://docs.veriworkly.com"
+            href={siteConfig.links.docs}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Documentation
           </Link>
 
           <Link
-            href="https://veriworkly.com/style-guide"
+            href={`${siteConfig.links.main}/style-guide`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Style Guide
@@ -92,21 +92,21 @@ const Footer = () => {
           </p>
 
           <Link
-            href="https://veriworkly.com/about"
+            href={`${siteConfig.links.main}/about`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             About
           </Link>
 
           <Link
-            href="https://veriworkly.com/contact"
+            href={`${siteConfig.links.main}/contact`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Contact
           </Link>
 
           <Link
-            href="https://veriworkly.com/faq"
+            href={`${siteConfig.links.main}/faq`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             FAQ
@@ -117,21 +117,21 @@ const Footer = () => {
           <p className="text-foreground text-xs font-semibold tracking-[0.2em] uppercase">Legal</p>
 
           <Link
-            href="https://veriworkly.com/privacy"
+            href={`${siteConfig.links.main}/privacy`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Privacy
           </Link>
 
           <Link
-            href="https://veriworkly.com/security"
+            href={`${siteConfig.links.main}/security`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Security
           </Link>
 
           <Link
-            href="https://veriworkly.com/terms"
+            href={`${siteConfig.links.main}/terms`}
             className="text-muted hover:text-foreground w-fit text-sm transition-colors"
           >
             Terms
