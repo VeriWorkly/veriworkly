@@ -12,7 +12,7 @@ Start building your professional brand today at no cost.
 - **Duration**: Lifetime
 - **Features**:
   - 1 active Resume and 1 active Cover Letter.
-  - 1 Free Link-in-Bio site with standard templates and a small _Identity by VeriWorkly_ badge on a subdomain.
+  - 1 Free portfolio site with standard templates and a small _Identity by VeriWorkly_ badge on a subdomain.
   - Basic visitor view counts.
   - **Master Profile, GitHub/LinkedIn generation, and legacy resume imports are locked** (Upgrade to unlock).
   - Sell digital products or services (e.g., templates, guides) with a **5.0% checkout fee**.
