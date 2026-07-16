@@ -51,7 +51,7 @@ export const LandingFooter = ({
     <footer className="relative z-0 w-full overflow-hidden border-t border-black/5 bg-[#FAFAFA] pt-24 dark:border-white/5 dark:bg-[#0A0A0A]">
       {/* Soft gradient background matching reference (Peach/Pink blend) */}
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-50/50 to-blue-100/80 mix-blend-multiply dark:via-blue-900/10 dark:to-blue-900/20 dark:mix-blend-screen" />
+        <div className="absolute inset-0 bg-linear-to-b from-transparent via-blue-50/50 to-blue-100/80 mix-blend-multiply dark:via-blue-900/10 dark:to-blue-900/20 dark:mix-blend-screen" />
         <div
           className="absolute inset-0 opacity-[0.05] mix-blend-overlay dark:opacity-[0.02]"
           style={{
@@ -109,7 +109,7 @@ export const LandingFooter = ({
         <div className="mb-10 flex flex-col items-center justify-between gap-8 md:flex-row">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-[1.875rem] w-[1.875rem] items-center justify-center rounded-md">
+            <div className="flex h-7.5 w-7.5 items-center justify-center rounded-md">
               <Image
                 src={logoSrc}
                 alt={`${shortName} Logo`}
@@ -118,7 +118,7 @@ export const LandingFooter = ({
                 className="h-full w-full object-contain dark:invert"
               />
             </div>
-            <span className="text-[1.35rem] font-bold tracking-tight text-gray-900 dark:text-white">
+            <span className="font-mono text-[1.35rem] font-bold tracking-tight text-gray-900 dark:text-white">
               {shortName}.
             </span>
           </div>

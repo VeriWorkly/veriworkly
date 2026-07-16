@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/config/site";
 import { NAVIGATION_ITEMS } from "./navbar/constants";
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Moon, Sun, ArrowUpRight } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -36,14 +36,14 @@ const Navbar = () => {
           scrolled ? "py-2" : "py-4",
         )}
       >
-        <div className="container mx-auto flex max-w-6xl items-center justify-between px-4">
+        <div className="container mx-auto flex max-w-7xl items-center justify-between px-4">
           {/* Logo Pill */}
           <Link
             href={siteConfig.links.main || "/"}
             className="group pointer-events-auto relative flex items-center gap-2 rounded-full border border-black/5 bg-white/70 px-5 py-2.5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] backdrop-blur-md transition-transform hover:scale-[1.02] dark:border-white/5 dark:bg-[#111]/70"
           >
             <img src="/veriworkly-logo.png" alt="VeriWorkly" className="h-6 w-auto" />
-            <span className="hidden font-bold tracking-tight text-gray-900 sm:block dark:text-white">
+            <span className="hidden font-bold tracking-tight text-gray-900 sm:block dark:text-white font-mono">
               {siteConfig.shortName || "VeriWorkly"}
             </span>
           </Link>
@@ -102,7 +102,7 @@ const Navbar = () => {
 
             {/* GitHub Link */}
             <Link
-              href="https://github.com/veriworkly"
+              href={siteConfig.links.github}
               target="_blank"
               rel="noreferrer"
               className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
@@ -116,7 +116,7 @@ const Navbar = () => {
             </Link>
 
             <Link
-              href="https://app.veriworkly.com/login"
+              href={`${siteConfig.links.app}/login`}
               className="ml-1 rounded-full bg-gray-900 px-5 py-1.5 text-sm font-medium text-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.02] active:scale-[0.97] dark:bg-white dark:text-gray-900"
             >
               Get Started
@@ -192,7 +192,7 @@ const Navbar = () => {
               <div className="mb-2 flex items-center justify-between px-4">
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">GitHub</span>
                 <Link
-                  href="https://github.com/veriworkly"
+                  href={siteConfig.links.github}
                   target="_blank"
                   rel="noreferrer"
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300"
@@ -207,7 +207,7 @@ const Navbar = () => {
               </div>
 
               <Link
-                href="https://app.veriworkly.com/login"
+                href={`${siteConfig.links.app}/login`}
                 className="flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-3 text-base font-medium text-white shadow-sm transition-transform active:scale-[0.98] dark:bg-white dark:text-gray-900"
               >
                 Get Started
