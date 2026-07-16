@@ -9,7 +9,7 @@ import {
   Transition,
 } from "framer-motion";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 
 interface TextRotateProps {
   texts: string[];

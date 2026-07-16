@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 
 export const BackgroundRippleEffect = ({
   rows = 8,
@@ -28,10 +28,10 @@ export const BackgroundRippleEffect = ({
       )}
     >
       <div className="relative flex h-full w-full items-start justify-center overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 z-[2] h-full w-full overflow-hidden" />
+        <div className="pointer-events-none absolute inset-0 z-2 h-full w-full overflow-hidden" />
         <DivGrid
           key={`base-${rippleKey}`}
-          className="[mask-image:radial-gradient(ellipse_100%_100%_at_50%_0%,#000_50%,transparent_100%)] opacity-70"
+          className="mask-[radial-gradient(ellipse_100%_100%_at_50%_0%,#000_50%,transparent_100%)] opacity-70"
           rows={rows}
           cols={cols}
           cellSize={cellSize}
@@ -86,7 +86,7 @@ const DivGrid = ({
   };
 
   return (
-    <div className={cn("relative z-[3]", className)} style={gridStyle}>
+    <div className={cn("relative z-3", className)} style={gridStyle}>
       {cells.map((idx) => {
         const rowIdx = Math.floor(idx / cols);
         const colIdx = idx % cols;
@@ -118,7 +118,7 @@ const DivGrid = ({
           >
             <div
               className={cn(
-                "absolute inset-0 bg-[var(--cell-fill-color)] opacity-0 transition-opacity duration-500 ease-out will-change-[opacity] group-hover:opacity-100",
+                "absolute inset-0 bg-(--cell-fill-color) opacity-0 transition-opacity duration-500 ease-out will-change-[opacity] group-hover:opacity-100",
                 clickedCell && "animate-cell-ripple [animation-fill-mode:none]",
               )}
             />

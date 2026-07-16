@@ -3,7 +3,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useId, useRef } from "react";
 import { useAnimationFrame } from "framer-motion";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 import { useMousePositionRef } from "@/hooks/use-mouse-position-ref";
 
 interface FloatingContextType {
