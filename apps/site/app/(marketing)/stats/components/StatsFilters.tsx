@@ -5,7 +5,7 @@ import type {
   GitHubFilterStatus,
 } from "@/features/github/services/github-backend";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 
 import { kindOptions, statusOptions, buildSearchHref } from "./stats-utils";
 

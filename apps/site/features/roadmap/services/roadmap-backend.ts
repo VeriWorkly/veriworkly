@@ -1,4 +1,4 @@
-import { backendApiUrl } from "@/lib/constants";
+import { backendApiUrl } from "@/utils/fetchApiData";
 
 export type RoadmapSort = "newest" | "oldest" | "recently-completed";
 export type RoadmapStatus = "todo" | "in-progress" | "done";

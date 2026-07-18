@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Calendar, ArrowUpRight } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 
 import { KanbanItem } from "./KanbanBoard";
 

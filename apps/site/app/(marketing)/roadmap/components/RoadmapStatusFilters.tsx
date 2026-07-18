@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { type RoadmapSort } from "@/features/roadmap/services/roadmap-backend";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 
 import { buildHref } from "./RoadmapPageShell";
 

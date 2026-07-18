@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@veriworkly/ui";
 
 import { KanbanColumn } from "./KanbanBoard";
 import KanbanItemCard from "./KanbanItemCard";
