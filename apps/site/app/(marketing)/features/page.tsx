@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import { Check, Scale, Sparkles, X } from "lucide-react";
+import Link from "next/link";
+
 import { siteConfig } from "@/config/site";
-import { Card, Button } from "@veriworkly/ui";
-import { PublicPageShell } from "@/components/layout/PublicPageShell";
-import { Sparkles, FileText, Globe, RefreshCcw, Database, ShieldCheck, Check } from "lucide-react";
+
+import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
+import { Reveal } from "@/components/marketing/Reveal";
+import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
+import { CapabilityMosaic } from "./components/CapabilityMosaic";
 
 const pageUrl = `${siteConfig.url}/features`;
 const pageOgImage = `${siteConfig.url}/og/features-page-og.png`;
@@ -42,75 +47,36 @@ export const metadata: Metadata = {
   },
 };
 
-const featureList = [
+const comparisonRows = [
   {
-    title: "Document Studio",
-    description:
-      "Write and format ATS-friendly resumes and cover letters in a structured layout system.",
-    icon: FileText,
-    bullets: [
-      "Strict layout compilation outputting parser-friendly text markup",
-      "Dynamic sliders for visual margins, paddings, and font sizes",
-      "Curated typography pairings with layout scale locks",
-      "Local PDF exports rendered directly in the browser using client engines",
-    ],
-    className: "md:col-span-2 lg:col-span-2",
+    feature: "Layout PDF downloads",
+    veriworkly: "100% free, compiled locally",
+    competitor: "Hidden behind paywalls and trials",
   },
   {
-    title: "Web Portfolios",
-    description: "Publish your credentials as a fast, responsive website mapped to subdomains.",
-    icon: Globe,
-    bullets: [
-      "Subdomain routing (e.g. username.veriworkly.com)",
-      "Upload screenshots and project assets securely",
-      "Custom SEO title options and layout toggle controls",
-    ],
-    className: "md:col-span-1 lg:col-span-1",
+    feature: "Sign-up gating",
+    veriworkly: "No registration required",
+    competitor: "Mandatory, to harvest databases",
   },
   {
-    title: "Link Cards",
-    description:
-      "Build a single, clean link aggregator for your social profiles and digital services.",
-    icon: Sparkles,
-    bullets: [
-      "Fast-loading mobile layout optimized for social media links",
-      "Add custom link buttons or contact cards",
-    ],
-    className: "md:col-span-1 lg:col-span-1",
+    feature: "Data storage location",
+    veriworkly: "Local-first, IndexedDB",
+    competitor: "Locked on proprietary servers",
   },
   {
-    title: "Master Profile Sandbox",
-    description: "Synchronize factual history without cluttering individual document layouts.",
-    icon: RefreshCcw,
-    bullets: [
-      "Central database holding complete factual records",
-      "Cloud backup and sync when you register and log in",
-      "Create resumes as snapshots decoupled from the master facts",
-    ],
-    className: "md:col-span-1 lg:col-span-1",
+    feature: "Data sync security",
+    veriworkly: "Encrypted cloud sync, optional",
+    competitor: "Plaintext analytics profiles",
   },
   {
-    title: "Data Ingestors",
-    description: "Import your existing profile details and legacy files with zero manual typing.",
-    icon: Database,
-    bullets: [
-      "Extract facts from LinkedIn profile downloads and PDFs",
-      "Sync GitHub public projects and contribution calendars",
-      "Standard imports to populate your database instantly",
-    ],
-    className: "md:col-span-1 lg:col-span-1",
+    feature: "Open source audits",
+    veriworkly: "Auditable MIT core",
+    competitor: "Closed, opaque databases",
   },
   {
-    title: "Security & Open Sovereignty",
-    description: "Host your own server, audit code parameters, and own your database files.",
-    icon: ShieldCheck,
-    bullets: [
-      "IndexedDB architecture that runs entirely client-side",
-      "Authenticated sign-in powered by Better Auth OTP credentials",
-      "Open-source MIT database configurations and backend files",
-      "Developer API Keys supporting custom automation limits",
-    ],
-    className: "md:col-span-2 lg:col-span-2",
+    feature: "Career assets",
+    veriworkly: "Resumes, letters, portfolios, invoices",
+    competitor: "Only resumes or cover letters",
   },
 ];
 
@@ -131,135 +97,124 @@ const FeaturesPage = () => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(featuresSchema) }}
       />
 
-      <PublicPageShell
-        eyebrow="Capabilities"
-        title="Tools for your professional identity"
-        secondaryAction={{ href: "/how-it-works", label: "See How It Works" }}
-        primaryAction={{ href: "https://app.veriworkly.com", label: "Start Building" }}
-        description="VeriWorkly integrates document editors, custom portfolios, link cards, and local databases under a secure, privacy-first career workspace."
-      >
-        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {featureList.map((feat) => {
-            const Icon = feat.icon;
-            return (
-              <Card
-                key={feat.title}
-                className={`border-border bg-card flex flex-col justify-between rounded-3xl border p-6 shadow-[6px_6px_0_0_rgba(23,23,23,0.05)] transition-all duration-300 hover:border-blue-500/50 hover:shadow-[6px_6px_0_0_rgba(37,99,235,0.15)] md:p-8 dark:shadow-[6px_6px_0_0_rgba(255,255,255,0.03)] ${feat.className}`}
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span className="font-mono text-xs font-black tracking-wider text-blue-600 uppercase dark:text-blue-400">
-                      Workspace tool
-                    </span>
-                  </div>
+      <section className="w-full bg-[#f3f4f6] p-2 md:p-3 lg:p-4 dark:bg-black">
+        <div className="relative flex w-full flex-col items-center overflow-hidden rounded-4xl border border-black/5 bg-white px-6 pt-28 pb-20 text-center md:pt-32 md:pb-24 dark:border-white/5 dark:bg-[#080808]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.05)_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+          <div className="pointer-events-none absolute top-0 left-1/2 h-105 w-full max-w-225 -translate-x-1/2 rounded-full bg-blue-500/10 blur-[120px] dark:bg-blue-500/15" />
 
-                  <h2 className="text-foreground text-xl font-bold tracking-tight">{feat.title}</h2>
-                  <p className="text-muted text-sm leading-6">{feat.description}</p>
+          <Reveal className="relative z-10 flex max-w-3xl flex-col items-center">
+            <SectionEyebrow icon={Sparkles} label="Capabilities" className="mb-6" />
 
-                  <ul className="space-y-2 pt-2">
-                    {feat.bullets.map((b) => (
-                      <li key={b} className="text-muted flex items-start gap-2 text-xs leading-5">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </Card>
-            );
-          })}
+            <h1 className="text-4xl font-semibold tracking-tighter text-balance text-zinc-900 sm:text-5xl md:text-6xl dark:text-white">
+              Tools for your professional identity
+            </h1>
 
-          <Card className="border-border bg-card flex flex-col justify-between rounded-3xl border p-6 shadow-[6px_6px_0_0_rgba(23,23,23,0.05)] transition-all duration-300 hover:border-blue-500/50 hover:shadow-[6px_6px_0_0_rgba(37,99,235,0.15)] md:col-span-1 md:p-8 lg:col-span-1 dark:shadow-[6px_6px_0_0_rgba(255,255,255,0.03)]">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                  →
-                </span>
-                <span className="font-mono text-xs font-black tracking-wider text-blue-600 uppercase dark:text-blue-400">
-                  Ready?
-                </span>
-              </div>
-              <h2 className="text-foreground text-xl font-bold tracking-tight">
-                Create your profile
-              </h2>
-              <p className="text-muted text-sm leading-6">
-                Start building your documents without registering. Upload a file or connect GitHub
-                to import data.
-              </p>
-            </div>
-            <div className="pt-6">
-              <Button asChild size="sm" variant="secondary" className="w-full justify-center">
-                <a href="https://app.veriworkly.com">Open Editor</a>
-              </Button>
-            </div>
-          </Card>
-        </section>
-
-        <Card className="border-border bg-card space-y-6 rounded-3xl border p-6 shadow-[6px_6px_0_0_rgba(23,23,23,0.05)] md:p-8 dark:shadow-[6px_6px_0_0_rgba(255,255,255,0.03)]">
-          <div className="space-y-2">
-            <span className="text-xs font-black tracking-widest text-blue-600 uppercase dark:text-blue-400">
-              Comparison
-            </span>
-            <h2 className="text-foreground text-3xl font-extrabold tracking-tight">
-              Platform difference
-            </h2>
-            <p className="text-muted text-sm">
-              How we build against proprietary subscription-trap career portals.
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
+              Document editors, custom portfolios, link cards, and local databases, integrated
+              under one privacy-first career workspace.
             </p>
-          </div>
 
-          <div className="border-border mt-8 overflow-x-auto rounded-2xl border">
-            <table className="w-full min-w-[600px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="bg-card text-foreground border-border border-b text-xs font-bold tracking-wider uppercase">
-                  <th className="p-4">Feature</th>
-                  <th className="p-4">Traditional Competitors</th>
-                  <th className="p-4 text-blue-600 dark:text-blue-400">VeriWorkly Platform</th>
-                </tr>
-              </thead>
-              <tbody className="divide-border text-muted divide-y">
-                <tr>
-                  <td className="text-foreground p-4 font-semibold">Layout PDF Downloads</td>
-                  <td className="p-4">Hidden behind paywalls and trials</td>
-                  <td className="text-foreground p-4 font-semibold">100% Free & Local Compile</td>
-                </tr>
-                <tr>
-                  <td className="text-foreground p-4 font-semibold">Sign-up Gating</td>
-                  <td className="p-4">Mandatory (to harvest databases)</td>
-                  <td className="text-foreground p-4 font-semibold">No Registration Required</td>
-                </tr>
-                <tr>
-                  <td className="text-foreground p-4 font-semibold">Data Storage Location</td>
-                  <td className="p-4">Locked on proprietary servers</td>
-                  <td className="text-foreground p-4 font-semibold">Local-First (IndexedDB)</td>
-                </tr>
-                <tr>
-                  <td className="text-foreground p-4 font-semibold">Data Sync Security</td>
-                  <td className="p-4">Plaintext analytics profiles</td>
-                  <td className="text-foreground p-4 font-semibold">
-                    Encrypted Cloud Sync (Optional)
-                  </td>
-                </tr>
-                <tr>
-                  <td className="text-foreground p-4 font-semibold">Open Source Audits</td>
-                  <td className="p-4">Closed, opaque databases</td>
-                  <td className="text-foreground p-4 font-semibold">Auditable MIT Core</td>
-                </tr>
-                <tr>
-                  <td className="text-foreground p-4 font-semibold">Career Assets</td>
-                  <td className="p-4">Only Resumes or Cover Letters</td>
-                  <td className="text-foreground p-4 font-semibold">
-                    Resumes, Letters, Portfolios, Invoices
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </PublicPageShell>
+            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
+              <Link
+                href={siteConfig.links.app}
+                className="group inline-flex h-14 items-center justify-center gap-2 rounded-full bg-zinc-950 px-8 text-base font-semibold text-white shadow-md transition-all duration-300 hover:bg-blue-600 active:scale-[0.97] dark:bg-white dark:text-zinc-950 dark:hover:bg-blue-500 dark:hover:text-white"
+              >
+                Start Building
+              </Link>
+              <Link
+                href="/how-it-works"
+                className="inline-flex h-14 items-center justify-center rounded-full border border-black/10 bg-white/70 px-8 text-base font-medium text-zinc-800 backdrop-blur-md transition-colors hover:border-blue-500/30 hover:text-blue-600 dark:border-white/10 dark:bg-black/40 dark:text-zinc-200 dark:hover:text-blue-400"
+              >
+                See How It Works
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-350 px-6 py-24 md:px-8 md:py-32">
+        <CapabilityMosaic />
+      </section>
+
+      <section className="mx-auto w-full max-w-350 border-t border-zinc-200/40 px-6 py-24 md:px-8 md:py-32 dark:border-zinc-800/20">
+        <div className="mx-auto max-w-2xl text-center">
+          <SectionEyebrow icon={Scale} label="Platform difference" className="mx-auto" />
+          <h2 className="mt-6 font-sans text-4xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-5xl dark:text-white">
+            How we build against subscription-trap portals
+          </h2>
+        </div>
+
+        <Reveal className="mt-14 overflow-x-auto">
+          <table className="w-full min-w-160 border-separate border-spacing-0">
+            <caption className="sr-only">
+              Feature comparison between VeriWorkly and traditional career portals
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" className="w-2/5 pb-5 text-left align-bottom">
+                  <span className="text-xs font-semibold tracking-tight text-zinc-400 uppercase">
+                    Feature
+                  </span>
+                </th>
+                <th scope="col" className="w-[30%] px-6 pb-5 text-left align-bottom">
+                  <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+                    Traditional competitors
+                  </span>
+                </th>
+                <th
+                  scope="col"
+                  className="w-[30%] rounded-t-2xl border border-b-0 border-blue-500/15 bg-blue-500/4 px-6 pt-5 pb-5 text-left align-bottom dark:bg-blue-500/6"
+                >
+                  <span className="text-sm font-bold text-zinc-900 dark:text-white">
+                    VeriWorkly Platform
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparisonRows.map((row, index) => {
+                const isLast = index === comparisonRows.length - 1;
+                return (
+                  <tr key={row.feature}>
+                    <th
+                      scope="row"
+                      className="border-t border-zinc-100 py-5 pr-4 text-left text-sm font-semibold text-zinc-800 dark:border-zinc-900 dark:text-zinc-200"
+                    >
+                      {row.feature}
+                    </th>
+                    <td className="border-t border-zinc-100 px-6 py-5 dark:border-zinc-900">
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600">
+                          <X className="h-3 w-3" strokeWidth={3} />
+                        </span>
+                        <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {row.competitor}
+                        </span>
+                      </div>
+                    </td>
+                    <td
+                      className={`border-x border-t border-blue-500/15 bg-blue-500/4 px-6 py-5 dark:bg-blue-500/6 ${
+                        isLast ? "rounded-b-2xl border-b" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          <Check className="h-3 w-3" strokeWidth={3} />
+                        </span>
+                        <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                          {row.veriworkly}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Reveal>
+      </section>
+
+      <InteractiveCTA />
     </>
   );
 };
