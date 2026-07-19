@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 import {
   documentTypeSummaries,
@@ -10,6 +11,7 @@ import {
 import { siteConfig } from "@/config/site";
 
 import { Container } from "@veriworkly/ui";
+import { Reveal } from "@/components/marketing/Reveal";
 
 import EmptyState from "../components/EmptyState";
 import TemplateGroup from "../components/TemplateGroup";
@@ -92,71 +94,82 @@ const TemplatesByDocumentTypePage = async ({ params, searchParams }: PageProps) 
   );
 
   return (
-    <Container className="space-y-14 pt-28 pb-16 lg:pt-36">
-      <TemplatesHeader
-        docType={docTypeData}
-        templates={templates}
-        selectedFamily={selectedFamily}
-        selectedLayout={selectedLayout}
-      />
-
-      <section
-        className="border-border bg-card/65 overflow-hidden rounded-2xl border"
-        aria-label={`${docTypeData.label} template quick comparison`}
+    <Container className="space-y-10 pt-28 pb-16 lg:pt-36">
+      <Link
+        href="/templates"
+        className="inline-flex w-fit items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
       >
-        <div className="bg-border grid gap-px lg:grid-cols-2">
-          {templates.map((template) => (
-            <Link
-              key={template.id}
-              href={getTemplateHref(template)}
-              className="group bg-card hover:bg-background/70 focus-visible:ring-accent p-5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 space-y-2">
-                  <p className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">
-                    {template.family}
-                  </p>
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        All templates
+      </Link>
 
-                  <h2 className="text-foreground text-xl font-semibold tracking-tight">
-                    {template.name}
-                  </h2>
+      <div className="space-y-14">
+        <TemplatesHeader
+          docType={docTypeData}
+          templates={templates}
+          selectedFamily={selectedFamily}
+          selectedLayout={selectedLayout}
+        />
 
-                  <p className="text-muted line-clamp-2 text-sm leading-6">
-                    {template.shortDescription}
-                  </p>
+        <Reveal
+          className="overflow-hidden rounded-4xl border border-zinc-200 bg-white dark:border-zinc-800/80 dark:bg-[#0c0c0c]"
+          aria-label={`${docTypeData.label} template quick comparison`}
+        >
+          <div className="grid gap-px bg-zinc-200 lg:grid-cols-2 dark:bg-zinc-800">
+            {templates.map((template) => (
+              <Link
+                key={template.id}
+                href={getTemplateHref(template)}
+                className="group bg-white p-5 transition-colors hover:bg-blue-500/5 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-[#0c0c0c] dark:hover:bg-blue-500/5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-2">
+                    <p className="text-xs font-semibold tracking-[0.18em] text-zinc-400 uppercase dark:text-zinc-500">
+                      {template.family}
+                    </p>
+
+                    <h2 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+                      {template.name}
+                    </h2>
+
+                    <p className="line-clamp-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                      {template.shortDescription}
+                    </p>
+                  </div>
+
+                  <span
+                    className="mt-1 h-3 w-12 shrink-0 rounded-full"
+                    style={{ backgroundColor: template.accentColor }}
+                    aria-hidden="true"
+                  />
                 </div>
 
-                <span
-                  className="mt-1 h-3 w-12 shrink-0 rounded-full"
-                  style={{ backgroundColor: template.accentColor }}
-                  aria-hidden="true"
-                />
-              </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {[template.layout, ...template.audience.slice(0, 2)].map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-white/5 dark:text-zinc-400"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Reveal>
 
-              <div className="mt-5 flex flex-wrap gap-2">
-                {[template.layout, ...template.audience.slice(0, 2)].map((item) => (
-                  <span
-                    key={item}
-                    className="border-border bg-background text-muted rounded-full border px-3 py-1 text-xs"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {visibleTemplates.length ? (
-        <div className="space-y-12">
-          {familyGroups.map(
-            (group) => group.items.length > 0 && <TemplateGroup key={group.title} group={group} />,
-          )}
-        </div>
-      ) : (
-        <EmptyState resetHref={`/templates/${docType}`} />
-      )}
+        {visibleTemplates.length ? (
+          <div className="space-y-12">
+            {familyGroups.map(
+              (group) =>
+                group.items.length > 0 && <TemplateGroup key={group.title} group={group} />,
+            )}
+          </div>
+        ) : (
+          <EmptyState resetHref={`/templates/${docType}`} />
+        )}
+      </div>
     </Container>
   );
 };

@@ -21,7 +21,7 @@ const TemplateFilters = ({ docType, templates, selectedFamily, selectedLayout }:
 
   return (
     <div
-      className="border-border bg-card/70 flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-[#0c0c0c]"
       aria-label="Template filters"
     >
       <div className="flex flex-wrap gap-2">
@@ -33,10 +33,10 @@ const TemplateFilters = ({ docType, templates, selectedFamily, selectedLayout }:
               key={family}
               href={hrefWithFilters(docType, family, selectedLayout)}
               className={[
-                "focus-visible:ring-accent rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+                "rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:outline-none",
                 active
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-background text-muted hover:text-foreground",
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-zinc-200 bg-white text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:bg-[#0c0c0c] dark:text-zinc-400 dark:hover:text-white",
               ].join(" ")}
             >
               {family}
@@ -54,10 +54,10 @@ const TemplateFilters = ({ docType, templates, selectedFamily, selectedLayout }:
               key={layout}
               href={hrefWithFilters(docType, selectedFamily, layout)}
               className={[
-                "focus-visible:ring-accent rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+                "rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:outline-none",
                 active
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-background text-muted hover:text-foreground",
+                  ? "border-zinc-950 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950"
+                  : "border-zinc-200 bg-white text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:bg-[#0c0c0c] dark:text-zinc-400 dark:hover:text-white",
               ].join(" ")}
             >
               {layout}
