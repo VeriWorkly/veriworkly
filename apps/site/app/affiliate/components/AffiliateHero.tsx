@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { siteConfig } from "@/config/site";
 
 export function AffiliateHero() {
   const containerVariants = {
@@ -35,9 +36,9 @@ export function AffiliateHero() {
   return (
     <section className="relative flex flex-col items-center justify-center overflow-hidden py-24 text-center lg:py-32">
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none">
-        <div className="animate-float-1 absolute top-1/4 left-1/4 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/20 blur-[80px] md:h-[600px] md:w-[600px] md:blur-[120px] dark:bg-blue-600/10" />
-        <div className="animate-float-2 absolute right-1/4 bottom-1/4 h-[300px] w-[300px] translate-x-1/2 translate-y-1/2 rounded-full bg-amber-400/15 blur-[80px] md:h-[500px] md:w-[500px] md:blur-[100px] dark:bg-amber-500/5" />
-        <div className="animate-float-3 absolute top-1/3 right-1/3 h-[250px] w-[250px] rounded-full bg-violet-400/10 blur-[70px] md:h-[400px] md:w-[400px] md:blur-[100px] dark:bg-violet-600/5" />
+        <div className="animate-float-1 absolute top-1/4 left-1/4 h-87.5 w-87.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/20 blur-[80px] md:h-150 md:w-150 md:blur-[120px] dark:bg-blue-600/10" />
+        <div className="animate-float-2 absolute right-1/4 bottom-1/4 h-75 w-75 translate-x-1/2 translate-y-1/2 rounded-full bg-amber-400/15 blur-[80px] md:h-125 md:w-125 md:blur-[100px] dark:bg-amber-500/5" />
+        <div className="animate-float-3 absolute top-1/3 right-1/3 h-62.5 w-62.5 rounded-full bg-violet-400/10 blur-[70px] md:h-100 md:w-100 md:blur-[100px] dark:bg-violet-600/5" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-4xl px-6">
@@ -81,7 +82,7 @@ export function AffiliateHero() {
             className="flex w-full flex-col items-center gap-4 pt-4 sm:w-auto sm:flex-row"
           >
             <Link
-              href="https://app.veriworkly.com/affiliate"
+              href={`${siteConfig.links.app}/affiliate`}
               className="inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-8 py-3.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(37,99,235,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.6)] sm:w-auto dark:bg-blue-500 dark:hover:bg-blue-600"
             >
               Join as Partner
@@ -93,7 +94,7 @@ export function AffiliateHero() {
                   .getElementById("earnings-calculator")
                   ?.scrollIntoView({ behavior: "smooth" });
               }}
-              className="bg-card/85 hover:bg-card/100 border-border/80 text-foreground inline-flex w-full items-center justify-center rounded-full border px-8 py-3.5 text-sm font-semibold backdrop-blur-md transition-all duration-300 hover:border-blue-500/40 sm:w-auto dark:border-zinc-800/80 dark:bg-zinc-950/80 dark:hover:border-blue-400/40"
+              className="bg-card/85 hover:bg-card border-border/80 text-foreground inline-flex w-full items-center justify-center rounded-full border px-8 py-3.5 text-sm font-semibold backdrop-blur-md transition-all duration-300 hover:border-blue-500/40 sm:w-auto dark:border-zinc-800/80 dark:bg-zinc-950/80 dark:hover:border-blue-400/40"
             >
               Calculate Payouts
             </button>

@@ -70,7 +70,7 @@ function CounterStepper({
             <Icon className={`h-4 w-4 ${colorClass}`} />
             <span>{label}</span>
           </div>
-          <p className="max-w-[220px] text-[10px] leading-normal text-zinc-500 dark:text-zinc-400">
+          <p className="max-w-55 text-[10px] leading-normal text-zinc-500 dark:text-zinc-400">
             {description}
           </p>
         </div>
@@ -119,7 +119,7 @@ function KeyTicket({ index }: { index: number }) {
       initial={{ scale: 0.95, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 100, delay: index * 0.05 }}
-      className="group relative flex min-w-[180px] items-center justify-between gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-white px-4 py-3 text-[9px] font-bold tracking-widest text-zinc-900 uppercase shadow-sm dark:border-white/15 dark:bg-zinc-900 dark:text-white"
+      className="group relative flex min-w-45 items-center justify-between gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-white px-4 py-3 text-[9px] font-bold tracking-widest text-zinc-900 uppercase shadow-sm dark:border-white/15 dark:bg-zinc-900 dark:text-white"
     >
       {/* Notch Left */}
       <div
@@ -351,7 +351,7 @@ export function AmbassadorCalculator() {
               </span>
             </div>
 
-            <div className="text-zinc-650 flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-xs leading-normal font-bold dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
+            <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-xs leading-normal font-bold text-zinc-600 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
               <Calendar className="h-4.5 w-4.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
               <span>Voucher inventory keys reset annually on January 1st.</span>
             </div>

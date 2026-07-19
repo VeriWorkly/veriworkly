@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, TrendingUp, BadgeDollarSign, ShieldCheck, Check, Terminal } from "lucide-react";
+import { siteConfig } from "@/config/site";
 
 export function AffiliateBento() {
   const [username, setUsername] = useState("username");
@@ -10,7 +11,7 @@ export function AffiliateBento() {
   const [scans, setScans] = useState<string[]>(["Filter initialized.", "Network trace: OK."]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(`veriworkly.com/?ref=${username}`);
+    navigator.clipboard.writeText(`${siteConfig.links.main}/?ref=${username}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -53,10 +54,10 @@ export function AffiliateBento() {
         <motion.div
           whileHover={{ y: -4 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="group relative flex min-h-[350px] flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/40 p-8 shadow-sm backdrop-blur-md md:col-span-2 dark:border-zinc-800/80 dark:bg-zinc-900/30"
+          className="group relative flex min-h-87.5 flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/40 p-8 shadow-sm backdrop-blur-md md:col-span-2 dark:border-zinc-800/80 dark:bg-zinc-900/30"
         >
           <div className="pointer-events-none absolute inset-px rounded-[23px] border border-white/40 dark:border-zinc-800/30" />
-          <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 rounded-full bg-gradient-to-bl from-blue-500/5 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 rounded-full bg-linear-to-bl from-blue-500/5 to-transparent blur-3xl" />
 
           <div className="space-y-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200/30 bg-zinc-100 text-blue-600 dark:border-zinc-700/30 dark:bg-zinc-800/50 dark:text-blue-400">
@@ -92,7 +93,7 @@ export function AffiliateBento() {
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={handleCopy}
-                className="flex min-w-[100px] items-center justify-center rounded-xl bg-zinc-950 px-6 py-2.5 text-xs font-bold text-zinc-100 shadow-sm transition-colors duration-200 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                className="flex min-w-25 items-center justify-center rounded-xl bg-zinc-950 px-6 py-2.5 text-xs font-bold text-zinc-100 shadow-sm transition-colors duration-200 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
               >
                 <AnimatePresence mode="wait">
                   {copied ? (
@@ -103,7 +104,7 @@ export function AffiliateBento() {
                       exit={{ opacity: 0, y: -4 }}
                       className="flex items-center gap-1.5"
                     >
-                      <Check className="h-3.5 w-3.5 stroke-[3]" /> Copied
+                      <Check className="h-3.5 w-3.5 stroke-3" /> Copied
                     </motion.span>
                   ) : (
                     <span key="copy">Copy Link</span>
@@ -112,7 +113,7 @@ export function AffiliateBento() {
               </motion.button>
             </div>
             <div className="w-full truncate rounded-xl border border-zinc-200/50 bg-zinc-100/40 p-3 font-mono text-[10px] text-blue-600 select-all dark:border-zinc-800/40 dark:bg-zinc-950/30 dark:text-blue-400">
-              veriworkly.com/?ref={username || "handle"}
+              {siteConfig.links.main}/?ref={username || "handle"}
             </div>
           </div>
         </motion.div>
@@ -120,7 +121,7 @@ export function AffiliateBento() {
         <motion.div
           whileHover={{ y: -4 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="group relative flex min-h-[350px] flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/40 p-8 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/30"
+          className="group relative flex min-h-87.5 flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/40 p-8 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/30"
         >
           <div className="pointer-events-none absolute inset-px rounded-[23px] border border-white/40 dark:border-zinc-800/30" />
 
@@ -158,7 +159,7 @@ export function AffiliateBento() {
         <motion.div
           whileHover={{ y: -4 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="group relative flex min-h-[350px] flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/40 p-8 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/30"
+          className="group relative flex min-h-87.5 flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/40 p-8 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/30"
         >
           <div className="pointer-events-none absolute inset-px rounded-[23px] border border-white/40 dark:border-zinc-800/30" />
 
@@ -193,10 +194,10 @@ export function AffiliateBento() {
         <motion.div
           whileHover={{ y: -4 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="border-zinc-805 group relative flex min-h-[350px] flex-col justify-between overflow-hidden rounded-3xl border bg-zinc-950 p-8 text-zinc-100 shadow-md md:col-span-2"
+          className="border-zinc-805 group relative flex min-h-87.5 flex-col justify-between overflow-hidden rounded-3xl border bg-zinc-950 p-8 text-zinc-100 shadow-md md:col-span-2"
         >
           <div className="pointer-events-none absolute inset-px rounded-[23px] border border-white/5" />
-          <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 rounded-full bg-gradient-to-bl from-rose-500/10 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 rounded-full bg-linear-to-bl from-rose-500/10 to-transparent blur-3xl" />
 
           <div className="space-y-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-rose-500">

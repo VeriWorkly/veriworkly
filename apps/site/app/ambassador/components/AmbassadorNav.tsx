@@ -6,6 +6,7 @@ import { ArrowLeft, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { siteConfig } from "@/config/site";
 
 export function AmbassadorNav() {
   const { theme, setTheme } = useTheme();
@@ -64,7 +65,7 @@ export function AmbassadorNav() {
                   document.getElementById(item.target)?.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="text-zinc-650 relative cursor-pointer px-4 py-2 text-[11px] font-black tracking-widest uppercase transition-colors duration-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              className="relative cursor-pointer px-4 py-2 text-[11px] font-black tracking-widest uppercase text-zinc-600 transition-colors duration-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
             >
               <span className="relative z-10">{item.label}</span>
               {hoveredLink === item.label && (
@@ -82,7 +83,7 @@ export function AmbassadorNav() {
         <div className="flex items-center gap-3 rounded-full border border-zinc-200/50 bg-white/60 px-4 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.05)] backdrop-blur-xl dark:border-white/5 dark:bg-zinc-950/60 dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
           <Link
             href="/"
-            className="text-zinc-650 group inline-flex items-center gap-1.5 border-r border-zinc-200/50 pr-2 text-[10px] font-bold tracking-wider uppercase transition-colors duration-300 hover:text-zinc-900 dark:border-white/10 dark:text-zinc-400 dark:hover:text-white"
+            className="group inline-flex items-center gap-1.5 border-r border-zinc-200/50 pr-2 text-[10px] font-bold tracking-wider uppercase text-zinc-600 transition-colors duration-300 hover:text-zinc-900 dark:border-white/10 dark:text-zinc-400 dark:hover:text-white"
           >
             <ArrowLeft className="h-3 w-3 text-zinc-600 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-zinc-900 dark:text-zinc-400 dark:group-hover:text-white" />
             <span className="hidden sm:inline">Back</span>
@@ -122,7 +123,7 @@ export function AmbassadorNav() {
           )}
 
           <Link
-            href="https://app.veriworkly.com/ambassador"
+            href={`${siteConfig.links.app}/ambassador`}
             className="py-1.8 relative inline-flex items-center justify-center rounded-full bg-zinc-950 px-4 text-[10px] font-black tracking-wider text-white uppercase transition-all duration-300 hover:bg-zinc-900 active:scale-[0.97] dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
           >
             Apply Program

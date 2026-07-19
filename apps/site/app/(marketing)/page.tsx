@@ -2,16 +2,27 @@ import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
 
-import { faqs } from "@/features/landing/data/faqItems";
-import { HeroHeader } from "@/components/marketing/HeroHeader";
+import { faqs } from "@/features/landing/faq/data/faqItems";
+
+import { HeroHeader } from "@/features/landing/hero/HeroHeader";
+import BrandTrust from "@/features/landing/brand-trust/BrandTrust";
+import PremiumFAQ from "@/features/landing/faq/PremiumFAQ";
+import GaplessBento from "@/features/landing/bento/GaplessBento";
+import PrivacyWhyUs from "@/features/landing/privacy/PrivacyWhyUs";
+import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
+import ComparisonMatrix from "@/features/landing/comparison/ComparisonMatrix";
+import MetricsProofBar from "@/features/landing/metrics-proof/MetricsProofBar";
+import TemplateShowcase from "@/features/landing/template-showcase/TemplateShowcase";
+import InteractiveProcess from "@/features/landing/process/InteractiveProcess";
+import DocumentPortfolioSwitcher from "@/features/landing/document-switcher/DocumentPortfolioSwitcher";
 
 const pageUrl = siteConfig.url;
 const pageOgImage = `${siteConfig.url}/og/landing-page-og.png`;
 
 export const metadata: Metadata = {
-  title: `Free AI Resume Builder, Cover Letters & Portfolios | ${siteConfig.shortName}`,
+  title: `Free AI Resume Builder, Cover Letters & Web Portfolios | ${siteConfig.shortName}`,
   description:
-    "Build and tailor ATS-friendly resumes, cover letters, and web portfolios instantly with advanced AI tools. Free, privacy-first, open-core, and no login required.",
+    "Build ATS-friendly resumes, targeted cover letters, and live web portfolios in minutes. Privacy-first, local-first data storage, open-core, and zero login required.",
   alternates: {
     canonical: pageUrl,
     languages: {
@@ -19,7 +30,7 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: `Free AI Resumes, Cover Letters & Portfolios | ${siteConfig.shortName}`,
+    title: `Free AI Resumes, Cover Letters & Web Portfolios | ${siteConfig.shortName}`,
     description:
       "Create professional resumes, cover letters, and web portfolios in minutes with VeriWorkly's privacy-first AI tools. Free, open-core, and no signup required. Customize professional templates, sync dynamic sections with AI tailoring, and publish instantly.",
     url: pageUrl,
@@ -30,16 +41,16 @@ export const metadata: Metadata = {
         url: pageOgImage,
         width: 1200,
         height: 630,
-        alt: `${siteConfig.shortName} Document & Portfolio Platform`,
+        alt: `${siteConfig.shortName} Resume, Cover Letter & Web Portfolio Platform`,
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: `Free AI Resumes, Cover Letters & Portfolios | ${siteConfig.shortName}`,
+    title: `Free AI Resumes, Cover Letters & Web Portfolios | ${siteConfig.shortName}`,
     description:
-      "Build ATS-friendly resumes, cover letters, and custom portfolios instantly with private AI assistance. No signup required. Open-core and privacy-first.",
+      "Build ATS-friendly resumes, cover letters, and custom web portfolios instantly with private AI assistance. No signup required. Open-core and privacy-first.",
     images: [pageOgImage],
   },
 };
@@ -59,25 +70,66 @@ const Home = () => {
             description:
               "Free-to-use privacy-first career workspace with AI resume builder, AI cover letter writer, and AI portfolio builder.",
             url: siteConfig.url,
-            offers: {
-              "@type": "Offer",
-              price: "0",
-              priceCurrency: "USD",
-            },
+            offers: [
+              {
+                "@type": "Offer",
+                name: "Free Tier",
+                price: "0",
+                priceCurrency: "USD",
+                description:
+                  "Unlimited local resumes, cover letters, and PDF exports without login.",
+              },
+              {
+                "@type": "Offer",
+                name: "3-Day Sprint Pass",
+                price: "2.99",
+                priceCurrency: "USD",
+                description: "3 days of Portfolio Pro hosting + 150 AI writing credits.",
+              },
+              {
+                "@type": "Offer",
+                name: "7-Day Hunt Pass",
+                price: "5.99",
+                priceCurrency: "USD",
+                description: "7 days of Portfolio Pro hosting + 400 AI writing credits.",
+              },
+            ],
             creator: {
-              "@type": "Person",
-              name: "Gautam Raj",
+              "@type": "Organization",
+              name: "VeriWorkly",
+              url: siteConfig.url,
+              founder: {
+                "@type": "Person",
+                name: "Gautam Raj",
+              },
             },
             featureList: [
               "ATS-friendly AI resume builder & tailoring",
               "AI cover letter generator",
-              "AI portfolio publisher with custom subdomains",
-              "No login required",
+              "Live web portfolio publisher with custom subdomains",
+              "No login required & local-first storage",
               "Open-core platform",
-              "Privacy-first & local-first",
               "GitHub & LinkedIn data imports",
               "Master Profile dynamic synchronization",
             ],
+          }),
+        }}
+      />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "VeriWorkly",
+            url: siteConfig.url,
+            logo: `${siteConfig.url}/icon1.png`,
+            founder: {
+              "@type": "Person",
+              name: "Gautam Raj",
+            },
+            sameAs: ["https://github.com/VeriWorkly/veriworkly", "https://twitter.com/VeriWorkly"],
           }),
         }}
       />
@@ -106,34 +158,34 @@ const Home = () => {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "HowTo",
-            name: "How to Create a Professional Resume with VeriWorkly",
+            name: "How to Build an ATS Resume & Web Portfolio with VeriWorkly",
             description:
-              "Learn how to build a professional, ATS-friendly resume in 4 simple steps without signing up.",
+              "Learn how to build a professional, ATS-friendly resume and web portfolio in 4 simple steps without signing up.",
             step: [
               {
                 "@type": "HowToStep",
                 name: "Launch the Studio",
-                text: "Visit the VeriWorkly Resume Studio at app.veriworkly.com.",
+                text: "Open the VeriWorkly Studio editor at app.veriworkly.com.",
                 url: "https://app.veriworkly.com",
               },
               {
                 "@type": "HowToStep",
                 name: "Choose a Template",
-                text: "Select one of our professional, ATS-optimized resume templates.",
+                text: "Select an ATS-optimized resume template or developer web portfolio layout.",
                 url: "https://veriworkly.com/templates",
               },
               {
                 "@type": "HowToStep",
-                name: "Enter Your Information",
-                text: "Fill in your personal details, experience, education, and skills. Changes are previewed in real-time.",
+                name: "Enter Your Experience",
+                text: "Fill in your details or import experience from LinkedIn/GitHub straight into your Master Profile.",
               },
               {
                 "@type": "HowToStep",
-                name: "Export and Download",
-                text: "Download your resume as a professional PDF instantly. No login required.",
+                name: "Export PDF or Publish Portfolio",
+                text: "Download your resume as an ATS PDF instantly or publish your web portfolio to a custom subdomain.",
               },
             ],
-            totalTime: "PT10M",
+            totalTime: "PT5M",
             estimatedCost: {
               "@type": "HowToSupply",
               name: "Free",
@@ -143,16 +195,16 @@ const Home = () => {
       />
 
       <HeroHeader />
-
-      <section className="sr-only">
-        <h2>Free ATS-Friendly Resume Builder</h2>
-
-        <p>
-          VeriWorkly helps you create professional ATS-friendly resumes without requiring signup or
-          login. Choose modern resume templates, customize your resume easily, and export
-          ready-to-use resumes for job applications.
-        </p>
-      </section>
+      <BrandTrust />
+      <MetricsProofBar />
+      <GaplessBento />
+      <TemplateShowcase />
+      <InteractiveProcess />
+      <DocumentPortfolioSwitcher />
+      <PrivacyWhyUs />
+      <ComparisonMatrix />
+      <PremiumFAQ />
+      <InteractiveCTA />
     </>
   );
 };

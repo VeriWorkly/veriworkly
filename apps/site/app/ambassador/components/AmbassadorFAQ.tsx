@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Minus } from "lucide-react";
+import { siteConfig } from "@/config/site";
 
 type FAQItem = {
   question: string;
@@ -83,10 +84,10 @@ export function AmbassadorFAQ() {
               Direct Support
             </span>
             <a
-              href="mailto:info@veriworkly.com"
+              href={`mailto:${siteConfig.email}`}
               className="hover:text-indigo-650 font-mono text-xs font-bold text-zinc-900 underline transition-colors dark:text-white dark:hover:text-indigo-400"
             >
-              info@veriworkly.com
+              {siteConfig.email}
             </a>
           </div>
         </div>

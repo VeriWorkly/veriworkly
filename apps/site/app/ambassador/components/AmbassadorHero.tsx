@@ -5,10 +5,11 @@ import { ArrowRight, Sparkles, Award, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
 import { TextRotate } from "@/components/ui/text-rotate";
+import { siteConfig } from "@/config/site";
 
 export function AmbassadorHero() {
   return (
-    <section className="ambassador-bg-noise relative flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden pt-24 pb-20 md:overflow-visible">
+    <section className="ambassador-bg-noise relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden pt-24 pb-20 md:overflow-visible">
       {/* Floating Parallax Container (pointer-events-none so mouse passes through to click elements behind) */}
       <Floating sensitivity={-0.5} className="pointer-events-none h-full select-none">
         {/* Floating Element 1: Student photo */}
@@ -16,7 +17,7 @@ export function AmbassadorHero() {
           <motion.img
             src="https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=350&auto=format&fit=crop"
             alt="Student Coder"
-            className="h-16 w-20 -rotate-[6deg] cursor-pointer rounded-2xl border border-zinc-200/50 object-cover shadow-2xl transition-transform duration-200 hover:scale-105 sm:h-20 sm:w-28 md:h-24 md:w-32 lg:h-28 lg:w-36 dark:border-white/10"
+            className="h-16 w-20 -rotate-6 cursor-pointer rounded-2xl border border-zinc-200/50 object-cover shadow-2xl transition-transform duration-200 hover:scale-105 sm:h-20 sm:w-28 md:h-24 md:w-32 lg:h-28 lg:w-36 dark:border-white/10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
@@ -54,7 +55,7 @@ export function AmbassadorHero() {
         {/* Floating Element 3: Verified student card */}
         <FloatingElement depth={0.4} className="top-[78%] left-[2%] z-10 md:top-[68%] md:left-[6%]">
           <motion.div
-            className="glass-card flex w-40 -rotate-[10deg] flex-col justify-between rounded-[22px] border border-zinc-200/60 p-4 shadow-2xl md:w-52 dark:border-white/10"
+            className="glass-card flex w-40 rotate-[-10deg] flex-col justify-between rounded-[22px] border border-zinc-200/60 p-4 shadow-2xl md:w-52 dark:border-white/10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9 }}
@@ -82,7 +83,7 @@ export function AmbassadorHero() {
           className="top-[82%] left-[78%] z-15 md:top-[74%] md:left-[80%]"
         >
           <motion.div
-            className="glass-card flex w-32 rotate-[12deg] items-center gap-3 rounded-xl border border-zinc-200/50 p-3.5 shadow-xl md:w-40 dark:border-white/10"
+            className="glass-card flex w-32 rotate-12 items-center gap-3 rounded-xl border border-zinc-200/50 p-3.5 shadow-xl md:w-40 dark:border-white/10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.1 }}
@@ -118,7 +119,7 @@ export function AmbassadorHero() {
       </Floating>
 
       {/* Main Content - Centered & Spacious */}
-      <div className="pointer-events-auto z-20 mt-6 flex w-full max-w-[280px] flex-col items-center justify-center px-6 text-center select-none sm:max-w-[450px] md:mt-0 md:max-w-[700px] lg:max-w-[900px]">
+      <div className="pointer-events-auto z-20 mt-6 flex w-full max-w-70 flex-col items-center justify-center px-6 text-center select-none sm:max-w-112.5 md:mt-0 md:max-w-175 lg:max-w-225">
         {/* Eyebrow */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -190,7 +191,7 @@ export function AmbassadorHero() {
           className="mt-8 flex w-full flex-col items-center justify-center gap-4 sm:mt-12 sm:w-auto sm:flex-row"
         >
           <Link
-            href="https://app.veriworkly.com/ambassador"
+            href={`${siteConfig.links.app}/ambassador`}
             className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-zinc-950/10 bg-zinc-950 px-8 py-4 text-xs font-black tracking-wider text-white uppercase shadow-lg transition-all hover:bg-zinc-900 active:scale-[0.98] sm:w-auto dark:border-white/20 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
           >
             Join Campus Crew

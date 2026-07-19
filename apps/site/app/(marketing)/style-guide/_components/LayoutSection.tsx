@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Layout as LayoutIcon } from "lucide-react";
 
 import { Card, Button } from "@veriworkly/ui";
+import { siteConfig } from "@/config/site";
 
 import { SectionHeader } from "./SectionHeader";
 
@@ -48,7 +49,7 @@ export const LayoutSection = () => {
         </Button>
 
         <Button asChild variant="secondary">
-          <Link href="https://docs.veriworkly.com">Read Docs</Link>
+          <Link href={siteConfig.links.docs}>Read Docs</Link>
         </Button>
       </div>
     </section>

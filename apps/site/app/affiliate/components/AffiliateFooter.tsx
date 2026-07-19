@@ -4,16 +4,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { MessageSquare } from "lucide-react";
 import { TwitterXIcon, GithubIcon, LinkedInIcon } from "@veriworkly/ui";
+import { siteConfig } from "@/config/site";
 
 export function AffiliateFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="mt-24 w-full px-6 pb-12">
-      <div className="dark:border-zinc-850 relative mx-auto max-w-7xl overflow-hidden rounded-[32px] border border-zinc-200/60 bg-white/60 p-10 shadow-sm backdrop-blur-md md:p-16 dark:bg-zinc-900/30">
-        <div className="pointer-events-none absolute top-0 right-0 h-80 w-80 rounded-full bg-gradient-to-bl from-blue-500/5 to-transparent blur-3xl" />
+      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-4xl border border-zinc-200/60 bg-white/60 p-10 shadow-sm backdrop-blur-md md:p-16 dark:border-zinc-800 dark:bg-zinc-900/30">
+        <div className="pointer-events-none absolute top-0 right-0 h-80 w-80 rounded-full bg-linear-to-bl from-blue-500/5 to-transparent blur-3xl" />
 
-        <div className="dark:border-zinc-805/40 grid gap-12 border-b border-zinc-200/60 pb-12 lg:grid-cols-12">
+        <div className="grid gap-12 border-b border-zinc-200/60 pb-12 lg:grid-cols-12 dark:border-zinc-800/40">
           <div className="space-y-6 lg:col-span-5">
             <Link href="/" className="flex items-center gap-2.5">
               <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-zinc-200/10">
@@ -36,7 +37,7 @@ export function AffiliateFooter() {
           </div>
 
           <div className="flex items-center justify-start lg:col-span-7 lg:justify-end">
-            <div className="dark:border-zinc-850 text-muted-foreground flex w-fit items-center gap-2 rounded-full border border-zinc-200/50 bg-zinc-50 px-4 py-1.5 text-[10px] font-bold shadow-sm dark:bg-zinc-950/60">
+            <div className="text-muted-foreground flex w-fit items-center gap-2 rounded-full border border-zinc-200/50 bg-zinc-50 px-4 py-1.5 text-[10px] font-bold shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60">
               <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
               <span>Operational</span>
             </div>
@@ -51,7 +52,7 @@ export function AffiliateFooter() {
             <ul className="text-muted-foreground space-y-2.5 text-xs">
               <li>
                 <Link
-                  href="https://app.veriworkly.com"
+                  href={siteConfig.links.app}
                   className="hover:text-foreground transition-colors"
                 >
                   Resume Builder
@@ -59,7 +60,7 @@ export function AffiliateFooter() {
               </li>
               <li>
                 <Link
-                  href="https://app.veriworkly.com/portfolio"
+                  href={`${siteConfig.links.app}/portfolio`}
                   className="hover:text-foreground transition-colors"
                 >
                   Portfolio Builder
@@ -141,7 +142,7 @@ export function AffiliateFooter() {
             <ul className="text-muted-foreground space-y-2.5 text-xs">
               <li>
                 <Link
-                  href="https://twitter.com/veriworkly"
+                  href={siteConfig.links.twitter}
                   target="_blank"
                   className="hover:text-foreground flex items-center gap-2 transition-colors"
                 >
@@ -151,7 +152,7 @@ export function AffiliateFooter() {
               </li>
               <li>
                 <Link
-                  href="https://github.com/veriworkly"
+                  href={siteConfig.links.github}
                   target="_blank"
                   className="hover:text-foreground flex items-center gap-2 transition-colors"
                 >
@@ -161,7 +162,7 @@ export function AffiliateFooter() {
               </li>
               <li>
                 <Link
-                  href="https://linkedin.com/company/veriworkly"
+                  href={siteConfig.links.linkedin}
                   target="_blank"
                   className="hover:text-foreground flex items-center gap-2 transition-colors"
                 >

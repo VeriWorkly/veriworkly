@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUp } from "lucide-react";
+import { siteConfig } from "@/config/site";
 export function AmbassadorFooter() {
   const currentYear = new Date().getFullYear();
 
@@ -44,7 +45,7 @@ export function AmbassadorFooter() {
     <footer className="bg-background text-zinc-550 relative w-full overflow-hidden border-t border-zinc-200/80 pt-24 pb-12 text-xs transition-colors duration-300 dark:border-white/10 dark:text-zinc-400">
       {/* Giant Background Watermark Text (Faint display watermark spanning the bottom behind other layers) */}
       <div className="pointer-events-none absolute bottom-0 left-1/2 z-0 w-full -translate-x-1/2 overflow-hidden text-center select-none">
-        <span className="block translate-y-[20%] text-[12vw] leading-none font-black tracking-tighter text-zinc-950/[0.02] uppercase dark:text-white/[0.015]">
+        <span className="block translate-y-[20%] text-[12vw] leading-none font-black tracking-tighter text-zinc-950/2 uppercase dark:text-white/1.5">
           VeriWorkly
         </span>
       </div>
@@ -79,7 +80,7 @@ export function AmbassadorFooter() {
             {/* Social Icons */}
             <div className="flex gap-4">
               <a
-                href="https://github.com/veriworkly"
+                href={siteConfig.links.github}
                 target="_blank"
                 rel="noreferrer"
                 className="text-zinc-400 transition-colors duration-200 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-white"
@@ -90,7 +91,7 @@ export function AmbassadorFooter() {
                 </svg>
               </a>
               <a
-                href="https://linkedin.com/company/veriworkly"
+                href={siteConfig.links.linkedin}
                 target="_blank"
                 rel="noreferrer"
                 className="dark:text-zinc-505 text-zinc-400 transition-colors duration-200 hover:text-zinc-900 dark:hover:text-white"
@@ -101,7 +102,7 @@ export function AmbassadorFooter() {
                 </svg>
               </a>
               <a
-                href="https://twitter.com/veriworkly"
+                href={siteConfig.links.twitter}
                 target="_blank"
                 rel="noreferrer"
                 className="dark:text-zinc-505 text-zinc-400 transition-colors duration-200 hover:text-zinc-900 dark:hover:text-white"

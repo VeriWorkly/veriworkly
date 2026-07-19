@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Component, ArrowRight, CheckCircle2, Info, AlertTriangle } from "lucide-react";
 
 import { Card, Button, Badge } from "@veriworkly/ui";
+import { siteConfig } from "@/config/site";
 
 import { SectionHeader } from "./SectionHeader";
 
@@ -59,7 +60,7 @@ export const ComponentsSection = () => {
             </Link>
 
             <Link
-              href="https://blog.veriworkly.com"
+              href={siteConfig.links.blog}
               className="flex items-center gap-2 text-sm font-medium hover:underline"
             >
               Visit Blog
