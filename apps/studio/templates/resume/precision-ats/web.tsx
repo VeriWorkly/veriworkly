@@ -20,6 +20,7 @@ import {
   getProjectTitle,
   getResumeRenderModel,
   getResumeRenderStyle,
+  hasCustomSectionContent,
   hasCustomItemContent,
   hasResumeSectionContent,
   normalizeLinkHref,
@@ -66,8 +67,12 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
     visibleEducation,
     visibleProjects,
     visibleSkills,
-    visibleCustomSections,
   } = getResumeRenderModel(resume);
+
+  const sortedSections = [...resume.sections]
+    .filter((s) => s.id !== "basics" && s.id !== "links" && s.visible !== false)
+    .sort((a, b) => a.order - b.order);
+
   const pagePadding = Math.max(24, style.pagePadding * 0.85);
 
   return (
@@ -153,150 +158,162 @@ export const CompactAtsWeb: React.FC<TemplateRenderProps> = ({ resume }) => {
           )}
         </header>
       )}
+      {sortedSections.map((section) => {
+        switch (section.id) {
+          case "summary":
+            if (!hasResumeSectionContent(resume, "summary")) return null;
+            return (
+              <Section key={section.id} title="Summary" resume={resume}>
+                <p>{cleanResumeText(resume.summary)}</p>
+              </Section>
+            );
 
-      {hasResumeSectionContent(resume, "summary") && (
-        <Section title="Summary" resume={resume}>
-          <p>{cleanResumeText(resume.summary)}</p>
-        </Section>
-      )}
-
-      {hasResumeSectionContent(resume, "experience") && (
-        <Section title="Experience" resume={resume}>
-          {visibleExperience.map((item) => (
-            <article key={item.id} className="break-inside-avoid space-y-1">
-              <div className="flex justify-between gap-4">
-                <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
-                  {cleanResumeText(item.role) || "Role"}
-                </h3>
-                <p className="shrink-0 text-xs" style={{ color: style.mutedTextColor }}>
-                  {formatDateRange(item.startDate, item.endDate, item.current)}
-                </p>
-              </div>
-              <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
-                {[cleanResumeText(item.company), cleanResumeText(item.location)]
-                  .filter(Boolean)
-                  .join(" | ")}
-              </p>
-              {item.summary && <p>{cleanResumeText(item.summary)}</p>}
-              {item.highlights.length > 0 && (
-                <ul className="list-disc space-y-0.5 pl-5">
-                  {item.highlights.map((highlight, index) => (
-                    <li key={index}>{cleanResumeText(highlight)}</li>
-                  ))}
-                </ul>
-              )}
-            </article>
-          ))}
-        </Section>
-      )}
-
-      {hasResumeSectionContent(resume, "education") && (
-        <Section title="Education" resume={resume}>
-          {visibleEducation.map((item) => (
-            <article key={item.id} className="break-inside-avoid space-y-1">
-              <div className="flex justify-between gap-4">
-                <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
-                  {getEducationTitle(item) || "Education"}
-                </h3>
-                <p className="shrink-0 text-xs" style={{ color: style.mutedTextColor }}>
-                  {getEducationMeta(item)}
-                </p>
-              </div>
-              {item.summary && <p>{cleanResumeText(item.summary)}</p>}
-            </article>
-          ))}
-        </Section>
-      )}
-
-      {hasResumeSectionContent(resume, "projects") && (
-        <Section title="Projects" resume={resume}>
-          {visibleProjects.map((item) => (
-            <article key={item.id} className="break-inside-avoid space-y-1">
-              <div className="flex justify-between gap-4">
-                <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
-                  {getProjectTitle(item) || "Project"}
-                </h3>
-                {normalizeLinkHref(item.link) && (
-                  <a
-                    className="shrink-0 text-xs"
-                    href={normalizeLinkHref(item.link)}
-                    style={{ color: style.mutedTextColor }}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {getProjectLinkText(item)}
-                  </a>
-                )}
-              </div>
-              {item.skills?.length > 0 && (
-                <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
-                  {item.skills
-                    .map((skill) => cleanResumeText(skill))
-                    .filter(Boolean)
-                    .join(", ")}
-                </p>
-              )}
-              {item.summary && <p>{cleanResumeText(item.summary)}</p>}
-              {item.highlights.length > 0 && (
-                <ul className="list-disc space-y-0.5 pl-5">
-                  {item.highlights.map((highlight, index) => (
-                    <li key={index}>{cleanResumeText(highlight)}</li>
-                  ))}
-                </ul>
-              )}
-            </article>
-          ))}
-        </Section>
-      )}
-
-      {hasResumeSectionContent(resume, "skills") && (
-        <Section title="Skills" resume={resume}>
-          {visibleSkills.map((skill) => (
-            <p key={skill.id || skill.name}>
-              <strong>{cleanResumeText(skill.name)}:</strong>{" "}
-              {skill.keywords
-                .map((keyword) => cleanResumeText(keyword))
-                .filter(Boolean)
-                .join(", ")}
-            </p>
-          ))}
-        </Section>
-      )}
-
-      {visibleCustomSections.map((section) => (
-        <Section key={section.id} title={cleanResumeText(section.title)} resume={resume}>
-          {section.items.filter(hasCustomItemContent).map((item) => (
-            <article key={item.id} className="break-inside-avoid space-y-1">
-              <div className="flex justify-between gap-4">
-                <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
-                  {cleanResumeText(item.name) || "Item"}
-                </h3>
-                {item.date && (
-                  <p className="shrink-0 text-xs" style={{ color: style.mutedTextColor }}>
-                    {cleanResumeText(item.date)}
+          case "experience":
+            if (!hasResumeSectionContent(resume, "experience")) return null;
+            return (
+              <Section key={section.id} title="Experience" resume={resume}>
+                {visibleExperience.map((item) => (
+                  <article key={item.id} className="break-inside-avoid space-y-1">
+                    <div className="flex justify-between gap-4">
+                      <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
+                        {cleanResumeText(item.role) || "Role"}
+                      </h3>
+                      <p className="shrink-0 text-xs" style={{ color: style.mutedTextColor }}>
+                        {formatDateRange(item.startDate, item.endDate, item.current)}
+                      </p>
+                    </div>
+                    <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
+                      {[cleanResumeText(item.company), cleanResumeText(item.location)]
+                        .filter(Boolean)
+                        .join(" | ")}
+                    </p>
+                    {item.summary && <p>{cleanResumeText(item.summary)}</p>}
+                    {item.highlights.length > 0 && (
+                      <ul className="list-disc space-y-0.5 pl-5">
+                        {item.highlights.map((highlight, index) => (
+                          <li key={index}>{cleanResumeText(highlight)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+                ))}
+              </Section>
+            );
+          case "education":
+            if (!hasResumeSectionContent(resume, "education")) return null;
+            return (
+              <Section key={section.id} title="Education" resume={resume}>
+                {visibleEducation.map((item) => (
+                  <article key={item.id} className="break-inside-avoid space-y-1">
+                    <div className="flex justify-between gap-4">
+                      <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
+                        {getEducationTitle(item) || "Education"}
+                      </h3>
+                      <p className="shrink-0 text-xs" style={{ color: style.mutedTextColor }}>
+                        {getEducationMeta(item)}
+                      </p>
+                    </div>
+                    {item.summary && <p>{cleanResumeText(item.summary)}</p>}
+                  </article>
+                ))}
+              </Section>
+            );
+          case "projects":
+            if (!hasResumeSectionContent(resume, "projects")) return null;
+            return (
+              <Section key={section.id} title="Projects" resume={resume}>
+                {visibleProjects.map((item) => (
+                  <article key={item.id} className="break-inside-avoid space-y-1">
+                    <div className="flex justify-between gap-4">
+                      <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
+                        {getProjectTitle(item) || "Project"}
+                      </h3>
+                      {normalizeLinkHref(item.link) && (
+                        <a
+                          className="shrink-0 text-xs"
+                          href={normalizeLinkHref(item.link)}
+                          style={{ color: style.mutedTextColor }}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {getProjectLinkText(item)}
+                        </a>
+                      )}
+                    </div>
+                    {item.skills?.length > 0 && (
+                      <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
+                        {item.skills
+                          .map((skill) => cleanResumeText(skill))
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
+                    {item.summary && <p>{cleanResumeText(item.summary)}</p>}
+                    {item.highlights.length > 0 && (
+                      <ul className="list-disc space-y-0.5 pl-5">
+                        {item.highlights.map((highlight, index) => (
+                          <li key={index}>{cleanResumeText(highlight)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+                ))}
+              </Section>
+            );
+          case "skills":
+            if (!hasResumeSectionContent(resume, "skills")) return null;
+            return (
+              <Section key={section.id} title="Skills" resume={resume}>
+                {visibleSkills.map((skill) => (
+                  <p key={skill.id || skill.name}>
+                    <strong>{cleanResumeText(skill.name)}:</strong>{" "}
+                    {skill.keywords
+                      .map((keyword) => cleanResumeText(keyword))
+                      .filter(Boolean)
+                      .join(", ")}
                   </p>
-                )}
-              </div>
-              {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean).length >
-                0 && (
-                <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
-                  {[cleanResumeText(item.issuer), cleanResumeText(item.link)]
-                    .filter(Boolean)
-                    .join(" | ")}
-                </p>
-              )}
-              {item.description && <p>{cleanResumeText(item.description)}</p>}
-              {item.details.length > 0 && (
-                <ul className="list-disc space-y-0.5 pl-5">
-                  {item.details.map((detail, index) => (
-                    <li key={index}>{cleanResumeText(detail)}</li>
-                  ))}
-                </ul>
-              )}
-            </article>
-          ))}
-        </Section>
-      ))}
+                ))}
+              </Section>
+            );
+          default:
+            const customSec = resume.customSections.find((cs) => cs.kind === section.id);
+            if (!customSec || !hasCustomSectionContent(customSec)) return null;
+            return (
+              <Section key={section.id} title={cleanResumeText(customSec.title)} resume={resume}>
+                {customSec.items.filter(hasCustomItemContent).map((item) => (
+                  <article key={item.id} className="break-inside-avoid space-y-1">
+                    <div className="flex justify-between gap-4">
+                      <h3 className="font-bold" style={{ color: style.sectionHeadingColor }}>
+                        {cleanResumeText(item.name) || "Item"}
+                      </h3>
+                      {item.date && (
+                        <p className="shrink-0 text-xs" style={{ color: style.mutedTextColor }}>
+                          {cleanResumeText(item.date)}
+                        </p>
+                      )}
+                    </div>
+                    {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean)
+                      .length > 0 && (
+                      <p className="text-xs font-semibold" style={{ color: style.mutedTextColor }}>
+                        {[cleanResumeText(item.issuer), cleanResumeText(item.link)]
+                          .filter(Boolean)
+                          .join(" | ")}
+                      </p>
+                    )}
+                    {item.description && <p>{cleanResumeText(item.description)}</p>}
+                    {item.details.length > 0 && (
+                      <ul className="list-disc space-y-0.5 pl-5">
+                        {item.details.map((detail, index) => (
+                          <li key={index}>{cleanResumeText(detail)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+                ))}
+              </Section>
+            );
+        }
+      })}
     </div>
   );
 };

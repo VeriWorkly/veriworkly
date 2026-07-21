@@ -22,6 +22,7 @@ import {
   getResumeRenderModel,
   getResumeRenderStyle,
   hasCustomItemContent,
+  hasCustomSectionContent,
   hasResumeSectionContent,
   normalizeLinkHref,
 } from "@/features/documents/rendering/resume-rendering";
@@ -210,8 +211,11 @@ export function CompactAtsPdf({ resume }: PdfTemplateProps) {
     visibleEducation,
     visibleProjects,
     visibleSkills,
-    visibleCustomSections,
   } = getResumeRenderModel(resume);
+
+  const sortedSections = [...resume.sections]
+    .filter((s) => s.id !== "basics" && s.id !== "links" && s.visible !== false)
+    .sort((a, b) => a.order - b.order);
 
   return (
     <Document title={`${cleanResumeText(resume.basics.fullName) || "Resume"} - Resume`}>
@@ -279,115 +283,145 @@ export function CompactAtsPdf({ resume }: PdfTemplateProps) {
           </View>
         )}
 
-        {hasResumeSectionContent(resume, "summary") && (
-          <SectionBlock title="Summary" styles={styles}>
-            <Text style={styles.body}>{cleanResumeText(resume.summary)}</Text>
-          </SectionBlock>
-        )}
+        {sortedSections.map((section) => {
+          switch (section.id) {
+            case "summary":
+              if (!hasResumeSectionContent(resume, "summary")) return null;
+              return (
+                <SectionBlock key={section.id} title="Summary" styles={styles}>
+                  <Text style={styles.body}>{cleanResumeText(resume.summary)}</Text>
+                </SectionBlock>
+              );
 
-        {hasResumeSectionContent(resume, "experience") && (
-          <SectionBlock title="Experience" styles={styles}>
-            {visibleExperience.map((item) => (
-              <View key={item.id} style={styles.item} wrap={false}>
-                <View style={styles.itemHead}>
-                  <Text style={styles.itemTitle}>{cleanResumeText(item.role) || "Role"}</Text>
-                  <Text style={styles.meta}>
-                    {formatDateRange(item.startDate, item.endDate, item.current)}
-                  </Text>
-                </View>
-                <Text style={styles.meta}>
-                  {[cleanResumeText(item.company), cleanResumeText(item.location)]
-                    .filter(Boolean)
-                    .join(" | ")}
-                </Text>
-                {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
-                <BulletList items={item.highlights} styles={styles} />
-              </View>
-            ))}
-          </SectionBlock>
-        )}
+            case "experience":
+              if (!hasResumeSectionContent(resume, "experience")) return null;
+              return (
+                <SectionBlock key={section.id} title="Experience" styles={styles}>
+                  {visibleExperience.map((item) => (
+                    <View key={item.id} style={styles.item} wrap={false}>
+                      <View style={styles.itemHead}>
+                        <Text style={styles.itemTitle}>{cleanResumeText(item.role) || "Role"}</Text>
+                        <Text style={styles.meta}>
+                          {formatDateRange(item.startDate, item.endDate, item.current)}
+                        </Text>
+                      </View>
+                      <Text style={styles.meta}>
+                        {[cleanResumeText(item.company), cleanResumeText(item.location)]
+                          .filter(Boolean)
+                          .join(" | ")}
+                      </Text>
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
+                      <BulletList items={item.highlights} styles={styles} />
+                    </View>
+                  ))}
+                </SectionBlock>
+              );
 
-        {hasResumeSectionContent(resume, "education") && (
-          <SectionBlock title="Education" styles={styles}>
-            {visibleEducation.map((item) => (
-              <View key={item.id} style={styles.item} wrap={false}>
-                <View style={styles.itemHead}>
-                  <Text style={styles.itemTitle}>{getEducationTitle(item) || "Education"}</Text>
-                  <Text style={styles.meta}>{getEducationMeta(item)}</Text>
-                </View>
-                {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
-              </View>
-            ))}
-          </SectionBlock>
-        )}
+            case "education":
+              if (!hasResumeSectionContent(resume, "education")) return null;
+              return (
+                <SectionBlock key={section.id} title="Education" styles={styles}>
+                  {visibleEducation.map((item) => (
+                    <View key={item.id} style={styles.item} wrap={false}>
+                      <View style={styles.itemHead}>
+                        <Text style={styles.itemTitle}>
+                          {getEducationTitle(item) || "Education"}
+                        </Text>
+                        <Text style={styles.meta}>{getEducationMeta(item)}</Text>
+                      </View>
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
+                    </View>
+                  ))}
+                </SectionBlock>
+              );
 
-        {hasResumeSectionContent(resume, "projects") && (
-          <SectionBlock title="Projects" styles={styles}>
-            {visibleProjects.map((item) => (
-              <View key={item.id} style={styles.item} wrap={false}>
-                <View style={styles.itemHead}>
-                  <Text style={styles.itemTitle}>{getProjectTitle(item) || "Project"}</Text>
-                  {normalizeLinkHref(item.link) && (
-                    <Link src={normalizeLinkHref(item.link)} style={styles.link}>
-                      {getProjectLinkText(item)}
-                    </Link>
-                  )}
-                </View>
-                {item.skills?.length > 0 && (
-                  <Text style={styles.meta}>
-                    {item.skills
-                      .map((skill) => cleanResumeText(skill))
-                      .filter(Boolean)
-                      .join(", ")}
-                  </Text>
-                )}
-                {item.summary && <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>}
-                <BulletList items={item.highlights} styles={styles} />
-              </View>
-            ))}
-          </SectionBlock>
-        )}
+            case "projects":
+              if (!hasResumeSectionContent(resume, "projects")) return null;
+              return (
+                <SectionBlock key={section.id} title="Projects" styles={styles}>
+                  {visibleProjects.map((item) => (
+                    <View key={item.id} style={styles.item} wrap={false}>
+                      <View style={styles.itemHead}>
+                        <Text style={styles.itemTitle}>{getProjectTitle(item) || "Project"}</Text>
+                        {normalizeLinkHref(item.link) && (
+                          <Link src={normalizeLinkHref(item.link)} style={styles.link}>
+                            {getProjectLinkText(item)}
+                          </Link>
+                        )}
+                      </View>
+                      {item.skills?.length > 0 && (
+                        <Text style={styles.meta}>
+                          {item.skills
+                            .map((skill) => cleanResumeText(skill))
+                            .filter(Boolean)
+                            .join(", ")}
+                        </Text>
+                      )}
+                      {item.summary && (
+                        <Text style={styles.body}>{cleanResumeText(item.summary)}</Text>
+                      )}
+                      <BulletList items={item.highlights} styles={styles} />
+                    </View>
+                  ))}
+                </SectionBlock>
+              );
 
-        {hasResumeSectionContent(resume, "skills") && (
-          <SectionBlock title="Skills" styles={styles}>
-            {visibleSkills.map((skill) => (
-              <View key={skill.id || skill.name} style={styles.skillRow}>
-                <Text style={styles.strong}>{cleanResumeText(skill.name)}: </Text>
-                <Text style={styles.body}>
-                  {skill.keywords
-                    .map((keyword) => cleanResumeText(keyword))
-                    .filter(Boolean)
-                    .join(", ")}
-                </Text>
-              </View>
-            ))}
-          </SectionBlock>
-        )}
+            case "skills":
+              if (!hasResumeSectionContent(resume, "skills")) return null;
+              return (
+                <SectionBlock key={section.id} title="Skills" styles={styles}>
+                  {visibleSkills.map((skill) => (
+                    <View key={skill.id || skill.name} style={styles.skillRow}>
+                      <Text style={styles.strong}>{cleanResumeText(skill.name)}: </Text>
+                      <Text style={styles.body}>
+                        {skill.keywords
+                          .map((keyword) => cleanResumeText(keyword))
+                          .filter(Boolean)
+                          .join(", ")}
+                      </Text>
+                    </View>
+                  ))}
+                </SectionBlock>
+              );
 
-        {visibleCustomSections.map((section) => (
-          <SectionBlock key={section.id} title={cleanResumeText(section.title)} styles={styles}>
-            {section.items.filter(hasCustomItemContent).map((item) => (
-              <View key={item.id} style={styles.item} wrap={false}>
-                <View style={styles.itemHead}>
-                  <Text style={styles.itemTitle}>{cleanResumeText(item.name) || "Item"}</Text>
-                  {item.date && <Text style={styles.meta}>{cleanResumeText(item.date)}</Text>}
-                </View>
-                {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean).length >
-                  0 && (
-                  <Text style={styles.meta}>
-                    {[cleanResumeText(item.issuer), cleanResumeText(item.link)]
-                      .filter(Boolean)
-                      .join(" | ")}
-                  </Text>
-                )}
-                {item.description && (
-                  <Text style={styles.body}>{cleanResumeText(item.description)}</Text>
-                )}
-                <BulletList items={item.details} styles={styles} />
-              </View>
-            ))}
-          </SectionBlock>
-        ))}
+            default: {
+              const customSec = resume.customSections.find((cs) => cs.kind === section.id);
+              if (!customSec || !hasCustomSectionContent(customSec)) return null;
+              return (
+                <SectionBlock
+                  key={section.id}
+                  title={cleanResumeText(customSec.title)}
+                  styles={styles}
+                >
+                  {customSec.items.filter(hasCustomItemContent).map((item) => (
+                    <View key={item.id} style={styles.item} wrap={false}>
+                      <View style={styles.itemHead}>
+                        <Text style={styles.itemTitle}>{cleanResumeText(item.name) || "Item"}</Text>
+                        {item.date && <Text style={styles.meta}>{cleanResumeText(item.date)}</Text>}
+                      </View>
+                      {[cleanResumeText(item.issuer), cleanResumeText(item.link)].filter(Boolean)
+                        .length > 0 && (
+                        <Text style={styles.meta}>
+                          {[cleanResumeText(item.issuer), cleanResumeText(item.link)]
+                            .filter(Boolean)
+                            .join(" | ")}
+                        </Text>
+                      )}
+                      {item.description && (
+                        <Text style={styles.body}>{cleanResumeText(item.description)}</Text>
+                      )}
+                      <BulletList items={item.details} styles={styles} />
+                    </View>
+                  ))}
+                </SectionBlock>
+              );
+            }
+          }
+        })}
       </Page>
     </Document>
   );

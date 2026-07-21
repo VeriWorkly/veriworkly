@@ -18,6 +18,8 @@ import { stripEmoji } from "@/features/documents/utils/strip-emoji";
 import {
   cleanResumeText,
   getResumeRenderModel,
+  hasCustomSectionContent,
+  hasResumeSectionContent,
 } from "@/features/documents/rendering/resume-rendering";
 
 function renderCustomSection(
@@ -102,14 +104,13 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
     visibleEducation,
     visibleProjects,
     visibleSkills,
-    visibleCustomSections,
     showBasics,
-    showSummary,
-    showExperience,
-    showEducation,
-    showProjects,
-    showSkills,
   } = getResumeRenderModel(resume);
+
+  const sortedSections = [...resume.sections]
+    .filter((s) => s.id !== "basics" && s.id !== "links" && s.visible !== false)
+    .sort((a, b) => a.order - b.order);
+
   const itemHeadingColor = renderStyle.sectionHeadingColor;
 
   return (
@@ -136,109 +137,136 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
         <Header basics={basics} links={links} customization={customization} sections={sections} />
       )}
 
-      {showSummary && (
-        <Section
-          title="Summary"
-          accentColor={accentColor}
-          backgroundColor={renderStyle.sectionBackgroundColor}
-          borderColor={borderColor}
-          sectionSpacing={renderStyle.sectionSpacing}
-        >
-          <p style={{ color: textColor }}>{stripEmoji(summary)}</p>
-        </Section>
-      )}
+      {sortedSections.map((section) => {
+        switch (section.id) {
+          case "summary":
+            if (!hasResumeSectionContent(resume, "summary")) return null;
+            return (
+              <Section
+                key={section.id}
+                title="Summary"
+                accentColor={accentColor}
+                backgroundColor={renderStyle.sectionBackgroundColor}
+                borderColor={borderColor}
+                sectionSpacing={renderStyle.sectionSpacing}
+              >
+                <p style={{ color: textColor }}>{stripEmoji(summary)}</p>
+              </Section>
+            );
 
-      {showExperience && (
-        <Section
-          title="Experience"
-          accentColor={accentColor}
-          backgroundColor={renderStyle.sectionBackgroundColor}
-          borderColor={borderColor}
-          sectionSpacing={renderStyle.sectionSpacing}
-        >
-          <div className="space-y-4">
-            {visibleExperience.map((exp) => (
-              <ExperienceItem
-                key={exp.id}
-                experience={exp}
-                headingColor={itemHeadingColor}
-                textColor={textColor}
-                mutedTextColor={mutedTextColor}
-              />
-            ))}
-          </div>
-        </Section>
-      )}
+          case "experience":
+            if (!hasResumeSectionContent(resume, "experience")) return null;
+            return (
+              <Section
+                key={section.id}
+                title="Experience"
+                accentColor={accentColor}
+                backgroundColor={renderStyle.sectionBackgroundColor}
+                borderColor={borderColor}
+                sectionSpacing={renderStyle.sectionSpacing}
+              >
+                <div className="space-y-4">
+                  {visibleExperience.map((exp) => (
+                    <ExperienceItem
+                      key={exp.id}
+                      experience={exp}
+                      headingColor={itemHeadingColor}
+                      textColor={textColor}
+                      mutedTextColor={mutedTextColor}
+                    />
+                  ))}
+                </div>
+              </Section>
+            );
 
-      {showEducation && (
-        <Section
-          title="Education"
-          accentColor={accentColor}
-          backgroundColor={renderStyle.sectionBackgroundColor}
-          borderColor={borderColor}
-          sectionSpacing={renderStyle.sectionSpacing}
-        >
-          <div className="space-y-4">
-            {visibleEducation.map((edu) => (
-              <EducationItem
-                key={edu.id}
-                education={edu}
-                headingColor={itemHeadingColor}
-                textColor={textColor}
-                mutedTextColor={mutedTextColor}
-              />
-            ))}
-          </div>
-        </Section>
-      )}
+          case "education":
+            if (!hasResumeSectionContent(resume, "education")) return null;
+            return (
+              <Section
+                key={section.id}
+                title="Education"
+                accentColor={accentColor}
+                backgroundColor={renderStyle.sectionBackgroundColor}
+                borderColor={borderColor}
+                sectionSpacing={renderStyle.sectionSpacing}
+              >
+                <div className="space-y-4">
+                  {visibleEducation.map((edu) => (
+                    <EducationItem
+                      key={edu.id}
+                      education={edu}
+                      headingColor={itemHeadingColor}
+                      textColor={textColor}
+                      mutedTextColor={mutedTextColor}
+                    />
+                  ))}
+                </div>
+              </Section>
+            );
 
-      {showProjects && (
-        <Section
-          title="Projects"
-          accentColor={accentColor}
-          backgroundColor={renderStyle.sectionBackgroundColor}
-          borderColor={borderColor}
-          sectionSpacing={renderStyle.sectionSpacing}
-        >
-          <div className="space-y-4">
-            {visibleProjects.map((project) => (
-              <ProjectItem
-                key={project.id}
-                project={project}
-                headingColor={itemHeadingColor}
-                textColor={textColor}
-                mutedTextColor={mutedTextColor}
-              />
-            ))}
-          </div>
-        </Section>
-      )}
+          case "projects":
+            if (!hasResumeSectionContent(resume, "projects")) return null;
+            return (
+              <Section
+                key={section.id}
+                title="Projects"
+                accentColor={accentColor}
+                backgroundColor={renderStyle.sectionBackgroundColor}
+                borderColor={borderColor}
+                sectionSpacing={renderStyle.sectionSpacing}
+              >
+                <div className="space-y-4">
+                  {visibleProjects.map((project) => (
+                    <ProjectItem
+                      key={project.id}
+                      project={project}
+                      headingColor={itemHeadingColor}
+                      textColor={textColor}
+                      mutedTextColor={mutedTextColor}
+                    />
+                  ))}
+                </div>
+              </Section>
+            );
 
-      {showSkills && (
-        <Section
-          title="Skills"
-          accentColor={accentColor}
-          backgroundColor={renderStyle.sectionBackgroundColor}
-          borderColor={borderColor}
-          sectionSpacing={renderStyle.sectionSpacing}
-        >
-          <div className="flex flex-wrap gap-2">
-            {visibleSkills.map((skill) => (
-              <div key={skill.id || skill.name} className="w-full text-sm leading-[inherit]">
-                <strong style={{ color: textColor }}>{cleanResumeText(skill.name)}:</strong>{" "}
-                <span style={{ color: textColor }}>
-                  {skill.keywords
-                    .map((keyword) => cleanResumeText(keyword))
-                    .filter(Boolean)
-                    .join(", ")}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
+          case "skills":
+            if (!hasResumeSectionContent(resume, "skills")) return null;
+            return (
+              <Section
+                key={section.id}
+                title="Skills"
+                accentColor={accentColor}
+                backgroundColor={renderStyle.sectionBackgroundColor}
+                borderColor={borderColor}
+                sectionSpacing={renderStyle.sectionSpacing}
+              >
+                <div className="flex flex-wrap gap-2">
+                  {visibleSkills.map((skill) => (
+                    <div key={skill.id || skill.name} className="w-full text-sm leading-[inherit]">
+                      <strong style={{ color: textColor }}>{cleanResumeText(skill.name)}:</strong>{" "}
+                      <span style={{ color: textColor }}>
+                        {skill.keywords
+                          .map((keyword) => cleanResumeText(keyword))
+                          .filter(Boolean)
+                          .join(", ")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            );
 
-      {visibleCustomSections.map((section) => renderCustomSection(section, customization))}
+          default: {
+            const customSec = resume.customSections.find((cs) => cs.kind === section.id);
+            if (!customSec || !hasCustomSectionContent(customSec)) return null;
+            return (
+              <React.Fragment key={section.id}>
+                {renderCustomSection(customSec, customization)}
+              </React.Fragment>
+            );
+          }
+        }
+      })}
     </div>
   );
 };
