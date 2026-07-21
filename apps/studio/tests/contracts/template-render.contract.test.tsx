@@ -128,6 +128,45 @@ describe("template render contract", () => {
     }
   });
 
+  it("omits custom sections when custom section is hidden", async () => {
+    const hiddenCustomResume = {
+      ...defaultResume,
+      customSections: [
+        {
+          id: "certifications-default",
+          kind: "certifications" as const,
+          title: "Certifications",
+          editableTitle: false,
+          items: [
+            {
+              id: "cert-1",
+              name: "AWS Certified Developer",
+              issuer: "Amazon",
+              date: "2024",
+              link: "",
+              referenceId: "",
+              description: "",
+              details: [],
+            },
+          ],
+        },
+      ],
+      sections: defaultResume.sections.map((section) =>
+        section.id === "certifications" ? { ...section, visible: false } : section,
+      ),
+    };
+
+    for (const template of templateRegistry) {
+      const TemplateComponent = loadTemplateComponentById(template.id);
+
+      const html = renderToStaticMarkup(
+        <TemplateComponent resume={{ ...hiddenCustomResume, templateId: template.id }} />,
+      );
+
+      expect(html).not.toContain("AWS Certified Developer");
+    }
+  });
+
   it("exports professional and veriworkly cover-letter HTML with expected content", () => {
     const content = createDefaultCoverLetter("cover-letter-contract").content;
 

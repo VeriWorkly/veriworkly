@@ -108,7 +108,7 @@ export const CleanProfessionalWeb: React.FC<TemplateRenderProps> = ({ resume }) 
   } = getResumeRenderModel(resume);
 
   const sortedSections = [...resume.sections]
-    .filter((s) => s.id !== "basics" && s.id !== "links")
+    .filter((s) => s.id !== "basics" && s.id !== "links" && s.visible !== false)
     .sort((a, b) => a.order - b.order);
 
   const itemHeadingColor = renderStyle.sectionHeadingColor;
