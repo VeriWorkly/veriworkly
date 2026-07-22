@@ -195,7 +195,7 @@ const AffiliateCalculator = () => {
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500"
+                      className="h-full rounded-full bg-linear-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500"
                       animate={{ width: `${progressPercent}%` }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
                     />

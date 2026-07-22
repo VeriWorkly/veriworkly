@@ -11,7 +11,7 @@ interface PricingComparisonProps {
 const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComparisonProps) => {
   return (
     <section className="bg-card border-border border-b py-24 lg:py-32">
-      <div className="mx-auto w-[min(1180px,calc(100%_-_32px))]">
+      <div className="mx-auto w-[min(1180px,calc(100%-32px))]">
         <div className="grid items-end gap-8 lg:grid-cols-[1.1fr_.9fr]">
           <div>
             <p className="text-accent text-xs font-bold tracking-wider uppercase">Compare access</p>
@@ -30,7 +30,7 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
           aria-label="Feature and plan comparison"
           className="border-border bg-background mt-14 overflow-x-auto rounded-3xl border"
         >
-          <div className="min-w-[840px]">
+          <div className="min-w-210">
             <div
               className="border-border bg-muted/30 text-muted grid grid-cols-[minmax(250px,1.2fr)_repeat(4,140px)] border-b px-6 py-5 text-xs font-bold tracking-wider uppercase"
               role="row"

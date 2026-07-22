@@ -83,9 +83,9 @@ const AffiliateTiers = () => {
                 y: -10,
                 boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.15)",
               }}
-              className={`flex flex-col justify-between rounded-[24px] border p-8 ${tier.style} group relative min-h-[360px] overflow-hidden transition-shadow duration-300`}
+              className={`flex flex-col justify-between rounded-3xl border p-8 ${tier.style} group relative min-h-90 overflow-hidden transition-shadow duration-300`}
             >
-              <div className="absolute top-0 right-0 left-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+              <div className="absolute top-0 right-0 left-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center justify-between">

@@ -123,7 +123,7 @@ const AffiliateComparison = () => {
                   <h4 className="text-foreground text-sm font-bold tracking-tight">
                     {row.feature}
                   </h4>
-                  <p className="text-muted-foreground max-w-[280px] text-xs leading-relaxed">
+                  <p className="text-muted-foreground max-w-70 text-xs leading-relaxed">
                     {row.description}
                   </p>
                 </div>

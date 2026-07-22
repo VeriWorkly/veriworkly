@@ -35,7 +35,7 @@ const PriceCard = ({
 }: PriceCardProps) => {
   return (
     <article
-      className={`relative flex min-h-[550px] flex-col rounded-3xl border-2 p-6 transition duration-300 hover:-translate-y-1 lg:p-7 ${
+      className={`relative flex min-h-137.5 flex-col rounded-3xl border-2 p-6 transition duration-300 hover:-translate-y-1 lg:p-7 ${
         featured
           ? "border-accent bg-accent text-accent-foreground shadow-accent/15 shadow-lg"
           : "border-border bg-card text-foreground shadow-sm"

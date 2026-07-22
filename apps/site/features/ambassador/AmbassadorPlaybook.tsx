@@ -102,7 +102,7 @@ const AmbassadorPlaybook = () => {
       ref={containerRef}
       className="bg-background relative z-25 border-b border-zinc-200/80 dark:border-white/10"
     >
-      <div className="playbook-card bg-background relative flex min-h-[100dvh] items-center justify-center px-6">
+      <div className="playbook-card bg-background relative flex min-h-dvh items-center justify-center px-6">
         <div className="max-w-xl space-y-6 text-center">
           <span className="text-indigo-650 flex items-center justify-center gap-2 text-[10px] font-black tracking-widest uppercase dark:text-indigo-400">
             <ClipboardList className="h-4 w-4" />
@@ -132,7 +132,7 @@ const AmbassadorPlaybook = () => {
         return (
           <div
             key={idx}
-            className="playbook-card bg-background relative flex min-h-[100dvh] items-center justify-center border-t border-zinc-200/80 px-6 md:px-24 dark:border-white/10"
+            className="playbook-card bg-background relative flex min-h-dvh items-center justify-center border-t border-zinc-200/80 px-6 md:px-24 dark:border-white/10"
           >
             <div className="grid w-full max-w-5xl grid-cols-1 items-center gap-12 py-16 lg:grid-cols-2 lg:gap-20">
               <div className="space-y-6 text-left">
@@ -154,11 +154,11 @@ const AmbassadorPlaybook = () => {
                 </p>
               </div>
 
-              <div className="relative flex min-h-[320px] items-center justify-center">
+              <div className="relative flex min-h-80 items-center justify-center">
                 {idx === 0 && (
                   <motion.div
                     whileHover={{ y: -4 }}
-                    className="w-full max-w-[360px] space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
+                    className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
                   >
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-zinc-550 text-[10px] font-black tracking-widest uppercase dark:text-zinc-400">
@@ -198,7 +198,7 @@ const AmbassadorPlaybook = () => {
                 {idx === 1 && (
                   <motion.div
                     whileHover={{ y: -4 }}
-                    className="w-full max-w-[360px] space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
+                    className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
                   >
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-zinc-550 text-[10px] font-black tracking-widest uppercase dark:text-zinc-400">
@@ -243,7 +243,7 @@ const AmbassadorPlaybook = () => {
                 {idx === 2 && (
                   <motion.div
                     whileHover={{ y: -4 }}
-                    className="w-full max-w-[360px] space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
+                    className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
                   >
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-zinc-550 text-[10px] font-black tracking-widest uppercase dark:text-zinc-400">
@@ -255,7 +255,7 @@ const AmbassadorPlaybook = () => {
                     </div>
 
                     <div className="space-y-4">
-                      <div className="relative flex min-h-[140px] flex-col justify-between overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-white dark:border-white/10 dark:bg-black">
+                      <div className="relative flex min-h-35 flex-col justify-between overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-white dark:border-white/10 dark:bg-black">
                         <div
                           className="absolute top-1/2 left-0 h-3.5 w-1.5 -translate-y-1/2 rounded-r-full border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
                           style={{ marginLeft: "-1px" }}

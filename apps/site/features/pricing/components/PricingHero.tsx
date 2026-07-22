@@ -36,7 +36,7 @@ const PricingHero = ({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--border)_0.8px,transparent_0.8px)] bg-size-[24px_24px] opacity-25" />
       <div className="bg-accent/12 pointer-events-none absolute top-20 -right-32 size-96 rounded-full blur-3xl" />
 
-      <div className="relative mx-auto w-[min(1180px,calc(100%_-_32px))]">
+      <div className="relative mx-auto w-[min(1180px,calc(100%-32px))]">
         <div className="grid items-end gap-12 lg:grid-cols-[1.3fr_.7fr]">
           <div>
             <div className="border-border bg-card text-accent inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold tracking-wider uppercase">

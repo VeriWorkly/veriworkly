@@ -22,7 +22,7 @@ const PricingAlaCarte = ({
 
   return (
     <section className="border-border border-b py-24 lg:py-32">
-      <div className="mx-auto grid w-[min(1180px,calc(100%_-_32px))] gap-12 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
+      <div className="mx-auto grid w-[min(1180px,calc(100%-32px))] gap-12 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
         <div>
           <div className="border-border bg-card text-accent inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold">
             <Zap className="size-3.5" /> Ala Carte
@@ -76,7 +76,7 @@ const PricingAlaCarte = ({
               </div>
             </div>
 
-            <div className="min-w-[180px]">
+            <div className="min-w-45">
               <p className="text-4xl font-bold tracking-tight">{selectedCustom.price}</p>
               <p className="text-muted mt-1 text-xs font-bold">per month</p>
               <CheckoutButton

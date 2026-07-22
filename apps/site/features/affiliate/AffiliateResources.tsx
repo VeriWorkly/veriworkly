@@ -44,7 +44,7 @@ const AffiliateResources = () => {
 
         <div className="relative flex flex-col items-center justify-between gap-8 overflow-hidden rounded-3xl border border-zinc-200/60 bg-white/40 p-8 shadow-sm backdrop-blur-md md:p-10 lg:flex-row dark:border-zinc-800 dark:bg-zinc-900/30">
           <div className="pointer-events-none absolute inset-px rounded-[23px] border border-white/40 dark:border-zinc-800/30" />
-          <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 rounded-full bg-gradient-to-bl from-blue-500/5 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 rounded-full bg-linear-to-bl from-blue-500/5 to-transparent blur-3xl" />
 
           <div className="relative z-10 w-full flex-1 space-y-6">
             <div className="flex items-center gap-3">
