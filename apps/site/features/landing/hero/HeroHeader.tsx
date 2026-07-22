@@ -81,7 +81,6 @@ export const HeroHeader = () => {
             Privacy-First Document & Portfolio Workspace
           </motion.div>
 
-          {/* HackerRank-style Typography */}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,7 +121,6 @@ export const HeroHeader = () => {
             Free forever, privacy-first, and zero login required.
           </motion.p>
 
-          {/* HackerRank-style Button with Emil's animations */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -137,14 +135,12 @@ export const HeroHeader = () => {
             </Link>
           </motion.div>
 
-          {/* Interactive Mockup Cards */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5, ease: [0.23, 1, 0.32, 1] }}
             className="pointer-events-auto relative z-20 mt-24 -mb-32 grid w-full max-w-5xl grid-cols-1 gap-6 md:grid-cols-3 lg:-mb-48"
           >
-            {/* Card 1: Resume Builder */}
             <div className="group flex flex-col justify-between rounded-4xl border border-black/5 bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-[0_8px_40px_rgba(59,130,246,0.12)] md:translate-y-8 md:hover:translate-y-6 dark:border-white/10 dark:bg-[#111]">
               <div>
                 <div className="mb-5 flex items-center justify-between">
@@ -196,7 +192,6 @@ export const HeroHeader = () => {
               </div>
             </div>
 
-            {/* Card 2: Cover Letter */}
             <div className="group flex flex-col justify-between rounded-4xl border border-black/5 bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-6 hover:shadow-[0_8px_40px_rgba(59,130,246,0.12)] md:-translate-y-4 md:hover:-translate-y-6 dark:border-white/10 dark:bg-[#111]">
               <div>
                 <div className="mb-3 flex items-center gap-2 text-left text-sm font-semibold text-gray-500">
@@ -241,7 +236,6 @@ export const HeroHeader = () => {
               </div>
             </div>
 
-            {/* Card 3: Portfolio Website */}
             <div className="group flex flex-col justify-between rounded-4xl border border-black/5 bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-[0_8px_40px_rgba(59,130,246,0.12)] md:translate-y-12 md:hover:translate-y-10 dark:border-white/10 dark:bg-[#111]">
               <div>
                 <div className="mb-6 flex items-center justify-between">
@@ -280,7 +274,6 @@ export const HeroHeader = () => {
                   <div className="text-xl font-bold text-blue-600 dark:text-blue-400">+2,405</div>
                 </div>
                 <div className="h-10 w-20 opacity-40 transition-opacity group-hover:opacity-100">
-                  {/* Simulated sparkline animated on hover */}
                   <svg
                     viewBox="0 0 100 30"
                     className="h-full w-full stroke-blue-500 drop-shadow-[0_2px_4px_rgba(59,130,246,0.3)]"
@@ -301,7 +294,6 @@ export const HeroHeader = () => {
               </div>
             </div>
 
-            {/* Card 4: AI Content Generator */}
             <div className="group flex flex-col justify-between rounded-4xl border border-black/5 bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-[0_8px_40px_rgba(59,130,246,0.12)] md:translate-y-8 md:hover:translate-y-6 dark:border-white/10 dark:bg-[#111]">
               <div>
                 <div className="mb-5 flex items-center justify-between">
@@ -341,7 +333,6 @@ export const HeroHeader = () => {
               </div>
             </div>
 
-            {/* Card 5: ATS Friendly */}
             <div className="group flex flex-col justify-between rounded-4xl border border-black/5 bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-6 hover:shadow-[0_8px_40px_rgba(59,130,246,0.12)] md:-translate-y-4 md:hover:-translate-y-6 dark:border-white/10 dark:bg-[#111]">
               <div>
                 <div className="mb-6 flex items-center justify-between">
@@ -373,7 +364,6 @@ export const HeroHeader = () => {
               </div>
             </div>
 
-            {/* Card 6: Premium Templates */}
             <div className="group flex flex-col justify-between rounded-4xl border border-black/5 bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-[0_8px_40px_rgba(59,130,246,0.12)] md:translate-y-12 md:hover:translate-y-10 dark:border-white/10 dark:bg-[#111]">
               <div>
                 <div className="mb-5 flex items-center justify-between">

@@ -57,6 +57,7 @@ next-env.d.ts
 # Agents
 .agents
 .claude
+.gemini
 skills-lock.json
 studio_audit_report.md
 server_audit_report.md

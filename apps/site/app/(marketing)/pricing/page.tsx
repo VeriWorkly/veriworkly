@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-
 import { siteConfig } from "@/config/site";
-
-import { PricingExperience } from "./pricing-experience";
+import PricingExperience from "@/features/pricing/PricingExperience";
 
 export const metadata: Metadata = {
   title: "Pricing & AI Credit Packages | VeriWorkly",
@@ -23,6 +21,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PricingPage() {
+const PricingPage = () => {
   return <PricingExperience />;
-}
+};
+
+export default PricingPage;

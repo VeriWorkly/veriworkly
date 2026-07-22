@@ -20,8 +20,8 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
   const selectedPageId = usePortfolioStore((state) => state.selectedPageId);
   const pages = usePortfolioStore((state) => state.content.pages || []);
   const rootSections = usePortfolioStore((state) => state.content.sections);
-  const sections = selectedPageId 
-    ? pages.find(p => p.id === selectedPageId)?.sections || []
+  const sections = selectedPageId
+    ? pages.find((p) => p.id === selectedPageId)?.sections || []
     : rootSections;
   const selectedSection = sections.find((section) => section.id === selectedSectionId);
   const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
@@ -117,11 +117,11 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
           />
           <div className="mt-4 border-t border-white/5 pt-4">
             <Field label="Remove 'Made by VeriWorkly' badge">
-              <label className="mt-1 flex items-center gap-3 cursor-pointer">
+              <label className="mt-1 flex cursor-pointer items-center gap-3">
                 <div className="relative inline-flex items-center">
                   <input
                     type="checkbox"
-                    className="sr-only peer"
+                    className="peer sr-only"
                     checked={content.removeWatermark ?? false}
                     disabled={!isPremiumUser}
                     onChange={(e) => {
@@ -129,12 +129,12 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
                       updateContent({ removeWatermark: e.target.checked });
                     }}
                   />
-                  <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent disabled:opacity-50"></div>
+                  <div className="peer peer-checked:bg-accent h-5 w-9 rounded-full bg-white/10 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white disabled:opacity-50"></div>
                 </div>
                 <span className="text-xs text-white/70">
                   Hide the badge from your portfolio
                   {!isPremiumUser && (
-                    <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold text-white tracking-widest uppercase">
+                    <span className="bg-accent ml-2 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-widest text-white uppercase">
                       PRO
                     </span>
                   )}

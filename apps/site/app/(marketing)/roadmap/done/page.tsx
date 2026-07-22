@@ -1,13 +1,11 @@
 import { Metadata } from "next";
-
 import { siteConfig } from "@/config/site";
-
 import {
   type RoadmapSort,
   fetchRoadmapFromBackend,
 } from "@/features/roadmap/services/roadmap-backend";
 
-import RoadmapPageShell from "../components/RoadmapPageShell";
+import RoadmapPageShell from "@/features/roadmap/components/RoadmapPageShell";
 
 export const metadata: Metadata = {
   title: `Shipped AI & Platform Features | ${siteConfig.shortName} Roadmap`,
@@ -34,7 +32,6 @@ export const metadata: Metadata = {
     ],
     type: "website",
   },
-
   twitter: {
     card: "summary_large_image",
     title: `${siteConfig.shortName} Completed Features`,
@@ -61,22 +58,24 @@ interface DoneRoadmapPageProps {
   }>;
 }
 
-export default async function DoneRoadmapPage({ searchParams }: DoneRoadmapPageProps) {
+const DoneRoadmapPage = async ({ searchParams }: DoneRoadmapPageProps) => {
   const params = await searchParams;
 
   const data = await fetchRoadmapFromBackend({
-    status: "done",
     sort: parseSort(params.sort),
+    status: "done",
     refreshSection: params.refresh === "done" ? "done" : undefined,
-  });
+  }).catch(() => null);
 
   return (
     <RoadmapPageShell
       data={data}
       activeStatus="done"
       basePath="/roadmap/done"
-      title="Roadmap: Completed Features & Updates"
-      description="Completed features with creation, completion date, and shipped quarter history."
+      title="Completed Features"
+      description="Explore all features, template improvements, and system updates that have shipped to production."
     />
   );
-}
+};
+
+export default DoneRoadmapPage;

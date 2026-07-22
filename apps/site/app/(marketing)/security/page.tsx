@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import { ArrowRight, Boxes, Clock3, FileWarning, Lock, ShieldAlert, Wrench } from "lucide-react";
-
 import { GithubIcon } from "@veriworkly/ui";
-
 import { siteConfig } from "@/config/site";
-
 import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
 import { Reveal } from "@/components/marketing/Reveal";
 import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
-import { SecurityBoundaryDiagram } from "./components/SecurityBoundaryDiagram";
+import SecurityBoundaryDiagram from "@/features/security/SecurityBoundaryDiagram";
 
 const pageUrl = `${siteConfig.url}/security`;
 const pageOgImage = `${siteConfig.url}/og/security-page-og.png`;
@@ -48,7 +45,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Security & Encryption Policy | VeriWorkly",
-    description: "A deep dive into VeriWorkly's sandboxes, IndexedDB databases, and E2E security parameters.",
+    description:
+      "A deep dive into VeriWorkly's sandboxes, IndexedDB databases, and E2E security parameters.",
     images: [pageOgImage],
   },
 };
@@ -115,10 +113,8 @@ const SecurityPage = () => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }}
       />
 
-      {/* Hero: dark surface housing the live encryption-boundary diagram, so the
-          architecture is shown, not just described. */}
       <section className="relative w-full overflow-hidden bg-zinc-950 pt-32 pb-24 md:pt-40 md:pb-28">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.06)_1px,transparent_1px)] bg-size-[26px_26px] mask-[radial-gradient(ellipse_70%_60%_at_50%_0%,#000_60%,transparent_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.06)_1px,transparent_1px)] mask-[radial-gradient(ellipse_70%_60%_at_50%_0%,#000_60%,transparent_100%)] bg-size-[26px_26px]" />
 
         <div className="relative z-10 mx-auto grid max-w-350 gap-16 px-6 md:px-8 lg:grid-cols-12 lg:items-center lg:gap-12">
           <div className="lg:col-span-7">
@@ -166,8 +162,6 @@ const SecurityPage = () => {
         </div>
       </section>
 
-      {/* Encryption boundaries, laid out as a single indexed ledger rather than
-          three disconnected cards. */}
       <section className="mx-auto w-full max-w-350 px-6 py-24 md:px-8 md:py-32">
         <div className="mb-12 max-w-2xl">
           <SectionEyebrow icon={Boxes} label="Data boundaries" />
@@ -199,8 +193,6 @@ const SecurityPage = () => {
         </div>
       </section>
 
-      {/* Responsible disclosure — a four-step timeline instead of a text block,
-          so the process reads instantly. */}
       <section className="mx-auto w-full max-w-350 border-t border-zinc-200/40 px-6 py-24 md:px-8 md:py-32 dark:border-zinc-800/20">
         <div className="mb-14 max-w-2xl">
           <SectionEyebrow icon={ShieldAlert} label="Responsible disclosure" />

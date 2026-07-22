@@ -3,8 +3,7 @@ import Link from "next/link";
 import { ArrowRight, MessageCircleQuestion } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
-import { ContactExperience } from "./contact-experience";
-
+import ContactExperience from "@/features/contact/ContactExperience";
 import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
 import { Reveal } from "@/components/marketing/Reveal";
 import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
@@ -78,10 +77,8 @@ const ContactPage = () => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(contactSchema) }}
       />
 
-      {/* Hero: split layout with a live "who answers" widget, instead of the
-          symmetric icon-badge-headline pattern used elsewhere. */}
       <section className="relative w-full overflow-hidden bg-white pt-32 pb-20 md:pt-40 md:pb-24 dark:bg-[#000000]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(120,119,198,0.08)_1px,transparent_1px)] bg-size-[22px_22px] opacity-60 mask-[radial-gradient(ellipse_60%_60%_at_50%_0%,#000_60%,transparent_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(120,119,198,0.08)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_60%_at_50%_0%,#000_60%,transparent_100%)] bg-size-[22px_22px] opacity-60" />
 
         <div className="relative z-10 mx-auto grid max-w-350 gap-12 px-6 md:px-8 lg:grid-cols-12 lg:items-center lg:gap-8">
           <div className="lg:col-span-7">
@@ -95,8 +92,8 @@ const ContactPage = () => {
             </Reveal>
             <Reveal delay={0.12}>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
-                Write to us if you need help with documents, billing, custom portfolios, or
-                feature requests.
+                Write to us if you need help with documents, billing, custom portfolios, or feature
+                requests.
               </p>
             </Reveal>
             <Reveal delay={0.18}>

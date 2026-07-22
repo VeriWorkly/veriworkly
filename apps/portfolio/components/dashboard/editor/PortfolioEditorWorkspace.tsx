@@ -17,7 +17,7 @@ export function PortfolioEditorWorkspace() {
   const pages = usePortfolioStore((state) => state.content.pages || []);
   const rootSections = usePortfolioStore((state) => state.content.sections);
   const sections = selectedPageIdState
-    ? pages.find(p => p.id === selectedPageIdState)?.sections || []
+    ? pages.find((p) => p.id === selectedPageIdState)?.sections || []
     : rootSections;
   const [selectedSectionId, setSelectedSectionId] = useState("profile");
   const [structureOpen, setStructureOpen] = useState(true);

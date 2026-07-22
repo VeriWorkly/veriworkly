@@ -1,8 +1,7 @@
 import { MessageCircleQuestion } from "lucide-react";
-
 import FAQList from "@/features/landing/faq/FAQList";
 
-export default function PremiumFAQ() {
+const PremiumFAQ = () => {
   return (
     <section className="mx-auto w-full max-w-300 border-t border-zinc-200/40 px-6 py-32 md:px-8 md:py-48 dark:border-zinc-800/20">
       <div className="mb-16 text-center">
@@ -20,4 +19,6 @@ export default function PremiumFAQ() {
       <FAQList />
     </section>
   );
-}
+};
+
+export default PremiumFAQ;

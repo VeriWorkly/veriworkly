@@ -102,7 +102,6 @@ const TermsPage = () => {
         primaryAction={{ href: "/about", label: "About the Project" }}
         description="Simple guidelines for using VeriWorkly. Review terms covering resumes, cover letters, portfolios, link-in-bio, and billing services."
       >
-        {/* Core Terms Grid */}
         <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {termsTopics.map((topic) => (
             <Card
@@ -120,7 +119,6 @@ const TermsPage = () => {
           ))}
         </section>
 
-        {/* Short Version and Notes */}
         <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
           <Card className="border-border/80 space-y-6 border p-6 md:p-8">
             <h3 className="text-accent text-xs font-bold tracking-wider uppercase">

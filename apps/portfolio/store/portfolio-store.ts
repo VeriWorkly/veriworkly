@@ -161,12 +161,15 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
 
     updateSection: (id, patch) =>
       set((state) => {
-        const updateSections = (sections: PortfolioSection[]) => sections.map((s) => s.id === id ? { ...s, ...patch } : s);
+        const updateSections = (sections: PortfolioSection[]) =>
+          sections.map((s) => (s.id === id ? { ...s, ...patch } : s));
         if (state.selectedPageId && state.content.pages) {
           return {
             content: {
               ...state.content,
-              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: updateSections(p.sections) } : p),
+              pages: state.content.pages.map((p) =>
+                p.id === state.selectedPageId ? { ...p, sections: updateSections(p.sections) } : p,
+              ),
             },
             isDirty: state.ready ? true : state.isDirty,
             status: state.ready ? "Unsaved changes" : state.status,
@@ -193,7 +196,9 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
           return {
             content: {
               ...state.content,
-              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: mutateSections(p.sections) } : p),
+              pages: state.content.pages.map((p) =>
+                p.id === state.selectedPageId ? { ...p, sections: mutateSections(p.sections) } : p,
+              ),
             },
             isDirty: state.ready ? true : state.isDirty,
             status: state.ready ? "Unsaved changes" : state.status,
@@ -209,12 +214,20 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
     addSection: (type) =>
       set((state) => {
         const label = type[0].toUpperCase() + type.slice(1);
-        const newSection: PortfolioSection = { id: createId("section"), type, title: label, visible: true, items: [] };
+        const newSection: PortfolioSection = {
+          id: createId("section"),
+          type,
+          title: label,
+          visible: true,
+          items: [],
+        };
         if (state.selectedPageId && state.content.pages) {
           return {
             content: {
               ...state.content,
-              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: [...p.sections, newSection] } : p),
+              pages: state.content.pages.map((p) =>
+                p.id === state.selectedPageId ? { ...p, sections: [...p.sections, newSection] } : p,
+              ),
             },
             isDirty: state.ready ? true : state.isDirty,
             status: state.ready ? "Unsaved changes" : state.status,
@@ -233,19 +246,25 @@ export const usePortfolioStore = create<PortfolioStoreState>()(
           return {
             content: {
               ...state.content,
-              pages: state.content.pages.map(p => p.id === state.selectedPageId ? { ...p, sections: p.sections.filter(s => s.id !== id) } : p),
+              pages: state.content.pages.map((p) =>
+                p.id === state.selectedPageId
+                  ? { ...p, sections: p.sections.filter((s) => s.id !== id) }
+                  : p,
+              ),
             },
             isDirty: state.ready ? true : state.isDirty,
             status: state.ready ? "Unsaved changes" : state.status,
           };
         }
         return {
-          content: { ...state.content, sections: state.content.sections.filter((item) => item.id !== id) },
+          content: {
+            ...state.content,
+            sections: state.content.sections.filter((item) => item.id !== id),
+          },
           isDirty: state.ready ? true : state.isDirty,
           status: state.ready ? "Unsaved changes" : state.status,
         };
       }),
-
 
     addPage: (slug, title) =>
       set((state) => {

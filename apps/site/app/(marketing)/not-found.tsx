@@ -7,7 +7,7 @@ export default function MarketingNotFound() {
   return (
     <section className="w-full bg-[#f3f4f6] p-2 md:p-3 lg:p-4 dark:bg-black">
       <div className="relative flex min-h-[70vh] w-full flex-col items-center justify-center overflow-hidden rounded-4xl border border-black/5 bg-white px-6 py-24 text-center dark:border-white/5 dark:bg-[#080808]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.05)_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.05)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] bg-size-[24px_24px]" />
 
         <p
           aria-hidden="true"
@@ -28,8 +28,8 @@ export default function MarketingNotFound() {
           </h1>
 
           <p className="mt-6 max-w-md text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
-            It may have moved or never existed. Head back home, or browse the template
-            directory instead.
+            It may have moved or never existed. Head back home, or browse the template directory
+            instead.
           </p>
 
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">

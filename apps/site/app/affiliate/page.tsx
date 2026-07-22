@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
-import { AffiliateNav } from "./components/AffiliateNav";
-import { AffiliateFooter } from "./components/AffiliateFooter";
-import { AffiliateHero } from "./components/AffiliateHero";
-import { AffiliateTiers } from "./components/AffiliateTiers";
-import { AffiliateCalculator } from "./components/AffiliateCalculator";
-import { AffiliateBento } from "./components/AffiliateBento";
-import { AffiliateComparison } from "./components/AffiliateComparison";
-import { AffiliateResources } from "./components/AffiliateResources";
-import { AffiliateFAQ } from "./components/AffiliateFAQ";
+import AffiliateNav from "@/features/affiliate/AffiliateNav";
+import AffiliateFooter from "@/features/affiliate/AffiliateFooter";
+import AffiliateHero from "@/features/affiliate/AffiliateHero";
+import AffiliateTiers from "@/features/affiliate/AffiliateTiers";
+import AffiliateCalculator from "@/features/affiliate/AffiliateCalculator";
+import AffiliateBento from "@/features/affiliate/AffiliateBento";
+import AffiliateComparison from "@/features/affiliate/AffiliateComparison";
+import AffiliateResources from "@/features/affiliate/AffiliateResources";
+import AffiliateFAQ from "@/features/affiliate/AffiliateFAQ";
 import "./affiliate.css";
 
 const pageUrl = `${siteConfig.url}/affiliate`;

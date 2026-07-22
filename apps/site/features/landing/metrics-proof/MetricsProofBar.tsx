@@ -6,6 +6,7 @@ import { EyeOff, KeyRound, ShieldCheck, Target, type LucideIcon } from "lucide-r
 
 interface Stat {
   icon: LucideIcon;
+  from?: number;
   value: number;
   decimals: number;
   suffix: string;
@@ -32,6 +33,7 @@ const stats: Stat[] = [
   },
   {
     icon: EyeOff,
+    from: 80,
     value: 0,
     decimals: 0,
     suffix: "",
@@ -40,6 +42,7 @@ const stats: Stat[] = [
   },
   {
     icon: KeyRound,
+    from: 10,
     value: 0,
     decimals: 0,
     suffix: "",
@@ -48,16 +51,26 @@ const stats: Stat[] = [
   },
 ];
 
-function AnimatedValue({ value, decimals, suffix }: { value: number; decimals: number; suffix: string }) {
+const AnimatedValue = ({
+  from = 0,
+  value,
+  decimals,
+  suffix,
+}: {
+  from?: number;
+  value: number;
+  decimals: number;
+  suffix: string;
+}) => {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
   const prefersReducedMotion = useReducedMotion();
-  const [display, setDisplay] = useState((0).toFixed(decimals));
+  const [display, setDisplay] = useState(from.toFixed(decimals));
 
   useEffect(() => {
     if (!isInView) return;
 
-    const controls = animate(0, value, {
+    const controls = animate(from, value, {
       duration: prefersReducedMotion ? 0 : 1.4,
       ease: [0.23, 1, 0.32, 1],
       onUpdate(latest) {
@@ -66,7 +79,7 @@ function AnimatedValue({ value, decimals, suffix }: { value: number; decimals: n
     });
 
     return () => controls.stop();
-  }, [isInView, value, decimals, prefersReducedMotion]);
+  }, [isInView, from, value, decimals, prefersReducedMotion]);
 
   return (
     <span ref={ref} className="tabular-nums">
@@ -74,12 +87,11 @@ function AnimatedValue({ value, decimals, suffix }: { value: number; decimals: n
       {suffix}
     </span>
   );
-}
+};
 
-export default function MetricsProofBar() {
+const MetricsProofBar = () => {
   return (
     <section className="relative w-full overflow-hidden border-y border-zinc-800/60 bg-zinc-950 py-16 md:py-20">
-      {/* Mesh grid, matching the platform's dark-surface grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.06)_1px,transparent_1px)] mask-[radial-gradient(ellipse_70%_60%_at_50%_50%,#000_60%,transparent_100%)] bg-size-[28px_28px]" />
       <div className="pointer-events-none absolute top-1/2 left-1/2 h-125 w-125 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/10 blur-[140px]" />
 
@@ -96,7 +108,12 @@ export default function MetricsProofBar() {
             >
               <stat.icon className="h-5 w-5 text-blue-400" strokeWidth={1.5} />
               <div className="font-sans text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-                <AnimatedValue value={stat.value} decimals={stat.decimals} suffix={stat.suffix} />
+                <AnimatedValue
+                  from={stat.from}
+                  value={stat.value}
+                  decimals={stat.decimals}
+                  suffix={stat.suffix}
+                />
               </div>
               <div>
                 <p className="text-sm font-semibold text-zinc-200">{stat.label}</p>
@@ -108,4 +125,6 @@ export default function MetricsProofBar() {
       </div>
     </section>
   );
-}
+};
+
+export default MetricsProofBar;

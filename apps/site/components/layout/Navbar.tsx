@@ -43,7 +43,7 @@ const Navbar = () => {
             className="group pointer-events-auto relative flex items-center gap-2 rounded-full border border-black/5 bg-white/70 px-5 py-2.5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] backdrop-blur-md transition-transform hover:scale-[1.02] dark:border-white/5 dark:bg-[#111]/70"
           >
             <img src="/veriworkly-logo.png" alt="VeriWorkly" className="h-6 w-auto" />
-            <span className="hidden font-bold tracking-tight text-gray-900 sm:block dark:text-white font-mono">
+            <span className="hidden font-mono font-bold tracking-tight text-gray-900 sm:block dark:text-white">
               {siteConfig.shortName || "VeriWorkly"}
             </span>
           </Link>

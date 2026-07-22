@@ -13,10 +13,10 @@ import { siteConfig } from "@/config/site";
 import { Container } from "@veriworkly/ui";
 import { Reveal } from "@/components/marketing/Reveal";
 
-import EmptyState from "../components/EmptyState";
-import TemplateGroup from "../components/TemplateGroup";
-import TemplatesHeader from "../components/TemplatesHeader";
-import { getSingleParam, getTemplateHref } from "../components/utils";
+import EmptyState from "@/features/templates/EmptyState";
+import TemplateGroup from "@/features/templates/TemplateGroup";
+import TemplatesHeader from "@/features/templates/TemplatesHeader";
+import { getSingleParam, getTemplateHref } from "@/features/templates/utils";
 
 type PageProps = {
   params: Promise<{ docType: string }>;

@@ -1,11 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { ArrowRight, Clock, FileText, Globe2, Layers, LayoutTemplate, Sparkles } from "lucide-react";
-
+import {
+  ArrowRight,
+  Clock,
+  FileText,
+  Globe2,
+  Layers,
+  LayoutTemplate,
+  Sparkles,
+} from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { documentTypeSummaries, templateSummaries } from "@/config/templates";
-
 import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
 import { Reveal } from "@/components/marketing/Reveal";
 import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
@@ -63,15 +69,16 @@ const TemplatesPortalPage = () => {
 
   return (
     <>
-      {/* Hero: a fanned stack of real template previews stands in for the usual
-          product screenshot, since the templates themselves are the pitch. */}
       <section className="w-full bg-[#f3f4f6] p-2 md:p-3 lg:p-4 dark:bg-black">
         <div className="relative grid w-full overflow-hidden rounded-4xl border border-black/5 bg-white px-6 py-20 md:px-12 md:py-24 lg:grid-cols-12 lg:items-center lg:gap-8 lg:py-28 dark:border-white/5 dark:bg-[#080808]">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.05)_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_60%_at_20%_40%,#000_60%,transparent_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.05)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_60%_at_20%_40%,#000_60%,transparent_100%)] bg-size-[24px_24px]" />
           <div className="pointer-events-none absolute top-0 left-0 h-95 w-95 rounded-full bg-blue-500/10 blur-[120px] dark:bg-blue-500/15" />
 
           <Reveal className="relative z-10 lg:col-span-7">
-            <SectionEyebrow icon={LayoutTemplate} label={`${templateSummaries.length} live layouts`} />
+            <SectionEyebrow
+              icon={LayoutTemplate}
+              label={`${templateSummaries.length} live layouts`}
+            />
             <h1 className="mt-6 max-w-xl text-4xl font-semibold tracking-tighter text-balance text-zinc-900 sm:text-5xl md:text-6xl dark:text-white">
               Pick the artifact. The right layout follows.
             </h1>
@@ -129,7 +136,6 @@ const TemplatesPortalPage = () => {
         </div>
       </section>
 
-      {/* Dashboard-style readout instead of a plain divided stat row. */}
       <section className="mx-auto w-full max-w-350 px-6 py-16 md:px-8 md:py-20">
         <Reveal className="grid grid-cols-1 divide-y divide-zinc-200 overflow-hidden rounded-3xl border border-zinc-200 bg-white sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-zinc-800 dark:border-zinc-800 dark:bg-[#0c0c0c]">
           <div className="flex items-center gap-4 p-6">
@@ -247,8 +253,6 @@ const TemplatesPortalPage = () => {
         </div>
       </section>
 
-      {/* Coming soon — dashed placeholder tiles instead of filled cards, so the
-          "not yet available" state reads visually, not just semantically. */}
       <section className="mx-auto w-full max-w-350 border-t border-zinc-200/40 px-6 py-16 md:px-8 md:py-20 dark:border-zinc-800/20">
         <div className="mb-8 flex items-center gap-2">
           <Layers className="h-4 w-4 text-zinc-400" aria-hidden="true" />

@@ -14,8 +14,8 @@ import { siteConfig } from "@/config/site";
 import { Container } from "@veriworkly/ui";
 import { Reveal } from "@/components/marketing/Reveal";
 
-import { buildEditorUrl, buildPreviewUrl } from "../../components/utils";
-import { TemplateDetailHeader } from "../../components/TemplateHeader";
+import { buildEditorUrl, buildPreviewUrl } from "@/features/templates/utils";
+import TemplateDetailHeader from "@/features/templates/TemplateHeader";
 
 type PageProps = {
   params: Promise<{ docType: string; templateId: string }>;
@@ -309,12 +309,13 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
         </div>
       </section>
 
-      <section className="grid gap-px overflow-hidden rounded-4xl border border-zinc-200 bg-zinc-200 lg:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-800" aria-label="Implementation notes">
+      <section
+        className="grid gap-px overflow-hidden rounded-4xl border border-zinc-200 bg-zinc-200 lg:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-800"
+        aria-label="Implementation notes"
+      >
         {implementationNotes.map((note) => (
           <div className="bg-white p-5 dark:bg-[#0c0c0c]" key={note}>
-            <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-              Template behavior
-            </p>
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Template behavior</p>
             <p className="mt-3 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{note}</p>
           </div>
         ))}

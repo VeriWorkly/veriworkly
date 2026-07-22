@@ -1,18 +1,15 @@
+"use client";
+
 import { useState } from "react";
 import { motion, useTransform, useSpring, type MotionValue } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
-export default function InteractiveCTAMockup({
-  scrollYProgress,
-}: {
-  scrollYProgress: MotionValue<number>;
-}) {
+const InteractiveCTAMockup = ({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) => {
   const [isHovered, setIsHovered] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const canHover = useMediaQuery("(hover: hover) and (pointer: fine)");
 
-  // Floating mockup translation - only active on desktop
   const mockupYRaw = useTransform(scrollYProgress, [0, 1], [30, -30]);
   const springY = useSpring(mockupYRaw, { stiffness: 50, damping: 20 });
   const mockupY = useTransform(springY, (v) => (isDesktop ? v : 0));
@@ -26,7 +23,6 @@ export default function InteractiveCTAMockup({
         whileHover={canHover ? { y: -8, scale: 1.02 } : {}}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
-        {/* Card Glow */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(150px_circle_at_center,rgba(59,130,246,0.04),transparent)] opacity-0 transition-opacity duration-300 group-hover/card:opacity-100" />
 
         <div className="mb-5 flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-900">
@@ -63,7 +59,6 @@ export default function InteractiveCTAMockup({
             </p>
           </div>
 
-          {/* ATS Match Meter */}
           <div className="flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-900">
             <div className="flex items-center gap-2">
               <CheckCircle2
@@ -85,4 +80,6 @@ export default function InteractiveCTAMockup({
       </motion.div>
     </motion.div>
   );
-}
+};
+
+export default InteractiveCTAMockup;

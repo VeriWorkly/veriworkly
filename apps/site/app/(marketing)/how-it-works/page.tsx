@@ -10,15 +10,12 @@ import {
   Terminal,
   UploadCloud,
 } from "lucide-react";
-
 import { GithubIcon } from "@veriworkly/ui";
-
 import { siteConfig } from "@/config/site";
-
 import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
 import { Reveal } from "@/components/marketing/Reveal";
 import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
-import { PipelineTimeline } from "./components/PipelineTimeline";
+import PipelineTimeline from "@/features/how-it-works/PipelineTimeline";
 
 const pageUrl = `${siteConfig.url}/how-it-works`;
 const pageOgImage = `${siteConfig.url}/og/how-it-works-page-og.png`;
@@ -126,11 +123,9 @@ const HowItWorksPage = () => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
       />
 
-      {/* Hero: the framed white island, but the payload is a live miniature of
-          the pipeline described below, not a floating badge illustration. */}
       <section className="w-full bg-[#f3f4f6] p-2 md:p-3 lg:p-4 dark:bg-black">
         <div className="relative flex w-full flex-col items-center overflow-hidden rounded-4xl border border-black/5 bg-white px-6 pt-28 pb-20 text-center md:pt-32 md:pb-24 dark:border-white/5 dark:bg-[#080808]">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.05)_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.05)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] bg-size-[24px_24px]" />
           <div className="pointer-events-none absolute top-0 left-1/2 h-105 w-full max-w-225 -translate-x-1/2 rounded-full bg-blue-500/10 blur-[120px] dark:bg-blue-500/15" />
 
           <Reveal className="relative z-10 flex max-w-3xl flex-col items-center">
@@ -195,12 +190,10 @@ const HowItWorksPage = () => {
         </div>
       </section>
 
-      {/* The pipeline, told as a connected, borderless timeline. */}
       <section className="mx-auto w-full max-w-4xl px-6 py-24 md:px-8 md:py-32">
         <PipelineTimeline steps={steps} />
       </section>
 
-      {/* Open source — a terminal-styled panel instead of a plain white card. */}
       <section className="mx-auto w-full max-w-350 border-t border-zinc-200/40 px-6 py-24 md:px-8 md:py-32 dark:border-zinc-800/20">
         <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <Reveal>
@@ -209,10 +202,9 @@ const HowItWorksPage = () => {
               A privacy statement is only as good as the code that executes it
             </h2>
             <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-500 dark:text-zinc-400">
-              Because VeriWorkly is open-source, developers, job seekers, and security engineers
-              can audit our database settings, compile parameters, and routing scripts. Run the
-              entire platform locally, inspect the configuration, or self-host your own database
-              endpoints.
+              Because VeriWorkly is open-source, developers, job seekers, and security engineers can
+              audit our database settings, compile parameters, and routing scripts. Run the entire
+              platform locally, inspect the configuration, or self-host your own database endpoints.
             </p>
             <Link
               href={siteConfig.links.github}
@@ -225,7 +217,10 @@ const HowItWorksPage = () => {
             </Link>
           </Reveal>
 
-          <Reveal delay={0.1} className="overflow-hidden rounded-3xl border border-zinc-800 bg-[#0a0a0a]">
+          <Reveal
+            delay={0.1}
+            className="overflow-hidden rounded-3xl border border-zinc-800 bg-[#0a0a0a]"
+          >
             <div className="flex items-center gap-1.5 border-b border-zinc-800 px-5 py-3.5">
               <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />

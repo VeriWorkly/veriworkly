@@ -4,12 +4,11 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Database, Lock, UserCheck } from "lucide-react";
 
-export default function PrivacyEngineSimulator() {
+const PrivacyEngineSimulator = () => {
   const [activeEngine, setActiveEngine] = useState<"local" | "cloud">("local");
 
   return (
     <div className="group relative w-full max-w-lg rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-md dark:border-zinc-800/80 dark:bg-[#080808]">
-      {/* Header Toggle */}
       <div className="flex rounded-full border border-zinc-200/60 bg-zinc-100 p-1.5 dark:border-zinc-800/50 dark:bg-zinc-900">
         <button
           onClick={() => setActiveEngine("local")}
@@ -33,7 +32,6 @@ export default function PrivacyEngineSimulator() {
         </button>
       </div>
 
-      {/* Simulation Canvas */}
       <div className="relative mt-8 flex h-72 w-full items-center justify-center overflow-hidden rounded-3xl border border-zinc-100 bg-zinc-50 p-8 dark:border-zinc-900 dark:bg-zinc-950">
         <div
           className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--accent-glow)_0%,transparent_70%)] opacity-[0.03]"
@@ -53,7 +51,6 @@ export default function PrivacyEngineSimulator() {
             transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
             className="relative z-10 flex w-full max-w-sm items-center justify-between"
           >
-            {/* User Device Node */}
             <div className="flex flex-col items-center gap-3">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-zinc-200 bg-white shadow-xs transition-transform group-hover:scale-105 dark:border-zinc-800 dark:bg-zinc-900">
                 <UserCheck className="h-6 w-6 text-zinc-900 dark:text-white" strokeWidth={1.5} />
@@ -63,7 +60,6 @@ export default function PrivacyEngineSimulator() {
               </span>
             </div>
 
-            {/* Flow Connection Line */}
             <div className="relative mx-4 h-2 flex-1">
               <div className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full bg-zinc-200 dark:bg-zinc-800" />
               {activeEngine === "local" ? (
@@ -89,7 +85,6 @@ export default function PrivacyEngineSimulator() {
               )}
             </div>
 
-            {/* Destination Node */}
             <div className="flex flex-col items-center gap-3">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-zinc-200 bg-white shadow-xs transition-transform group-hover:scale-105 dark:border-zinc-800 dark:bg-zinc-900">
                 {activeEngine === "local" ? (
@@ -105,7 +100,6 @@ export default function PrivacyEngineSimulator() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Secure Badge Status */}
         <div className="absolute inset-x-6 bottom-6 flex justify-center">
           <span
             className={`rounded-full border px-4 py-1.5 font-mono text-[11px] font-semibold transition-all ${
@@ -121,7 +115,6 @@ export default function PrivacyEngineSimulator() {
         </div>
       </div>
 
-      {/* Technical Specifications */}
       <div className="mt-6 space-y-3 border-t border-zinc-100 pt-6 font-mono text-xs dark:border-zinc-900">
         <div className="flex justify-between border-b border-zinc-100/60 pb-2 dark:border-zinc-900">
           <span className="text-zinc-400">Security Vault</span>
@@ -152,4 +145,6 @@ export default function PrivacyEngineSimulator() {
       </div>
     </div>
   );
-}
+};
+
+export default PrivacyEngineSimulator;

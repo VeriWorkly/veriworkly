@@ -2,19 +2,16 @@
 
 import { useRef, type ReactNode } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-
 import InteractiveCTAMockup from "@/features/marketing/cta/InteractiveCTAMockup";
 
-export default function InteractiveCTAGlowCard({ children }: { children: ReactNode }) {
+const InteractiveCTAGlowCard = ({ children }: { children: ReactNode }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Track scroll progress of the CTA card itself
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start end", "end start"],
   });
 
-  // Scale + drift the glow background as the card moves through the viewport
   const glowScaleRaw = useTransform(scrollYProgress, [0, 0.5, 1], [0.85, 1.3, 0.85]);
   const glowScale = useSpring(glowScaleRaw, { stiffness: 40, damping: 18 });
 
@@ -29,7 +26,6 @@ export default function InteractiveCTAGlowCard({ children }: { children: ReactNo
       ref={containerRef}
       className="relative overflow-hidden rounded-[3rem] border border-zinc-200 bg-zinc-50/50 p-10 md:p-20 dark:border-zinc-800/80 dark:bg-[#080808]"
     >
-      {/* Glow backdrop linked to scroll progress */}
       <motion.div
         style={{ scale: glowScale, opacity: glowOpacity, rotate: glowRotate }}
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,var(--color-accent)_0%,transparent_60%)] blur-2xl"
@@ -42,11 +38,12 @@ export default function InteractiveCTAGlowCard({ children }: { children: ReactNo
       <div className="relative z-10 grid grid-cols-1 items-center gap-16 lg:grid-cols-12 lg:gap-24">
         {children}
 
-        {/* Right Column: Dynamic Tailoring Mockup */}
         <div className="flex w-full items-center justify-center lg:col-span-5">
           <InteractiveCTAMockup scrollYProgress={scrollYProgress} />
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default InteractiveCTAGlowCard;

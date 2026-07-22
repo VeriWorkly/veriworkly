@@ -94,7 +94,6 @@ const PrivacyPage = () => {
         primaryAction={{ href: "/security", label: "Read Security Policy" }}
         description="Learn how VeriWorkly handles resumes, cover letters, portfolios, link-in-bio, and billing transactions with local-first parameters and optional cloud backups."
       >
-        {/* Core Privacy Grid */}
         <section className="grid gap-6 md:grid-cols-2">
           {privacyTopics.map((topic) => (
             <Card
@@ -112,7 +111,6 @@ const PrivacyPage = () => {
           ))}
         </section>
 
-        {/* Detailed Sections */}
         <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
           <Card className="border-border/80 space-y-6 border p-6 md:p-8">
             <h3 className="text-accent text-xs font-bold tracking-wider uppercase">User Rights</h3>

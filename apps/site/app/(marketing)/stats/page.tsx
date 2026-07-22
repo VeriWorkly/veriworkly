@@ -10,7 +10,7 @@ import {
   parseStatus,
   dateFromToIso,
   parseDateInput,
-} from "./components/stats-utils";
+} from "@/features/stats/components/stats-utils";
 
 import { Container } from "@veriworkly/ui";
 
@@ -19,11 +19,11 @@ import {
   fetchGitHubIssuesFromBackend,
 } from "@/features/github/services/github-backend";
 
-import StatsHero from "./components/StatsHero";
-import StatsBoard from "./components/StatsBoard";
-import StatsFilters from "./components/StatsFilters";
-import StatsOverview from "./components/StatsOverview";
-import StatsPagination from "./components/StatsPagination";
+import StatsHero from "@/features/stats/components/StatsHero";
+import StatsBoard from "@/features/stats/components/StatsBoard";
+import StatsFilters from "@/features/stats/components/StatsFilters";
+import StatsOverview from "@/features/stats/components/StatsOverview";
+import StatsPagination from "@/features/stats/components/StatsPagination";
 
 export const metadata: Metadata = {
   title: `Development & AI Platform Statistics | ${siteConfig.shortName}`,
@@ -47,7 +47,7 @@ interface StatsPageProps {
   }>;
 }
 
-export default async function StatsPage({ searchParams }: StatsPageProps) {
+const StatsPage = async ({ searchParams }: StatsPageProps) => {
   const params = await searchParams;
 
   const kind = parseKind(params.kind);
@@ -132,4 +132,6 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
       </Container>
     </main>
   );
-}
+};
+
+export default StatsPage;

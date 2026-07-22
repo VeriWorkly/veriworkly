@@ -7,8 +7,8 @@ import {
   fetchRoadmapFromBackend,
 } from "@/features/roadmap/services/roadmap-backend";
 
-import RoadmapPageShell from "./components/RoadmapPageShell";
-import RoadmapSEOContent from "./components/RoadmapSEOContent";
+import RoadmapPageShell from "@/features/roadmap/components/RoadmapPageShell";
+import RoadmapSEOContent from "@/features/roadmap/components/RoadmapSEOContent";
 
 const pageUrl = `${siteConfig.url}/roadmap`;
 const pageOgImage = `${siteConfig.url}/og/roadmap-page-og.png`;
@@ -39,7 +39,6 @@ export const metadata: Metadata = {
     ],
     type: "website",
   },
-
   twitter: {
     card: "summary_large_image",
     title: `Product Roadmap | ${siteConfig.shortName}`,
@@ -67,7 +66,7 @@ interface RoadmapPageProps {
   }>;
 }
 
-export default async function RoadmapPage({ searchParams }: RoadmapPageProps) {
+const RoadmapPage = async ({ searchParams }: RoadmapPageProps) => {
   const params = await searchParams;
 
   const data = await fetchRoadmapFromBackend({
@@ -88,4 +87,6 @@ export default async function RoadmapPage({ searchParams }: RoadmapPageProps) {
       <RoadmapSEOContent />
     </>
   );
-}
+};
+
+export default RoadmapPage;

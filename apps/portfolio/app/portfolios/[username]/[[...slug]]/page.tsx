@@ -90,7 +90,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function Portfolio({ params }: { params: Promise<{ username: string; slug?: string[] }> }) {
+export default async function Portfolio({
+  params,
+}: {
+  params: Promise<{ username: string; slug?: string[] }>;
+}) {
   const { username, slug } = await params;
   const publication = await getPublishedPortfolio(username);
   if (!publication) notFound();
@@ -123,7 +127,7 @@ export default async function Portfolio({ params }: { params: Promise<{ username
 
     const pageSlug = slug.join("/");
     const page = project.pages?.find((p) => p.slug === pageSlug);
-    
+
     if (!page) notFound();
 
     currentSections = page.sections;

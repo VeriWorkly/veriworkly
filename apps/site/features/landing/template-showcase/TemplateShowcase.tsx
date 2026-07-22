@@ -1,12 +1,10 @@
 import { Sparkles, ArrowRight } from "lucide-react";
-
 import { siteConfig } from "@/config/site";
 import TemplateShowcaseTracks from "@/features/landing/template-showcase/TemplateShowcaseTracks";
 
-export default function TemplateShowcase() {
+const TemplateShowcase = () => {
   return (
     <section className="relative w-full overflow-hidden bg-white py-32 md:py-48 dark:bg-[#000000]">
-      {/* Background ambient lighting */}
       <div className="pointer-events-none absolute top-1/2 left-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-blue-500/5 blur-[100px] dark:bg-blue-500/10" />
       <div className="pointer-events-none absolute top-1/2 right-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-cyan-500/5 blur-[100px] dark:bg-cyan-500/10" />
 
@@ -27,7 +25,7 @@ export default function TemplateShowcase() {
 
       <TemplateShowcaseTracks />
 
-      <div className="mt-16 flex justify-center">
+      <div className="flex justify-center">
         <a
           href={`${siteConfig.links.app}/templates`}
           className="group flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
@@ -38,4 +36,6 @@ export default function TemplateShowcase() {
       </div>
     </section>
   );
-}
+};
+
+export default TemplateShowcase;

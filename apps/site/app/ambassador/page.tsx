@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
-import { AmbassadorNav } from "./components/AmbassadorNav";
-import { AmbassadorHero } from "./components/AmbassadorHero";
-import { AmbassadorPerks } from "./components/AmbassadorPerks";
-import { AmbassadorPlaybook } from "./components/AmbassadorPlaybook";
-import { AmbassadorCalculator } from "./components/AmbassadorCalculator";
-import { AmbassadorLeaderboard } from "./components/AmbassadorLeaderboard";
-import { AmbassadorFAQ } from "./components/AmbassadorFAQ";
-import { AmbassadorFooter } from "./components/AmbassadorFooter";
+import AmbassadorNav from "@/features/ambassador/AmbassadorNav";
+import AmbassadorHero from "@/features/ambassador/AmbassadorHero";
+import AmbassadorPerks from "@/features/ambassador/AmbassadorPerks";
+import AmbassadorPlaybook from "@/features/ambassador/AmbassadorPlaybook";
+import AmbassadorCalculator from "@/features/ambassador/AmbassadorCalculator";
+import AmbassadorLeaderboard from "@/features/ambassador/AmbassadorLeaderboard";
+import AmbassadorFAQ from "@/features/ambassador/AmbassadorFAQ";
+import AmbassadorFooter from "@/features/ambassador/AmbassadorFooter";
 import "./ambassador.css";
 
 const pageUrl = `${siteConfig.url}/ambassador`;
@@ -65,17 +65,14 @@ const AmbassadorPage = () => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ambassadorSchema) }}
       />
 
-      <div className="bg-background text-foreground relative flex min-h-screen flex-col justify-between transition-colors duration-300">
-        <div>
-          <AmbassadorNav />
-          <AmbassadorHero />
-          <AmbassadorPerks />
-          <AmbassadorPlaybook />
-          <AmbassadorCalculator />
-          <AmbassadorLeaderboard />
-          <AmbassadorFAQ />
-        </div>
-
+      <div className="bg-background relative min-h-screen">
+        <AmbassadorNav />
+        <AmbassadorHero />
+        <AmbassadorPerks />
+        <AmbassadorPlaybook />
+        <AmbassadorCalculator />
+        <AmbassadorLeaderboard />
+        <AmbassadorFAQ />
         <AmbassadorFooter />
       </div>
     </>

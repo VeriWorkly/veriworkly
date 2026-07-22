@@ -1,8 +1,7 @@
 import { Bot } from "lucide-react";
-
 import GaplessBentoGrid from "@/features/landing/bento/GaplessBentoGrid";
 
-export default function GaplessBento() {
+const GaplessBento = () => {
   return (
     <section className="mx-auto w-full max-w-350 px-6 py-32 md:px-8 md:py-48">
       <div className="mb-20 flex flex-col justify-between gap-8 md:flex-row md:items-end">
@@ -23,4 +22,6 @@ export default function GaplessBento() {
       <GaplessBentoGrid />
     </section>
   );
-}
+};
+
+export default GaplessBento;

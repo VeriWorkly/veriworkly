@@ -7,7 +7,7 @@ import {
   fetchRoadmapFromBackend,
 } from "@/features/roadmap/services/roadmap-backend";
 
-import RoadmapPageShell from "../components/RoadmapPageShell";
+import RoadmapPageShell from "@/features/roadmap/components/RoadmapPageShell";
 
 export const metadata: Metadata = {
   title: `AI Features in Development | ${siteConfig.shortName} Roadmap`,
@@ -34,7 +34,6 @@ export const metadata: Metadata = {
     ],
     type: "website",
   },
-
   twitter: {
     card: "summary_large_image",
     title: `${siteConfig.shortName} In Progress Features`,
@@ -59,22 +58,24 @@ interface InProgressRoadmapPageProps {
   }>;
 }
 
-export default async function InProgressRoadmapPage({ searchParams }: InProgressRoadmapPageProps) {
+const InProgressRoadmapPage = async ({ searchParams }: InProgressRoadmapPageProps) => {
   const params = await searchParams;
 
   const data = await fetchRoadmapFromBackend({
-    status: "in-progress",
     sort: parseSort(params.sort),
+    status: "in-progress",
     refreshSection: params.refresh === "in-progress" ? "in-progress" : undefined,
-  });
+  }).catch(() => null);
 
   return (
     <RoadmapPageShell
       data={data}
       activeStatus="in-progress"
       basePath="/roadmap/in-progress"
-      title="Roadmap: Features in Development"
-      description="Features currently under active development with creation and start dates."
+      title="In Progress"
+      description="Track active implementation work across AI features, document compiler engines, and domain tools."
     />
   );
-}
+};
+
+export default InProgressRoadmapPage;

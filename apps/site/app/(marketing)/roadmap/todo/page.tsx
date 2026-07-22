@@ -7,7 +7,7 @@ import {
   fetchRoadmapFromBackend,
 } from "@/features/roadmap/services/roadmap-backend";
 
-import RoadmapPageShell from "../components/RoadmapPageShell";
+import RoadmapPageShell from "@/features/roadmap/components/RoadmapPageShell";
 
 export const metadata: Metadata = {
   title: `Planned AI Features & Updates | ${siteConfig.shortName} Roadmap`,
@@ -35,7 +35,6 @@ export const metadata: Metadata = {
     ],
     type: "website",
   },
-
   twitter: {
     card: "summary_large_image",
     title: `${siteConfig.shortName} Planned Features`,
@@ -60,22 +59,24 @@ interface TodoRoadmapPageProps {
   }>;
 }
 
-export default async function TodoRoadmapPage({ searchParams }: TodoRoadmapPageProps) {
+const TodoRoadmapPage = async ({ searchParams }: TodoRoadmapPageProps) => {
   const params = await searchParams;
 
   const data = await fetchRoadmapFromBackend({
-    status: "todo",
     sort: parseSort(params.sort),
+    status: "todo",
     refreshSection: params.refresh === "todo" ? "todo" : undefined,
-  });
+  }).catch(() => null);
 
   return (
     <RoadmapPageShell
       data={data}
       activeStatus="todo"
       basePath="/roadmap/todo"
-      title="Roadmap: Upcoming Features"
-      description="Upcoming features in planning with current priority and timeline context."
+      title="Planned Features"
+      description="Explore concepts and feature requests currently queued for upcoming development cycles."
     />
   );
-}
+};
+
+export default TodoRoadmapPage;

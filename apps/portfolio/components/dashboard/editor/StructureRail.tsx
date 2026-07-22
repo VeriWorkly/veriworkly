@@ -45,8 +45,8 @@ export function StructureRail({
   const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
 
   const rootSections = usePortfolioStore((state) => state.content.sections);
-  const sections = selectedPageId 
-    ? pages.find(p => p.id === selectedPageId)?.sections || []
+  const sections = selectedPageId
+    ? pages.find((p) => p.id === selectedPageId)?.sections || []
     : rootSections;
 
   const addSection = usePortfolioStore((state) => state.addSection);
@@ -56,11 +56,16 @@ export function StructureRail({
   const [open, setOpen] = useState(false);
   const [openPages, setOpenPages] = useState(false);
 
-  const projectsSection = rootSections.find(s => s.type === "projects");
+  const projectsSection = rootSections.find((s) => s.type === "projects");
   const projectItems = projectsSection?.items || [];
   const projectDetailPages = projectItems.map((item, index) => {
     const title = (item.title as string) || `Project ${index + 1}`;
-    const slug = `work/${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || index}`;
+    const slug = `work/${
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || index
+    }`;
     return { slug, title: `Detail: ${title}` };
   });
 
@@ -88,7 +93,7 @@ export function StructureRail({
       </button>
 
       {isPremiumUser && (
-        <div className="border-line border-b pb-2 mb-2 px-2 relative">
+        <div className="border-line relative mb-2 border-b px-2 pb-2">
           <div className="flex items-center justify-between py-2">
             <h2 className="text-xs font-extrabold">Pages</h2>
             <button
@@ -112,7 +117,7 @@ export function StructureRail({
                     <button
                       key={pageOption.slug}
                       className={`rounded-lg px-2 py-2 text-left text-xs font-bold ${
-                        isAdded ? "opacity-50 cursor-not-allowed" : "hover:bg-paper cursor-pointer"
+                        isAdded ? "cursor-not-allowed opacity-50" : "hover:bg-paper cursor-pointer"
                       }`}
                       onClick={() => {
                         if (isAdded) return;
@@ -132,15 +137,17 @@ export function StructureRail({
           <div className="space-y-1">
             <div
               className={`group flex items-center gap-2 rounded-lg px-2 py-2 ${
-                selectedPageId === null ? "bg-accent text-accent-ink" : "hover:bg-paper cursor-pointer"
+                selectedPageId === null
+                  ? "bg-accent text-accent-ink"
+                  : "hover:bg-paper cursor-pointer"
               }`}
               onClick={() => setSelectedPageId(null)}
             >
-              <FileText size={14} className={selectedPageId === null ? "text-accent-ink/65" : "text-muted"} />
-              <button
-                className="min-w-0 flex-1 truncate text-left text-xs font-bold"
-                type="button"
-              >
+              <FileText
+                size={14}
+                className={selectedPageId === null ? "text-accent-ink/65" : "text-muted"}
+              />
+              <button className="min-w-0 flex-1 truncate text-left text-xs font-bold" type="button">
                 Home
               </button>
             </div>
@@ -148,11 +155,16 @@ export function StructureRail({
               <div
                 key={page.id}
                 className={`group flex items-center gap-2 rounded-lg px-2 py-2 ${
-                  selectedPageId === page.id ? "bg-accent text-accent-ink" : "hover:bg-paper cursor-pointer"
+                  selectedPageId === page.id
+                    ? "bg-accent text-accent-ink"
+                    : "hover:bg-paper cursor-pointer"
                 }`}
                 onClick={() => setSelectedPageId(page.id)}
               >
-                <FileText size={14} className={selectedPageId === page.id ? "text-accent-ink/65" : "text-muted"} />
+                <FileText
+                  size={14}
+                  className={selectedPageId === page.id ? "text-accent-ink/65" : "text-muted"}
+                />
                 <button
                   className="min-w-0 flex-1 truncate text-left text-xs font-bold"
                   type="button"

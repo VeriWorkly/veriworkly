@@ -91,16 +91,14 @@ const FAQCard = ({ question, answer, isOpen, onToggle, index }: FAQCardProps) =>
   );
 };
 
-export default function FAQList() {
+const FAQList = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  // Divide FAQs into two lists for 2 columns
   const leftColFaqs = faqs.filter((_, idx) => idx % 2 === 0);
   const rightColFaqs = faqs.filter((_, idx) => idx % 2 !== 0);
 
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      {/* Left Column */}
       <div className="flex flex-col gap-5">
         {leftColFaqs.map((faq) => {
           const globalIdx = faqs.indexOf(faq);
@@ -118,7 +116,6 @@ export default function FAQList() {
         })}
       </div>
 
-      {/* Right Column */}
       <div className="flex flex-col gap-5">
         {rightColFaqs.map((faq) => {
           const globalIdx = faqs.indexOf(faq);
@@ -137,4 +134,6 @@ export default function FAQList() {
       </div>
     </div>
   );
-}
+};
+
+export default FAQList;
