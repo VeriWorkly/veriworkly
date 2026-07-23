@@ -2,10 +2,6 @@ export type AffiliateDashboard = {
   affiliateStatus: "NOT_ENROLLED" | "PENDING" | "ACTIVE" | "SUSPENDED";
   affiliateTier: "TIER_1" | "TIER_2" | "TIER_3";
   affiliateCode: string | null;
-  role: "USER" | "AMBASSADOR" | "ADMIN";
-  ambassadorStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | string;
-  collegeName: string | null;
-  graduationYear: string | null;
   clicks: number;
   conversions: number;
   wallet: { pendingCents: number; availableCents: number; paidCents: number };
@@ -18,6 +14,9 @@ export type AffiliateDashboard = {
     requiredConversions: number;
     perks: readonly string[];
   }>;
+  // `totalReferrals` is the exact count and must be used for metrics/progress; `referrals` below
+  // is a recency-limited (most recent 50) preview list for the activity feed only.
+  totalReferrals: number;
   referrals: Array<{ id: string; status: string; createdAt: string; convertedAt: string | null }>;
   commissions: Array<{
     id: string;

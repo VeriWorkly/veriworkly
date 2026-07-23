@@ -1,53 +1,16 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { DollarSign, MousePointerClick, Trophy, UserPlus } from "lucide-react";
 import Link from "next/link";
-import { Copy, DollarSign, MousePointerClick, Trophy, UserPlus } from "lucide-react";
-import { Button, Input } from "@veriworkly/ui";
-import { toast } from "sonner";
-import { fetchApiData } from "@/utils/fetchApiData";
+import { Button } from "@veriworkly/ui";
 
 import { AffiliateNav } from "@/features/affiliate/AffiliateNav";
-import { enrollAffiliate } from "@/features/affiliate/affiliate-api";
+import { EnrollButton } from "@/features/affiliate/EnrollButton";
+import { CopyReferralLinkButton } from "@/features/affiliate/CopyReferralLinkButton";
 import type { AffiliateDashboard } from "@/features/affiliate/types";
 
 const money = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 
 export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | null }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  // Ambassador application form states
-  const [showApplyForm, setShowApplyForm] = useState(false);
-  const [collegeName, setCollegeName] = useState("");
-  const [gradYear, setGradYear] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleAmbassadorApply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!collegeName.trim() || !gradYear.trim()) {
-      toast.error("Please fill in all fields.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await fetchApiData("/affiliate/ambassador/apply", {
-        method: "POST",
-        body: JSON.stringify({ collegeName, graduationYear: gradYear }),
-      });
-      toast.success("Ambassador application submitted successfully!");
-      setShowApplyForm(false);
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit application.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (!dashboard || dashboard.affiliateStatus === "NOT_ENROLLED")
     return (
       <main className="space-y-5">
@@ -59,24 +22,7 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
             Earn commission only when a referred user completes a paid VeriWorkly purchase. Signups
             alone do not generate earnings.
           </p>
-          {message ? <p className="text-destructive mt-4 text-sm">{message}</p> : null}
-          <Button
-            className="mt-6"
-            loading={loading}
-            onClick={async () => {
-              setLoading(true);
-              try {
-                await enrollAffiliate();
-                router.refresh();
-              } catch (error) {
-                setMessage(error instanceof Error ? error.message : "Could not enroll.");
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            Join affiliate program
-          </Button>
+          <EnrollButton />
         </section>
       </main>
     );
@@ -93,16 +39,7 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
               You earn after a referred account completes a successful paid purchase.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              void navigator.clipboard.writeText(
-                `${window.location.origin}/login?ref=${dashboard.affiliateCode}`,
-              )
-            }
-          >
-            <Copy className="mr-2 h-4 w-4" /> Copy referral link
-          </Button>
+          <CopyReferralLinkButton affiliateCode={dashboard.affiliateCode} />
         </div>
       </header>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -110,7 +47,7 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
         <Metric
           icon={UserPlus}
           label="Referred signups"
-          value={String(dashboard.referrals.length)}
+          value={String(dashboard.totalReferrals)}
         />
         <Metric icon={Trophy} label="Paid conversions" value={String(dashboard.conversions)} />
         <Metric
@@ -158,98 +95,6 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
           <Button asChild className="mt-5 w-full" variant="secondary">
             <Link href="/affiliate/payouts">Manage payouts</Link>
           </Button>
-        </article>
-      </section>
-
-      <section className="mt-6 grid gap-4">
-        <article className="border-border bg-card rounded-2xl border p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 text-xl font-bold">
-                <Trophy className="h-5 w-5 text-amber-500" />
-                Campus Ambassador Program
-              </h2>
-              <p className="text-muted mt-2 max-w-2xl text-sm leading-6">
-                Are you a college student or new grad? Join our Campus Ambassador program to unlock
-                exclusive student-only commission rates, promotional material, and direct support.
-              </p>
-            </div>
-
-            {dashboard.role === "AMBASSADOR" ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-500">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                <span className="text-xs font-bold tracking-wider uppercase">
-                  Active Campus Ambassador
-                </span>
-              </div>
-            ) : dashboard.ambassadorStatus === "PENDING" ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-amber-500">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-                <span className="text-xs font-bold tracking-wider uppercase">
-                  Application Under Review
-                </span>
-              </div>
-            ) : (
-              <Button onClick={() => setShowApplyForm(true)}>Apply Now</Button>
-            )}
-          </div>
-
-          {showApplyForm &&
-            dashboard.role !== "AMBASSADOR" &&
-            dashboard.ambassadorStatus !== "PENDING" && (
-              <form
-                onSubmit={handleAmbassadorApply}
-                className="border-border mt-5 max-w-md space-y-4 border-t pt-5"
-              >
-                <h3 className="text-foreground text-sm font-bold">Ambassador Application Form</h3>
-
-                <div className="space-y-1.5">
-                  <label
-                    className="text-muted-foreground text-xs font-semibold"
-                    htmlFor="college-name"
-                  >
-                    College / University Name
-                  </label>
-                  <Input
-                    id="college-name"
-                    value={collegeName}
-                    onChange={(e) => setCollegeName(e.target.value)}
-                    placeholder="e.g., Stanford University"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
-                    className="text-muted-foreground text-xs font-semibold"
-                    htmlFor="grad-year"
-                  >
-                    Graduation Year
-                  </label>
-                  <Input
-                    id="grad-year"
-                    value={gradYear}
-                    onChange={(e) => setGradYear(e.target.value)}
-                    placeholder="e.g., 2026 or 2027"
-                    required
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <Button size="sm" type="submit" loading={submitting}>
-                    Submit Application
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    type="button"
-                    onClick={() => setShowApplyForm(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            )}
         </article>
       </section>
     </main>
