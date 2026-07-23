@@ -2,10 +2,9 @@ import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
 import { requireAuthUser } from "#middleware/auth";
-import { AffiliateService } from "#services/affiliateService";
+import { AffiliateService } from "#services/affiliate/index";
 import { createSuccessResponse, handleValidationError } from "#lib/errors";
 import { clickSchema, referralCodeSchema, withdrawalSchema } from "#validators/affiliateValidator";
-import { ambassadorApplicationSchema } from "#validators/ambassadorValidator";
 
 export class AffiliateController {
   static async dashboard(req: Request, res: Response, next: NextFunction) {
@@ -56,22 +55,6 @@ export class AffiliateController {
       res.json(
         createSuccessResponse(
           await AffiliateService.requestWithdrawal(requireAuthUser(req).id, amountCents),
-        ),
-      );
-    } catch (error) {
-      next(error instanceof z.ZodError ? handleValidationError(error) : error);
-    }
-  }
-  static async applyAmbassador(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { collegeName, graduationYear } = ambassadorApplicationSchema.parse(req.body);
-      res.json(
-        createSuccessResponse(
-          await AffiliateService.applyAmbassador(
-            requireAuthUser(req).id,
-            collegeName,
-            graduationYear,
-          ),
         ),
       );
     } catch (error) {
