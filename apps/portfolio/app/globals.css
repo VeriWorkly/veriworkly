@@ -23,63 +23,76 @@
 * {
   box-sizing: border-box;
 }
+
 html,
 body {
   margin: 0;
   overflow-x: clip;
   scroll-behavior: smooth;
 }
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
   text-rendering: optimizeLegibility;
 }
+
 .surface-grid {
   background-image:
     linear-gradient(to right, var(--color-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
   background-size: 28px 28px;
 }
+
 .paper-noise {
   background:
     radial-gradient(circle at 8% 0%, var(--color-accent-soft), transparent 30rem),
     var(--color-paper);
 }
+
 .proof-grid {
   background-image:
     linear-gradient(to right, oklch(100% 0 0 / 8%) 1px, transparent 1px),
     linear-gradient(to bottom, oklch(100% 0 0 / 8%) 1px, transparent 1px);
   background-size: 48px 48px;
 }
+
 .brand-shell {
   width: min(1280px, calc(100% - 48px));
   margin-inline: auto;
 }
+
 .reveal {
   animation: reveal var(--dur-slow) var(--ease-out) both;
 }
+
 .reveal-delay {
   animation-delay: 120ms;
 }
+
 @keyframes reveal {
   from {
     opacity: 0;
     transform: translateY(14px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 @keyframes loading {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(300%);
   }
 }
+
 a {
   text-decoration: none;
 }
@@ -88,6 +101,7 @@ button,
 a {
   -webkit-tap-highlight-color: transparent;
 }
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -95,16 +109,19 @@ textarea:focus-visible {
   outline: 3px solid var(--color-accent);
   outline-offset: 3px;
 }
+
 button:active,
 a:active {
   opacity: 0.72;
 }
+
 button:disabled,
 input:disabled,
 textarea:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
+
 h1,
 h2,
 h3 {
@@ -112,23 +129,34 @@ h3 {
   overflow-wrap: anywhere;
   text-wrap: balance;
 }
+
 p {
   text-wrap: pretty;
 }
+
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--color-accent) !important;
+  color: var(--color-accent-ink) !important;
 }
+
+*::selection {
+  background: var(--color-accent) !important;
+  color: var(--color-accent-ink) !important;
+}
+
 @media (max-width: 640px) {
   .brand-shell {
     width: min(100% - 32px, 1280px);
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
+
   html,
   body {
     scroll-behavior: auto;
   }
+
   *,
   *::before,
   *::after {
@@ -153,23 +181,19 @@ p {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.4) 20%,
-    rgba(255, 255, 255, 0.6) 60%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background-image: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.4) 20%,
+      rgba(255, 255, 255, 0.6) 60%,
+      rgba(255, 255, 255, 0) 100%);
   animation: shimmer 1.6s infinite;
   content: "";
 }
 
 .dark .animate-shimmer::after {
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.05) 20%,
-    rgba(255, 255, 255, 0.1) 60%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background-image: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.05) 20%,
+      rgba(255, 255, 255, 0.1) 60%,
+      rgba(255, 255, 255, 0) 100%);
 }
