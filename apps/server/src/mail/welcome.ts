@@ -96,7 +96,7 @@ export function renderWelcomeEmail(name: string, dashboardUrl: string): string {
     </table>
     
     <p style="margin:0;font-size:13px;line-height:1.6;color:#8f8c85;text-align:center;">
-      Need any assistance or have feedback? Drop us a line at support@veriworkly.com. We read every email.
+      Need any assistance or have feedback? Drop us a line at info@veriworkly.com. We read every email.
     </p>
   `;
 
