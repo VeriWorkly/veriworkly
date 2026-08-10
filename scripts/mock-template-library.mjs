@@ -94,6 +94,7 @@ export interface TemplateRegistryEntry {
   audience: string;
   strengths: string[];
   image: string;
+  isPremium: boolean;
   loader: () => Promise<{ default: TemplateComponent }>;
   design: TemplateDetails;
 }
@@ -106,6 +107,7 @@ export const templatesRegistry = {
     audience: "Mock signal audience",
     strengths: ["Mock signal strengths"],
     image: "/templates/signal-template-preview.png",
+    isPremium: false,
     loader: () => import("./signal/SignalTemplate"),
     design: signalDesign,
   },
@@ -116,6 +118,7 @@ export const templatesRegistry = {
     audience: "Mock atelier audience",
     strengths: ["Mock atelier strengths"],
     image: "/templates/atelier-template-preview.png",
+    isPremium: true,
     loader: () => import("./atelier/AtelierTemplate"),
     design: atelierDesign,
   },
