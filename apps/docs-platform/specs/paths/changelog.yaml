@@ -93,12 +93,12 @@ getChangelogEntries:
               data:
                 items:
                   - id: "v3-21-0"
-                    version: "3.22.0"
+                    version: "3.23.1"
                     title: "Portfolio template library refresh"
                     summary: "Signal picks up a new hero and the editor gains section presets."
                     type: "minor"
                     publishedAt: "2026-07-29T10:00:00.000Z"
-                    githubUrl: "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.22.0"
+                    githubUrl: "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.23.1"
                     added: ["Section presets in the portfolio editor"]
                     improved: ["Signal hero spacing on small viewports"]
                     fixed: ["Duplicate toast on failed publish"]
@@ -173,7 +173,7 @@ getChangelogStats:
                 minor: 18
                 patch: 21
                 latest:
-                  version: "3.22.0"
+                  version: "3.23.1"
                   title: "Portfolio template library refresh"
                   publishedAt: "2026-07-29T10:00:00.000Z"
                 contributorCount: 17
@@ -219,12 +219,12 @@ getChangelogEntryById:
               message: "Changelog entry fetched successfully"
               data:
                 id: "v3-21-0"
-                version: "3.22.0"
+                version: "3.23.1"
                 title: "Portfolio template library refresh"
                 summary: "Signal picks up a new hero and the editor gains section presets."
                 type: "minor"
                 publishedAt: "2026-07-29T10:00:00.000Z"
-                githubUrl: "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.22.0"
+                githubUrl: "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.23.1"
                 added: ["Section presets in the portfolio editor"]
                 improved: ["Signal hero spacing on small viewports"]
                 fixed: ["Duplicate toast on failed publish"]

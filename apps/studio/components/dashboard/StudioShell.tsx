@@ -41,7 +41,7 @@ interface StudioShellProps {
   mainClassName?: string;
 }
 
-const STUDIO_VERSION = "v3.22.0";
+const STUDIO_VERSION = "v3.23.1";
 
 const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const router = useRouter();

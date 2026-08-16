@@ -1,12 +1,12 @@
 [
   {
     "id": "v3-21-0",
-    "version": "3.22.0",
+    "version": "3.21.0",
     "title": "AI Experience Refresh, Resume Editor Enhancements & Platform Reliability",
     "summary": "One of our biggest releases yet: a completely refreshed AI-first website experience, major improvements to the resume editor, new authentication and security enhancements, Redis-powered performance optimizations, smarter billing workflows, and expanded template documentation.",
     "type": "minor",
     "publishedAt": "2026-06-29T14:11:47Z",
-    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/Release-v3.22.0",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/Release-v3.21.0",
     "added": [
       "Refreshed AI-first marketing website and product messaging",
       "Added two-column resume layouts and improved section visibility controls",
