@@ -22,23 +22,67 @@ describe("auth redirect contract", () => {
     expect(isProtectedStudioPath("/future-local-first-page")).toBe(false);
   });
 
-  it("automatically starts guest mode on an anonymous Studio visit", async () => {
+  it("redirects anonymous Studio visits without guest mode to login", async () => {
     const response = await proxy(new NextRequest("https://studio.veriworkly.com/documents"));
 
-    expect(response.status).toBe(200);
-    expect(response.cookies.get("veriworkly-guest-mode")?.value).toBe("true");
-    expect(response.cookies.get("veriworkly-guest-mode")?.httpOnly).toBe(true);
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://studio.veriworkly.com/login?callbackURL=%2Fdocuments",
+    );
   });
 
-  it("redirects anonymous protected routes to login with their return location", async () => {
+  it("permits access to Studio routes when guest cookie is present", async () => {
+    const request = new NextRequest("https://studio.veriworkly.com/documents", {
+      headers: { cookie: "veriworkly-guest-mode=true" },
+    });
+    const response = await proxy(request);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("permits access to Studio routes when session cookie is present", async () => {
+    const request = new NextRequest("https://studio.veriworkly.com/documents", {
+      headers: { cookie: "veriworkly-auth.session_token=valid-session" },
+    });
+    const response = await proxy(request);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("redirects anonymous protected routes to login with their return location even with guest cookie", async () => {
     const response = await proxy(
-      new NextRequest("https://studio.veriworkly.com/profile/master?section=basics"),
+      new NextRequest("https://studio.veriworkly.com/profile/master?section=basics", {
+        headers: { cookie: "veriworkly-guest-mode=true" },
+      }),
     );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
       "https://studio.veriworkly.com/login?callbackURL=%2Fprofile%2Fmaster%3Fsection%3Dbasics",
     );
+  });
+
+  it("bypasses share and api routes without cookies", async () => {
+    const shareResponse = await proxy(
+      new NextRequest("https://studio.veriworkly.com/share/doc-123"),
+    );
+    expect(shareResponse.status).toBe(200);
+
+    const apiResponse = await proxy(new NextRequest("https://studio.veriworkly.com/api/health"));
+    expect(apiResponse.status).toBe(200);
+  });
+
+  it("redirects authenticated visitors away from login page", async () => {
+    const request = new NextRequest(
+      "https://studio.veriworkly.com/login?callbackURL=%2Fdocuments",
+      {
+        headers: { cookie: "veriworkly-auth.session_token=valid-session" },
+      },
+    );
+    const response = await proxy(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://studio.veriworkly.com/documents");
   });
 
   it("accepts trusted return locations and rejects open redirects", () => {

@@ -32,32 +32,40 @@ describe("looksLikeStaticAssetPath", () => {
 });
 
 describe("proxy middleware — platform host auth gate", () => {
-  // `/billing` mirrors the existing "makes current and future workspace
-  // sections private by default" contract test in auth-routing.contract.test:
-  // it's deliberately absent from `publicPlatformPaths`, i.e. not a route this
-  // app recognizes as its own — that's what actually trips the gate below,
-  // not "private" workspace routes like /editor or /dashboard (those *are*
-  // listed as recognized platform paths and are protected by their own
-  // server-side checks instead, e.g. the (workspace) layout's admin gate).
-  it("redirects away from an unrecognized path when there's no session", () => {
-    const response = proxy(requestTo("https://portfolio.veriworkly.com/billing"));
-    expect(response.status).toBe(307);
-    const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/login");
-    expect(location).toContain("callbackURL=");
+  it("redirects away from private workspace routes when there's no session or guest cookie", () => {
+    for (const path of ["/dashboard", "/editor", "/billing", "/settings", "/analytics"]) {
+      const response = proxy(requestTo(`https://portfolio.veriworkly.com${path}`));
+      expect(response.status).toBe(307);
+      const location = response.headers.get("location") ?? "";
+      expect(location).toContain("/login");
+      expect(location).toContain("callbackURL=");
+    }
   });
 
-  it("lets an authenticated visitor through to an unrecognized path", () => {
-    const response = proxy(
-      requestTo("https://portfolio.veriworkly.com/billing", {
-        cookie: "__Secure-veriworkly-auth.session_token=token",
-      }),
-    );
-    expect(response.headers.get("location")).toBeNull();
+  it("lets an authenticated visitor through to private workspace routes", () => {
+    for (const path of ["/dashboard", "/editor", "/billing", "/settings", "/analytics"]) {
+      const response = proxy(
+        requestTo(`https://portfolio.veriworkly.com${path}`, {
+          cookie: "__Secure-veriworkly-auth.session_token=token",
+        }),
+      );
+      expect(response.headers.get("location")).toBeNull();
+    }
   });
 
-  it("never redirects recognized platform paths, even without a session", () => {
-    for (const path of ["/", "/pricing", "/templates", "/faq", "/editor", "/dashboard"]) {
+  it("lets a guest visitor through to private workspace routes when guest cookie is present", () => {
+    for (const path of ["/dashboard", "/editor", "/settings", "/analytics"]) {
+      const response = proxy(
+        requestTo(`https://portfolio.veriworkly.com${path}`, {
+          cookie: "veriworkly-guest-mode=true",
+        }),
+      );
+      expect(response.headers.get("location")).toBeNull();
+    }
+  });
+
+  it("never redirects public platform paths, even without a session or guest cookie", () => {
+    for (const path of ["/", "/pricing", "/templates", "/faq"]) {
       const response = proxy(requestTo(`https://portfolio.veriworkly.com${path}`));
       expect(response.headers.get("location")).toBeNull();
     }

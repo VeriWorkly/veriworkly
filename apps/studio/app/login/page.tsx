@@ -55,8 +55,29 @@ const LoginPage = () => {
   const handleGuestAccess = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const callbackURL = searchParams.get("callbackURL");
+    const target = getSafeAuthCallback(callbackURL);
 
-    router.push(getSafeAuthCallback(callbackURL));
+    const maxAge = 60 * 60 * 24 * 30; // 30 days
+    const isSecure = window.location.protocol === "https:";
+    const hostname = window.location.hostname;
+
+    let domainAttr = "";
+    if (hostname.endsWith("veriworkly.com")) {
+      domainAttr = "; domain=.veriworkly.com";
+    } else if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+      domainAttr = "; domain=.localhost";
+    }
+
+    if (domainAttr) {
+      document.cookie = `veriworkly-guest-mode=true; path=/; max-age=${maxAge}; SameSite=Lax${isSecure ? "; Secure" : ""}${domainAttr}`;
+    }
+    document.cookie = `veriworkly-guest-mode=true; path=/; max-age=${maxAge}; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+
+    if (target.startsWith("http://") || target.startsWith("https://")) {
+      window.location.href = target;
+    } else {
+      router.push(target);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

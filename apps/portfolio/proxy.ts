@@ -11,12 +11,6 @@ const publicPlatformPaths = [
   "/portfolio",
   "/templates",
   "/faq",
-  "/dashboard",
-  "/editor",
-  "/preview",
-  "/analytics",
-  "/settings",
-  "/profile",
 ];
 
 const SESSION_COOKIE_NAMES = [
@@ -24,12 +18,18 @@ const SESSION_COOKIE_NAMES = [
   "veriworkly-auth.session_token",
 ];
 
+const GUEST_COOKIE_NAME = "veriworkly-guest-mode";
+
 export function isPublicPlatformPath(path: string) {
   return publicPlatformPaths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
 export function hasPortfolioSessionCookie(request: NextRequest) {
   return SESSION_COOKIE_NAMES.some((cookieName) => Boolean(request.cookies.get(cookieName)?.value));
+}
+
+export function hasPortfolioGuestCookie(request: NextRequest) {
+  return request.cookies.get(GUEST_COOKIE_NAME)?.value === "true";
 }
 
 // A precise "is this a static file request" check: only the final path
@@ -55,8 +55,9 @@ export default function proxy(request: NextRequest) {
     !looksLikeStaticAssetPath(path)
   ) {
     const hasSession = hasPortfolioSessionCookie(request);
+    const hasGuest = hasPortfolioGuestCookie(request);
 
-    if (!hasSession) {
+    if (!hasSession && !hasGuest) {
       const loginUrl = `${siteConfig.links.app}/login`;
 
       return NextResponse.redirect(`${loginUrl}?callbackURL=${encodeURIComponent(request.url)}`);

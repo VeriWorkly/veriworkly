@@ -17,7 +17,6 @@ export const config = {
 
 const PROTECTED_PATH_PREFIXES = ["/admin", "/profile/master", "/profile/advanced"];
 const GUEST_COOKIE_NAME = "veriworkly-guest-mode";
-const GUEST_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 export function isProtectedStudioPath(pathname: string) {
   return PROTECTED_PATH_PREFIXES.some(
@@ -25,39 +24,46 @@ export function isProtectedStudioPath(pathname: string) {
   );
 }
 
-function withGuestCookie(response: NextResponse, request: NextRequest) {
-  if (!request.cookies.get(GUEST_COOKIE_NAME)?.value) {
-    response.cookies.set(GUEST_COOKIE_NAME, "true", {
-      httpOnly: true,
-      maxAge: GUEST_COOKIE_MAX_AGE,
-      path: "/",
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
-  }
-
-  return response;
+export function looksLikeStaticAssetPath(path: string) {
+  const lastSegment = path.split("/").pop() ?? "";
+  return /\.[a-zA-Z0-9]+$/.test(lastSegment);
 }
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const isBypassed =
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/share") ||
+    looksLikeStaticAssetPath(pathname);
+
+  if (isBypassed) {
+    return NextResponse.next();
+  }
+
   const sessionCookie =
     request.cookies.get("__Secure-veriworkly-auth.session_token")?.value ||
     request.cookies.get("veriworkly-auth.session_token")?.value;
 
-  const isLoginPage = pathname === "/login";
-
-  const isProtectedPath = isProtectedStudioPath(pathname);
+  const hasGuestCookie = request.cookies.get(GUEST_COOKIE_NAME)?.value === "true";
   const isAuthenticated = !!sessionCookie;
+  const isLoginPage = pathname === "/login" || pathname.startsWith("/login/");
 
-  if (isLoginPage && isAuthenticated) {
-    const callbackURL = getSafeAuthCallback(request.nextUrl.searchParams.get("callbackURL"));
-    const redirectUrl = new URL(callbackURL, request.url);
+  if (isLoginPage) {
+    if (isAuthenticated) {
+      const callbackURL = getSafeAuthCallback(request.nextUrl.searchParams.get("callbackURL"));
+      const redirectUrl = new URL(callbackURL, request.url);
 
-    return NextResponse.redirect(redirectUrl);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return NextResponse.next();
   }
 
+  const isProtectedPath = isProtectedStudioPath(pathname);
+
+  // Account-sensitive routes always require a real authenticated session
   if (isProtectedPath && !isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackURL", `${pathname}${request.nextUrl.search}`);
@@ -65,7 +71,13 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const response = NextResponse.next();
+  // Dashboard / builder routes require either authentication or explicit guest mode
+  if (!isAuthenticated && !hasGuestCookie) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackURL", `${pathname}${request.nextUrl.search}`);
 
-  return isAuthenticated ? response : withGuestCookie(response, request);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
 }

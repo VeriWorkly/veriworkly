@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 
-import { hasPortfolioSessionCookie, isPublicPlatformPath } from "@/proxy";
+import { hasPortfolioGuestCookie, hasPortfolioSessionCookie, isPublicPlatformPath } from "@/proxy";
 
 describe("portfolio auth routing contract", () => {
   it("keeps the portfolio landing and public portfolio views public", () => {
@@ -9,15 +9,18 @@ describe("portfolio auth routing contract", () => {
     expect(isPublicPlatformPath("/pricing")).toBe(true);
     expect(isPublicPlatformPath("/user/gautam")).toBe(true);
     expect(isPublicPlatformPath("/portfolios/gautam")).toBe(true);
+    expect(isPublicPlatformPath("/templates")).toBe(true);
     expect(isPublicPlatformPath("/templates/signal/preview")).toBe(true);
-    expect(isPublicPlatformPath("/editor")).toBe(true);
-    expect(isPublicPlatformPath("/settings")).toBe(true);
-    expect(isPublicPlatformPath("/analytics")).toBe(true);
-    expect(isPublicPlatformPath("/dashboard")).toBe(true);
-    expect(isPublicPlatformPath("/preview/document-1")).toBe(true);
+    expect(isPublicPlatformPath("/faq")).toBe(true);
   });
 
   it("makes current and future workspace sections private by default", () => {
+    expect(isPublicPlatformPath("/dashboard")).toBe(false);
+    expect(isPublicPlatformPath("/editor")).toBe(false);
+    expect(isPublicPlatformPath("/preview/document-1")).toBe(false);
+    expect(isPublicPlatformPath("/settings")).toBe(false);
+    expect(isPublicPlatformPath("/analytics")).toBe(false);
+    expect(isPublicPlatformPath("/profile")).toBe(false);
     expect(isPublicPlatformPath("/billing")).toBe(false);
     expect(isPublicPlatformPath("/future-private-page")).toBe(false);
   });
@@ -32,5 +35,17 @@ describe("portfolio auth routing contract", () => {
 
     expect(hasPortfolioSessionCookie(prodRequest)).toBe(true);
     expect(hasPortfolioSessionCookie(devRequest)).toBe(true);
+  });
+
+  it("recognizes guest mode cookie", () => {
+    const guestRequest = new NextRequest("https://portfolio.veriworkly.com/editor", {
+      headers: { cookie: "veriworkly-guest-mode=true" },
+    });
+    const nonGuestRequest = new NextRequest("https://portfolio.veriworkly.com/editor", {
+      headers: { cookie: "other-cookie=foo" },
+    });
+
+    expect(hasPortfolioGuestCookie(guestRequest)).toBe(true);
+    expect(hasPortfolioGuestCookie(nonGuestRequest)).toBe(false);
   });
 });

@@ -44,7 +44,11 @@ export type PortfolioWorkspaceBootstrap = {
 async function fetchPayload(path: string, fallbackMessage: string, init?: RequestInit) {
   const response = await authenticatedFetch(path, init);
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.message || fallbackMessage);
+  if (!response.ok) {
+    const error = new Error(payload.message || fallbackMessage);
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
+  }
   return payload;
 }
 
@@ -528,6 +532,25 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               void get().saveDraft();
             }
           } catch (error) {
+            const status = (error as { status?: number })?.status;
+            if (status === 401 || status === 404) {
+              // Guest mode fallback on 401/404 rejections
+              set({
+                user: null,
+                draft: null,
+                content: cached?.content ?? createDefaultPortfolio(),
+                slug: cached?.slug ?? "portfolio",
+                publication: null,
+                billing: { canPublish: false, status: "INACTIVE" },
+                analyticsData: null,
+                message: "",
+                workspaceState: "ready",
+                status: "Saved",
+                ready: true,
+              });
+              return;
+            }
+
             set({
               status: "Offline",
               workspaceState: "error",
@@ -604,6 +627,13 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
       publish: async () => {
         const current = get();
+        if (!current.user) {
+          set({
+            status: "Saved",
+            message: "Please log in to publish your portfolio.",
+          });
+          return;
+        }
         set({ status: "Publish pending" });
         const saved = await current.saveDraft();
         if (!saved) return;
@@ -634,6 +664,13 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       },
 
       unpublish: async () => {
+        const current = get();
+        if (!current.user) {
+          set({
+            message: "Please log in to manage publications.",
+          });
+          return;
+        }
         try {
           await fetchPayload("/portfolios/unpublish", "Unable to unpublish your portfolio.", {
             method: "POST",

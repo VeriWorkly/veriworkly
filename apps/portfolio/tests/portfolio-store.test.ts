@@ -185,4 +185,67 @@ describe("portfolio store", () => {
 
     expect(usersMeCallCount).toBe(1);
   });
+
+  it("gracefully falls back to guest mode on 401 response without cloud sync", async () => {
+    const localContent = {
+      ...baseContent,
+      identity: { ...baseContent.identity, bio: "guest-bio" },
+    };
+    localStorageMock.setItem(
+      "veriworkly:portfolio:draft-cache:v4",
+      JSON.stringify({
+        slug: "guest-portfolio",
+        content: localContent,
+        updatedAt: "2024-06-01T00:00:00.000Z",
+      }),
+    );
+
+    let draftSyncAttempted = false;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/users/me")) {
+          return jsonResponse({ message: "Unauthorized" }, 401);
+        }
+        if (url.includes("/portfolios/draft")) {
+          draftSyncAttempted = true;
+          return jsonResponse({ message: "Unauthorized" }, 401);
+        }
+        return jsonResponse(null, 404);
+      }),
+    );
+
+    await store.getState().loadWorkspace();
+
+    const state = store.getState();
+    expect(state.ready).toBe(true);
+    expect(state.user).toBeNull();
+    expect(state.content.identity.bio).toBe("guest-bio");
+    expect(state.slug).toBe("guest-portfolio");
+    expect(state.status).toBe("Saved");
+    expect(draftSyncAttempted).toBe(false);
+  });
+
+  it("blocks publication for unauthenticated guest users", async () => {
+    let publishApiCalled = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/portfolios/publish")) {
+          publishApiCalled = true;
+          return jsonResponse({});
+        }
+        return jsonResponse(null, 200);
+      }),
+    );
+
+    await store.getState().publish();
+
+    const state = store.getState();
+    expect(state.message).toBe("Please log in to publish your portfolio.");
+    expect(publishApiCalled).toBe(false);
+  });
 });
