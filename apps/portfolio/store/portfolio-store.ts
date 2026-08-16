@@ -421,6 +421,8 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               set({
                 user: null,
                 draft: null,
+                content: cached?.content ?? createDefaultPortfolio(),
+                slug: cached?.slug ?? "portfolio",
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
                 analyticsData: null,
