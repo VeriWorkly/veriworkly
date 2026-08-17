@@ -15,6 +15,10 @@ export const KNOWN_EVENTS = [
   "resume_created",
   "resume_deleted",
   "resume_exported",
+  // Cover letter exports were previously untracked entirely — only the resume toolbar
+  // emitted an event. Kept as its own name rather than folded into `resume_exported` so
+  // the existing metric's history stays comparable.
+  "cover_letter_exported",
   "auth_otp_sent",
   "auth_login_success",
   "dashboard_opened",

@@ -1,4 +1,14 @@
+import { randomUUID } from "node:crypto";
+
 import { DocumentType, Visibility, Prisma } from "@prisma/client";
+import {
+  projectToResume,
+  parseMasterProfile,
+  projectToCoverLetter,
+  salvageMasterProfile,
+  unflattenLegacySections,
+  hasLegacyCompatibilitySections,
+} from "@veriworkly/profile-core";
 
 import { ShareService } from "#services/shareService";
 
@@ -43,6 +53,52 @@ function assertDocumentPayloadSize(content: Prisma.InputJsonValue | undefined) {
   if (content && JSON.stringify(content).length > MAX_DOCUMENT_PAYLOAD_BYTES) {
     throw new ApiError(413, "Document content payload is too large");
   }
+}
+
+/**
+ * Lazily migrates a stored RESUME body from the flattened section model to the typed one.
+ *
+ * LAZY ON READ, not a backfill script. A backfill would have to rewrite every RESUME row in
+ * one pass, with no way to roll back a bad mapping and no signal about which rows it got
+ * wrong — and the mapping has genuinely ambiguous cases (a reference written by the editor
+ * and one mirrored from a profile disagree about which field holds the organization). On
+ * read, the same `unflattenLegacySections` the studio uses runs against one document at a
+ * time, the original row is untouched until the user saves, and a document nobody opens
+ * costs nothing.
+ *
+ * The migrated shape is persisted on the next save: the studio normalises before writing,
+ * so the first edit after a read stores the typed arrays.
+ */
+function migrateResumeContent(content: unknown): unknown {
+  if (!hasLegacyCompatibilitySections(content)) return content;
+
+  return { ...(content as Record<string, unknown>), ...unflattenLegacySections(content) };
+}
+
+/** Applies {@link migrateResumeContent} to a row and ensures row.templateId is the authoritative single source of truth. */
+function withMigratedContent<
+  T extends { type: DocumentType; templateId?: string; content?: unknown },
+>(document: T | null): T | null {
+  if (!document || document.content === undefined || document.content === null) {
+    return document;
+  }
+
+  let content: unknown = document.content;
+  if (document.type === "RESUME") {
+    content = migrateResumeContent(content);
+  }
+
+  if (
+    document.templateId &&
+    typeof content === "object" &&
+    content !== null &&
+    !Array.isArray(content) &&
+    "templateId" in content
+  ) {
+    content = { ...(content as Record<string, unknown>), templateId: document.templateId };
+  }
+
+  return { ...document, content };
 }
 
 export class DocumentService {
@@ -118,9 +174,14 @@ export class DocumentService {
       take: MAX_DOCUMENTS_PER_LIST,
     });
 
-    await cacheSet(cacheKey, documents, 1800);
+    // Migrated before the value is cached, so a cache hit serves the same shape a miss does.
+    const migrated = includeContent
+      ? documents.map((document) => withMigratedContent(document))
+      : documents;
 
-    return documents;
+    await cacheSet(cacheKey, migrated, 1800);
+
+    return migrated;
   }
 
   /**
@@ -142,9 +203,11 @@ export class DocumentService {
       },
     });
 
-    if (document) await cacheSet(cacheKey, document, 3600);
+    const migrated = withMigratedContent(document);
 
-    return document;
+    if (migrated) await cacheSet(cacheKey, migrated, 3600);
+
+    return migrated;
   }
 
   /**
@@ -175,16 +238,56 @@ export class DocumentService {
       }
     }
 
+    /*
+     * Resolved before the row is written because a seeded body carries the document's own
+     * id, and prisma's `@default(cuid())` only produces one after the insert. The studio
+     * always sends both an id and a content body, so this generator is only ever reached by
+     * API-key callers who asked the server to seed for them.
+     */
+    const documentId = input.id ?? randomUUID();
+
     let initialContent = input.content;
 
-    // Auto-seed from MasterProfile if no content provided for Resume/Cover Letter
+    /*
+     * The template the seeded body ended up with, so the row's `templateId` column can agree
+     * with it. The client reads the column in preference to the body, so leaving the column
+     * at its "modern" default would silently override the template the profile chose.
+     */
+    let seededTemplateId: string | undefined;
+
+    /*
+     * Auto-seed from the MasterProfile when no content was provided, through the same
+     * projections the studio uses, so a document created over the API and one created in
+     * the editor are the same shape — right id, sync block, and title.
+     *
+     * The raw profile content used to be assigned straight across. For a resume that was
+     * merely sloppy; for a cover letter it was broken, because the letter reads senderName /
+     * greeting / body and resume-shaped data has none of those keys, so every field parsed
+     * to "" and the user got a blank page.
+     */
     if (!initialContent && (input.type === "RESUME" || input.type === "COVER_LETTER")) {
       const profile = await prisma.masterProfile.findUnique({
         where: { userId },
       });
 
       if (profile) {
-        initialContent = profile.content as Prisma.InputJsonValue;
+        // Salvage rather than parse: a stored profile that fails whole-object validation
+        // should still seed whatever of it is readable, not silently seed nothing.
+        const master = parseMasterProfile(profile.content) ?? salvageMasterProfile(profile.content);
+
+        if (input.type === "RESUME") {
+          const resume = projectToResume(master, {
+            resumeId: documentId,
+            templateId: input.templateId,
+            title: input.title,
+          });
+
+          seededTemplateId = resume.templateId;
+          initialContent = resume as unknown as Prisma.InputJsonValue;
+        } else {
+          initialContent = projectToCoverLetter(master) as unknown as Prisma.InputJsonValue;
+        }
+
         logger.info(`Seeding ${input.type} from MasterProfile for user ${userId}`);
       }
     }
@@ -210,18 +313,38 @@ export class DocumentService {
 
     const slug = await this.buildUniqueSlug(userId, input.slug || title);
 
+    const resolvedTemplateId =
+      input.templateId ||
+      (initialContent && typeof initialContent === "object" && !Array.isArray(initialContent)
+        ? ((initialContent as Record<string, unknown>).templateId as string | undefined)
+        : undefined) ||
+      seededTemplateId ||
+      "modern";
+
+    if (
+      initialContent &&
+      typeof initialContent === "object" &&
+      !Array.isArray(initialContent) &&
+      "templateId" in initialContent
+    ) {
+      initialContent = {
+        ...(initialContent as Record<string, unknown>),
+        templateId: resolvedTemplateId,
+      } as unknown as Prisma.InputJsonValue;
+    }
+
     const document = await prisma.document.create({
       data: {
         slug,
         title,
         userId,
-        id: input.id,
+        id: documentId,
         type: input.type,
         tags: input.tags || [],
         lastSyncedAt: new Date(),
         content: initialContent || {},
         metadata: input.metadata || {},
-        templateId: input.templateId || "modern",
+        templateId: resolvedTemplateId,
         visibility: input.visibility || "PRIVATE",
       },
     });
@@ -229,7 +352,7 @@ export class DocumentService {
     await cacheDelByPrefix(documentListCachePrefix(userId));
     await cacheDel(userProfileCacheKey(userId));
 
-    return document;
+    return withMigratedContent(document)!;
   }
 
   /**
@@ -284,6 +407,28 @@ export class DocumentService {
       }
     }
 
+    const incomingTemplateId =
+      input.templateId ||
+      (input.content && typeof input.content === "object" && !Array.isArray(input.content)
+        ? ((input.content as Record<string, unknown>).templateId as string | undefined)
+        : undefined);
+
+    if (incomingTemplateId) {
+      updateData.templateId = incomingTemplateId;
+    }
+
+    if (
+      updateData.content &&
+      typeof updateData.content === "object" &&
+      !Array.isArray(updateData.content) &&
+      updateData.templateId
+    ) {
+      updateData.content = {
+        ...(updateData.content as Record<string, unknown>),
+        templateId: updateData.templateId,
+      } as unknown as Prisma.InputJsonValue;
+    }
+
     try {
       const updated = await prisma.$transaction(async (tx) => {
         const doc = await tx.document.update({
@@ -318,7 +463,7 @@ export class DocumentService {
         ...(shareLinkSlugUpdate ? [cacheDelByPrefix(`share:list:${userId}:${documentId}:`)] : []),
       ]);
 
-      return updated;
+      return withMigratedContent(updated);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
         const current = await prisma.document.findFirst({ where: { id: documentId, userId } });

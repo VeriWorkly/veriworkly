@@ -1,7 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  createEmptyMasterProfile,
+  sanitizeImportedPhone,
+  sanitizeImportedEmail,
+} from "@veriworkly/profile-core";
+
 import { prisma } from "#lib/prisma";
 import { config } from "#config";
 import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
+import { masterProfileContentSchema } from "#validators/masterProfileValidator";
 import { createAiClient } from "#services/aiClient";
 import { getAtsAiPolicy } from "#services/ats/aiPolicy";
 import { DocumentService } from "#services/documentService";
@@ -26,113 +34,19 @@ function cleanGithubUsername(input: string): string {
   return cleaned.replace(/[^a-zA-Z0-9-]/g, "");
 }
 
-function sanitizePhone(phone?: string | null): string | undefined {
-  if (!phone) return undefined;
-  const cleaned = phone.replace(/\D/g, "");
-  return cleaned.length === 10 ? cleaned : undefined;
-}
-
-const DEFAULT_CUSTOM_SECTIONS = [
-  {
-    id: "certifications-default",
-    kind: "certifications",
-    title: "Certifications",
-    editableTitle: false,
-    items: [] as unknown[],
-  },
-  { id: "awards-default", kind: "awards", title: "Awards", editableTitle: false, items: [] },
-  {
-    id: "publications-default",
-    kind: "publications",
-    title: "Publications",
-    editableTitle: false,
-    items: [],
-  },
-  {
-    id: "languages-default",
-    kind: "languages",
-    title: "Languages",
-    editableTitle: false,
-    items: [],
-  },
-  {
-    id: "interests-default",
-    kind: "interests",
-    title: "Interests",
-    editableTitle: false,
-    items: [],
-  },
-  {
-    id: "volunteer-default",
-    kind: "volunteer",
-    title: "Volunteer",
-    editableTitle: false,
-    items: [],
-  },
-  {
-    id: "references-default",
-    kind: "references",
-    title: "References",
-    editableTitle: false,
-    items: [],
-  },
-  {
-    id: "achievements-default",
-    kind: "achievements",
-    title: "Achievements",
-    editableTitle: false,
-    items: [],
-  },
-  {
-    id: "custom-default",
-    kind: "custom",
-    title: "Custom Section",
-    editableTitle: true,
-    items: [],
-  },
-];
-
-const DEFAULT_SECTIONS = [
-  { id: "basics", label: "Basics", visible: true, order: 0 },
-  { id: "links", label: "Links", visible: true, order: 1 },
-  { id: "summary", label: "Summary", visible: true, order: 2 },
-  { id: "experience", label: "Experience", visible: true, order: 3 },
-  { id: "education", label: "Education", visible: true, order: 4 },
-  { id: "projects", label: "Projects", visible: true, order: 5 },
-  { id: "skills", label: "Skills", visible: true, order: 6 },
-  { id: "certifications", label: "Certifications", visible: true, order: 7 },
-  { id: "awards", label: "Awards", visible: true, order: 8 },
-  { id: "publications", label: "Publications", visible: true, order: 9 },
-  { id: "languages", label: "Languages", visible: true, order: 10 },
-  { id: "interests", label: "Interests", visible: true, order: 11 },
-  { id: "volunteer", label: "Volunteer", visible: true, order: 12 },
-  { id: "references", label: "References", visible: true, order: 13 },
-  { id: "achievements", label: "Achievements", visible: true, order: 14 },
-  { id: "custom", label: "Custom", visible: true, order: 15 },
-];
-
-const DEFAULT_CUSTOMIZATION = {
-  accentColor: "#2563eb",
-  textColor: "#0f172a",
-  mutedTextColor: "#475569",
-  pageBackgroundColor: "#ffffff",
-  sectionBackgroundColor: "#ffffff",
-  borderColor: "#cbd5e1",
-  sectionHeadingColor: "#334155",
-  fontFamily: "geist",
-  sectionSpacing: 28,
-  pagePadding: 32,
-  bodyLineHeight: 1.5,
-  headingLineHeight: 1.2,
-};
-
 /**
- * Shared resume-document shape both import sources (GitHub, LinkedIn/AI-parsed) produce. Each
- * source only fills in the fields it actually has data for; the section list, customization
- * defaults, and sync/customSections scaffolding are identical either way. structuredClone keeps
- * every call's output independent of the module-level defaults above.
+ * The import shell: a structurally complete, content-free master profile with only the
+ * fields this source actually has data for filled in.
+ *
+ * The three DEFAULT_* constants and the shell shape used to be hand-copied here from the
+ * studio, and keeping them in step was manual. They now come from @veriworkly/profile-core,
+ * which is also what `masterProfileContentSchema` validates against — so "the shell is
+ * valid content" is true by construction rather than by inspection.
+ *
+ * Note what is NOT here: a `sync` object. Sync is document state, not profile data, and
+ * writing one into the master profile made every later save fail validation.
  */
-function buildResumeShell(fields: {
+export function buildResumeShell(fields: {
   basics: Record<string, unknown>;
   links: unknown[];
   summary: string;
@@ -141,8 +55,10 @@ function buildResumeShell(fields: {
   projects: unknown[];
   skills: unknown[];
 }): any {
+  const empty = createEmptyMasterProfile();
+
   return {
-    templateId: "executive-clarity",
+    ...empty,
     basics: fields.basics,
     links: {
       displayMode: "icon-username",
@@ -153,29 +69,10 @@ function buildResumeShell(fields: {
     education: fields.education ?? [],
     projects: fields.projects,
     skills: fields.skills,
-    languages: [],
-    interests: [],
-    awards: [],
-    certificates: [],
-    publications: [],
-    volunteer: [],
-    references: [],
-    achievements: [],
-    customSections: structuredClone(DEFAULT_CUSTOM_SECTIONS),
-    sections: structuredClone(DEFAULT_SECTIONS),
-    customization: structuredClone(DEFAULT_CUSTOMIZATION),
-    sync: {
-      enabled: false,
-      status: "local-only",
-      cloudDocumentId: null,
-      lastSyncedAt: null,
-      revision: 1,
-    },
-    updatedAt: new Date().toISOString(),
   };
 }
 
-function mapGithubToResumeData(profile: any, repos: any[]): any {
+export function mapGithubToResumeData(profile: any, repos: any[]): any {
   const makeId = (prefix: string, index: number) =>
     `${prefix}-${index}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -231,17 +128,23 @@ function mapGithubToResumeData(profile: any, repos: any[]): any {
     });
   }
 
+  // GitHub has no phone field at all, so this is always blank. A blank contact field must
+  // not be marked linkable — the templates would render a link with nothing behind it.
+  const phone = "";
+  const email = profile.email || "";
+  const location = profile.location || "";
+
   return buildResumeShell({
     basics: {
       fullName: profile.name || profile.login || "GitHub User",
       role: "Software Developer",
       headline: profile.bio || "Software Developer on GitHub",
-      email: profile.email || "",
-      phone: undefined,
-      location: profile.location || "",
-      linkEmail: true,
-      linkPhone: true,
-      linkLocation: true,
+      email,
+      phone,
+      location,
+      linkEmail: email !== "",
+      linkPhone: phone !== "",
+      linkLocation: location !== "",
     },
     links: linksList,
     summary: profile.bio || "",
@@ -314,17 +217,22 @@ function mapParsedToResumeData(parsed: any) {
     keywords: skill.keywords || [],
   }));
 
+  const phone = sanitizeImportedPhone(parsed.basics?.phone);
+  const email = sanitizeImportedEmail(parsed.basics?.email);
+  const location = parsed.basics?.location || "";
+
   return buildResumeShell({
     basics: {
       fullName: parsed.basics?.fullName || "Imported User",
       role: parsed.basics?.role || "",
       headline: parsed.basics?.headline || "",
-      email: parsed.basics?.email || "",
-      phone: sanitizePhone(parsed.basics?.phone),
-      location: parsed.basics?.location || "",
-      linkEmail: true,
-      linkPhone: true,
-      linkLocation: true,
+      email,
+      phone,
+      location,
+      // Same rule as the GitHub path: a blank field must not be marked linkable.
+      linkEmail: email !== "",
+      linkPhone: phone !== "",
+      linkLocation: location !== "",
     },
     links,
     summary: parsed.summary || "",
@@ -483,7 +391,25 @@ export class ProfileImportService {
       }
 
       const parsed = convertedResumeSchema.parse(JSON.parse(content));
-      return mapParsedToResumeData(parsed);
+      const mapped = mapParsedToResumeData(parsed);
+
+      /*
+       * `convertedResumeSchema` checks the model's own output shape; this checks that what
+       * we built from it is a master profile the studio can actually load. The model can
+       * return anything — a date as "Jan 2020", a 400-character role — and persisting that
+       * used to leave the user with a profile that silently failed to parse on read.
+       */
+      const validated = masterProfileContentSchema.safeParse(mapped);
+
+      if (!validated.success) {
+        logger.warn("AI-parsed profile failed master profile validation", {
+          issues: validated.error.issues,
+        });
+
+        throw new ApiError(502, "Imported profile data was incomplete. Please try again.");
+      }
+
+      return validated.data;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(502, "Failed to parse profile data using AI. Please try again.");
