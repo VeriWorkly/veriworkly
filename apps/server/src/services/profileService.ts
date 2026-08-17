@@ -4,6 +4,7 @@ import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
 
 import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
+import { masterProfileContentSchema } from "#validators/masterProfileValidator";
 
 export class ProfileService {
   /**
@@ -98,28 +99,44 @@ export class ProfileService {
     profile: Prisma.InputJsonValue,
     expectedUpdatedAt?: string,
   ) {
+    // 1. Guard against huge payloads cheaply before expensive schema parse
+    if (JSON.stringify(profile).length > 1_000_000) {
+      throw new ApiError(413, "Master profile payload is too large");
+    }
+
+    /*
+     * Validated here, not only in the controller. Validating at the
+     * service boundary prevents malformed import pipelines from bypassing constraints.
+     * The parsed value is persisted, stamping schemaVersion and stripping unknown keys.
+     */
+    const validated = masterProfileContentSchema.safeParse(profile);
+
+    if (!validated.success) {
+      throw new ApiError(422, "Master profile content is invalid", validated.error.issues);
+    }
+
+    const content = validated.data as Prisma.InputJsonValue;
+
     const existing = await prisma.masterProfile.findUnique({
       where: { userId },
       select: { updatedAt: true },
     });
 
-    if (this.hasConflict(existing?.updatedAt ?? null, expectedUpdatedAt))
+    if (this.hasConflict(existing?.updatedAt ?? null, expectedUpdatedAt)) {
       throw new ApiError(
         409,
         "Master profile was updated from another session. Refresh and retry.",
       );
-
-    if (JSON.stringify(profile).length > 1_000_000)
-      throw new ApiError(413, "Master profile payload is too large");
+    }
 
     const updated = await prisma.masterProfile.upsert({
       where: { userId },
       create: {
         userId,
-        content: profile,
+        content,
       },
       update: {
-        content: profile,
+        content,
       },
     });
 
