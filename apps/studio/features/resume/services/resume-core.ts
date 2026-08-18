@@ -2,14 +2,17 @@
 
 import type { ResumeData, ResumeSyncStatus } from "@/types/resume";
 import type { BaseDocument } from "@/features/documents/core/types";
+import type {
+  SaveDocumentOptions,
+  SaveDocumentResult,
+} from "@/features/documents/services/local-storage-service";
 
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
-import { deriveResumeFromMasterProfile } from "@/features/resume/services/master-profile";
-import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/services/workspace-settings";
 
 import {
   saveDocument,
+  createDocumentFromMasterProfile,
   deleteDocument,
   clearDocuments,
   loadDocumentById,
@@ -18,17 +21,10 @@ import {
   listFullDocuments,
 } from "@/features/documents/services/document-workspace-service";
 
-import { importDocumentFromFile } from "@/features/documents/services/import-service";
-import { parseResumeDataInput } from "@/features/resume/schemas/resume-storage-schema";
-import { DOCUMENT_ACTIVE_STORAGE_KEY } from "@/features/documents/services/storage-keys";
-
-export type SaveResumeResult =
-  { ok: true; queued: boolean } | { ok: false; reason: "quota-exceeded" | "unknown" };
-
-export type SaveResumeOptions = {
-  debounceMs?: number;
-  flush?: boolean;
-};
+// Aliases rather than copies: these used to be re-declared here, so adding `onFlush` to
+// the storage options would silently not reach resume callers.
+export type SaveResumeResult = SaveDocumentResult;
+export type SaveResumeOptions = SaveDocumentOptions;
 
 export interface ResumeListItem {
   id: string;
@@ -39,53 +35,44 @@ export interface ResumeListItem {
   sync: ResumeData["sync"];
 }
 
-function createId(): string {
-  return `resume-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
+// Removed: `loadResume()`, which returned the active-or-newest resume. Its only caller was
+// the resume store's hydration fallback, where returning *some* resume for a route that
+// asked for a specific id meant the editor silently opened the wrong document. Editors now
+// resolve by id through `loadResumeById` and report a miss instead.
 
-export function loadResume(): ResumeData {
-  if (typeof window !== "undefined") {
-    const activeVal = window.localStorage.getItem(DOCUMENT_ACTIVE_STORAGE_KEY);
-
-    if (activeVal) {
-      const [type, id] = activeVal.split(":");
-
-      if (type === "RESUME" && id) {
-        const resume = loadResumeById(id);
-        if (resume) return resume;
-      }
-    }
-  }
-
-  // Index lookup then a single body read, rather than loading every resume to take
-  // the first one. This runs on editor mount.
-  const newest = listDocumentIndexEntries("RESUME")[0];
-
-  if (newest) {
-    const resume = loadResumeById(newest.id);
-    if (resume) return resume;
-  }
-
-  return normalizeResumeData(defaultResume);
-}
-
-export function saveResume(resume: ResumeData, options?: SaveResumeOptions): SaveResumeResult {
+/**
+ * Wraps a `ResumeData` in the generic document envelope the rest of the app speaks.
+ *
+ * Extracted from `saveResume` because the toolbar needs the same envelope to hand to
+ * `exportDocumentByType` — the resume editor holds its document as bare `ResumeData` in
+ * the store, while every shared surface (export, sync, storage) takes a `BaseDocument`.
+ */
+export function toResumeDocument(resume: ResumeData): BaseDocument {
   const normalized = normalizeResumeData(resume);
-  const now = new Date().toISOString();
 
-  normalized.updatedAt = now;
-
-  const doc: BaseDocument = {
+  return {
     id: normalized.id,
     type: "RESUME",
     title: normalized.title || normalized.basics.fullName || "Untitled Resume",
     templateId: normalized.templateId,
     content: normalized,
-    updatedAt: now,
+    updatedAt: normalized.updatedAt,
     sync: normalized.sync,
   };
+}
 
-  return saveDocument(doc, options);
+export function saveResume(resume: ResumeData, options?: SaveResumeOptions): SaveResumeResult {
+  const doc = toResumeDocument(resume);
+  const now = new Date().toISOString();
+
+  return saveDocument(
+    {
+      ...doc,
+      updatedAt: now,
+      content: { ...(doc.content as ResumeData), updatedAt: now },
+    },
+    options,
+  );
 }
 
 export function resetResume(): ResumeData {
@@ -116,6 +103,28 @@ export function deleteResumeById(resumeId: string): string | null {
   return listDocumentIndexEntries("RESUME")[0]?.id ?? null;
 }
 
+/**
+ * Reads a resume by id and nothing else.
+ *
+ * The read and the active-document pointer update are separate functions on purpose:
+ * *looking at* a resume (a preview, a debug view, an ATS scan, a list) must not repoint the
+ * workspace's active document, because that silently changes what other surfaces open by
+ * default. This variant is also the only one safe to call from a render-phase `useMemo`.
+ */
+export function readResumeById(resumeId: string): ResumeData | null {
+  const doc = loadDocumentById("RESUME", resumeId);
+
+  if (!doc) {
+    return null;
+  }
+
+  return normalizeResumeData(doc.content as ResumeData);
+}
+
+/**
+ * Reads a resume *and* makes it the active document. For opening it in the editor — the one
+ * place where "this is the document the user is working on" is genuinely true.
+ */
 export function loadResumeById(resumeId: string): ResumeData | null {
   const doc = loadDocumentById("RESUME", resumeId);
 
@@ -127,37 +136,28 @@ export function loadResumeById(resumeId: string): ResumeData | null {
   return normalizeResumeData(doc.content as ResumeData);
 }
 
-export function createResume(): ResumeData {
-  const workspaceSettings = loadWorkspaceSettingsFromLocalStorage();
-  const nextResume = deriveResumeFromMasterProfile(createId());
-
-  nextResume.sync = {
-    ...defaultResume.sync,
-    enabled: workspaceSettings.autoSyncEnabled,
-    status: (workspaceSettings.autoSyncEnabled ? "pending" : "local-only") as ResumeSyncStatus,
-  };
-
-  saveResume(nextResume);
-
-  return nextResume;
+/**
+ * A thin wrapper over `createDocumentFromMasterProfile("RESUME")`, deliberately.
+ *
+ * This used to be a *second* construction path: it derived from the master profile while
+ * the registry's `createDefault` cloned `defaultResume`, so a resume created from the
+ * sidebar and one created by the post-delete fallback were different documents. The
+ * projection now lives in the registry (`wrapResumeDocument`), which is the only
+ * constructor, and `createDocument` owns id generation, the workspace sync setting,
+ * persistence, and the active-document pointer.
+ *
+ * Async because the master profile lives in the database: the fallback resume a user lands
+ * on after deleting their last one has to carry their real data too.
+ */
+export async function createResume(): Promise<ResumeData> {
+  return (await createDocumentFromMasterProfile("RESUME")).content as ResumeData;
 }
 
-export function createResumeWithTemplate(templateId: string): ResumeData {
-  const workspaceSettings = loadWorkspaceSettingsFromLocalStorage();
-  const nextResume = deriveResumeFromMasterProfile(createId());
-
-  nextResume.templateId = templateId;
-
-  nextResume.sync = {
-    ...defaultResume.sync,
-    enabled: workspaceSettings.autoSyncEnabled,
-    status: (workspaceSettings.autoSyncEnabled ? "pending" : "local-only") as ResumeSyncStatus,
-  };
-
-  saveResume(nextResume);
-
-  return nextResume;
-}
+/*
+ * Removed: `createResumeWithTemplate`. Its only caller was the unreachable
+ * `documentId === "new"` branch in `ResumeEditor`; the live template-on-create path is
+ * `EditorEntryRedirect`, which applies the template generically to any document type.
+ */
 
 export function deleteResume(resumeId: string): ResumeData | null {
   const nextId = deleteResumeById(resumeId);
@@ -201,29 +201,13 @@ export function setAllResumesSyncEnabled(enabled: boolean): SaveResumeResult {
   return lastResult;
 }
 
-/**
- * Assigns a fresh id and resets sync/cloud-linkage metadata after import. Without
- * this, re-importing a previously-exported JSON file (duplicate, restored backup,
- * etc.) would carry over the original `id`/`cloudDocumentId`/`revision` verbatim —
- * risking the next autosync silently overwriting (or false-conflicting with) the
- * original cloud document instead of creating an independent new one.
+/*
+ * Removed: `importResumeFromFile` / `sanitizeImportedResume`.
+ *
+ * Their job — assign a fresh id and clear cloud linkage so a re-imported export cannot
+ * overwrite the original cloud document — is now done generically for every document type
+ * by `sanitizeImportedDocument` in features/documents/services/import-service.ts, reached
+ * through `DocumentDefinition.importJson`. The hazard the original comment described is
+ * unchanged and still guarded; it is simply guarded once instead of per type. The cover
+ * letter had no equivalent at all, which is exactly why it was generalised.
  */
-function sanitizeImportedResume(resume: ResumeData): ResumeData {
-  return {
-    ...resume,
-    id: createId(),
-    sync: {
-      enabled: false,
-      status: "local-only",
-      cloudDocumentId: null,
-      lastSyncedAt: null,
-      revision: 1,
-    },
-  };
-}
-
-export async function importResumeFromFile(file: File) {
-  return importDocumentFromFile(file, parseResumeDataInput, (data) =>
-    sanitizeImportedResume(normalizeResumeData(data)),
-  );
-}

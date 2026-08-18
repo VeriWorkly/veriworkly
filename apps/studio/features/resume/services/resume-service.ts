@@ -1,17 +1,16 @@
 "use client";
 
 export {
-  loadResume,
   saveResume,
   resetResume,
   createResume,
   deleteResume,
+  readResumeById,
   loadResumeById,
   listSavedResumes,
   deleteResumeById,
-  createResumeWithTemplate,
+  toResumeDocument,
   setAllResumesSyncEnabled,
-  importResumeFromFile,
   type ResumeListItem,
 } from "./resume-core";
 

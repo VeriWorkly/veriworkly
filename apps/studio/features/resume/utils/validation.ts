@@ -1,19 +1,27 @@
 import type {
   ResumeBasics,
-  ResumeLinkItem,
   ResumeEducationItem,
   ResumeExperienceItem,
   ResumeProjectItem,
   ResumeSkillGroup,
 } from "@/types/resume";
 import {
+  isEmail,
   isHttpUrl,
   isMonthDate,
-  isTenDigitPhone,
   isYearDate,
-} from "@/features/resume/schemas/resume-validation-rules";
+  isValidPhoneValue,
+  VALIDATION_MESSAGES,
+} from "@/features/documents/validation/rules";
 
-export type ValidationErrors<T extends string> = Partial<Record<T, string>>;
+export type { ValidationErrors } from "@/features/documents/validation/rules";
+
+import type { ValidationErrors } from "@/features/documents/validation/rules";
+
+// Link validation is shared with the cover letter now — both editors render the same
+// `LinksEditor` — so it lives with the other document-generic rules. Re-exported for the
+// resume's existing callers.
+export { validateLinkItem } from "@/features/documents/validation/rules";
 
 export function validateBasics(
   basics: ResumeBasics,
@@ -36,28 +44,18 @@ export function validateBasics(
 
   if (!basics.email.trim()) {
     errors.email = "Email is required.";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(basics.email)) {
-    errors.email = "Enter a valid email address.";
+  } else if (!isEmail(basics.email)) {
+    errors.email = VALIDATION_MESSAGES.email;
   }
 
-  if (!basics.phone.trim()) {
-    errors.phone = "Phone is required.";
-  } else if (!isTenDigitPhone(basics.phone)) {
-    errors.phone = "Phone number must have exactly 10 digits.";
+  // Optional, matching the master profile: a phone number is not something the resume can
+  // insist on when the profile it is seeded from is allowed to leave it blank.
+  if (basics.phone.trim() && !isValidPhoneValue(basics.phone)) {
+    errors.phone = VALIDATION_MESSAGES.phone;
   }
 
   if (!basics.location.trim()) {
     errors.location = "Location is required.";
-  }
-
-  return errors;
-}
-
-export function validateLinkItem(item: ResumeLinkItem): ValidationErrors<"label" | "url"> {
-  const errors: ValidationErrors<"label" | "url"> = {};
-
-  if (!isHttpUrl(item.url)) {
-    errors.url = "Use a valid URL starting with http:// or https://.";
   }
 
   return errors;
@@ -151,7 +149,7 @@ export function validateProject(
   }
 
   if (!isHttpUrl(item.link)) {
-    errors.link = "Use a valid URL starting with http:// or https://";
+    errors.link = VALIDATION_MESSAGES.url;
   }
 
   if (!item.summary.trim()) {

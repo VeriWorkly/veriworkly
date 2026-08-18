@@ -4,7 +4,6 @@ import type {
   ResumeData,
   ResumeBasics,
   ResumeLinkItem,
-  ResumeSectionId,
   ResumeSkillGroup,
   ResumeProjectItem,
   ResumeCustomSection,
@@ -13,7 +12,6 @@ import type {
   ResumeAdditionalItem,
   ResumeExperienceItem,
   ResumeLinkDisplayMode,
-  ResumeAdditionalSectionKind,
 } from "@/types/resume";
 
 import { create } from "zustand";
@@ -25,29 +23,37 @@ import {
   createEducationItem,
   createExperienceItem,
   createAdditionalItem,
+  createCustomSection,
+  createTypedSectionItem,
+  type ResumeTypedSectionKey,
+  type ResumeTypedSectionItem,
 } from "@/features/resume/utils/factories";
 import {
   type SaveResumeResult,
   type SaveResumeOptions,
   saveResume as saveResumeToLocalStorage,
-  loadResume as loadResumeFromLocalStorage,
 } from "@/features/resume/services/resume-service";
 import { defaultResume } from "@/features/resume/constants/default-resume";
+import { getResumeSectionKey } from "@/features/documents/rendering/resume-rendering";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { reorderItems, withTimestamp } from "@/features/resume/store/resume-store-utils";
 
+/*
+ * No `selectedSection` / `selectSection`. Audited independently of the cover-letter store
+ * rather than by assuming symmetry: nothing read either one — every panel tracks its open
+ * section with local `useState` — and `resetResume`/`emptyResume` each reset a value no
+ * component observed.
+ */
 interface ResumeStoreState {
   resume: ResumeData;
-  selectedSection: ResumeSectionId;
   setResume: (resume: ResumeData) => void;
-  hydrateFromStorage: () => void;
   saveToStorage: (options?: SaveResumeOptions) => SaveResumeResult;
   resetResume: () => void;
   emptyResume: () => void;
-  selectSection: (section: ResumeSectionId) => void;
-  setSectionVisibility: (section: ResumeSectionId, visible: boolean) => void;
+  /** Keyed by `getResumeSectionKey`, not by section id — several sections share id "custom". */
+  setSectionVisibility: (sectionKey: string, visible: boolean) => void;
   reorderSections: (fromIndex: number, toIndex: number) => void;
-  updateSectionColumn: (sectionId: ResumeSectionId, column: "left" | "right") => void;
+  updateSectionColumn: (sectionKey: string, column: "left" | "right") => void;
   setTemplateId: (templateId: string) => void;
   updateCustomization: (values: Partial<ResumeCustomization>) => void;
   updateBasics: (values: Partial<ResumeBasics>) => void;
@@ -62,17 +68,33 @@ interface ResumeStoreState {
   addSkillGroup: () => void;
   removeSkillGroup: (index: number) => void;
   reorderSkillGroups: (fromIndex: number, toIndex: number) => void;
-  updateCustomSection: (
-    kind: ResumeAdditionalSectionKind,
-    values: Partial<ResumeCustomSection>,
+  /*
+   * One generic API for the eight typed optional sections rather than 24 near-identical
+   * actions. `key` names the array; `ResumeTypedSectionItem<K>` keeps the item type tied to
+   * it, so `updateTypedItem("references", i, { date: "" })` does not compile.
+   */
+  addTypedItem: (key: ResumeTypedSectionKey) => void;
+  updateTypedItem: <K extends ResumeTypedSectionKey>(
+    key: K,
+    index: number,
+    values: Partial<ResumeTypedSectionItem<K>>,
   ) => void;
+  removeTypedItem: (key: ResumeTypedSectionKey, index: number) => void;
+  /*
+   * Custom sections are addressed by their own id, not by `kind`. Every custom section has
+   * kind "custom", so a kind-keyed action could only ever reach the first one — which is
+   * why a resume could hold just one.
+   */
+  addCustomSection: () => void;
+  removeCustomSection: (sectionId: string) => void;
+  updateCustomSection: (sectionId: string, values: Partial<ResumeCustomSection>) => void;
   updateCustomSectionItem: (
-    kind: ResumeAdditionalSectionKind,
+    sectionId: string,
     index: number,
     values: Partial<ResumeAdditionalItem>,
   ) => void;
-  addCustomSectionItem: (kind: ResumeAdditionalSectionKind) => void;
-  removeCustomSectionItem: (kind: ResumeAdditionalSectionKind, index: number) => void;
+  addCustomSectionItem: (sectionId: string) => void;
+  removeCustomSectionItem: (sectionId: string, index: number) => void;
   updateExperience: (index: number, values: Partial<ResumeExperienceItem>) => void;
   addExperience: () => void;
   removeExperience: (index: number) => void;
@@ -89,19 +111,11 @@ interface ResumeStoreState {
 
 export const useResumeStore = create<ResumeStoreState>((set, get) => ({
   resume: defaultResume,
-  selectedSection: "basics",
   setResume: (resume) => set({ resume: withTimestamp(normalizeResumeData(resume)) }),
 
-  hydrateFromStorage: () => {
-    const storedResume = loadResumeFromLocalStorage();
-
-    if (!storedResume) {
-      return;
-    }
-
-    set({ resume: normalizeResumeData(storedResume) });
-  },
-
+  // No `hydrateFromStorage`: it loaded the active-or-newest resume regardless of the id
+  // the editor route asked for, which silently opened (and then autosaved over) a
+  // different document. Editors hydrate by id via `loadResumeById` instead.
   saveToStorage: (options) => saveResumeToLocalStorage(get().resume, options),
 
   resetResume: () => {
@@ -115,7 +129,7 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
     );
 
     saveResumeToLocalStorage(resetResumeValue);
-    set({ resume: resetResumeValue, selectedSection: "basics" });
+    set({ resume: resetResumeValue });
   },
 
   emptyResume: () => {
@@ -145,6 +159,14 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
         education: [],
         projects: [],
         skills: [],
+        languages: [],
+        interests: [],
+        awards: [],
+        certificates: [],
+        publications: [],
+        volunteer: [],
+        references: [],
+        achievements: [],
         customSections: defaultResume.customSections.map((section) => ({
           ...section,
           items: [],
@@ -154,17 +176,21 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
     );
 
     saveResumeToLocalStorage(emptyResumeValue);
-    set({ resume: emptyResumeValue, selectedSection: "basics" });
+    set({ resume: emptyResumeValue });
   },
 
-  selectSection: (selectedSection) => set({ selectedSection }),
-
-  setSectionVisibility: (sectionId, visible) =>
+  /*
+   * Keyed by `getResumeSectionKey`, not by `section.id`.
+   *
+   * Every custom section carries the id "custom", so an id-keyed toggle would hide or show
+   * all of them at once and an id-keyed column change would move all of them together.
+   */
+  setSectionVisibility: (sectionKey, visible) =>
     set((state) => ({
       resume: withTimestamp({
         ...state.resume,
         sections: state.resume.sections.map((section) =>
-          section.id === sectionId ? { ...section, visible } : section,
+          getResumeSectionKey(section) === sectionKey ? { ...section, visible } : section,
         ),
       }),
     })),
@@ -174,12 +200,15 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
       if (fromIndex < 2 || toIndex < 2) {
         return {};
       }
-      const reorderedSections = reorderItems(state.resume.sections, fromIndex, toIndex).map(
-        (section, index) => ({
-          ...section,
-          order: index,
-        }),
-      );
+
+      // Reordering acts on the sorted view the panel shows, which is not the stored array
+      // order once a custom section has been appended at the end.
+      const sorted = [...state.resume.sections].sort((left, right) => left.order - right.order);
+
+      const reorderedSections = reorderItems(sorted, fromIndex, toIndex).map((section, index) => ({
+        ...section,
+        order: index,
+      }));
 
       return {
         resume: withTimestamp({
@@ -189,12 +218,12 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
       };
     }),
 
-  updateSectionColumn: (sectionId, column) =>
+  updateSectionColumn: (sectionKey, column) =>
     set((state) => ({
       resume: withTimestamp({
         ...state.resume,
         sections: state.resume.sections.map((section) =>
-          section.id === sectionId ? { ...section, column } : section,
+          getResumeSectionKey(section) === sectionKey ? { ...section, column } : section,
         ),
       }),
     })),
@@ -339,22 +368,89 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
       }),
     })),
 
-  updateCustomSection: (kind, values) =>
+  addTypedItem: (key) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        [key]: [...state.resume[key], createTypedSectionItem(key)],
+      } as ResumeData),
+    })),
+
+  updateTypedItem: (key, index, values) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        [key]: state.resume[key].map((item, itemIndex) =>
+          itemIndex === index ? { ...item, ...values } : item,
+        ),
+      } as ResumeData),
+    })),
+
+  removeTypedItem: (key, index) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        [key]: state.resume[key].filter((_, itemIndex) => itemIndex !== index),
+      } as ResumeData),
+    })),
+
+  addCustomSection: () =>
+    set((state) => {
+      const section = createCustomSection();
+
+      return {
+        resume: withTimestamp({
+          ...state.resume,
+          customSections: [...state.resume.customSections, section],
+          // `normalizeResumeData` would add the matching section entry on the next read, but
+          // the visibility panel reads live store state, so the entry is added here too or a
+          // new section is invisible in it until the document reloads.
+          sections: [
+            ...state.resume.sections,
+            {
+              id: "custom" as const,
+              label: section.title,
+              visible: true,
+              order: state.resume.sections.length,
+              customSectionId: section.id,
+            },
+          ],
+        }),
+      };
+    }),
+
+  removeCustomSection: (sectionId) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        customSections: state.resume.customSections.filter((section) => section.id !== sectionId),
+        sections: state.resume.sections.filter((section) => section.customSectionId !== sectionId),
+      }),
+    })),
+
+  updateCustomSection: (sectionId, values) =>
     set((state) => ({
       resume: withTimestamp({
         ...state.resume,
         customSections: state.resume.customSections.map((item) =>
-          item.kind === kind ? { ...item, ...values } : item,
+          item.id === sectionId ? { ...item, ...values } : item,
+        ),
+        // The section entry carries the label the visibility panel shows, so a retitled
+        // section has to update both or the two disagree.
+        sections: state.resume.sections.map((section) =>
+          section.customSectionId === sectionId && values.title !== undefined
+            ? { ...section, label: values.title || "Custom" }
+            : section,
         ),
       }),
     })),
 
-  updateCustomSectionItem: (kind, index, values) =>
+  updateCustomSectionItem: (sectionId, index, values) =>
     set((state) => ({
       resume: withTimestamp({
         ...state.resume,
         customSections: state.resume.customSections.map((section) => {
-          if (section.kind !== kind) {
+          if (section.id !== sectionId) {
             return section;
           }
 
@@ -368,41 +464,39 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
       }),
     })),
 
-  addCustomSectionItem: (kind) =>
+  addCustomSectionItem: (sectionId) =>
     set((state) => ({
       resume: withTimestamp({
         ...state.resume,
         customSections: state.resume.customSections.map((section) => {
-          if (section.kind !== kind) {
+          if (section.id !== sectionId) {
             return section;
           }
 
           return {
             ...section,
-            items: [...section.items, createAdditionalItem(kind)],
+            items: [...section.items, createAdditionalItem("custom")],
           };
         }),
       }),
     })),
 
-  removeCustomSectionItem: (kind, index) =>
-    set((state) => {
-      return {
-        resume: withTimestamp({
-          ...state.resume,
-          customSections: state.resume.customSections.map((section) => {
-            if (section.kind !== kind || section.items.length === 0) {
-              return section;
-            }
+  removeCustomSectionItem: (sectionId, index) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        customSections: state.resume.customSections.map((section) => {
+          if (section.id !== sectionId || section.items.length === 0) {
+            return section;
+          }
 
-            return {
-              ...section,
-              items: section.items.filter((_, itemIndex) => itemIndex !== index),
-            };
-          }),
+          return {
+            ...section,
+            items: section.items.filter((_, itemIndex) => itemIndex !== index),
+          };
         }),
-      };
-    }),
+      }),
+    })),
 
   updateExperience: (index, values) =>
     set((state) => ({

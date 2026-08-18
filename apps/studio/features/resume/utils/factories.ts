@@ -1,12 +1,22 @@
 import type {
+  ResumeData,
+  ResumeAward,
+  ResumeAchievement,
   ResumeAdditionalItem,
   ResumeAdditionalSectionKind,
+  ResumeCertificate,
+  ResumeCustomSection,
   ResumeEducationItem,
   ResumeExperienceItem,
+  ResumeInterest,
+  ResumeLanguage,
   ResumeLinkItem,
   ResumeLinkType,
   ResumeProjectItem,
+  ResumePublication,
+  ResumeReference,
   ResumeSkillGroup,
+  ResumeVolunteer,
 } from "@/types/resume";
 
 function uniqueId(prefix: string) {
@@ -146,4 +156,129 @@ export function createAdditionalItem(kind: ResumeAdditionalSectionKind): ResumeA
     ...base,
     name: "Custom Item",
   };
+}
+
+/**
+ * The eight typed optional sections.
+ *
+ * These used to come out of `createAdditionalItem`, which returned one flat shape for every
+ * section and pre-filled `name` with a placeholder ("New Certification", "Reference Name")
+ * because the list control had no other label to show. The typed factories return genuinely
+ * empty rows: `ListEditorControls` falls back to "Certification 1" for an unnamed entry, so
+ * the placeholder only ever risked being exported as if the user had typed it.
+ */
+
+export function createLanguage(): ResumeLanguage {
+  return { id: uniqueId("lang"), language: "", fluency: "professional" };
+}
+
+export function createInterest(): ResumeInterest {
+  return { id: uniqueId("interest"), name: "", keywords: [] };
+}
+
+export function createAward(): ResumeAward {
+  return {
+    id: uniqueId("award"),
+    title: "",
+    awarder: "",
+    date: "",
+    website: "",
+    description: "",
+    showLink: true,
+  };
+}
+
+export function createCertificate(): ResumeCertificate {
+  return {
+    id: uniqueId("cert"),
+    title: "",
+    issuer: "",
+    date: "",
+    website: "",
+    referenceId: "",
+    description: "",
+    showLink: true,
+  };
+}
+
+export function createPublication(): ResumePublication {
+  return {
+    id: uniqueId("pub"),
+    title: "",
+    publisher: "",
+    date: "",
+    website: "",
+    description: "",
+    showLink: true,
+  };
+}
+
+export function createVolunteer(): ResumeVolunteer {
+  return {
+    id: uniqueId("volunteer"),
+    organization: "",
+    role: "",
+    startDate: "",
+    endDate: "",
+    current: false,
+    location: "",
+    summary: "",
+  };
+}
+
+export function createReference(): ResumeReference {
+  return {
+    id: uniqueId("ref"),
+    name: "",
+    title: "",
+    organization: "",
+    email: "",
+    phone: "",
+    relationship: "",
+  };
+}
+
+export function createAchievement(): ResumeAchievement {
+  return { id: uniqueId("achievement"), title: "", description: "" };
+}
+
+export function createCustomSection(): ResumeCustomSection {
+  return {
+    id: uniqueId("custom"),
+    kind: "custom",
+    title: "Custom Section",
+    editableTitle: true,
+    items: [],
+  };
+}
+
+/** The eight arrays a section editor can add to, and the item type each one holds. */
+export type ResumeTypedSectionKey =
+  | "languages"
+  | "interests"
+  | "awards"
+  | "certificates"
+  | "publications"
+  | "volunteer"
+  | "references"
+  | "achievements";
+
+export type ResumeTypedSectionItem<K extends ResumeTypedSectionKey> = ResumeData[K][number];
+
+const TYPED_SECTION_FACTORIES = {
+  languages: createLanguage,
+  interests: createInterest,
+  awards: createAward,
+  certificates: createCertificate,
+  publications: createPublication,
+  volunteer: createVolunteer,
+  references: createReference,
+  achievements: createAchievement,
+} as const;
+
+/** One entry point for the store's generic typed-list actions. */
+export function createTypedSectionItem<K extends ResumeTypedSectionKey>(
+  key: K,
+): ResumeTypedSectionItem<K> {
+  return TYPED_SECTION_FACTORIES[key]() as ResumeTypedSectionItem<K>;
 }
