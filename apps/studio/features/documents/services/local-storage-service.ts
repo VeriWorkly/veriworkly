@@ -21,6 +21,15 @@ import {
 export interface SaveDocumentOptions {
   debounceMs?: number;
   flush?: boolean;
+  /**
+   * Called with the real write's result once a debounced save lands.
+   *
+   * A debounced `saveDocument` returns `{ ok: true, queued: true }` immediately — the
+   * write itself happens `debounceMs` later — so the returned value can never describe a
+   * quota failure. Callers that report save state to the user must listen here, or a
+   * full-storage autosave stays invisible.
+   */
+  onFlush?: (result: SaveDocumentResult) => void;
 }
 
 export type SaveDocumentResult =
@@ -56,8 +65,6 @@ export { subscribeToDocumentIndexRevision };
  * every body at once, but they are the slow path — prefer `listIndex()` when metadata suffices.
  */
 export class LocalStorageService<T extends BaseDocumentData> {
-  private pendingItem: T | null = null;
-  private pendingSaveTimer: number | null = null;
   private migrated = false;
 
   constructor(private config: LocalStorageConfig<T>) {}
@@ -69,12 +76,6 @@ export class LocalStorageService<T extends BaseDocumentData> {
   private emitUpdatedEvent() {
     if (!this.isBrowser()) return;
     window.dispatchEvent(new Event(this.config.updatedEventName));
-  }
-
-  private clearPendingSaveTimer() {
-    if (this.pendingSaveTimer === null || !this.isBrowser()) return;
-    window.clearTimeout(this.pendingSaveTimer);
-    this.pendingSaveTimer = null;
   }
 
   private indexKeyFor(id: string) {
@@ -378,37 +379,15 @@ export class LocalStorageService<T extends BaseDocumentData> {
     return { ok: true, queued: false };
   }
 
-  save(item: T, options?: SaveDocumentOptions): SaveDocumentResult {
-    if (!this.isBrowser()) return { ok: true, queued: false };
-
-    const normalized = this.config.parseItem(item);
-    if (!normalized) return { ok: false, reason: "unknown" };
-
-    if (options?.flush) {
-      this.pendingItem = null;
-      return this.persist(normalized);
-    }
-
-    const debounceMs = Math.max(0, options?.debounceMs ?? 0);
-    if (debounceMs > 0) {
-      this.pendingItem = normalized;
-      this.clearPendingSaveTimer();
-      this.pendingSaveTimer = window.setTimeout(() => {
-        this.flush();
-      }, debounceMs);
-      return { ok: true, queued: true };
-    }
-
-    return this.persist(normalized);
-  }
-
-  flush(): SaveDocumentResult {
-    this.clearPendingSaveTimer();
-    if (!this.pendingItem) return { ok: true, queued: false };
-    const toSave = this.pendingItem;
-    this.pendingItem = null;
-    return this.persist(toSave);
-  }
+  /*
+   * Removed: `save()`/`flush()` and the `pendingItem` debounce they drove.
+   *
+   * A second, unused copy of the debounce that `document-workspace-service.saveDocument`
+   * implements — and it had the same defect that one did: the deferred `flush()` result was
+   * discarded, so a quota failure on the real write was invisible to the caller. Every
+   * writer goes through `saveDocument`, which reports the deferred result via `onFlush`.
+   * This existed only for someone to wire an editor to it and silently lose edits again.
+   */
 
   delete(id: string): string | null {
     if (!this.isBrowser()) return null;
@@ -438,8 +417,6 @@ export class LocalStorageService<T extends BaseDocumentData> {
 
   clear() {
     if (!this.isBrowser()) return;
-    this.pendingItem = null;
-    this.clearPendingSaveTimer();
 
     const index = this.readIndex();
 

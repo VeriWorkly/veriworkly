@@ -3,6 +3,7 @@
 "use client";
 
 import type { BaseDocument, ExportFormat } from "@/features/documents/core/types";
+import type { DocumentExportOptions } from "@/features/documents/core/definition";
 import type { ResumeData } from "@/types/resume";
 
 import { exportResumeAsPdf } from "@/features/documents/export/export-pdf";
@@ -28,6 +29,7 @@ function assertNever(value: never, context: string): never {
 export async function exportResumeDocument(
   document: BaseDocument,
   format: ExportFormat,
+  options?: DocumentExportOptions,
 ): Promise<void> {
   const content = document.content as ResumeData;
 
@@ -37,7 +39,16 @@ export async function exportResumeDocument(
     case "docx":
       return exportResumeAsDocx(content);
     case "html":
-      return exportResumeAsHtml(content);
+      /*
+       * Resolution of the HTML divergence (VW-04/VW-07): resume HTML export stays
+       * **WYSIWYG** wherever a rendered preview exists, because that is the output every
+       * existing user already gets from the editor and it reflects the template they chose.
+       *
+       * `previewElementId` is absent on surfaces with nothing rendered to scrape (the
+       * document list, a share page), and `exportResumeAsHtml` falls back to generating the
+       * document from `ResumeData` there. One exporter, one decision point.
+       */
+      return exportResumeAsHtml(content, options?.previewElementId);
     case "markdown":
       return exportResumeAsMarkdown(content);
     case "json":

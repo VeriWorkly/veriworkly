@@ -70,7 +70,6 @@ const ToolbarActionsMenu = ({
   return (
     <>
       <ToolbarActionsMenuTrigger
-        documentLabel={documentLabel}
         isLoggedIn={isLoggedIn}
         onDelete={onDelete}
         onImportJson={onImportJson}
@@ -101,7 +100,6 @@ const ToolbarActionsMenu = ({
 };
 
 interface ToolbarActionsMenuTriggerProps {
-  documentLabel: string;
   isLoggedIn: boolean;
   onDelete: () => void;
   onImportJson: () => void;

@@ -1,5 +1,7 @@
 "use client";
 
+import type { MasterProfileData } from "@veriworkly/profile-core";
+
 import type { DocumentIndexEntry } from "@/types/document";
 import type { DocumentType } from "@/features/documents/core/document-types";
 import type { BaseDocument, DocumentMeta } from "@/features/documents/core/types";
@@ -8,6 +10,8 @@ import type { SaveDocumentOptions, SaveDocumentResult } from "./local-storage-se
 import { LocalStorageService } from "./local-storage-service";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { getMasterProfileForNewDocument } from "@/features/resume/services/master-profile";
+import { withDocumentIdentity } from "@/features/documents/core/content-identity";
 import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/services/workspace-settings";
 import { DOCUMENT_TYPES } from "@/features/documents/core/document-types";
 import {
@@ -19,14 +23,22 @@ import {
 } from "@/features/documents/services/storage-keys";
 
 const ACTIVE_KEY = DOCUMENT_ACTIVE_STORAGE_KEY;
-const pendingSaves = new Map<string, { document: BaseDocument; timer: number | null }>();
+const pendingSaves = new Map<
+  string,
+  {
+    document: BaseDocument;
+    timer: number | null;
+    onFlush?: (result: SaveDocumentResult) => void;
+  }
+>();
 const storageInstances = new Map<DocumentType, LocalStorageService<BaseDocument>>();
 
 function pendingSaveKey(type: DocumentType, id: string) {
   return `${type}:${id}`;
 }
 
-function buildId(type: DocumentType): string {
+/** Fresh document id. Exported because import assigns one too — see import-service.ts. */
+export function buildDocumentId(type: DocumentType): string {
   return `${type.toLowerCase()}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
@@ -148,33 +160,94 @@ export function saveDocument(
       const pending = pendingSaves.get(key);
       pendingSaves.delete(key);
 
-      if (pending) persistDocument(pending.document);
+      if (!pending) return;
+
+      // Persist unconditionally, then report: `onFlush?.(persistDocument(…))` would skip
+      // the write entirely whenever no callback was supplied, because an optional call
+      // does not evaluate its arguments.
+      const result = persistDocument(pending.document);
+
+      // The write's own result — the caller's `{ queued: true }` said nothing about it.
+      pending.onFlush?.(result);
     }, debounceMs);
 
-    pendingSaves.set(key, { document, timer });
+    pendingSaves.set(key, { document, timer, onFlush: options?.onFlush });
     return { ok: true, queued: true };
   }
 
   return persistDocument(document);
 }
 
-export function createDocument(type: DocumentType) {
-  const id = buildId(type);
-  const defaultDoc = getDocumentDefinition(type).createDefault(id);
+/**
+ * Persists every pending debounced save right now, synchronously.
+ *
+ * Autosave debounces at 300ms via a `setTimeout` held in {@link pendingSaves}. Nothing
+ * used to force that timer to run early, so closing the tab, reloading, or backgrounding
+ * on mobile (where the browser may discard the page outright) dropped whatever was typed
+ * in the last 300ms — the moment it hurts most, since users finish a sentence and leave.
+ *
+ * Deliberately synchronous: `localStorage.setItem` already is, and an unload path must not
+ * await anything. Each pending entry still reports through its own `onFlush`, so an editor
+ * finds out about a quota failure here exactly as it would have on the timer.
+ */
+export function flushPendingSaves(type?: DocumentType): void {
+  if (typeof window === "undefined") return;
+
+  for (const [key, pending] of [...pendingSaves.entries()]) {
+    if (type && !key.startsWith(`${type}:`)) continue;
+
+    pendingSaves.delete(key);
+
+    if (pending.timer !== null) window.clearTimeout(pending.timer);
+
+    pending.onFlush?.(persistDocument(pending.document));
+  }
+}
+
+/**
+ * Builds, persists, and activates a new document.
+ *
+ * `master` is the profile to seed from. Synchronous on purpose — the registry's
+ * `createDefault` cannot await — so callers that want the *database* copy resolve it first;
+ * see {@link createDocumentFromMasterProfile}.
+ */
+export function createDocument(type: DocumentType, master?: MasterProfileData) {
+  const id = buildDocumentId(type);
+  const defaultDoc = getDocumentDefinition(type).createDefault(id, master);
   const workspaceSettings = loadWorkspaceSettingsFromLocalStorage();
+
+  const sync: BaseDocument["sync"] = {
+    ...defaultDoc.sync,
+    enabled: workspaceSettings.autoSyncEnabled,
+    status: workspaceSettings.autoSyncEnabled ? "pending" : "local-only",
+  };
+
   const doc: BaseDocument = {
     ...defaultDoc,
-    sync: {
-      ...defaultDoc.sync,
-      enabled: workspaceSettings.autoSyncEnabled,
-      status: workspaceSettings.autoSyncEnabled ? "pending" : "local-only",
-    },
+    sync,
+    // The workspace setting has to reach the content's own sync copy too, or the resume
+    // editor's first autosave reverts it — see withDocumentIdentity.
+    content: withDocumentIdentity(defaultDoc.content, { id, sync }),
   };
 
   saveDocument(doc);
   setActiveDocument(type, id);
 
   return doc;
+}
+
+/**
+ * `createDocument`, with the master profile fetched first.
+ *
+ * The entry point every user-facing "new document" action should use. The profile lives in
+ * the database, so reaching it means an await; doing that here rather than in each of the
+ * four call sites is what stops one of them quietly going back to demo data — which is the
+ * bug this whole path exists to fix. Resolution never throws and never blocks: with no
+ * profile, offline, or signed out, the document is still created from each type's own
+ * fallback content.
+ */
+export async function createDocumentFromMasterProfile(type: DocumentType) {
+  return createDocument(type, await getMasterProfileForNewDocument());
 }
 
 export function deleteDocument(type: DocumentType, id: string) {

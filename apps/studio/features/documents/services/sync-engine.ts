@@ -1,4 +1,11 @@
-export type SyncStatus = "local-only" | "pending" | "syncing" | "synced" | "conflicted";
+import type { DocumentSyncStatus } from "@veriworkly/profile-core";
+
+/**
+ * Aliased, not declared. The projections in `@veriworkly/profile-core` build a document's
+ * sync block, so the status union has to be the same one on both sides; the historical name
+ * stays because several dozen call sites import it.
+ */
+export type SyncStatus = DocumentSyncStatus;
 
 export interface SyncTelemetry {
   lastAttemptAt: string | null;

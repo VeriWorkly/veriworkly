@@ -10,6 +10,8 @@ import {
   joinTruthy,
 } from "@/features/resume/services/resume-formatters";
 
+import { getResumeAdditionalBlocks } from "@/features/documents/rendering/resume-render-items";
+
 import { downloadBlob } from "../download";
 import { createDocxParagraph } from "./docx-paragraph";
 
@@ -218,53 +220,51 @@ async function buildResumeDocx(resume: ResumeData): Promise<Blob> {
     });
   }
 
-  if (isSectionVisible(visibleSections, "custom") && resume.customSections.length > 0) {
-    resume.customSections.forEach((section) => {
-      const itemParagraphs: Paragraph[] = [];
+  /*
+   * Every optional section — the eight typed ones and any number of custom ones — through
+   * the same resolver the preview and the PDF use. This used to iterate
+   * `resume.customSections` directly and gate all of it behind the single "custom" toggle,
+   * which after the typed model would have dropped certifications, awards, languages and
+   * the rest from every exported document.
+   */
+  getResumeAdditionalBlocks(resume).forEach((block) => {
+    const itemParagraphs: Paragraph[] = [];
 
-      section.items.forEach((item) => {
-        const name = safeText(item.name);
-        const meta = joinTruthy([item.issuer, item.link, item.date], " | ");
+    block.items.forEach((item) => {
+      const meta = joinTruthy([item.subtitle, item.link?.text, item.meta], " | ");
 
-        if (name) {
-          itemParagraphs.push(
-            new Paragraph({
-              heading: HeadingLevel.HEADING_2,
-              children: [new TextRun(name)],
-            }),
-          );
-        }
+      if (item.title) {
+        itemParagraphs.push(
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            children: [new TextRun(item.title)],
+          }),
+        );
+      }
 
-        if (meta) itemParagraphs.push(createDocxParagraph(meta));
-        if (safeText(item.description)) {
-          itemParagraphs.push(createDocxParagraph(safeText(item.description)));
-        }
+      if (meta) itemParagraphs.push(createDocxParagraph(meta));
+      if (item.summary) itemParagraphs.push(createDocxParagraph(item.summary));
 
-        item.details
-          .map((detail) => safeText(detail))
-          .filter(Boolean)
-          .forEach((detail) => {
-            itemParagraphs.push(
-              new Paragraph({
-                bullet: { level: 0 },
-                children: [new TextRun(detail)],
-              }),
-            );
-          });
+      item.bullets.forEach((bullet) => {
+        itemParagraphs.push(
+          new Paragraph({
+            bullet: { level: 0 },
+            children: [new TextRun(bullet)],
+          }),
+        );
       });
-
-      if (itemParagraphs.length === 0) return;
-
-      const sectionTitle = safeText(section.title) || "Additional Information";
-      children.push(
-        new Paragraph({
-          heading: HeadingLevel.HEADING_1,
-          children: [new TextRun(sectionTitle)],
-        }),
-        ...itemParagraphs,
-      );
     });
-  }
+
+    if (itemParagraphs.length === 0) return;
+
+    children.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        children: [new TextRun(block.title || "Additional Information")],
+      }),
+      ...itemParagraphs,
+    );
+  });
 
   const doc = new Document({
     sections: [

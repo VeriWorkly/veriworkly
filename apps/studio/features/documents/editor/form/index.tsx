@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { useEffect, useRef, useState } from "react";
 
-import { Input } from "@veriworkly/ui";
+import { Input, Select } from "@veriworkly/ui";
 
 import { cn } from "@/lib/utils";
 
@@ -21,13 +21,20 @@ import { cn } from "@/lib/utils";
  * `*Field` components are the value/onChange conveniences built on it.
  */
 
+/**
+ * `hint` is advisory and renders alongside `error`, not instead of it: a field can be
+ * perfectly valid and still worth a nudge — a phone number stored without a country code
+ * is the case this exists for.
+ */
 export function Field({
   children,
   error,
+  hint,
   label,
 }: {
   children: ReactNode;
   error?: string;
+  hint?: ReactNode;
   label: string;
 }) {
   return (
@@ -35,6 +42,7 @@ export function Field({
       <span>{label}</span>
       {children}
       {error ? <p className="text-xs text-red-500">{error}</p> : null}
+      {hint ? <p className="text-muted text-xs font-normal">{hint}</p> : null}
     </label>
   );
 }
@@ -58,18 +66,20 @@ export function TextArea({
 
 export function TextInputField({
   error,
+  hint,
   label,
   onValueChange,
   value,
   ...props
 }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> & {
   error?: string;
+  hint?: ReactNode;
   label: string;
   onValueChange: (value: string) => void;
   value: string;
 }) {
   return (
-    <Field error={error} label={label}>
+    <Field error={error} hint={hint} label={label}>
       <Input
         {...props}
         className={cn(invalidClass(error), props.className)}
@@ -135,6 +145,41 @@ export function CheckboxField({
       />
       {children}
     </label>
+  );
+}
+
+/**
+ * Select counterpart to {@link TextInputField}, on the UI-kit `Select`.
+ *
+ * Sections used to hand-write `<select className="border-border bg-background h-11 w-full
+ * rounded-2xl border px-4 text-sm">`, which is the UI kit's styling copied by hand and
+ * therefore free to drift from it.
+ */
+export function SelectField({
+  children,
+  error,
+  label,
+  onValueChange,
+  value,
+  ...props
+}: Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange" | "value"> & {
+  children: ReactNode;
+  error?: string;
+  label: string;
+  onValueChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <Field error={error} label={label}>
+      <Select
+        {...props}
+        className={cn(invalidClass(error), props.className)}
+        onChange={(event) => onValueChange(event.target.value)}
+        value={value}
+      >
+        {children}
+      </Select>
+    </Field>
   );
 }
 

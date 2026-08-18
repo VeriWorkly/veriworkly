@@ -1,4 +1,5 @@
 import type { BaseDocument, ExportFormat } from "@/features/documents/core/types";
+import type { DocumentExportOptions } from "@/features/documents/core/definition";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 
@@ -17,10 +18,16 @@ import { getDocumentDefinition } from "@/features/documents/core/registry";
  *     previous `if (RESUME) … else assume cover letter` shape allowed.
  *
  * This module intentionally has no heavy static imports — keep it that way.
+ *
+ * This is now the *only* way any surface reaches an exporter. The resume editor used to
+ * carry a parallel `useToolbarDownloads` hook that imported the six format modules itself,
+ * which meant `resume-exporters.tsx` — the registry-registered handler — never ran for the
+ * editor at all, and the two paths had already drifted apart on HTML output and analytics.
  */
 export async function exportDocumentByType(
   document: BaseDocument,
   format: ExportFormat,
+  options?: DocumentExportOptions,
 ): Promise<void> {
   const definition = getDocumentDefinition(document.type);
 
@@ -30,5 +37,5 @@ export async function exportDocumentByType(
 
   const exporter = await definition.loadExporter(format);
 
-  return exporter(document);
+  return exporter(document, options);
 }
