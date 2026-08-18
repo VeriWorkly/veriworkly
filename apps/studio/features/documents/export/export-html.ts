@@ -10,8 +10,10 @@ import {
   joinTruthy,
 } from "@/features/resume/services/resume-formatters";
 import { normalizeLinkHref } from "@/features/documents/rendering/resume-rendering";
+import { getResumeAdditionalBlocks } from "@/features/documents/rendering/resume-render-items";
 
 import { downloadBlob } from "./download";
+import { EXPORT_EXCLUDE_ATTRIBUTE, EXPORT_ROOT_ATTRIBUTE } from "./export-dom-markers";
 
 function getComputedStyleText(style: CSSStyleDeclaration): string {
   const declarations: string[] = [];
@@ -31,6 +33,32 @@ function getComputedStyleText(style: CSSStyleDeclaration): string {
   return declarations.join(" ");
 }
 
+/**
+ * True for an element the user cannot see on screen.
+ *
+ * `cssText` is copied wholesale, so an invisible node does not merely survive the clone —
+ * it arrives in the exported file carrying the very declarations that hid it
+ * (`position: absolute; left: -10000px; opacity: 0`). It renders as nothing and reads as a
+ * full duplicate of the document to any parser.
+ *
+ * Deliberately not "drop every `[aria-hidden]` node": resume templates mark their
+ * decorative separators `aria-hidden` (see `templates/resume/shared/web.tsx`) and those are
+ * visible, so removing them would change how the export looks.
+ */
+function isVisuallyHidden(element: Element): boolean {
+  if (element.hasAttribute(EXPORT_EXCLUDE_ATTRIBUTE)) {
+    return true;
+  }
+
+  const style = window.getComputedStyle(element);
+
+  return (
+    style.display === "none" ||
+    style.visibility === "hidden" ||
+    Number.parseFloat(style.opacity || "1") === 0
+  );
+}
+
 function inlineComputedStyles(source: Element, clone: Element): void {
   const sourceStyle = window.getComputedStyle(source);
   const clonedElement = clone as HTMLElement;
@@ -40,6 +68,10 @@ function inlineComputedStyles(source: Element, clone: Element): void {
   const sourceChildren = Array.from(source.children);
   const cloneChildren = Array.from(clone.children);
 
+  // Collected and applied after the walk: removing mid-loop would desync the parallel
+  // source/clone indices this function relies on.
+  const hiddenClones: Element[] = [];
+
   for (let index = 0; index < sourceChildren.length; index += 1) {
     const sourceChild = sourceChildren[index];
     const cloneChild = cloneChildren[index];
@@ -48,8 +80,35 @@ function inlineComputedStyles(source: Element, clone: Element): void {
       continue;
     }
 
+    if (isVisuallyHidden(sourceChild)) {
+      hiddenClones.push(cloneChild);
+      continue;
+    }
+
     inlineComputedStyles(sourceChild, cloneChild);
   }
+
+  for (const hiddenClone of hiddenClones) {
+    hiddenClone.remove();
+  }
+}
+
+/**
+ * The subtree to export out of the preview stage.
+ *
+ * Prefers the element the preview explicitly marks as holding the visible pages. The
+ * fallback to the first element child is what this function used to do unconditionally —
+ * it is kept only for preview shells that carry no marker, and it is why the hidden-node
+ * pruning above exists as a second line of defence.
+ */
+function findExportSourceNode(container: HTMLElement): HTMLElement {
+  const markedRoot = container.querySelector<HTMLElement>(`[${EXPORT_ROOT_ATTRIBUTE}]`);
+
+  if (markedRoot) {
+    return markedRoot;
+  }
+
+  return (container.firstElementChild as HTMLElement | null) ?? container;
 }
 
 function buildHtml(resume: ResumeData): string {
@@ -167,37 +226,34 @@ function buildHtml(resume: ResumeData): string {
         .join("")
     : "";
 
-  const customSections = isSectionVisible(visibleSections, "custom")
-    ? resume.customSections
-        .map((section) => {
-          const items = section.items
-            .map((item) => {
-              const details = item.details
-                .map((detail) => safeText(detail))
-                .filter(Boolean)
-                .map((detail) => `<li>${escapeHtml(detail)}</li>`)
-                .join("");
-              const name = safeText(item.name);
-              const meta = joinTruthy([item.issuer, item.link, item.date], " · ");
+  /*
+   * Every optional section — the eight typed ones and any number of custom ones — through
+   * the same resolver the preview and the PDF use, rather than iterating
+   * `resume.customSections` behind the single "custom" toggle.
+   */
+  const customSections = getResumeAdditionalBlocks(resume)
+    .map((block) => {
+      const items = block.items
+        .map((item) => {
+          const bullets = item.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("");
+          const meta = joinTruthy([item.subtitle, item.link?.text, item.meta], " · ");
 
-              return `
+          return `
               <article>
-                ${name ? `<h3>${escapeHtml(name)}</h3>` : ""}
+                ${item.title ? `<h3>${escapeHtml(item.title)}</h3>` : ""}
                 ${meta ? `<p class="meta">${escapeHtml(meta)}</p>` : ""}
-                ${safeText(item.description) ? `<p>${escapeHtml(safeText(item.description))}</p>` : ""}
-                ${details ? `<ul>${details}</ul>` : ""}
+                ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ""}
+                ${bullets ? `<ul>${bullets}</ul>` : ""}
               </article>`;
-            })
-            .join("");
-
-          if (!items) return "";
-
-          const title = safeText(section.title);
-          return `<section>${title ? `<h2>${escapeHtml(title)}</h2>` : ""}${items}</section>`;
         })
-        .filter(Boolean)
-        .join("")
-    : "";
+        .join("");
+
+      if (!items) return "";
+
+      return `<section>${block.title ? `<h2>${escapeHtml(block.title)}</h2>` : ""}${items}</section>`;
+    })
+    .filter(Boolean)
+    .join("");
 
   return `<!doctype html>
             <html lang="en">
@@ -254,7 +310,7 @@ function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): string
     return null;
   }
 
-  const sourceNode = (printableNode.firstElementChild as HTMLElement | null) ?? printableNode;
+  const sourceNode = findExportSourceNode(printableNode);
   const clonedResume = sourceNode.cloneNode(true) as HTMLElement;
   const sourceRect = sourceNode.getBoundingClientRect();
 
@@ -294,6 +350,20 @@ function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): string
             </html>`;
 }
 
+/**
+ * Two HTML outputs, deliberately kept — this is the settled answer to "is resume HTML
+ * export WYSIWYG or template-generated?", and it is: **WYSIWYG whenever a preview exists.**
+ *
+ * - **With `targetId`**: a WYSIWYG capture of the rendered preview, so the file looks like
+ *   the template the user chose. This is the DOM-scrape path above, and it is what the
+ *   editor produces — changing it would silently alter "Export → HTML" for every user.
+ * - **Without `targetId`**: a self-contained document generated from `ResumeData`, for the
+ *   surfaces that have no rendered preview in the DOM to scrape (document list, share page).
+ *
+ * Both toolbars now reach this only through `exportDocumentByType`, which forwards the
+ * caller's `previewElementId` — see `resume-exporters.tsx`. The choice of branch is made
+ * there, once, rather than by which of two parallel export paths happened to run.
+ */
 export function exportResumeAsHtml(resume: ResumeData, targetId?: string): void {
   const html = targetId ? buildRenderedHtmlDocument(targetId, resume) : buildHtml(resume);
   const outputHtml = html ?? buildHtml(resume);

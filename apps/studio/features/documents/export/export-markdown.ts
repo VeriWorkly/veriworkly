@@ -9,6 +9,7 @@ import {
   joinTruthy,
 } from "@/features/resume/services/resume-formatters";
 import { normalizeLinkHref } from "@/features/documents/rendering/resume-rendering";
+import { getResumeAdditionalBlocks } from "@/features/documents/rendering/resume-render-items";
 
 import { downloadBlob } from "./download";
 
@@ -169,35 +170,30 @@ function buildMarkdown(resume: ResumeData): string {
     parts.push(toMarkdownSection("Links", lines));
   }
 
-  if (isSectionVisible(visibleSections, "custom") && resume.customSections.length > 0) {
-    resume.customSections.forEach((section) => {
-      const lines = section.items.flatMap((item) => {
-        const title = safeText(item.name);
-        const description = safeText(item.description);
-        const details = item.details
-          .map((detail) => safeText(detail))
-          .filter(Boolean)
-          .map((detail) => `- ${escapeMarkdown(detail)}`);
+  /*
+   * Every optional section — the eight typed ones and any number of custom ones — through
+   * the same resolver the preview and the PDF use, rather than iterating
+   * `resume.customSections` behind the single "custom" toggle.
+   */
+  getResumeAdditionalBlocks(resume).forEach((block) => {
+    const lines = block.items.flatMap((item) => {
+      const meta = joinTruthy([item.subtitle, item.link?.text, item.meta], " | ");
 
-        const meta = joinTruthy([item.issuer, item.link, item.date], " | ");
-
-        return [
-          title ? `### ${escapeMarkdown(title)}` : "",
-          ...(meta ? [escapeMarkdown(meta)] : []),
-          ...(description ? [escapeMarkdown(description)] : []),
-          ...details,
-          "",
-        ].filter(Boolean);
-      });
-
-      const sectionTitle = safeText(section.title);
-      if (sectionTitle) {
-        parts.push(toMarkdownSection(escapeMarkdown(sectionTitle), lines));
-      } else if (lines.length > 0) {
-        parts.push([...lines, ""].join("\n"));
-      }
+      return [
+        item.title ? `### ${escapeMarkdown(item.title)}` : "",
+        ...(meta ? [escapeMarkdown(meta)] : []),
+        ...(item.summary ? [escapeMarkdown(item.summary)] : []),
+        ...item.bullets.map((bullet) => `- ${escapeMarkdown(bullet)}`),
+        "",
+      ].filter(Boolean);
     });
-  }
+
+    if (block.title) {
+      parts.push(toMarkdownSection(escapeMarkdown(block.title), lines));
+    } else if (lines.length > 0) {
+      parts.push([...lines, ""].join("\n"));
+    }
+  });
 
   return parts.filter(Boolean).join("\n").trim();
 }

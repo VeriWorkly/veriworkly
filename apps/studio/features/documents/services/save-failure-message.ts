@@ -21,3 +21,15 @@ export function getSaveFailureMessage(reason: SaveFailureReason): string {
 export function describeSaveResult(result: SaveDocumentResult): string | null {
   return result.ok ? null : getSaveFailureMessage(result.reason);
 }
+
+/**
+ * Status-line copy for the two halves of an autosave, shared so both editors say the same
+ * thing.
+ *
+ * A debounced save returns `{ ok: true, queued: true }` immediately — the write itself
+ * happens `debounceMs` later. Reporting "Saved locally" at that point claims a persisted
+ * write that has not happened yet (and that may still fail on quota), so the queued state
+ * gets its own wording and only `onFlush` may promote it.
+ */
+export const SAVE_QUEUED_MESSAGE = "Saving...";
+export const SAVE_PERSISTED_MESSAGE = "Saved locally";

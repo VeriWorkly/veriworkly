@@ -86,7 +86,11 @@ const ToolbarHeader = ({
             </Button>
           ) : null}
         </div>
-        <p className="text-muted truncate text-xs">{message}</p>
+        {/* The editor's only persistent save feedback. Owned by the editor, not the
+            toolbar, so autosave can report through it — see `ResumeEditor`. */}
+        <p className="text-muted truncate text-xs" data-testid="editor-status">
+          {message}
+        </p>
       </div>
     </div>
   );
