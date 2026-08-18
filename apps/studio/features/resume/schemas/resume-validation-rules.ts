@@ -1,50 +1,34 @@
-import { z } from "zod";
-
-export const monthDatePattern = /^\d{4}-(0[1-9]|1[0-2])$/;
-export const yearDatePattern = /^\d{4}$/;
-
-export function countPhoneDigits(value: string) {
-  return value.replace(/\D/g, "").length;
-}
-
-export function isTenDigitPhone(value: string) {
-  return countPhoneDigits(value) === 10;
-}
-
-export function isHttpUrl(value: string) {
-  if (!value) return true;
-
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-export function isMonthDate(value: string) {
-  return !value || monthDatePattern.test(value);
-}
-
-export function isYearDate(value: string) {
-  return !value || yearDatePattern.test(value);
-}
-
-export const phoneSchema = z
-  .string()
-  .max(24)
-  .refine(isTenDigitPhone, "Phone number must have exactly 10 digits.");
-
-export const phoneOrEmptySchema = z
-  .string()
-  .max(24)
-  .refine((value) => !value || isTenDigitPhone(value), "Phone number must have exactly 10 digits.");
-
-export const urlOrEmptySchema = z
-  .string()
-  .max(2048)
-  .refine(isHttpUrl, "URL must start with http:// or https://.");
-
-export const monthDateSchema = z.string().max(7).refine(isMonthDate, "Use YYYY-MM format.");
-
-export const yearDateSchema = z.string().max(4).refine(isYearDate, "Use YYYY format.");
+/*
+ * Historical entry point for the resume's field rules.
+ *
+ * Both the predicates and the zod primitives now come from `@veriworkly/profile-core`, which
+ * the server imports too — the studio's copies of `phoneSchema`, the email rule, and the
+ * date patterns had drifted from the server's, and reconciling them by hand was exactly the
+ * maintenance the package removes. Nothing is declared here any more; the file exists so the
+ * resume's several dozen import sites keep working.
+ *
+ * `phoneSchema` and `phoneOrEmptySchema` are the same rule. Empty is valid for both: an
+ * incomplete profile must still be storable, and blocking a save on a blank optional field is
+ * a UI concern, not a storage one. Both names are kept so it stays obvious that neither is
+ * the stricter variant.
+ */
+export {
+  isEmail,
+  isEmailOrEmpty,
+  isHttpUrl,
+  isMonthDate,
+  isYearDate,
+  isValidPhoneValue,
+  normalizePhoneValue,
+  formatPhoneForDisplay,
+  isLegacyUnqualifiedPhone,
+  countPhoneDigits,
+  monthDatePattern,
+  yearDatePattern,
+  phoneSchema,
+  phoneSchema as phoneOrEmptySchema,
+  emailOrEmptySchema,
+  urlOrEmptySchema,
+  monthDateSchema,
+  yearDateSchema,
+} from "@veriworkly/profile-core";

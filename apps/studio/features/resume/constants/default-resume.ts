@@ -16,9 +16,18 @@ export const defaultSections: ResumeSection[] = [
   { id: "volunteer", label: "Volunteer", visible: true, order: 12 },
   { id: "references", label: "References", visible: true, order: 13 },
   { id: "achievements", label: "Achievements", visible: true, order: 14 },
-  { id: "custom", label: "Custom", visible: true, order: 15 },
+  { id: "custom", label: "Custom", visible: true, order: 15, customSectionId: "custom-default" },
 ];
 
+/**
+ * Sample content, for guests and for tests. Nothing else.
+ *
+ * It must never again be the seed for a signed-in user's document. Every creation path now
+ * goes through a `projectTo*` in `@veriworkly/profile-core` with the user's master profile;
+ * this is only what a user who has no profile at all is shown, so that a first visit is not
+ * a blank page. It is also the base the studio normalises a partial profile over — see
+ * `getDefaultProfile` in features/resume/services/master-profile.ts.
+ */
 export const defaultResume: ResumeData = {
   id: "default-resume",
   templateId: "executive-clarity",
@@ -162,63 +171,19 @@ export const defaultResume: ResumeData = {
     },
   ],
 
+  // Empty, but present: a resume declares every typed section so templates and exporters
+  // can read them without a guard, and so the master -> resume projection has a slot for
+  // each one. Sample content lives only in the sections above.
+  languages: [],
+  interests: [],
+  awards: [],
+  certificates: [],
+  publications: [],
+  volunteer: [],
+  references: [],
+  achievements: [],
+
   customSections: [
-    {
-      id: "certifications-default",
-      kind: "certifications",
-      title: "Certifications",
-      editableTitle: false,
-      items: [],
-    },
-    {
-      id: "awards-default",
-      kind: "awards",
-      title: "Awards",
-      editableTitle: false,
-      items: [],
-    },
-    {
-      id: "publications-default",
-      kind: "publications",
-      title: "Publications",
-      editableTitle: false,
-      items: [],
-    },
-    {
-      id: "languages-default",
-      kind: "languages",
-      title: "Languages",
-      editableTitle: false,
-      items: [],
-    },
-    {
-      id: "interests-default",
-      kind: "interests",
-      title: "Interests",
-      editableTitle: false,
-      items: [],
-    },
-    {
-      id: "volunteer-default",
-      kind: "volunteer",
-      title: "Volunteer",
-      editableTitle: false,
-      items: [],
-    },
-    {
-      id: "references-default",
-      kind: "references",
-      title: "References",
-      editableTitle: false,
-      items: [],
-    },
-    {
-      id: "achievements-default",
-      kind: "achievements",
-      title: "Achievements",
-      editableTitle: false,
-      items: [],
-    },
     {
       id: "custom-default",
       kind: "custom",

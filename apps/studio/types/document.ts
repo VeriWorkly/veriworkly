@@ -1,12 +1,11 @@
-import type { SyncStatus } from "@/features/documents/services/sync-engine";
+import type { DocumentSyncState } from "@veriworkly/profile-core";
 
-export interface DocumentSyncState {
-  enabled: boolean;
-  status: SyncStatus;
-  cloudDocumentId: string | null;
-  lastSyncedAt: string | null;
-  revision: number;
-}
+/*
+ * Re-exported, not redeclared. A projection in `@veriworkly/profile-core` builds the sync
+ * block of every newly created document, so the shape has to be defined once and on the side
+ * both the studio and the server can import.
+ */
+export type { DocumentSyncState };
 
 export interface BaseDocumentData {
   id: string;

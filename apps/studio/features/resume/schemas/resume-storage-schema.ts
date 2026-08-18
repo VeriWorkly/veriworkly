@@ -7,6 +7,7 @@ import {
   yearDateSchema,
   monthDateSchema,
   urlOrEmptySchema,
+  emailOrEmptySchema,
 } from "@/features/resume/schemas/resume-validation-rules";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
@@ -54,6 +55,8 @@ const resumeAdditionalSectionKindSchema = z.enum([
   "custom",
 ]);
 
+const resumeFluencySchema = z.enum(["elementary", "limited", "professional", "fluent", "native"]);
+
 const resumeSyncStatusSchema = z.enum(["local-only", "pending", "syncing", "synced", "conflicted"]);
 
 const resumeFontFamilySchema = z
@@ -72,7 +75,7 @@ const resumeDataSchemaBase = z
       fullName: z.string(),
       role: z.string(),
       headline: z.string(),
-      email: z.string(),
+      email: emailOrEmptySchema,
       phone: phoneSchema,
       location: z.string(),
       linkEmail: z.boolean(),
@@ -143,6 +146,97 @@ const resumeDataSchemaBase = z
       }),
     ),
 
+    /*
+     * The eight typed sections. A resume stored before this model has them flattened into
+     * `customSections` instead; `normalizeResumeData` unflattens on read, so both shapes
+     * parse and only the typed one is ever written back.
+     */
+    languages: z.array(
+      z.object({
+        id: z.string(),
+        language: z.string(),
+        fluency: resumeFluencySchema,
+      }),
+    ),
+
+    interests: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        keywords: z.array(z.string()),
+      }),
+    ),
+
+    awards: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        awarder: z.string(),
+        date: monthDateSchema,
+        website: urlOrEmptySchema.optional(),
+        description: z.string(),
+        showLink: z.boolean(),
+      }),
+    ),
+
+    certificates: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        issuer: z.string(),
+        date: monthDateSchema,
+        website: urlOrEmptySchema.optional(),
+        referenceId: z.string().optional(),
+        description: z.string(),
+        showLink: z.boolean(),
+      }),
+    ),
+
+    publications: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        publisher: z.string(),
+        date: monthDateSchema,
+        website: urlOrEmptySchema.optional(),
+        description: z.string(),
+        showLink: z.boolean(),
+      }),
+    ),
+
+    volunteer: z.array(
+      z.object({
+        id: z.string(),
+        organization: z.string(),
+        role: z.string(),
+        startDate: monthDateSchema,
+        endDate: monthDateSchema,
+        current: z.boolean(),
+        location: z.string(),
+        summary: z.string(),
+      }),
+    ),
+
+    references: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        title: z.string(),
+        organization: z.string(),
+        email: emailOrEmptySchema.optional(),
+        phone: phoneSchema.optional(),
+        relationship: z.string(),
+      }),
+    ),
+
+    achievements: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        description: z.string(),
+      }),
+    ),
+
     customSections: z.array(
       z.object({
         id: z.string(),
@@ -170,6 +264,8 @@ const resumeDataSchemaBase = z
         label: z.string(),
         visible: z.boolean(),
         order: z.number(),
+        column: z.enum(["left", "right"]).optional(),
+        customSectionId: z.string().optional(),
       }),
     ),
 
