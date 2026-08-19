@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 794 1123" width="794" height="1123" role="img" aria-label="Minimalist cover letter template preview">
+  <rect width="794" height="1123" fill="#ffffff"/>
+
+  <g fill="#6366f1">
+    <rect x="80" y="80" width="120" height="9" rx="3"/>
+  </g>
+  <g fill="#0f172a">
+    <rect x="80" y="102" width="230" height="24" rx="4"/>
+  </g>
+  <g fill="#94a3b8">
+    <rect x="80" y="140" width="170" height="10" rx="3"/>
+  </g>
+
+  <g fill="#cbd5e1">
+    <rect x="80" y="168" width="150" height="9" rx="3"/>
+    <rect x="240" y="168" width="120" height="9" rx="3"/>
+    <rect x="370" y="168" width="140" height="9" rx="3"/>
+  </g>
+
+  <g fill="#94a3b8">
+    <rect x="80" y="222" width="90" height="9" rx="3"/>
+  </g>
+  <g fill="#cbd5e1">
+    <rect x="80" y="246" width="260" height="9" rx="3"/>
+    <rect x="80" y="264" width="200" height="9" rx="3"/>
+  </g>
+
+  <g fill="#6366f1">
+    <rect x="80" y="308" width="48" height="8" rx="3"/>
+  </g>
+  <g fill="#0f172a">
+    <rect x="80" y="326" width="300" height="16" rx="3"/>
+  </g>
+
+  <g fill="#cbd5e1">
+    <rect x="80" y="384" width="634" height="9" rx="3"/>
+    <rect x="80" y="404" width="600" height="9" rx="3"/>
+    <rect x="80" y="424" width="560" height="9" rx="3"/>
+    <rect x="80" y="444" width="634" height="9" rx="3"/>
+    <rect x="80" y="464" width="480" height="9" rx="3"/>
+  </g>
+
+  <rect x="80" y="508" width="3" height="120" fill="#6366f1"/>
+  <g fill="#cbd5e1">
+    <rect x="100" y="514" width="560" height="9" rx="3"/>
+    <rect x="100" y="540" width="520" height="9" rx="3"/>
+    <rect x="100" y="566" width="580" height="9" rx="3"/>
+    <rect x="100" y="592" width="440" height="9" rx="3"/>
+  </g>
+
+  <g fill="#cbd5e1">
+    <rect x="80" y="668" width="634" height="9" rx="3"/>
+    <rect x="80" y="688" width="600" height="9" rx="3"/>
+    <rect x="80" y="708" width="300" height="9" rx="3"/>
+  </g>
+
+  <g fill="#0f172a">
+    <rect x="80" y="760" width="150" height="10" rx="3"/>
+  </g>
+</svg>

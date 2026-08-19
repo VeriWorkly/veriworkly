@@ -9,7 +9,7 @@ import {
   SettingsColor,
   SettingsRange,
   SettingsSelect,
-} from "@/features/resume/editor/settings/SettingControls";
+} from "@/features/documents/editor/settings/SettingControls";
 import {
   DocumentTemplateSummary,
   DocumentTemplatePickerModal,

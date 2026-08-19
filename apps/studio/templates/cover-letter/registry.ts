@@ -6,6 +6,9 @@ import { createTemplateRegistry } from "@/templates/shared/template-registry";
 
 import { professionalCoverLetterMeta } from "./professional/meta";
 import { veriworklyCoverLetterMeta } from "./veriworkly/meta";
+import { minimalistCoverLetterMeta } from "./minimalist/meta";
+import { executiveCoverLetterMeta } from "./executive/meta";
+import { atsEssentialCoverLetterMeta } from "./ats-essential/meta";
 
 export interface CoverLetterRenderProps {
   content: CoverLetterContent;
@@ -47,6 +50,39 @@ export const coverLetterTemplateRegistry = createTemplateRegistry<
         (m) => m.VeriworklyCoverLetterPdf as ComponentType<CoverLetterRenderProps>,
       ),
   },
+  {
+    meta: minimalistCoverLetterMeta,
+    loadWeb: () =>
+      import("./minimalist/web").then(
+        (m) => m.MinimalistCoverLetterPreview as ComponentType<CoverLetterRenderProps>,
+      ),
+    loadPdf: () =>
+      import("./minimalist/pdf").then(
+        (m) => m.MinimalistCoverLetterPdf as ComponentType<CoverLetterRenderProps>,
+      ),
+  },
+  {
+    meta: executiveCoverLetterMeta,
+    loadWeb: () =>
+      import("./executive/web").then(
+        (m) => m.ExecutiveCoverLetterPreview as ComponentType<CoverLetterRenderProps>,
+      ),
+    loadPdf: () =>
+      import("./executive/pdf").then(
+        (m) => m.ExecutiveCoverLetterPdf as ComponentType<CoverLetterRenderProps>,
+      ),
+  },
+  {
+    meta: atsEssentialCoverLetterMeta,
+    loadWeb: () =>
+      import("./ats-essential/web").then(
+        (m) => m.AtsEssentialCoverLetterPreview as ComponentType<CoverLetterRenderProps>,
+      ),
+    loadPdf: () =>
+      import("./ats-essential/pdf").then(
+        (m) => m.AtsEssentialCoverLetterPdf as ComponentType<CoverLetterRenderProps>,
+      ),
+  },
 ]);
 
 /**
@@ -58,6 +94,12 @@ const HTML_BUILDER_LOADERS: Record<string, () => Promise<CoverLetterHtmlBuilder>
     import("./professional/web").then((m) => m.buildProfessionalCoverLetterHtml),
   [veriworklyCoverLetterMeta.id]: () =>
     import("./veriworkly/web").then((m) => m.buildVeriworklyCoverLetterHtml),
+  [minimalistCoverLetterMeta.id]: () =>
+    import("./minimalist/web").then((m) => m.buildMinimalistCoverLetterHtml),
+  [executiveCoverLetterMeta.id]: () =>
+    import("./executive/web").then((m) => m.buildExecutiveCoverLetterHtml),
+  [atsEssentialCoverLetterMeta.id]: () =>
+    import("./ats-essential/web").then((m) => m.buildAtsEssentialCoverLetterHtml),
 };
 
 export function loadCoverLetterHtmlBuilder(

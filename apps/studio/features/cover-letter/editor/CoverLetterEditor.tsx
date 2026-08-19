@@ -1,27 +1,28 @@
 "use client";
 
-import type { ReactNode } from "react";
-
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
 
-import { Button, Card } from "@veriworkly/ui";
+import { Button } from "@veriworkly/ui";
 
 import { useUserStore } from "@/store/useUserStore";
 
-import type { CoverLetterContent } from "@/features/cover-letter/types";
-import { parseCoverLetterContent } from "@/features/cover-letter/schema";
-
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
 import { DocumentEditorShell } from "@/features/documents/editor/DocumentEditorShell";
+import { DocumentStateCard } from "@/features/documents/editor/DocumentStateCard";
 import {
   startDocumentSyncWorker,
   hydrateCloudDocumentByIdToLocalStorage,
 } from "@/features/documents/services/document-sync";
 import { importCoverLetterMarkdownFile } from "@/features/cover-letter/markdown-import";
-import { describeSaveResult } from "@/features/documents/services/save-failure-message";
+import {
+  describeSaveResult,
+  SAVE_QUEUED_MESSAGE,
+  SAVE_PERSISTED_MESSAGE,
+} from "@/features/documents/services/save-failure-message";
 import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/services/workspace-settings";
+import { useFlushPendingSavesOnExit } from "@/features/documents/editor/useFlushPendingSavesOnExit";
 
 import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
 
@@ -44,6 +45,7 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
 
   const hasHydratedRef = useRef(false);
+  const lastSaveFailureRef = useRef<string | null>(null);
 
   const [hydrated, setHydrated] = useState(false);
   const [message, setMessage] = useState("Autosave ready");
@@ -54,11 +56,8 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
   const hydrateFromStorage = useCoverLetterStore((state) => state.hydrateFromStorage);
   const saveToStorage = useCoverLetterStore((state) => state.saveToStorage);
   const updateContent = useCoverLetterStore((state) => state.updateContent);
-  const setDocument = useCoverLetterStore((state) => state.setDocument);
 
   const deferredDocument = useDeferredValue(document);
-
-  const coverLetterPreviewId = `cover-letter-preview-${documentId}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -87,16 +86,41 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
     };
   }, [documentId, hydrateFromStorage]);
 
-  // Autosave. Surfacing the result is the point: the previous implementation
-  // discarded it, so a full-storage failure silently dropped the user's edits.
+  const reportSaveResult = useCallback((failure: string | null) => {
+    setMessage(failure ?? SAVE_PERSISTED_MESSAGE);
+
+    // Only on transition — a persistent failure would otherwise toast per keystroke.
+    if (failure && failure !== lastSaveFailureRef.current) {
+      toast.error(failure);
+    }
+
+    lastSaveFailureRef.current = failure;
+  }, []);
+
+  // Autosave. Surfacing the result is the point: the previous implementation discarded it,
+  // so a full-storage failure silently dropped the user's edits. Inspecting the returned
+  // value was still not enough — a debounced save returns `{ queued: true }` before the
+  // write happens, so the real result (and "Saved locally") only ever comes from `onFlush`.
   useEffect(() => {
     if (!hasHydratedRef.current || !document) return;
 
-    const failure = describeSaveResult(saveToStorage({ debounceMs: 300 }));
+    const receipt = saveToStorage({
+      debounceMs: 300,
+      onFlush: (result) => reportSaveResult(describeSaveResult(result)),
+    });
 
-    setMessage(failure ?? "Saved locally");
-    if (failure) toast.error(failure);
-  }, [document, saveToStorage]);
+    if (receipt.ok && receipt.queued) {
+      // The autosave itself is the external system this effect drives; the status line is
+      // that system reporting back, and the queued half of it is only knowable here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMessage(SAVE_QUEUED_MESSAGE);
+      return;
+    }
+
+    reportSaveResult(describeSaveResult(receipt));
+  }, [document, saveToStorage, reportSaveResult]);
+
+  useFlushPendingSavesOnExit("COVER_LETTER");
 
   useEffect(() => {
     if (!hasHydratedRef.current || !isLoggedIn) return;
@@ -109,163 +133,97 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
     });
   }, [isLoggedIn, document?.id]);
 
+  /*
+   * Declared above the early returns and wrapped in `useCallback` so the memoised toolbar
+   * and modals below actually bail out. Inline arrow props are new objects on every render,
+   * which would make `memo` on those components pure overhead.
+   */
+  const saveNow = useCallback(() => {
+    const failure = describeSaveResult(saveToStorage({ flush: true }));
+
+    setMessage(failure ?? "Draft saved locally");
+    if (failure) toast.error(failure);
+  }, [saveToStorage]);
+
+  /*
+   * JSON import used to live here as sixty lines of merge-into-the-open-document logic.
+   * It now lives in `features/cover-letter/import.ts` behind
+   * `DocumentDefinition.importJson`, and the shared toolbar hook drives it — so "Import
+   * JSON" creates a new document for both types instead of overwriting this draft.
+   * Markdown import stays local because it genuinely merges into the current content.
+   */
+  const importMarkdown = useCallback(
+    async (file: File | undefined) => {
+      const content = useCoverLetterStore.getState().document?.content;
+
+      if (!file || !content) return;
+
+      try {
+        updateContent(await importCoverLetterMarkdownFile(file, content));
+        toast.success("Cover letter markdown imported");
+      } catch {
+        toast.error("Import failed. Use a valid cover letter Markdown file.");
+      }
+    },
+    [updateContent],
+  );
+
+  const openShare = useCallback(() => setShareModalOpen(true), []);
+  const closeShare = useCallback(() => setShareModalOpen(false), []);
+  const openDelete = useCallback(() => setDeleteModalOpen(true), []);
+  const closeDelete = useCallback(() => setDeleteModalOpen(false), []);
+
   if (!hydrated) {
-    return <CoverLetterStateCard title="Loading cover letter" message="Preparing your editor." />;
+    return <DocumentStateCard title="Loading cover letter" message="Preparing your editor." />;
   }
 
   if (!document) {
     return (
-      <CoverLetterStateCard
+      <DocumentStateCard
         title="Cover letter not found"
         message="Return to documents and choose another letter."
       >
         <Button onClick={() => router.push("/documents")} variant="secondary">
           Back to documents
         </Button>
-      </CoverLetterStateCard>
+      </DocumentStateCard>
     );
   }
 
   const currentDocument = document;
-
-  function saveNow() {
-    const failure = describeSaveResult(saveToStorage({ flush: true }));
-
-    setMessage(failure ?? "Draft saved locally");
-    if (failure) toast.error(failure);
-  }
-
-  async function importJson(file: File | undefined) {
-    if (!file) return;
-
-    try {
-      const parsed = JSON.parse(await file.text()) as unknown;
-      const isRecord = (value: unknown): value is Record<string, unknown> =>
-        typeof value === "object" && value !== null;
-
-      const importedShell = isRecord(parsed) && "content" in parsed ? parsed : undefined;
-      const rawContent: unknown = importedShell ? importedShell.content : parsed;
-      const rawContentRecord = isRecord(rawContent) ? rawContent : {};
-
-      // Every field is coerced to its correct type here (numbers can never become NaN,
-      // link `type` is allow-listed, etc.) — this is what previously bypassed schema
-      // validation entirely and merged raw, untrusted JSON straight into live state.
-      const validatedContent = parseCoverLetterContent(rawContentRecord);
-
-      // Only overwrite fields the imported file actually specified, so a partial
-      // export/backup still merges onto (rather than wiping) the current draft.
-      const mergedContent: CoverLetterContent = { ...currentDocument.content };
-      for (const key of Object.keys(validatedContent) as (keyof CoverLetterContent)[]) {
-        if (key === "appearance") continue;
-        if (key in rawContentRecord) {
-          (mergedContent as unknown as Record<string, unknown>)[key] = validatedContent[key];
-        }
-      }
-
-      const rawAppearance = isRecord(rawContentRecord.appearance)
-        ? rawContentRecord.appearance
-        : {};
-      const mergedAppearance = { ...currentDocument.content.appearance };
-      for (const key of Object.keys(validatedContent.appearance) as Array<
-        keyof CoverLetterContent["appearance"]
-      >) {
-        if (key in rawAppearance) {
-          (mergedAppearance as Record<string, unknown>)[key] = validatedContent.appearance[key];
-        }
-      }
-      mergedContent.appearance = mergedAppearance;
-
-      const importedTitle =
-        importedShell && typeof importedShell.title === "string" ? importedShell.title : undefined;
-      const importedTemplateId =
-        importedShell && typeof importedShell.templateId === "string"
-          ? importedShell.templateId
-          : undefined;
-
-      setDocument({
-        ...currentDocument,
-        title: importedTitle || currentDocument.title,
-        templateId: importedTemplateId || currentDocument.templateId,
-        updatedAt: new Date().toISOString(),
-        content: mergedContent,
-      });
-
-      toast.success("Cover letter imported");
-    } catch {
-      toast.error("Import failed. Use a valid cover letter JSON file.");
-    }
-  }
-
-  async function importMarkdown(file: File | undefined) {
-    if (!file) return;
-
-    try {
-      const importedContent = await importCoverLetterMarkdownFile(file, currentDocument.content);
-
-      updateContent(importedContent);
-      toast.success("Cover letter markdown imported");
-    } catch {
-      toast.error("Import failed. Use a valid cover letter Markdown file.");
-    }
-  }
-
   const previewDocument = deferredDocument ?? currentDocument;
 
   return (
-    <>
-      <DocumentEditorShell
-        toolbar={
-          <CoverLetterToolbar
-            documentId={documentId}
-            message={message}
-            onSave={saveNow}
-            onSetMessage={setMessage}
-            onImportJson={importJson}
-            onImportMarkdown={importMarkdown}
-            onOpenShare={() => setShareModalOpen(true)}
-            onOpenDelete={() => setDeleteModalOpen(true)}
-          />
-        }
-        modals={
-          <CoverLetterEditorModals
-            shareModalOpen={shareModalOpen}
-            onShareModalClose={() => setShareModalOpen(false)}
-            deleteModalOpen={deleteModalOpen}
-            onDeleteModalClose={() => setDeleteModalOpen(false)}
-          />
-        }
-        contentPanel={<CoverLetterContentPanel documentId={currentDocument.id} />}
-        settingsPanel={<CoverLetterSettingsPanel />}
-        preview={
-          <CoverLetterPreview
-            content={previewDocument.content}
-            templateId={previewDocument.templateId}
-          />
-        }
-        previewId={coverLetterPreviewId}
-        previewTitle={previewDocument.title || "Cover Letter"}
-        settingsLabel="Style settings"
-      />
-    </>
-  );
-}
-
-function CoverLetterStateCard({
-  title,
-  message,
-  children,
-}: {
-  title: string;
-  message: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <Card className="space-y-3 text-center">
-        <h1 className="text-foreground text-xl font-semibold">{title}</h1>
-        <p className="text-muted text-sm">{message}</p>
-        {children}
-      </Card>
-    </div>
+    <DocumentEditorShell
+      toolbar={
+        <CoverLetterToolbar
+          documentId={documentId}
+          message={message}
+          onSave={saveNow}
+          onSetMessage={setMessage}
+          onImportMarkdown={importMarkdown}
+          onOpenShare={openShare}
+          onOpenDelete={openDelete}
+        />
+      }
+      modals={
+        <CoverLetterEditorModals
+          shareModalOpen={shareModalOpen}
+          onShareModalClose={closeShare}
+          deleteModalOpen={deleteModalOpen}
+          onDeleteModalClose={closeDelete}
+        />
+      }
+      contentPanel={<CoverLetterContentPanel documentId={currentDocument.id} />}
+      settingsPanel={<CoverLetterSettingsPanel />}
+      preview={
+        <CoverLetterPreview
+          content={previewDocument.content}
+          templateId={previewDocument.templateId}
+        />
+      }
+      previewTitle={previewDocument.title || "Cover Letter"}
+      settingsLabel="Style settings"
+    />
   );
 }
