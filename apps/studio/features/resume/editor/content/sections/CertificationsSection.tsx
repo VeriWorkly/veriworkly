@@ -2,63 +2,58 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
-
-import { Field } from "@/features/documents/editor/form";
-import GenericCustomSection from "./GenericCustomSection";
+import { TextInputField } from "@/features/documents/editor/form";
+import TypedSectionEditor from "./TypedSectionEditor";
 
 const CertificationsSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
+    <TypedSectionEditor
       {...props}
-      kind="certifications"
+      sectionKey="certificates"
+      sectionId="certifications"
       label="Certifications"
       addLabel="Add certification"
       fallbackItemLabel="Certification"
       emptyMessage="No certifications yet. Click Add certification."
+      labelFor={(item) => item.title}
     >
-      {({ item: activeCertification, update }) => (
+      {({ item: certificate, update }) => (
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Certificate name">
-            <Input
-              onChange={(event) => update({ name: event.target.value })}
-              value={activeCertification.name}
-            />
-          </Field>
+          <TextInputField
+            label="Certificate name"
+            value={certificate.title}
+            onValueChange={(title) => update({ title })}
+          />
 
-          <Field label="Issuer">
-            <Input
-              onChange={(event) => update({ issuer: event.target.value })}
-              value={activeCertification.issuer}
-            />
-          </Field>
+          <TextInputField
+            label="Issuer"
+            value={certificate.issuer}
+            onValueChange={(issuer) => update({ issuer })}
+          />
 
-          <Field label="Issue date (YYYY-MM)">
-            <Input
-              type="month"
-              onChange={(event) => update({ date: event.target.value })}
-              value={activeCertification.date}
-            />
-          </Field>
+          <TextInputField
+            type="month"
+            label="Issue date (YYYY-MM)"
+            value={certificate.date}
+            onValueChange={(date) => update({ date })}
+          />
 
-          <Field label="Credential ID">
-            <Input
-              onChange={(event) => update({ referenceId: event.target.value })}
-              value={activeCertification.referenceId}
-            />
-          </Field>
+          <TextInputField
+            label="Credential ID"
+            value={certificate.referenceId ?? ""}
+            onValueChange={(referenceId) => update({ referenceId })}
+          />
 
-          <Field label="Verification link">
-            <Input
-              placeholder="https://..."
-              type="url"
-              onChange={(event) => update({ link: event.target.value })}
-              value={activeCertification.link}
-            />
-          </Field>
+          <TextInputField
+            type="url"
+            label="Verification link"
+            placeholder="https://..."
+            value={certificate.website ?? ""}
+            onValueChange={(website) => update({ website })}
+          />
         </div>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 

@@ -1,35 +1,33 @@
 "use client";
 
 import type { BaseSectionProps } from "./section-types";
+import type { ResumeSectionId } from "@/types/resume";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { validateBasics } from "@/features/resume/utils/validation";
+import {
+  normalizePhoneValue,
+  isLegacyUnqualifiedPhone,
+} from "@/features/resume/schemas/resume-validation-rules";
 
-import DraggableSection from "./DraggableSection";
+import SectionAccordion from "@/features/documents/editor/SectionAccordion";
 import { CheckboxField, TextInputField } from "@/features/documents/editor/form";
 
-const BasicsSection = ({
-  isOpen,
-  onDragEnd,
-  onDragOver,
-  onDragStart,
-  onDrop,
-  onToggle,
-}: BaseSectionProps) => {
+const BasicsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
   const basics = useResumeStore((state) => state.resume.basics);
   const updateBasics = useResumeStore((state) => state.updateBasics);
   const basicErrors = validateBasics(basics);
 
+  // A bare number stored before country codes were captured. Worth pointing out, never
+  // worth blocking on: we cannot guess which country it belongs to, only the user can.
+  const phoneNeedsCountryCode = isLegacyUnqualifiedPhone(basics.phone);
+
   return (
-    <DraggableSection
+    <SectionAccordion
       id="basics"
       label="Basics"
       isOpen={isOpen}
-      onDrop={onDrop}
-      onToggle={onToggle}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragStart={onDragStart}
+      onToggle={(nextId) => onToggle(nextId as ResumeSectionId)}
     >
       <div className="grid gap-4 md:grid-cols-2">
         <TextInputField
@@ -63,12 +61,16 @@ const BasicsSection = ({
 
         <TextInputField
           error={basicErrors.phone}
-          inputMode="numeric"
+          hint={
+            phoneNeedsCountryCode ? "Add a country code so this works internationally." : undefined
+          }
+          inputMode="tel"
           label="Phone"
-          maxLength={10}
-          onValueChange={(phone) => updateBasics({ phone: phone.replace(/\D/g, "").slice(0, 10) })}
-          pattern="[0-9]*"
-          placeholder="1234567890"
+          // Normalising to E.164 on every keystroke would move the caret out from under the
+          // user mid-number, so the raw text is kept while typing and folded down on blur.
+          onBlur={() => updateBasics({ phone: normalizePhoneValue(basics.phone) })}
+          onValueChange={(phone) => updateBasics({ phone })}
+          placeholder="+44 20 7946 0958"
           value={basics.phone}
         />
 
@@ -101,7 +103,7 @@ const BasicsSection = ({
           Location opens Google search
         </CheckboxField>
       </div>
-    </DraggableSection>
+    </SectionAccordion>
   );
 };
 

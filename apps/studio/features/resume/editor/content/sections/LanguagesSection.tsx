@@ -2,47 +2,50 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
-
-import { Field } from "@/features/documents/editor/form";
-import { proficiencyOptions } from "../editor-options";
-import GenericCustomSection from "./GenericCustomSection";
+import { SelectField, TextInputField } from "@/features/documents/editor/form";
+import { fluencyOptions } from "../editor-options";
+import TypedSectionEditor from "./TypedSectionEditor";
 
 const LanguagesSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
+    <TypedSectionEditor
       {...props}
-      kind="languages"
+      sectionKey="languages"
+      sectionId="languages"
       label="Languages"
       addLabel="Add language"
       fallbackItemLabel="Language"
       emptyMessage="No languages yet. Click Add language."
+      labelFor={(item) => item.language}
     >
-      {({ item: activeLanguage, update }) => (
+      {({ item: language, update }) => (
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Language">
-            <Input
-              onChange={(event) => update({ name: event.target.value })}
-              value={activeLanguage.name}
-            />
-          </Field>
+          <TextInputField
+            label="Language"
+            value={language.language}
+            onValueChange={(value) => update({ language: value })}
+          />
 
-          <Field label="Proficiency">
-            <select
-              value={activeLanguage.referenceId}
-              className="border-border bg-background h-11 w-full rounded-2xl border px-4 text-sm"
-              onChange={(event) => update({ referenceId: event.target.value })}
-            >
-              {proficiencyOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {/*
+            The stored value is the schema's fluency enum, not the free-text proficiency
+            list this control used to offer. The old list ("Beginner", "Advanced") was a
+            third vocabulary for the same field, and nothing mapped it onto the two the
+            master profile and the schema already used.
+          */}
+          <SelectField
+            label="Proficiency"
+            value={language.fluency}
+            onValueChange={(fluency) => update({ fluency: fluency as typeof language.fluency })}
+          >
+            {fluencyOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </SelectField>
         </div>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 

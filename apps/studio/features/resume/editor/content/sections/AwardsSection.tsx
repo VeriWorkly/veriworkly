@@ -2,79 +2,62 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
+import { TextAreaField, TextInputField } from "@/features/documents/editor/form";
+import TypedSectionEditor from "./TypedSectionEditor";
 
-import { Field, TextArea } from "@/features/documents/editor/form";
-import GenericCustomSection from "./GenericCustomSection";
-
-const AwardsSection = ({
-  isOpen,
-  onDragEnd,
-  onDragOver,
-  onDragStart,
-  onDrop,
-  onToggle,
-}: BaseSectionProps) => {
+const AwardsSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
-      kind="awards"
+    <TypedSectionEditor
+      {...props}
+      sectionKey="awards"
+      sectionId="awards"
       label="Awards"
       addLabel="Add award"
-      emptyMessage="No awards yet. Click Add award."
       fallbackItemLabel="Award"
-      isOpen={isOpen}
-      onDrop={onDrop}
-      onToggle={onToggle}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragStart={onDragStart}
+      emptyMessage="No awards yet. Click Add award."
+      labelFor={(item) => item.title}
     >
-      {({ item: activeAward, update }) => (
+      {({ item: award, update }) => (
         <>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Award name">
-              <Input
-                onChange={(event) => update({ name: event.target.value })}
-                value={activeAward.name}
-              />
-            </Field>
+            <TextInputField
+              label="Award name"
+              value={award.title}
+              onValueChange={(title) => update({ title })}
+            />
 
-            <Field label="Issuer">
-              <Input
-                onChange={(event) => update({ issuer: event.target.value })}
-                value={activeAward.issuer}
-              />
-            </Field>
+            <TextInputField
+              label="Issuer"
+              value={award.awarder}
+              onValueChange={(awarder) => update({ awarder })}
+            />
 
-            <Field label="Date (YYYY-MM)">
-              <Input
-                type="month"
-                onChange={(event) => update({ date: event.target.value })}
-                value={activeAward.date}
-              />
-            </Field>
+            <TextInputField
+              type="month"
+              label="Date (YYYY-MM)"
+              value={award.date}
+              onValueChange={(date) => update({ date })}
+            />
 
-            <Field label="Link (optional)">
-              <Input
-                placeholder="https://..."
-                type="url"
-                onChange={(event) => update({ link: event.target.value })}
-                value={activeAward.link}
-              />
-            </Field>
+            <TextInputField
+              type="url"
+              label="Link (optional)"
+              placeholder="https://..."
+              value={award.website ?? ""}
+              onValueChange={(website) => update({ website })}
+            />
           </div>
 
           <div className="mt-4">
-            <Field label="Description">
-              <TextArea
-                onChange={(event) => update({ description: event.target.value })}
-                value={activeAward.description}
-              />
-            </Field>
+            <TextAreaField
+              label="Description"
+              value={award.description}
+              onValueChange={(description) => update({ description })}
+            />
           </div>
         </>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 

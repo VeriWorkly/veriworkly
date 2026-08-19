@@ -1,14 +1,14 @@
 "use client";
 
 import { toast } from "sonner";
-import { useRef, useState } from "react";
+import { memo, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { useUserStore } from "@/store/useUserStore";
 
 import {
   saveResume,
-  importResumeFromFile,
+  toResumeDocument,
   importResumeFromMarkdownFile,
 } from "@/features/resume/services/resume-service";
 import { syncDocumentNow } from "@/features/documents/services/document-sync";
@@ -17,7 +17,8 @@ import ToolbarHeader from "@/features/documents/editor/toolbar/ToolbarHeader";
 import ToolbarActionsMenu from "@/features/documents/editor/toolbar/ToolbarActionsMenu";
 import ToolbarDownloadMenu from "@/features/documents/editor/toolbar/ToolbarDownloadMenu";
 import { getSaveFailureMessage } from "@/features/documents/services/save-failure-message";
-import { useToolbarDownloads } from "@/features/resume/editor/toolbar/useToolbarDownloads";
+import { useDocumentDownloads } from "@/features/documents/editor/toolbar/useDocumentDownloads";
+import { useDocumentJsonImport } from "@/features/documents/editor/toolbar/useDocumentJsonImport";
 import ToolbarSaveButton from "@/features/documents/editor/toolbar/ToolbarSaveButton";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
@@ -27,11 +28,31 @@ import { getDocumentEditorPath, getDocumentPreviewPath } from "@/features/docume
 interface ToolbarProps {
   resumeId: string;
   resumePreviewId: string;
+  /**
+   * Status line text. Owned by `ResumeEditor` — as in the cover letter editor — because
+   * autosave lives there and needs to report save failures here.
+   */
+  message: string;
+  onSetMessage: (message: string) => void;
   onOpenShare: () => void;
   onOpenDelete: () => void;
 }
 
-const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }: ToolbarProps) => {
+/**
+ * Memoised, like the content and settings panels. It renders two `Menu` trees and two
+ * hidden file inputs, all of which reconciled on every keystroke because the editor above
+ * re-renders as the resume changes. Its props are stable now (the editor's callbacks are
+ * `useCallback`ed), so the bail-out actually takes effect — except when `message` changes,
+ * which is the one prop that genuinely has to reach the header.
+ */
+const ResumeToolbar = memo(function ResumeToolbar({
+  resumeId,
+  resumePreviewId,
+  message,
+  onSetMessage,
+  onOpenShare,
+  onOpenDelete,
+}: ToolbarProps) {
   const router = useRouter();
 
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +66,6 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
   const saveToStorage = useResumeStore((state) => state.saveToStorage);
 
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
-  const [message, setMessage] = useState("Autosave ready");
 
   async function handleSync() {
     if (!isLoggedIn) {
@@ -53,15 +73,15 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
       return;
     }
 
-    setMessage("Syncing with cloud...");
+    onSetMessage("Syncing with cloud...");
 
     try {
       await syncDocumentNow("RESUME", resumeId);
-      setMessage("Synced successfully");
+      onSetMessage("Synced successfully");
       toast.success("Synced successfully");
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "Sync failed";
-      setMessage(`Sync failed: ${errMsg}`);
+      onSetMessage(`Sync failed: ${errMsg}`);
       toast.error(errMsg);
     }
   }
@@ -74,27 +94,16 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
     onDownloadJson,
     onDownloadText,
     onDownloadMarkdown,
-  } = useToolbarDownloads(resume, resumePreviewId, setMessage);
+  } = useDocumentDownloads({
+    // The store holds bare `ResumeData`; the shared export path takes the envelope.
+    getDocument: () => toResumeDocument(resume),
+    onMessage: onSetMessage,
+    // Keeps "Export → HTML" on the WYSIWYG branch, which is what this button has always
+    // produced — see export-html.ts.
+    previewElementId: resumePreviewId,
+  });
 
-  async function onImportResume(file: File | undefined) {
-    if (!file) return;
-
-    try {
-      const importedResume = await importResumeFromFile(file);
-      const saveResult = saveResume(importedResume);
-
-      if (!saveResult.ok) {
-        setMessage(getSaveFailureMessage(saveResult.reason));
-        return;
-      }
-
-      setResume(importedResume);
-      router.push(getDocumentEditorPath("RESUME", importedResume.id));
-      setMessage("JSON imported successfully");
-    } catch {
-      setMessage("Import failed. Please use a valid JSON file");
-    }
-  }
+  const onImportResume = useDocumentJsonImport("RESUME", onSetMessage);
 
   async function onImportMarkdown(file: File | undefined) {
     if (!file) return;
@@ -104,15 +113,15 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
       const saveResult = saveResume(importedResume);
 
       if (!saveResult.ok) {
-        setMessage(getSaveFailureMessage(saveResult.reason));
+        onSetMessage(getSaveFailureMessage(saveResult.reason));
         return;
       }
 
       setResume(importedResume);
       router.push(getDocumentEditorPath("RESUME", importedResume.id));
-      setMessage("Markdown imported successfully");
+      onSetMessage("Markdown imported successfully");
     } catch {
-      setMessage("Import failed. Please use a valid Markdown file");
+      onSetMessage("Import failed. Please use a valid Markdown file");
     }
   }
 
@@ -130,7 +139,7 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
           onSave={() => {
             const saveResult = saveToStorage({ flush: true });
 
-            setMessage(
+            onSetMessage(
               saveResult.ok ? "Draft saved locally" : getSaveFailureMessage(saveResult.reason),
             );
           }}
@@ -178,11 +187,11 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
           onImportMarkdown={() => markdownInputRef.current?.click()}
           onReset={() => {
             resetResume();
-            setMessage("Resume reset to defaults");
+            onSetMessage("Resume reset to defaults");
           }}
           onEmptyFields={() => {
             emptyResume();
-            setMessage("All fields cleared");
+            onSetMessage("All fields cleared");
           }}
           onSync={handleSync}
           onFullPreview={() => router.push(getDocumentPreviewPath("RESUME", resumeId))}
@@ -196,6 +205,6 @@ const ResumeToolbar = ({ resumeId, resumePreviewId, onOpenShare, onOpenDelete }:
       </div>
     </div>
   );
-};
+});
 
 export default ResumeToolbar;

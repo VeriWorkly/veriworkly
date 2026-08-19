@@ -9,6 +9,7 @@ import { executiveClarityMeta } from "./executive-clarity/meta";
 import { modernMinimalMeta } from "./modern-minimal/meta";
 import { precisionAtsMeta } from "./precision-ats/meta";
 import { timelineFocusMeta } from "./timeline-focus/meta";
+import { veriworklySpecialMeta } from "./veriworkly-special/meta";
 
 /**
  * The resume templates.
@@ -55,6 +56,11 @@ export const resumeTemplateRegistry = createTemplateRegistry<TemplateRenderProps
       meta: boldImpactMeta,
       loadWeb: () => import("./bold-impact/web").then((m) => m.BoldImpactWeb),
       loadPdf: () => import("./bold-impact/pdf").then((m) => m.BoldImpactPdf),
+    },
+    {
+      meta: veriworklySpecialMeta,
+      loadWeb: () => import("./veriworkly-special/web").then((m) => m.VeriworklySpecialWeb),
+      loadPdf: () => import("./veriworkly-special/pdf").then((m) => m.VeriworklySpecialPdf),
     },
   ],
 );

@@ -1,140 +1,52 @@
-import type { ResumeCustomSection, ResumeData, ResumeSection } from "@/types/resume";
+import type { ResumeData } from "@/types/resume";
 
-import { formatDateRange } from "@/features/resume/services/resume-formatters";
 import {
   cleanResumeText,
-  getEducationMeta,
-  getEducationSchool,
-  getEducationTitle,
-  getProjectLinkText,
-  getProjectTitle,
-  hasCustomItemContent,
-  hasCustomSectionContent,
   hasResumeSectionContent,
-  normalizeLinkHref,
+  getOrderedResumeSections,
+  getResumeSectionKey,
 } from "@/features/documents/rendering/resume-rendering";
+import {
+  getSkillLines,
+  getCustomRenderItems,
+  getProjectRenderItems,
+  getEducationRenderItems,
+  getExperienceRenderItems,
+  getAdditionalSectionItems,
+  ADDITIONAL_SECTION_TITLES,
+  type ResumeRenderItem,
+  type ResumeSkillLine,
+} from "@/features/documents/rendering/resume-render-items";
 
-/**
- * Shared, renderer-agnostic shape for every item a resume section can print.
- *
- * Both the web preview and the PDF export build their items from these helpers,
- * so a field can never appear in one renderer and silently vanish from the
- * other (the WYSIWYG class of bug this file exists to prevent).
+/*
+ * Re-exports, not declarations. The item builders moved to
+ * `features/documents/rendering/resume-render-items.ts` so the DOCX, HTML and Markdown
+ * exporters can read the same mappings the two renderers do — those exporters cannot import
+ * from `templates/`. Templates keep importing them from here.
  */
-export interface ResumeRenderItem {
-  id: string;
-  /** Primary heading of the item (role, degree, project, certificate...). */
-  title: string;
-  /** Right-hand meta column, usually a date range. */
-  meta: string;
-  /** Secondary line under the title (company | location, school, tech stack). */
-  subtitle: string;
-  /** Optional trailing link rendered next to the title. */
-  link: { href: string; text: string } | null;
-  summary: string;
-  bullets: string[];
-}
-
-export interface ResumeSkillLine {
-  id: string;
-  label: string;
-  value: string;
-}
-
-/** Sections that participate in the flowing body, in user-defined order. */
-export function getOrderedResumeSections(resume: ResumeData): ResumeSection[] {
-  return [...resume.sections]
-    .filter((section) => section.id !== "basics" && section.id !== "links")
-    .filter((section) => section.visible !== false)
-    .sort((a, b) => a.order - b.order);
-}
-
-function joinMeta(parts: Array<string | null | undefined>): string {
-  return parts
-    .map((part) => cleanResumeText(part))
-    .filter(Boolean)
-    .join(" | ");
-}
-
-function cleanList(values: string[] | undefined): string[] {
-  return (values ?? []).map((value) => cleanResumeText(value)).filter(Boolean);
-}
-
-/**
- * Titles are left empty when the user has not filled them in, never substituted with
- * a placeholder word.
- *
- * Entries reaching here are pre-filtered by `hasExperienceContent` and friends, which
- * pass an entry that has *any* content — so a row with a company and bullets but no
- * role would previously render the literal text "Role" into the preview and, worse,
- * into the exported PDF/DOCX/HTML. Renderers skip an empty title (see `renderItem` in
- * shared/web.tsx and shared/pdf.tsx).
- */
-export function getExperienceRenderItems(items: ResumeData["experience"]): ResumeRenderItem[] {
-  return items.map((item) => ({
-    id: item.id,
-    title: cleanResumeText(item.role),
-    meta: formatDateRange(item.startDate, item.endDate, item.current),
-    subtitle: joinMeta([item.company, item.location]),
-    link: null,
-    summary: cleanResumeText(item.summary),
-    bullets: cleanList(item.highlights),
-  }));
-}
-
-export function getEducationRenderItems(items: ResumeData["education"]): ResumeRenderItem[] {
-  return items.map((item) => ({
-    id: item.id,
-    title: getEducationTitle(item),
-    meta: getEducationMeta(item),
-    subtitle: getEducationSchool(item),
-    link: null,
-    summary: cleanResumeText(item.summary),
-    bullets: [],
-  }));
-}
-
-export function getProjectRenderItems(items: ResumeData["projects"]): ResumeRenderItem[] {
-  return items.map((item) => {
-    const href = normalizeLinkHref(item.link);
-
-    return {
-      id: item.id,
-      title: getProjectTitle(item),
-      meta: "",
-      subtitle: cleanList(item.skills).join(", "),
-      link: href ? { href, text: getProjectLinkText(item) || href } : null,
-      summary: cleanResumeText(item.summary),
-      bullets: cleanList(item.highlights),
-    };
-  });
-}
-
-export function getCustomRenderItems(section: ResumeCustomSection): ResumeRenderItem[] {
-  return section.items.filter(hasCustomItemContent).map((item) => {
-    const href = normalizeLinkHref(item.link);
-
-    return {
-      id: item.id,
-      title: cleanResumeText(item.name) || "Item",
-      meta: cleanResumeText(item.date),
-      subtitle: joinMeta([item.issuer, item.referenceId]),
-      link: href ? { href, text: cleanResumeText(item.link) } : null,
-      summary: cleanResumeText(item.description),
-      bullets: cleanList(item.details),
-    };
-  });
-}
-
-export function getSkillLines(groups: ResumeData["skills"]): ResumeSkillLine[] {
-  return groups.map((group, index) => ({
-    id: group.id || `${group.name}-${index}`,
-    label: cleanResumeText(group.name),
-    value: cleanList(group.keywords).join(", "),
-  }));
-}
+export {
+  getSkillLines,
+  getCustomRenderItems,
+  getProjectRenderItems,
+  getEducationRenderItems,
+  getExperienceRenderItems,
+  getCertificateRenderItems,
+  getAwardRenderItems,
+  getPublicationRenderItems,
+  getLanguageRenderItems,
+  getInterestRenderItems,
+  getVolunteerRenderItems,
+  getReferenceRenderItems,
+  getAchievementRenderItems,
+} from "@/features/documents/rendering/resume-render-items";
+export type {
+  ResumeRenderItem,
+  ResumeSkillLine,
+} from "@/features/documents/rendering/resume-render-items";
+export { getOrderedResumeSections } from "@/features/documents/rendering/resume-rendering";
 
 export interface ResumeSectionBlock<T> {
+  /** Unique across the document: several sections share the id "custom". */
   id: string;
   title: string;
   children: T;
@@ -171,11 +83,13 @@ export function buildResumeSections<T>(
   const blocks: ResumeSectionBlock<T>[] = [];
 
   for (const section of getOrderedResumeSections(resume)) {
+    const id = getResumeSectionKey(section);
+
     switch (section.id) {
       case "summary":
         if (!hasResumeSectionContent(resume, "summary")) break;
         blocks.push({
-          id: section.id,
+          id,
           title: "Summary",
           children: render.summary(cleanResumeText(resume.summary)),
         });
@@ -184,7 +98,7 @@ export function buildResumeSections<T>(
       case "experience":
         if (!hasResumeSectionContent(resume, "experience")) break;
         blocks.push({
-          id: section.id,
+          id,
           title: "Experience",
           children: render.items(getExperienceRenderItems(model.visibleExperience)),
         });
@@ -193,7 +107,7 @@ export function buildResumeSections<T>(
       case "education":
         if (!hasResumeSectionContent(resume, "education")) break;
         blocks.push({
-          id: section.id,
+          id,
           title: "Education",
           children: render.items(getEducationRenderItems(model.visibleEducation)),
         });
@@ -202,7 +116,7 @@ export function buildResumeSections<T>(
       case "projects":
         if (!hasResumeSectionContent(resume, "projects")) break;
         blocks.push({
-          id: section.id,
+          id,
           title: "Projects",
           children: render.items(getProjectRenderItems(model.visibleProjects)),
         });
@@ -211,22 +125,52 @@ export function buildResumeSections<T>(
       case "skills":
         if (!hasResumeSectionContent(resume, "skills")) break;
         blocks.push({
-          id: section.id,
+          id,
           title: "Skills",
           children: render.skills(getSkillLines(model.visibleSkills)),
         });
         break;
 
-      default: {
-        const custom = resume.customSections.find((entry) => entry.kind === section.id);
+      case "custom": {
+        /*
+         * Addressed by `customSectionId`, so every custom section a user creates prints.
+         * The `kind === section.id` lookup this replaced could only ever match the first
+         * one, because "custom" is a single member of the section-id enum.
+         *
+         * The `kind` fallback is for documents mid-migration, whose section entries predate
+         * `customSectionId`. It can be removed once no stored resume reaches this without
+         * one — `normalizeResumeData` assigns them on read, so that is one save away for
+         * any document a user opens.
+         */
+        const custom = section.customSectionId
+          ? resume.customSections.find((entry) => entry.id === section.customSectionId)
+          : resume.customSections.find((entry) => entry.kind === "custom");
 
-        if (!custom || !hasCustomSectionContent(custom)) break;
+        if (!custom) break;
+
+        const items = getCustomRenderItems(custom);
+
+        if (!items.length) break;
 
         blocks.push({
-          id: section.id,
+          id,
           title: cleanResumeText(custom.title),
-          children: render.items(getCustomRenderItems(custom)),
+          children: render.items(items),
         });
+        break;
+      }
+
+      default: {
+        const title =
+          ADDITIONAL_SECTION_TITLES[section.id as keyof typeof ADDITIONAL_SECTION_TITLES];
+
+        if (!title || !hasResumeSectionContent(resume, section.id)) break;
+
+        const items = getAdditionalSectionItems(resume, section.id);
+
+        if (!items.length) break;
+
+        blocks.push({ id, title, children: render.items(items) });
       }
     }
   }

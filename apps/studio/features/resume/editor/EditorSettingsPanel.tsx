@@ -14,7 +14,11 @@ import {
 
 import SectionAccordion from "@/features/documents/editor/SectionAccordion";
 import SectionVisibilitySettings from "./settings/SectionVisibilitySettings";
-import { SettingsColor, SettingsRange, SettingsSelect } from "./settings/SettingControls";
+import {
+  SettingsColor,
+  SettingsRange,
+  SettingsSelect,
+} from "@/features/documents/editor/settings/SettingControls";
 
 import { fontOptions } from "@/features/documents/constants/fonts";
 import { useResumeStore } from "@/features/resume/store/resume-store";

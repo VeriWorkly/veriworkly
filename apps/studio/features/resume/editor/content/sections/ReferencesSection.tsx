@@ -2,76 +2,68 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
-
-import { Field } from "@/features/documents/editor/form";
-import GenericCustomSection from "./GenericCustomSection";
+import { TextInputField } from "@/features/documents/editor/form";
+import { normalizePhoneValue } from "@/features/resume/schemas/resume-validation-rules";
+import TypedSectionEditor from "./TypedSectionEditor";
 
 const ReferencesSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
+    <TypedSectionEditor
       {...props}
-      kind="references"
+      sectionKey="references"
+      sectionId="references"
       label="References"
       addLabel="Add reference"
       fallbackItemLabel="Reference"
       emptyMessage="No references yet. Click Add reference."
+      labelFor={(item) => item.name}
     >
-      {({ item: activeReference, update }) => (
+      {({ item: reference, update }) => (
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Name">
-            <Input
-              onChange={(event) => update({ name: event.target.value })}
-              value={activeReference.name}
-            />
-          </Field>
+          <TextInputField
+            label="Name"
+            value={reference.name}
+            onValueChange={(name) => update({ name })}
+          />
 
-          <Field label="Title">
-            <Input
-              onChange={(event) => update({ issuer: event.target.value })}
-              value={activeReference.issuer}
-            />
-          </Field>
+          <TextInputField
+            label="Title"
+            value={reference.title}
+            onValueChange={(title) => update({ title })}
+          />
 
-          <Field label="Organization">
-            <Input
-              onChange={(event) => update({ description: event.target.value })}
-              value={activeReference.description}
-            />
-          </Field>
+          <TextInputField
+            label="Organization"
+            value={reference.organization}
+            onValueChange={(organization) => update({ organization })}
+          />
 
-          <Field label="Relationship">
-            <Input
-              onChange={(event) => update({ referenceId: event.target.value })}
-              value={activeReference.referenceId}
-            />
-          </Field>
+          <TextInputField
+            label="Relationship"
+            value={reference.relationship}
+            onValueChange={(relationship) => update({ relationship })}
+          />
 
-          <Field label="Email (optional)">
-            <Input
-              type="email"
-              onChange={(event) => update({ link: event.target.value })}
-              value={activeReference.link}
-            />
-          </Field>
+          <TextInputField
+            type="email"
+            label="Email (optional)"
+            value={reference.email ?? ""}
+            onValueChange={(email) => update({ email })}
+          />
 
-          <Field label="Phone (optional)">
-            <Input
-              inputMode="numeric"
-              maxLength={10}
-              onChange={(event) =>
-                update({
-                  date: event.target.value.replace(/\D/g, "").slice(0, 10),
-                })
-              }
-              pattern="[0-9]*"
-              placeholder="1234567890"
-              value={activeReference.date}
-            />
-          </Field>
+          <TextInputField
+            label="Phone (optional)"
+            inputMode="tel"
+            placeholder="+44 20 7946 0958"
+            value={reference.phone ?? ""}
+            // Folded to E.164 on blur, not per keystroke: normalising mid-number moves the
+            // caret out from under the user.
+            onBlur={() => update({ phone: normalizePhoneValue(reference.phone ?? "") })}
+            onValueChange={(phone) => update({ phone })}
+          />
         </div>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 

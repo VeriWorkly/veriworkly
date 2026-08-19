@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
@@ -20,12 +20,16 @@ interface EditorModalsProps {
   onDeleteModalClose: () => void;
 }
 
-const EditorModals = ({
+/**
+ * Memoised for the same reason as the toolbar: it hangs off the editor, which re-renders
+ * on every keystroke, and it renders two modals whose props are otherwise unchanged.
+ */
+const EditorModals = memo(function EditorModals({
   shareModalOpen,
   onShareModalClose,
   deleteModalOpen,
   onDeleteModalClose,
-}: EditorModalsProps) => {
+}: EditorModalsProps) {
   const router = useRouter();
   const resume = useResumeStore((state) => state.resume);
   const setResume = useResumeStore((state) => state.setResume);
@@ -42,7 +46,7 @@ const EditorModals = ({
       const nextResume = deleteResume(resume.id);
 
       if (!nextResume) {
-        const fallback = createResume();
+        const fallback = await createResume();
         setResume(fallback);
         router.push(getDocumentEditorPath("RESUME", fallback.id));
       } else {
@@ -82,6 +86,6 @@ const EditorModals = ({
       />
     </>
   );
-};
+});
 
 export default EditorModals;
