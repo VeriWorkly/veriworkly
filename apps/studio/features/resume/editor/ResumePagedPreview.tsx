@@ -8,6 +8,10 @@ import {
   RESUME_PAGE_HEIGHT_PX,
   RESUME_PAGE_WIDTH_PX,
 } from "@/features/resume/constants/resume-layout";
+import {
+  EXPORT_EXCLUDE_ATTRIBUTE,
+  EXPORT_ROOT_ATTRIBUTE,
+} from "@/features/documents/export/export-dom-markers";
 import { paginateIncremental, type IncrementalPageProbe } from "@/templates/shared/pagination";
 
 interface ResumePreviewPage {
@@ -340,16 +344,22 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative">
+      {/*
+        A complete second copy of the resume, off-screen, so page breaks can be measured
+        against real layout. `EXPORT_EXCLUDE_ATTRIBUTE` is what keeps it out of the
+        WYSIWYG HTML export, which clones this subtree — see `export-html.ts`.
+      */}
       <div
         ref={measureRef}
         aria-hidden="true"
         className="pointer-events-none absolute opacity-0"
         style={{ left: -10000, top: 0, width: RESUME_PAGE_WIDTH_PX }}
+        {...{ [EXPORT_EXCLUDE_ATTRIBUTE]: "true" }}
       >
         {children}
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6" {...{ [EXPORT_ROOT_ATTRIBUTE]: "true" }}>
         {pages.map((page, index) => (
           <article
             className="resume-page-preview mx-auto overflow-hidden bg-white"

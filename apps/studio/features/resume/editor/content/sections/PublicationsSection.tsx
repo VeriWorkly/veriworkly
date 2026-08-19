@@ -1,57 +1,53 @@
 "use client";
 
-import { Input } from "@veriworkly/ui";
-
 import type { BaseSectionProps } from "./section-types";
 
-import { Field } from "@/features/documents/editor/form";
-import GenericCustomSection from "./GenericCustomSection";
+import { TextInputField } from "@/features/documents/editor/form";
+import TypedSectionEditor from "./TypedSectionEditor";
 
 const PublicationsSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
+    <TypedSectionEditor
       {...props}
-      kind="publications"
+      sectionKey="publications"
+      sectionId="publications"
       label="Publications"
       addLabel="Add publication"
       fallbackItemLabel="Publication"
       emptyMessage="No publications yet. Click Add publication."
+      labelFor={(item) => item.title}
     >
-      {({ item: activePublication, update }) => (
+      {({ item: publication, update }) => (
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Publication title">
-            <Input
-              onChange={(event) => update({ name: event.target.value })}
-              value={activePublication.name}
-            />
-          </Field>
+          <TextInputField
+            label="Publication title"
+            value={publication.title}
+            onValueChange={(title) => update({ title })}
+          />
 
-          <Field label="Publisher / Journal">
-            <Input
-              onChange={(event) => update({ issuer: event.target.value })}
-              value={activePublication.issuer}
-            />
-          </Field>
+          <TextInputField
+            label="Publisher / Journal"
+            value={publication.publisher}
+            onValueChange={(publisher) => update({ publisher })}
+          />
 
-          <Field label="Date (YYYY-MM)">
-            <Input
-              type="month"
-              onChange={(event) => update({ date: event.target.value })}
-              value={activePublication.date}
-            />
-          </Field>
+          <TextInputField
+            type="month"
+            label="Date (YYYY-MM)"
+            value={publication.date}
+            onValueChange={(date) => update({ date })}
+          />
 
-          <Field label="Publication link">
-            <Input
-              placeholder="https://..."
-              type="url"
-              onChange={(event) => update({ link: event.target.value })}
-              value={activePublication.link}
-            />
-          </Field>
+          <TextInputField
+            type="url"
+            label="Publication link"
+            placeholder="https://..."
+            value={publication.website ?? ""}
+            onValueChange={(website) => update({ website })}
+          />
         </div>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 

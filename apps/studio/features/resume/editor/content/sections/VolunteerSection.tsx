@@ -2,65 +2,81 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
-
-import { Field, TextArea } from "@/features/documents/editor/form";
-import GenericCustomSection from "./GenericCustomSection";
+import { CheckboxField, TextAreaField, TextInputField } from "@/features/documents/editor/form";
+import TypedSectionEditor from "./TypedSectionEditor";
 
 const VolunteerSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
+    <TypedSectionEditor
       {...props}
-      kind="volunteer"
+      sectionKey="volunteer"
+      sectionId="volunteer"
       label="Volunteer"
       addLabel="Add volunteer entry"
       fallbackItemLabel="Volunteer"
       emptyMessage="No volunteer entries yet. Click Add volunteer entry."
+      labelFor={(item) => item.organization}
     >
-      {({ item: activeVolunteer, update }) => (
+      {({ item: volunteer, update }) => (
         <>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Organization">
-              <Input
-                onChange={(event) => update({ name: event.target.value })}
-                value={activeVolunteer.name}
-              />
-            </Field>
+            <TextInputField
+              label="Organization"
+              value={volunteer.organization}
+              onValueChange={(organization) => update({ organization })}
+            />
 
-            <Field label="Role">
-              <Input
-                onChange={(event) => update({ issuer: event.target.value })}
-                value={activeVolunteer.issuer}
-              />
-            </Field>
+            <TextInputField
+              label="Role"
+              value={volunteer.role}
+              onValueChange={(role) => update({ role })}
+            />
 
-            <Field label="Date (YYYY-MM)">
-              <Input
-                type="month"
-                onChange={(event) => update({ date: event.target.value })}
-                value={activeVolunteer.date}
-              />
-            </Field>
+            {/*
+              A real start/end pair, like experience has. The flattened model had one `date`
+              field, so a volunteer stint could only ever print whichever single date fitted.
+            */}
+            <TextInputField
+              type="month"
+              label="Start date (YYYY-MM)"
+              value={volunteer.startDate}
+              onValueChange={(startDate) => update({ startDate })}
+            />
 
-            <Field label="Location">
-              <Input
-                onChange={(event) => update({ referenceId: event.target.value })}
-                value={activeVolunteer.referenceId}
-              />
-            </Field>
+            <TextInputField
+              type="month"
+              label="End date (YYYY-MM)"
+              disabled={volunteer.current}
+              value={volunteer.endDate}
+              onValueChange={(endDate) => update({ endDate })}
+            />
+
+            <TextInputField
+              label="Location"
+              value={volunteer.location}
+              onValueChange={(location) => update({ location })}
+            />
+
+            <CheckboxField
+              checked={volunteer.current}
+              onCheckedChange={(current) =>
+                update({ current, endDate: current ? "" : volunteer.endDate })
+              }
+            >
+              I currently volunteer here
+            </CheckboxField>
           </div>
 
           <div className="mt-4">
-            <Field label="Summary">
-              <TextArea
-                onChange={(event) => update({ description: event.target.value })}
-                value={activeVolunteer.description}
-              />
-            </Field>
+            <TextAreaField
+              label="Summary"
+              value={volunteer.summary}
+              onValueChange={(summary) => update({ summary })}
+            />
           </div>
         </>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 

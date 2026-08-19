@@ -1,43 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import type { BaseSectionProps } from "./section-types";
+import type { ResumeSectionId } from "@/types/resume";
 
-import { Input } from "@veriworkly/ui";
-import { Button } from "@veriworkly/ui";
-
-import { Field, invalidClass, DelimitedTextArea } from "@/features/documents/editor/form";
+import { Field, TextInputField, DelimitedTextArea } from "@/features/documents/editor/form";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { validateSkillGroup } from "@/features/resume/utils/validation";
 
-import DraggableSection from "./DraggableSection";
+import SectionAccordion from "@/features/documents/editor/SectionAccordion";
+import { ListEditorControls } from "@/features/documents/editor/ListEditorControls";
+import { useIndexedListEditor } from "@/features/documents/editor/useIndexedListEditor";
 
-const SkillsSection = ({
-  isOpen,
-  onDragEnd,
-  onDragOver,
-  onDragStart,
-  onDrop,
-  onToggle,
-}: BaseSectionProps) => {
+const SkillsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
   const skills = useResumeStore((state) => state.resume.skills);
   const addSkillGroup = useResumeStore((state) => state.addSkillGroup);
   const removeSkillGroup = useResumeStore((state) => state.removeSkillGroup);
   const updateSkillGroup = useResumeStore((state) => state.updateSkillGroup);
 
-  const [skillIndex, setSkillIndex] = useState(0);
-
-  const safeSkillIndex = Math.min(skillIndex, Math.max(0, skills.length - 1));
-
-  const activeSkillGroup = skills[safeSkillIndex];
-
-  const handleAdd = () => {
-    const newIndex = skills.length;
-    addSkillGroup();
-    setSkillIndex(newIndex);
-  };
+  const list = useIndexedListEditor(skills, addSkillGroup);
+  const activeSkillGroup = list.activeItem;
 
   const skillErrors = useMemo(
     () => (activeSkillGroup ? validateSkillGroup(activeSkillGroup) : {}),
@@ -45,69 +29,36 @@ const SkillsSection = ({
   );
 
   return (
-    <DraggableSection
+    <SectionAccordion
       id="skills"
       label="Skills"
       isOpen={isOpen}
-      onDrop={onDrop}
-      onToggle={onToggle}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragStart={onDragStart}
+      onToggle={(nextId) => onToggle(nextId as ResumeSectionId)}
     >
-      <div className="mb-3 flex flex-wrap gap-2">
-        {skills.length ? (
-          <select
-            className="border-border bg-background h-10 rounded-xl border px-3 text-sm"
-            onChange={(event) => setSkillIndex(Number(event.target.value))}
-            value={safeSkillIndex}
-          >
-            {skills.map((item, index) => (
-              <option key={item.id} value={index}>
-                {item.name || `Group ${index + 1}`}
-              </option>
-            ))}
-          </select>
-        ) : null}
-
-        <Button onClick={handleAdd} size="sm" variant="secondary">
-          Add
-        </Button>
-
-        <Button
-          disabled={skills.length === 0}
-          onClick={() => removeSkillGroup(safeSkillIndex)}
-          size="sm"
-          variant="ghost"
-        >
-          Remove
-        </Button>
-      </div>
+      <ListEditorControls
+        items={skills}
+        index={list.index}
+        onAdd={list.add}
+        onSelect={list.select}
+        onRemove={removeSkillGroup}
+        labelFor={(item, index) => item.name || `Group ${index + 1}`}
+      />
 
       {activeSkillGroup ? (
         <>
-          <Field error={skillErrors.name} label="Group name">
-            <Input
-              className={invalidClass(skillErrors.name)}
-              onChange={(event) =>
-                updateSkillGroup(safeSkillIndex, {
-                  name: event.target.value,
-                })
-              }
-              value={activeSkillGroup.name}
-            />
-          </Field>
+          <TextInputField
+            label="Group name"
+            value={activeSkillGroup.name}
+            error={skillErrors.name}
+            onValueChange={(name) => updateSkillGroup(list.index, { name })}
+          />
 
+          {/* Children-based `Field`: DelimitedTextArea holds a local draft string. */}
           <Field error={skillErrors.keywords} label="Keywords (comma separated)">
             <DelimitedTextArea
               key={activeSkillGroup.id}
               value={activeSkillGroup.keywords}
-              className={invalidClass(skillErrors.keywords)}
-              onChange={(nextKeywords) =>
-                updateSkillGroup(safeSkillIndex, {
-                  keywords: nextKeywords,
-                })
-              }
+              onChange={(keywords) => updateSkillGroup(list.index, { keywords })}
             />
           </Field>
 
@@ -127,7 +78,7 @@ const SkillsSection = ({
       ) : (
         <p className="text-muted text-sm">No skill groups yet. Click Add to create one.</p>
       )}
-    </DraggableSection>
+    </SectionAccordion>
   );
 };
 

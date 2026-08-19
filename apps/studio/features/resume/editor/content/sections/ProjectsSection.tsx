@@ -1,43 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-import { Button } from "@veriworkly/ui";
-import { Input } from "@veriworkly/ui";
+import { useMemo } from "react";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { validateProject } from "@/features/resume/utils/validation";
 import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
 
-import { Field, TextArea, invalidClass, DelimitedTextArea } from "@/features/documents/editor/form";
-import DraggableSection from "./DraggableSection";
+import {
+  Field,
+  CheckboxField,
+  TextAreaField,
+  TextInputField,
+  DelimitedTextArea,
+} from "@/features/documents/editor/form";
+import SectionAccordion from "@/features/documents/editor/SectionAccordion";
+import { ListEditorControls } from "@/features/documents/editor/ListEditorControls";
+import { useIndexedListEditor } from "@/features/documents/editor/useIndexedListEditor";
 import type { BaseSectionProps } from "./section-types";
+import type { ResumeSectionId } from "@/types/resume";
 
-const ProjectsSection = ({
-  isOpen,
-  onDragEnd,
-  onDragOver,
-  onDragStart,
-  onDrop,
-  onToggle,
-}: BaseSectionProps) => {
+const ProjectsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
   const projects = useResumeStore((state) => state.resume.projects);
   const resumeId = useResumeStore((state) => state.resume.id);
   const addProject = useResumeStore((state) => state.addProject);
   const removeProject = useResumeStore((state) => state.removeProject);
   const updateProject = useResumeStore((state) => state.updateProject);
 
-  const [projectIndex, setProjectIndex] = useState(0);
-
-  const safeProjectIndex = Math.min(projectIndex, Math.max(0, projects.length - 1));
-
-  const activeProject = projects[safeProjectIndex];
-
-  const handleAdd = () => {
-    const newIndex = projects.length;
-    addProject();
-    setProjectIndex(newIndex);
-  };
+  const list = useIndexedListEditor(projects, addProject);
+  const activeProject = list.activeItem;
 
   const projectErrors = useMemo(
     () => (activeProject ? validateProject(activeProject) : {}),
@@ -45,138 +35,86 @@ const ProjectsSection = ({
   );
 
   return (
-    <DraggableSection
+    <SectionAccordion
       id="projects"
       isOpen={isOpen}
-      onDrop={onDrop}
       label="Projects"
-      onToggle={onToggle}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragStart={onDragStart}
+      onToggle={(nextId) => onToggle(nextId as ResumeSectionId)}
     >
-      <div className="mb-3 flex flex-wrap gap-2">
-        {projects.length ? (
-          <select
-            className="border-border bg-background h-10 rounded-xl border px-3 text-sm"
-            onChange={(event) => setProjectIndex(Number(event.target.value))}
-            value={safeProjectIndex}
-          >
-            {projects.map((_, index) => (
-              <option key={index} value={index}>
-                Project {index + 1}
-              </option>
-            ))}
-          </select>
-        ) : null}
-
-        <Button onClick={handleAdd} size="sm" variant="secondary">
-          Add
-        </Button>
-
-        <Button
-          disabled={projects.length === 0}
-          onClick={() => removeProject(safeProjectIndex)}
-          size="sm"
-          variant="ghost"
-        >
-          Remove
-        </Button>
-      </div>
+      <ListEditorControls
+        items={projects}
+        index={list.index}
+        onAdd={list.add}
+        onSelect={list.select}
+        onRemove={removeProject}
+        labelFor={(item, index) => item.name || `Project ${index + 1}`}
+      />
 
       {activeProject ? (
         <>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field error={projectErrors.name} label="Project name">
-              <Input
-                className={invalidClass(projectErrors.name)}
-                onChange={(event) =>
-                  updateProject(safeProjectIndex, {
-                    name: event.target.value,
-                  })
-                }
-                value={activeProject.name}
-              />
-            </Field>
+            <TextInputField
+              label="Project name"
+              value={activeProject.name}
+              error={projectErrors.name}
+              onValueChange={(name) => updateProject(list.index, { name })}
+            />
 
-            <Field error={projectErrors.role} label="Role">
-              <Input
-                className={invalidClass(projectErrors.role)}
-                onChange={(event) =>
-                  updateProject(safeProjectIndex, {
-                    role: event.target.value,
-                  })
-                }
-                value={activeProject.role}
-              />
-            </Field>
+            <TextInputField
+              label="Role"
+              value={activeProject.role}
+              error={projectErrors.role}
+              onValueChange={(role) => updateProject(list.index, { role })}
+            />
 
-            <Field error={projectErrors.link} label="Link">
-              <Input
-                className={invalidClass(projectErrors.link)}
-                onChange={(event) =>
-                  updateProject(safeProjectIndex, {
-                    link: event.target.value,
-                  })
-                }
-                type="url"
-                placeholder="https://..."
-                value={activeProject.link}
-              />
-            </Field>
+            <TextInputField
+              type="url"
+              label="Link"
+              placeholder="https://..."
+              value={activeProject.link}
+              error={projectErrors.link}
+              onValueChange={(link) => updateProject(list.index, { link })}
+            />
 
-            <Field label="Link text">
-              <Input
-                disabled={!(activeProject.showLinkAsText ?? true)}
-                onChange={(event) =>
-                  updateProject(safeProjectIndex, {
-                    linkLabel: event.target.value,
-                  })
-                }
-                placeholder="Link"
-                value={activeProject.linkLabel || "Link"}
-              />
-            </Field>
+            <TextInputField
+              label="Link text"
+              placeholder="Link"
+              disabled={!(activeProject.showLinkAsText ?? true)}
+              value={activeProject.linkLabel || "Link"}
+              onValueChange={(linkLabel) => updateProject(list.index, { linkLabel })}
+            />
           </div>
 
           <div className="mt-4 space-y-4">
-            <label className="text-muted flex items-center gap-2 text-sm">
-              <input
-                checked={activeProject.showLinkAsText ?? true}
-                onChange={(event) =>
-                  updateProject(safeProjectIndex, {
-                    showLinkAsText: event.target.checked,
-                    linkLabel: activeProject.linkLabel || "Link",
-                  })
-                }
-                type="checkbox"
-              />
+            <CheckboxField
+              checked={activeProject.showLinkAsText ?? true}
+              onCheckedChange={(showLinkAsText) =>
+                updateProject(list.index, {
+                  showLinkAsText,
+                  linkLabel: activeProject.linkLabel || "Link",
+                })
+              }
+            >
               Hide project URL behind text
-            </label>
+            </CheckboxField>
 
+            {/* Children-based `Field`: DelimitedTextArea holds a local draft string and so
+                cannot take the value/onChange contract the `*Field` wrappers impose. */}
             <Field label="Skills (comma separated)">
               <DelimitedTextArea
                 key={`${activeProject.id}-skills`}
-                onChange={(nextSkills) =>
-                  updateProject(safeProjectIndex, {
-                    skills: nextSkills,
-                  })
-                }
+                onChange={(skills) => updateProject(list.index, { skills })}
                 value={activeProject.skills ?? []}
               />
             </Field>
 
-            <Field error={projectErrors.summary} label="Summary">
-              <TextArea
-                className={invalidClass(projectErrors.summary)}
-                onChange={(event) =>
-                  updateProject(safeProjectIndex, {
-                    summary: event.target.value,
-                  })
-                }
-                value={activeProject.summary}
-              />
-            </Field>
+            <TextAreaField
+              label="Summary"
+              value={activeProject.summary}
+              error={projectErrors.summary}
+              onValueChange={(summary) => updateProject(list.index, { summary })}
+            />
+
             <AiFieldAssist
               action={activeProject.summary ? "rewrite_section" : "generate_section"}
               context={JSON.stringify({
@@ -186,18 +124,14 @@ const ProjectsSection = ({
                 highlights: activeProject.highlights,
               })}
               documentId={resumeId}
-              onApply={(summary) => updateProject(safeProjectIndex, { summary })}
+              onApply={(summary) => updateProject(list.index, { summary })}
               text={activeProject.summary}
             />
 
             <Field label="Highlights (comma separated)">
               <DelimitedTextArea
                 key={activeProject.id}
-                onChange={(nextHighlights) =>
-                  updateProject(safeProjectIndex, {
-                    highlights: nextHighlights,
-                  })
-                }
+                onChange={(highlights) => updateProject(list.index, { highlights })}
                 value={activeProject.highlights}
               />
             </Field>
@@ -206,7 +140,7 @@ const ProjectsSection = ({
       ) : (
         <p className="text-muted text-sm">No projects yet. Click Add to create one.</p>
       )}
-    </DraggableSection>
+    </SectionAccordion>
   );
 };
 

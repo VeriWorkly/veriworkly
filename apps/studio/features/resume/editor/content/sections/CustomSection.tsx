@@ -1,138 +1,132 @@
 "use client";
 
-import { useState } from "react";
-
 import type { BaseSectionProps } from "./section-types";
+import type { ResumeSectionId } from "@/types/resume";
 
-import { Input } from "@veriworkly/ui";
 import { Button } from "@veriworkly/ui";
+import { Plus, Trash2 } from "lucide-react";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 
-import DraggableSection from "./DraggableSection";
-import { Field, TextArea } from "@/features/documents/editor/form";
+import SectionAccordion from "@/features/documents/editor/SectionAccordion";
+import { ListEditorControls } from "@/features/documents/editor/ListEditorControls";
+import { useIndexedListEditor } from "@/features/documents/editor/useIndexedListEditor";
+import { TextAreaField, TextInputField } from "@/features/documents/editor/form";
 
-const CustomSection = ({
-  isOpen,
-  onDragEnd,
-  onDragOver,
-  onDragStart,
-  onDrop,
-  onToggle,
-}: BaseSectionProps) => {
-  const customSection =
-    useResumeStore((state) =>
-      state.resume.customSections.find((section) => section.kind === "custom"),
-    ) ?? null;
+interface CustomSectionProps extends BaseSectionProps {
+  /** Which custom section this accordion edits. */
+  customSectionId: string;
+  /** The last one gets the "Add custom section" button, so it appears exactly once. */
+  isLast: boolean;
+}
+
+/**
+ * One custom section.
+ *
+ * The panel renders one of these per custom section, addressed by id. It used to render a
+ * single instance that looked its section up with `find(section => section.kind ===
+ * "custom")` — which found the first and left any others unreachable, and unreachable is
+ * how they stayed until the next save dropped them.
+ */
+const CustomSection = ({ customSectionId, isLast, isOpen, onToggle }: CustomSectionProps) => {
+  const customSection = useResumeStore(
+    (state) =>
+      state.resume.customSections.find((section) => section.id === customSectionId) ?? null,
+  );
+  const addCustomSection = useResumeStore((state) => state.addCustomSection);
+  const removeCustomSection = useResumeStore((state) => state.removeCustomSection);
   const addCustomSectionItem = useResumeStore((state) => state.addCustomSectionItem);
   const removeCustomSectionItem = useResumeStore((state) => state.removeCustomSectionItem);
   const updateCustomSection = useResumeStore((state) => state.updateCustomSection);
   const updateCustomSectionItem = useResumeStore((state) => state.updateCustomSectionItem);
-  const [customSectionIndex, setCustomSectionIndex] = useState(0);
+
+  const items = customSection?.items ?? [];
+
+  // Called unconditionally: the `if (!customSection)` bail-out below must not sit above a
+  // hook. Previously this section's `useState` was above the same early return.
+  const list = useIndexedListEditor(items, () => addCustomSectionItem(customSectionId));
 
   if (!customSection) {
     return null;
   }
 
-  const safeCustomItemIndex = Math.min(
-    customSectionIndex,
-    Math.max(0, customSection.items.length - 1),
-  );
-  const activeCustomItem = customSection.items[safeCustomItemIndex];
+  const activeCustomItem = list.activeItem;
+  const accordionId = `custom:${customSection.id}`;
 
   return (
-    <DraggableSection
-      id="custom"
+    <SectionAccordion
+      id={accordionId}
       isOpen={isOpen}
-      label="Custom"
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragStart={onDragStart}
-      onDrop={onDrop}
-      onToggle={onToggle}
+      label={customSection.title || "Custom"}
+      onToggle={(nextId) => onToggle(nextId as ResumeSectionId)}
     >
-      <div className="mb-3 flex flex-wrap gap-2">
-        {customSection.items.length ? (
-          <select
-            className="border-border bg-background h-10 rounded-xl border px-3 text-sm"
-            onChange={(event) => setCustomSectionIndex(Number(event.target.value))}
-            value={safeCustomItemIndex}
-          >
-            {customSection.items.map((item, index) => (
-              <option key={item.id} value={index}>
-                {item.name || `Item ${index + 1}`}
-              </option>
-            ))}
-          </select>
-        ) : null}
-        <Button onClick={() => addCustomSectionItem("custom")} size="sm" variant="secondary">
-          Add item
-        </Button>
-        <Button
-          disabled={customSection.items.length === 0}
-          onClick={() => removeCustomSectionItem("custom", safeCustomItemIndex)}
-          size="sm"
-          variant="ghost"
-        >
-          Remove item
-        </Button>
-      </div>
+      <ListEditorControls
+        items={items}
+        index={list.index}
+        onAdd={list.add}
+        onSelect={list.select}
+        addLabel="Add item"
+        removeLabel="Remove item"
+        onRemove={(index) => removeCustomSectionItem(customSectionId, index)}
+        labelFor={(item, index) => item.name || `Item ${index + 1}`}
+      />
 
       {customSection.editableTitle ? (
-        <Field label="Section header">
-          <Input
-            onChange={(event) =>
-              updateCustomSection("custom", {
-                title: event.target.value,
-              })
-            }
-            value={customSection.title}
-          />
-        </Field>
+        <TextInputField
+          label="Section header"
+          value={customSection.title}
+          onValueChange={(title) => updateCustomSection(customSectionId, { title })}
+        />
       ) : null}
 
       {activeCustomItem ? (
         <>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Name / Title">
-              <Input
-                onChange={(event) =>
-                  updateCustomSectionItem("custom", safeCustomItemIndex, {
-                    name: event.target.value,
-                  })
-                }
-                value={activeCustomItem.name}
-              />
-            </Field>
-            <Field label="Link (optional)">
-              <Input
-                placeholder="https://..."
-                type="url"
-                onChange={(event) =>
-                  updateCustomSectionItem("custom", safeCustomItemIndex, {
-                    link: event.target.value,
-                  })
-                }
-                value={activeCustomItem.link}
-              />
-            </Field>
+            <TextInputField
+              label="Name / Title"
+              value={activeCustomItem.name}
+              onValueChange={(name) =>
+                updateCustomSectionItem(customSectionId, list.index, { name })
+              }
+            />
+
+            <TextInputField
+              type="url"
+              label="Link (optional)"
+              placeholder="https://..."
+              value={activeCustomItem.link}
+              onValueChange={(link) =>
+                updateCustomSectionItem(customSectionId, list.index, { link })
+              }
+            />
           </div>
 
-          <Field label="Description">
-            <TextArea
-              onChange={(event) =>
-                updateCustomSectionItem("custom", safeCustomItemIndex, {
-                  description: event.target.value,
-                })
-              }
-              value={activeCustomItem.description}
-            />
-          </Field>
+          <TextAreaField
+            label="Description"
+            value={activeCustomItem.description}
+            onValueChange={(description) =>
+              updateCustomSectionItem(customSectionId, list.index, { description })
+            }
+          />
         </>
       ) : (
         <p className="text-muted text-sm">No custom items yet. Click Add item.</p>
       )}
-    </DraggableSection>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {isLast ? (
+          <Button onClick={addCustomSection} size="sm" variant="secondary">
+            <Plus className="mr-2 h-4 w-4" />
+            Add custom section
+          </Button>
+        ) : null}
+
+        <Button onClick={() => removeCustomSection(customSectionId)} size="sm" variant="ghost">
+          <Trash2 className="mr-2 h-4 w-4" />
+          Remove this section
+        </Button>
+      </div>
+    </SectionAccordion>
   );
 };
 

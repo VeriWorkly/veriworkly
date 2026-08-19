@@ -1,42 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import type { BaseSectionProps } from "./section-types";
-
-import { Input } from "@veriworkly/ui";
-import { Button } from "@veriworkly/ui";
+import type { ResumeSectionId } from "@/types/resume";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { validateEducation } from "@/features/resume/utils/validation";
 
-import DraggableSection from "./DraggableSection";
-import { Field, invalidClass, TextArea } from "@/features/documents/editor/form";
+import SectionAccordion from "@/features/documents/editor/SectionAccordion";
+import { ListEditorControls } from "@/features/documents/editor/ListEditorControls";
+import { useIndexedListEditor } from "@/features/documents/editor/useIndexedListEditor";
+import { CheckboxField, TextAreaField, TextInputField } from "@/features/documents/editor/form";
 
-const EducationSection = ({
-  isOpen,
-  onDragEnd,
-  onDragOver,
-  onDragStart,
-  onDrop,
-  onToggle,
-}: BaseSectionProps) => {
+/** Year inputs are typed freely and coerced to four digits, matching the stored shape. */
+function toYear(value: string) {
+  return value.replace(/\D/g, "").slice(0, 4);
+}
+
+const EducationSection = ({ isOpen, onToggle }: BaseSectionProps) => {
   const education = useResumeStore((state) => state.resume.education);
   const addEducation = useResumeStore((state) => state.addEducation);
   const removeEducation = useResumeStore((state) => state.removeEducation);
   const updateEducation = useResumeStore((state) => state.updateEducation);
 
-  const [educationIndex, setEducationIndex] = useState(0);
-
-  const safeEducationIndex = Math.min(educationIndex, Math.max(0, education.length - 1));
-
-  const activeEducation = education[safeEducationIndex];
-
-  const handleAdd = () => {
-    const newIndex = education.length;
-    addEducation();
-    setEducationIndex(newIndex);
-  };
+  const list = useIndexedListEditor(education, addEducation);
+  const activeEducation = list.activeItem;
 
   const educationErrors = useMemo(
     () => (activeEducation ? validateEducation(activeEducation) : {}),
@@ -44,150 +33,95 @@ const EducationSection = ({
   );
 
   return (
-    <DraggableSection
+    <SectionAccordion
       id="education"
       isOpen={isOpen}
-      onDrop={onDrop}
       label="Education"
-      onToggle={onToggle}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragStart={onDragStart}
+      onToggle={(nextId) => onToggle(nextId as ResumeSectionId)}
     >
-      <div className="mb-3 flex flex-wrap gap-2">
-        {education.length ? (
-          <select
-            className="border-border bg-background h-10 rounded-xl border px-3 text-sm"
-            onChange={(event) => setEducationIndex(Number(event.target.value))}
-            value={safeEducationIndex}
-          >
-            {education.map((_, index) => (
-              <option key={index} value={index}>
-                Education {index + 1}
-              </option>
-            ))}
-          </select>
-        ) : null}
-
-        <Button onClick={handleAdd} size="sm" variant="secondary">
-          Add
-        </Button>
-
-        <Button
-          disabled={education.length === 0}
-          onClick={() => removeEducation(safeEducationIndex)}
-          size="sm"
-          variant="ghost"
-        >
-          Remove
-        </Button>
-      </div>
+      <ListEditorControls
+        items={education}
+        index={list.index}
+        onAdd={list.add}
+        onSelect={list.select}
+        onRemove={removeEducation}
+        labelFor={(item, index) => item.school || item.degree || `Education ${index + 1}`}
+      />
 
       {activeEducation ? (
         <>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field error={educationErrors.school} label="School">
-              <Input
-                className={invalidClass(educationErrors.school)}
-                onChange={(event) =>
-                  updateEducation(safeEducationIndex, {
-                    school: event.target.value,
-                  })
-                }
-                value={activeEducation.school}
-              />
-            </Field>
+            <TextInputField
+              label="School"
+              value={activeEducation.school}
+              error={educationErrors.school}
+              onValueChange={(school) => updateEducation(list.index, { school })}
+            />
 
-            <Field error={educationErrors.degree} label="Degree">
-              <Input
-                className={invalidClass(educationErrors.degree)}
-                onChange={(event) =>
-                  updateEducation(safeEducationIndex, {
-                    degree: event.target.value,
-                  })
-                }
-                value={activeEducation.degree}
-              />
-            </Field>
+            <TextInputField
+              label="Degree"
+              value={activeEducation.degree}
+              error={educationErrors.degree}
+              onValueChange={(degree) => updateEducation(list.index, { degree })}
+            />
 
-            <Field error={educationErrors.field} label="Field of study">
-              <Input
-                className={invalidClass(educationErrors.field)}
-                onChange={(event) =>
-                  updateEducation(safeEducationIndex, {
-                    field: event.target.value,
-                  })
-                }
-                value={activeEducation.field}
-              />
-            </Field>
+            <TextInputField
+              label="Field of study"
+              value={activeEducation.field}
+              error={educationErrors.field}
+              onValueChange={(field) => updateEducation(list.index, { field })}
+            />
 
-            <Field error={educationErrors.startDate} label="Start year">
-              <Input
-                className={invalidClass(educationErrors.startDate)}
-                inputMode="numeric"
-                maxLength={4}
-                onChange={(event) =>
-                  updateEducation(safeEducationIndex, {
-                    startDate: event.target.value.replace(/\D/g, "").slice(0, 4),
-                  })
-                }
-                pattern="[0-9]*"
-                placeholder="2019"
-                value={activeEducation.startDate}
-              />
-            </Field>
+            <TextInputField
+              label="Start year"
+              inputMode="numeric"
+              maxLength={4}
+              pattern="[0-9]*"
+              placeholder="2019"
+              value={activeEducation.startDate}
+              error={educationErrors.startDate}
+              onValueChange={(startDate) =>
+                updateEducation(list.index, { startDate: toYear(startDate) })
+              }
+            />
 
-            <Field error={educationErrors.endDate} label="End year">
-              <Input
-                className={invalidClass(educationErrors.endDate)}
-                disabled={activeEducation.current}
-                inputMode="numeric"
-                maxLength={4}
-                onChange={(event) =>
-                  updateEducation(safeEducationIndex, {
-                    endDate: event.target.value.replace(/\D/g, "").slice(0, 4),
-                  })
-                }
-                pattern="[0-9]*"
-                placeholder="2023"
-                value={activeEducation.endDate}
-              />
-            </Field>
+            <TextInputField
+              label="End year"
+              inputMode="numeric"
+              maxLength={4}
+              pattern="[0-9]*"
+              placeholder="2023"
+              disabled={activeEducation.current}
+              value={activeEducation.endDate}
+              error={educationErrors.endDate}
+              onValueChange={(endDate) => updateEducation(list.index, { endDate: toYear(endDate) })}
+            />
 
-            <label className="text-foreground border-border flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium">
-              <input
-                checked={activeEducation.current}
-                className="accent-accent h-4 w-4"
-                onChange={(event) =>
-                  updateEducation(safeEducationIndex, {
-                    current: event.target.checked,
-                    endDate: event.target.checked ? "" : activeEducation.endDate,
-                  })
-                }
-                type="checkbox"
-              />
+            <CheckboxField
+              checked={activeEducation.current}
+              onCheckedChange={(current) =>
+                updateEducation(list.index, {
+                  current,
+                  endDate: current ? "" : activeEducation.endDate,
+                })
+              }
+            >
               I currently study here
-            </label>
+            </CheckboxField>
           </div>
 
           <div className="mt-4">
-            <Field label="Summary">
-              <TextArea
-                onChange={(event) =>
-                  updateEducation(safeEducationIndex, {
-                    summary: event.target.value,
-                  })
-                }
-                value={activeEducation.summary}
-              />
-            </Field>
+            <TextAreaField
+              label="Summary"
+              value={activeEducation.summary}
+              onValueChange={(summary) => updateEducation(list.index, { summary })}
+            />
           </div>
         </>
       ) : (
         <p className="text-muted text-sm">No education entries yet. Click Add to create one.</p>
       )}
-    </DraggableSection>
+    </SectionAccordion>
   );
 };
 

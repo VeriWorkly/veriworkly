@@ -2,43 +2,41 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
-
-import { Field, TextArea } from "@/features/documents/editor/form";
-import GenericCustomSection from "./GenericCustomSection";
+import { TextAreaField, TextInputField } from "@/features/documents/editor/form";
+import TypedSectionEditor from "./TypedSectionEditor";
 
 const AchievementsSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
+    <TypedSectionEditor
       {...props}
-      kind="achievements"
+      sectionKey="achievements"
+      sectionId="achievements"
       label="Achievements"
       addLabel="Add achievement"
       fallbackItemLabel="Achievement"
       emptyMessage="No achievements yet. Click Add achievement."
+      labelFor={(item) => item.title}
     >
-      {({ item: activeAchievement, update }) => (
+      {({ item: achievement, update }) => (
         <>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Title">
-              <Input
-                onChange={(event) => update({ name: event.target.value })}
-                value={activeAchievement.name}
-              />
-            </Field>
+            <TextInputField
+              label="Title"
+              value={achievement.title}
+              onValueChange={(title) => update({ title })}
+            />
           </div>
 
           <div className="mt-4">
-            <Field label="Description">
-              <TextArea
-                onChange={(event) => update({ description: event.target.value })}
-                value={activeAchievement.description}
-              />
-            </Field>
+            <TextAreaField
+              label="Description"
+              value={achievement.description}
+              onValueChange={(description) => update({ description })}
+            />
           </div>
         </>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 

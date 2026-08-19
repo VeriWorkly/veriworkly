@@ -2,46 +2,44 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { Input } from "@veriworkly/ui";
-
-import { Field } from "@/features/documents/editor/form";
-import GenericCustomSection from "./GenericCustomSection";
+import { TextInputField } from "@/features/documents/editor/form";
+import TypedSectionEditor from "./TypedSectionEditor";
 
 const InterestsSection = (props: BaseSectionProps) => {
   return (
-    <GenericCustomSection
+    <TypedSectionEditor
       {...props}
-      kind="interests"
+      sectionKey="interests"
+      sectionId="interests"
       label="Interests"
       addLabel="Add interest"
       fallbackItemLabel="Interest"
       emptyMessage="No interests yet. Click Add interest."
+      labelFor={(item) => item.name}
     >
-      {({ item: activeInterest, update }) => (
+      {({ item: interest, update }) => (
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Interest">
-            <Input
-              onChange={(event) => update({ name: event.target.value })}
-              value={activeInterest.name}
-            />
-          </Field>
+          <TextInputField
+            label="Interest"
+            value={interest.name}
+            onValueChange={(name) => update({ name })}
+          />
 
-          <Field label="Keywords (comma separated)">
-            <Input
-              onChange={(event) =>
-                update({
-                  details: event.target.value
-                    .split(",")
-                    .map((part) => part.trim())
-                    .filter(Boolean),
-                })
-              }
-              value={activeInterest.details?.join(", ") ?? ""}
-            />
-          </Field>
+          <TextInputField
+            label="Keywords (comma separated)"
+            value={interest.keywords.join(", ")}
+            onValueChange={(value) =>
+              update({
+                keywords: value
+                  .split(",")
+                  .map((part) => part.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
         </div>
       )}
-    </GenericCustomSection>
+    </TypedSectionEditor>
   );
 };
 
