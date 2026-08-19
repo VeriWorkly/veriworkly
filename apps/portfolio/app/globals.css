@@ -116,8 +116,13 @@ p {
   text-wrap: pretty;
 }
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--color-accent) !important;
+  color: var(--color-accent-ink) !important;
+}
+
+*::selection {
+  background: var(--color-accent) !important;
+  color: var(--color-accent-ink) !important;
 }
 @media (max-width: 640px) {
   .brand-shell {
