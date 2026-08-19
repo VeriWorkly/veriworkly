@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
-
-import { Button, Select } from "@veriworkly/ui";
+import { useMemo, useState } from "react";
 
 import type { CoverLetterSectionId } from "@/features/cover-letter/types";
-import type { ResumeLinkDisplayMode, ResumeLinkType } from "@/types/resume";
 
-import { linkTypeOptions } from "@/features/documents/editor/link-options";
+import { validateCoverLetterContent } from "@/features/cover-letter/validation";
 import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
+import { LinksEditor } from "@/features/documents/editor/LinksEditor";
 import SectionAccordion from "@/features/documents/editor/SectionAccordion";
 import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
 
@@ -34,6 +32,13 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
   const onAddLink = useCoverLetterStore((state) => state.addLinkItem);
   const onUpdateLink = useCoverLetterStore((state) => state.updateLinkItem);
   const onRemoveLink = useCoverLetterStore((state) => state.removeLinkItem);
+
+  // Advisory, never blocking — the same model the resume uses. Link URLs are validated
+  // inside `LinksEditor`, which both editors share.
+  const contactErrors = useMemo(
+    () => (content ? validateCoverLetterContent(content) : {}),
+    [content],
+  );
 
   function toggleSection(sectionId: string) {
     setOpenSectionId((currentSectionId) =>
@@ -75,12 +80,14 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
             <TextInputField
               label="Email"
               value={content.senderEmail}
+              error={contactErrors.senderEmail}
               onValueChange={(senderEmail) => onUpdateContent({ senderEmail })}
             />
 
             <TextInputField
               label="Phone"
               value={content.senderPhone}
+              error={contactErrors.senderPhone}
               onValueChange={(senderPhone) => onUpdateContent({ senderPhone })}
             />
           </div>
@@ -94,6 +101,7 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
           <TextInputField
             label="Website"
             value={content.senderWebsite}
+            error={contactErrors.senderWebsite}
             onValueChange={(senderWebsite) => onUpdateContent({ senderWebsite })}
           />
         </EditorBlock>
@@ -106,73 +114,14 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
         onToggle={toggleSection}
       >
         <EditorBlock title="Links">
-          <label className="grid gap-1.5">
-            <span className="text-muted text-xs font-semibold">Display style</span>
-
-            <Select
-              value={links.displayMode}
-              onChange={(event) =>
-                onUpdateLinks({ displayMode: event.target.value as ResumeLinkDisplayMode })
-              }
-            >
-              <option value="icon">Icons only</option>
-              <option value="icon-username">Icon + username</option>
-            </Select>
-          </label>
-
-          <div className="grid gap-3">
-            {links.items.map((item, index) => (
-              <div key={item.id} className="border-border grid gap-3 rounded-xl border p-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-1.5">
-                    <span className="text-muted text-xs font-semibold">Link type</span>
-
-                    <Select
-                      value={item.type}
-                      onChange={(event) =>
-                        onUpdateLink(index, {
-                          type: event.target.value as ResumeLinkType,
-                        })
-                      }
-                    >
-                      {linkTypeOptions.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-
-                  <TextInputField
-                    label="Label"
-                    value={item.label}
-                    placeholder="veriworkly-user"
-                    onValueChange={(label) => onUpdateLink(index, { label })}
-                  />
-                </div>
-
-                <TextInputField
-                  label="URL"
-                  value={item.url}
-                  placeholder="https://..."
-                  onValueChange={(url) => onUpdateLink(index, { url })}
-                />
-
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="justify-self-start"
-                  onClick={() => onRemoveLink(index)}
-                >
-                  Remove link
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          <Button size="sm" variant="secondary" onClick={onAddLink}>
-            Add link
-          </Button>
+          <LinksEditor
+            links={links}
+            onAddLink={onAddLink}
+            onUpdateLink={onUpdateLink}
+            onUpdateLinks={onUpdateLinks}
+            onRemoveLink={onRemoveLink}
+            emptyMessage="No links yet. Add LinkedIn, a portfolio, or anything worth contacting you through."
+          />
         </EditorBlock>
       </SectionAccordion>
 

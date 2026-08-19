@@ -723,6 +723,70 @@ export const templateSummaries: TemplateSummary[] = [
   },
 
   {
+    id: "resume-veriworkly-special",
+    editorTemplateId: "veriworkly-special",
+    name: "Veriworkly Special",
+    documentType: "resume",
+    documentTypeLabel: "Resume",
+    description:
+      "The signature VeriWorkly resume: a quiet, editorial layout built around one confident name treatment and three precise touches of brand accent — a rule, a label, and a set of small marks. Nothing else competes for attention, and nothing sits in a table or a column a parser could misread.",
+    shortDescription: "A quiet, editorial resume with one confident name and a precise accent.",
+    accentColor: "#2563eb",
+    previewImage: "/templates/resume/veriworkly-special.svg",
+    tags: ["Branded", "One column", "ATS-friendly", "Minimal"],
+    family: "Signature Core",
+    layout: "One column, editorial masthead",
+    audience: [
+      "Candidates who want restraint and precision over decoration",
+      "Designers and product roles",
+      "Senior candidates who want the page to feel considered, not busy",
+      "Anyone applying alongside a VeriWorkly cover letter",
+    ],
+    bestFor: [
+      "Applications where a calm, confident first page reads better than a loud one.",
+      "Candidates who want the polish of a designed document without risking a layout a parser cannot read.",
+      "Pairing with the VeriWorkly Special cover letter for a matched, understated application set.",
+    ],
+    designVision:
+      "Veriworkly Special spends its entire color budget on three deliberate moments: a tight-tracked name in ink, a wide-tracked accent label under it, a thin accent rule closing the header, and a small accent mark opening each section. Everything else — dates, bullets, body copy — is plain text in a single column, so the three accent touches read as a signature rather than decoration competing with the content.",
+    typography: [
+      "A large, tight-tracked name that carries hierarchy through size and weight, not color.",
+      "A wide-tracked, uppercase accent label under the name — the one place the brand color touches text directly.",
+      "Small, consistent accent marks before each section title instead of a filled background.",
+    ],
+    structure: [
+      {
+        title: "Quiet Masthead",
+        description:
+          "Name, accent label, contact row, and links sit above a single thin accent rule — no fills, no panels.",
+        items: ["Tight-tracked name", "Accent label", "Single accent rule"],
+      },
+      {
+        title: "Marked Sections",
+        description:
+          "Each heading opens with one small accent square and a tracked uppercase label, keeping rhythm without a filled chip.",
+        items: ["Small accent mark", "Uppercase tracked label", "Consistent spacing rhythm"],
+      },
+      {
+        title: "Plain Body",
+        description:
+          "Experience, education, and skills stay single column and text-only underneath the quiet header and headings.",
+        items: ["Single column flow", "Plain-text bullets", "No graphical meters or tables"],
+      },
+    ],
+    proofPoints: [
+      "Best when you want a resume that reads as deliberately designed, not decorated.",
+      "Every accent touch is small and precise, so nothing is lost when the PDF is parsed.",
+      "Pairs naturally with the VeriWorkly Special cover letter for a matched, understated application.",
+    ],
+    seo: {
+      title: "Veriworkly Special AI Resume Template | Minimal ATS-Friendly Resume",
+      description:
+        "Use the Veriworkly Special resume template with AI tailoring for a quiet, editorial resume that still parses cleanly through applicant tracking systems.",
+    },
+  },
+
+  {
     id: "cover-letter-professional",
     editorTemplateId: "professional",
     name: "Professional",
@@ -845,6 +909,202 @@ export const templateSummaries: TemplateSummary[] = [
       title: "VeriWorkly Special AI Cover Letter Template | Branded Application",
       description:
         "Use the VeriWorkly Special cover letter template and AI generation tools for a distinctive, two-column job application letter.",
+    },
+  },
+
+  {
+    id: "cover-letter-minimalist",
+    editorTemplateId: "minimalist",
+    name: "Minimalist",
+    documentType: "cover-letter",
+    documentTypeLabel: "Cover Letter",
+    description:
+      "A quiet, rule-free cover letter with a full-width stacked masthead, generous whitespace, and small uppercase labels in place of borders, built for candidates who want the writing to carry the page.",
+    shortDescription: "A full-width stacked masthead with generous whitespace.",
+    accentColor: "#6366f1",
+    previewImage: "/templates/cover-letter/minimalist.svg",
+    tags: ["Minimal", "Whitespace", "ATS-friendly", "Understated"],
+    family: "Minimal Letter",
+    layout: "One column",
+    audience: [
+      "Tech and product candidates",
+      "Startup applicants",
+      "Design-adjacent roles",
+      "Early-career candidates",
+    ],
+    bestFor: [
+      "Applications where a calm, confident tone matters more than visual flourish.",
+      "Candidates pairing the letter with a similarly minimal, whitespace-led resume.",
+      "Roles where the writing itself is the strongest signal.",
+    ],
+    designVision:
+      "Minimalist stacks the sender's identity full width instead of splitting it into columns, then removes every rule and shaded block from the rest of the letter, so nothing competes with the sentence the reader is on.",
+    typography: [
+      "A full-width sender block with a light identifying label instead of a heavy rule.",
+      "Contact details set as one wrapped inline row under the title, not a side column.",
+      "An accent-colored rule beside list items instead of a filled background.",
+    ],
+    structure: [
+      {
+        title: "Stacked Masthead",
+        description:
+          "Name, title, and contact details run full width with no column split, above a date-then-address reading order.",
+        items: ["Full-width header", "Inline contact row", "Date above the inside address"],
+      },
+      {
+        title: "Open Body",
+        description: "Paragraphs and highlights breathe with wide spacing and no boxed sections.",
+        items: ["Accent-rule highlights", "Generous paragraph spacing", "En-dash markers"],
+      },
+      {
+        title: "Export Shape",
+        description:
+          "The design stays printable and legible across PDF export and browser preview.",
+        items: ["No fragile overlays", "Letter-sized composition", "Recruiter-safe contrast"],
+      },
+    ],
+    proofPoints: [
+      "Best when the letter should feel considered rather than designed.",
+      "Keeps every word in plain text, so nothing is lost when the PDF is parsed.",
+      "Pairs well with Precision ATS or Modern Minimal for a quiet, consistent application set.",
+    ],
+    seo: {
+      title: "Minimalist AI Cover Letter Template | Quiet, Whitespace-Led Design",
+      description:
+        "Use the Minimalist cover letter template and AI writer to generate a calm, rule-free job application letter with generous whitespace.",
+    },
+  },
+
+  {
+    id: "cover-letter-executive",
+    editorTemplateId: "executive",
+    name: "Executive",
+    documentType: "cover-letter",
+    documentTypeLabel: "Cover Letter",
+    description:
+      "A centered masthead framed by a double rule, with a small-caps subject label and refined spacing, built for senior, leadership, and client-facing applications.",
+    shortDescription: "A centered, double-ruled masthead for senior applications.",
+    accentColor: "#164e63",
+    previewImage: "/templates/cover-letter/executive.svg",
+    tags: ["Executive", "Refined", "Centered header", "Leadership"],
+    family: "Executive Letter",
+    layout: "One column",
+    audience: [
+      "Senior and executive candidates",
+      "Legal and finance professionals",
+      "Consultants and advisors",
+      "Academic and research leadership",
+    ],
+    bestFor: [
+      "Applications where gravitas and restraint matter more than distinctiveness.",
+      "Candidates writing to a board, partner group, or search committee.",
+      "Letters that need to read as considered and unhurried.",
+    ],
+    designVision:
+      "Executive frames the sender's identity between two hairlines and centers it, the way a formal letterhead is set, then presents the date and inside address the way a traditional business letter does — dateline first, address beneath it — before the letter runs in calm, single-column prose.",
+    typography: [
+      "A centered name and uppercase title inside a double-rule masthead.",
+      "A centered dateline over a left-aligned inside address, not a side-by-side split.",
+      "A small-caps subject label with wider letter spacing for a formal register.",
+      "Em-dash list markers framed by top and bottom hairlines instead of a filled block.",
+    ],
+    structure: [
+      {
+        title: "Framed Masthead",
+        description:
+          "A double hairline frames the centered sender identity, with contact details held in a fixed right column.",
+        items: ["Centered identity block", "Double-rule frame", "Fixed contact column"],
+      },
+      {
+        title: "Traditional Dateline",
+        description:
+          "The date sits centered above the recipient's inside address, the composition a formal letter actually uses.",
+        items: ["Centered dateline", "Left-aligned inside address", "Top-down reading order"],
+      },
+      {
+        title: "Formal Subject Line",
+        description: "A wide-tracked label introduces the subject beneath a single hairline.",
+        items: ["Small-caps label", "Single hairline rule", "Clear subject heading"],
+      },
+      {
+        title: "Export Shape",
+        description: "The design stays printable and formal across PDF export and browser preview.",
+        items: ["No fragile overlays", "Letter-sized composition", "Recruiter-safe contrast"],
+      },
+    ],
+    proofPoints: [
+      "Best when the letter needs to feel unmistakably senior without becoming ornate.",
+      "Keeps every word in plain, parseable text despite the more formal frame.",
+      "Pairs well with Executive Clarity or Corporate Brief for a matched senior application set.",
+    ],
+    seo: {
+      title: "Executive AI Cover Letter Template | Centered Formal Letterhead",
+      description:
+        "Use the Executive cover letter template and AI writer to generate a refined, centered letter for senior and leadership job applications.",
+    },
+  },
+
+  {
+    id: "cover-letter-ats-essential",
+    editorTemplateId: "ats-essential",
+    name: "ATS Essential",
+    documentType: "cover-letter",
+    documentTypeLabel: "Cover Letter",
+    description:
+      "The classic block-letter format taught in business writing: every line left-aligned with no column split anywhere on the page, no shaded blocks, and no decorative rules beyond a single hairline — built to parse correctly in any ATS.",
+    shortDescription: "The classic left-aligned block letter, with no column split.",
+    accentColor: "#57534e",
+    previewImage: "/templates/cover-letter/ats-essential.svg",
+    tags: ["ATS-friendly", "Maximum compatibility", "Plain text", "Conservative"],
+    family: "ATS Letter",
+    layout: "One column",
+    audience: [
+      "Government and public-sector applicants",
+      "High-volume corporate applications",
+      "Conservative and regulated industries",
+      "Candidates unsure which ATS will read their file",
+    ],
+    bestFor: [
+      "Applications submitted through an unfamiliar or older applicant tracking system.",
+      "Candidates who would rather not gamble any layout choice against a parser.",
+      "Pairing with Precision ATS for a resume-and-letter set built for parsing accuracy above all else.",
+    ],
+    designVision:
+      "ATS Essential strips the letter down to what a parser and a hiring manager both need: name, title, and every contact line stacked left with nothing beside them, a plain 'Re: subject' line, and unadorned paragraphs and hyphenated bullets with no shaded surface anywhere on the page.",
+    typography: [
+      "Name, title, and contact lines stacked left with no column split.",
+      "A single plain 'Re: subject' line in place of a separate label and heading.",
+      "Body copy with no color-only cues, so meaning never depends on rendering.",
+      "Plain hyphen bullets instead of a typographic marker or shaded box.",
+    ],
+    structure: [
+      {
+        title: "Block Letterhead",
+        description:
+          "Name, title, and every contact line run left-aligned in one column, the format most business-writing guides teach and the one least likely to confuse a parser that reads top to bottom.",
+        items: ["No column split", "Left-aligned contact lines", "Single hairline"],
+      },
+      {
+        title: "Unadorned Body",
+        description: "Paragraphs and highlights run as plain text with hyphen markers only.",
+        items: ["Hyphen bullets", "No background fills", "No color-only cues"],
+      },
+      {
+        title: "Export Shape",
+        description:
+          "The design stays printable and maximally parseable across PDF export and browser preview.",
+        items: ["No fragile overlays", "Letter-sized composition", "High-contrast text"],
+      },
+    ],
+    proofPoints: [
+      "Best when the letter must survive an ATS with no assumptions about how it renders.",
+      "Every element is real text with no decoration that could confuse a parser.",
+      "Pairs well with Precision ATS for a conservative, parsing-first application set.",
+    ],
+    seo: {
+      title: "ATS Essential AI Cover Letter Template | Maximum Parsing Compatibility",
+      description:
+        "Use the ATS Essential cover letter template and AI writer to generate the most conservative, parser-safe job application letter in the set.",
     },
   },
 ];

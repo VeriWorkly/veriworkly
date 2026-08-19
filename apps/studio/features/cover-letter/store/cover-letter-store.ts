@@ -2,7 +2,9 @@
 
 import { create } from "zustand";
 
-import type { ResumeLinkDisplayMode, ResumeLinkItem } from "@/types/resume";
+import type { MasterProfileData } from "@veriworkly/profile-core";
+
+import type { ResumeLinkItem } from "@/types/resume";
 import type { BaseDocument } from "@/features/documents/core/types";
 import type {
   CoverLetterAppearance,
@@ -10,7 +12,11 @@ import type {
   CoverLetterSectionId,
 } from "@/features/cover-letter/types";
 
-import { createDefaultCoverLetter, createEmptyCoverLetter } from "@/features/cover-letter/defaults";
+import {
+  createDefaultCoverLetter,
+  createEmptyCoverLetter,
+  createCoverLetterFromProfile,
+} from "@/features/cover-letter/defaults";
 import {
   type SaveDocumentOptions,
   type SaveDocumentResult,
@@ -26,24 +32,21 @@ export type CoverLetterDocument = BaseDocument<CoverLetterContent>;
  * Cover letter editor state.
  *
  * Deliberately the same shape as `features/resume/store/resume-store.ts`: a store
- * holding one document, granular field actions, `saveToStorage` returning the storage
- * result so callers can surface quota failures, and a `selectedSection` for the content
- * panel. Cover letters previously used a local `useState` hook instead, which is why
- * they had no quota handling, no section selection, and a different autosave shape from
- * the resume editor.
+ * holding one document, granular field actions, and `saveToStorage` returning the
+ * storage result so callers can surface quota failures. Cover letters previously used
+ * a local `useState` hook instead, which is why they had no quota handling and a
+ * different autosave shape from the resume editor.
  */
 interface CoverLetterStoreState {
   document: CoverLetterDocument | null;
-  selectedSection: CoverLetterSectionId;
 
   setDocument: (document: CoverLetterDocument | null) => void;
   hydrateFromStorage: (documentId: string) => boolean;
   saveToStorage: (options?: SaveDocumentOptions) => SaveDocumentResult;
 
-  resetDocument: () => void;
+  resetDocument: (master?: MasterProfileData) => void;
   emptyDocument: () => void;
 
-  selectSection: (section: CoverLetterSectionId) => void;
   setSectionVisibility: (section: CoverLetterSectionId, visible: boolean) => void;
 
   setTemplateId: (templateId: string) => void;
@@ -52,7 +55,6 @@ interface CoverLetterStoreState {
   updateAppearance: (patch: Partial<CoverLetterAppearance>) => void;
 
   updateLinks: (patch: Partial<CoverLetterContent["links"]>) => void;
-  updateLinkDisplayMode: (displayMode: ResumeLinkDisplayMode) => void;
   addLinkItem: () => void;
   updateLinkItem: (index: number, patch: Partial<ResumeLinkItem>) => void;
   removeLinkItem: (index: number) => void;
@@ -76,7 +78,6 @@ function withTimestamp(document: CoverLetterDocument): CoverLetterDocument {
 
 export const useCoverLetterStore = create<CoverLetterStoreState>((set, get) => ({
   document: null,
-  selectedSection: "profile",
 
   setDocument: (document) => set({ document }),
 
@@ -97,15 +98,23 @@ export const useCoverLetterStore = create<CoverLetterStoreState>((set, get) => (
     return saveDocument(document, options);
   },
 
-  resetDocument: () =>
+  /*
+   * Reset restores what a NEW letter looks like, which since the projection landed means
+   * the profile-seeded one. Restoring the demo letter instead would overwrite the user's
+   * own name and contact details with "Veriworkly User" — worse than the state they were
+   * trying to get back to. `emptyDocument` below still clears everything, including the
+   * identity block, for a genuinely blank page.
+   */
+  resetDocument: (master) =>
     set((state) => {
       if (!state.document) return state;
 
-      const reset = createDefaultCoverLetter(state.document.id);
+      const reset = master
+        ? createCoverLetterFromProfile(state.document.id, master)
+        : createDefaultCoverLetter(state.document.id);
 
       return {
         document: withTimestamp({ ...reset, sync: state.document.sync }),
-        selectedSection: "profile",
       };
     }),
 
@@ -117,11 +126,8 @@ export const useCoverLetterStore = create<CoverLetterStoreState>((set, get) => (
 
       return {
         document: withTimestamp({ ...empty, sync: state.document.sync }),
-        selectedSection: "profile",
       };
     }),
-
-  selectSection: (selectedSection) => set({ selectedSection }),
 
   setSectionVisibility: (section, visible) =>
     set((state) => {
@@ -198,8 +204,6 @@ export const useCoverLetterStore = create<CoverLetterStoreState>((set, get) => (
         }),
       };
     }),
-
-  updateLinkDisplayMode: (displayMode) => get().updateLinks({ displayMode }),
 
   addLinkItem: () => {
     const document = get().document;

@@ -1,51 +1,27 @@
+import type {
+  CoverLetterContent as CoverLetterContentCore,
+  CoverLetterAppearance as CoverLetterAppearanceCore,
+} from "@veriworkly/profile-core";
+
 import type { FontFamilyId } from "@/features/documents/constants/fonts";
-import type { ResumeLinkDisplayMode, ResumeLinkItem } from "@/types/resume";
 
-export interface CoverLetterContent {
-  senderName: string;
-  senderTitle: string;
-  senderEmail: string;
-  senderPhone: string;
-  senderWebsite: string;
-  senderLocation: string;
+/*
+ * The letter's shape is declared once, in `@veriworkly/profile-core`, because the server
+ * seeds a cover letter from the master profile too and a package cannot import an app —
+ * see `projectToCoverLetter`. What is added here is the one narrowing the studio is
+ * entitled to: the font catalog is the studio's, so `fontFamily` is a known id on this side
+ * and a bare string on the shared side. Same split `customization.fontFamily` already uses.
+ */
 
-  links: {
-    displayMode: ResumeLinkDisplayMode;
-    items: ResumeLinkItem[];
-  };
+export type { CoverLetterSectionId } from "@veriworkly/profile-core";
 
-  date: string;
+export interface CoverLetterAppearance extends Omit<CoverLetterAppearanceCore, "fontFamily"> {
+  fontFamily: FontFamilyId;
+}
 
-  recipientName: string;
-  recipientTitle: string;
-
-  companyName: string;
-  companyLocation: string;
-
-  jobTitle: string;
-  subject: string;
-  greeting: string;
-  opening: string;
-  body: string;
-  highlights: string;
-  closing: string;
-  signature: string;
-  postscript: string;
-
+export interface CoverLetterContent extends Omit<CoverLetterContentCore, "appearance"> {
   appearance: CoverLetterAppearance;
 }
 
-export type CoverLetterTemplateId = "professional" | "veriworkly-special";
-export type CoverLetterSectionId = "profile" | "links" | "target" | "letter";
-
-export interface CoverLetterAppearance {
-  fontFamily: FontFamilyId;
-  pageMargin: number;
-  paragraphSpacing: number;
-  lineHeight: number;
-  accentColor: string;
-  sidebarColor: string;
-  pageColor: string;
-  textColor: string;
-  hiddenSections: CoverLetterSectionId[];
-}
+export type CoverLetterTemplateId =
+  "professional" | "veriworkly-special" | "minimalist" | "executive" | "ats-essential";

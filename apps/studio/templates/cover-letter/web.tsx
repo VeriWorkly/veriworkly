@@ -4,7 +4,6 @@ import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import { createElement } from "react";
 
-import { DocumentFontLoader } from "@/features/documents/components/DocumentFontLoader";
 import { useTemplateComponent } from "@/templates/shared/use-template-component";
 
 import { buildCoverLetterMarkdown, buildCoverLetterText } from "./shared";
@@ -25,12 +24,7 @@ interface CoverLetterPreviewProps {
 export function CoverLetterPreview({ content, templateId }: CoverLetterPreviewProps) {
   const Template = useTemplateComponent(coverLetterTemplateRegistry.loadWeb, templateId);
 
-  return (
-    <>
-      <DocumentFontLoader />
-      {Template ? createElement(Template, { content }) : null}
-    </>
-  );
+  return Template ? createElement(Template, { content }) : null;
 }
 
 /**

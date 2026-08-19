@@ -1,4 +1,12 @@
+import {
+  DEFAULT_COVER_LETTER_APPEARANCE,
+  projectToCoverLetter,
+  type MasterProfileData,
+} from "@veriworkly/profile-core";
+
 import type { BaseDocument } from "@/features/documents/core/types";
+
+import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 
 import type { CoverLetterContent } from "./types";
 
@@ -66,15 +74,56 @@ export function createDefaultCoverLetter(id: string): BaseDocument<CoverLetterCo
         "I would welcome the chance to help Veriworkly make professional document creation feel faster, clearer, and more reliable.",
 
       appearance: {
-        fontFamily: "geist",
-        pageMargin: 40,
-        paragraphSpacing: 10,
-        lineHeight: 1.5,
-        accentColor: "#2563eb",
-        sidebarColor: "#f8fafc",
-        pageColor: "#ffffff",
-        textColor: "#18181b",
-        hiddenSections: [],
+        ...DEFAULT_COVER_LETTER_APPEARANCE,
+        fontFamily: normalizeFontFamilyId(DEFAULT_COVER_LETTER_APPEARANCE.fontFamily),
+      },
+    },
+  };
+}
+
+/**
+ * A new cover letter seeded from the user's master profile.
+ *
+ * `createDefaultCoverLetter` above is left exactly as it was: the contract and parity
+ * suites pin its output byte for byte and the five templates were built against it. It is
+ * now sample content for a user with no profile, and this is what a signed-in user gets.
+ *
+ * The letter arrives with the identity block filled and the letter itself blank — the
+ * projection deliberately writes no opening, body or highlights, because inventing prose a
+ * user did not write is worse than an empty page they know to fill.
+ */
+export function createCoverLetterFromProfile(
+  id: string,
+  master: MasterProfileData,
+): BaseDocument<CoverLetterContent> {
+  const now = new Date().toISOString();
+  const projected = projectToCoverLetter(master);
+
+  return {
+    id,
+    type: "COVER_LETTER",
+    // No job or company is known yet, so there is nothing truthful to name it after. Matches
+    // what the store's title derivation falls back to once the target fields are filled in.
+    title: "Untitled Cover Letter",
+    templateId: COVER_LETTER_TEMPLATE_ID,
+
+    updatedAt: now,
+
+    sync: {
+      enabled: false,
+      status: "local-only",
+      cloudDocumentId: null,
+      lastSyncedAt: null,
+      revision: 1,
+    },
+
+    content: {
+      ...projected,
+      appearance: {
+        ...projected.appearance,
+        // The shared projection stores a bare font id; the catalog that resolves it is the
+        // studio's, so the narrowing happens here rather than in the package.
+        fontFamily: normalizeFontFamilyId(projected.appearance.fontFamily),
       },
     },
   };

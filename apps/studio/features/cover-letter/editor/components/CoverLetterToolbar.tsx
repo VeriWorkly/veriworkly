@@ -1,21 +1,21 @@
 "use client";
 
 import { toast } from "sonner";
-import { useRef, useState } from "react";
+import { memo, useRef } from "react";
 import { useRouter } from "next/navigation";
-
-import type { ExportFormat } from "@/features/documents/core/types";
 
 import ToolbarHeader from "@/features/documents/editor/toolbar/ToolbarHeader";
 import ToolbarSaveButton from "@/features/documents/editor/toolbar/ToolbarSaveButton";
 import ToolbarActionsMenu from "@/features/documents/editor/toolbar/ToolbarActionsMenu";
 import ToolbarDownloadMenu from "@/features/documents/editor/toolbar/ToolbarDownloadMenu";
+import { useDocumentDownloads } from "@/features/documents/editor/toolbar/useDocumentDownloads";
+import { useDocumentJsonImport } from "@/features/documents/editor/toolbar/useDocumentJsonImport";
 
 import { useUserStore } from "@/store/useUserStore";
 
 import { getDocumentPreviewPath } from "@/features/documents/core/routes";
 import { syncDocumentNow } from "@/features/documents/services/document-sync";
-import { exportDocumentByType } from "@/features/documents/export/export-dispatcher";
+import { getMasterProfileForNewDocument } from "@/features/resume/services/master-profile";
 
 import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
 
@@ -24,7 +24,6 @@ interface CoverLetterToolbarProps {
   message: string;
   onSave: () => void;
   onSetMessage: (message: string) => void;
-  onImportJson: (file: File | undefined) => Promise<void>;
   onImportMarkdown: (file: File | undefined) => Promise<void>;
   onOpenShare: () => void;
   onOpenDelete: () => void;
@@ -35,12 +34,11 @@ interface CoverLetterToolbarProps {
  * the header, the shared save button, the shared download menu, and Full Preview /
  * PDF Debug inside the actions menu rather than as loose inline buttons.
  */
-export function CoverLetterToolbar({
+export const CoverLetterToolbar = memo(function CoverLetterToolbar({
   documentId,
   message,
   onSave,
   onSetMessage,
-  onImportJson,
   onImportMarkdown,
   onOpenShare,
   onOpenDelete,
@@ -49,7 +47,6 @@ export function CoverLetterToolbar({
 
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const markdownInputRef = useRef<HTMLInputElement>(null);
-  const [activeDownload, setActiveDownload] = useState<ExportFormat | null>(null);
 
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
 
@@ -77,20 +74,22 @@ export function CoverLetterToolbar({
     }
   }
 
-  async function download(format: ExportFormat) {
-    if (!document) return;
+  const {
+    activeDownload,
+    onDownloadPdf,
+    onDownloadDocx,
+    onDownloadHtml,
+    onDownloadJson,
+    onDownloadText,
+    onDownloadMarkdown,
+  } = useDocumentDownloads({
+    getDocument: () => document,
+    onMessage: onSetMessage,
+    // No `previewElementId`: the cover letter's HTML export is generated from its template
+    // rather than scraped from the DOM, so there is nothing to point at.
+  });
 
-    setActiveDownload(format);
-
-    try {
-      await exportDocumentByType(document, format);
-      onSetMessage(`${format.toUpperCase()} downloaded`);
-    } catch {
-      onSetMessage(`Could not generate ${format.toUpperCase()}`);
-    } finally {
-      setActiveDownload(null);
-    }
-  }
+  const onImportJson = useDocumentJsonImport("COVER_LETTER", onSetMessage);
 
   return (
     <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
@@ -130,12 +129,12 @@ export function CoverLetterToolbar({
 
         <ToolbarDownloadMenu
           activeDownload={activeDownload}
-          onDownloadPdf={() => download("pdf")}
-          onDownloadDocx={() => download("docx")}
-          onDownloadHtml={() => void download("html")}
-          onDownloadText={() => void download("txt")}
-          onDownloadJson={() => void download("json")}
-          onDownloadMarkdown={() => void download("markdown")}
+          onDownloadPdf={onDownloadPdf}
+          onDownloadDocx={onDownloadDocx}
+          onDownloadHtml={onDownloadHtml}
+          onDownloadText={onDownloadText}
+          onDownloadJson={onDownloadJson}
+          onDownloadMarkdown={onDownloadMarkdown}
         />
 
         <ToolbarActionsMenu
@@ -144,8 +143,10 @@ export function CoverLetterToolbar({
           onDelete={onOpenDelete}
           onImportJson={() => jsonInputRef.current?.click()}
           onImportMarkdown={() => markdownInputRef.current?.click()}
-          onReset={() => {
-            resetDocument();
+          onReset={async () => {
+            // Reset means "back to a new letter", and a new letter is seeded from the
+            // profile — so the identity block has to be re-fetched, not re-hardcoded.
+            resetDocument(await getMasterProfileForNewDocument());
             onSetMessage("Cover letter reset to defaults");
           }}
           onEmptyFields={() => {
@@ -167,4 +168,4 @@ export function CoverLetterToolbar({
       </div>
     </div>
   );
-}
+});
