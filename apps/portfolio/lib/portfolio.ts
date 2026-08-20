@@ -4,115 +4,27 @@ import { type TemplateId, isTemplateId } from "@/templates/catalog/templates";
 export { templates, isPremiumTemplate } from "@/templates/catalog/templates";
 export type { TemplateId } from "@/templates/catalog/templates";
 
-export type PortfolioSectionType =
-  | "projects"
-  | "experience"
-  | "education"
-  | "services"
-  | "skills"
-  | "writing"
-  | "testimonials"
-  | "awards"
-  | "certifications"
-  | "languages"
-  | "interests"
-  | "publications"
-  | "patents"
-  | "testScores"
-  | "achievements"
-  | "volunteer"
-  | "custom"
-  | "contact";
+export type {
+  PortfolioSectionType,
+  PortfolioAssetReference,
+  PortfolioLink,
+  PortfolioSection,
+  PortfolioPage,
+  MasterProfileData,
+} from "@veriworkly/profile-core";
+export { portfolioSectionTypes, projectToPortfolio } from "@veriworkly/profile-core";
 
-export const portfolioSectionTypes: PortfolioSectionType[] = [
-  "projects",
-  "experience",
-  "services",
-  "skills",
-  "education",
-  "writing",
-  "testimonials",
-  "awards",
-  "certifications",
-  "languages",
-  "interests",
-  "publications",
-  "patents",
-  "testScores",
-  "achievements",
-  "volunteer",
-  "custom",
-  "contact",
-];
+import {
+  portfolioSectionTypes,
+  type PortfolioSectionType,
+  type PortfolioContent as CorePortfolioContent,
+  type CloudPortfolioDraft as CoreCloudPortfolioDraft,
+  type PortfolioSection,
+  type PortfolioAssetReference,
+} from "@veriworkly/profile-core";
 
-export interface PortfolioAssetReference {
-  id: string;
-  url: string;
-}
-
-export interface PortfolioLink {
-  id: string;
-  label: string;
-  url: string;
-}
-
-export interface PortfolioSection {
-  id: string;
-  type: PortfolioSectionType;
-  title: string;
-  /**
-   * Editable copy shown under the section heading.
-   *
-   * Templates used to hardcode this text (Signal carried 16 baked-in
-   * subtitles written for a graphics engineer), so it could not be changed
-   * from the editor and made no sense for most people's portfolios. It is
-   * seeded with a neutral default on parse so nobody starts with a bare page,
-   * and an explicit empty string hides the subtitle entirely.
-   */
-  subtitle?: string;
-  visible: boolean;
-  items: Array<Record<string, unknown>>;
-  settings?: Record<string, unknown>;
-}
-
-export interface PortfolioPage {
-  id: string;
-  slug: string;
-  title: string;
-  sections: PortfolioSection[];
-}
-
-export interface PortfolioContent {
-  schemaVersion: 1;
-  templateId: TemplateId;
-  identity: {
-    name: string;
-    headline: string;
-    bio: string;
-    location: string;
-    email: string;
-    availability: string;
-    avatar: PortfolioAssetReference | null;
-  };
-  seo: {
-    title: string;
-    description: string;
-    socialImage: PortfolioAssetReference | null;
-  };
-  socialLinks: PortfolioLink[];
-  sections: PortfolioSection[];
-  pages?: PortfolioPage[];
-  removeWatermark?: boolean;
-}
-
-export interface CloudPortfolioDraft {
-  id: string;
-  slug: string;
-  templateId: TemplateId;
-  content: PortfolioContent;
-  revision: number;
-  updatedAt: string;
-}
+export type PortfolioContent = CorePortfolioContent<TemplateId>;
+export type CloudPortfolioDraft = CoreCloudPortfolioDraft<TemplateId>;
 
 export const PORTFOLIO_CACHE_KEY = "veriworkly:portfolio:draft-cache:v4";
 
@@ -120,54 +32,138 @@ export function createId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Creates a clean, empty portfolio draft.
+ * Contains no dummy sample text so new drafts are ready for immediate editing or profile import.
+ */
 export function createDefaultPortfolio(user?: {
   name?: string | null;
   email?: string | null;
 }): PortfolioContent {
-  const name = user?.name?.trim() || "VeriWorkly User";
-  const email = user?.email?.trim() || "hello@veriworkly.com";
+  const name = user?.name?.trim() || "";
+  const email = user?.email?.trim() || "";
   return {
     schemaVersion: 1,
     templateId: "signal",
     identity: {
       name,
       email,
-      headline: "Professional building useful web products.",
-      bio: "I build responsive tools with clean code. Focused on performance and practical design decisions.",
-      location: "San Francisco, CA",
-      availability: "Available for contract roles",
+      headline: "",
+      bio: "",
+      location: "",
+      availability: "",
       avatar: null,
     },
     seo: {
-      title: `${name} | Portfolio`,
-      description: "Professional portfolio site",
+      title: name ? `${name} | Portfolio` : "Portfolio",
+      description: "",
       socialImage: null,
     },
     socialLinks: [],
     sections: [
-      {
-        id: createId("section"),
-        type: "projects",
-        title: "Selected work",
-        visible: true,
-        items: [
-          {
-            id: createId("project"),
-            name: "Your primary project",
-            role: "Developer",
-            link: "https://veriworkly.com",
-            linkLabel: "Link",
-            showLinkAsText: true,
-            summary:
-              "Describe the key problem you solved and the resulting performance metrics here.",
-            highlights: ["Shipped fully responsive interface using React and Tailwind CSS."],
-            skills: ["React", "CSS", "TypeScript"],
-            coverImage: null,
-          },
-        ],
-      },
+      { id: createId("section"), type: "projects", title: "Projects", visible: true, items: [] },
       { id: createId("section"), type: "contact", title: "Contact", visible: true, items: [] },
     ],
+  };
+}
+
+/**
+ * Merges a projected Master Profile into an existing Portfolio draft.
+ * In "fill-empty" mode, any section with existing filled items is skipped (preserved),
+ * while missing or empty sections are populated from Master Profile.
+ */
+export function mergeMasterProfileIntoPortfolio(
+  existing: PortfolioContent,
+  projected: PortfolioContent,
+  mode: "fill-empty" | "replace" = "fill-empty",
+): PortfolioContent {
+  if (mode === "replace") {
+    return {
+      ...projected,
+      templateId: existing.templateId,
+      identity: {
+        ...projected.identity,
+        avatar: existing.identity.avatar,
+      },
+      seo: {
+        ...projected.seo,
+        socialImage: existing.seo.socialImage,
+      },
+      pages: existing.pages,
+      removeWatermark: existing.removeWatermark,
+    };
+  }
+
+  // mode === "fill-empty" (smart import)
+  const identity = {
+    name: existing.identity.name.trim() || projected.identity.name,
+    headline: existing.identity.headline.trim() || projected.identity.headline,
+    bio: existing.identity.bio.trim() || projected.identity.bio,
+    location: existing.identity.location.trim() || projected.identity.location,
+    email: existing.identity.email.trim() || projected.identity.email,
+    availability: existing.identity.availability.trim() || projected.identity.availability,
+    avatar: existing.identity.avatar,
+  };
+
+  const seo = {
+    title: existing.seo.title.trim() || projected.seo.title,
+    description: existing.seo.description.trim() || projected.seo.description,
+    socialImage: existing.seo.socialImage,
+  };
+
+  const socialLinks =
+    existing.socialLinks.length > 0 ? existing.socialLinks : projected.socialLinks;
+
+  // Sections: if a user already has filled items in a section, skip that section from master.
+  const existingSectionsMap = new Map<string, PortfolioSection>();
+  for (const s of existing.sections) {
+    existingSectionsMap.set(s.type, s);
+  }
+
+  const finalSections: PortfolioSection[] = [];
+
+  for (const projSec of projected.sections) {
+    if (projSec.type === "contact") continue;
+    const existSec = existingSectionsMap.get(projSec.type);
+    if (existSec && existSec.items.length > 0) {
+      // User has already filled items in this section: skip master, keep user's filled section
+      finalSections.push(existSec);
+      existingSectionsMap.delete(projSec.type);
+    } else {
+      // Existing section is missing or empty: import from master projection
+      finalSections.push(projSec);
+      if (existSec) existingSectionsMap.delete(projSec.type);
+    }
+  }
+
+  // Any remaining sections in existing (e.g. custom or unprojected sections)
+  for (const [type, existSec] of existingSectionsMap.entries()) {
+    if (type !== "contact") {
+      finalSections.push(existSec);
+    }
+  }
+
+  // Always keep contact section last
+  const existContact = existing.sections.find((s) => s.type === "contact");
+  finalSections.push(
+    existContact || {
+      id: "section-contact",
+      type: "contact",
+      title: "Contact",
+      visible: true,
+      items: [],
+    },
+  );
+
+  return {
+    schemaVersion: 1,
+    templateId: existing.templateId,
+    identity,
+    seo,
+    socialLinks,
+    sections: finalSections,
+    pages: existing.pages,
+    removeWatermark: existing.removeWatermark,
   };
 }
 
