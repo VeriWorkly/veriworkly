@@ -21,7 +21,13 @@ import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
  * the page box differs — and when the export drops content off the bottom.
  */
 
-const TEMPLATES = ["professional", "veriworkly-special"] as const;
+const TEMPLATES = [
+  "professional",
+  "veriworkly-special",
+  "minimalist",
+  "executive",
+  "ats-essential",
+] as const;
 
 /** CJK cannot be set in the PDF at all; see `tests/contracts/font-coverage.contract.test.ts`. */
 const MEASURABLE_FIXTURES = PARITY_FIXTURE_IDS.filter((id) => id !== "cjk");

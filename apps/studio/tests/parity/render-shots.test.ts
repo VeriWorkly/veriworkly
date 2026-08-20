@@ -105,7 +105,13 @@ describe.skipIf(!process.env.SHOT)("shots", () => {
     }, 180_000);
   }
 
-  for (const templateId of ["professional", "veriworkly-special"]) {
+  for (const templateId of [
+    "professional",
+    "veriworkly-special",
+    "minimalist",
+    "executive",
+    "ats-essential",
+  ]) {
     it(`cover letter ${templateId}`, async () => {
       const content = PARITY_FIXTURES[FIXTURE].coverLetter() as CoverLetterContent;
       const name = `cl-${templateId}`;

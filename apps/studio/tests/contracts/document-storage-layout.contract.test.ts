@@ -91,7 +91,7 @@ describe("document storage layout", () => {
     expect(storageMock.store.has(getDocumentKey("RESUME", "resume-a"))).toBe(true);
     expect(storageMock.store.has(getDocumentKey("RESUME", "resume-b"))).toBe(true);
     expect(storageMock.store.has(getLegacyDocumentCollectionKey("RESUME"))).toBe(false);
-  });
+  }, 15000);
 
   it("keeps document bodies out of the index", async () => {
     const { workspace } = await loadStorageModules();

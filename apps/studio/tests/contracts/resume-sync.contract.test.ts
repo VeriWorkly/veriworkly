@@ -85,6 +85,11 @@ vi.mock("@/features/resume/services/master-profile", () => ({
     ...cloneResume(defaultResume),
     id,
   })),
+  loadMasterProfileFromLocalStorage: vi.fn(() => ({
+    updatedAt: defaultResume.updatedAt,
+    profile: cloneResume(defaultResume),
+  })),
+  getMasterProfileForNewDocument: vi.fn(async () => undefined),
 }));
 
 describe("resume sync contract", () => {
