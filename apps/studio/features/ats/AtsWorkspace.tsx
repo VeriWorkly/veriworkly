@@ -34,7 +34,7 @@ import { defaultResume } from "@/features/resume/constants/default-resume";
 import {
   saveResume,
   listSavedResumes,
-  loadResumeById,
+  readResumeById,
 } from "@/features/resume/services/resume-service";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { cn } from "@/lib/utils";
@@ -214,7 +214,9 @@ export function AtsWorkspace() {
                   className="mt-4 w-full bg-transparent text-sm outline-none"
                   value=""
                   onChange={(event) => {
-                    const selected = loadResumeById(event.target.value);
+                    // Picking a resume to scan is not opening it, so the active-document
+                    // pointer stays where the user's editor left it.
+                    const selected = readResumeById(event.target.value);
                     if (!selected) return;
                     setResume(JSON.stringify(selected));
                     setSourceLabel(

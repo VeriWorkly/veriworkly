@@ -32,14 +32,21 @@ const AdvancedProfileClient = () => {
 
     const loadProfile = async () => {
       try {
-        const bundle = await loadMasterProfileFromDatabase();
+        const result = await loadMasterProfileFromDatabase();
 
         if (!mounted) return;
 
-        if (bundle?.profile) {
-          setProfile(bundle.profile);
-          setUpdatedAt(bundle.updatedAt);
+        if (result.status === "ok") {
+          setProfile(result.bundle.profile);
+          setUpdatedAt(result.bundle.updatedAt);
         } else {
+          // "empty" is a first-time visitor; the rest mean the database copy is unusable.
+          // Either way the local cache is the best available answer, but only the first is
+          // routine, so the others are worth a line in the console.
+          if (result.status !== "empty") {
+            console.error("Failed to load master profile from the database", result);
+          }
+
           setProfile(loadMasterProfileFromLocalStorage().profile);
         }
       } catch {

@@ -26,8 +26,8 @@ import { ImportProfileModal } from "@/components/dashboard/ImportProfileModal";
 
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import {
-  createDocument,
   listDocuments,
+  createDocumentFromMasterProfile,
 } from "@/features/documents/services/document-workspace-service";
 import { fetchApiData } from "@/utils/fetchApiData";
 import type { BillingSummary } from "@/features/billing/types";
@@ -41,7 +41,7 @@ interface StudioShellProps {
   mainClassName?: string;
 }
 
-const STUDIO_VERSION = "v3.23.1";
+const STUDIO_VERSION = "v3.24.0";
 
 const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const router = useRouter();
@@ -79,7 +79,7 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
       return;
     }
 
-    const document = createDocument(type);
+    const document = await createDocumentFromMasterProfile(type);
     router.push(getDocumentEditorPath(type, document.id));
   };
 

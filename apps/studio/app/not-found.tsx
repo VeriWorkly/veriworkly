@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { Button, Container } from "@veriworkly/ui";
 
+import { siteConfig } from "@/config/site";
+
 const NotFound = () => {
   return (
     <main className="surface-grid flex min-h-screen items-center justify-center">
@@ -22,8 +24,11 @@ const NotFound = () => {
             <Link href="/">Go back to Dashboard</Link>
           </Button>
 
+          {/* Studio has no `/templates` route; the gallery lives on the marketing site.
+              Offering a 404 as the recovery action from a 404 is the worst version of a
+              broken link. */}
           <Button asChild variant="ghost">
-            <Link href="/templates">View Templates</Link>
+            <Link href={`${siteConfig.links.main}/templates`}>View Templates</Link>
           </Button>
         </div>
       </Container>

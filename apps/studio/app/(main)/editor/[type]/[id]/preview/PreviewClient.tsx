@@ -1,17 +1,18 @@
 "use client";
 
 import type { TemplateComponent } from "@/types/template";
+import type { BaseDocument } from "@/features/documents/core/types";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FileSearch } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
 
 import { loadTemplateComponentById } from "@/templates";
 
-import { useResume } from "@/features/resume/hooks/use-resume";
-import { loadResumeById } from "@/features/resume/services/resume-service";
+import { useResumeStore } from "@/features/resume/store/resume-store";
+import { readResumeById } from "@/features/resume/services/resume-service";
 import { loadDocumentById } from "@/features/documents/services/document-workspace-service";
 import type { DocumentType } from "@/features/documents/core/document-types";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
@@ -23,23 +24,56 @@ interface PreviewClientProps {
   type: DocumentType;
 }
 
+/**
+ * Mirrors the hydration gate both editors use, so a miss never flashes before it resolves.
+ * One value rather than a status plus a document, so resolving is a single state update.
+ */
+type Resolved =
+  | { status: "loading" }
+  | { status: "not-found" }
+  | { status: "ready"; document: BaseDocument | null };
+
 export function PreviewClient({ documentId, type }: PreviewClientProps) {
-  const { resume, setResume } = useResume();
+  // Narrow selectors: this route only needs these two, and subscribing to the whole store
+  // re-rendered the preview on every unrelated mutation.
+  const resume = useResumeStore((state) => state.resume);
+  const setResume = useResumeStore((state) => state.setResume);
   const [templateComponent, setTemplateComponent] = useState<TemplateComponent | null>(null);
 
-  const routeResume = useMemo(
-    () => (type === "RESUME" ? loadResumeById(documentId) : null),
-    [documentId, type],
-  );
-  const routeDocument = useMemo(
-    () => (type === "RESUME" ? null : loadDocumentById(type, documentId)),
-    [documentId, type],
-  );
+  const [resolved, setResolved] = useState<Resolved>({ status: "loading" });
 
+  /*
+   * Resolution lives in an effect, not a `useMemo`.
+   *
+   * A memo runs during render, which React is free to run twice, discard, or re-run —
+   * and `reactStrictMode` does exactly that in development. `readResumeById` (rather than
+   * `loadResumeById`) is the other half of the fix: merely previewing a document must not
+   * repoint the workspace's active document, which decides what other surfaces open.
+   */
   useEffect(() => {
-    if (!routeResume) return;
-    setResume(routeResume);
-  }, [routeResume, setResume]);
+    let cancelled = false;
+
+    const routeResume = type === "RESUME" ? readResumeById(documentId) : null;
+    const routeDocument = type === "RESUME" ? null : loadDocumentById(type, documentId);
+    const found = type === "RESUME" ? routeResume : routeDocument;
+
+    if (!cancelled) {
+      if (routeResume) setResume(routeResume);
+
+      // Reading local storage on mount is exactly the external-system read this rule
+      // carves out; the alternative it steers toward is the render-phase memo this
+      // replaced, which wrote to storage during render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResolved(found ? { status: "ready", document: routeDocument } : { status: "not-found" });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, type, setResume]);
+
+  const status = resolved.status;
+  const routeDocument = resolved.status === "ready" ? resolved.document : null;
 
   useEffect(() => {
     if (type !== "RESUME") return;
@@ -60,7 +94,6 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
   }, [resume.templateId, type]);
 
   const TemplateComponent = templateComponent;
-  const found = type === "RESUME" ? Boolean(routeResume) : Boolean(routeDocument);
   const title =
     type === "RESUME"
       ? resume.title || resume.basics.fullName || "Untitled Resume"
@@ -108,7 +141,12 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
         </div>
       </div>
 
-      {!found ? (
+      {status === "loading" ? (
+        <Card className="space-y-3 text-center">
+          <h1 className="text-foreground text-xl font-semibold">Loading preview</h1>
+          <p className="text-muted text-sm">Fetching this document from your workspace.</p>
+        </Card>
+      ) : status === "not-found" ? (
         <Card className="space-y-3 text-center">
           <h1 className="text-foreground text-xl font-semibold">Document not found</h1>
           <p className="text-muted text-sm">

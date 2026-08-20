@@ -190,6 +190,22 @@ export function AdditionalSections({
                   }
                   placeholder="Date"
                 />
+                {/*
+                  Editable here as well as in the resume editor. The credential id has
+                  always been collected on the resume side; giving the profile the same
+                  field is what keeps the master -> resume projection from being the only
+                  place it can be set.
+                */}
+                <Input
+                  value={item.referenceId ?? ""}
+                  onChange={(event) =>
+                    updateRepeatableItem("certificates", item.id, (current) => ({
+                      ...current,
+                      referenceId: event.target.value,
+                    }))
+                  }
+                  placeholder="Credential ID"
+                />
                 <Input
                   type="url"
                   value={item.website ?? ""}

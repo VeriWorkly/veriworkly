@@ -8,7 +8,7 @@ import type { DocumentType } from "@/features/documents/core/document-types";
 
 import {
   saveDocument,
-  createDocument,
+  createDocumentFromMasterProfile,
 } from "@/features/documents/services/document-workspace-service";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 
@@ -41,11 +41,15 @@ export function EditorEntryRedirect({ type, templateId }: EditorEntryRedirectPro
     if (createdRef.current) return;
     createdRef.current = true;
 
-    const document = applyTemplate(createDocument(type), templateId);
+    // Fire-and-forget: the effect cannot be async, and the profile fetch inside
+    // createDocumentFromMasterProfile is what makes this path await at all.
+    void (async () => {
+      const document = applyTemplate(await createDocumentFromMasterProfile(type), templateId);
 
-    if (document.templateId === templateId) saveDocument(document, { flush: true });
+      if (document.templateId === templateId) saveDocument(document, { flush: true });
 
-    router.replace(getDocumentEditorPath(type, document.id));
+      router.replace(getDocumentEditorPath(type, document.id));
+    })();
   }, [router, templateId, type]);
 
   return null;
