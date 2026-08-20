@@ -93,7 +93,13 @@ describe("cover letter pdf export contract", () => {
     return { ...base, appearance: { ...base.appearance, ...overrides } };
   }
 
-  for (const templateId of ["professional", "veriworkly-special"]) {
+  for (const templateId of [
+    "professional",
+    "veriworkly-special",
+    "minimalist",
+    "executive",
+    "ats-essential",
+  ]) {
     it(`renders a real PDF for ${templateId}`, async () => {
       const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
       const buffer = await renderToBuffer(pdfElement(CoverLetterPdf, { content: createContent() }));

@@ -32,6 +32,7 @@ import { executiveClarityScale } from "@/templates/resume/executive-clarity/skin
 import { modernMinimalScale } from "@/templates/resume/modern-minimal/skin";
 import { precisionAtsScale } from "@/templates/resume/precision-ats/skin";
 import { timelineFocusScale } from "@/templates/resume/timeline-focus/skin";
+import { veriworklySpecialScale } from "@/templates/resume/veriworkly-special/skin";
 
 /**
  * The preview and the PDF are two layout engines fed from one scale. These
@@ -54,6 +55,7 @@ const SCALES: Record<string, ResumeTypeScale> = {
   "timeline-focus": timelineFocusScale,
   "corporate-brief": corporateBriefScale,
   "bold-impact": boldImpactScale,
+  "veriworkly-special": veriworklySpecialScale,
 };
 
 const PAGE_PADDING: Record<string, (padding: number) => number> = {
@@ -335,7 +337,13 @@ describe("cover letter pdf geometry matches the shared scale", () => {
     }
   });
 
-  for (const templateId of ["professional", "veriworkly-special"]) {
+  for (const templateId of [
+    "professional",
+    "veriworkly-special",
+    "minimalist",
+    "executive",
+    "ats-essential",
+  ]) {
     it(`${templateId} uses the preview's page box and fixed columns`, async () => {
       const content = createDefaultCoverLetter("geometry").content as CoverLetterContent;
       const palette = getCoverLetterPalette(content.appearance);
@@ -357,11 +365,16 @@ describe("cover letter pdf geometry matches the shared scale", () => {
       near(box(page).width, DOCUMENT_PAGE_WIDTH_PX, `${templateId} page width`);
       near(box(page).height, DOCUMENT_PAGE_HEIGHT_PX, `${templateId} page height`);
 
-      // Fixed columns must survive Yoga's shrinking.
+      // Fixed columns must survive Yoga's shrinking. Templates without a fixed
+      // header/contact column (stacked, full-width headers) still reserve one for
+      // their bullet marker, so that's checked instead.
+      const COVER_LETTER_FIXED_WIDTH_BY_TEMPLATE: Record<string, number> = {
+        "veriworkly-special": COVER_LETTER_SCALE.railWidth,
+        minimalist: COVER_LETTER_SCALE.bulletIndent - COVER_LETTER_SCALE.bulletGap,
+        "ats-essential": COVER_LETTER_SCALE.bulletIndent - COVER_LETTER_SCALE.bulletGap,
+      };
       const fixedWidth =
-        templateId === "veriworkly-special"
-          ? COVER_LETTER_SCALE.railWidth
-          : COVER_LETTER_SCALE.headerContactWidth;
+        COVER_LETTER_FIXED_WIDTH_BY_TEMPLATE[templateId] ?? COVER_LETTER_SCALE.headerContactWidth;
 
       const column = findByWidth(page, fixedWidth);
       expect(column, `${templateId} keeps its ${fixedWidth}px column`).toBeDefined();

@@ -36,6 +36,7 @@ const TEMPLATES: Record<string, "stacked" | "gutter"> = {
   "timeline-focus": "gutter",
   "corporate-brief": "stacked",
   "bold-impact": "stacked",
+  "veriworkly-special": "stacked",
 };
 
 /**

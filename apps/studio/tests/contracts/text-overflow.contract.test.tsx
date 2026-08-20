@@ -197,7 +197,13 @@ describe("no PDF paragraph is broken for the wrong column", () => {
     }, 60_000);
   }
 
-  for (const templateId of ["professional", "veriworkly-special"]) {
+  for (const templateId of [
+    "professional",
+    "veriworkly-special",
+    "minimalist",
+    "executive",
+    "ats-essential",
+  ]) {
     it(`${templateId} cover letter wraps every paragraph inside its column`, async () => {
       const laid = await layout(await coverLetterTemplateRegistry.loadPdf(templateId), {
         content: wordyCoverLetter(),

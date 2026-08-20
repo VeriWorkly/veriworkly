@@ -4,9 +4,14 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { createEmptyMasterProfile, type MasterProfileData } from "@veriworkly/profile-core";
+
 import type { TemplateRenderProps } from "@/types/template";
 
-import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
+import {
+  createDefaultCoverLetter,
+  createCoverLetterFromProfile,
+} from "@/features/cover-letter/defaults";
 import type { CoverLetterSectionId } from "@/features/cover-letter/types";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { templateCatalogByType } from "@/features/documents/core/template-catalog";
@@ -14,6 +19,14 @@ import { loadTemplateComponentById, templateRegistry } from "@/templates";
 import { pdfTemplateIds } from "@/templates/resume/pdf";
 import { buildCoverLetterHtml } from "@/templates/cover-letter/web";
 import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
+
+const COVER_LETTER_TEMPLATE_IDS = [
+  "professional",
+  "veriworkly-special",
+  "minimalist",
+  "executive",
+  "ats-essential",
+];
 
 const SHIPPED_RESUME_TEMPLATE_IDS = [
   "executive-clarity",
@@ -68,27 +81,23 @@ describe("template render contract", () => {
   });
 
   it("prints every user-entered field in every template", async () => {
+    // A typed certificate, not a flattened `customSections` entry: certificates have their
+    // own array now, and the credential id has its own field rather than borrowing the
+    // shared item's `referenceId` slot.
     const richResume = {
       ...defaultResume,
-      customSections: defaultResume.customSections.map((section) =>
-        section.kind === "certifications"
-          ? {
-              ...section,
-              items: [
-                {
-                  id: "cert-1",
-                  name: "AWS Certified Developer",
-                  issuer: "Amazon Web Services",
-                  date: "2024",
-                  link: "https://verify.example.com/aws-cert",
-                  referenceId: "CRED-99182",
-                  description: "Associate level certification.",
-                  details: ["Scored in the top decile."],
-                },
-              ],
-            }
-          : section,
-      ),
+      certificates: [
+        {
+          id: "cert-1",
+          title: "AWS Certified Developer",
+          issuer: "Amazon Web Services",
+          date: "2024-06",
+          website: "https://verify.example.com/aws-cert",
+          referenceId: "CRED-99182",
+          description: "Associate level certification.",
+          showLink: true,
+        },
+      ],
     };
 
     for (const template of templateRegistry) {
@@ -241,10 +250,48 @@ describe("template render contract", () => {
     }
   });
 
+  /**
+   * All five templates read the same six sender fields, so one projection has to fix all
+   * five at once — until it landed, every one of them printed the hardcoded "Veriworkly
+   * User" no matter whose profile it was.
+   */
+  it("renders the user's own identity in every cover-letter template", async () => {
+    const master: MasterProfileData = {
+      ...createEmptyMasterProfile(),
+      basics: {
+        fullName: "Ada Lovelace",
+        role: "Analytical Engineer",
+        headline: "",
+        email: "ada@example.com",
+        phone: "+442079460958",
+        location: "London, UK",
+        linkEmail: true,
+        linkPhone: true,
+        linkLocation: true,
+      },
+    };
+
+    const content = createCoverLetterFromProfile("cover-letter-projection", master).content;
+
+    for (const templateId of COVER_LETTER_TEMPLATE_IDS) {
+      const html = await buildCoverLetterHtml(content, templateId);
+
+      expect(html, `${templateId} must print the sender's name`).toContain("Ada Lovelace");
+      expect(html, `${templateId} must print the sender's title`).toContain("Analytical Engineer");
+      expect(html, `${templateId} must print the sender's email`).toContain("ada@example.com");
+      expect(html, `${templateId} must print the sender's phone`).toContain("+442079460958");
+      expect(html, `${templateId} must print the sender's location`).toContain("London, UK");
+
+      expect(html, `${templateId} must not fall back to the sample identity`).not.toContain(
+        "Veriworkly User",
+      );
+    }
+  });
+
   it("exports professional and veriworkly cover-letter HTML with expected content", async () => {
     const content = createDefaultCoverLetter("cover-letter-contract").content;
 
-    for (const templateId of ["professional", "veriworkly-special"]) {
+    for (const templateId of COVER_LETTER_TEMPLATE_IDS) {
       const html = await buildCoverLetterHtml(content, templateId);
 
       expect(html).toContain(content.senderName);
@@ -269,7 +316,7 @@ describe("template render contract", () => {
       },
     };
 
-    for (const templateId of ["professional", "veriworkly-special"]) {
+    for (const templateId of COVER_LETTER_TEMPLATE_IDS) {
       const html = await buildCoverLetterHtml(content, templateId);
 
       expect(html, `${templateId} must use the chosen text colour`).toContain("#1b3a2f");
@@ -297,7 +344,7 @@ describe("template render contract", () => {
       },
     };
 
-    for (const templateId of ["professional", "veriworkly-special"]) {
+    for (const templateId of COVER_LETTER_TEMPLATE_IDS) {
       const CoverLetterTemplate = await coverLetterTemplateRegistry.loadWeb(templateId);
       const html = renderToStaticMarkup(<CoverLetterTemplate content={content} />);
 
@@ -360,7 +407,7 @@ describe("template render contract", () => {
       },
     };
 
-    for (const templateId of ["professional", "veriworkly-special"]) {
+    for (const templateId of COVER_LETTER_TEMPLATE_IDS) {
       const html = await buildCoverLetterHtml(content, templateId);
 
       expect(html).not.toContain(content.senderEmail);
