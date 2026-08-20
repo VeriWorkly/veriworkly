@@ -147,6 +147,7 @@ interface PortfolioStoreState {
   // State Updaters
   updateContent: (patch: Partial<PortfolioContent>) => void;
   updateIdentity: (patch: Partial<PortfolioContent["identity"]>) => void;
+  applyMasterProfileImport: (nextContent: PortfolioContent) => void;
   updateSection: (id: string, patch: Partial<PortfolioSection>) => void;
   moveSection: (index: number, direction: -1 | 1) => void;
   addSection: (type: PortfolioSectionType) => void;
@@ -231,6 +232,13 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             ...state.content,
             identity: { ...state.content.identity, ...patch },
           },
+          isDirty: state.ready ? true : state.isDirty,
+          status: state.ready ? "Unsaved changes" : state.status,
+        })),
+
+      applyMasterProfileImport: (nextContent) =>
+        set((state) => ({
+          content: nextContent,
           isDirty: state.ready ? true : state.isDirty,
           status: state.ready ? "Unsaved changes" : state.status,
         })),

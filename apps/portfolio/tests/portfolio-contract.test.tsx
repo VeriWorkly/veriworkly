@@ -44,13 +44,25 @@ describe("portfolio content contract", () => {
   it("renders sections in the order selected in the editor", () => {
     const content = createDefaultPortfolio();
     content.sections = [
-      { id: "services", type: "services", title: "Services first", visible: true, items: [] },
-      ...content.sections,
+      {
+        id: "services",
+        type: "services",
+        title: "Services first",
+        visible: true,
+        items: [{ id: "s1", title: "Strategy" }],
+      },
+      {
+        id: "projects",
+        type: "projects",
+        title: "Selected work",
+        visible: true,
+        items: [{ id: "p1", name: "Primary Project" }],
+      },
     ];
     const signal = renderToStaticMarkup(<SignalTemplate project={content} />);
     const atelier = renderToStaticMarkup(<AtelierTemplate project={content} />);
     expect(signal.indexOf("Services first")).toBeLessThan(signal.indexOf("Selected work"));
-    expect(atelier.indexOf("Services first")).toBeLessThan(atelier.indexOf("Your primary project"));
+    expect(atelier.indexOf("Services first")).toBeLessThan(atelier.indexOf("Primary Project"));
   });
 
   it("does not render unsafe or incomplete social links", () => {

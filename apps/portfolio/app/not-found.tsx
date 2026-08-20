@@ -11,7 +11,7 @@ const NotFoundPage = () => {
 
       <Container className="relative w-full max-w-4xl">
         <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-          <main className="border-line bg-panel flex min-h-[460px] flex-col justify-between rounded-4xl border-2 p-6 shadow-[8px_10px_0_rgba(17,17,15,0.03)] sm:p-8">
+          <main className="border-line bg-panel flex min-h-115 flex-col justify-between rounded-4xl border-2 p-6 shadow-[8px_10px_0_rgba(17,17,15,0.03)] sm:p-8">
             <div>
               <div className="border-line bg-paper/30 relative flex h-48 w-full flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed sm:h-56">
                 <EyeOff className="text-muted size-8 animate-pulse opacity-40" />
@@ -80,7 +80,7 @@ const NotFoundPage = () => {
 
                 <div>
                   <div className="text-[10px] font-bold opacity-50">RELEASE</div>
-                  <div className="text-ink mt-0.5 text-xs font-bold">Build #v3.23.1</div>
+                  <div className="text-ink mt-0.5 text-xs font-bold">Build #v3.24.0</div>
                 </div>
               </div>
             </div>
