@@ -1,6 +1,6 @@
 import type { MasterProfile } from "@/types/resume";
 
-import { masterProfileDbSchema } from "@/features/resume/schemas/master-profile-db-schema";
+import { masterProfileSchema } from "@veriworkly/profile-core";
 
 export function stringifyProfile(profile: MasterProfile) {
   return JSON.stringify(profile, null, 2);
@@ -8,7 +8,7 @@ export function stringifyProfile(profile: MasterProfile) {
 
 export function parseMasterProfileJson(value: string) {
   const parsed = JSON.parse(value);
-  const validated = masterProfileDbSchema.safeParse(parsed);
+  const validated = masterProfileSchema.safeParse(parsed);
 
   if (!validated.success) {
     const firstIssue = validated.error.issues[0];

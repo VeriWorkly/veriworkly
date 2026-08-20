@@ -18,7 +18,7 @@ import { registerPdfFont, registerPdfFontById } from "@/templates/pdf/fonts";
 import { createCoverLetterPdfElement } from "@/templates/cover-letter/pdf";
 import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
 
-import { loadResumeById } from "@/features/resume/services/resume-service";
+import { readResumeById } from "@/features/resume/services/resume-service";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { loadTemplatePdfComponentById } from "@/templates/resume/pdf";
 
@@ -57,7 +57,9 @@ export function PdfDebugClient({ documentId, templateId, type }: PdfDebugClientP
   const resume = useMemo(() => {
     if (type !== "resume") return null;
 
-    const saved = documentId ? loadResumeById(documentId) : null;
+    // `readResumeById`, not `loadResumeById`: this runs during render, and opening a debug
+    // view must not repoint the workspace's active document.
+    const saved = documentId ? readResumeById(documentId) : null;
     return { ...(saved ?? createDebugResume(templateId)), templateId };
   }, [documentId, templateId, type]);
 

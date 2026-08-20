@@ -85,7 +85,7 @@ export function AppearanceAndVisibilitySections({
             <Input
               type="number"
               min={0}
-              max={200}
+              max={120}
               value={localProfile.customization.sectionSpacing}
               onChange={(event) =>
                 setCustomizationField("sectionSpacing", Number(event.target.value))
@@ -97,7 +97,7 @@ export function AppearanceAndVisibilitySections({
             <Input
               type="number"
               min={0}
-              max={200}
+              max={120}
               value={localProfile.customization.pagePadding}
               onChange={(event) => setCustomizationField("pagePadding", Number(event.target.value))}
             />
@@ -107,7 +107,7 @@ export function AppearanceAndVisibilitySections({
             <Input
               type="number"
               step="0.1"
-              min={0.8}
+              min={1}
               max={3}
               value={localProfile.customization.bodyLineHeight}
               onChange={(event) =>
@@ -120,7 +120,7 @@ export function AppearanceAndVisibilitySections({
             <Input
               type="number"
               step="0.1"
-              min={0.8}
+              min={1}
               max={3}
               value={localProfile.customization.headingLineHeight}
               onChange={(event) =>

@@ -36,6 +36,11 @@ export default async function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/share") ||
+    // Test-only harness (`app/parity/[type]/[templateId]/page.tsx`): renders
+    // sample data with no auth by design, and 404s itself outside development.
+    // The guest-mode gate below would otherwise block the parity test suite,
+    // which never sends a guest cookie.
+    pathname.startsWith("/parity") ||
     looksLikeStaticAssetPath(pathname);
 
   if (isBypassed) {

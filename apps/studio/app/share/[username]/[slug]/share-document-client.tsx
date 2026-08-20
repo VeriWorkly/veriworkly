@@ -19,7 +19,6 @@ import {
   verifyShareLinkByUsernameAndSlug,
 } from "@/features/documents/services/share-service";
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
-import { DocumentFontLoader } from "@/features/documents/components/DocumentFontLoader";
 
 import {
   ResumeCanvas,
@@ -213,8 +212,6 @@ const ShareDocumentClient = ({
 
   return (
     <main className="bg-background surface-grid selection:bg-accent/20 relative min-h-screen">
-      <DocumentFontLoader />
-
       <ShareHeaderBar
         title={dataState.payload.documentTitle}
         expiresAt={dataState.payload.expiresAt}

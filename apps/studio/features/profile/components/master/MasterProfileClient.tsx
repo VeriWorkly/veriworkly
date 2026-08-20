@@ -1,8 +1,11 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 
 import type { MasterProfileData } from "@/types/resume";
+
+import { ApiRequestError } from "@/utils/fetchApiData";
 
 import ProfileMaster from "./ProfileMaster";
 import { MasterSkeleton } from "./MasterProfileLoading";
@@ -15,6 +18,32 @@ import {
   saveMasterProfileToLocalStorage,
   loadMasterProfileFromLocalStorage,
 } from "@/features/resume/services/master-profile";
+
+/**
+ * Turns a save failure into something the user can act on. A conflict and an oversized
+ * payload need opposite responses from them, so they must not share a message.
+ */
+function reportSaveFailure(error: unknown, retry: () => void) {
+  const status = error instanceof ApiRequestError ? error.status : null;
+
+  if (status === 409) {
+    toast.error("This profile was changed in another tab. Reload to get the latest version.", {
+      action: { label: "Reload", onClick: () => window.location.reload() },
+    });
+
+    return;
+  }
+
+  if (status === 413) {
+    toast.error("This profile is too large to save. Remove some content and try again.");
+
+    return;
+  }
+
+  toast.error("Could not save your master profile.", {
+    action: { label: "Retry", onClick: retry },
+  });
+}
 
 export default function MasterProfileClient() {
   const [state, setState] = useState<{
@@ -48,23 +77,32 @@ export default function MasterProfileClient() {
   useEffect(() => {
     const load = async () => {
       try {
-        const bundle = await loadMasterProfileFromDatabase();
+        const result = await loadMasterProfileFromDatabase();
 
-        if (bundle?.profile) {
+        if (result.status === "ok") {
           setState({
-            profile: bundle.profile,
+            profile: result.bundle.profile,
             source: "database",
-            updatedAt: bundle.updatedAt,
+            updatedAt: result.bundle.updatedAt,
           });
-        } else {
-          const local = loadMasterProfileFromLocalStorage();
 
-          setState({
-            profile: local.profile,
-            source: "local",
-            updatedAt: null,
-          });
+          return;
         }
+
+        // "empty" is the ordinary first-visit case. The other two are not: log them so a
+        // profile that exists but cannot be read is distinguishable from one that does not
+        // exist, which is the distinction the old `null` return threw away.
+        if (result.status !== "empty") {
+          console.error("Failed to load master profile from the database", result);
+        }
+
+        const local = loadMasterProfileFromLocalStorage();
+
+        setState({
+          profile: local.profile,
+          source: "local",
+          updatedAt: null,
+        });
       } catch (e) {
         console.error("Failed to load profile", e);
       } finally {
@@ -117,6 +155,14 @@ export default function MasterProfileClient() {
     }, 800);
   }, []);
 
+  /*
+   * A failed save used to be a `try/finally` with no `catch`: the spinner stopped and
+   * nothing else happened, so "someone else edited this in another tab" and "the payload
+   * is too big" both looked like a save that had worked.
+   *
+   * The error is re-thrown after reporting so `ProfileMaster` keeps its own inline failure
+   * state, and so `state.profile` is never replaced with a value the server rejected.
+   */
   const handleSave = async (profile: MasterProfileData) => {
     setSaving(true);
 
@@ -130,6 +176,9 @@ export default function MasterProfileClient() {
         source: "database",
         updatedAt: savedBundle.updatedAt,
       });
+    } catch (error) {
+      reportSaveFailure(error, () => void handleSave(profile));
+      throw error;
     } finally {
       setSaving(false);
     }
