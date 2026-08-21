@@ -1,5 +1,70 @@
 [
   {
+    "id": "v3-24-0",
+    "version": "3.24.0",
+    "title": "Profile Core Package, Cover Letter Templates, Typed Section Editor, and Master Profile Import",
+    "summary": "This release extracts the shared profile schema into its own monorepo package, ships three new cover letter templates, replaces the old ad-hoc section editor system with a typed registry-driven architecture, adds a branded VeriWorkly Special resume template, and lets portfolio users pre-fill their portfolio from their master profile in one click.",
+    "type": "minor",
+    "publishedAt": "2026-08-21T00:20:00Z",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.24.0",
+    "added": [
+      "New @veriworkly/profile-core monorepo package with shared MasterProfile Zod schema, normalizer, validator, migration pipeline (v1 to v2), and document projections for resume, cover letter, and portfolio",
+      "Three new cover letter templates: Minimalist (full-width stacked masthead), Executive (centered double-rule masthead with traditional dateline layout), and ATS Essential (classic left-aligned block letter optimized for parser compatibility)",
+      "VeriWorkly Special resume template with gradient accent rail and dark sidebar",
+      "TypedSectionEditor component with a registry-driven architecture handling all 13 section types from a single dispatch point",
+      "Import from Master Profile action in the portfolio editor, pre-filling all sections from the user's saved master profile in one click",
+      "document-workspace-service.seedFromMasterProfile to create both RESUME and COVER_LETTER documents from a master profile on the server",
+      "JSON import pipeline for both resume and cover letter document types",
+      "Field-level validation rules module for the document editor",
+      "content-identity.ts and link-types.ts for stable section identity and typed link-kind registry",
+      "DocumentStateCard, LinksEditor, ListEditorControls, and useIndexedListEditor editor components",
+      "useFlushPendingSavesOnExit hook to avoid data loss on tab close",
+      "export-dom-markers.ts for page-break annotation during HTML export",
+      "resume-render-items.ts for testable per-section hydration outside the React tree",
+      "New contract tests: document-creation, document-import, document-projections (24 field assertions), master-profile-migrations, master-profile (27 lifecycle tests), typed-sections, and resume-export-source",
+      "Playwright E2E bootstrap under tests/browser/ with vitest.browser.config.ts",
+      "master-profile-projection contract tests in the portfolio app asserting purity, determinism, and deep-clone invariant",
+      "document-events.ts analytics service tracking document-create, document-open, and export events",
+      "auth_login_success metric tracking in the analytics service"
+    ],
+    "improved": [
+      "Server profileImportService rewritten to use projectToResume and projectToCoverLetter from profile-core, removing 200+ lines of inline schema",
+      "masterProfileValidator on the server is now a thin wrapper around profile-core validateMasterProfile, down from 350+ lines of inlined Zod",
+      "resume-store restructured with explicit loading, dirty, and error state slices and no inline profile diffing",
+      "SectionVisibilitySettings panel rewritten with drag-to-reorder",
+      "EducationSection adds GPA and honors fields; ExperienceSection adds employment-type picker; ProjectsSection adds tech-stack tags and URL pairs; LanguagesSection adds proficiency level; PublicationsSection adds DOI and publisher; ReferencesSection adds available-on-request toggle; SummarySection adds character counter",
+      "export-markdown fully rewritten to respect section visibility flags",
+      "export-html adds proper page-break markers for multi-page layouts",
+      "MasterProfileClient rewritten with sidebar navigation, dirty-state tracking, and auto-save banner",
+      "EditorEntryRedirect now redirects /editor to the resume list instead of a blank shell",
+      "login page supports returnTo query param for post-login redirects",
+      "Cover letter editor restructured into focused sub-components with a modular store",
+      "Portfolio EditorCommandBar gains keyboard shortcut hints",
+      "OpenAPI spec updated with new cover letter template enum values and version references",
+      "cover-letter-builder.mdx updated from 2 templates to 5 with per-template descriptions"
+    ],
+    "fixed": [
+      "Corrupt master profile no longer crashes the editor; the service now salvages valid partial fields and falls back to defaults",
+      "Font loading moved to CSS, removing the DocumentFontLoader component that caused a flash on editor mount",
+      "Portfolio globals.css text selection styling fixed for Firefox"
+    ],
+    "breaking": [],
+    "security": [],
+    "prRefs": [
+      {
+        "number": 195,
+        "title": "[Fix] [Portfolio]: Resolve text selection styling in globals.css",
+        "url": "https://github.com/VeriWorkly/veriworkly/pull/195",
+        "author": {
+          "login": "Gautam25Raj",
+          "avatarUrl": "https://avatars.githubusercontent.com/u/63155224?v=4",
+          "htmlUrl": "https://github.com/Gautam25Raj"
+        }
+      }
+    ],
+    "tags": ["profile-core", "cover-letter", "resume-editor", "portfolio", "templates", "architecture"]
+  },
+  {
     "id": "v3-23-1",
     "version": "3.23.1",
     "title": "Auth Callback Guest Redirection, Modular Editor & SSR Stability",
