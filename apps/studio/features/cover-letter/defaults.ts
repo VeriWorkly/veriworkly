@@ -2,15 +2,32 @@ import {
   DEFAULT_COVER_LETTER_APPEARANCE,
   projectToCoverLetter,
   type MasterProfileData,
+  type CoverLetterAppearance as CoverLetterAppearanceCore,
 } from "@veriworkly/profile-core";
 
 import type { BaseDocument } from "@/features/documents/core/types";
 
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 
-import type { CoverLetterContent } from "./types";
+import type { CoverLetterAppearance, CoverLetterContent } from "./types";
 
 export const COVER_LETTER_TEMPLATE_ID = "professional";
+
+/**
+ * The shared appearance shape, as the studio needs it.
+ *
+ * Two things happen here and nowhere else. The font id is narrowed through the studio's
+ * catalog — the package stores a bare string because the server and the portfolio have no
+ * business importing that catalog. And the whole thing is cloned, because
+ * `DEFAULT_COVER_LETTER_APPEARANCE` is a module-level constant whose `hiddenSections` is a
+ * mutable array: spreading it hands every letter the same array, so hiding a section in one
+ * document would hide it in every document created since the page loaded.
+ */
+function toStudioAppearance(appearance: CoverLetterAppearanceCore): CoverLetterAppearance {
+  const cloned = structuredClone(appearance);
+
+  return { ...cloned, fontFamily: normalizeFontFamilyId(cloned.fontFamily) };
+}
 
 export function createDefaultCoverLetter(id: string): BaseDocument<CoverLetterContent> {
   const now = new Date().toISOString();
@@ -73,10 +90,7 @@ export function createDefaultCoverLetter(id: string): BaseDocument<CoverLetterCo
       postscript:
         "I would welcome the chance to help Veriworkly make professional document creation feel faster, clearer, and more reliable.",
 
-      appearance: {
-        ...DEFAULT_COVER_LETTER_APPEARANCE,
-        fontFamily: normalizeFontFamilyId(DEFAULT_COVER_LETTER_APPEARANCE.fontFamily),
-      },
+      appearance: toStudioAppearance(DEFAULT_COVER_LETTER_APPEARANCE),
     },
   };
 }
@@ -84,9 +98,10 @@ export function createDefaultCoverLetter(id: string): BaseDocument<CoverLetterCo
 /**
  * A new cover letter seeded from the user's master profile.
  *
- * `createDefaultCoverLetter` above is left exactly as it was: the contract and parity
- * suites pin its output byte for byte and the five templates were built against it. It is
- * now sample content for a user with no profile, and this is what a signed-in user gets.
+ * `createDefaultCoverLetter` above keeps its exact output — the contract and parity suites
+ * pin it and the five templates were built against it — but it now reads its appearance from
+ * the same constant this does, so the two cannot drift. It is sample content for a user with
+ * no profile; this is what a signed-in user gets.
  *
  * The letter arrives with the identity block filled and the letter itself blank — the
  * projection deliberately writes no opening, body or highlights, because inventing prose a
@@ -119,12 +134,7 @@ export function createCoverLetterFromProfile(
 
     content: {
       ...projected,
-      appearance: {
-        ...projected.appearance,
-        // The shared projection stores a bare font id; the catalog that resolves it is the
-        // studio's, so the narrowing happens here rather than in the package.
-        fontFamily: normalizeFontFamilyId(projected.appearance.fontFamily),
-      },
+      appearance: toStudioAppearance(projected.appearance),
     },
   };
 }

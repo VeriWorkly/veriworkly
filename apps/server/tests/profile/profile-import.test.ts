@@ -191,7 +191,7 @@ describe("DocumentService seeding from the master profile", () => {
 
   function createdContent() {
     const call = prismaMock.document.create.mock.calls[0][0] as {
-      data: { id: string; templateId: string; content: Record<string, unknown> };
+      data: { id?: string; templateId: string; content: Record<string, unknown> };
     };
 
     return call.data;
@@ -228,6 +228,29 @@ describe("DocumentService seeding from the master profile", () => {
 
     expect(id).toBeTruthy();
     expect(content.id).toBe(id);
+  });
+
+  /*
+   * Generating an id up front is only defensible because a seeded body has to carry one. Any
+   * other create must still fall through to prisma's own `@default(cuid())`, or this would be
+   * quietly changing the id format of every document the server creates.
+   */
+  it("leaves id generation to prisma when it is not seeding", async () => {
+    await DocumentService.createDocument("user-1", {
+      type: "RESUME",
+      content: { basics: { fullName: "Supplied by the caller" } },
+    });
+
+    expect(prismaMock.masterProfile.findUnique).not.toHaveBeenCalled();
+    expect(createdContent().id).toBeUndefined();
+  });
+
+  it("leaves id generation to prisma when the user has no profile to seed from", async () => {
+    prismaMock.masterProfile.findUnique.mockResolvedValue(null);
+
+    await DocumentService.createDocument("user-1", { type: "RESUME" });
+
+    expect(createdContent().id).toBeUndefined();
   });
 
   /*

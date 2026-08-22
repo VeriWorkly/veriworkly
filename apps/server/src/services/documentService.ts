@@ -238,22 +238,18 @@ export class DocumentService {
       }
     }
 
-    /*
-     * Resolved before the row is written because a seeded body carries the document's own
-     * id, and prisma's `@default(cuid())` only produces one after the insert. The studio
-     * always sends both an id and a content body, so this generator is only ever reached by
-     * API-key callers who asked the server to seed for them.
-     */
-    const documentId = input.id ?? randomUUID();
-
     let initialContent = input.content;
 
     /*
-     * The template the seeded body ended up with, so the row's `templateId` column can agree
-     * with it. The client reads the column in preference to the body, so leaving the column
-     * at its "modern" default would silently override the template the profile chose.
+     * An id generated up front, and ONLY when we are about to seed.
+     *
+     * A seeded body has to carry the document's own id, and prisma's `@default(cuid())` only
+     * produces one after the insert. Every other create still falls through to that default,
+     * so this does not change the id format of server-created documents in general — only of
+     * the ones an API-key caller asked the server to fill in for them. The studio always
+     * sends both an id and a content body and never reaches this at all.
      */
-    let seededTemplateId: string | undefined;
+    let seededDocumentId: string | undefined;
 
     /*
      * Auto-seed from the MasterProfile when no content was provided, through the same
@@ -275,14 +271,15 @@ export class DocumentService {
         // should still seed whatever of it is readable, not silently seed nothing.
         const master = parseMasterProfile(profile.content) ?? salvageMasterProfile(profile.content);
 
+        seededDocumentId = input.id ?? randomUUID();
+
         if (input.type === "RESUME") {
           const resume = projectToResume(master, {
-            resumeId: documentId,
+            resumeId: seededDocumentId,
             templateId: input.templateId,
             title: input.title,
           });
 
-          seededTemplateId = resume.templateId;
           initialContent = resume as unknown as Prisma.InputJsonValue;
         } else {
           initialContent = projectToCoverLetter(master) as unknown as Prisma.InputJsonValue;
@@ -313,12 +310,16 @@ export class DocumentService {
 
     const slug = await this.buildUniqueSlug(userId, input.slug || title);
 
+    /*
+     * The row's `templateId` column and the body's must agree: the client reads the column in
+     * preference to the body, so a seeded resume left at the column's "modern" default would
+     * silently render in a template the profile never chose.
+     */
     const resolvedTemplateId =
       input.templateId ||
       (initialContent && typeof initialContent === "object" && !Array.isArray(initialContent)
         ? ((initialContent as Record<string, unknown>).templateId as string | undefined)
         : undefined) ||
-      seededTemplateId ||
       "modern";
 
     if (
@@ -338,7 +339,8 @@ export class DocumentService {
         slug,
         title,
         userId,
-        id: documentId,
+        // `undefined` unless we seeded, which leaves prisma's own `@default(cuid())` in charge.
+        id: input.id ?? seededDocumentId,
         type: input.type,
         tags: input.tags || [],
         lastSyncedAt: new Date(),

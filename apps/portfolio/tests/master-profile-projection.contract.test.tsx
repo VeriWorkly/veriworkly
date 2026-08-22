@@ -10,7 +10,12 @@ import {
   projectToPortfolio,
   type PortfolioContent,
 } from "@/lib/portfolio";
-import { assertProjectionIsPure, type MasterProfileData } from "@veriworkly/profile-core";
+import {
+  assertProjectionIsPure,
+  CURRENT_SCHEMA_VERSION,
+  DEFAULT_CUSTOMIZATION,
+  type MasterProfileData,
+} from "@veriworkly/profile-core";
 
 const fullMasterFixture: MasterProfileData = {
   templateId: "precision-ats",
@@ -93,6 +98,7 @@ const fullMasterFixture: MasterProfileData = {
       date: "2024-05",
       website: "https://aws.amazon.com",
       description: "Advanced cloud networking and disaster recovery.",
+      showLink: false,
     },
   ],
   awards: [
@@ -103,6 +109,7 @@ const fullMasterFixture: MasterProfileData = {
       date: "2023-12",
       website: "",
       description: "Recognized for architecting the global caching mesh.",
+      showLink: false,
     },
   ],
   publications: [
@@ -113,6 +120,7 @@ const fullMasterFixture: MasterProfileData = {
       date: "2024-08",
       website: "https://acm.org",
       description: "Practical guide to client-side vector clocks and delta replication.",
+      showLink: false,
     },
   ],
   volunteer: [
@@ -153,18 +161,21 @@ const fullMasterFixture: MasterProfileData = {
       keywords: ["FPGA", "Embedded C", "Robotics"],
     },
   ],
+  references: [
+    {
+      id: "ref1",
+      name: "Dana Whitfield",
+      title: "Director of Engineering",
+      organization: "CloudScale Inc",
+      email: "dana@example.com",
+      phone: "+15550109988",
+      relationship: "Former manager",
+    },
+  ],
   customSections: [],
   sections: [],
-  customization: {
-    fontFamily: "geist",
-    fontSize: 10,
-    primaryColor: "#000000",
-    sectionSpacing: 24,
-    pagePadding: 32,
-    bodyLineHeight: 1.5,
-    headingLineHeight: 1.2,
-    headerLayout: "classic",
-  },
+  schemaVersion: CURRENT_SCHEMA_VERSION,
+  customization: structuredClone(DEFAULT_CUSTOMIZATION),
   updatedAt: "2026-08-19T00:00:00.000Z",
 };
 
@@ -236,18 +247,11 @@ describe("projectToPortfolio contract", () => {
       achievements: [],
       languages: [],
       interests: [],
+      references: [],
       customSections: [],
       sections: [],
-      customization: {
-        fontFamily: "geist",
-        fontSize: 10,
-        primaryColor: "#000000",
-        sectionSpacing: 24,
-        pagePadding: 32,
-        bodyLineHeight: 1.5,
-        headingLineHeight: 1.2,
-        headerLayout: "classic",
-      },
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      customization: structuredClone(DEFAULT_CUSTOMIZATION),
       updatedAt: "2026-08-19T00:00:00.000Z",
     };
 

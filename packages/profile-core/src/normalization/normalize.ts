@@ -19,31 +19,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Normalisation must never throw on valid or repairable input.
  *
  * It applies migrations forward, merges over a complete base profile, and validates with zod.
+ *
+ * `value` is `unknown`, not `Partial<MasterProfileData>`. What arrives here is a row out of
+ * the database or a string out of local storage, written by an older version of this schema:
+ * a v1 profile has a `basics` with three of its nine keys, and `Partial<T>` cannot describe
+ * that — it makes the top-level keys optional while still demanding every *nested* object be
+ * complete. Typing the parameter as if the input were already well-formed only forced every
+ * caller into a cast that asserted something untrue. Reading it is safe because each field is
+ * merged over `base` individually and the result is validated by zod below.
  */
 export function normalizeMasterProfile(
-  value: Partial<MasterProfileData> | null | undefined,
+  value: unknown,
   base: MasterProfileData = createEmptyMasterProfile(),
 ): MasterProfileData {
-  if (!value) {
+  if (!isRecord(value)) {
     return base;
   }
 
   // 1. Run migrations first
-  let migratedValue: Record<string, unknown> | Partial<MasterProfileData> = value;
+  let migratedValue: Record<string, unknown> = value;
   try {
     const migrationResult = migrateMasterProfile(value);
     if (isRecord(migrationResult)) {
-      migratedValue = migrationResult as Partial<MasterProfileData>;
+      migratedValue = migrationResult;
     }
   } catch (err) {
     // If a newer schema version is encountered, log and preserve value
     console.warn("Schema migration warning:", err);
   }
 
-  // 2. Unflatten legacy sections
-  const migrated = isRecord(migratedValue)
-    ? { ...migratedValue, ...unflattenLegacySections(migratedValue) }
-    : migratedValue;
+  /*
+   * 2. Unflatten legacy sections.
+   *
+   * The cast is the one place the leniency above is spent: every read of `migrated` below is
+   * optional-chained or length-guarded, and whatever survives is handed to zod, so a field
+   * that is not the shape this claims is replaced by the base's rather than trusted.
+   */
+  const migrated = {
+    ...migratedValue,
+    ...unflattenLegacySections(migratedValue),
+  } as Partial<MasterProfileData>;
 
   const nextProfile = {
     ...base,
@@ -160,7 +175,7 @@ export function salvageMasterProfile(
     }
   }
 
-  return normalizeMasterProfile(salvaged as Partial<MasterProfileData>, base);
+  return normalizeMasterProfile(salvaged, base);
 }
 
 /**
