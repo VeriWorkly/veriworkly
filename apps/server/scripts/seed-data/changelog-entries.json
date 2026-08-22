@@ -62,7 +62,14 @@
         }
       }
     ],
-    "tags": ["profile-core", "cover-letter", "resume-editor", "portfolio", "templates", "architecture"]
+    "tags": [
+      "profile-core",
+      "cover-letter",
+      "resume-editor",
+      "portfolio",
+      "templates",
+      "architecture"
+    ]
   },
   {
     "id": "v3-23-1",

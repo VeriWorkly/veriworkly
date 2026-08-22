@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     url: siteConfig.url,
     title: "Free AI Resumes, Cover Letters & Web Portfolios | VeriWorkly",
     description:
-      "Build and tailor professional resumes, cover letters, and web portfolios instantly using privacy-first AI tools (Claude & GPT-4o). Free, open-core, and no signup required.",
+      "Build and tailor professional resumes, cover letters, and web portfolios instantly using privacy-first frontier AI models (from Anthropic and OpenAI). Free, open-core, and no signup required.",
     siteName: "VeriWorkly",
     images: [
       {

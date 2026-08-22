@@ -247,7 +247,7 @@ export const faqs = [
     category: "developer",
     question: "Can I import my GitHub profile into a resume?",
     answer:
-      "Yes. GitHub import is a real OAuth connection: it pulls your profile and up to 30 repositories, then deterministically (no AI guesswork) maps your languages to skills and repositories to project entries. Free accounts can import their own connected GitHub account once per day; paid accounts can import any public GitHub username with no daily limit.",
+      "Yes. GitHub import is a real OAuth connection: it pulls your profile and up to 30 repositories, then deterministically (no AI guesswork) maps your languages to skills and repositories to project entries. Free accounts can import their own connected GitHub account once per day; paid accounts can import any public GitHub username up to 50 times per day.",
   },
   {
     id: "linkedin-import",

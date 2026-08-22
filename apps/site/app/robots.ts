@@ -8,7 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: "/og-generator",
       },
 
       {
@@ -22,7 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
 
         allow: "/",
-        disallow: "/og-generator",
       },
     ],
 

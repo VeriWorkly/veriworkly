@@ -49,12 +49,12 @@
 
 ### 6. Creator Pro Standalone (Hosting Only)
 
-- **Price**: $9.99 / month
+- **Price**: $9.99 / month or $7.99 / month ($95.88 billed annually)
 - **Includes**: Custom subdomain hosting, multi-page portfolios, analytics, watermark removal (no AI credits).
 
 ### 7. AI Credits Standalone (Writing Only)
 
-- **Price**: $5.99 / month
+- **Price**: $5.99 / month or $4.99 / month ($59.90 billed annually)
 - **Includes**: 1,000 AI writing credits/month for resume tailoring and rewriting (no custom subdomain hosting).
 
 ## Credit Packs (One-Time Top-Ups)

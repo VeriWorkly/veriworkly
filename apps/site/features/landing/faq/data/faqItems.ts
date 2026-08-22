@@ -38,7 +38,7 @@ export const faqs: FAQItem[] = [
     id: "landing-ai-tailoring",
     question: "How does AI resume tailoring work without hallucinating details?",
     answer:
-      "VeriWorkly's AI models (Claude and GPT-4o) rewrite and optimize your existing bullet points against job descriptions using your verified Master Profile facts. The AI assists your phrasing without inventing fake roles or unearned metrics.",
+      "VeriWorkly's frontier AI models (from Anthropic and OpenAI) rewrite and optimize your existing bullet points against job descriptions using your verified Master Profile facts. The AI assists your phrasing without inventing fake roles or unearned metrics.",
     category: "AI Tools",
   },
   {
