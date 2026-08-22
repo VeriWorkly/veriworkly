@@ -13,7 +13,7 @@
     "url": "https://veriworkly.com/openapi.json",
     "has_user_authentication": true,
     "auth_type": "cookie, bearer",
-    "auth_details": "Web clients authenticate using Better Auth via Email OTP, establishing a session cookie ('better-auth.session_token'). Programmatic agents must use API Keys as Bearer tokens ('Authorization: Bearer vw_...').",
+    "auth_details": "Web clients authenticate using Better Auth via Email OTP, establishing a session cookie ('veriworkly-auth.session_token' in development or '__Secure-veriworkly-auth.session_token' in production). Programmatic agents must use API Keys as Bearer tokens ('Authorization: Bearer vw_...').",
     "base_url": "https://api.veriworkly.com/api/v1"
   },
 
@@ -64,7 +64,7 @@
     {
       "name": "ATS Resume Checker",
       "description": "Deterministic ATS readiness scanning and job-description keyword match analysis.",
-      "endpoints": ["/api/v1/ats/scan", "/api/v1/ats/analyze", "/api/v1/ats/quota"]
+      "endpoints": ["/api/v1/ats/check", "/api/v1/ats/analyze", "/api/v1/ats/quota"]
     },
     {
       "name": "AI Content Generation & Tailoring",
@@ -74,7 +74,7 @@
     {
       "name": "Profile Import & Ingestion",
       "description": "OAuth-based GitHub profile/repo import and AI-parsed LinkedIn exported profile text extraction.",
-      "endpoints": ["/api/v1/import/github", "/api/v1/import/linkedin"]
+      "endpoints": ["/api/v1/profiles/import/github", "/api/v1/profiles/import/linkedin"]
     },
     {
       "name": "Portfolio Builder & Subdomain Publishing",
@@ -88,7 +88,7 @@
     {
       "name": "Public Document Sharing",
       "description": "Generate, configure password protection, and revoke secure share links for documents.",
-      "endpoints": ["/api/v1/shares", "/api/v1/shares/{token}"]
+      "endpoints": ["/api/v1/shares", "/api/v1/shares/documents/{documentId}"]
     },
     {
       "name": "Developer API Keys",
@@ -98,7 +98,7 @@
     {
       "name": "Billing & AI Credit Wallet",
       "description": "Inspect credit wallet balance, manage subscriptions, and initiate Dodo Payments checkout sessions.",
-      "endpoints": ["/api/v1/billing/summary", "/api/v1/billing/wallet", "/api/v1/billing/checkout"]
+      "endpoints": ["/api/v1/billing/me", "/api/v1/billing/credits", "/api/v1/billing/checkout"]
     },
     {
       "name": "Affiliate & Ambassador Programs",

@@ -90,6 +90,7 @@ These are labelled separately from career guidance and are written about VeriWor
 - [How the ATS Checker Actually Works](https://blog.veriworkly.com/how-the-ats-checker-actually-works) — deterministic rules engine plus AI analysis layer, shared quota
 - [Introducing the Portfolio Builder](https://blog.veriworkly.com/introducing-the-portfolio-builder)
 - [GitHub vs LinkedIn Import: What's Real, What's AI](https://blog.veriworkly.com/github-vs-linkedin-import-whats-real-whats-ai) — deterministic OAuth mapping versus AI text parsing
+- [How Affiliate & Ambassador Rewards Actually Work](https://blog.veriworkly.com/how-affiliate-and-ambassador-rewards-actually-work) — live 3-tier commission program, campus ambassador application status
 
 ## Citation Guidance for AI Agents
 Career articles on this subdomain are written to be cited independently of the product.

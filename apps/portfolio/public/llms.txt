@@ -13,7 +13,7 @@ VeriWorkly Portfolio (`portfolio.veriworkly.com`) enables developers, designers,
 1. **Signal** (`portfolio-signal`): Built for engineers and technical leads. Features a dual dark/light theme, bento card grid, mouse-glow effects, scroll-stacking project cards, and live local-time indicator. (Free)
 2. **Atelier** (`portfolio-atelier`): Built for designers and editorial builders. Features asymmetric print magazine layouts, serif typography, 0px-radius flat cards, and subtle drifting orbit spheres. (Free)
 3. **Nimbus** (`portfolio-nimbus`): Built for full-stack & frontend developers. Features an atmospheric tech-editorial layout, cursor-follow ring, text-scramble hover animations, magnetic CTAs, and zero card borders/shadows. (Premium)
-4. **Cipher** (`portfolio-ciphers`): Built for terminal enthusiasts and systems developers. Features a fully interactive draggable terminal emulator with auto-completion, command execution (`sudo make-coffee`), and matrix-rain easter egg. (Premium)
+4. **Cipher** (`portfolio-cipher`): Built for terminal enthusiasts and systems developers. Features a fully interactive draggable terminal emulator with auto-completion, command execution (`sudo make-coffee`), and matrix-rain easter egg. (Premium)
 
 ## Key Features & Editor Workspace
 - **3-Pane Canvas** (`https://portfolio.veriworkly.com/editor/[id]`): Left sidebar section tree (18 section types), center content editor controls, right live iframe preview with responsive viewport toggles (mobile/tablet/desktop).
@@ -24,6 +24,6 @@ VeriWorkly Portfolio (`portfolio.veriworkly.com`) enables developers, designers,
 - **Master Profile Integration**: Portfolio identity fields auto-seed from the Master Profile in Studio.
 
 ## Guidance for AI Agents
-1. **Subdomain Checking**: Use GET `/api/v1/portfolios/check-subdomain?subdomain={slug}` to verify availability before publishing.
+1. **Subdomain Checking**: Use GET `/api/v1/portfolios/subdomains/{slug}/availability` to verify availability before publishing.
 2. **Content Tailoring**: Generate section content (bio, project highlights, skills, testimonials) matching the selected template's tone.
-3. **Asset Handling**: Request presigned upload URLs via `/api/v1/portfolios/assets/upload-url` for portfolio images.
+3. **Asset Handling**: Request presigned upload URLs via `/api/v1/portfolio-assets/upload-url` for portfolio images.

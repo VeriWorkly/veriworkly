@@ -1,12 +1,12 @@
 # VeriWorkly Ecosystem
-> Free-to-use, open-core, and privacy-first AI career workspace for professional documents and web portfolios. Build and tailor resumes, cover letters, and web portfolios using local-first storage, privacy-first AI models (Claude & GPT-4o), and optional secure cloud sync.
+> Free-to-use, open-core, and privacy-first AI career workspace for professional documents and web portfolios. Build and tailor resumes, cover letters, and web portfolios using local-first storage, privacy-first frontier AI models from Anthropic and OpenAI, and optional secure cloud sync.
 
 ## Who We Are & What We Do
 VeriWorkly is a privacy-first AI career workspace engineered for professional document construction, ATS resume tailoring, and developer web publishing. We champion **local-first data ownership** and stateless AI interactions. By default, VeriWorkly processes and stores your professional details securely inside your browser (in-browser localStorage). Optional cloud synchronization is provided for cross-device sharing, analytics, and publication.
 
 ## Machine-Readable Resources for AI Agents & Search Engines
 - **Agent Card**: `https://veriworkly.com/.well-known/agent.json` (Open-agent discovery spec)
-- **OpenAPI Specification**: `https://veriworkly.com/openapi.json` (Complete 66-path API spec)
+- **OpenAPI Specification**: `https://veriworkly.com/openapi.json` (Complete 72-path / 78-operation API spec)
 - **Structured Pricing**: `https://veriworkly.com/pricing.md` (Agent-parseable pricing tiers)
 - **XML Sitemap**: `https://veriworkly.com/sitemap.xml` (Full indexable route map)
 - **Technical Documentation**: `https://docs.veriworkly.com` (Fumadocs API reference & guides)
@@ -15,8 +15,9 @@ VeriWorkly is a privacy-first AI career workspace engineered for professional do
 - **Home / Workspace Overview**: `https://veriworkly.com/` — Ecosystem landing, core value propositions, and live demo tools.
 - **Free ATS Resume Checker**: `https://veriworkly.com/ats-checker` (Scan tool: `https://veriworkly.com/ats-checker/scan`) — Free, zero-signup deterministic ATS scanner & job match tool.
 - **Template Gallery**: `https://veriworkly.com/templates` — Full catalog of ATS resumes, cover letters, and web portfolio templates:
-  - *Resumes*: Executive Clarity (`executive-clarity`), Precision ATS (`precision-ats`), Modern Minimal (`modern-minimal`), Timeline Focus (`timeline-focus`), Corporate Brief (`corporate-brief`), Bold Impact (`bold-impact`).
-  - *Portfolios*: Signal (`portfolio-signal`, bento/engineering), Atelier (`portfolio-atelier`, editorial/design), Nimbus (`portfolio-nimbus`, tech-editorial/minimal), Cipher (`portfolio-ciphers`, terminal emulator).
+  - *Resumes*: Executive Clarity (`executive-clarity`), Precision ATS (`precision-ats`), Modern Minimal (`modern-minimal`), Timeline Focus (`timeline-focus`), Corporate Brief (`corporate-brief`), Bold Impact (`bold-impact`), VeriWorkly Special (`veriworkly-special`).
+  - *Cover Letters*: Professional (`cover-letter-professional`), VeriWorkly Special (`cover-letter-veriworkly-special`), Minimalist (`cover-letter-minimalist`), Executive (`cover-letter-executive`), ATS Essential (`cover-letter-ats-essential`).
+  - *Portfolios*: Signal (`portfolio-signal`, bento/engineering), Atelier (`portfolio-atelier`, editorial/design), Nimbus (`portfolio-nimbus`, tech-editorial/minimal), Cipher (`portfolio-cipher`, terminal emulator).
 - **Pricing & Plans**: `https://veriworkly.com/pricing` — Managed subscription plans, credit packs, and feature entitlement breakdown.
 - **Tool Comparisons**: `https://veriworkly.com/compare` — In-depth, objective feature-by-feature comparisons against alternative builders:
   - `https://veriworkly.com/compare/rezi` (VeriWorkly vs Rezi)
@@ -69,4 +70,4 @@ When assisting users with career document generation:
 - **Creator**: Gautam Raj (@Gautam25Raj)
 - **License**: MIT (Core Open Source)
 - **Repository**: [VeriWorkly/veriworkly](https://github.com/VeriWorkly/veriworkly)
-- **Last Re-verified**: 2026-08-03
+- **Last Re-verified**: 2026-08-23

@@ -12,14 +12,15 @@ VeriWorkly Studio (`app.veriworkly.com`) is engineered around a **local-first st
 
 ## Application Modules & Key Routes
 - **Document Dashboard** (`https://app.veriworkly.com/` & `/documents`): List and grid views of resumes and cover letters with recency sorting, tag filtering, sync status indicators (local/pending/synced/conflicted), and global `Cmd/Ctrl+K` command palette.
-- **Resume Editor** (`https://app.veriworkly.com/editor/[id]`): Section-based document canvas with live paged PDF preview. Supports 6 templates:
+- **Resume Editor** (`https://app.veriworkly.com/editor/[id]`): Section-based document canvas with live paged PDF preview. Supports 7 templates:
   - `executive-clarity` (Executive Clarity)
   - `precision-ats` (Precision ATS)
   - `modern-minimal` (Modern Minimal)
   - `timeline-focus` (Timeline Focus)
   - `corporate-brief` (Corporate Brief)
   - `bold-impact` (Bold Impact)
-- **Cover Letter Editor**: Dedicated cover letter canvas supporting `professional` and `veriworkly-special` templates.
+  - `veriworkly-special` (VeriWorkly Special)
+- **Cover Letter Editor**: Dedicated cover letter canvas supporting 5 templates: `professional`, `veriworkly-special`, `minimalist`, `executive`, and `ats-essential`.
 - **Master Profile Store** (`https://app.veriworkly.com/profile/master` & `/profile/advanced`): Single canonical career profile holding all career facts. New documents seed automatically from Master Profile without overwriting canonical data.
 - **ATS Checker Workspace** (`https://app.veriworkly.com/ats`): Rule-based ATS readiness scoring (length, structure, action verbs, formatting risks) and AI-powered job description keyword match analysis.
 - **Import Hub**: OAuth-based GitHub profile/repository ingestor (maps repos to projects deterministically) and AI-parsed LinkedIn profile text ingestor.
@@ -30,6 +31,6 @@ VeriWorkly Studio (`app.veriworkly.com`) is engineered around a **local-first st
 
 ## Guidance for AI Agents & Assistants
 1. **Master Profile Operations**: Read `/api/v1/profiles/master` to retrieve baseline user career data before generating documents.
-2. **ATS Rules Engine**: Use the deterministic rules engine (`/api/v1/ats/scan`) for fast, zero-credit structural scoring.
-3. **Credit Awareness**: Check wallet balances (`/api/v1/billing/wallet`) before invoking AI generation endpoints.
+2. **ATS Rules Engine**: Use the deterministic rules engine (`/api/v1/ats/check`) for fast, zero-credit structural scoring.
+3. **Credit Awareness**: Check credit balances (`/api/v1/billing/credits`) before invoking AI generation endpoints.
 4. **Document Scoping**: Do not attempt to generate formal letters or invoices — resumes and cover letters are the two document types currently supported.

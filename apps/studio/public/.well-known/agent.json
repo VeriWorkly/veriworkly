@@ -13,7 +13,7 @@
     "url": "https://app.veriworkly.com/openapi.json",
     "has_user_authentication": true,
     "auth_type": "cookie, bearer",
-    "auth_details": "Web sessions authenticate via Better Auth Email OTP cookies ('better-auth.session_token'). Programmatic agents authenticate via hashed Bearer tokens ('Authorization: Bearer vw_...').",
+    "auth_details": "Web sessions authenticate via Better Auth Email OTP cookies ('veriworkly-auth.session_token' in development or '__Secure-veriworkly-auth.session_token' in production). Programmatic agents authenticate via hashed Bearer tokens ('Authorization: Bearer vw_...').",
     "base_url": "https://api.veriworkly.com/api/v1"
   },
 
@@ -64,7 +64,7 @@
     {
       "name": "ATS Scanning & Analysis",
       "description": "Run deterministic ATS readiness rules and AI job-description keyword match analysis.",
-      "endpoints": ["/api/v1/ats/scan", "/api/v1/ats/analyze", "/api/v1/ats/quota"]
+      "endpoints": ["/api/v1/ats/check", "/api/v1/ats/analyze", "/api/v1/ats/quota"]
     },
     {
       "name": "AI Content Generation",
@@ -74,12 +74,12 @@
     {
       "name": "GitHub & LinkedIn Ingestion",
       "description": "OAuth GitHub import (up to 30 repos) and AI-parsed LinkedIn text extraction.",
-      "endpoints": ["/api/v1/import/github", "/api/v1/import/linkedin"]
+      "endpoints": ["/api/v1/profiles/import/github", "/api/v1/profiles/import/linkedin"]
     },
     {
       "name": "Document Sharing",
       "description": "Mint, password-protect, and revoke public document share links.",
-      "endpoints": ["/api/v1/shares", "/api/v1/shares/{token}"]
+      "endpoints": ["/api/v1/shares", "/api/v1/shares/documents/{documentId}"]
     },
     {
       "name": "Developer API Keys",

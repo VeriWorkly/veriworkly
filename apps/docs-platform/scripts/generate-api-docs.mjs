@@ -31,6 +31,11 @@ const outputDir = path.join(appRoot, "content/api-reference");
 const publicJsonPath = path.join(appRoot, "public/openapi.json");
 const publicYamlPath = path.join(appRoot, "public/openapi.yaml");
 
+const repoRoot = path.join(appRoot, "..", "..");
+const satelliteJsonPaths = ["site", "studio", "portfolio", "blog-platform"].map((appName) =>
+  path.join(repoRoot, "apps", appName, "public/openapi.json"),
+);
+
 /* ------------------------------------------------------------------ bundle */
 
 const cache = new Map();
@@ -151,11 +156,16 @@ const bundledJson = await prettier.format(JSON.stringify(bundled), {
 fs.writeFileSync(bundlePath, bundledYaml, "utf8");
 fs.writeFileSync(publicYamlPath, bundledYaml, "utf8");
 fs.writeFileSync(publicJsonPath, bundledJson, "utf8");
+for (const targetPath of satelliteJsonPaths) {
+  if (fs.existsSync(path.dirname(targetPath))) {
+    fs.writeFileSync(targetPath, bundledJson, "utf8");
+  }
+}
 
 const pathCount = Object.keys(bundled.paths ?? {}).length;
 const schemaCount = Object.keys(bundled.components?.schemas ?? {}).length;
 console.log(
-  `[api-docs] bundled ${pathCount} paths and ${schemaCount} schemas -> openapi.yaml, public/openapi.{json,yaml}`,
+  `[api-docs] bundled ${pathCount} paths and ${schemaCount} schemas -> openapi.yaml, public/openapi.{json,yaml} across docs-platform, site, studio, portfolio, blog-platform`,
 );
 
 /* ---------------------------------------------------------------- generate */

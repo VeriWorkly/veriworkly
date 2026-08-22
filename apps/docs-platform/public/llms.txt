@@ -37,7 +37,7 @@ Endpoints under `/api/v1/auth/*` are served by Better Auth and return **its** pa
 ### Pagination
 List endpoints use offset pagination. Page size defaults to 20 and is capped at 50, addressable as either `limit`/`offset` or `page`/`pageSize`; responses echo both alongside `total`, `totalPages`, `hasMore`, and a `pagination` block. `nextCursor` is always `null`.
 
-## API Directory (72 operations, 152 schemas, 18 tags)
+## API Directory (72 paths, 78 operations, 152 schemas, 18 tags)
 - **Health**: `GET /health`, `GET /health/ready`
 - **Authentication**: `POST /auth/email-otp/send-verification-otp`, `POST /auth/sign-in/email-otp`, `GET /auth/get-session`, `POST /auth/sign-out`
 - **API Keys**: `GET /api-keys`, `POST /api-keys`, `GET /api-keys/{id}`, `DELETE /api-keys/{id}`, `POST /api-keys/{id}/rotate`, `POST /api-keys/{id}/revoke`
@@ -57,7 +57,7 @@ List endpoints use offset pagination. Page size defaults to 20 and is capped at 
 - **Changelog**: `GET /changelog`, `GET /changelog/stats`, `GET /changelog/{id}`
 - **GitHub**: `GET /github/stats`, `GET /github/issues`, `POST /github/admin/sync` (admin only)
 
-Not part of this reference: `/api/v1/admin/*` (admin console), `/api/v1/contact`, and `/api/v1/stats/events` are internal surfaces.
+Not part of this reference: `/api/v1/admin/*` (admin console), `/api/v1/stats/admin/*` (admin telemetry dashboard), `/api/v1/contact` (contact form intake), and `/api/v1/stats/events` (telemetry ingress) are internal surfaces.
 
 ## Documentation Guides
 - **Introduction**: `https://docs.veriworkly.com/docs`
@@ -87,6 +87,6 @@ Not part of this reference: `/api/v1/admin/*` (admin console), `/api/v1/contact`
 ## Key Product Facts
 - Documents are stored in the browser's `localStorage` first. Cloud sync requires an account and is opt-in per account and per document.
 - All six export formats (PDF, DOCX, HTML, Markdown, plain text, JSON) are generated client-side. There is no headless browser and no server-side render step.
-- Six resume templates and two cover letter templates, all free. The four portfolio templates live in a private submodule; two of them are premium.
+- Seven resume templates and five cover letter templates, all free. The four portfolio templates live in a private submodule; two of them are premium.
 - Payments run through Dodo Payments. VeriWorkly does not use Stripe.
 - The application code is MIT-licensed: `https://github.com/VeriWorkly/veriworkly`
