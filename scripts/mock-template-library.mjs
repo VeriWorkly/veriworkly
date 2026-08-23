@@ -28,6 +28,7 @@ const typesContent = `export interface PortfolioSection {
   subtitle?: string;
   visible: boolean;
   items: Array<Record<string, unknown>>;
+  settings?: Record<string, unknown>;
 }
 
 export interface PortfolioProject {
@@ -47,12 +48,103 @@ export interface PortfolioProject {
   sections: PortfolioSection[];
 }
 
-export function visibleSection(project: PortfolioProject, type: string) {
-  return project.sections.find((section) => section.type === type && section.visible);
+export interface ProjectItem {
+  id: string;
+  name: string;
+  role?: string;
+  link?: string;
+  linkLabel?: string;
+  showLinkAsText?: boolean;
+  summary: string;
+  highlights?: string[];
+  skills?: string[];
+  coverImage?: { id: string; url: string } | null;
+}
+
+export interface ExperienceItem {
+  id: string;
+  company: string;
+  role: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  current?: boolean;
+  summary: string;
+  highlights?: string[];
+  coverImage?: { id: string; url: string } | null;
+}
+
+export interface EducationItem {
+  id: string;
+  school: string;
+  degree?: string;
+  field?: string;
+  startDate?: string;
+  endDate?: string;
+  current?: boolean;
+  summary?: string;
+  coverImage?: { id: string; url: string } | null;
+}
+
+export interface SkillGroupItem {
+  id: string;
+  name: string;
+  keywords: string[];
+}
+
+export interface AdditionalSectionItem {
+  id: string;
+  name: string;
+  issuer?: string;
+  date?: string;
+  link?: string;
+  referenceId?: string;
+  description?: string;
+  details?: string[];
+  coverImage?: { id: string; url: string } | null;
 }
 
 export function itemText(item: Record<string, unknown>, key: string, fallback = "") {
-  return typeof item[key] === "string" ? item[key] : fallback;
+  const val = item[key];
+  if (key === "id" && (typeof val !== "string" || !val.trim())) {
+    return fallback;
+  }
+  return typeof val === "string" ? val : fallback;
+}
+
+export function itemFirst(item: Record<string, unknown>, keys: string[], fallback = "") {
+  for (const key of keys) {
+    const val = item[key];
+    if (typeof val === "string" && val.trim()) return val;
+  }
+  return fallback;
+}
+
+export function itemProse(item: Record<string, unknown>, fallback = "") {
+  return itemFirst(item, ["description", "summary"], fallback);
+}
+
+export function itemLabel(item: Record<string, unknown>, fallback = "") {
+  return itemFirst(item, ["title", "name"], fallback);
+}
+
+export function itemList(item: Record<string, unknown>, ...keys: string[]): string[] {
+  for (const key of keys) {
+    const val = item[key];
+    if (Array.isArray(val)) {
+      const list = val.filter(
+        (entry): entry is string => typeof entry === "string" && !!entry.trim(),
+      );
+      if (list.length) return list;
+    }
+    if (typeof val === "string" && val.trim()) {
+      return val
+        .split(/\\r?\\n|,/)
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    }
+  }
+  return [];
 }
 
 export function itemTags(item: Record<string, unknown>) {
@@ -75,6 +167,23 @@ export function safeExternalUrl(value: string) {
   } catch {
     return "";
   }
+}
+
+export function itemLinkUrl(item: Record<string, unknown>) {
+  const val = item.link ?? item.url;
+  return typeof val === "string" ? safeExternalUrl(val) : "";
+}
+
+export function formatPeriod(start?: string, end?: string, current?: boolean) {
+  if (!start && !end) return "";
+  const startStr = start || "";
+  const endStr = current ? "Present" : end || "";
+  if (startStr && endStr) return \`\${startStr} — \${endStr}\`;
+  return startStr || endStr;
+}
+
+export function visibleSection(project: PortfolioProject, type: string) {
+  return project.sections.find((section) => section.type === type && section.visible);
 }
 `;
 
