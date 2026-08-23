@@ -35,6 +35,9 @@ jobs:
       - name: Prisma Generate
         run: npm exec -w @veriworkly/server -- prisma generate --schema=prisma/schema.prisma
 
+      - name: Build Shared Packages
+        run: npm run build -w @veriworkly/profile-core --if-present
+
       - name: Run Backend Tests
         run: npm run test -w @veriworkly/server --if-present
 
@@ -73,6 +76,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Build Shared Packages
+        run: npm run build -w @veriworkly/profile-core --if-present
+
       - name: Run Studio Tests
         run: npm run test:contracts -w @veriworkly/studio --if-present
 
@@ -91,6 +97,9 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Build Shared Packages
+        run: npm run build -w @veriworkly/profile-core --if-present
 
       - name: Mock Portfolio Template Library
         run: node scripts/mock-template-library.mjs
