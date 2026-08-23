@@ -30,7 +30,7 @@ A three-pane workspace (structure / content / live `<iframe>` preview) autosavin
 
 ## Setup
 
-Clone with the private templates:
+Clone with the private templates (maintainers/submodule access):
 
 ```bash
 git clone --recurse-submodules git@github.com:VeriWorkly/veriworkly.git
@@ -42,15 +42,24 @@ For an existing checkout:
 git submodule update --init --recursive
 ```
 
-The private repository uses GitHub SSH access. The machine running development or deployment must trust GitHub's SSH host key and have access to `VeriWorkly/portfolio-templates`.
+### Stand-in Mock Templates (Open-Source Contributors)
+
+If you do not have SSH access to the private `VeriWorkly/portfolio-templates` repository, you can scaffold a stand-in mock template library to build, run, and test `apps/portfolio` locally:
+
+```bash
+node scripts/mock-template-library.mjs
+```
+
+This generates placeholder components in `apps/portfolio/template-library/` matching the full schema, allowing CI and local development to run without private repository access.
 
 ## Add A Template
 
 1. Add a folder in `template-library/` with its own React component and optional scoped stylesheet.
 2. Add one dynamic loader entry in `template-library/registry.ts`.
 3. Add public gallery metadata in `templates/catalog/templates.ts`.
-4. Commit and push the private repository first.
-5. Commit the updated submodule pointer in this repository.
+4. Register the new `templateId` in the backend validator: `apps/server/src/validators/portfolioValidator.ts` (`templateId: z.enum([...])`).
+5. Commit and push the private repository first.
+6. Commit the updated submodule pointer in this repository.
 
 Do not import template styles from `app/globals.css`. Template modules own their styles so Next.js can emit per-template assets.
 
