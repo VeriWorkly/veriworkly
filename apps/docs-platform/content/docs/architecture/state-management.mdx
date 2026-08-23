@@ -26,12 +26,13 @@ Studio uses **Zustand** without persistence middleware. Persistence is explicit:
 `saveToStorage` / `hydrateFromStorage` actions that call dedicated service modules, so writes are
 deliberate rather than a side effect of every state change.
 
-| Store            | Location                                | Holds                                                                            |
-| :--------------- | :-------------------------------------- | :------------------------------------------------------------------------------- |
-| `useResumeStore` | `features/resume/store/resume-store.ts` | The **single active** `ResumeData` document plus the currently selected section. |
-| `useUserStore`   | `store/useUserStore.ts`                 | The session user, login state, and loading flag.                                 |
+| Store                 | Location                                            | Holds                                                                            |
+| :-------------------- | :-------------------------------------------------- | :------------------------------------------------------------------------------- |
+| `useResumeStore`      | `features/resume/store/resume-store.ts`             | The **single active** `ResumeData` document plus the currently selected section. |
+| `useCoverLetterStore` | `features/cover-letter/store/cover-letter-store.ts` | The **single active** `CoverLetterDocument` plus the currently selected section. |
+| `useUserStore`        | `store/useUserStore.ts`                             | The session user, login state, and loading flag.                                 |
 
-`useResumeStore` holds one document at a time — not a collection. The multi-document library is not
+`useResumeStore` and `useCoverLetterStore` hold one document at a time — not a collection. The multi-document library is not
 store state; it is read from and written to `localStorage` through
 `features/documents/services/document-library.ts`.
 
@@ -65,15 +66,24 @@ malformed or partially-migrated data is repaired on the way in rather than persi
 
 All document persistence targets the browser's **`localStorage`**.
 
-Keys follow a single versioned scheme owned by
+Keys follow a versioned scheme owned by
 `features/documents/services/storage-keys.ts`:
 
-| Key                         | Contents                                                              |
-| :-------------------------- | :-------------------------------------------------------------------- |
-| `veriworkly:docs:v2:active` | The currently open document.                                          |
-| `veriworkly:docs:v2:{type}` | The document collection for a type (`resume`, `cover_letter`, …).     |
-| `veriworkly:sync-outbox`    | Pending sync work items.                                              |
-| `veriworkly:sync-telemetry` | Last attempt / success / error timestamps and the last error message. |
+### v3 Storage Layout (Per-Document Keys + Metadata Index)
+
+The v2 storage scheme stored every document of a type inside a single JSON blob. That made every write $O(\text{library size})$ and caused cross-tab clobbering. The **v3 scheme** isolates every document and decouples metadata indexing:
+
+| Key                                  | Contents                                                                                          |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------ |
+| `veriworkly:docs:v3:doc:{type}:{id}` | Individual document data. Reads and autosaves are $O(1)$.                                         |
+| `veriworkly:docs:v3:index`           | Metadata index (id, type, title, updatedAt, sync status, revision) used for fast library listing. |
+| `veriworkly:docs:v2:active`          | `TYPE:id` pointer to the currently active document (deliberately preserved across migrations).    |
+| `veriworkly:sync-outbox`             | Pending background sync work items and retry queue.                                               |
+| `veriworkly:sync-telemetry`          | Last attempt / success / error timestamps and error diagnostics.                                  |
+| `veriworkly:master-profile`          | Local cached master profile facts record.                                                         |
+| `veriworkly:workspace-settings`      | Local workspace and editor preferences.                                                           |
+
+_(Note: `veriworkly:docs:v2:{type}` is legacy — read once during automatic migration to v3, then cleaned up)._
 
 Two custom DOM events (`veriworkly:docs-storage-updated` and
 `veriworkly:sync-outbox-updated`) let the autosave layer and the sync layer notify each other without

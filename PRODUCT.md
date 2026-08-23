@@ -30,4 +30,4 @@ Avoid surveillance-heavy resume SaaS, generic chatbot interfaces, opaque AI gene
 
 ## Accessibility & Inclusion
 
-Target WCAG 2.1 AA. All editor actions require keyboard access, visible focus, readable contrast, non-color status cues, and reduced-motion-compatible feedback.
+Target WCAG 2.2 Level AA. All editor actions require keyboard access, visible focus, readable contrast, non-color status cues, and reduced-motion-compatible feedback.
