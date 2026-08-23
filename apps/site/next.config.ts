@@ -61,19 +61,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   /**
-   * `.dev.tsx` files are only treated as routes outside production, which is how
-   * `app/og-generator` (an internal authoring tool, not a product surface) stays out of
-   * production builds.
-   *
-   * It was previously kept out by being listed in `.gitignore`, which also kept it out of
-   * the repository — so the deployed app quietly differed from every local checkout.
-   * Gating it with `notFound()` instead was no better: the route still prerendered and
-   * still answered 200, just with 404-shaped content. A soft 404 is the worst of both,
-   * since crawlers index it as a real page.
-   *
-   * Dropping the extension is the only version where the route genuinely does not exist
-   * in production and the router returns a true 404, while `next dev` keeps the tool
-   * available for authoring the static OG cards.
+   * `.dev.tsx` and `.dev.ts` files are only treated as routes outside production,
+   * keeping internal development-only pages out of production builds cleanly without
+   * soft-404 prerender issues.
    */
   pageExtensions: [
     "tsx",

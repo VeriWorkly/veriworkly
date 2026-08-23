@@ -29,18 +29,11 @@ Set per application in `apps/{app}/.env`, or shared via the root `.env`.
 | `ADMIN_EMAIL`             | Yes      | Server-only. Identifies the admin account; also unlocks the production-gated portfolio publish and checkout flows. Never exposed to the browser. | `admin@veriworkly.com`                              |
 | `ALLOWED_ORIGINS`         | No       | Permitted origins for the docs platform's API proxy route.                                                                                       | `https://api.veriworkly.com,https://veriworkly.com` |
 
-### Studio-specific
-
-| Variable                    | Description                                                    | Default                 |
-| :-------------------------- | :------------------------------------------------------------- | :---------------------- |
-| `NEXT_PUBLIC_PORTFOLIO_URL` | Public URL of the portfolio builder, used for cross-app links. | `http://localhost:3004` |
-
 ### Portfolio-specific
 
-| Variable                      | Description                                                                                                    | Default                 |
-| :---------------------------- | :------------------------------------------------------------------------------------------------------------- | :---------------------- |
-| `NEXT_PUBLIC_PORTFOLIO_URL`   | Public URL of **Studio**, used for the "edit in Studio" links.                                                 | `http://localhost:3001` |
-| `PORTFOLIO_REVALIDATE_SECRET` | Shared secret authorising the API's cache-revalidation callback after a publish. Must match the backend value. | —                       |
+| Variable                      | Description                                                                                                    | Default |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------------- | :------ |
+| `PORTFOLIO_REVALIDATE_SECRET` | Shared secret authorising the API's cache-revalidation callback after a publish. Must match the backend value. | —       |
 
 ---
 
@@ -56,6 +49,7 @@ Set per application in `apps/{app}/.env`, or shared via the root `.env`.
 | `ALLOWED_ORIGINS`                    | Comma-separated CORS allowlist. Each entry must be a full origin, not a bare port.                                                          | Ports 3000–3004 and 8080 on `http://localhost` |
 | `LOG_LEVEL`                          | `debug`, `info`, `warn`, or `error`.                                                                                                        | `info`                                         |
 | `AUDIT_LOG_RETENTION_DAYS`           | How long `AuditLog` rows are kept. Production writes a row per 4xx/5xx, and the daily usage-metrics job is the only thing that prunes them. | `90`                                           |
+| `ANALYTICS_HASH_PEPPER`              | Pepper used to compute non-reversible SHA-256 visitor identifier hashes for privacy-safe telemetry.                                         | `veriworkly-analytics-pepper`                  |
 | `CLUSTERING_ENABLED`                 | Run one worker per CPU core via `throng`.                                                                                                   | `true` in production, `false` otherwise        |
 | `WEB_CONCURRENCY` / `SERVER_WORKERS` | Explicit worker count, overriding the CPU-core default.                                                                                     | CPU count                                      |
 
@@ -67,12 +61,15 @@ Set per application in `apps/{app}/.env`, or shared via the root `.env`.
 
 ### Database and cache
 
-| Variable            | Required        | Description                                                                                                                                                                                        | Default                            |
-| :------------------ | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------- |
-| `DATABASE_URL`      | Yes             | PostgreSQL connection string.                                                                                                                                                                      | —                                  |
-| `REDIS_URL`         | Yes in practice | Redis connection string. Sessions, rate limiting, quotas, view buffers, and job locks all use it.                                                                                                  | `redis://localhost:6379`           |
-| `DB_POOL_MAX_TOTAL` | No              | Connection budget for the **whole cluster**, not per process. Set it to roughly 80% of the instance's real `max_connections`; the per-worker pool is derived by dividing this by the worker count. | `80` in production, `10` otherwise |
-| `DB_POOL_MAX`       | No              | Explicit per-process override. Leave unset unless PgBouncer sits in front in transaction mode — a stale value here is how you overcommit the database.                                             | derived from `DB_POOL_MAX_TOTAL`   |
+| Variable                        | Required        | Description                                                                                                                                                                                        | Default                            |
+| :------------------------------ | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------- |
+| `DATABASE_URL`                  | Yes             | PostgreSQL connection string.                                                                                                                                                                      | —                                  |
+| `REDIS_URL`                     | Yes in practice | Redis connection string. Sessions, rate limiting, quotas, view buffers, and job locks all use it.                                                                                                  | `redis://localhost:6379`           |
+| `DB_POOL_MAX_TOTAL`             | No              | Connection budget for the **whole cluster**, not per process. Set it to roughly 80% of the instance's real `max_connections`; the per-worker pool is derived by dividing this by the worker count. | `80` in production, `10` otherwise |
+| `DB_POOL_MAX`                   | No              | Explicit per-process override. Leave unset unless PgBouncer sits in front in transaction mode — a stale value here is how you overcommit the database.                                             | derived from `DB_POOL_MAX_TOTAL`   |
+| `DB_POOL_IDLE_TIMEOUT_MS`       | No              | Database client idle timeout in milliseconds before connection is closed.                                                                                                                          | `15000`                            |
+| `DB_POOL_CONNECTION_TIMEOUT_MS` | No              | Maximum wait time in milliseconds to acquire a connection from the pool before timing out.                                                                                                         | `30000`                            |
+| `DB_POOL_STATEMENT_TIMEOUT_MS`  | No              | PostgreSQL server query execution statement timeout in milliseconds.                                                                                                                               | `30000`                            |
 
 <Callout type="warn" title="The pool budget is cluster-wide">
   With clustering on, each worker opens its own pool, so what must fit inside Postgres'

@@ -13,7 +13,7 @@
     "url": "https://portfolio.veriworkly.com/openapi.json",
     "has_user_authentication": true,
     "auth_type": "cookie, bearer",
-    "auth_details": "Web sessions authenticate via Better Auth session cookies. Programmatic access uses API Keys as Bearer tokens ('Authorization: Bearer vw_...').",
+    "auth_details": "Web sessions authenticate via Better Auth session cookies ('veriworkly-auth.session_token' in development or '__Secure-veriworkly-auth.session_token' in production). Programmatic access uses API Keys as Bearer tokens ('Authorization: Bearer vw_...').",
     "base_url": "https://api.veriworkly.com/api/v1"
   },
 
@@ -44,12 +44,12 @@
     {
       "name": "Subdomain Availability Check",
       "description": "Check whether a requested portfolio subdomain (slug.veriworkly.com) is available.",
-      "endpoints": ["/api/v1/portfolios/check-subdomain"]
+      "endpoints": ["/api/v1/portfolios/subdomains/{slug}/availability"]
     },
     {
       "name": "Portfolio Draft Management",
       "description": "Create, edit, auto-save, and inspect portfolio drafts.",
-      "endpoints": ["/api/v1/portfolios/me", "/api/v1/portfolios/preview"]
+      "endpoints": ["/api/v1/portfolios/me", "/api/v1/portfolios/preview/{documentId}"]
     },
     {
       "name": "Subdomain Publishing & Unpublishing",
@@ -59,12 +59,12 @@
     {
       "name": "View Tracking & Analytics",
       "description": "Record view events and query view analytics for published subdomains.",
-      "endpoints": ["/api/v1/portfolios/views", "/api/v1/portfolios/analytics"]
+      "endpoints": ["/api/v1/portfolios/public/{subdomain}/view", "/api/v1/portfolios/analytics"]
     },
     {
       "name": "Asset Uploads",
       "description": "Generate presigned Cloudflare R2 URLs for portfolio avatars, project covers, and social images.",
-      "endpoints": ["/api/v1/portfolios/assets/upload-url"]
+      "endpoints": ["/api/v1/portfolio-assets/upload-url"]
     }
   ],
 

@@ -42,8 +42,7 @@ Beyond landing, pricing, features, how-it-works, and FAQ:
 - **`/roadmap`** and subpages — fully backend-driven from the same data admins manage in Studio.
 - **`/compare/[tool]`** — competitor comparison pages generated from `config/compare.ts`. See the accuracy contract below; these make dated claims about third parties.
 - **`/templates`** — a resume/cover-letter template showcase (distinct from the Portfolio app's own template gallery).
-- **`/og-generator`** — an internal Open Graph tool, excluded from search indexing but **not access-controlled**; treat it as public.
-- **`/api/og`** — runtime Open Graph card generator. Backs the share image for `/stats`, `/pricing`, `/changelog`, every `/compare/*`, `/affiliate`, `/ambassador`, and every `/roadmap/[id]`. Query text is sanitised (control/zero-width/bidi codepoints stripped, length-capped) because it renders attacker-controllable text onto a card served from our own origin.
+- **`/api/og`** — runtime Open Graph card generator. Backs the share image for `/stats`, `/pricing`, `/changelog`, every `/compare/*`, `/affiliate`, `/ambassador`, and every `/roadmap/[id]`. (Static card authoring tool lives at `/og-generator` in `apps/portfolio`).
 - **An "AI answer engine" content layer** — `public/llms.txt` and `public/pricing.md` are machine-readable summaries of the product aimed at AI crawlers and chat assistants; `robots.ts` explicitly allowlists `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `PerplexityBot`, `Google-Extended`, and `CCBot`.
 
 ## ✅ Content accuracy contract
@@ -51,9 +50,9 @@ Beyond landing, pricing, features, how-it-works, and FAQ:
 This site makes pricing, quota, and capability claims that are also enforced in code elsewhere in the monorepo. When those drift, the site publishes false information — including into structured data (JSON-LD) that search engines and LLMs quote back at users. Reconcile **downward**, never upward:
 
 1. **`apps/server/src/services/productCatalog.ts`** — the only real source of truth for what exists and what it costs. Prices are in cents. Credit allowances live in `creditAllowance`.
-2. **`apps/server/src/services/atsQuotaService.ts`** and **`profileImportQuotaService.ts`** — the real source of truth for every "N scans / N imports" number.
+2. **`apps/server/src/services/ats/quota.ts`** and **`profileImportQuotaService.ts`** — the real source of truth for every "N scans / N imports" number.
 3. **`public/pricing.md`** and **`public/llms.txt`** — the human-maintained prose layer. Must match (1) and (2).
-4. **Site UI copy** — `features/pricing/**`, `features/landing/faq/data/faqItems.ts`, `config/compare.ts`, and the JSON-LD blocks in `app/layout.tsx` + `app/(marketing)/page.tsx` + `app/(marketing)/pricing/page.tsx`. Must match (3).
+4. **Site UI copy** — `features/pricing/**`, `features/faq/data/faqItems.ts`, `features/landing/faq/data/faqItems.ts`, `config/compare.ts`, and the JSON-LD blocks in `app/layout.tsx` + `app/(marketing)/page.tsx` + `app/(marketing)/pricing/page.tsx`. Must match (3).
 
 Known gotchas when editing:
 

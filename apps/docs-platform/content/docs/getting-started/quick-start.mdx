@@ -46,11 +46,11 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
   <File name="package.json" description="npm workspaces root" />
 </Files>
 
-<Callout type="warn" title="The portfolio templates are a private submodule">
+<Callout type="warn" title="The portfolio templates submodule">
   `apps/portfolio/template-library` is a git submodule pointing at a **private** repository
-  (`VeriWorkly/portfolio-templates`). If you do not have access to it, `apps/portfolio` will not
-  build — every other workspace is unaffected. See [Portfolio:
-  Templates](/docs/product/portfolio/templates).
+  (`VeriWorkly/portfolio-templates`). If you do not have SSH access, you can run `node
+  scripts/mock-template-library.mjs` to generate mock templates and build `apps/portfolio` locally.
+  See [Portfolio: Templates](/docs/product/portfolio/templates).
 </Callout>
 
 ---

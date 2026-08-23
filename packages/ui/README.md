@@ -4,7 +4,7 @@ The shared Design System and UI library for VeriWorkly platforms.
 
 ## Overview
 
-This package provides a comprehensive set of production-ready React components built with **Tailwind CSS**, **Lucide React**, and **Framer Motion** principles. It follows a modular architecture, ensuring consistent aesthetics and behavior across the main landing page, builder studio, documentation platform, and blog platform.
+This package provides a comprehensive set of production-ready React components built with **Tailwind CSS** and **Lucide React**. It follows a modular architecture, ensuring consistent aesthetics and behavior across the main landing page, builder studio, portfolio platform, documentation platform, and blog platform.
 
 ## Design Philosophy
 
@@ -123,5 +123,5 @@ The library utilizes a dual-theme variable design configured for light and dark 
 ## 🛠️ Development & Contribution
 
 - **HMR**: Hot Module Replacement is supported across all workspaces during development.
-- **Utilities**: Use the `cn` utility exported from `@veriworkly/ui/utils` for tailwind class merge conflict prevention.
+- **Utilities**: Use the `cn` utility exported from `@veriworkly/ui` (`import { cn } from "@veriworkly/ui"`) for tailwind class merge conflict prevention.
 - **Mobile First**: Design and test components on small screens (minimum 320px width) before pushing changes.

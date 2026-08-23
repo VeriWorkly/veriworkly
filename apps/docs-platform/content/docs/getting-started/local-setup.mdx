@@ -14,7 +14,7 @@ the platform.
 
 ## Prerequisites
 
-- **Node.js** — version 20 or higher.
+- **Node.js** — version 20.19.0 or higher (Node.js 22 supported).
 - **npm** — the repository uses npm workspaces; other package managers are not configured.
 - **PostgreSQL** — required for anything that touches the API.
   [Neon](https://neon.tech) works well as a managed option.
@@ -44,11 +44,12 @@ the platform.
        cd veriworkly
        ```
 
-    <Callout type="warn" title="apps/portfolio requires a private submodule">
+    <Callout type="warn" title="apps/portfolio template library">
       `apps/portfolio/template-library` is a git submodule pointing at the private
       `VeriWorkly/portfolio-templates` repository. If you have access, initialise it with
-      `git submodule update --init --recursive`. If you do not, skip it — every workspace except
-      `apps/portfolio` builds and runs normally without it.
+      `git submodule update --init --recursive`. If you do not have private repository access,
+      you can scaffold stand-in mock templates to build and run `apps/portfolio` locally by running:
+      `node scripts/mock-template-library.mjs`.
     </Callout>
 
   </Step>

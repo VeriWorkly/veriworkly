@@ -26,7 +26,7 @@
     {
       "name": "Interactive API Reference",
       "url": "https://docs.veriworkly.com/api-reference",
-      "description": "Fumadocs-powered interactive API explorer covering all 72 operations across 18 domain tags."
+      "description": "Fumadocs-powered interactive API explorer covering all 78 operations across 72 paths and 18 domain tags."
     },
     {
       "name": "OpenAPI Specification",
@@ -38,7 +38,7 @@
   "capabilities": [
     {
       "name": "API Reference Indexing",
-      "description": "Explore endpoint paths, request parameters, request payloads, and response envelopes for all 72 operations.",
+      "description": "Explore endpoint paths, request parameters, request payloads, and response envelopes for all 78 operations across 72 paths.",
       "endpoints": [
         "/api/v1/health",
         "/api/v1/documents",

@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-VeriWorkly is a monorepo consisting of a Next.js frontend and an Express backend. Follow these steps to get up and running quickly.
+VeriWorkly is a monorepo consisting of 5 Next.js applications (Marketing Site, Studio, Portfolio Builder, Docs, Blog), an Express backend API, and a shared UI library. Follow these steps to get up and running quickly.
 
 ## 📦 Installation
 
@@ -8,7 +8,7 @@ VeriWorkly is a monorepo consisting of a Next.js frontend and an Express backend
 
    ```bash
    git clone https://github.com/VeriWorkly/veriworkly.git
-   cd veriworkly-resume
+   cd veriworkly
    ```
 
 2. **Install dependencies**:
@@ -22,33 +22,36 @@ VeriWorkly is a monorepo consisting of a Next.js frontend and an Express backend
    ```bash
    cp .env.example .env
    cp apps/server/.env.example apps/server/.env
+   cp apps/studio/.env.example apps/studio/.env
+   cp apps/site/.env.example apps/site/.env
+   cp apps/portfolio/.env.example apps/portfolio/.env
+   cp apps/docs-platform/.env.example apps/docs-platform/.env
+   cp apps/blog-platform/.env.example apps/blog-platform/.env
    ```
 
 4. **Initialize the database**:
+
    ```bash
-   npm run db:push -w @veriworkly/server
+   npm run db:push
+   npm run db:generate
    ```
 
-## 🚀 Running the App
+## 🚀 Running the Apps
 
-To start services (Site, Builder Studio, Backend, Docs, Blog) in development mode:
+To start **all workspaces simultaneously** in development mode:
 
 ```bash
-npm run dev
-npm run dev:site
-npm run dev:studio
-npm run dev:server
-npm run dev:docs
-npm run dev:blog
+npm run dev:all
 ```
 
-To start specific apps:
+To run individual workspaces:
 
-- **Site/Resume**: `npm run dev` (starts @veriworkly/site)
-- **Studio**: `npm run dev:studio`
-- **Server**: `npm run dev:server`
-- **Docs**: `npm run dev:docs`
-- **Blog**: `npm run dev:blog`
+- **Marketing Site** (`http://localhost:3000`): `npm run dev:site` (or `npm run dev`)
+- **Builder Studio** (`http://localhost:3001`): `npm run dev:studio`
+- **Documentation** (`http://localhost:3002`): `npm run dev:docs`
+- **Blog** (`http://localhost:3003`): `npm run dev:blog`
+- **Portfolio Builder** (`http://localhost:3004`): `npm run dev:portfolio`
+- **Backend API Server** (`http://localhost:8080`): `npm run dev:server`
 
 ## 📚 Detailed Documentation
 

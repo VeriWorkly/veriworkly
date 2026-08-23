@@ -1,6 +1,6 @@
 ---
 title: Resume Templates
-description: The document template system — the eight built-in templates, the dual-engine model, and how to add your own.
+description: The document template system — the twelve built-in templates (7 resume, 5 cover letter), the dual-engine model, and how to add your own.
 ---
 
 import { LayoutTemplate, Mail } from "lucide-react";
@@ -15,7 +15,7 @@ library to compare layouts.
 
 ## Resume templates
 
-All six are free. There is no template lock on resumes or cover letters.
+All seven resume templates and five cover letter templates are free. There is no template lock on resumes or cover letters.
 
 <Cards>
   <Card title="Executive Clarity" icon={<LayoutTemplate />}>
@@ -43,9 +43,13 @@ All six are free. There is no template lock on resumes or cover letters.
   like an internal business brief. Default accent `#1d4ed8`.
 </Card>
 
-  <Card title="Bold Impact" icon={<LayoutTemplate />}>
-    A centered, uppercase masthead over a heavy accent rule, with accent-underlined section headings.
-    For applications where the first impression has to carry weight. Default accent `#b91c1c`.
+<Card title="Bold Impact" icon={<LayoutTemplate />}>
+  A centered, uppercase masthead over a heavy accent rule, with accent-underlined section headings.
+  For applications where the first impression has to carry weight. Default accent `#b91c1c`.
+</Card>
+
+  <Card title="VeriWorkly Special" icon={<LayoutTemplate />}>
+    A modern high-impact layout with distinct accent rules, structured badges, and balanced typographic hierarchy. Default accent `#2563eb`.
   </Card>
 </Cards>
 
@@ -60,9 +64,24 @@ treatment, and typographic breathing room, not in parseability.
     `professional`.
   </Card>
 
-  <Card title="VeriWorkly Special" icon={<Mail />}>
-    A branded two-column layout with an identity rail and numbered proof points. Template id
-    `veriworkly-special`.
+<Card title="VeriWorkly Special" icon={<Mail />}>
+  A branded layout with an identity rail, clean letterhead, and structured proof points. Template id
+  `veriworkly-special`.
+</Card>
+
+<Card title="Minimalist" icon={<Mail />}>
+  An ultra-clean, distraction-free typographic layout focusing entirely on clarity. Template id
+  `minimalist`.
+</Card>
+
+<Card title="Executive" icon={<Mail />}>
+  Sophisticated executive styling with premium letterhead and refined typography. Template id
+  `executive`.
+</Card>
+
+  <Card title="ATS Essential" icon={<Mail />}>
+    Streamlined, high-density format engineered specifically for automated parsing. Template id
+    `ats-essential`.
   </Card>
 </Cards>
 
@@ -91,16 +110,20 @@ visually aligned. See [Export Pipeline](/docs/architecture/pdf-generation).
 
 ## Source reference
 
-| Template                              | Web engine                                                                                                              | PDF engine                                                                                                              |
-| :------------------------------------ | :---------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
-| **Precision ATS**                     | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/web.tsx)      | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/pdf.tsx)      |
-| **Executive Clarity**                 | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/web.tsx)  | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/pdf.tsx)  |
-| **Modern Minimal**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/pdf.tsx)     |
-| **Timeline Focus**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/pdf.tsx)     |
-| **Corporate Brief**                   | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/web.tsx)    | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/pdf.tsx)    |
-| **Bold Impact**                       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/web.tsx)        | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/pdf.tsx)        |
-| **Professional** (cover letter)       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/web.tsx) | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/pdf.tsx) |
-| **VeriWorkly Special** (cover letter) | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/web.tsx)   | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/pdf.tsx)   |
+| Template                              | Web engine                                                                                                               | PDF engine                                                                                                               |
+| :------------------------------------ | :----------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| **Precision ATS**                     | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/web.tsx)       | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/pdf.tsx)       |
+| **Executive Clarity**                 | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/web.tsx)   | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/pdf.tsx)   |
+| **Modern Minimal**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/web.tsx)      | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/pdf.tsx)      |
+| **Timeline Focus**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/web.tsx)      | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/pdf.tsx)      |
+| **Corporate Brief**                   | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/pdf.tsx)     |
+| **Bold Impact**                       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/web.tsx)         | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/pdf.tsx)         |
+| **VeriWorkly Special** (resume)       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/veriworkly-special/web.tsx)  | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/veriworkly-special/pdf.tsx)  |
+| **Professional** (cover letter)       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/web.tsx)  | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/pdf.tsx)  |
+| **VeriWorkly Special** (cover letter) | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/web.tsx)    | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/pdf.tsx)    |
+| **Minimalist** (cover letter)         | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/minimalist/web.tsx)    | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/minimalist/pdf.tsx)    |
+| **Executive** (cover letter)          | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/executive/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/executive/pdf.tsx)     |
+| **ATS Essential** (cover letter)      | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/ats-essential/web.tsx) | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/ats-essential/pdf.tsx) |
 
 The registry that wires templates into Studio is
 [`apps/studio/templates/index.ts`](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/index.ts).

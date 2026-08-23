@@ -5,7 +5,7 @@ First off, thank you for considering contributing to **VeriWorkly**! We are buil
 > [!IMPORTANT]
 > **Detailed guides, developer workflows, and coding standards** live in our official documentation:
 >
-> - 📖 **[Full Contributing Guidelines](https://docs.veriworkly.com/docs/contributing/index)**
+> - 📖 **[Full Contributing Guidelines](https://docs.veriworkly.com/docs/contributing)**
 > - 🛠️ **[Detailed Local Setup Guide](https://docs.veriworkly.com/docs/getting-started/local-setup)**
 
 ---
@@ -36,7 +36,7 @@ Before getting started, please **star our repository** to show your support for 
 2. Clone your fork locally:
    ```bash
    git clone https://github.com/YOUR_USERNAME/veriworkly.git
-   cd veriworkly-resume
+   cd veriworkly
    ```
 3. Set up the upstream remote:
    ```bash
@@ -61,10 +61,10 @@ Before getting started, please **star our repository** to show your support for 
 ### 5. Local Setup & Verification 🛠️
 
 - Install dependencies: `npm install`
-- Copy environment variables: `cp .env.example .env` and `cp apps/server/.env.example apps/server/.env`
+- Copy environment variables: copy all `.env.example` files to `.env` in root and across `apps/` (see `ENV_SETUP.md` or `QUICK_START.md`).
 - Run the app locally to test your changes:
   - **Frontend-only (Site/Templates at port 3000)**: `npm run dev`
-  - **Full-stack (All apps/databases)**: `npm run dev:all` _(Requires running `npm run db:push -w @veriworkly/server`)_
+  - **Full-stack (All apps/databases)**: `npm run dev:all` _(Requires running `npm run db:push && npm run db:generate`)_
 
 ---
 

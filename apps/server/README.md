@@ -59,7 +59,7 @@ Beyond auth and core document CRUD (soft-delete only — hard-delete/restore exi
 
 ## ⏰ Cron jobs
 
-Four scheduled jobs (`src/jobs/`), each guarded by a Redis distributed lock: GitHub sync (twice daily), portfolio/share view flush (every 10 minutes), usage-metrics flush (daily), and the portfolio access job (hourly — grace-period suspension plus abandoned-upload cleanup).
+Five scheduled jobs (`src/jobs/`), each guarded by a Redis distributed lock: GitHub sync (twice daily), portfolio/share view flush (every 10 minutes), usage-metrics flush (daily), portfolio access job (hourly — grace-period suspension plus abandoned-upload cleanup), and changelog release sync (`CHANGELOG_RELEASE_SYNC_CRON`, default daily at 06:00 UTC).
 
 ## 📁 Folder Structure
 

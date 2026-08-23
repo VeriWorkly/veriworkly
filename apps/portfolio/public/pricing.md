@@ -11,7 +11,7 @@
 
 ## Creator Pro Subdomain Plan
 
-- **Price**: $9.99 / month (or included in Sprint Pass $2.99, Hunt Pass $5.99, or Monthly Pro $14.99)
+- **Price**: $9.99 / month or $7.99 / month ($95.88 billed annually) (or included in Sprint Pass $2.99, Hunt Pass $5.99, or Monthly Pro $14.99)
 - **Includes**:
   - Custom Subdomain Hosting (`your-slug.veriworkly.com`)
   - All 4 Templates (Signal, Atelier, Nimbus, Cipher)

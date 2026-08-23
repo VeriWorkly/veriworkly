@@ -15,7 +15,7 @@ The official blog for VeriWorkly, built with Next.js and Fumadocs.
    npm run dev:blog
    ```
 
-The blog will be available at `http://localhost:3002`.
+The blog will be available at `http://localhost:3003`.
 
 ## ✍️ Content Management
 

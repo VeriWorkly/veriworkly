@@ -95,8 +95,7 @@ export function getProviderProductId(productKey: ProductKey, interval: CatalogIn
     return config.dodo.bundleMonthlyProductId;
   }
 
-  if (interval === "one_day") return "";
-  if (interval === "seven_day") return config.dodo.portfolioProSevenDayProductId;
+  if (interval === "one_day" || interval === "seven_day") return "";
   if (interval === "annual") return config.dodo.portfolioProAnnualProductId;
 
   return config.dodo.portfolioProMonthlyProductId;

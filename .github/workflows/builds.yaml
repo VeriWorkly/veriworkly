@@ -48,5 +48,8 @@ jobs:
       - name: Mock Portfolio Template Library
         run: node scripts/mock-template-library.mjs
 
+      - name: Build Shared Packages
+        run: npm run build -w @veriworkly/profile-core --if-present
+
       - name: Build Application
         run: npm run build -w ${{ matrix.workspace }}

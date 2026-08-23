@@ -56,11 +56,11 @@ Instead of mandatory logins and data tracking, VeriWorkly operates on a **local-
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <img src="apps/studio/public/templates/resume/precision-ats.svg" alt="Precision ATS" style="border-radius: 8px; border: 1px solid #eaeaea;" width="320" />
+      <img src="apps/studio/public/templates/resume/precision-ats.png" alt="Precision ATS" style="border-radius: 8px; border: 1px solid #eaeaea;" width="320" />
       <br /><strong>Precision ATS</strong>
     </td>
     <td align="center" width="50%">
-      <img src="apps/studio/public/templates/resume/executive-clarity.svg" alt="Executive Clarity" style="border-radius: 8px; border: 1px solid #eaeaea;" width="320" />
+      <img src="apps/studio/public/templates/resume/executive-clarity.png" alt="Executive Clarity" style="border-radius: 8px; border: 1px solid #eaeaea;" width="320" />
       <br /><strong>Executive Clarity</strong>
     </td>
   </tr>
@@ -121,7 +121,7 @@ veriworkly/
 
 ### Prerequisites
 
-- **Node.js**: v20.0.0 or higher
+- **Node.js**: v20.19.0 or higher (Node.js 22 supported)
 - **npm**: Repository uses npm workspaces (`npm install` from root)
 - **PostgreSQL**: Required for backend API functionality ([Neon](https://neon.tech) managed Postgres supported)
 - **Redis**: Required for backend sessions, rate limiting, quotas, and job locking
@@ -200,6 +200,7 @@ npm test -w @veriworkly/server
 
 # Application unit & contract test suites (Vitest)
 npm run test:contracts -w @veriworkly/studio
+npm run test:browser -w @veriworkly/studio
 npm run test:contracts -w @veriworkly/site
 npm test -w @veriworkly/portfolio
 

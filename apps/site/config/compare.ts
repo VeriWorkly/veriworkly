@@ -1,4 +1,4 @@
-export const PRICING_VERIFIED_AT = "July 2026";
+export const PRICING_VERIFIED_AT = "August 2026";
 
 export type MatrixValue = boolean | string;
 

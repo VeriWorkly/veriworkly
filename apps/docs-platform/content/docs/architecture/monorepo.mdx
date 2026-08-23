@@ -96,8 +96,7 @@ reference.
 `VeriWorkly/portfolio-templates` repository, pinned to a specific upstream commit. It holds the four
 portfolio templates (Signal, Atelier, Nimbus, Cipher) and their registry.
 
-Without access to that repository, `apps/portfolio` cannot build. Every other workspace is
-unaffected.
+Without access to that repository, you can scaffold stand-in mock templates using `node scripts/mock-template-library.mjs` to build and test `apps/portfolio` locally. Every other workspace builds and runs without it.
 
 ---
 
