@@ -1,21 +1,20 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Sun, Moon } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { ArrowLeft, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const AmbassadorNav = () => {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+import { useMounted } from "@/hooks/use-mounted";
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
+const AmbassadorNav = () => {
+  const mounted = useMounted();
+
+  const { resolvedTheme, setTheme } = useTheme();
+
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
   const navItems = [
     { label: "Home", target: "hero" },
@@ -33,16 +32,18 @@ const AmbassadorNav = () => {
           <Link href="/" className="group flex items-center gap-3 active:scale-[0.98]">
             <div className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 shadow-inner dark:bg-white/5">
               <Image
-                src="/veriworkly-logo.png"
-                alt="VeriWorkly Logo"
                 width={20}
                 height={20}
+                alt="VeriWorkly Logo"
+                src="/veriworkly-logo.png"
                 className="object-contain transition-transform duration-500 group-hover:rotate-12"
               />
             </div>
+
             <span className="font-mono text-sm font-semibold tracking-tight text-zinc-900 dark:text-white">
               VeriWorkly
             </span>
+
             <span className="rounded-full border border-indigo-500/10 bg-indigo-500/10 px-2 py-0.5 font-sans text-[8px] font-black tracking-widest text-indigo-600 uppercase dark:text-indigo-400">
               Campus
             </span>
@@ -65,6 +66,7 @@ const AmbassadorNav = () => {
               className="relative cursor-pointer px-4 py-2 text-[11px] font-black tracking-widest text-zinc-600 uppercase transition-colors duration-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
             >
               <span className="relative z-10">{item.label}</span>
+
               {hoveredLink === item.label && (
                 <motion.span
                   layoutId="nav-hover-pill"

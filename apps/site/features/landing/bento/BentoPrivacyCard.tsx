@@ -10,10 +10,10 @@ interface BentoPrivacyCardProps {
 const BentoPrivacyCard = ({ yOffset, canHover }: BentoPrivacyCardProps) => {
   return (
     <BentoCard
-      className="col-span-1 flex flex-col justify-between border-zinc-800 bg-[#060606] text-white dark:border-white/5"
-      glowColor="rgba(16,185,129,0.12)"
       yOffset={yOffset}
       canHover={canHover}
+      glowColor="rgba(16,185,129,0.12)"
+      className="col-span-1 flex flex-col justify-between border-zinc-800 bg-[#060606] text-white dark:border-white/5"
     >
       <div className="relative flex h-16 w-16 items-center justify-center">
         <div
@@ -22,6 +22,7 @@ const BentoPrivacyCard = ({ yOffset, canHover }: BentoPrivacyCardProps) => {
         />
         <div className="absolute inset-2 animate-pulse rounded-full bg-emerald-500/10" />
         <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl" />
+
         <Lock className="relative z-10 h-6 w-6 text-emerald-400" strokeWidth={1.5} />
       </div>
 

@@ -29,6 +29,7 @@ export default function robots(): MetadataRoute.Robots {
       `${siteConfig.links.app}/sitemap.xml`,
       `${siteConfig.links.blog}/sitemap.xml`,
       `${siteConfig.links.docs}/sitemap.xml`,
+      `${siteConfig.links.portfolio}/sitemap.xml`,
     ],
   };
 }

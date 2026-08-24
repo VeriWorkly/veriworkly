@@ -2,6 +2,7 @@
 
 import { useRef, type ReactNode } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+
 import InteractiveCTAMockup from "@/features/marketing/cta/InteractiveCTAMockup";
 
 const InteractiveCTAGlowCard = ({ children }: { children: ReactNode }) => {
@@ -30,6 +31,7 @@ const InteractiveCTAGlowCard = ({ children }: { children: ReactNode }) => {
         style={{ scale: glowScale, opacity: glowOpacity, rotate: glowRotate }}
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,var(--color-accent)_0%,transparent_60%)] blur-2xl"
       />
+
       <motion.div
         style={{ scale: glowScale, opacity: glowOpacity }}
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,#06b6d4_0%,transparent_55%)] opacity-30 blur-2xl"

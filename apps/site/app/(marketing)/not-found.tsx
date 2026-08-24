@@ -25,7 +25,7 @@ export const metadata: Metadata = buildPageMetadata({
   noIndex: true,
 });
 
-export default function MarketingNotFound() {
+const MarketingNotFound = () => {
   return (
     <section className="w-full bg-[#f3f4f6] p-2 md:p-3 lg:p-4 dark:bg-black">
       <div className="relative flex min-h-[70vh] w-full flex-col items-center justify-center overflow-hidden rounded-4xl border border-black/5 bg-white px-6 py-24 text-center dark:border-white/5 dark:bg-[#080808]">
@@ -84,4 +84,6 @@ export default function MarketingNotFound() {
       </div>
     </section>
   );
-}
+};
+
+export default MarketingNotFound;

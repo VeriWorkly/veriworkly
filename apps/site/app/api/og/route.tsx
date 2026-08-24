@@ -96,8 +96,8 @@ export async function GET(request: Request) {
     return new ImageResponse(
       <div
         style={{
-          height: "100%",
           width: "100%",
+          height: "100%",
           display: "flex",
           color: t.foreground,
           alignItems: "center",
@@ -110,11 +110,11 @@ export async function GET(request: Request) {
       >
         <div
           style={{
-            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
+            position: "absolute",
             backgroundImage: isDark
               ? "radial-gradient(circle at top left, rgba(37, 99, 235, 0.2), transparent 40%)"
               : "radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%)",
@@ -123,11 +123,11 @@ export async function GET(request: Request) {
 
         <div
           style={{
-            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
+            position: "absolute",
             backgroundImage: isDark
               ? "radial-gradient(circle at top right, rgba(96, 165, 250, 0.15), transparent 30%)"
               : "radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 22%)",
@@ -136,31 +136,31 @@ export async function GET(request: Request) {
 
         <svg
           style={{
-            position: "absolute",
             top: 0,
             left: 0,
             width: "100%",
             height: "100%",
+            position: "absolute",
           }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            {/* 28px to match the .surface-grid pattern used across the product. */}
             <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
               <path d="M 28 0 L 0 0 0 28" fill="none" stroke={t.grid} strokeWidth="1" />
             </pattern>
           </defs>
+
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
 
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
             padding: "80px",
             textAlign: "center",
+            alignItems: "center",
+            flexDirection: "column",
+            justifyContent: "center",
           }}
         >
           <div
@@ -169,8 +169,8 @@ export async function GET(request: Request) {
               fontWeight: 600,
               marginBottom: 48,
               display: "flex",
-              alignItems: "center",
               padding: "6px 12px",
+              alignItems: "center",
               borderRadius: "100px",
               backgroundColor: t.chipFill,
               border: `1px solid ${t.chipBorder}`,
@@ -179,8 +179,8 @@ export async function GET(request: Request) {
             <svg
               width={34}
               height={34}
-              viewBox="0 0 512 512"
               fill={t.foreground}
+              viewBox="0 0 512 512"
               style={{ marginRight: 10 }}
             >
               <path d={MARK_PATH} />
@@ -191,13 +191,13 @@ export async function GET(request: Request) {
 
           <div
             style={{
-              fontSize: title.length > 40 ? 60 : 84,
               fontWeight: 900,
-              lineHeight: 1.05,
-              letterSpacing: "-0.05em",
-              marginBottom: showDescription ? 32 : 0,
-              maxWidth: "1100px",
               display: "flex",
+              lineHeight: 1.05,
+              maxWidth: "1100px",
+              letterSpacing: "-0.05em",
+              fontSize: title.length > 40 ? 60 : 84,
+              marginBottom: showDescription ? 32 : 0,
               backgroundImage: `linear-gradient(to bottom, ${t.foreground}, ${t.muted})`,
               backgroundClip: "text",
               color: "transparent",
@@ -211,10 +211,10 @@ export async function GET(request: Request) {
               style={{
                 fontSize: 32,
                 color: t.muted,
-                maxWidth: "850px",
                 lineHeight: 1.4,
                 fontWeight: 500,
                 display: "flex",
+                maxWidth: "850px",
               }}
             >
               {displayDescription}
@@ -250,7 +250,6 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error("Failed to generate OG image:", err);
 
-    // Never cache a failure — a transient error must not be pinned for a year.
     return new Response("Error generating image", {
       status: 500,
       headers: { "Cache-Control": "no-store" },

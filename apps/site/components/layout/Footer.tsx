@@ -1,10 +1,11 @@
-import { siteConfig } from "@/config/site";
 import {
   LandingFooter,
+  LandingFooterLink,
   LandingFooterColumn,
   LandingFooterSocialLink,
-  LandingFooterLink,
 } from "./LandingFooter";
+
+import { siteConfig } from "@/config/site";
 
 const footerColumns: LandingFooterColumn[] = [
   {
@@ -51,9 +52,8 @@ const socialLinks: LandingFooterSocialLink[] = [
 ];
 
 const navLinks: LandingFooterLink[] = [
-  { name: "Home", href: "/" },
-  { name: "About Us", href: "/about" },
-  { name: "Features", href: "/features" },
+  { name: "Affiliate Program", href: "/affiliate" },
+  { name: "Ambassador Program", href: "/ambassador" },
 ];
 
 const legalLinks: LandingFooterLink[] = [
@@ -66,8 +66,6 @@ const Footer = () => {
     <LandingFooter
       shortName={siteConfig.shortName}
       headingPrefix="Are You Interested"
-      // Was pointing at the Studio dashboard, so the one button labelled "Contact" was
-      // the only footer link that could not reach anyone.
       ctaText="Talk to the team"
       ctaHref="/contact"
       logoSrc="/veriworkly-logo.png"

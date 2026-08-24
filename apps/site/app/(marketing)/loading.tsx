@@ -8,7 +8,7 @@ function Bone({ className }: { className: string }) {
   );
 }
 
-export default function MarketingLoading() {
+const MarketingLoading = () => {
   return (
     <section className="w-full bg-[#f3f4f6] p-2 md:p-3 lg:p-4 dark:bg-black">
       <p className="sr-only" role="status" aria-live="polite">
@@ -52,4 +52,6 @@ export default function MarketingLoading() {
       </div>
     </section>
   );
-}
+};
+
+export default MarketingLoading;

@@ -1,7 +1,6 @@
-import React from "react";
-import ComparisonMatrixHeader from "./ComparisonMatrixHeader";
 import ComparisonTable from "./ComparisonTable";
 import ComparisonMatrixCTA from "./ComparisonMatrixCTA";
+import ComparisonMatrixHeader from "./ComparisonMatrixHeader";
 
 const ComparisonMatrix = () => {
   return (

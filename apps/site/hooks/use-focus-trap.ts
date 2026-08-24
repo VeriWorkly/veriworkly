@@ -48,7 +48,6 @@ export const useFocusTrap = <T extends HTMLElement>(
         containerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
       ).filter((el) => el.offsetParent !== null || el === document.activeElement);
 
-    // Defer so the element is mounted (and any entrance animation has started).
     const focusFrame = requestAnimationFrame(() => {
       const [first] = getFocusable();
 

@@ -1,52 +1,45 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
-import { Frown } from "lucide-react";
+import { OctagonAlert } from "lucide-react";
 
 import { Button, Container } from "@veriworkly/ui";
-import { siteConfig } from "@/config/site";
 
-/**
- * The root 404 catches everything outside the (marketing) group — /ambassador/*,
- * /affiliate/*, /api/*. Without this it inherited the root layout's metadata verbatim, so
- * every one of those misses served the homepage's title and description under a 404
- * status, and declared itself indexable while doing it.
- */
-
-export const metadata: Metadata = {
-  title: `Page Not Found | ${siteConfig.shortName}`,
-  description: "This page moved or never existed. Head back home or browse the template gallery.",
-
-  robots: { index: false, follow: true },
-};
-
-const NotFound = () => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const Error = ({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) => {
   return (
-    <main className="surface-grid border-border/50 relative mx-auto flex h-screen items-center justify-center overflow-hidden border">
+    <main className="surface-grid border-border/50 relative mx-auto flex min-h-screen items-center justify-center overflow-hidden border">
+      <p className="sr-only" role="alert">
+        Something went wrong. An unexpected error occurred.
+      </p>
+
       <div className="from-background/0 via-background/20 to-background/80 pointer-events-none absolute inset-0 bg-linear-to-b" />
 
       <Container className="relative flex flex-col items-center py-20 text-center">
-        <div className="bg-accent/10 text-accent shadow-accent/5 mb-8 flex h-24 w-24 items-center justify-center rounded-full shadow-xl">
-          <Frown className="h-12 w-12" />
+        <div className="bg-destructive/10 text-destructive shadow-destructive/5 mb-8 flex h-24 w-24 items-center justify-center rounded-full shadow-xl">
+          <OctagonAlert className="text-destructive h-12 w-12" />
         </div>
 
-        <p className="text-accent text-sm font-bold tracking-[0.2em] uppercase">404 Error</p>
+        <p className="text-destructive text-sm font-bold tracking-[0.2em] uppercase">
+          Application Error
+        </p>
 
         <h1 className="text-foreground mt-4 text-4xl font-bold tracking-tight sm:text-6xl">
-          Lost in Space
+          Something went wrong
         </h1>
 
         <p className="text-muted mt-6 max-w-md text-base leading-7">
-          The page you&apos;re looking for has vanished into the digital void. Don&apos;t worry, we
-          can help you find your way back.
+          An unexpected error occurred. This might be a temporary issue or a problem with the server
+          connection.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Button asChild size="lg" variant="primary" className="rounded-full px-8">
-            <Link href="/">Back to Home</Link>
+          <Button size="lg" variant="primary" className="rounded-full px-8" onClick={() => reset()}>
+            Try again
           </Button>
 
           <Button asChild size="lg" variant="ghost" className="rounded-full px-8">
-            <Link href="/templates">View Templates</Link>
+            <Link href="/">Back to Home</Link>
           </Button>
         </div>
       </Container>
@@ -54,4 +47,4 @@ const NotFound = () => {
   );
 };
 
-export default NotFound;
+export default Error;

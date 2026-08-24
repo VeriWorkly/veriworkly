@@ -1,33 +1,37 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
 import {
   motion,
-  useInView,
-  useMotionValue,
-  useTransform,
-  useMotionValueEvent,
   animate,
+  useInView,
+  useTransform,
+  useMotionValue,
+  useMotionValueEvent,
 } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 const AtsGauge = () => {
   const gaugeRef = useRef<HTMLDivElement>(null);
+
   const isInView = useInView(gaugeRef, { once: true, amount: 0.5 });
 
   const scoreMV = useMotionValue(0);
   const strokeDashOffset = useTransform(scoreMV, [0, 98], [277, 277 - 271]);
 
   const [score, setScore] = useState(0);
+
   useMotionValueEvent(scoreMV, "change", (latest) => setScore(Math.round(latest)));
 
   useEffect(() => {
     if (!isInView) return;
+
     const controls = animate(scoreMV, 98, {
       duration: 1.4,
       delay: 0.2,
       ease: [0.23, 1, 0.32, 1],
     });
+
     return () => controls.stop();
   }, [isInView, scoreMV]);
 
@@ -62,13 +66,16 @@ const AtsGauge = () => {
             }}
           />
         </svg>
+
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-3xl font-bold tracking-tighter text-white">
             <span>{score}</span>
+
             <span className="text-lg text-zinc-400">%</span>
           </span>
         </div>
       </div>
+
       <div className="mt-6 flex items-center gap-2 rounded-full bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-400">
         <CheckCircle2 className="h-4 w-4" />
         ATS Optimized

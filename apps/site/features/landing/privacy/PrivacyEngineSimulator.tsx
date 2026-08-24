@@ -20,6 +20,7 @@ const PrivacyEngineSimulator = () => {
         >
           VeriWorkly Local-First
         </button>
+
         <button
           onClick={() => setActiveEngine("cloud")}
           className={`flex-1 rounded-full py-2.5 text-xs font-bold tracking-tight transition-all duration-200 ease-out active:scale-[0.97] ${
@@ -55,6 +56,7 @@ const PrivacyEngineSimulator = () => {
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-zinc-200 bg-white shadow-xs transition-transform group-hover:scale-105 dark:border-zinc-800 dark:bg-zinc-900">
                 <UserCheck className="h-6 w-6 text-zinc-900 dark:text-white" strokeWidth={1.5} />
               </div>
+
               <span className="font-mono text-[9px] font-bold tracking-widest text-zinc-400 uppercase">
                 Your Device
               </span>
@@ -62,6 +64,7 @@ const PrivacyEngineSimulator = () => {
 
             <div className="relative mx-4 h-2 flex-1">
               <div className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+
               {activeEngine === "local" ? (
                 <motion.div
                   className="absolute top-1/2 left-0 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"
@@ -93,6 +96,7 @@ const PrivacyEngineSimulator = () => {
                   <Database className="h-6 w-6 text-red-500" strokeWidth={1.5} />
                 )}
               </div>
+
               <span className="font-mono text-[9px] font-bold tracking-widest text-zinc-400 uppercase">
                 {activeEngine === "local" ? "LocalStorage Vault" : "Central DB"}
               </span>
@@ -118,20 +122,24 @@ const PrivacyEngineSimulator = () => {
       <div className="mt-6 space-y-3 border-t border-zinc-100 pt-6 font-mono text-xs dark:border-zinc-900">
         <div className="flex justify-between border-b border-zinc-100/60 pb-2 dark:border-zinc-900">
           <span className="text-zinc-400">Security Vault</span>
+
           <span
             className={activeEngine === "local" ? "font-bold text-emerald-500" : "text-zinc-500"}
           >
             {activeEngine === "local" ? "Client sandboxed vault" : "HTTPS / SSL only"}
           </span>
         </div>
+
         <div className="flex justify-between border-b border-zinc-100/60 pb-2 dark:border-zinc-900">
           <span className="text-zinc-400">Database location</span>
+
           <span
             className={activeEngine === "local" ? "font-bold text-emerald-500" : "text-zinc-500"}
           >
             {activeEngine === "local" ? "LocalStorage local-first" : "Postgres server cluster"}
           </span>
         </div>
+
         <div className="flex justify-between">
           <span className="text-zinc-400">Data tracking</span>
           <span

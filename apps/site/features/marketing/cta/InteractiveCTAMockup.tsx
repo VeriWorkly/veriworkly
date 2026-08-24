@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { motion, useTransform, useSpring, type MotionValue } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
+import { motion, useTransform, useSpring, type MotionValue } from "framer-motion";
+
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 const InteractiveCTAMockup = ({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) => {
   const [isHovered, setIsHovered] = useState(false);
+
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const canHover = useMediaQuery("(hover: hover) and (pointer: fine)");
 
   const mockupYRaw = useTransform(scrollYProgress, [0, 1], [30, -30]);
   const springY = useSpring(mockupYRaw, { stiffness: 50, damping: 20 });
+
   const mockupY = useTransform(springY, (v) => (isDesktop ? v : 0));
 
   return (
@@ -29,6 +32,7 @@ const InteractiveCTAMockup = ({ scrollYProgress }: { scrollYProgress: MotionValu
           <span className="font-mono text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
             Interactive Tailoring
           </span>
+
           <span className="font-mono text-[10px] text-zinc-400">Hover to scan</span>
         </div>
 
@@ -40,6 +44,7 @@ const InteractiveCTAMockup = ({ scrollYProgress }: { scrollYProgress: MotionValu
 
           <div className="space-y-2.5 rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4 dark:border-zinc-900 dark:bg-zinc-950/40">
             <div className="h-2.5 w-1/2 rounded bg-zinc-200 dark:bg-zinc-800" />
+
             <p className="min-h-10 text-[12px] leading-relaxed text-zinc-500 dark:text-zinc-400">
               {!isHovered ? (
                 <span>Built responsive templates using standard styling protocols.</span>
@@ -64,10 +69,12 @@ const InteractiveCTAMockup = ({ scrollYProgress }: { scrollYProgress: MotionValu
               <CheckCircle2
                 className={`h-4 w-4 ${isHovered ? "text-emerald-500" : "text-zinc-300"}`}
               />
+
               <span className="font-mono text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
                 ATS Score
               </span>
             </div>
+
             <div className="text-right">
               <span
                 className={`text-xl font-black ${isHovered ? "animate-pulse text-emerald-500" : "text-zinc-400"}`}

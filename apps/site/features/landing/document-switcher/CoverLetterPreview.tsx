@@ -14,6 +14,7 @@ const CoverLetterPreview = () => {
           <SkeletonLine width="w-full" />
           <SkeletonLine width="w-2/3" />
         </div>
+
         <div className="space-y-2">
           <SkeletonLine width="w-full" />
           <SkeletonLine width="w-4/5" />

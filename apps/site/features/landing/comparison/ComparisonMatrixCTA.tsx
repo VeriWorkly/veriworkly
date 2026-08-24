@@ -1,6 +1,6 @@
-import React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+
 import { siteConfig } from "@/config/site";
 
 const ComparisonMatrixCTA = () => {
@@ -13,6 +13,7 @@ const ComparisonMatrixCTA = () => {
         Start Building Free
         <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
       </Link>
+
       <p className="text-xs text-zinc-400 dark:text-zinc-600">
         No credit card. No account. No catch.
       </p>

@@ -4,8 +4,6 @@ import { Suspense } from "react";
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
-import { isAdminUser } from "@/lib/admin";
-import { fetchServerApiData } from "@/lib/server-api";
 import { fetchInrPerUsd } from "@/features/pricing/services/exchange-rate";
 import PricingExperience from "@/features/pricing/PricingExperience";
 
@@ -82,8 +80,8 @@ const pricingSchema = {
  * Split out like this, the shell is prerendered and only this subtree streams in.
  */
 const PricingGate = async ({ inrPerUsd }: { inrPerUsd: number }) => {
-  const user = await fetchServerApiData<{ email: string | null }>("/users/me");
-  const paymentsBlocked = process.env.NODE_ENV === "production" && !isAdminUser(user);
+  // Payments are currently not accepted across all environments during this phase
+  const paymentsBlocked = true;
 
   return <PricingExperience paymentsBlocked={paymentsBlocked} inrPerUsd={inrPerUsd} />;
 };

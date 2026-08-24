@@ -20,9 +20,11 @@ const PrivacyWhyUs = () => {
             <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
               <Shield className="h-6 w-6" strokeWidth={1.5} />
             </div>
+
             <h2 className="mb-6 font-sans text-4xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">
               Privacy as a baseline, not an option
             </h2>
+
             <p className="mb-8 max-w-[50ch] text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
               Typical resume builders harvest your emails, work history, and contact coordinates to
               sell to recruiters or target lists. VeriWorkly reverses this by running the parsing,
@@ -34,6 +36,7 @@ const PrivacyWhyUs = () => {
                 <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   ✓
                 </div>
+
                 <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">
                     Local-First Vault:
@@ -42,10 +45,12 @@ const PrivacyWhyUs = () => {
                   sandboxing.
                 </p>
               </div>
+
               <div className="flex gap-4">
                 <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   ✓
                 </div>
+
                 <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">
                     No Account Friction:
@@ -54,10 +59,12 @@ const PrivacyWhyUs = () => {
                   documents.
                 </p>
               </div>
+
               <div className="flex gap-4">
                 <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   ✓
                 </div>
+
                 <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">Audit-Ready:</span>{" "}
                   Open-core repository structure lets developers read and audit all client-side

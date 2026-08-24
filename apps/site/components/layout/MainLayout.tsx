@@ -9,10 +9,12 @@ interface MainLayoutProps {
   children: React.ReactNode;
 }
 
-export const MainLayout = ({ children }: MainLayoutProps) => {
+const MainLayout = ({ children }: MainLayoutProps) => {
   return (
     <AppShell navbar={<Navbar />} footer={<Footer />}>
       {children}
     </AppShell>
   );
 };
+
+export { MainLayout };

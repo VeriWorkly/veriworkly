@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
+
 import { siteConfig } from "@/config/site";
+
 import InteractiveCTAGlowCard from "@/features/marketing/cta/InteractiveCTAGlowCard";
 
 const InteractiveCTA = () => {

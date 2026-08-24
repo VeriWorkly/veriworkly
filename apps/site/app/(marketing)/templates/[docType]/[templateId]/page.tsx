@@ -17,7 +17,7 @@ import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { buildEditorUrl, buildPreviewUrl } from "@/features/templates/utils";
-import TemplateDetailHeader from "@/features/templates/TemplateHeader";
+import TemplateDetailHeader from "@/features/templates/TemplateDetailHeader";
 
 type PageProps = {
   params: Promise<{ docType: string; templateId: string }>;

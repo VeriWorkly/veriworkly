@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
-import { motion, MotionValue } from "framer-motion";
 import { Globe } from "lucide-react";
+import { motion, MotionValue } from "framer-motion";
+
 import BentoCard from "./BentoCard";
 
 interface BentoPortfolioCardProps {
@@ -27,8 +27,10 @@ const BentoPortfolioCard = ({ yOffset, portfolioTilt, canHover }: BentoPortfolio
           <div className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
           <div className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
         </div>
+
         <div className="flex gap-2">
           <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-900" />
+
           <div className="flex-1 space-y-1 pt-1">
             <div className="h-2 w-full rounded bg-zinc-100 dark:bg-zinc-900" />
             <div className="h-2 w-2/3 rounded bg-zinc-100 dark:bg-zinc-900" />
@@ -40,7 +42,9 @@ const BentoPortfolioCard = ({ yOffset, portfolioTilt, canHover }: BentoPortfolio
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
           <Globe className="h-5 w-5" strokeWidth={1.5} />
         </div>
+
         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Web Portfolios</h3>
+
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Publish instantly to a custom subdomain.
         </p>

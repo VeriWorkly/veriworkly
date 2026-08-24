@@ -10,29 +10,8 @@ import {
   fetchLatestChangelogPublishedAt,
 } from "@/features/changelog/services/changelog-backend";
 
-/**
- * Almost all of this sitemap is compiled from local config and genuinely cannot change
- * until the next deploy — a deploy rebuilds the route, so a long window costs nothing.
- * The exceptions are `/roadmap/[id]` and `/changelog/[id]`: those are real, crawlable URLs
- * created in the backend without a redeploy, so a build-only sitemap would leave new pages
- * undiscoverable. A weekly refresh covers that without pointless churn.
- *
- * For this to actually hold, every backend read below must be cached for at least this long.
- * Next collapses a route's revalidate to the minimum of the segment value and every
- * fetch inside it, so calling a helper cached for 300s would silently pin this route to
- * 5 minutes regardless of what is declared here. All three helpers used below are on this
- * same 7-day schedule.
- */
-export const revalidate = 604800; // 7 days
+export const revalidate = 604800;
 
-/**
- * Captured once when the module is first evaluated, i.e. at build/boot — NOT per
- * request. Using `new Date()` inside the handler stamped every static URL with "now" on
- * each revalidation, telling crawlers all ~35 pages changed minutes ago. Google demotes
- * or ignores `lastmod` once it detects that pattern, which devalues the signal for the
- * pages where it is real. Static content changes on deploy, so deploy time is the
- * honest value.
- */
 const DEPLOYED_AT = new Date();
 
 const publicRoutes = [
@@ -60,8 +39,6 @@ const publicRoutes = [
     priority: 0.9,
   },
 
-  // The tool itself, not just the page describing it. It is a static route with its own
-  // metadata and heading, and it is the URL people actually link to and land on.
   {
     url: `${siteConfig.url}/ats-checker/scan`,
     changeFrequency: "monthly" as const,
@@ -183,8 +160,9 @@ const publicRoutes = [
   },
 
   { url: siteConfig.links.app, changeFrequency: "weekly", priority: 0.8 },
-  { url: siteConfig.links.docs, changeFrequency: "weekly", priority: 0.7 },
-  { url: siteConfig.links.blog, changeFrequency: "weekly", priority: 0.7 },
+  { url: siteConfig.links.docs, changeFrequency: "weekly", priority: 0.8 },
+  { url: siteConfig.links.blog, changeFrequency: "weekly", priority: 0.8 },
+  { url: siteConfig.links.portfolio, changeFrequency: "weekly", priority: 0.9 },
 ] satisfies MetadataRoute.Sitemap;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -220,17 +198,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${siteConfig.url}/roadmap/${entry.id}`,
       changeFrequency: "weekly" as const,
       priority: 0.65,
-      // An unparseable timestamp would render as `Invalid Date` in the XML.
       lastModified: Number.isNaN(updatedAt.getTime()) ? lastModified : updatedAt,
     };
   });
 
-  /**
-   * Each release now has its own `/changelog/[id]` page, so these are real crawlable URLs
-   * rather than the `#id` fragments they used to be — fragments are not distinct URLs and
-   * were discarded by crawlers. `lastModified` is the publish date: a shipped release is
-   * immutable, so it never legitimately changes after the fact.
-   */
   const changelogItemRoutes = changelogEntries.map((entry) => {
     const publishedAt = new Date(entry.publishedAt);
 

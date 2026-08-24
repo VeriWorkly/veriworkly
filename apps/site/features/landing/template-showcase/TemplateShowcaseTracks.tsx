@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { Check } from "lucide-react";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface TemplateCardProps {
@@ -28,8 +29,10 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
           <span className="font-mono text-[10px] tracking-widest text-zinc-400 uppercase">
             {tag}
           </span>
+
           <h4 className="text-sm font-bold text-zinc-900 dark:text-white">{name}</h4>
         </div>
+
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
           <Check className="h-3 w-3" strokeWidth={3} />
         </div>
@@ -40,17 +43,20 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
           <div className="flex h-full gap-3">
             <div className="w-1/3 border-r border-zinc-200/50 pr-2 dark:border-zinc-800/50">
               <div className="h-4 w-full rounded bg-zinc-300 dark:bg-zinc-700" />
+
               <div className="mt-4 space-y-1.5">
                 <div className="h-1.5 w-full rounded bg-zinc-200 dark:bg-zinc-800" />
                 <div className="h-1.5 w-5/6 rounded bg-zinc-200 dark:bg-zinc-800" />
                 <div className="h-1.5 w-2/3 rounded bg-zinc-200 dark:bg-zinc-800" />
               </div>
             </div>
+
             <div className="flex-1 space-y-3">
               <div className="space-y-1">
                 <div className="h-2 w-1/2 rounded bg-zinc-300 dark:bg-zinc-700" />
                 <div className="h-1.5 w-1/3 rounded bg-zinc-200 dark:bg-zinc-800" />
               </div>
+
               <div className="space-y-1.5">
                 <div className="h-1.5 w-full rounded bg-zinc-200 dark:bg-zinc-800" />
                 <div className="h-1.5 w-full rounded bg-zinc-200 dark:bg-zinc-800" />
@@ -66,12 +72,14 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
               <div className="h-3 w-1/3 rounded bg-zinc-300 dark:bg-zinc-700" />
               <div className="h-1.5 w-1/2 rounded bg-zinc-200 dark:bg-zinc-800" />
             </div>
+
             <div className="flex gap-4">
               <div className="flex-1 space-y-1.5">
                 <div className="h-2 w-3/4 rounded bg-zinc-200 dark:bg-zinc-800" />
                 <div className="h-1.5 w-full rounded bg-zinc-100 dark:bg-zinc-900" />
                 <div className="h-1.5 w-5/6 rounded bg-zinc-100 dark:bg-zinc-900" />
               </div>
+
               <div className="flex-1 space-y-1.5">
                 <div className="h-2 w-3/4 rounded bg-zinc-200 dark:bg-zinc-800" />
                 <div className="h-1.5 w-full rounded bg-zinc-100 dark:bg-zinc-900" />
@@ -87,15 +95,18 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
               <div className="h-3 w-1/4 rounded bg-zinc-300 dark:bg-zinc-700" />
               <div className="h-1.5 w-1/3 rounded bg-zinc-200 dark:bg-zinc-800" />
             </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-700" />
                 <div className="h-1.5 w-3/4 rounded bg-zinc-200 dark:bg-zinc-800" />
               </div>
+
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-700" />
                 <div className="h-1.5 w-5/6 rounded bg-zinc-200 dark:bg-zinc-800" />
               </div>
+
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-700" />
                 <div className="h-1.5 w-2/3 rounded bg-zinc-200 dark:bg-zinc-800" />
@@ -111,12 +122,14 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
                 <div className="h-5 w-5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
                 <div className="h-2 w-1/2 rounded bg-zinc-300 dark:bg-zinc-700" />
               </div>
+
               <div className="space-y-1.5">
                 <div className="h-1.5 w-full rounded bg-zinc-200 dark:bg-zinc-800" />
                 <div className="h-1.5 w-5/6 rounded bg-zinc-200 dark:bg-zinc-800" />
                 <div className="h-1.5 w-2/3 rounded bg-zinc-200 dark:bg-zinc-800" />
               </div>
             </div>
+
             <div className="w-2 rounded-full" style={{ backgroundColor: themeColor }} />
           </div>
         )}
@@ -126,6 +139,7 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
         <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
           ATS Match Rate
         </span>
+
         <span className="text-sm font-black text-zinc-900 dark:text-white">99%</span>
       </div>
     </motion.div>
@@ -134,6 +148,7 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
 
 const TemplateShowcaseTracks = () => {
   const containerRef = useRef<HTMLDivElement>(null);
+
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const canHover = useMediaQuery("(hover: hover) and (pointer: fine)");
 
@@ -165,6 +180,7 @@ const TemplateShowcaseTracks = () => {
           layout="modern"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Executive"
           tag="Editorial Accent"
@@ -172,6 +188,7 @@ const TemplateShowcaseTracks = () => {
           layout="executive"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Minimalist"
           tag="Austere Clean"
@@ -179,6 +196,7 @@ const TemplateShowcaseTracks = () => {
           layout="minimalist"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Creative"
           tag="Bold Spotlight"
@@ -186,6 +204,7 @@ const TemplateShowcaseTracks = () => {
           layout="creative"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Modernist"
           tag="ATS Standard"
@@ -193,6 +212,7 @@ const TemplateShowcaseTracks = () => {
           layout="modern"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Executive"
           tag="Editorial Accent"
@@ -210,6 +230,7 @@ const TemplateShowcaseTracks = () => {
           layout="creative"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Minimalist"
           tag="Austere Clean"
@@ -217,6 +238,7 @@ const TemplateShowcaseTracks = () => {
           layout="minimalist"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Executive"
           tag="Editorial Accent"
@@ -224,6 +246,7 @@ const TemplateShowcaseTracks = () => {
           layout="executive"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Modernist"
           tag="ATS Standard"
@@ -231,6 +254,7 @@ const TemplateShowcaseTracks = () => {
           layout="modern"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Creative"
           tag="Bold Spotlight"
@@ -238,6 +262,7 @@ const TemplateShowcaseTracks = () => {
           layout="creative"
           canHover={canHover}
         />
+
         <TemplateCard
           name="The Minimalist"
           tag="Austere Clean"

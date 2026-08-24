@@ -1,4 +1,3 @@
-import React from "react";
 import { logos } from "./BrandTrustLogos";
 
 const BrandTrustMarquee = () => {
@@ -31,6 +30,7 @@ const BrandTrustMarquee = () => {
           }
         }
       `}</style>
+
       <div className="animate-marquee-flow flex gap-x-16 pr-16">
         {duplicatedLogos.map((logo, index) => (
           <div
@@ -39,6 +39,7 @@ const BrandTrustMarquee = () => {
             title={logo.name}
           >
             {logo.svg}
+
             <span className="font-mono text-[11px] tracking-widest whitespace-nowrap uppercase">
               {logo.name}
             </span>

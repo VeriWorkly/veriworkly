@@ -1,4 +1,3 @@
-import React from "react";
 import { Check, X } from "lucide-react";
 
 export interface ComparisonRow {
@@ -47,6 +46,7 @@ const ComparisonTable = () => {
         <caption className="sr-only">
           Feature comparison between VeriWorkly and traditional subscription resume builders
         </caption>
+
         <thead>
           <tr>
             <th scope="col" className="w-2/5 pb-5 text-left align-bottom">
@@ -54,12 +54,14 @@ const ComparisonTable = () => {
                 Feature
               </span>
             </th>
+
             <th scope="col" className="w-[30%] px-6 pb-5 text-left align-bottom">
               <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
                 Traditional builders
               </span>
               <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">Zety, Resume.io</p>
             </th>
+
             <th
               scope="col"
               className="w-[30%] rounded-t-2xl border border-b-0 border-blue-500/15 bg-blue-500/4 px-6 pt-5 pb-5 text-left align-bottom dark:bg-blue-500/6"
@@ -71,9 +73,11 @@ const ComparisonTable = () => {
             </th>
           </tr>
         </thead>
+
         <tbody>
           {rows.map((row, index) => {
             const isLast = index === rows.length - 1;
+
             return (
               <tr key={row.feature}>
                 <th
@@ -82,6 +86,7 @@ const ComparisonTable = () => {
                 >
                   {row.feature}
                 </th>
+
                 <td className="border-t border-zinc-100 px-6 py-5 dark:border-zinc-900">
                   <div className="flex items-start gap-2.5">
                     {row.competitor === "-" ? (
@@ -98,6 +103,7 @@ const ComparisonTable = () => {
                     </span>
                   </div>
                 </td>
+
                 <td
                   className={`border-x border-t border-blue-500/15 bg-blue-500/4 px-6 py-5 dark:bg-blue-500/6 ${
                     isLast ? "rounded-b-2xl border-b" : ""

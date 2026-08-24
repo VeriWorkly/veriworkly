@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
 import { Database, Zap, FileText, Check } from "lucide-react";
+import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+
 import Step1Visual from "./Step1Visual";
 import Step2Visual from "./Step2Visual";
 import Step3Visual from "./Step3Visual";
@@ -11,6 +12,7 @@ const STEP_ACCENTS = ["#3b82f6", "#06b6d4", "#10b981"];
 
 const InteractiveProcess = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
+
   const [currentStep, setCurrentStep] = useState(0);
 
   const { scrollYProgress } = useScroll({
@@ -68,9 +70,11 @@ const InteractiveProcess = () => {
             <div className="mb-10 flex w-fit items-center gap-2 rounded-full border border-blue-500/10 bg-blue-500/5 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
               <Zap className="h-3.5 w-3.5" /> Workflow
             </div>
+
             <h2 className="mb-6 font-sans text-3xl font-semibold tracking-tighter text-zinc-900 dark:text-white">
               The modern way to target roles
             </h2>
+
             <p className="mb-12 max-w-[50ch] text-base text-zinc-500 dark:text-zinc-400">
               Skip the tedious manual edits. Keep your master record secure, and let the tool
               generate bespoke packages for each job.
@@ -86,13 +90,16 @@ const InteractiveProcess = () => {
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                       {step.id}
                     </div>
+
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
                       {step.title}
                     </h3>
                   </div>
+
                   <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                     {step.description}
                   </p>
+
                   <div className="mt-2 border-t border-zinc-100 pt-6 dark:border-zinc-900">
                     {step.visual}
                   </div>
@@ -106,9 +113,11 @@ const InteractiveProcess = () => {
               <div className="mb-5 flex w-fit items-center gap-2 rounded-full border border-blue-500/10 bg-blue-500/5 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
                 <Zap className="h-3.5 w-3.5" /> Workflow
               </div>
+
               <h2 className="mb-4 font-sans text-4xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-5xl dark:text-white">
                 The modern way to target roles
               </h2>
+
               <p className="mb-8 max-w-[50ch] text-lg text-zinc-500 dark:text-zinc-400">
                 Skip the tedious manual edits. Keep your master record secure, and let the tool
                 generate bespoke packages for each job.
@@ -124,6 +133,7 @@ const InteractiveProcess = () => {
 
                 {steps.map((step, index) => {
                   const isActive = currentStep === index;
+
                   return (
                     <motion.div
                       key={step.id}
@@ -148,6 +158,7 @@ const InteractiveProcess = () => {
                           <span className="font-mono text-xs font-bold">{step.id}</span>
                         )}
                       </div>
+
                       <div className="min-w-0 flex-1">
                         <h3
                           className={`text-base font-bold transition-colors duration-500 ${
@@ -158,6 +169,7 @@ const InteractiveProcess = () => {
                         >
                           {step.title}
                         </h3>
+
                         <AnimatePresence initial={false}>
                           {isActive && (
                             <motion.div
@@ -193,6 +205,7 @@ const InteractiveProcess = () => {
                     opacity: 0.16,
                   }}
                 />
+
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(currentColor_1px,transparent_1px)] bg-size-[18px_18px] opacity-[0.04]" />
 
                 <div className="relative z-10 flex items-center gap-1.5 px-6 pt-5">

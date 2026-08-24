@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 import { FileText } from "lucide-react";
 
@@ -12,23 +11,27 @@ const Step3Visual = () => {
           <div className="relative mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
             <FileText className="h-5 w-5" strokeWidth={1.5} />
           </div>
+
           <span className="font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200">
             ATS PDF
           </span>
+
           <span className="text-[10px] text-zinc-400 dark:text-zinc-500">Download Ready</span>
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <motion.div
-            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.05 }}
             className="mb-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-zinc-950 text-xs font-bold text-white shadow-md transition-transform dark:bg-white dark:text-zinc-950"
           >
             W
           </motion.div>
+
           <span className="font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200">
             Live Portfolio
           </span>
+
           <span className="cursor-pointer text-[10px] font-semibold text-blue-500 hover:underline">
             gautam.veriworkly.me
           </span>

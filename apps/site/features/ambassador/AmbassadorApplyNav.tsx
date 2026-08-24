@@ -1,20 +1,17 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Sun, Moon } from "lucide-react";
+import Image from "next/image";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { ArrowLeft, Sun, Moon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const AmbassadorApplyNav = () => {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+import { useMounted } from "@/hooks/use-mounted";
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
+const AmbassadorApplyNav = () => {
+  const mounted = useMounted();
+
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <header className="sticky top-6 z-50 mx-auto w-full max-w-2xl px-6">
@@ -22,13 +19,14 @@ const AmbassadorApplyNav = () => {
         <Link href="/ambassador" className="group flex items-center gap-3 active:scale-[0.98]">
           <div className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 shadow-inner dark:bg-white/5">
             <Image
-              src="/veriworkly-logo.png"
-              alt="VeriWorkly Logo"
               width={20}
               height={20}
+              alt="VeriWorkly Logo"
+              src="/veriworkly-logo.png"
               className="object-contain transition-transform duration-500 group-hover:rotate-12"
             />
           </div>
+
           <span className="font-mono text-sm font-semibold tracking-tight text-zinc-900 dark:text-white">
             VeriWorkly
           </span>
@@ -40,6 +38,7 @@ const AmbassadorApplyNav = () => {
             className="group inline-flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-zinc-600 uppercase transition-colors duration-300 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           >
             <ArrowLeft className="h-3 w-3 transition-transform duration-300 group-hover:-translate-x-0.5" />
+
             <span className="hidden sm:inline">Back</span>
           </Link>
 
@@ -54,20 +53,20 @@ const AmbassadorApplyNav = () => {
                 {resolvedTheme === "dark" ? (
                   <motion.div
                     key="sun"
-                    initial={{ scale: 0, rotate: -90 }}
-                    animate={{ scale: 1, rotate: 0 }}
                     exit={{ scale: 0, rotate: 90 }}
                     transition={{ duration: 0.15 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    initial={{ scale: 0, rotate: -90 }}
                   >
                     <Sun className="h-3.5 w-3.5" />
                   </motion.div>
                 ) : (
                   <motion.div
                     key="moon"
-                    initial={{ scale: 0, rotate: 90 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    exit={{ scale: 0, rotate: -90 }}
                     transition={{ duration: 0.15 }}
+                    exit={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    initial={{ scale: 0, rotate: 90 }}
                   >
                     <Moon className="h-3.5 w-3.5" />
                   </motion.div>

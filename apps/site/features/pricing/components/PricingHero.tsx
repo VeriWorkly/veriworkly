@@ -77,8 +77,8 @@ const PricingHero = ({
 
         {paymentsBlocked ? (
           <div className="mt-8 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm font-bold text-amber-800 dark:text-amber-300">
-            Payments are disabled in production during this phase. Only system administrators can
-            perform checkouts.
+            Payments are currently not accepted during this phase. All core document building
+            features are free to use.
           </div>
         ) : null}
 
