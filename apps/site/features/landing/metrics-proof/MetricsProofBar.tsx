@@ -37,8 +37,8 @@ const stats: Stat[] = [
     value: 0,
     decimals: 0,
     suffix: "",
-    label: "Ads or data harvesting",
-    detail: "Nothing to sell, so nothing is tracked",
+    label: "Tracking or telemetry",
+    detail: "100% open-source and privacy-respecting",
   },
   {
     icon: KeyRound,
@@ -100,7 +100,7 @@ const MetricsProofBar = () => {
       <div className="pointer-events-none absolute top-1/2 left-1/2 h-125 w-125 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/10 blur-[140px]" />
 
       <div className="relative z-10 mx-auto max-w-350 px-6 md:px-8">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 md:gap-x-8 md:divide-x md:divide-zinc-800/60">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:gap-x-8 md:divide-x md:divide-zinc-800/60 lg:grid-cols-4">
           {stats.map((stat, index) => (
             <motion.div
               key={stat.label}

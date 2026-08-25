@@ -17,7 +17,7 @@ export const faqs: FAQItem[] = [
     id: "landing-data-privacy",
     question: "Is my personal data private and stored locally?",
     answer:
-      "Yes. VeriWorkly is built with a local-first architecture. All your resume data, career experience, and draft documents stay in your browser local storage by default. Your private data is never sold, tracked, or harvested for advertising.",
+      "Yes. VeriWorkly is built with a local-first architecture. All your resume data, career experience, and draft documents stay in your browser local storage by default. Your private data is never tracked, staying completely under your control.",
     category: "Privacy & Security",
   },
   {
@@ -38,7 +38,7 @@ export const faqs: FAQItem[] = [
     id: "landing-ai-tailoring",
     question: "How does AI resume tailoring work without hallucinating details?",
     answer:
-      "VeriWorkly's frontier AI models (from Anthropic and OpenAI) rewrite and optimize your existing bullet points against job descriptions using your verified Master Profile facts. The AI assists your phrasing without inventing fake roles or unearned metrics.",
+      "VeriWorkly's frontier AI models (from Anthropic, Gemini and OpenAI) rewrite and optimize your existing bullet points against job descriptions using your verified Master Profile facts. The AI assists your phrasing without inventing fake roles or unearned metrics.",
     category: "AI Tools",
   },
   {

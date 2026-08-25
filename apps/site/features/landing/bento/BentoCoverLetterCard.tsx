@@ -17,45 +17,43 @@ const BentoCoverLetterCard = ({ yOffset, textX, canHover }: BentoCoverLetterCard
       yOffset={yOffset}
       canHover={canHover}
       glowColor="rgba(6,182,212,0.1)"
-      className="col-span-1 flex flex-col justify-end border-zinc-200/60 bg-zinc-50/50 sm:col-span-2 sm:row-span-1 dark:border-zinc-800/80 dark:bg-[#0c0c0c]/40"
+      className="col-span-1 flex flex-col justify-between border-zinc-200/60 bg-zinc-50/50 sm:col-span-2 sm:row-span-1 dark:border-zinc-800/80 dark:bg-[#0c0c0c]/40"
     >
-      <div className="absolute top-8 right-8 hidden w-64 rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs sm:block dark:border-zinc-800 dark:bg-[#0c0c0c]/90">
-        <div className="mb-2 flex gap-2">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+      <div className="flex items-start justify-between">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 sm:h-12 sm:w-12 sm:rounded-full dark:bg-blue-500/15 dark:text-blue-400">
+          <FileText className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.5} />
+        </div>
 
-          <div className="font-mono text-[9px] font-semibold tracking-widest text-blue-600 uppercase dark:text-blue-400">
-            AI Tailoring
+        <div className="w-52 rounded-2xl border border-zinc-200/90 bg-white p-3.5 shadow-2xs sm:w-64 sm:p-4 dark:border-zinc-800 dark:bg-[#0c0c0c]/90">
+          <div className="mb-1.5 flex items-center gap-1.5 sm:mb-2">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
+
+            <span className="font-mono text-[9px] font-bold tracking-wider text-blue-600 uppercase dark:text-blue-400">
+              AI Tailoring
+            </span>
+          </div>
+
+          <div className="space-y-1 text-[11px] leading-relaxed text-zinc-600 sm:text-xs dark:text-zinc-400">
+            Applying for{" "}
+            <motion.span
+              style={{ x: textX }}
+              className="inline-block rounded bg-blue-100/90 px-1 font-medium text-blue-900 dark:bg-blue-950/60 dark:text-blue-300"
+            >
+              Senior React Developer
+            </motion.span>{" "}
+            — experience matches requirements.
           </div>
         </div>
-
-        <div className="space-y-1.5 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          I am thrilled to apply for the{" "}
-          <motion.span
-            style={{ x: textX }}
-            className="inline-block rounded bg-blue-100/80 px-1 text-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
-          >
-            Senior React Developer
-          </motion.span>{" "}
-          position. My background in{" "}
-          <span className="rounded bg-blue-100/80 px-1 text-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
-            frontend architecture
-          </span>{" "}
-          aligns with your goals.
-        </div>
       </div>
 
-      <div className="absolute right-8 bottom-8 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-xs transition-transform duration-700 group-hover:scale-110 sm:hidden dark:bg-zinc-950">
-        <FileText className="h-5 w-5 text-zinc-900 dark:text-white" strokeWidth={1.5} />
-      </div>
-
-      <div className="relative z-10 w-full sm:w-1/2">
-        <h3 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+      <div className="relative z-10 mt-6 w-full sm:mt-auto sm:w-3/5">
+        <h3 className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl dark:text-white">
           Contextual Cover Letters
         </h3>
 
-        <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-          Generate perfectly toned cover letters that map your experience directly to the role
-          requirements.
+        <p className="mt-2 text-xs leading-relaxed text-zinc-500 sm:text-sm dark:text-zinc-400">
+          Generate tailored cover letters mapped directly to target job requirements with custom
+          tone controls.
         </p>
       </div>
     </BentoCard>

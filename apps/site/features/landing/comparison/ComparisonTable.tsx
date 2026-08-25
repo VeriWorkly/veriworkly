@@ -13,61 +13,68 @@ const rows: ComparisonRow[] = [
     competitor: "~$2.95 trial, then $23.95+/mo",
   },
   {
-    feature: "Where your data lives",
-    veriworkly: "100% local, inside your browser",
-    competitor: "Uploaded to their servers",
-  },
-  {
     feature: "PDF export",
     veriworkly: "Unlocked instantly, every time",
-    competitor: "Locked behind a paywall",
+    competitor: "Locked behind recurring paywalls",
   },
   {
-    feature: "Billing",
-    veriworkly: "No card, no auto-renewal",
-    competitor: "Trial silently auto-renews",
+    feature: "Where your data lives",
+    veriworkly: "100% local, inside your browser",
+    competitor: "Stored on central cloud servers",
   },
   {
     feature: "Account required",
     veriworkly: "None, start building instantly",
-    competitor: "Email and payment details required",
+    competitor: "Email and card details required",
   },
   {
-    feature: "Data usage",
-    veriworkly: "Never sold, never shared",
-    competitor: "-",
+    feature: "Billing & commitments",
+    veriworkly: "No credit card, no auto-renewal",
+    competitor: "Subscriptions auto-renew monthly",
+  },
+  {
+    feature: "Source transparency",
+    veriworkly: "Open-source & auditable",
+    competitor: "Proprietary & closed-source",
   },
 ];
 
 const ComparisonTable = () => {
   return (
-    <div className="mt-16 overflow-x-auto">
-      <table className="w-full min-w-160 border-separate border-spacing-0">
+    <div className="mt-10 overflow-x-auto pb-2 sm:mt-16">
+      <table className="w-full min-w-140 border-separate border-spacing-0 sm:min-w-160">
         <caption className="sr-only">
           Feature comparison between VeriWorkly and traditional subscription resume builders
         </caption>
 
         <thead>
           <tr>
-            <th scope="col" className="w-2/5 pb-5 text-left align-bottom">
-              <span className="text-xs font-semibold tracking-tight text-zinc-400 uppercase">
+            <th scope="col" className="w-[36%] pb-4 text-left align-bottom sm:w-2/5 sm:pb-5">
+              <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase sm:text-xs">
                 Feature
               </span>
             </th>
 
-            <th scope="col" className="w-[30%] px-6 pb-5 text-left align-bottom">
-              <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            <th
+              scope="col"
+              className="w-[32%] px-4 pb-4 text-left align-bottom sm:w-[30%] sm:px-6 sm:pb-5"
+            >
+              <span className="text-xs font-semibold text-zinc-500 sm:text-sm dark:text-zinc-400">
                 Traditional builders
               </span>
-              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">Zety, Resume.io</p>
+              <p className="mt-0.5 text-[11px] text-zinc-400 sm:text-xs dark:text-zinc-500">
+                Zety, Resume.io
+              </p>
             </th>
 
             <th
               scope="col"
-              className="w-[30%] rounded-t-2xl border border-b-0 border-blue-500/15 bg-blue-500/4 px-6 pt-5 pb-5 text-left align-bottom dark:bg-blue-500/6"
+              className="w-[32%] rounded-t-2xl border border-b-0 border-blue-500/20 bg-blue-500/4 px-4 pt-4 pb-4 text-left align-bottom sm:w-[30%] sm:px-6 sm:pt-5 sm:pb-5 dark:bg-blue-500/6"
             >
-              <span className="text-sm font-bold text-zinc-900 dark:text-white">VeriWorkly</span>
-              <p className="mt-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
+              <span className="text-xs font-bold text-zinc-900 sm:text-sm dark:text-white">
+                VeriWorkly
+              </span>
+              <p className="mt-0.5 text-[11px] font-semibold text-blue-600 sm:text-xs dark:text-blue-400">
                 Recommended
               </p>
             </th>
@@ -82,38 +89,38 @@ const ComparisonTable = () => {
               <tr key={row.feature}>
                 <th
                   scope="row"
-                  className="border-t border-zinc-100 py-5 pr-4 text-left text-sm font-semibold text-zinc-800 dark:border-zinc-900 dark:text-zinc-200"
+                  className="border-t border-zinc-100 py-3.5 pr-3 text-left text-xs font-semibold text-zinc-800 sm:py-5 sm:pr-4 sm:text-sm dark:border-zinc-900 dark:text-zinc-200"
                 >
                   {row.feature}
                 </th>
 
-                <td className="border-t border-zinc-100 px-6 py-5 dark:border-zinc-900">
-                  <div className="flex items-start gap-2.5">
+                <td className="border-t border-zinc-100 px-4 py-3.5 sm:px-6 sm:py-5 dark:border-zinc-900">
+                  <div className="flex items-start gap-2 sm:gap-2.5">
                     {row.competitor === "-" ? (
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 font-mono text-xs font-bold text-zinc-400 dark:bg-zinc-900 dark:text-zinc-500">
+                      <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-zinc-100 font-mono text-[10px] font-bold text-zinc-400 sm:h-5 sm:w-5 sm:text-xs dark:bg-zinc-900 dark:text-zinc-500">
                         –
                       </span>
                     ) : (
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600">
-                        <X className="h-3 w-3" strokeWidth={3} />
+                      <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 sm:h-5 sm:w-5 dark:bg-zinc-900 dark:text-zinc-600">
+                        <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" strokeWidth={3} />
                       </span>
                     )}
-                    <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                    <span className="text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
                       {row.competitor === "-" ? "Varies by vendor" : row.competitor}
                     </span>
                   </div>
                 </td>
 
                 <td
-                  className={`border-x border-t border-blue-500/15 bg-blue-500/4 px-6 py-5 dark:bg-blue-500/6 ${
+                  className={`border-x border-t border-blue-500/20 bg-blue-500/4 px-4 py-3.5 sm:px-6 sm:py-5 dark:bg-blue-500/6 ${
                     isLast ? "rounded-b-2xl border-b" : ""
                   }`}
                 >
-                  <div className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                      <Check className="h-3 w-3" strokeWidth={3} />
+                  <div className="flex items-start gap-2 sm:gap-2.5">
+                    <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 sm:h-5 sm:w-5 dark:text-emerald-400">
+                      <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" strokeWidth={3} />
                     </span>
-                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                    <span className="text-xs font-semibold text-zinc-900 sm:text-sm sm:font-medium dark:text-zinc-100">
                       {row.veriworkly}
                     </span>
                   </div>

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+
 import { siteConfig } from "@/config/site";
+
 import { buildPageMetadata } from "@/utils/metadata";
+
 import AboutHero from "@/features/about/AboutHero";
 import AboutPrinciples from "@/features/about/AboutPrinciples";
 import AboutProductScope from "@/features/about/AboutProductScope";
-import AboutStudentProgram from "@/features/about/AboutStudentProgram";
 import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
+import AboutStudentProgram from "@/features/about/AboutStudentProgram";
 
 export const revalidate = false;
 export const dynamic = "force-static";
@@ -32,11 +35,6 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
-/**
- * No page-level Organization schema here — the root layout already declares the sitewide
- * Organization node (name, url, logo, founder, knowsAbout, sameAs). A second Organization
- * node describing the same entity on this page would be duplicate structured data.
- */
 const AboutPage = () => {
   return (
     <>

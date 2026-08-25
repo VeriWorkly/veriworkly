@@ -47,7 +47,7 @@ export const HeroHeader = () => {
             </span>
           </h1>
 
-          <p className="pointer-events-auto mt-8 max-w-2xl text-lg leading-relaxed font-medium text-balance text-gray-500 dark:text-gray-400">
+          <p className="pointer-events-auto mt-8 max-w-2xl text-base leading-relaxed font-medium text-balance text-gray-500 lg:text-lg dark:text-gray-400">
             Build ATS-proof resumes, targeted cover letters, and live web portfolios in minutes.
             Free forever, privacy-first, and zero login required.
           </p>

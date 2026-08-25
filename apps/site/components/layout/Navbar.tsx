@@ -55,7 +55,7 @@ const Navbar = () => {
             aria-controls={MOBILE_MENU_ID}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            className="pointer-events-auto rounded-full border border-black/5 bg-white/70 p-2.5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] backdrop-blur-md md:hidden dark:border-white/5 dark:bg-[#111]/70"
+            className="pointer-events-auto rounded-full border border-black/5 bg-white/70 p-2.5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] backdrop-blur-md lg:hidden dark:border-white/5 dark:bg-[#111]/70"
           >
             {mobileMenuOpen ? (
               <X className="h-5 w-5" aria-hidden="true" />

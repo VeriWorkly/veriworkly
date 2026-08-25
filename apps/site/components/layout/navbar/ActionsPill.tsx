@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { motion } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
@@ -12,19 +13,26 @@ interface ActionsPillProps {
 
 export const ActionsPill = ({ mounted, isDark, onToggleTheme }: ActionsPillProps) => {
   return (
-    <div className="pointer-events-auto hidden items-center gap-1 rounded-full border border-black/5 bg-white/70 p-1.5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] backdrop-blur-md md:flex dark:border-white/5 dark:bg-[#111]/70">
+    <div className="pointer-events-auto hidden items-center gap-1 rounded-full border border-black/5 bg-white/75 p-1.5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.08)] backdrop-blur-xl lg:flex dark:border-white/10 dark:bg-[#111]/80 dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)]">
       <button
         type="button"
         onClick={onToggleTheme}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
+        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-black/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
         aria-label={mounted ? `Switch to ${isDark ? "light" : "dark"} theme` : "Toggle theme"}
       >
         {mounted ? (
-          isDark ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )
+          <motion.div
+            key={isDark ? "dark" : "light"}
+            initial={{ rotate: -45, scale: 0.8, opacity: 0 }}
+            animate={{ rotate: 0, scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            {isDark ? (
+              <Sun className="h-4 w-4 text-amber-500" />
+            ) : (
+              <Moon className="h-4 w-4 text-indigo-500" />
+            )}
+          </motion.div>
         ) : (
           <div className="h-4 w-4" />
         )}
@@ -34,7 +42,7 @@ export const ActionsPill = ({ mounted, isDark, onToggleTheme }: ActionsPillProps
         target="_blank"
         rel="noreferrer"
         href={siteConfig.links.github}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-black/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
         aria-label="GitHub Repository"
       >
         <Image
@@ -42,16 +50,16 @@ export const ActionsPill = ({ mounted, isDark, onToggleTheme }: ActionsPillProps
           height={16}
           alt="GitHub"
           src="/icons/socials/github.svg"
-          className="h-4 w-4 opacity-80 transition-opacity hover:opacity-100 dark:invert"
+          className="h-4 w-4 opacity-75 transition-opacity hover:opacity-100 dark:invert"
         />
       </Link>
 
-      <Link
+      <a
         href={`${siteConfig.links.app}/login`}
-        className="ml-1 rounded-full bg-gray-900 px-5 py-1.5 text-sm font-medium text-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.02] active:scale-[0.97] dark:bg-white dark:text-gray-900"
+        className="ml-1 hidden rounded-full bg-zinc-950 px-4.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all duration-200 ease-out hover:bg-blue-600 hover:shadow-sm active:scale-[0.97] xl:block dark:bg-white dark:text-zinc-950 dark:hover:bg-blue-500 dark:hover:text-white"
       >
         Get Started
-      </Link>
+      </a>
     </div>
   );
 };

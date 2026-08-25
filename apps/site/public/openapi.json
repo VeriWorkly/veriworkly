@@ -1992,7 +1992,7 @@
             "application/json": {
               "schema": { "$ref": "#/components/schemas/ImportLinkedinRequest" },
               "example": {
-                "profileText": "Jane Doe\nSoftware Engineer at Acme Corp\n...",
+                "profileText": "Jane Doe\nSoftware Engineer at VeriWorkly\n...",
                 "replaceMaster": false
               }
             }

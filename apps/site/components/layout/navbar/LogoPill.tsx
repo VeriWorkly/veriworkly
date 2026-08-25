@@ -8,17 +8,17 @@ export const LogoPill = () => {
     <Link
       href="/"
       aria-label={`${siteConfig.shortName} home`}
-      className="group pointer-events-auto relative flex items-center gap-2 rounded-full border border-black/5 bg-white/70 px-5 py-2.5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] backdrop-blur-md transition-transform hover:scale-[1.02] dark:border-white/5 dark:bg-[#111]/70"
+      className="group pointer-events-auto relative flex items-center gap-2.5 rounded-full border border-black/5 bg-white/75 px-4.5 py-2 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] dark:border-white/10 dark:bg-[#111]/80 dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)]"
     >
       <Image
         priority
-        width={24}
-        height={24}
+        width={22}
+        height={22}
         alt="VeriWorkly"
-        className="h-6 w-auto"
+        className="h-5.5 w-auto transition-transform duration-200 group-hover:rotate-6"
         src="/veriworkly-logo.png"
       />
-      <span className="hidden font-mono font-bold tracking-tight text-gray-900 sm:block dark:text-white">
+      <span className="hidden font-mono text-sm font-bold tracking-tight text-zinc-900 sm:block dark:text-white">
         {siteConfig.shortName || "VeriWorkly"}
       </span>
     </Link>

@@ -50,7 +50,7 @@ const comparisonRows = [
   {
     feature: "Sign-up gating",
     veriworkly: "No registration required",
-    competitor: "Mandatory, to harvest databases",
+    competitor: "Mandatory account required",
   },
   {
     feature: "Data storage location",

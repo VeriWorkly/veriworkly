@@ -1,22 +1,45 @@
 "use client";
-
 import { useState, type ReactNode } from "react";
 import { FileText, Globe, Mail } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export type DocumentPreviewTabId = "resume" | "cover-letter" | "portfolio";
 
-const tabs: { id: DocumentPreviewTabId; label: string; icon: typeof FileText; urlLabel: string }[] =
-  [
-    { id: "resume", label: "ATS Resume PDF", icon: FileText, urlLabel: "resume-gautam-raj.pdf" },
-    {
-      id: "cover-letter",
-      label: "Cover Letter",
-      icon: Mail,
-      urlLabel: "cover-letter-acme-corp.pdf",
-    },
-    { id: "portfolio", label: "Live Web Portfolio", icon: Globe, urlLabel: "gautam.veriworkly.me" },
-  ];
+interface DocumentTab {
+  id: DocumentPreviewTabId;
+  label: string;
+  shortLabel: string;
+  icon: typeof FileText;
+  urlLabel: string;
+  color: string;
+}
+
+const tabs: DocumentTab[] = [
+  {
+    id: "resume",
+    label: "ATS Resume PDF",
+    shortLabel: "Resume",
+    icon: FileText,
+    urlLabel: "resume-gautam-raj.pdf",
+    color: "text-blue-500 dark:text-blue-400",
+  },
+  {
+    id: "cover-letter",
+    label: "Cover Letter",
+    shortLabel: "Cover Letter",
+    icon: Mail,
+    urlLabel: "cover-letter-acme-corp.pdf",
+    color: "text-indigo-500 dark:text-indigo-400",
+  },
+  {
+    id: "portfolio",
+    label: "Live Web Portfolio",
+    shortLabel: "Portfolio",
+    icon: Globe,
+    urlLabel: "gautam.veriworkly.me",
+    color: "text-emerald-500 dark:text-emerald-400",
+  },
+];
 
 interface DocumentPortfolioSwitcherProps {
   previews: Record<DocumentPreviewTabId, ReactNode>;
@@ -41,8 +64,8 @@ const DocumentPortfolioSwitcher = ({ previews }: DocumentPortfolioSwitcherProps)
           </p>
         </div>
 
-        <div className="mt-12 flex justify-center">
-          <div className="relative inline-flex flex-wrap items-center justify-center gap-1 rounded-full border border-zinc-200 bg-white p-1.5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mt-10 flex justify-center sm:mt-12">
+          <div className="relative inline-flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-zinc-200/90 bg-zinc-100/90 p-1.5 shadow-2xs backdrop-blur-xl sm:w-auto sm:max-w-none sm:justify-center dark:border-white/10 dark:bg-zinc-900/90">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = tab.id === activeTab;
@@ -50,24 +73,32 @@ const DocumentPortfolioSwitcher = ({ previews }: DocumentPortfolioSwitcherProps)
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors duration-200 ${
+                  className={`group relative flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors duration-200 select-none sm:flex-initial sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
                     isActive
-                      ? "text-zinc-900 dark:text-white"
+                      ? "text-zinc-950 dark:text-white"
                       : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                   }`}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="active-tab-indicator"
-                      className="absolute inset-0 rounded-full bg-zinc-100 dark:bg-zinc-800"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      className="absolute inset-0 rounded-full border border-black/5 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-zinc-800 dark:shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
                     />
                   )}
 
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
+                  <span className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+                    <Icon
+                      className={`h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 sm:h-4 sm:w-4 ${
+                        isActive ? tab.color : "text-zinc-400 dark:text-zinc-500"
+                      }`}
+                      aria-hidden="true"
+                    />
+
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden">{tab.shortLabel}</span>
                   </span>
                 </button>
               );
@@ -90,15 +121,15 @@ const DocumentPortfolioSwitcher = ({ previews }: DocumentPortfolioSwitcherProps)
               </div>
             </div>
 
-            <div className="relative min-h-95">
+            <div className="relative h-122.5 w-full overflow-hidden sm:h-125">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
-                  className="h-full"
-                  exit={{ opacity: 0, y: -10 }}
+                  className="h-full w-full"
+                  exit={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
                 >
                   {previews[activeTab]}
                 </motion.div>

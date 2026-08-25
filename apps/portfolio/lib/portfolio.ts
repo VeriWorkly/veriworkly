@@ -726,7 +726,7 @@ export const demoPortfolio: PortfolioContent = {
         {
           id: "testimonial-1",
           name: "Sarah Jenkins",
-          issuer: "Product Lead at Acme Corp",
+          issuer: "Product Lead at VeriWorkly",
           date: "2025",
           link: "",
           description:

@@ -40,7 +40,7 @@ const BentoCard = ({
       style={{ y: yOffset }}
       onMouseMove={handleMouseMove}
       className={cn(
-        "group relative overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-white p-10 transition-all duration-300 active:scale-[0.98] dark:border-zinc-800/80 dark:bg-[#080808]",
+        "group relative overflow-hidden rounded-3xl sm:rounded-[2.5rem] border border-zinc-200 bg-white p-6 sm:p-8 lg:p-10 transition-all duration-300 active:scale-[0.98] dark:border-zinc-800/80 dark:bg-[#080808]",
         className,
       )}
     >

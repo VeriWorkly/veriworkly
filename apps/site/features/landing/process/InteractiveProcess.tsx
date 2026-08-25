@@ -80,27 +80,27 @@ const InteractiveProcess = () => {
               generate bespoke packages for each job.
             </p>
 
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-6 sm:gap-8">
               {steps.map((step) => (
                 <div
                   key={step.id}
-                  className="flex flex-col gap-6 rounded-3xl border border-zinc-200 bg-[#0c0c0c] p-6 shadow-xs dark:border-zinc-800 dark:bg-[#0c0c0c]"
+                  className="flex flex-col gap-5 rounded-3xl border border-zinc-200/80 bg-white p-5.5 shadow-xs sm:gap-6 sm:p-7 dark:border-zinc-800/90 dark:bg-[#0c0c0c]"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-xs">
                       {step.id}
                     </div>
 
-                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                    <h3 className="text-lg font-bold tracking-tight text-zinc-900 sm:text-xl dark:text-white">
                       {step.title}
                     </h3>
                   </div>
 
-                  <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                  <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                     {step.description}
                   </p>
 
-                  <div className="mt-2 border-t border-zinc-100 pt-6 dark:border-zinc-900">
+                  <div className="mt-1 border-t border-zinc-100 pt-5 dark:border-zinc-900">
                     {step.visual}
                   </div>
                 </div>
@@ -108,7 +108,7 @@ const InteractiveProcess = () => {
             </div>
           </div>
 
-          <div className="hidden lg:grid lg:grid-cols-12 lg:items-center lg:gap-24">
+          <div className="hidden lg:grid lg:grid-cols-12 lg:items-center lg:gap-20 xl:gap-24">
             <div className="flex flex-col justify-center lg:col-span-7">
               <div className="mb-5 flex w-fit items-center gap-2 rounded-full border border-blue-500/10 bg-blue-500/5 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
                 <Zap className="h-3.5 w-3.5" /> Workflow
@@ -139,16 +139,17 @@ const InteractiveProcess = () => {
                       key={step.id}
                       layout
                       transition={{ type: "spring", stiffness: 300, damping: 32 }}
-                      className={`group relative flex items-start gap-5 rounded-2xl border px-5 py-4 text-left transition-colors duration-500 ${
+                      className={`group relative flex cursor-pointer items-start gap-5 rounded-2xl border px-5 py-4 text-left transition-all duration-300 ${
                         isActive
-                          ? "border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-[#0c0c0c]"
-                          : "border-transparent"
+                          ? "border-zinc-200/90 bg-white shadow-xs dark:border-zinc-800 dark:bg-[#0c0c0c]"
+                          : "border-transparent hover:border-zinc-200/60 dark:hover:border-zinc-800/60"
                       }`}
+                      onClick={() => setCurrentStep(index)}
                     >
                       <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-500 ${
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
                           isActive
-                            ? "border-blue-600 bg-blue-600 text-white"
+                            ? "border-blue-600 bg-blue-600 text-white shadow-xs"
                             : "border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
                         }`}
                       >
@@ -161,10 +162,10 @@ const InteractiveProcess = () => {
 
                       <div className="min-w-0 flex-1">
                         <h3
-                          className={`text-base font-bold transition-colors duration-500 ${
+                          className={`text-base font-bold transition-colors duration-300 ${
                             isActive
                               ? "text-zinc-900 dark:text-white"
-                              : "text-zinc-500 dark:text-zinc-500"
+                              : "text-zinc-500 group-hover:text-zinc-800 dark:text-zinc-400 dark:group-hover:text-zinc-200"
                           }`}
                         >
                           {step.title}

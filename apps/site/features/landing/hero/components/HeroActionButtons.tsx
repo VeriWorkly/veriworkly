@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { motion } from "framer-motion";
 
 import { siteConfig } from "@/config/site";
+import { LandingButton } from "@/components/marketing/LandingButton";
 
 export const HeroActionButtons = () => {
   return (
@@ -9,21 +9,20 @@ export const HeroActionButtons = () => {
       animate={{ opacity: 1, y: 0 }}
       initial={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.5, delay: 0.4, ease: [0.23, 1, 0.32, 1] }}
-      className="pointer-events-auto mt-10 flex flex-col items-center gap-4 sm:flex-row"
+      className="pointer-events-auto mt-8 flex w-full max-w-xs flex-col items-stretch gap-3 sm:mt-10 sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-4"
     >
-      <a
+      <LandingButton
+        size="hero"
+        variant="primary"
         href={siteConfig.links.app}
-        className="group relative flex h-14 items-center justify-center rounded-full border border-blue-500/40 bg-[#0A0A0A] px-10 text-base font-medium text-white shadow-[0_0_30px_rgba(59,130,246,0.2)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:border-blue-400 hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] active:scale-[0.97]"
+        className="w-full sm:w-auto"
       >
         Start Building Free
-      </a>
+      </LandingButton>
 
-      <Link
-        href="/how-it-works"
-        className="flex h-14 items-center justify-center rounded-full border border-black/10 bg-white/70 px-10 text-base font-medium text-gray-800 backdrop-blur-md transition-colors duration-200 ease-out hover:border-blue-500/30 hover:text-blue-600 active:scale-[0.97] dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-blue-400"
-      >
+      <LandingButton size="hero" variant="glass" href="/how-it-works" className="w-full sm:w-auto">
         See how it works
-      </Link>
+      </LandingButton>
     </motion.div>
   );
 };
