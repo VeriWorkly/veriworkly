@@ -47,7 +47,7 @@ const ChangelogPageShell = ({
           {/*
             Wraps rather than scrolling. The old `overflow-x-auto scrollbar-none` combination
             clipped "Patch" off the right edge on narrow phones with no scrollbar to hint that
-            anything was there — a filter you cannot see is a filter you cannot use.
+            anything was there - a filter you cannot see is a filter you cannot use.
           */}
           <ChangelogTypeFilters activeType={activeType} search={search} />
 

@@ -39,7 +39,7 @@ const RoadmapStatsGrid = ({ sections }: { sections: RoadmapSectionResponse[] }) 
 
             {/*
               Server-rendered, so this formats in the container's timezone (UTC), not the
-              reader's — it was showing a UTC clock time dressed up as a local one. Stated
+              reader's - it was showing a UTC clock time dressed up as a local one. Stated
               explicitly instead, and machine-readable via the `time` element.
             */}
             <time dateTime={section.fetchedAt}>

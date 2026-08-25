@@ -66,7 +66,7 @@ const RoadmapPageShell = ({
 
   /**
    * `fetchRoadmapFromBackend` swallows its own failures and returns empty sections, which
-   * is the right call for the page as a whole — but it renders identically to a roadmap
+   * is the right call for the page as a whole - but it renders identically to a roadmap
    * that genuinely has nothing on it. On a page whose entire purpose is showing that work
    * is happening, "we're not building anything" is the worst possible reading of an
    * outage, so an all-empty board says so explicitly.

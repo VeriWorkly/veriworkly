@@ -15,7 +15,7 @@ const EmptyState = ({ onReset }: { onReset: () => void }) => {
         Try switching family or layout to see more options.
       </p>
 
-      {/* Resets in place — the filters are client state, so there is nothing to navigate to. */}
+      {/* Resets in place - the filters are client state, so there is nothing to navigate to. */}
       <button
         type="button"
         onClick={onReset}

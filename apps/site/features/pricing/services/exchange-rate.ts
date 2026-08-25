@@ -12,7 +12,7 @@ const RATE_SOURCE = "https://open.er-api.com/v6/latest/USD";
 const RATE_REVALIDATE_SECONDS = 43_200;
 
 /**
- * A rate outside this band is not a rate, it is a malformed or hijacked response — and it
+ * A rate outside this band is not a rate, it is a malformed or hijacked response - and it
  * would render a price on a checkout page. USD/INR has spent its entire history well
  * inside these bounds, so anything outside them is rejected in favour of the fallback.
  */
@@ -34,8 +34,8 @@ const RATE_TIMEOUT_MS = 3_000;
  * Server-side, the CSP is not in play, the third party sees only our origin, and Next's
  * Data Cache collapses all traffic into one upstream call per revalidate window.
  *
- * The figure remains indicative — checkout is billed in USD and the card is charged at the
- * processor's rate on the day — so the UI still labels it as approximate.
+ * The figure remains indicative - checkout is billed in USD and the card is charged at the
+ * processor's rate on the day - so the UI still labels it as approximate.
  */
 export async function fetchInrPerUsd(): Promise<number> {
   try {

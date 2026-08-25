@@ -8,13 +8,12 @@ const ComparisonMatrixHeader = () => {
       </div>
 
       <h2 className="font-sans text-3xl font-semibold tracking-tighter text-balance text-zinc-900 sm:text-4xl md:text-5xl lg:text-6xl dark:text-white">
-        Compare VeriWorkly to subscription resume builders
+        Why thousands are leaving subscription resume builders.
       </h2>
 
       <p className="mx-auto mt-5 max-w-[52ch] text-base leading-relaxed text-zinc-500 sm:mt-6 sm:text-lg dark:text-zinc-400">
-        Most traditional tools require recurring monthly subscriptions just to download your own
-        PDF. VeriWorkly gives you open-source, local-first creation with unlocked ATS PDFs and
-        portfolios forever.
+        Traditional tools bait you with free editing, then charge $24/month to download what you
+        already wrote. VeriWorkly is free, open, and local.
       </p>
     </div>
   );

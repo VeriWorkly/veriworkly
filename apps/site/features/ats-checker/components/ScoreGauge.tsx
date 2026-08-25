@@ -38,7 +38,7 @@ export function ScoreGauge({ score, label, caption, size = "lg" }: ScoreGaugePro
 
   useEffect(() => {
     // Counting up is decoration, not information. Under reduced motion there is no animation
-    // to run at all — the value below is read straight from the score.
+    // to run at all - the value below is read straight from the score.
     if (shouldReduceMotion) return;
     const controls = animate(scoreMV, clamped, { duration: 1.1, ease: [0.23, 1, 0.32, 1] });
     return () => controls.stop();

@@ -38,25 +38,25 @@ const InteractiveProcess = () => {
   const steps = [
     {
       id: "01",
-      title: "Structure Your Career Data",
+      title: "Import or write your Master Profile",
       description:
-        "Upload your LinkedIn profile PDF or old resume. VeriWorkly extracts your full professional background and saves it locally in an editable Master Profile structure.",
+        "Upload your existing resume or LinkedIn PDF. VeriWorkly organizes your complete career history into one private, editable profile.",
       icon: Database,
       visual: <Step1Visual />,
     },
     {
       id: "02",
-      title: "Contextual AI Tailoring",
+      title: "Target the job description",
       description:
-        "Paste any target job description. The AI scans your Master Profile history and adjusts summaries and experience bullet points to precisely match job requirements.",
+        "Paste the role you want. The AI pulls relevant accomplishments from your Master Profile and formats bullet points with impact metrics.",
       icon: Zap,
       visual: <Step2Visual />,
     },
     {
       id: "03",
-      title: "One-Click PDF & Publish",
+      title: "Export and apply",
       description:
-        "Export your customized resumes and cover letters as clean, ATS-compliant PDFs, or publish your portfolio directly to a custom subdomain instantly.",
+        "Download a pixel-perfect ATS PDF immediately, or publish your web portfolio to a custom link. Zero paywalls, zero watermarks.",
       icon: FileText,
       visual: <Step3Visual />,
     },
@@ -72,12 +72,11 @@ const InteractiveProcess = () => {
             </div>
 
             <h2 className="mb-6 font-sans text-3xl font-semibold tracking-tighter text-zinc-900 dark:text-white">
-              The modern way to target roles
+              From blank page to job-ready in 3 steps.
             </h2>
 
             <p className="mb-12 max-w-[50ch] text-base text-zinc-500 dark:text-zinc-400">
-              Skip the tedious manual edits. Keep your master record secure, and let the tool
-              generate bespoke packages for each job.
+              Stop retyping your entire work history for every single application.
             </p>
 
             <div className="flex flex-col gap-6 sm:gap-8">

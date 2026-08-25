@@ -172,7 +172,7 @@ const AffiliateBento = () => {
               <p className="text-muted-foreground text-xs leading-relaxed">
                 Request a withdrawal as soon as you cross the minimum threshold ($25.00). Our team
                 reviews each request and issues payouts directly (bank transfer or local payout
-                methods) — billing runs on Dodo Payments, which doesn&apos;t yet support automated
+                methods) - billing runs on Dodo Payments, which doesn&apos;t yet support automated
                 payout transfers.
               </p>
             </div>

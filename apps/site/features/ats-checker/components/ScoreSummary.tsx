@@ -13,7 +13,7 @@ interface ScoreSummaryProps {
 /**
  * The one card that answers "how did I do" before any detail. Both scores sit side by side
  * with a caption each, because the most common misreading of this tool is treating readiness
- * and job match as one number — readiness never moves for a given layout, job match does.
+ * and job match as one number - readiness never moves for a given layout, job match does.
  */
 export function ScoreSummary({
   verdict,

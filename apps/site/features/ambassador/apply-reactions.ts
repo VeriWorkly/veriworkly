@@ -4,7 +4,7 @@
  * `src` points at a self-hosted file under `public/ambassador/reactions/`. Leave it
  * `null` and the question falls back to an animated emoji sticker, which is why this
  * ships working without a single binary asset committed. Dropping a real GIF in is a
- * one-line change here — see `public/ambassador/reactions/README.md`.
+ * one-line change here - see `public/ambassador/reactions/README.md`.
  *
  * Self-hosted on purpose: `next.config.ts` only whitelists `images.unsplash.com` and
  * `avatars.githubusercontent.com` as remote image hosts, and the CSP sets

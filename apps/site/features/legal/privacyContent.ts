@@ -27,7 +27,7 @@ export const privacySections: LegalSection[] = [
           '"Document" means any resume, cover letter, portfolio, or link-in-bio record you create, whether stored locally, synced to our servers, or published publicly.',
           '"Local-First Storage" means data stored in your browser\'s LocalStorage rather than on our servers.',
           '"Personal Data" means any information that identifies or could reasonably be used to identify you.',
-          '"Processing" means anything done with data — collecting, storing, using, disclosing, or deleting it.',
+          '"Processing" means anything done with data - collecting, storing, using, disclosing, or deleting it.',
         ],
       },
     ],
@@ -52,7 +52,7 @@ export const privacySections: LegalSection[] = [
           "Portfolio content and media: text, project descriptions, and any images or screenshots you upload for a published portfolio (stored via Cloudflare R2 object storage).",
           "Billing information: when you subscribe or make a purchase, our payment processor, Dodo Payments, collects your payment card or payment method details directly. We do not receive or store your full card number.",
           "Support and contact form submissions: your name, email, subject, and message when you contact us.",
-          "Affiliate and Ambassador program applications: referral codes, payout details necessary to pay commissions, and — for the Student Ambassador program — your college/university name and graduation year.",
+          "Affiliate and Ambassador program applications: referral codes, payout details necessary to pay commissions, and - for the Student Ambassador program - your college/university name and graduation year.",
           "Content you choose to import: if you use GitHub import, the repositories and profile data you authorize us to read. If you use LinkedIn import, the exported profile text you paste or upload. If you upload a legacy resume file (PDF, DOCX, TXT, MD, or JSON) for extraction, the contents of that file.",
         ],
       },
@@ -70,7 +70,7 @@ export const privacySections: LegalSection[] = [
         list: [
           "OAuth sign-in providers (Google, GitHub, LinkedIn) share the basic profile information you authorize when you use them to sign in.",
           "GitHub's API, when you use GitHub import, shares your public profile and repository data that you authorize us to access.",
-          "Dodo Payments shares transaction status, subscription state, and the metadata necessary for us to grant entitlements and credits after a purchase — not your full payment credentials.",
+          "Dodo Payments shares transaction status, subscription state, and the metadata necessary for us to grant entitlements and credits after a purchase - not your full payment credentials.",
         ],
       },
     ],
@@ -91,7 +91,7 @@ export const privacySections: LegalSection[] = [
     subsections: [
       {
         list: [
-          "Provide, operate, and maintain the Service — including the Document Studio, Master Profile, ATS Checker, Portfolio Builder, sharing, and export features.",
+          "Provide, operate, and maintain the Service - including the Document Studio, Master Profile, ATS Checker, Portfolio Builder, sharing, and export features.",
           'Process the AI features you explicitly trigger (see Section 8, "AI Features & Third-Party AI Processing").',
           "Process payments, manage subscriptions and credit balances, and enforce entitlements.",
           "Send transactional emails: welcome emails, new-device login alerts, and account-deletion confirmations. We do not send marketing email unless you separately opt in, and any such email would include an unsubscribe option.",
@@ -130,21 +130,21 @@ export const privacySections: LegalSection[] = [
       {
         heading: "What gets sent, and when",
         paragraphs: [
-          'Content is only sent to an AI model provider when you explicitly trigger an AI action — for example, clicking "Improve with AI," requesting AI resume tailoring against a job description, generating a cover letter, or requesting the AI-powered ATS deep-analysis layer. We do not run your Master Profile or documents through AI models in the background without your action.',
-          "Before an AI action runs, the Service shows you the credit cost and mode (Standard or Expert) so you know what you're triggering. After generation, you explicitly choose to replace your existing text or discard the AI's draft — nothing is overwritten silently.",
+          'Content is only sent to an AI model provider when you explicitly trigger an AI action - for example, clicking "Improve with AI," requesting AI resume tailoring against a job description, generating a cover letter, or requesting the AI-powered ATS deep-analysis layer. We do not run your Master Profile or documents through AI models in the background without your action.',
+          "Before an AI action runs, the Service shows you the credit cost and mode (Standard or Expert) so you know what you're triggering. After generation, you explicitly choose to replace your existing text or discard the AI's draft - nothing is overwritten silently.",
         ],
       },
       {
         heading: "How third-party AI providers handle that data",
         paragraphs: [
-          "Content sent for AI processing is transmitted to the relevant third-party model provider's API solely to generate the requested output, and is subject to that provider's own data handling, retention, and (where applicable) API-data-training policies, which are outside our direct control. We do not use your content to train our own foundation models, and to the extent we can configure it, we use API terms with model providers that are intended to exclude submitted content from being used to train their models — but you should not treat this Policy as a substitute for reading a given provider's own privacy documentation if you have specific concerns.",
+          "Content sent for AI processing is transmitted to the relevant third-party model provider's API solely to generate the requested output, and is subject to that provider's own data handling, retention, and (where applicable) API-data-training policies, which are outside our direct control. We do not use your content to train our own foundation models, and to the extent we can configure it, we use API terms with model providers that are intended to exclude submitted content from being used to train their models - but you should not treat this Policy as a substitute for reading a given provider's own privacy documentation if you have specific concerns.",
           "We recommend avoiding pasting highly sensitive personal data (for example, government ID numbers, medical information, or financial account numbers) into AI-assisted fields beyond what is normal for a resume or cover letter.",
         ],
       },
       {
         heading: "Credits and processing records",
         paragraphs: [
-          "We keep a ledger of AI credit grants, reservations, and debits tied to your Account so that a failed generation doesn't consume your balance, and so you can review your usage history from the Credits page. This ledger records that an AI action occurred and its cost — not necessarily the full content generated.",
+          "We keep a ledger of AI credit grants, reservations, and debits tied to your Account so that a failed generation doesn't consume your balance, and so you can review your usage history from the Credits page. This ledger records that an AI action occurred and its cost - not necessarily the full content generated.",
         ],
       },
     ],
@@ -180,8 +180,8 @@ export const privacySections: LegalSection[] = [
       {
         heading: "Service providers we use to operate VeriWorkly",
         list: [
-          "Dodo Payments — payment processing and billing, under PCI-DSS-compliant handling. Dodo Payments processes your payment method directly; we receive transaction and subscription status, not your full card details.",
-          "Cloudflare R2 — object storage for portfolio images and assets you upload.",
+          "Dodo Payments - payment processing and billing, under PCI-DSS-compliant handling. Dodo Payments processes your payment method directly; we receive transaction and subscription status, not your full card details.",
+          "Cloudflare R2 - object storage for portfolio images and assets you upload.",
           "Infrastructure and hosting providers for our PostgreSQL database, Redis cache, and application servers.",
           "Better Auth (self-hosted authentication library) and, where you choose to use them, the OAuth providers Google, GitHub, and LinkedIn, solely to authenticate your sign-in.",
           "Third-party AI model providers (see Section 8) when you trigger an AI feature.",
@@ -235,7 +235,7 @@ export const privacySections: LegalSection[] = [
       {
         list: [
           "Access: request a copy of the personal data we hold about you.",
-          "Correction: fix inaccurate or incomplete data — most of this you can do yourself directly in the Master Profile or Account settings.",
+          "Correction: fix inaccurate or incomplete data - most of this you can do yourself directly in the Master Profile or Account settings.",
           "Deletion: request deletion of your Account and associated data (available directly from Account settings, or by emailing us).",
           "Portability: export your data. A JSON export of your local or synced data is available from the dashboard at any time, without needing to contact support.",
           "Objection / restriction: object to or request that we restrict certain processing, such as aggregate analytics.",
@@ -246,7 +246,7 @@ export const privacySections: LegalSection[] = [
       {
         heading: "California residents (CCPA/CPRA)",
         paragraphs: [
-          'California residents have the rights above, plus the right to know the categories of personal information we\'ve collected and the categories of third parties we\'ve shared it with (both described in this Policy), and the right to opt out of the "sale" or "sharing" of personal information — which we do not do; we do not sell or share your personal information for cross-context behavioral advertising.',
+          'California residents have the rights above, plus the right to know the categories of personal information we\'ve collected and the categories of third parties we\'ve shared it with (both described in this Policy), and the right to opt out of the "sale" or "sharing" of personal information - which we do not do; we do not sell or share your personal information for cross-context behavioral advertising.',
         ],
       },
       {
@@ -298,21 +298,21 @@ export const privacySections: LegalSection[] = [
     id: "do-not-track",
     title: "Do Not Track Signals",
     intro: [
-      'Some browsers offer a "Do Not Track" (DNT) signal. Because there is no single, industry-agreed way to interpret DNT signals, we do not currently respond to them differently — but as noted above, we already do not run third-party advertising trackers or cross-site behavioral tracking regardless of your browser\'s DNT setting.',
+      'Some browsers offer a "Do Not Track" (DNT) signal. Because there is no single, industry-agreed way to interpret DNT signals, we do not currently respond to them differently - but as noted above, we already do not run third-party advertising trackers or cross-site behavioral tracking regardless of your browser\'s DNT setting.',
     ],
   },
   {
     id: "third-party-links",
     title: "Third-Party Links & Services",
     intro: [
-      "The Service links to and integrates with third-party services — GitHub, LinkedIn, Google, and Dodo Payments among them — and published portfolios may link to other websites you or other users control. We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies independently.",
+      "The Service links to and integrates with third-party services - GitHub, LinkedIn, Google, and Dodo Payments among them - and published portfolios may link to other websites you or other users control. We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies independently.",
     ],
   },
   {
     id: "open-source-self-hosted",
     title: "Open Source & Self-Hosted Deployments",
     intro: [
-      "VeriWorkly's core document-builder and web engines are released under the MIT License. If you or someone else runs a self-hosted or forked instance of that code — rather than using the hosted Service at veriworkly.com and its official subdomains — this Privacy Policy does not apply to that independent deployment. The operator of that self-hosted instance is solely responsible for its own data practices, and you should direct privacy questions about it to them, not to us.",
+      "VeriWorkly's core document-builder and web engines are released under the MIT License. If you or someone else runs a self-hosted or forked instance of that code - rather than using the hosted Service at veriworkly.com and its official subdomains - this Privacy Policy does not apply to that independent deployment. The operator of that self-hosted instance is solely responsible for its own data practices, and you should direct privacy questions about it to them, not to us.",
     ],
   },
   {
@@ -333,7 +333,7 @@ export const privacySections: LegalSection[] = [
     id: "contact",
     title: "Contact Us",
     intro: [
-      `Questions, requests, or concerns about this Privacy Policy or your data can be sent to ${siteConfig.email}. You can also reach us through the Contact page, or — for source-code-level questions about how data is handled — review the public repository at ${siteConfig.links.github}.`,
+      `Questions, requests, or concerns about this Privacy Policy or your data can be sent to ${siteConfig.email}. You can also reach us through the Contact page, or - for source-code-level questions about how data is handled - review the public repository at ${siteConfig.links.github}.`,
     ],
   },
 ];

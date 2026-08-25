@@ -48,7 +48,7 @@ const CompareVsHero = ({ competitor }: { competitor: Competitor }) => {
           href={siteConfig.links.app}
           className="bg-accent text-accent-foreground inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold shadow-sm transition duration-200 ease-out hover:opacity-90 active:scale-[0.97]"
         >
-          Start building free — no login
+          Start building free - no login
         </Link>
 
         <Link

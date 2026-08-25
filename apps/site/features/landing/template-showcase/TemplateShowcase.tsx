@@ -19,12 +19,12 @@ const TemplateShowcase = () => {
           </div>
 
           <h2 className="mx-auto max-w-3xl font-sans text-4xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">
-            Visual layouts built for recruiter compliance
+            Clean, modern templates recruiters actually want to read.
           </h2>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Designed to parse flawlessly on applicant tracking systems while retaining an editorial,
-            high-end visual aesthetic.
+            No over-designed graphics that break ATS scanners. Just crisp typography, clear
+            hierarchies, and polished layouts.
           </p>
         </div>
       </div>

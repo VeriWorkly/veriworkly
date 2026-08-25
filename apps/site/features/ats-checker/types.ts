@@ -25,7 +25,7 @@ export type AtsCategoryScore = {
   possible: number;
 };
 
-/** Returned for any authenticated caller — every rule, every keyword, every fix. */
+/** Returned for any authenticated caller - every rule, every keyword, every fix. */
 export type AtsFullReport = {
   version: "ats-v2";
   restricted: false;
@@ -46,7 +46,7 @@ export type AtsFullReport = {
 };
 
 /**
- * Returned instead of AtsFullReport when the caller is anonymous — scores, verdict, and the
+ * Returned instead of AtsFullReport when the caller is anonymous - scores, verdict, and the
  * category rollup, but no rule evidence, no keyword lists, and only the single largest fix.
  */
 export type AtsRestrictedReport = {

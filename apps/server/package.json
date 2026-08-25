@@ -21,6 +21,7 @@
     "db:redis": "npx redis-commander --redis-host 127.0.0.1 --redis-port 6379",
     "db:generate": "prisma generate",
     "sync:github": "tsx src/jobs/runGithubSyncOnce.ts",
+    "sync:changelog": "tsx scripts/sync-changelog-releases.ts",
     "seed:roadmap": "tsx scripts/seed-roadmap.ts",
     "seed:changelog": "tsx scripts/seed-changelog.ts",
     "backfill:changelog-pr-authors": "tsx scripts/backfill-changelog-pr-authors.ts",

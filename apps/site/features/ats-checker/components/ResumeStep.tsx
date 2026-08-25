@@ -95,7 +95,7 @@ export function ResumeStep({
           }}
           /**
            * The file input itself is `sr-only`, so without `focus-within` a keyboard user
-           * tabbing onto it gets no visible focus at all — the ring has to be drawn by the
+           * tabbing onto it gets no visible focus at all - the ring has to be drawn by the
            * label that stands in for it visually.
            */
           className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/40 ${

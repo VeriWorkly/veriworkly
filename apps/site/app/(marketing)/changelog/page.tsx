@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
+
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
@@ -13,23 +14,29 @@ import ChangelogPageShell from "@/features/changelog/components/ChangelogPageShe
 import ChangelogSEOContent from "@/features/changelog/components/ChangelogSEOContent";
 
 const pageUrl = `${siteConfig.url}/changelog`;
+
 const ogImage = `/api/og?title=${encodeURIComponent("Changelog")}&description=${encodeURIComponent(
   "Every VeriWorkly release, generated straight from our public GitHub history.",
 )}`;
 
 const changelogMetadata = {
   path: "/changelog",
+
   title: `Changelog: Every VeriWorkly Release | ${siteConfig.shortName}`,
   description:
     "See exactly what shipped in every VeriWorkly release — new features, improvements, fixes, and security updates, sourced straight from our public GitHub history.",
+
   ogTitle: "Every VeriWorkly release, in one place",
   ogDescription:
     "A public, real changelog covering resumes, cover letters, portfolios, the ATS checker, and AI tools — generated from our GitHub releases.",
+
   twitterTitle: "The VeriWorkly changelog",
   twitterDescription:
     "What shipped, when it shipped, and the PRs behind it — straight from GitHub.",
+
   image: ogImage,
   imageAlt: `${siteConfig.shortName} | Changelog`,
+
   keywords: [
     "VeriWorkly changelog",
     "VeriWorkly release notes",
@@ -58,15 +65,11 @@ interface ChangelogPageProps {
   }>;
 }
 
-/**
- * Pagination has to be resolved at request time: a static `metadata` export would
- * canonicalise every page to the bare `/changelog`, and Google drops pages 2+ as
- * duplicates. Filtered/searched views are noindex,follow instead — they are subsets
- * of the same entries and would otherwise open unbounded crawl space.
- */
 export async function generateMetadata({ searchParams }: ChangelogPageProps): Promise<Metadata> {
   const params = await searchParams;
+
   const page = parsePage(params.page);
+
   const isFiltered = Boolean(parseType(params.type) || params.search?.trim());
 
   return buildPageMetadata({
@@ -75,7 +78,7 @@ export async function generateMetadata({ searchParams }: ChangelogPageProps): Pr
     ...(page > 1
       ? {
           title: `Changelog — Page ${page} | ${siteConfig.shortName}`,
-          ogTitle: `Every VeriWorkly release, in one place — page ${page}`,
+          ogTitle: `Every VeriWorkly release, in one place - page ${page}`,
         }
       : {}),
     canonicalParams: { page: page > 1 ? page : undefined },
@@ -85,8 +88,10 @@ export async function generateMetadata({ searchParams }: ChangelogPageProps): Pr
 
 const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
   const params = await searchParams;
+
   const type = parseType(params.type);
   const search = params.search?.trim() || undefined;
+
   const page = parsePage(params.page);
 
   const data = await fetchChangelogFromBackend({ type, search }, page);
@@ -104,7 +109,9 @@ const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: `Changelog: Every VeriWorkly Release | ${siteConfig.shortName}`,
+
     url: pageUrl,
+
     mainEntity: {
       "@type": "ItemList",
       itemListElement: data.entries.map((entry, index) => ({
@@ -122,6 +129,7 @@ const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
       />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(itemListSchema)}
@@ -129,9 +137,9 @@ const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
 
       <ChangelogPageShell
         data={data}
-        activeType={type ?? "all"}
         search={search}
         title="Changelog"
+        activeType={type ?? "all"}
         description="Every VeriWorkly release, generated straight from our public GitHub history — new features, improvements, fixes, and security updates, with links back to the exact pull requests."
       />
 

@@ -20,7 +20,7 @@ const ChangelogSEOContent = () => {
         </a>
         &apos;s release history. Each entry groups what changed into Added, Improved, Fixed,
         Security, and Breaking sections, with links back to the exact pull requests that shipped the
-        work — because VeriWorkly is open-core and free-to-use, you can read the code behind every
+        work - because VeriWorkly is open-core and free-to-use, you can read the code behind every
         line here.
       </p>
 

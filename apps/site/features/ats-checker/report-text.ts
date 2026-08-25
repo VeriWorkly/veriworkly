@@ -3,7 +3,7 @@ import type { AtsFullReport } from "@/features/ats-checker/types";
 
 /**
  * Renders the report as plain text for the clipboard. People work on their resume in a
- * different window than the one holding the report, so the fixes need to travel — and a
+ * different window than the one holding the report, so the fixes need to travel - and a
  * screenshot of a scrolling page does not. Kept deliberately paste-friendly: no box drawing,
  * no colour, nothing that survives badly in a text editor or a notes app.
  */

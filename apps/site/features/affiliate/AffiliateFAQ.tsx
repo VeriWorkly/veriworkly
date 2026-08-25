@@ -8,7 +8,7 @@ const faqItems = [
   {
     question: "How do referrals get tracked?",
     answer:
-      "When someone visits your partner link, we log the click, and the referral is attached to their account the first time they sign in through that link. It stays linked to their account from that point on — there's no cookie or short attribution window to race against.",
+      "When someone visits your partner link, we log the click, and the referral is attached to their account the first time they sign in through that link. It stays linked to their account from that point on - there's no cookie or short attribution window to race against.",
   },
   {
     question: "When and how are payouts processed?",
@@ -23,7 +23,7 @@ const faqItems = [
   {
     question: "Does my earned commission ever expire?",
     answer:
-      "No. Your earned commission balance does not expire. Commissions are reviewed and released to your available balance over time, and you can request a payout whenever you're above the $25.00 minimum — there's no inactivity window or deadline to claim it.",
+      "No. Your earned commission balance does not expire. Commissions are reviewed and released to your available balance over time, and you can request a payout whenever you're above the $25.00 minimum - there's no inactivity window or deadline to claim it.",
   },
   {
     question: "Are self-referrals permitted?",

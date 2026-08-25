@@ -6,7 +6,7 @@ import type {
 
 /**
  * The report exactly as it may arrive on the wire. The fields below were added to the API after
- * this UI shipped against it, so a server one deploy behind will omit them — the rest of the app
+ * this UI shipped against it, so a server one deploy behind will omit them - the rest of the app
  * treats them as required, and `normalizeCheckResult` is the seam that makes that true.
  */
 type WireFullReport = Omit<

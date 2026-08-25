@@ -1,17 +1,17 @@
 export const principles = [
   {
-    title: "You own your data",
+    title: "Your data belongs to you.",
     description:
-      "Your resumes, portfolios, and letters stay inside your browser's local storage. We do not look at, package, or sell your personal details.",
+      "Your resumes and portfolios live in your browser's local storage. We never package, scrape, or sell your contact info to recruiter spam lists.",
   },
   {
-    title: "No subscription trap",
+    title: "No download ransom.",
     description:
-      "We do not advertise free templates only to lock your download behind a paid subscription. PDF compile happens on your machine for free.",
+      "If you build a resume here, you can export it. Free PDF generation runs directly on your computer forever.",
   },
   {
-    title: "Sovereign career identity",
+    title: "One central source of truth.",
     description:
-      "We build career identity tools, including resumes, cover letters, and web portfolios, as linked assets. Seed every one of them from one central Master Profile.",
+      "Maintain one complete Master Profile of your skills and projects. Every resume, cover letter, and web portfolio draws from it without overwriting your master history.",
   },
 ];

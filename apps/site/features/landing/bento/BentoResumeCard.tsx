@@ -34,8 +34,8 @@ const BentoResumeCard = ({ yOffset, canHover }: BentoResumeCardProps) => {
         </h3>
 
         <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:mt-4 sm:text-base">
-          Build your master profile once. The AI automatically tailors your resume for specific job
-          descriptions, optimizing for ATS systems instantly.
+          Role-Specific Resumes in Seconds. Paste a job description, and the AI highlights your
+          relevant achievements and keywords without inventing fake experience.
         </p>
       </div>
 

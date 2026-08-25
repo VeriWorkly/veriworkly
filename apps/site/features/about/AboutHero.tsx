@@ -1,9 +1,10 @@
 import { Shield } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
+
 import { Reveal } from "@/components/marketing/Reveal";
-import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
 import { LandingButton } from "@/components/marketing/LandingButton";
+import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
 
 const AboutHero = () => {
   return (
@@ -19,16 +20,17 @@ const AboutHero = () => {
 
         <Reveal priority delay={0.06}>
           <h1 className="mt-8 text-center text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.08] font-semibold tracking-tighter text-balance text-white">
-            Your career history shouldn&apos;t be held hostage behind a subscription.
+            Job hunting is hard enough. Your resume builder shouldn&apos;t be another obstacle.
           </h1>
         </Reveal>
 
         <Reveal priority delay={0.14}>
           <p className="mx-auto mt-8 max-w-2xl text-center text-lg leading-relaxed text-zinc-400">
-            VeriWorkly is a private career workspace for your resumes, cover letters, and public
-            portfolios — plus the AI tailoring, ATS scoring, and GitHub/LinkedIn import tools that
-            connect them. Build ready-to-use documents on your own terms — no paywalls, no sold
-            profiles, no account traps.
+            We built VeriWorkly because we got tired of the standard playbook: spending an hour
+            building a resume, only to find the download button locked behind a $24/month charge.
+            VeriWorkly gives you a fast, private studio to build ATS resumes, matched cover letters,
+            and web portfolios for free. Your files stay on your machine, and your PDF downloads are
+            always unlocked.
           </p>
         </Reveal>
 
@@ -36,7 +38,7 @@ const AboutHero = () => {
           <div className="mt-10 flex items-center justify-center gap-4">
             <span className="h-px w-10 bg-zinc-800" />
             <span className="text-sm font-medium text-zinc-500">
-              — Gautam Raj, Founder of {siteConfig.shortName}
+              - Gautam Raj, Founder of {siteConfig.shortName}
             </span>
             <span className="h-px w-10 bg-zinc-800" />
           </div>
@@ -44,20 +46,11 @@ const AboutHero = () => {
 
         <Reveal delay={0.28}>
           <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <LandingButton
-              href={siteConfig.links.app}
-              variant="solid"
-              size="hero"
-              showArrow
-            >
+            <LandingButton showArrow size="hero" variant="solid" href={siteConfig.links.app}>
               Open Studio
             </LandingButton>
 
-            <LandingButton
-              href="/contact"
-              variant="glass"
-              size="hero"
-            >
+            <LandingButton size="hero" variant="glass" href="/contact">
               Message the Team
             </LandingButton>
           </div>

@@ -339,12 +339,12 @@ export async function fetchRoadmapFromBackend(query: RoadmapQuery = {}): Promise
   }
 }
 
-/** One week — the sitemap's own cadence, independent of the 5-minute page cache. */
+/** One week - the sitemap's own cadence, independent of the 5-minute page cache. */
 const SITEMAP_REVALIDATE_SECONDS = 604800;
 
 /**
  * The backend caps `limit` at 50. Deliberately different from the pages' `limit=20` so
- * this keeps its own Data Cache entry — see `fetchRoadmapSitemapEntries`.
+ * this keeps its own Data Cache entry - see `fetchRoadmapSitemapEntries`.
  */
 const SITEMAP_PAGE_SIZE = 50;
 
@@ -364,7 +364,7 @@ export interface RoadmapSitemapEntry {
  * silently dragged /sitemap.xml down to 5 minutes no matter what the segment declared.
  *
  * Requesting the backend's maximum `limit=50` produces a different URL from the pages'
- * `limit=20`, so this gets its own Data Cache entry and its own lifetime — rather than
+ * `limit=20`, so this gets its own Data Cache entry and its own lifetime - rather than
  * two different revalidate values fighting over one key. It also fetches in far fewer
  * round trips, which is all a list of ids and timestamps needs.
  */

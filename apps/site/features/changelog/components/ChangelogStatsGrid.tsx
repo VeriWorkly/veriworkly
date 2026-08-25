@@ -4,7 +4,7 @@ const ChangelogStatsGrid = ({ stats }: { stats: ChangelogStats | null }) => {
   const cards = [
     {
       label: "Latest Version",
-      value: stats?.latest ? `v${stats.latest.version}` : "—",
+      value: stats?.latest ? `v${stats.latest.version}` : "-",
       dot: "bg-accent",
     },
     {

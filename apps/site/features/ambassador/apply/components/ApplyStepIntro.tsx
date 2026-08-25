@@ -26,13 +26,13 @@ export const ApplyStepIntro = ({ viewer, onStart }: ApplyStepIntroProps) => {
           : "Let's see if you've got main-character energy 🎓"}
       </h1>
       <p className="mt-4 max-w-md text-sm leading-6 text-zinc-500 sm:text-base dark:text-zinc-400">
-        Seven quick questions. No essays, no cover letters, no cap. Roughly two minutes — less if
+        Seven quick questions. No essays, no cover letters, no cap. Roughly two minutes - less if
         you type like you&apos;re in a group chat.
       </p>
       <ReactionMedia reaction={APPLY_REACTIONS.intro} className="mt-8" />
       {viewer.draft?.whyJoin && (
         <p className="mt-6 max-w-md rounded-xl border border-zinc-200/70 bg-zinc-50 px-4 py-3 text-xs leading-5 text-zinc-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400">
-          We kept your last answers — edit what you want and send it again.
+          We kept your last answers - edit what you want and send it again.
         </p>
       )}
       {viewer.reviewNote && (

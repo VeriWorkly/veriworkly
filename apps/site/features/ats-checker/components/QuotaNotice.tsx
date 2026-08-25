@@ -8,7 +8,7 @@ import type { AtsQuota } from "@/features/ats-checker/types";
 export function loginHref(): string {
   /**
    * The callback has to be an absolute URL. `/ats-checker/scan` resolves against the *app*
-   * origin once the login page loads there, and app.veriworkly.com has no such route — so the
+   * origin once the login page loads there, and app.veriworkly.com has no such route - so the
    * old relative value silently dropped every user on the dashboard instead of back on their
    * scan. `getSafeAuthCallback` accepts absolute URLs on trusted origins, of which the
    * marketing site is one.

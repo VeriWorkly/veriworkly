@@ -28,7 +28,7 @@ const ValueRow = ({ theme, value }: ValueRowProps) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard access can be denied by the browser — the value stays visible.
+      // Clipboard access can be denied by the browser - the value stays visible.
     }
   };
 

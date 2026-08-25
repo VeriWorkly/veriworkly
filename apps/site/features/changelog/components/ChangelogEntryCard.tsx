@@ -4,22 +4,18 @@ import { ArrowRight, GitPullRequest } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
 
-import { type ChangelogEntry } from "@/features/changelog/services/changelog-backend";
 import {
+  TYPE_META,
   categoryCountsFor,
   changelogEntryHref,
   formatChangelogDate,
-  TYPE_META,
 } from "./changelog-utils";
+import ChangelogRichText from "./ChangelogRichText";
+import { type ChangelogEntry } from "@/features/changelog/services/changelog-backend";
 
 const MAX_VISIBLE_TAGS = 4;
 const MAX_VISIBLE_AUTHORS = 4;
 
-/**
- * Deliberately a summary, not the release. The card used to render every Added/Improved/Fixed
- * bullet plus the full PR list, which made a single release taller than the viewport and buried
- * the next one — the full record lives on `/changelog/[id]` and the card links to it.
- */
 const ChangelogEntryCard = ({ entry, isLatest }: { entry: ChangelogEntry; isLatest: boolean }) => {
   const counts = categoryCountsFor(entry);
   const typeMeta = TYPE_META[entry.type];
@@ -42,11 +38,6 @@ const ChangelogEntryCard = ({ entry, isLatest }: { entry: ChangelogEntry; isLate
       id={entry.id}
       className="hover:border-border focus-within:border-border group scroll-mt-28 p-0 transition-colors"
     >
-      {/*
-       * One link over the whole card rather than a link per element: the card has no other
-       * interactive content, so nesting anchors here would only cost keyboard users extra tab
-       * stops for destinations that are all the same page.
-       */}
       <Link href={href} className="block p-6 focus:outline-none sm:p-7">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
           <span className="text-foreground font-mono text-lg font-bold tracking-tight">
@@ -79,7 +70,7 @@ const ChangelogEntryCard = ({ entry, isLatest }: { entry: ChangelogEntry; isLate
 
         {entry.summary && (
           <p className="text-muted mt-2 line-clamp-2 max-w-3xl text-sm leading-relaxed">
-            {entry.summary}
+            <ChangelogRichText content={entry.summary} inline />
           </p>
         )}
 
@@ -123,12 +114,12 @@ const ChangelogEntryCard = ({ entry, isLatest }: { entry: ChangelogEntry; isLate
                 <div className="flex -space-x-1.5">
                   {authors.map((author) => (
                     <Image
-                      key={author.login}
-                      src={author.avatarUrl}
-                      alt={author.login}
-                      title={author.login}
                       width={18}
                       height={18}
+                      key={author.login}
+                      alt={author.login}
+                      title={author.login}
+                      src={author.avatarUrl}
                       className="ring-card rounded-full ring-2"
                     />
                   ))}

@@ -36,7 +36,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "No account required to start",
         paragraphs: [
-          "You can use the core Document Studio — building a resume or cover letter and exporting a PDF — without registering an Account. Logging in is required only for cloud sync, sharing, AI features, the ATS Checker beyond the anonymous quota, GitHub/LinkedIn import, portfolio publishing, billing, and the developer API.",
+          "You can use the core Document Studio - building a resume or cover letter and exporting a PDF - without registering an Account. Logging in is required only for cloud sync, sharing, AI features, the ATS Checker beyond the anonymous quota, GitHub/LinkedIn import, portfolio publishing, billing, and the developer API.",
         ],
       },
       {
@@ -57,7 +57,7 @@ export const termsSections: LegalSection[] = [
     id: "guest-local-first",
     title: "Guest Sessions & Local-First Data Risk",
     intro: [
-      "If you use the Service without an Account, your documents and Master Profile are stored only in your browser's local storage (LocalStorage) and are tracked to a 30-day Guest Session cookie. This is a deliberate design choice to let you start immediately, without a signup wall — but it comes with a real risk you should understand and accept:",
+      "If you use the Service without an Account, your documents and Master Profile are stored only in your browser's local storage (LocalStorage) and are tracked to a 30-day Guest Session cookie. This is a deliberate design choice to let you start immediately, without a signup wall - but it comes with a real risk you should understand and accept:",
     ],
     subsections: [
       {
@@ -74,7 +74,7 @@ export const termsSections: LegalSection[] = [
     id: "master-profile-documents",
     title: "Master Profile & Documents",
     intro: [
-      'Your Master Profile is your canonical career record. New resumes, cover letters, and portfolios are seeded from a snapshot of your Master Profile at the moment you create them. Editing a specific document afterward does not write back to or overwrite your Master Profile — only an explicit "replace master" action (available in the GitHub/LinkedIn import flow) or directly editing the Master Profile page updates it. Understanding this one-way relationship is your responsibility if you tailor multiple documents from the same profile.',
+      'Your Master Profile is your canonical career record. New resumes, cover letters, and portfolios are seeded from a snapshot of your Master Profile at the moment you create them. Editing a specific document afterward does not write back to or overwrite your Master Profile - only an explicit "replace master" action (available in the GitHub/LinkedIn import flow) or directly editing the Master Profile page updates it. Understanding this one-way relationship is your responsibility if you tailor multiple documents from the same profile.',
     ],
   },
   {
@@ -89,7 +89,7 @@ export const termsSections: LegalSection[] = [
           "Attempt to gain unauthorized access to any account, system, or data not belonging to you, including through credential stuffing, session hijacking, or exploiting a vulnerability rather than reporting it under our Security Policy.",
           "Scrape, crawl, or use automated means to extract data from the Service at a volume or pattern inconsistent with normal individual use, or to build a competing dataset or product from our template designs, roadmap content, or user-generated portfolio content.",
           "Circumvent, disable, or interfere with rate limits, AI credit quotas, ATS scan quotas, security features, or entitlement checks, including through the use of multiple accounts, automation, or technical workarounds.",
-          "Reverse engineer, decompile, or attempt to derive source code from the closed portions of the Service (this restriction does not apply to the portions of our code already released under the MIT License in our public repository — see Section 18).",
+          "Reverse engineer, decompile, or attempt to derive source code from the closed portions of the Service (this restriction does not apply to the portions of our code already released under the MIT License in our public repository - see Section 18).",
           "Introduce malware, or engage in denial-of-service attacks, spamming, or any activity that disrupts the Service for other users.",
           "Use the developer API or any automated tooling in a way that exceeds the rate limits or scopes granted to your API key, or attempt to use AI-related scopes that have not been issued to you.",
           "Engage in fraudulent affiliate or ambassador activity, including self-referrals, fake accounts, incentivized/purchased traffic prohibited by the affiliate terms, or misrepresenting your relationship with VeriWorkly.",
@@ -110,7 +110,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "AI output is a draft, not a guarantee",
         paragraphs: [
-          "AI-generated text — whether from the resume/cover letter writing assistant, resume tailoring, portfolio copy generation, or the AI-powered layer of the ATS Checker — is produced by third-party large language models and is provided to help you draft faster, not as a finished, verified, or fact-checked product. AI output may contain factual inaccuracies, awkward phrasing, or content that does not reflect your actual experience.",
+          "AI-generated text - whether from the resume/cover letter writing assistant, resume tailoring, portfolio copy generation, or the AI-powered layer of the ATS Checker - is produced by third-party large language models and is provided to help you draft faster, not as a finished, verified, or fact-checked product. AI output may contain factual inaccuracies, awkward phrasing, or content that does not reflect your actual experience.",
           "You are solely responsible for reviewing, editing, fact-checking, and approving any AI-generated content before you rely on it, submit it to an employer, or publish it publicly. Nothing in the Service constitutes a representation that AI-generated content is accurate, truthful, or appropriate for your specific situation.",
         ],
       },
@@ -141,14 +141,14 @@ export const termsSections: LegalSection[] = [
     title: "User Content & License Grant",
     intro: [
       'You retain all ownership rights in the resumes, cover letters, portfolio content, images, and other material you create or upload to the Service ("User Content"). We do not claim ownership of your career facts, your writing, or your personal brand.',
-      "To operate the Service, you grant VeriWorkly a limited, worldwide, non-exclusive, royalty-free license to host, store, reproduce, and process your User Content solely as necessary to provide the Service to you — for example, rendering your document preview, compiling your PDF export, storing your Master Profile, or, if you choose to publish a portfolio or create a share link, displaying that content publicly at the URL you configure. This license ends when you delete the relevant content or your Account, except for residual copies retained in routine backups for a limited period, and except for content that has already been publicly shared and cached, mirrored, or downloaded by third parties beyond our control before deletion.",
+      "To operate the Service, you grant VeriWorkly a limited, worldwide, non-exclusive, royalty-free license to host, store, reproduce, and process your User Content solely as necessary to provide the Service to you - for example, rendering your document preview, compiling your PDF export, storing your Master Profile, or, if you choose to publish a portfolio or create a share link, displaying that content publicly at the URL you configure. This license ends when you delete the relevant content or your Account, except for residual copies retained in routine backups for a limited period, and except for content that has already been publicly shared and cached, mirrored, or downloaded by third parties beyond our control before deletion.",
     ],
   },
   {
     id: "public-portfolios-sharing",
     title: "Public Portfolios & Sharing",
     intro: [
-      "If you publish a portfolio, or create a public or unlisted share link for a resume or cover letter, that content becomes accessible to anyone with the URL — and, for publicly published portfolios, potentially discoverable by search engines — until you unpublish it, revoke the link, or enable password protection. You are solely responsible for the content of anything you choose to publish or share, including ensuring you have the right to publish any third-party material (such as project screenshots or client work) it contains.",
+      "If you publish a portfolio, or create a public or unlisted share link for a resume or cover letter, that content becomes accessible to anyone with the URL - and, for publicly published portfolios, potentially discoverable by search engines - until you unpublish it, revoke the link, or enable password protection. You are solely responsible for the content of anything you choose to publish or share, including ensuring you have the right to publish any third-party material (such as project screenshots or client work) it contains.",
       'Free-tier portfolios display a "Built with VeriWorkly" watermark badge. Removing this badge is a paid feature; attempting to remove it through unauthorized means is a violation of these Terms.',
     ],
   },
@@ -268,14 +268,14 @@ export const termsSections: LegalSection[] = [
     id: "open-source-license",
     title: "Open Source License",
     intro: [
-      `Portions of VeriWorkly's codebase are released under the MIT License and available at ${siteConfig.links.github}. That license permits you to use, copy, modify, merge, publish, distribute, and self-host that code, subject to its terms (including retaining the copyright and license notice). Running a self-hosted or forked instance of that code is governed by the MIT License, not by these Terms — the two are separate. Operating a self-hosted instance does not entitle you to support, uptime, or any obligation from us regarding the hosted Service at veriworkly.com, and these Terms govern your relationship with us only with respect to your use of that hosted Service.`,
+      `Portions of VeriWorkly's codebase are released under the MIT License and available at ${siteConfig.links.github}. That license permits you to use, copy, modify, merge, publish, distribute, and self-host that code, subject to its terms (including retaining the copyright and license notice). Running a self-hosted or forked instance of that code is governed by the MIT License, not by these Terms - the two are separate. Operating a self-hosted instance does not entitle you to support, uptime, or any obligation from us regarding the hosted Service at veriworkly.com, and these Terms govern your relationship with us only with respect to your use of that hosted Service.`,
     ],
   },
   {
     id: "availability",
     title: "Service Availability & Modifications",
     intro: [
-      'We provide the Service on an "as available" basis. We do not guarantee that the Service will be uninterrupted, timely, secure, or error-free, and we do not offer an uptime SLA for the free tier or for beta/roadmap features. We may modify, suspend, or discontinue any part of the Service — including individual features — at any time, with notice where reasonably feasible for material changes affecting paid functionality. Features described as "planned" or "in progress" on our public roadmap are not commitments and may change, be delayed, or not ship at all.',
+      'We provide the Service on an "as available" basis. We do not guarantee that the Service will be uninterrupted, timely, secure, or error-free, and we do not offer an uptime SLA for the free tier or for beta/roadmap features. We may modify, suspend, or discontinue any part of the Service - including individual features - at any time, with notice where reasonably feasible for material changes affecting paid functionality. Features described as "planned" or "in progress" on our public roadmap are not commitments and may change, be delayed, or not ship at all.',
     ],
   },
   {
@@ -321,7 +321,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "Effect of termination",
         paragraphs: [
-          "Upon termination, your right to use the Service ends immediately. We will handle your data on termination consistent with our Privacy Policy's retention terms. Sections of these Terms that by their nature should survive termination — including Intellectual Property, Disclaimer of Warranties, Limitation of Liability, Indemnification, Dispute Resolution, and this sentence — will survive.",
+          "Upon termination, your right to use the Service ends immediately. We will handle your data on termination consistent with our Privacy Policy's retention terms. Sections of these Terms that by their nature should survive termination - including Intellectual Property, Disclaimer of Warranties, Limitation of Liability, Indemnification, Dispute Resolution, and this sentence - will survive.",
         ],
       },
     ],
@@ -332,7 +332,7 @@ export const termsSections: LegalSection[] = [
     intro: [
       "We encourage you to contact us first at " +
         siteConfig.email +
-        " to resolve any dispute informally — most issues can be sorted out directly and faster than through any formal process.",
+        " to resolve any dispute informally - most issues can be sorted out directly and faster than through any formal process.",
       "These Terms are governed by applicable laws without regard to conflict-of-laws principles. Any formal legal proceedings not resolved informally shall be submitted to courts of competent jurisdiction, unless non-waivable local consumer-protection laws require otherwise.",
     ],
   },

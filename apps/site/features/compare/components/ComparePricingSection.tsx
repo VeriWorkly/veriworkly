@@ -5,7 +5,7 @@ import { type Competitor } from "@/config/compare";
 
 const VERIWORKLY_HIGHLIGHTS = [
   "No login required to start building",
-  "Full PDF, DOCX, and Markdown exports — no watermark",
+  "Full PDF, DOCX, and Markdown exports - no watermark",
   "ATS checker, AI rewriting (credit-metered, cost shown up front), and portfolio publishing included",
   "Local-first storage, with optional cloud sync when you create an account",
 ];

@@ -8,7 +8,7 @@ const CompareCaveatNote = ({ competitorName }: { competitorName: string }) => {
       <Info className="text-muted mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <p className="text-muted text-xs leading-relaxed">
         Pricing and feature details for {competitorName} were last verified in {PRICING_VERIFIED_AT}{" "}
-        from public pricing pages and reviews, and can change without notice — please confirm
+        from public pricing pages and reviews, and can change without notice - please confirm
         current pricing on {competitorName}&apos;s own site before subscribing.
       </p>
     </div>

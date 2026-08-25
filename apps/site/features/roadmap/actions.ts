@@ -14,7 +14,7 @@ const REFRESHABLE_PATHS = new Set([
  * from the backend.
  *
  * This replaces the old `?refresh=<status>` query parameter, which mapped straight onto
- * `cache: "no-store"`. That made cache-busting reachable over GET by anyone — and each
+ * `cache: "no-store"`. That made cache-busting reachable over GET by anyone - and each
  * bypass fanned out into up to `MAX_PAGES` sequential backend calls, so a crawler or a
  * held-down refresh could amplify one URL into hundreds of upstream requests.
  *

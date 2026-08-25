@@ -34,7 +34,7 @@ const COMPARISON_DATA: ComparisonRow[] = [
     description: "How long a referral link stays credited to you.",
     veriworkly: {
       value: "No Expiry Window",
-      description: "Credited the first time your invitee signs in — it doesn't expire.",
+      description: "Credited the first time your invitee signs in - it doesn't expire.",
       icon: Clock,
     },
     industry: {

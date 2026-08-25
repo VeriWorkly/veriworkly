@@ -23,7 +23,7 @@ const AboutPrinciples = () => {
 
             <p className="mt-4 text-sm leading-7 text-zinc-500 dark:text-zinc-400">
               Most resume tools offer templates for free, guide you through writing your
-              credentials, then lock your download behind a recurring subscription — or sell your
+              credentials, then lock your download behind a recurring subscription - or sell your
               profile to recruitment databases.
             </p>
 

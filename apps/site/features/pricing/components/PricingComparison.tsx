@@ -10,7 +10,7 @@ interface PricingComparisonProps {
 }
 
 const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComparisonProps) => {
-  // Hardcoding "$11.99" here contradicted the hero's cards for anyone on INR — the same
+  // Hardcoding "$11.99" here contradicted the hero's cards for anyone on INR - the same
   // plan quoted two different prices on one page.
   const { formatPrice } = useCurrency();
 
@@ -31,7 +31,7 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
         </div>
 
         {/*
-          A horizontally scrollable region has to be reachable by keyboard (WCAG 2.1.1) —
+          A horizontally scrollable region has to be reachable by keyboard (WCAG 2.1.1) -
           without tabIndex a keyboard-only visitor can never scroll to the Bundle column.
           The ARIA table roles live on the inner grid so the focusable scroll container
           does not sit between `table` and its `row` children and break the structure.
@@ -70,7 +70,7 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
               >
                 {/*
                   Needs an explicit role: an element with no role inside role="row" is not
-                  a valid cell, and assistive tech drops the whole row's labels — every
+                  a valid cell, and assistive tech drops the whole row's labels - every
                   checkmark would be announced with nothing to say what it applies to.
                 */}
                 <span role="rowheader" className="text-foreground/90 pr-4 font-medium">
@@ -80,7 +80,7 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
                   <span className="grid place-items-center" key={`${label}-${index}`} role="cell">
                     {/*
                       Every cell is an icon, so without this the entire body of the table
-                      is announced as blank rows — the icons carry 100% of the meaning.
+                      is announced as blank rows - the icons carry 100% of the meaning.
                     */}
                     <span className="sr-only">{enabled ? "Included" : "Not included"}</span>
                     {enabled ? (

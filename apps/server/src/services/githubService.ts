@@ -219,6 +219,70 @@ async function fetchPullRequestSummary(
   };
 }
 
+export interface GitHubContributorItem {
+  login: string;
+  avatarUrl: string;
+  htmlUrl: string;
+  contributions: number;
+}
+
+/**
+ * Fetch top contributors for the repository directly from GitHub.
+ */
+async function fetchGitHubContributors(
+  owner: string,
+  repo: string,
+  token?: string,
+): Promise<GitHubContributorItem[]> {
+  const cacheKey = `github:repo:contributors:${owner}:${repo}`;
+  const cached = await cacheGet<GitHubContributorItem[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = `https://api.github.com/repos/${owner}/${repo}/contributors?per_page=100`;
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as Array<{
+      login?: string;
+      avatar_url?: string;
+      html_url?: string;
+      contributions?: number;
+      type?: string;
+    }>;
+
+    if (!Array.isArray(data)) return [];
+
+    const contributors: GitHubContributorItem[] = data
+      .filter((item) => item.login && item.avatar_url && item.html_url && item.type !== "Bot")
+      .map((item) => ({
+        login: item.login!,
+        avatarUrl: item.avatar_url!,
+        htmlUrl: item.html_url!,
+        contributions: item.contributions ?? 1,
+      }));
+
+    if (contributors.length > 0) {
+      await cacheSet(cacheKey, contributors, 86400); // 24 hours
+    }
+
+    return contributors;
+  } catch (err) {
+    logger.warn("Failed to fetch repository contributors from GitHub API:", err);
+    return [];
+  }
+}
+
 export interface GitHubReleasePayload {
   id: number;
   tag_name: string;
@@ -275,22 +339,23 @@ export interface ParsedReleaseBody {
 
 const CATEGORY_KEYWORDS: Array<{
   pattern: RegExp;
-  category: keyof Omit<ParsedReleaseBody, "summary">;
+  category: keyof Omit<ParsedReleaseBody, "summary"> | "skip" | "summary";
 }> = [
+  { pattern: /contributor|dependency|dependencies|artifact|asset/i, category: "skip" },
+  { pattern: /summary|overview|highlights/i, category: "summary" },
   { pattern: /security/i, category: "security" },
   { pattern: /breaking/i, category: "breaking" },
-  { pattern: /fix|bug/i, category: "fixed" },
-  { pattern: /improve|enhance|refactor|update/i, category: "improved" },
+  { pattern: /fix|bug|patch|resolved/i, category: "fixed" },
+  { pattern: /improve|enhance|refactor|update|perf|polish/i, category: "improved" },
+  { pattern: /feature|feat|added|addition|add\b|new\s+feature|what'?s changed/i, category: "added" },
 ];
 
 /**
- * Best-effort markdown parser for hand-written GitHub release bodies.
- * Buckets bullet points under the nearest header by keyword match, and
- * takes the first prose paragraph as the summary. Purely heuristic — the
- * result is meant to be a useful starting point, correctable via the
- * existing admin changelog PUT endpoint, not a perfect transcription.
+ * Robust markdown parser for GitHub release notes.
+ * Buckets bullet points under headers by category keyword match,
+ * preserves multi-line/wrapped bullet items, extracts preamble summaries,
+ * and skips metadata sections like Contributors or Full Changelog links.
  */
-
 function parseReleaseBody(body: string | null): ParsedReleaseBody {
   const result: ParsedReleaseBody = {
     summary: null,
@@ -303,28 +368,73 @@ function parseReleaseBody(body: string | null): ParsedReleaseBody {
 
   if (!body) return result;
 
-  let currentCategory: keyof Omit<ParsedReleaseBody, "summary"> = "added";
+  let currentCategory: keyof Omit<ParsedReleaseBody, "summary"> | "skip" | "summary" | null = null;
+  const summaryLines: string[] = [];
+  let isPreamble = true;
 
-  for (const rawLine of body.split("\n")) {
+  const lines = body.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
     const line = rawLine.trim();
-    if (!line) continue;
 
+    if (!line) {
+      // Empty line could separate paragraphs in summary or bullets
+      continue;
+    }
+
+    // Check for Markdown headers: #, ##, ###, etc.
     if (/^#{1,6}\s+/.test(line)) {
+      isPreamble = false;
       const header = line.replace(/^#{1,6}\s+/, "");
       const match = CATEGORY_KEYWORDS.find(({ pattern }) => pattern.test(header));
       currentCategory = match?.category ?? "added";
       continue;
     }
 
-    if (/^[-*]\s+/.test(line)) {
-      const item = line.replace(/^[-*]\s+/, "").trim();
-      if (item) result[currentCategory].push(item);
+    // Skip metadata lines like "**Full Changelog**: https://..."
+    if (/^\*\*Full Changelog\*\*:/i.test(line) || /^Full Changelog:/i.test(line)) {
       continue;
     }
 
-    if (!result.summary && !/^#{1,6}/.test(line)) {
-      result.summary = line;
+    // Check for bullet list items: "* ", "- ", "+ ", "• ", or "1. "
+    const isBullet = /^[-*+•]\s+/.test(line) || /^\d+\.\s+/.test(line);
+
+    if (isBullet) {
+      isPreamble = false;
+      const item = line.replace(/^[-*+•]\s+/, "").replace(/^\d+\.\s+/, "").trim();
+
+      if (currentCategory === "skip") {
+        continue;
+      }
+
+      const targetCategory =
+        currentCategory && currentCategory !== "summary" ? currentCategory : "added";
+
+      if (item) {
+        result[targetCategory].push(item);
+      }
+      continue;
     }
+
+    // Indented or wrapped continuation of previous bullet
+    if (!isPreamble && currentCategory && currentCategory !== "skip" && currentCategory !== "summary") {
+      const targetCategory = currentCategory;
+      const currentList = result[targetCategory];
+      if (currentList.length > 0 && (/^\s{2,}/.test(rawLine) || !/^[A-Z#]/.test(line))) {
+        currentList[currentList.length - 1] += ` ${line}`;
+        continue;
+      }
+    }
+
+    // Capture summary from preamble before any headers/bullets, or inside explicit summary header
+    if (isPreamble || currentCategory === "summary") {
+      summaryLines.push(line);
+    }
+  }
+
+  if (summaryLines.length > 0) {
+    result.summary = summaryLines.join(" ");
   }
 
   return result;
@@ -782,6 +892,7 @@ export {
   shouldSyncGitHubStats,
   syncGitHubStatsFromGitHub,
   fetchPullRequestSummary,
+  fetchGitHubContributors,
   fetchAllGitHubReleases,
   parseReleaseBody,
   derivePrRefsFromCommits,

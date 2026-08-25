@@ -41,7 +41,7 @@ const BentoCoverLetterCard = ({ yOffset, textX, canHover }: BentoCoverLetterCard
             >
               Senior React Developer
             </motion.span>{" "}
-            — experience matches requirements.
+            - experience matches requirements.
           </div>
         </div>
       </div>
@@ -52,8 +52,8 @@ const BentoCoverLetterCard = ({ yOffset, textX, canHover }: BentoCoverLetterCard
         </h3>
 
         <p className="mt-2 text-xs leading-relaxed text-zinc-500 sm:text-sm dark:text-zinc-400">
-          Generate tailored cover letters mapped directly to target job requirements with custom
-          tone controls.
+          Cover Letters That Don&apos;t Sound Like a Robot. Generate matched cover letters that
+          sound like you and directly address the hiring manager&apos;s requirements.
         </p>
       </div>
     </BentoCard>

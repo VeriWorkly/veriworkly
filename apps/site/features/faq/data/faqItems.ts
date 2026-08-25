@@ -184,7 +184,7 @@ export const faqs = [
     category: "portfolios",
     question: "Can I map a custom domain instead of a subdomain?",
     answer:
-      "Today, Creator Pro publishes to a unique VeriWorkly subdomain (e.g. yourname.veriworkly.com) with automatic SSL. Fully custom domains (e.g. yourname.com) are not available yet — check the public roadmap for the latest status on that request.",
+      "Today, Creator Pro publishes to a unique VeriWorkly subdomain (e.g. yourname.veriworkly.com) with automatic SSL. Fully custom domains (e.g. yourname.com) are not available yet - check the public roadmap for the latest status on that request.",
   },
   {
     id: "local-data-migration",
@@ -219,28 +219,28 @@ export const faqs = [
     category: "documents",
     question: "Can AI write my cover letter, or just my resume?",
     answer:
-      "Both. The same AI writing assistant covers resumes and cover letters: generate a full cover letter from a job description, rewrite a section in Standard or Expert mode, or tailor an existing letter to a specific role. You always see the AI's draft and choose to replace your text or discard it — nothing is overwritten silently.",
+      "Both. The same AI writing assistant covers resumes and cover letters: generate a full cover letter from a job description, rewrite a section in Standard or Expert mode, or tailor an existing letter to a specific role. You always see the AI's draft and choose to replace your text or discard it - nothing is overwritten silently.",
   },
   {
     id: "ats-checker-free",
     category: "developer",
     question: "Is there a free ATS resume checker?",
     answer:
-      "Yes. The ATS Checker runs a free, rules-based core scan (word count, contact details, required sections, action verbs, quantified achievements, and formatting risks like tables or headers that confuse parsers) and gives a readiness score plus a keyword-match score against a pasted job description. Anonymous visitors get 1 scan every 48 hours, and free logged-in accounts get 2 scans every 24 hours. A deeper AI-powered analysis layer — with missing-evidence detection and prioritized recommendations — is available on paid plans.",
+      "Yes. The ATS Checker runs a free, rules-based core scan (word count, contact details, required sections, action verbs, quantified achievements, and formatting risks like tables or headers that confuse parsers) and gives a readiness score plus a keyword-match score against a pasted job description. Anonymous visitors get 1 scan every 48 hours, and free logged-in accounts get 2 scans every 24 hours. A deeper AI-powered analysis layer - with missing-evidence detection and prioritized recommendations - is available on paid plans.",
   },
   {
     id: "ats-two-scores-explained",
     category: "developer",
     question: "Why are there two scores, and why doesn't the readiness score change much?",
     answer:
-      'The readiness score measures parsing and formatting only — contact details, section labels, action verbs, quantified evidence, length, and table/header risks. It has nothing to do with any specific job, so two well-formatted resumes will land in a similar range even if their content is very different. The job match score is the one that changes with the role: it compares your resume against the pasted job description using synonym- and phrase-aware keyword matching, weighted toward terms in a "Requirements" section over a "Nice to have" one. If you want the match score to move, add a job description — the readiness score alone won\'t.',
+      'The readiness score measures parsing and formatting only - contact details, section labels, action verbs, quantified evidence, length, and table/header risks. It has nothing to do with any specific job, so two well-formatted resumes will land in a similar range even if their content is very different. The job match score is the one that changes with the role: it compares your resume against the pasted job description using synonym- and phrase-aware keyword matching, weighted toward terms in a "Requirements" section over a "Nice to have" one. If you want the match score to move, add a job description - the readiness score alone won\'t.',
   },
   {
     id: "ats-scoring-transparency",
     category: "developer",
     question: "Can I see exactly how the ATS Checker calculates its score?",
     answer:
-      "The scanning categories are public — parsing, contact details, structure, evidence, and format risk, described above and on the checker page itself. The exact rule weights, regex patterns, and the synonym/phrase dictionary behind keyword matching are kept private, the same way the rest of VeriWorkly's AI prompts are: publishing the literal answer key would let anyone reverse-engineer a resume that scores well without actually being easier to parse or a better match for the role.",
+      "The scanning categories are public - parsing, contact details, structure, evidence, and format risk, described above and on the checker page itself. The exact rule weights, regex patterns, and the synonym/phrase dictionary behind keyword matching are kept private, the same way the rest of VeriWorkly's AI prompts are: publishing the literal answer key would let anyone reverse-engineer a resume that scores well without actually being easier to parse or a better match for the role.",
   },
   {
     id: "github-import",
@@ -254,14 +254,14 @@ export const faqs = [
     category: "developer",
     question: "How does LinkedIn import actually work?",
     answer:
-      "LinkedIn does not offer a public API for profile data, so import works by pasting or uploading your exported LinkedIn profile text (for example, LinkedIn's own \"Save to PDF\" export). An AI call parses that text into structured resume data. This is different from GitHub import, which is a true OAuth API connection — we're upfront about that distinction. Free accounts get 1 LinkedIn import per month; paid accounts get unlimited imports.",
+      "LinkedIn does not offer a public API for profile data, so import works by pasting or uploading your exported LinkedIn profile text (for example, LinkedIn's own \"Save to PDF\" export). An AI call parses that text into structured resume data. This is different from GitHub import, which is a true OAuth API connection - we're upfront about that distinction. Free accounts get 1 LinkedIn import per month; paid accounts get unlimited imports.",
   },
   {
     id: "export-formats",
     category: "documents",
     question: "What file formats can I export my resume in?",
     answer:
-      "Every resume and cover letter exports as PDF, DOCX, HTML, Markdown, plain text, or JSON from the same export menu — all free, with no format locked behind a paywall.",
+      "Every resume and cover letter exports as PDF, DOCX, HTML, Markdown, plain text, or JSON from the same export menu - all free, with no format locked behind a paywall.",
   },
   {
     id: "developer-api",
@@ -275,6 +275,6 @@ export const faqs = [
     category: "billing",
     question: "Does VeriWorkly have an affiliate or referral program?",
     answer:
-      "Yes. The affiliate program pays a recurring commission on referred subscriptions across three tiers — 2% with no minimum, 3% after 10 conversions, and 5% after 50 conversions — tracked through a partner dashboard with click and conversion analytics and a $25 minimum payout. There's also a separate Student Ambassador program for campus representatives. See the Affiliate and Ambassador pages for details.",
+      "Yes. The affiliate program pays a recurring commission on referred subscriptions across three tiers - 2% with no minimum, 3% after 10 conversions, and 5% after 50 conversions - tracked through a partner dashboard with click and conversion analytics and a $25 minimum payout. There's also a separate Student Ambassador program for campus representatives. See the Affiliate and Ambassador pages for details.",
   },
 ];

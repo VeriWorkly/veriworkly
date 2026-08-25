@@ -21,7 +21,7 @@ const buttonClass = (active: boolean, activeClass: string) =>
 
 /**
  * Filtering is view state over a list already rendered on the page, so these are
- * buttons rather than links — no navigation, no server round-trip. `aria-pressed`
+ * buttons rather than links - no navigation, no server round-trip. `aria-pressed`
  * carries the on/off state that the old active-link styling only conveyed visually.
  */
 const TemplateFilters = ({

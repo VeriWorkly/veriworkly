@@ -52,7 +52,7 @@ const StatsPagination = ({
 
       <nav aria-label="Pagination" className="flex items-center gap-3">
         {/*
-          Previous/Next alone gave no sense of position — nothing on the page said which
+          Previous/Next alone gave no sense of position - nothing on the page said which
           page you were on, so paging deep and losing your place was a one-way trip.
         */}
         <span className="text-muted mr-1 font-mono text-xs font-bold whitespace-nowrap">

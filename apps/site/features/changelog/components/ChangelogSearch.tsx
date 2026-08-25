@@ -15,7 +15,7 @@ const ChangelogSearch = () => {
   /**
    * The debounce effect also fires on mount, where `value` is whatever the URL already
    * says. That scheduled a `router.replace` to the identical URL 350ms into every single
-   * /changelog visit — and because /changelog is server-rendered per request, each one
+   * /changelog visit - and because /changelog is server-rendered per request, each one
    * cost a full RSC round-trip to re-fetch a page the visitor was already looking at.
    * Nothing about it was visible, which is why it survived. Only user typing should
    * navigate.

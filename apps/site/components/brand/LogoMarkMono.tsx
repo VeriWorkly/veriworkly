@@ -3,8 +3,8 @@
  *
  * The downloadable file at /brand/logo/veriworkly-logo-mono.svg carries the same
  * geometry. An <img> or next/image cannot inherit text colour, so anywhere the
- * mark has to change colour with its surroundings — reversed out of a dark
- * ground, on a photo, in a button — use this component instead of the file.
+ * mark has to change colour with its surroundings - reversed out of a dark
+ * ground, on a photo, in a button - use this component instead of the file.
  */
 interface LogoMarkMonoProps {
   /** Rendered size in px. Square. */

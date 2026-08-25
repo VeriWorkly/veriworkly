@@ -15,7 +15,7 @@ export function AutofillHint() {
   return (
     <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
       <Wand2 className="h-3 w-3" aria-hidden="true" />
-      Filled in from your account — change it if it&apos;s wrong.
+      Filled in from your account - change it if it&apos;s wrong.
     </p>
   );
 }

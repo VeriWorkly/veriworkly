@@ -2,7 +2,7 @@ import { fetchApiData, ApiRequestError } from "@/utils/fetchApiData";
 
 /**
  * One week. The changelog only changes when a release ships, and every release ships
- * with a deploy — which rebuilds the app and drops this cache anyway. So the deploy is
+ * with a deploy - which rebuilds the app and drops this cache anyway. So the deploy is
  * the real invalidation event, and the timer is just a backstop for the case where an
  * entry is edited in the backend without a corresponding release.
  *
@@ -222,7 +222,7 @@ export interface ChangelogIndexItem {
 /**
  * Hard ceiling on how far back the index walk goes. Each page is a separate week-cached
  * fetch, so the cost is a handful of upstream requests per deploy no matter how many
- * detail pages render — but an unbounded loop against a misbehaving backend is not
+ * detail pages render - but an unbounded loop against a misbehaving backend is not
  * something a page render should be able to start.
  */
 const MAX_INDEX_PAGES = 8;
@@ -231,7 +231,7 @@ const MAX_INDEX_PAGES = 8;
  * Every release, newest first, assembled from the same paginated `/changelog?limit=15&offset=…`
  * URLs the listing page already fetches. Reusing those exact URLs matters: they are Data Cache
  * hits, so the detail pages and `generateStaticParams` cost no extra backend round trips beyond
- * the listing's own — page 1, which covers almost every lookup, is already warm.
+ * the listing's own - page 1, which covers almost every lookup, is already warm.
  */
 async function fetchAllChangelogEntries(): Promise<ChangelogEntry[]> {
   const collected: ChangelogEntry[] = [];
@@ -278,7 +278,7 @@ export interface ChangelogDetail {
 
 /**
  * Everything a detail page needs in one shot. The entry itself comes out of the cached index
- * rather than a second `/changelog/:id` call — the listing already carries the full record, so
+ * rather than a second `/changelog/:id` call - the listing already carries the full record, so
  * the by-id endpoint is only touched for entries older than the index window.
  */
 export async function fetchChangelogDetail(id: string): Promise<ChangelogDetail | null> {

@@ -15,17 +15,23 @@ export const dynamic = "force-static";
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/about",
+
   title: `About Us: Privacy-First AI Career Workspace | ${siteConfig.shortName}`,
+
   description:
     "VeriWorkly is a local-first, privacy-focused AI career workspace: resumes, cover letters, ATS scoring, and web portfolios built around one Master Profile.",
+
   ogTitle: "Why We Built VeriWorkly",
   ogDescription:
-    "Career tools shouldn't hold your résumé hostage behind a subscription. Here's why VeriWorkly is local-first, AI-powered, and free to start.",
-  twitterTitle: "Career tools shouldn't paywall your own résumé",
+    "You shouldn't have to pay a monthly subscription just to download your own resume. Here's why VeriWorkly is local-first, open-source, and free to export.",
+
+  twitterTitle: "Free ATS Resumes & Web Portfolios | VeriWorkly",
   twitterDescription:
-    "The story behind VeriWorkly: a privacy-first, AI-powered career workspace with no paywalled downloads and no sold data.",
+    "The story behind VeriWorkly: a privacy-first career workspace with unlocked PDF exports and local data storage.",
+
   image: "/og/about-page-og.png",
   imageAlt: "About VeriWorkly Platform",
+
   keywords: [
     "about VeriWorkly",
     "privacy-first career workspace",

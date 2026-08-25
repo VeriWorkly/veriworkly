@@ -7,7 +7,7 @@ import { siteConfig } from "@/config/site";
 
 /**
  * `programEnabled` mirrors AFFILIATE_PROGRAM_ENABLED. When the program is off the backend
- * answers 503, so "Join as Partner" led straight into an error page — the same failure the
+ * answers 503, so "Join as Partner" led straight into an error page - the same failure the
  * ambassador flow already guards against. The page still markets the program; only the
  * action changes.
  */

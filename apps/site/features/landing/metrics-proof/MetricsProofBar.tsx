@@ -20,34 +20,37 @@ const stats: Stat[] = [
     value: 100,
     decimals: 0,
     suffix: "%",
-    label: "Private",
-    detail: "Stored in your browser, not our servers",
+    label: "100% Local & Private",
+    detail: "Your career data stays in your browser storage. We never see or sell it.",
   },
-  {
-    icon: Target,
-    value: 99.9,
-    decimals: 1,
-    suffix: "%",
-    label: "ATS parse accuracy",
-    detail: "Verified against real applicant tracking systems",
-  },
+
   {
     icon: EyeOff,
     from: 80,
     value: 0,
     decimals: 0,
     suffix: "",
-    label: "Tracking or telemetry",
-    detail: "100% open-source and privacy-respecting",
+    label: "$0 to Export PDFs",
+    detail: "Download unlimited vector PDFs without hitting a paywall.",
   },
+
+  {
+    icon: Target,
+    value: 99.9,
+    decimals: 1,
+    suffix: "%",
+    label: "ATS-Tested Layouts",
+    detail: "Formatted cleanly for Workday, Greenhouse, Lever, and Taleo.",
+  },
+
   {
     icon: KeyRound,
     from: 10,
     value: 0,
     decimals: 0,
     suffix: "",
-    label: "Mandatory logins",
-    detail: "Build and export without an account",
+    label: "No Account Required",
+    detail: "Open the editor and start writing right away.",
   },
 ];
 

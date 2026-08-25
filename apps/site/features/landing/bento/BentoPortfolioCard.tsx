@@ -55,7 +55,8 @@ const BentoPortfolioCard = ({ yOffset, portfolioTilt, canHover }: BentoPortfolio
         </h3>
 
         <p className="mt-2 text-xs leading-relaxed text-zinc-500 sm:text-sm dark:text-zinc-400">
-          Publish your verified projects instantly to a custom subdomain.
+          Turn Your Resume into a Live Website. Publish an interactive web portfolio with your
+          projects, GitHub links, and custom domain in one click.
         </p>
       </div>
     </BentoCard>

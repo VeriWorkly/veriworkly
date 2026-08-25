@@ -9,7 +9,7 @@ import type { AtsCategoryScore } from "@/features/ats-checker/types";
 /**
  * Where the readiness score actually went. A single number tells you that something is wrong;
  * this tells you which part of the document is wrong, which is the difference between a score
- * and a report. Available to anonymous visitors too — it is an aggregate, not the rule list.
+ * and a report. Available to anonymous visitors too - it is an aggregate, not the rule list.
  */
 export function CategoryBreakdown({ categories }: { categories: AtsCategoryScore[] }) {
   if (!categories.length) return null;

@@ -96,7 +96,7 @@ export function formatRelativeTime(input: string | null | undefined): string {
  * Formats an absolute timestamp in UTC, labelled as such.
  *
  * This used to be a bare `toLocaleString()` on a *server*-rendered component. Node picks
- * the container's locale and timezone — in practice `en-US` and UTC — so every visitor was
+ * the container's locale and timezone - in practice `en-US` and UTC - so every visitor was
  * shown a UTC clock time with no indication that it was not their own. Someone in IST read
  * "next sync 6:00:00 PM" and was five and a half hours out.
  *

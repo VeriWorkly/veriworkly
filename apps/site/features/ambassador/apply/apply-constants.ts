@@ -110,14 +110,14 @@ export function validateStep(step: StepId, form: FormState): string | null {
     case "college":
       return form.collegeName.trim().length >= 2
         ? null
-        : "We need a campus name — even if it's just 'the library, mostly'.";
+        : "We need a campus name - even if it's just 'the library, mostly'.";
     case "year": {
       const value = form.graduationYear.trim();
       if (!/^\d{4}$/.test(value)) return "Enter a real 4-digit graduation year.";
 
       const year = Number(value);
       if (year < MIN_GRADUATION_YEAR || year > MAX_GRADUATION_YEAR) {
-        return `This one's for current students — pick a year between ${MIN_GRADUATION_YEAR} and ${MAX_GRADUATION_YEAR}.`;
+        return `This one's for current students - pick a year between ${MIN_GRADUATION_YEAR} and ${MAX_GRADUATION_YEAR}.`;
       }
 
       return null;
@@ -126,7 +126,7 @@ export function validateStep(step: StepId, form: FormState): string | null {
       const remaining = 20 - form.whyJoin.trim().length;
       return remaining <= 0
         ? null
-        : `${remaining} more character${remaining === 1 ? "" : "s"} — we want the real story.`;
+        : `${remaining} more character${remaining === 1 ? "" : "s"} - we want the real story.`;
     }
     case "superpower":
       return form.superpower.trim().length >= 2 ? null : "Every ambassador needs a superpower.";

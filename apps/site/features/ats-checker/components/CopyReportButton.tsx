@@ -50,7 +50,7 @@ export function CopyReportButton({ report }: { report: AtsFullReport }) {
       </span>
       {state === "failed" ? (
         <span className="text-xs text-red-700 dark:text-red-400">
-          Clipboard blocked — select the text manually.
+          Clipboard blocked - select the text manually.
         </span>
       ) : null}
     </div>

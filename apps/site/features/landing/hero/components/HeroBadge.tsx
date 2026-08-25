@@ -16,7 +16,7 @@ export const HeroBadge = () => {
           className="h-2.5 w-2.5 text-blue-600 lg:h-3 lg:w-3 dark:text-blue-400"
         />
       </div>
-      Privacy-First Document & Portfolio Workspace
+      Zero Paywalls • Zero Forced Signups
     </motion.div>
   );
 };

@@ -19,7 +19,7 @@ const STEPS_WITHOUT_TARGET = [
 
 /**
  * 420 ms, down from 750. The staged reveal exists so the scan reads as work rather than a coin
- * flip, but the previous pacing held finished results on screen for up to 3.75 s — long enough
+ * flip, but the previous pacing held finished results on screen for up to 3.75 s - long enough
  * to feel like latency instead of substance, which is the opposite of the intent. Long enough
  * to read each line, short enough that nobody waits on it.
  */

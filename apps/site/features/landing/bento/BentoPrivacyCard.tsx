@@ -25,7 +25,10 @@ const BentoPrivacyCard = ({ yOffset, canHover }: BentoPrivacyCardProps) => {
           <div className="absolute inset-2 animate-pulse rounded-full bg-emerald-500/10" />
           <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl" />
 
-          <Lock className="relative z-10 h-5 w-5 text-emerald-400 sm:h-6 sm:w-6" strokeWidth={1.5} />
+          <Lock
+            className="relative z-10 h-5 w-5 text-emerald-400 sm:h-6 sm:w-6"
+            strokeWidth={1.5}
+          />
         </div>
 
         <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wide text-emerald-400">
@@ -35,9 +38,12 @@ const BentoPrivacyCard = ({ yOffset, canHover }: BentoPrivacyCardProps) => {
       </div>
 
       <div className="relative z-10 mt-6 sm:mt-auto">
-        <h3 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">Privacy First</h3>
+        <h3 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+          Privacy First
+        </h3>
         <p className="mt-2 text-xs leading-relaxed text-zinc-400 sm:text-sm">
-          Client-side PDF compiler. Your master career data remains stored locally on your device.
+          Your Data Stays on Your Machine. All PDF generation happens locally in your browser. No
+          trackers, no databases hoarding your phone number or salary history.
         </p>
       </div>
     </BentoCard>

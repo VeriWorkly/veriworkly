@@ -225,7 +225,7 @@ export const AmbassadorApplyExperience = ({
                 fieldId="collegeName"
                 reactionKey="college"
                 title="Where do you go to school?"
-                subtitle="College, university, bootcamp — whatever your campus looks like."
+                subtitle="College, university, bootcamp - whatever your campus looks like."
               >
                 <BigInput
                   autoFocus
@@ -321,7 +321,7 @@ export const AmbassadorApplyExperience = ({
                 fieldId="funFact"
                 reactionKey="funfact"
                 title="Give us a fun fact about you"
-                subtitle="Weird talent, wild trivia, deeply embarrassing hobby — we want it."
+                subtitle="Weird talent, wild trivia, deeply embarrassing hobby - we want it."
               >
                 <BigInput
                   autoFocus
@@ -340,7 +340,7 @@ export const AmbassadorApplyExperience = ({
                 fieldId="vibeCheck"
                 reactionKey="vibe"
                 title="Pick your campus vibe"
-                subtitle="Optional — but this is the one we'll all argue about internally."
+                subtitle="Optional - but this is the one we'll all argue about internally."
               >
                 <div
                   role="group"
@@ -367,7 +367,7 @@ export const AmbassadorApplyExperience = ({
                 fieldId="socialHandle"
                 reactionKey="social"
                 title="Drop a social handle"
-                subtitle="Instagram, LinkedIn, X, TikTok — optional, so we can hype you up."
+                subtitle="Instagram, LinkedIn, X, TikTok - optional, so we can hype you up."
               >
                 <BigInput
                   autoFocus

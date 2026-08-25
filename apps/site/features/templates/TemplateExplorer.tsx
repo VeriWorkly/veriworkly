@@ -27,7 +27,7 @@ type Props = {
  * Doing it here keeps `/templates/[docType]` prerendered.
  *
  * The filter state starts at "All" so the server-rendered HTML contains *every*
- * template — the names, descriptions and links are the page's actual SEO value and must
+ * template - the names, descriptions and links are the page's actual SEO value and must
  * not be hidden behind hydration. A shared `?family=&layout=` link is applied on mount
  * instead of via `useSearchParams`, which would trigger a client-render bailout and
  * strip that content from the static HTML.
@@ -119,7 +119,7 @@ const TemplateExplorer = ({ docTypeLabel, templates, familyDescriptions }: Props
     [familyOptions, familyDescriptions, visibleTemplates],
   );
 
-  // With one family and one layout the control offers no real choice — every button
+  // With one family and one layout the control offers no real choice - every button
   // would be a no-op. This is the case for portfolio websites today.
   const hasMeaningfulFilters = familyOptions.length > 1 || layoutOptions.length > 1;
 

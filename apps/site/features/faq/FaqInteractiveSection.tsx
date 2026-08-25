@@ -83,7 +83,7 @@ const FaqInteractiveSection = () => {
           <Search className="mr-2.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
 
           {/*
-            A placeholder is not a label — it disappears the moment anything is typed, and
+            A placeholder is not a label - it disappears the moment anything is typed, and
             screen readers announced this as an unnamed text field. Same for the clear
             button below, which was an icon inside a button with no text at all.
           */}

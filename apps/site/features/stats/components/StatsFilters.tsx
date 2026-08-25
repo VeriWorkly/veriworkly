@@ -23,7 +23,7 @@ const pillClass = (isActive: boolean) =>
 
 /**
  * The page already parsed `kind` from the URL, threaded it through every `buildSearchHref`
- * call, and forwarded it to the backend — but never rendered a control for it, so the only
+ * call, and forwarded it to the backend - but never rendered a control for it, so the only
  * way to filter issues from pull requests was to hand-edit the query string. The copy
  * underneath advertised it regardless.
  */
