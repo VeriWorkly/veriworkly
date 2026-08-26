@@ -4,7 +4,7 @@ import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { initRedis, closeRedis } from "#lib/redis";
 
-import { syncGitHubStatsFromGitHub } from "#services/githubService";
+import { syncGitHubStatsFromGitHub } from "#services/github/index";
 
 async function run() {
   try {

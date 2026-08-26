@@ -11,26 +11,17 @@ import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import {
-  fetchChangelogDetail,
   fetchChangelogIndex,
+  fetchChangelogDetail,
 } from "@/features/changelog/services/changelog-backend";
-
-import ChangelogEntryDetail from "@/features/changelog/components/ChangelogEntryDetail";
-import ChangelogEntryNav from "@/features/changelog/components/ChangelogEntryNav";
-import {
-  categoriesFor,
-  formatChangelogDate,
-} from "@/features/changelog/components/changelog-utils";
+import ChangelogEntryNav from "@/features/changelog/components/detail/ChangelogEntryNav";
+import ChangelogEntryDetail from "@/features/changelog/components/detail/ChangelogEntryDetail";
+import { categoriesFor, formatChangelogDate } from "@/features/changelog/utils/changelog-utils";
 
 interface ChangelogDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-/**
- * Prerenders every release at build time off the same cached index the listing uses, so a crawler
- * hitting a hundred release URLs costs no backend calls at all. Unknown ids still render on
- * demand and 404 properly.
- */
 export async function generateStaticParams() {
   const index = await fetchChangelogIndex();
   return index.map((entry) => ({ id: entry.id }));
@@ -45,40 +36,54 @@ function describe(title: string, version: string, summary: string | null) {
 
 export async function generateMetadata({ params }: ChangelogDetailPageProps): Promise<Metadata> {
   const { id } = await params;
+
   const detail = await fetchChangelogDetail(id).catch(() => null);
 
   if (!detail) {
     return buildPageMetadata({
       path: `/changelog/${id}`,
+
       title: "Release Not Found | VeriWorkly",
       description: "This release does not exist in the VeriWorkly changelog.",
+
       ogTitle: "Release Not Found",
       ogDescription: "This release does not exist in the VeriWorkly changelog.",
+
       twitterTitle: "Release Not Found",
       twitterDescription: "This release does not exist in the VeriWorkly changelog.",
+
       image: "/api/og?title=Changelog&showDesc=false",
+
       noIndex: true,
     });
   }
 
   const { entry } = detail;
+
   const description = describe(entry.title, entry.version, entry.summary);
 
   const ogUrl = new URL("/api/og", siteConfig.url);
+
   ogUrl.searchParams.set("title", `v${entry.version} — ${entry.title}`);
   ogUrl.searchParams.set("description", description);
 
   return buildPageMetadata({
     path: `/changelog/${entry.id}`,
+
     title: `VeriWorkly v${entry.version}: ${entry.title} | Release Notes`,
     description,
+
     ogTitle: `What shipped in VeriWorkly v${entry.version}`,
     ogDescription: description,
+
     twitterTitle: `VeriWorkly v${entry.version} — ${entry.title}`,
     twitterDescription: description,
+
     image: ogUrl.toString(),
     imageAlt: `VeriWorkly v${entry.version} release notes`,
+
     type: "article",
+
     keywords: [
       `VeriWorkly v${entry.version}`,
       "VeriWorkly release notes",
@@ -90,11 +95,13 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
 
 const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
   const { id } = await params;
+
   const detail = await fetchChangelogDetail(id);
 
   if (!detail) notFound();
 
   const { entry, older, newer, isLatest } = detail;
+
   const entryUrl = `${siteConfig.url}/changelog/${entry.id}`;
   const description = describe(entry.title, entry.version, entry.summary);
 
@@ -129,6 +136,7 @@ const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
       />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(articleSchema)}
@@ -145,8 +153,8 @@ const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
               className="text-muted hover:text-foreground group mb-8 inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase transition-colors"
             >
               <ArrowLeft
-                className="size-4 transition-transform group-hover:-translate-x-1"
                 aria-hidden="true"
+                className="size-4 transition-transform group-hover:-translate-x-1"
               />
               Back to Changelog
             </Link>

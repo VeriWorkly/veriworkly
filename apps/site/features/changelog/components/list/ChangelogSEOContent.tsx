@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import SEOContentContainer from "@/components/SEOContentContainer";
 import { siteConfig } from "@/config/site";
+
+import SEOContentContainer from "@/components/SEOContentContainer";
 
 const ChangelogSEOContent = () => {
   return (
@@ -11,9 +12,9 @@ const ChangelogSEOContent = () => {
       <p className="text-muted text-sm leading-6">
         This page lists every shipped VeriWorkly release, generated directly from our public{" "}
         <a
-          href={siteConfig.links.github}
           target="_blank"
           rel="noopener noreferrer"
+          href={siteConfig.links.github}
           className="text-accent underline underline-offset-2"
         >
           GitHub repository
@@ -26,7 +27,6 @@ const ChangelogSEOContent = () => {
 
       <p className="text-muted text-sm leading-6">
         Looking for what&apos;s planned next instead of what already shipped? Check the{" "}
-        {/* Internal route: a bare <a> here forced a full document reload. */}
         <Link href="/roadmap" className="text-accent underline underline-offset-2">
           public roadmap
         </Link>

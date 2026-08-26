@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Request, Response, NextFunction } from "express";
 
-import * as githubService from "#services/githubService";
+import * as githubService from "#services/github/index";
 
 import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 import { createSuccessResponse, handleValidationError } from "#lib/errors";

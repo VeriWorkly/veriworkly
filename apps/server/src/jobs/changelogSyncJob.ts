@@ -7,7 +7,7 @@ import { ApiError } from "#lib/errors";
 import {
   shouldSyncChangelogReleases,
   syncChangelogFromGitHubReleases,
-} from "#services/changelogSyncService";
+} from "#services/changelog/index";
 
 let job: ScheduledTask | null = null;
 

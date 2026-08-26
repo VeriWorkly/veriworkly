@@ -10,8 +10,8 @@ import {
   fetchChangelogFromBackend,
 } from "@/features/changelog/services/changelog-backend";
 
-import ChangelogPageShell from "@/features/changelog/components/ChangelogPageShell";
-import ChangelogSEOContent from "@/features/changelog/components/ChangelogSEOContent";
+import ChangelogPageShell from "@/features/changelog/components/list/ChangelogPageShell";
+import ChangelogSEOContent from "@/features/changelog/components/list/ChangelogSEOContent";
 
 const pageUrl = `${siteConfig.url}/changelog`;
 
@@ -140,7 +140,7 @@ const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
         search={search}
         title="Changelog"
         activeType={type ?? "all"}
-        description="Every VeriWorkly release, generated straight from our public GitHub history — new features, improvements, fixes, and security updates, with links back to the exact pull requests."
+        description="Every VeriWorkly release, generated straight from our public GitHub history - new features, improvements, fixes, and security updates, with links back to the exact pull requests."
       />
 
       <ChangelogSEOContent />

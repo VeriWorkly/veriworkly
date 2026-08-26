@@ -5,7 +5,7 @@ import { Prisma } from "@prisma/client";
 import { config } from "#config";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
-import { fetchPullRequestSummary, type GitHubPullRequestSummary } from "#services/githubService";
+import { fetchPullRequestSummary, type GitHubPullRequestSummary } from "#services/github/index";
 
 interface ChangelogPrRef {
   number: number;
@@ -50,7 +50,8 @@ async function run() {
     const nextRefs: ChangelogPrRef[] = [];
 
     for (const raw of prRefs) {
-      const ref = raw as ChangelogPrRef;
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+      const ref = raw as unknown as ChangelogPrRef;
 
       if (ref.author) {
         refsSkipped++;

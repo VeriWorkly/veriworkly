@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import React from "react";
-import { renderInlineMarkdown } from "@/features/changelog/components/ChangelogRichText";
+import { renderInlineMarkdown } from "@/features/changelog/components/detail/ChangelogRichText";
 
 describe("ChangelogRichText inline markdown parser", () => {
   it("parses bold text", () => {

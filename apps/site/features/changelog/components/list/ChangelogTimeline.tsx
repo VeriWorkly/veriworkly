@@ -1,18 +1,13 @@
-import { type ChangelogEntry } from "@/features/changelog/services/changelog-backend";
 import ChangelogEntryCard from "./ChangelogEntryCard";
 
-/**
- * `latestVersion` comes from the stats endpoint rather than being inferred from the first row:
- * on page 2, or under a type filter, the top card is not the newest release, and marking it
- * "Latest" was wrong.
- */
-const ChangelogTimeline = ({
-  entries,
-  latestVersion,
-}: {
+import { type ChangelogEntry } from "@/features/changelog/services/changelog-backend";
+
+interface ChangelogTimelineProps {
   entries: ChangelogEntry[];
   latestVersion?: string;
-}) => {
+}
+
+const ChangelogTimeline = ({ entries, latestVersion }: ChangelogTimelineProps) => {
   if (entries.length === 0) {
     return (
       <div className="border-border/40 bg-card/30 rounded-3xl border border-dashed p-12 text-center">

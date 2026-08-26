@@ -1,7 +1,7 @@
 import {
+  Wrench,
   Sparkles,
   TrendingUp,
-  Wrench,
   ShieldCheck,
   AlertTriangle,
   type LucideIcon,
@@ -115,6 +115,7 @@ export function buildChangelogHref(basePath: string, updates: Record<string, str
       params.delete(key);
       continue;
     }
+
     params.set(key, value);
   }
 

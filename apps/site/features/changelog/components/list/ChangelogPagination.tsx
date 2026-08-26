@@ -1,21 +1,24 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { cn } from "@veriworkly/ui";
 
+import { buildChangelogHref } from "@/features/changelog/utils/changelog-utils";
 import { type ChangelogPagination as ChangelogPaginationMeta } from "@/features/changelog/services/changelog-backend";
-import { buildChangelogHref } from "./changelog-utils";
+
+interface ChangelogPaginationProps {
+  pagination: ChangelogPaginationMeta;
+  activeType?: string;
+  search?: string;
+  basePath?: string;
+}
 
 const ChangelogPagination = ({
   pagination,
   activeType,
   search,
   basePath = "/changelog",
-}: {
-  pagination: ChangelogPaginationMeta;
-  activeType?: string;
-  search?: string;
-  basePath?: string;
-}) => {
+}: ChangelogPaginationProps) => {
   const { page, totalPages } = pagination;
 
   if (totalPages <= 1) return null;

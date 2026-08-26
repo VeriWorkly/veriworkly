@@ -1,8 +1,9 @@
 import Link from "next/link";
+
 import { cn } from "@veriworkly/ui";
 
+import { buildChangelogHref } from "@/features/changelog/utils/changelog-utils";
 import { type ChangelogType } from "@/features/changelog/services/changelog-backend";
-import { buildChangelogHref } from "./changelog-utils";
 
 const ChangelogTypeFilters = ({
   activeType,

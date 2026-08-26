@@ -3,7 +3,7 @@ import "dotenv/config";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { initRedis, closeRedis } from "#lib/redis";
-import { syncChangelogFromGitHubReleases } from "#services/changelogSyncService";
+import { syncChangelogFromGitHubReleases } from "#services/changelog/index";
 
 async function run() {
   try {

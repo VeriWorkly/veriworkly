@@ -1,18 +1,20 @@
 import { Suspense } from "react";
+
 import { Container } from "@veriworkly/ui";
 
 import {
-  type ChangelogResponse,
   type ChangelogType,
+  type ChangelogResponse,
 } from "@/features/changelog/services/changelog-backend";
 
 import ChangelogHeader from "./ChangelogHeader";
-import ChangelogStatsGrid from "./ChangelogStatsGrid";
-import ChangelogTypeFilters from "./ChangelogTypeFilters";
-import ChangelogSearch from "./ChangelogSearch";
 import ChangelogTimeline from "./ChangelogTimeline";
-import ChangelogContributors from "./ChangelogContributors";
 import ChangelogPagination from "./ChangelogPagination";
+
+import ChangelogSearch from "@/features/changelog/components/controls/ChangelogSearch";
+import ChangelogStatsGrid from "@/features/changelog/components/controls/ChangelogStatsGrid";
+import ChangelogTypeFilters from "@/features/changelog/components/controls/ChangelogTypeFilters";
+import ChangelogContributors from "@/features/changelog/components/controls/ChangelogContributors";
 
 interface ChangelogPageShellProps {
   title: string;
@@ -44,11 +46,6 @@ const ChangelogPageShell = ({
         <ChangelogContributors stats={stats} />
 
         <div className="border-border/40 bg-card/30 mb-10 flex flex-col gap-4 rounded-3xl border p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] sm:flex-row sm:items-center sm:justify-between">
-          {/*
-            Wraps rather than scrolling. The old `overflow-x-auto scrollbar-none` combination
-            clipped "Patch" off the right edge on narrow phones with no scrollbar to hint that
-            anything was there - a filter you cannot see is a filter you cannot use.
-          */}
           <ChangelogTypeFilters activeType={activeType} search={search} />
 
           <Suspense fallback={<div className="h-9 w-full sm:w-64" />}>
@@ -62,9 +59,9 @@ const ChangelogPageShell = ({
 
         {data?.pagination && (
           <ChangelogPagination
-            pagination={data.pagination}
-            activeType={activeType}
             search={search}
+            activeType={activeType}
+            pagination={data.pagination}
           />
         )}
       </Container>

@@ -36,8 +36,9 @@ function sanitizeUrl(rawUrl: string): string | null {
  * - `[text](url)`
  * - `~~strikethrough~~`
  * - `#123` (GitHub PR/issue auto-link)
+ * - `@scope/pkg` (Scoped package)
+ * - `@username` (Contributor mention)
  */
-
 export function renderInlineMarkdown(text: string, keyPrefix = "inline"): React.ReactNode[] {
   if (!text) return [];
 
@@ -69,7 +70,6 @@ export function renderInlineMarkdown(text: string, keyPrefix = "inline"): React.
     const key = `${keyPrefix}-${tokenCount++}`;
 
     if (matchedStr.startsWith("`") && matchedStr.endsWith("`")) {
-      // Inline code
       const codeContent = matchedStr.slice(1, -1);
 
       nodes.push(
@@ -82,6 +82,7 @@ export function renderInlineMarkdown(text: string, keyPrefix = "inline"): React.
       );
     } else if (matchedStr.startsWith("[") && matchedStr.includes("](")) {
       const closingBracket = matchedStr.indexOf("](");
+
       const label = matchedStr.slice(1, closingBracket);
       const rawUrl = matchedStr.slice(closingBracket + 2, -1);
 
@@ -103,13 +104,13 @@ export function renderInlineMarkdown(text: string, keyPrefix = "inline"): React.
         );
       } else nodes.push(label);
     } else if (/^https?:\/\/github\.com\/[^\/\s]+\/[^\/\s]+\/pull\/\d+$/.test(matchedStr)) {
-      // Clean display of raw GitHub PR URLs like https://github.com/VeriWorkly/veriworkly/pull/195 -> #195
       const prNumber = matchedStr.match(/\/pull\/(\d+)/)?.[1];
+
       nodes.push(
         <Link
           key={key}
-          href={matchedStr}
           target="_blank"
+          href={matchedStr}
           rel="noopener noreferrer"
           className="text-accent decoration-accent/40 hover:decoration-accent font-mono text-xs underline underline-offset-2"
         >
@@ -147,12 +148,14 @@ export function renderInlineMarkdown(text: string, keyPrefix = "inline"): React.
         </em>,
       );
     } else if (/@([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)/.test(matchedStr)) {
-      // Scoped package name like @veriworkly/profile-core
       const pkgMatch = matchedStr.match(/(\s*)(@[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)/);
+
       if (pkgMatch) {
         const space = pkgMatch[1];
         const pkgName = pkgMatch[2];
+
         if (space) nodes.push(space);
+
         nodes.push(
           <code
             key={key}
@@ -185,20 +188,21 @@ export function renderInlineMarkdown(text: string, keyPrefix = "inline"): React.
         );
       } else nodes.push(matchedStr);
     } else if (/@([a-zA-Z0-9_-]+)/.test(matchedStr)) {
-      // Contributor mention @username
       const mentionMatch = matchedStr.match(/(\s*)@([a-zA-Z0-9_-]+)/);
+
       if (mentionMatch) {
         const space = mentionMatch[1];
         const username = mentionMatch[2];
+
         if (space) nodes.push(space);
 
         nodes.push(
           <Link
             key={key}
-            href={`https://github.com/${username}`}
             target="_blank"
             rel="noopener noreferrer"
             title={`@${username} on GitHub`}
+            href={`https://github.com/${username}`}
             className="bg-accent/10 border-accent/20 text-foreground hover:bg-accent/20 hover:text-accent inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-medium transition-colors"
           >
             <span className="text-accent font-bold">@</span>
@@ -220,6 +224,7 @@ export function renderInlineMarkdown(text: string, keyPrefix = "inline"): React.
  * Component to render changelog text with full inline markdown support,
  * highlighting bold tags, inline code chips, links, and structured prefixes.
  */
+
 export const ChangelogRichText: React.FC<ChangelogRichTextProps> = ({
   content,
   className = "",

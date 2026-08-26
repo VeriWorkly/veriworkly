@@ -6,12 +6,12 @@ import {
   getChangelogStats,
   getChangelogEntries,
   getChangelogEntryById,
-} from "#services/changelogService";
+} from "#services/changelog/index";
 
 import { changelogQuerySchema } from "#validators/changelogValidator";
 
-import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 import { ApiError, createSuccessResponse, handleValidationError } from "#lib/errors";
+import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 
 export class ChangelogController {
   /**
@@ -81,9 +81,7 @@ export class ChangelogController {
     try {
       const { id } = req.params;
 
-      if (!id) {
-        throw new ApiError(400, "Changelog entry ID is required");
-      }
+      if (!id) throw new ApiError(400, "Changelog entry ID is required");
 
       const entry = await getChangelogEntryById(id);
       res.json(createSuccessResponse(entry, "Changelog entry fetched successfully"));

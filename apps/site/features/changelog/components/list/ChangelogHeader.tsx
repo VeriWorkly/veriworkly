@@ -1,4 +1,9 @@
-const ChangelogHeader = ({ title, description }: { title: string; description: string }) => {
+interface ChangelogHeaderProps {
+  title: string;
+  description: string;
+}
+
+const ChangelogHeader = ({ title, description }: ChangelogHeaderProps) => {
   return (
     <div className="border-border/40 mb-12 flex flex-col gap-4 border-b pb-8">
       <div className="flex items-center gap-2">

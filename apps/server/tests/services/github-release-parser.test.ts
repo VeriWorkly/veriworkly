@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseReleaseBody } from "../../src/services/githubService.js";
+import { parseReleaseBody } from "../../src/services/github/index.js";
 
 describe("GitHub Release Body Parser", () => {
   it("parses release notes with preamble summary, categorized headers, and multi-line bullets", () => {

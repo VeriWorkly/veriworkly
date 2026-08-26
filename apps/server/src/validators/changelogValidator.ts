@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const changelogQuerySchema = z.object({
   type: z.enum(["major", "minor", "patch"]).optional(),
-  tag: z.string().min(1).optional(),
-  search: z.string().min(1).max(120).optional(),
+  tag: z.string().trim().min(1).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(50).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
@@ -11,17 +11,17 @@ export const changelogQuerySchema = z.object({
 });
 
 const prRefAuthorSchema = z.object({
-  login: z.string(),
-  avatarUrl: z.string().url(),
-  htmlUrl: z.string().url(),
+  login: z.string().trim().min(1),
+  avatarUrl: z.string().trim().url(),
+  htmlUrl: z.string().trim().url(),
 });
 
 const prRefsSchema = z
   .array(
     z.object({
       number: z.number().int().positive(),
-      title: z.string(),
-      url: z.string().url().optional(),
+      title: z.string().trim().min(1),
+      url: z.string().trim().url().optional(),
       author: prRefAuthorSchema.nullable().optional(),
     }),
   )
@@ -29,36 +29,36 @@ const prRefsSchema = z
   .optional();
 
 export const changelogAdminCreateSchema = z.object({
-  id: z.string().min(1).optional(),
-  version: z.string().min(1),
-  title: z.string().min(1),
-  summary: z.string().nullable().optional(),
+  id: z.string().trim().min(1).optional(),
+  version: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  summary: z.string().trim().nullable().optional(),
   type: z.enum(["major", "minor", "patch"]).default("minor"),
-  publishedAt: z.string().datetime().optional(),
-  githubUrl: z.string().url().nullable().optional(),
-  added: z.array(z.string()).optional(),
-  improved: z.array(z.string()).optional(),
-  fixed: z.array(z.string()).optional(),
-  breaking: z.array(z.string()).optional(),
-  security: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
+  publishedAt: z.string().datetime({ offset: true }).optional(),
+  githubUrl: z.string().trim().url().nullable().optional(),
+  added: z.array(z.string().trim()).default([]),
+  improved: z.array(z.string().trim()).default([]),
+  fixed: z.array(z.string().trim()).default([]),
+  breaking: z.array(z.string().trim()).default([]),
+  security: z.array(z.string().trim()).default([]),
+  tags: z.array(z.string().trim()).default([]),
   prRefs: prRefsSchema,
 });
 
 export const changelogAdminUpdateSchema = z
   .object({
-    version: z.string().min(1).optional(),
-    title: z.string().min(1).optional(),
-    summary: z.string().nullable().optional(),
+    version: z.string().trim().min(1).optional(),
+    title: z.string().trim().min(1).optional(),
+    summary: z.string().trim().nullable().optional(),
     type: z.enum(["major", "minor", "patch"]).optional(),
-    publishedAt: z.string().datetime().optional(),
-    githubUrl: z.string().url().nullable().optional(),
-    added: z.array(z.string()).optional(),
-    improved: z.array(z.string()).optional(),
-    fixed: z.array(z.string()).optional(),
-    breaking: z.array(z.string()).optional(),
-    security: z.array(z.string()).optional(),
-    tags: z.array(z.string()).optional(),
+    publishedAt: z.string().datetime({ offset: true }).optional(),
+    githubUrl: z.string().trim().url().nullable().optional(),
+    added: z.array(z.string().trim()).optional(),
+    improved: z.array(z.string().trim()).optional(),
+    fixed: z.array(z.string().trim()).optional(),
+    breaking: z.array(z.string().trim()).optional(),
+    security: z.array(z.string().trim()).optional(),
+    tags: z.array(z.string().trim()).optional(),
     prRefs: prRefsSchema,
   })
   .refine((value) => Object.keys(value).length > 0, {
