@@ -1,4 +1,5 @@
-import type { LegalSection } from "@/components/legal/LegalSections";
+import type { LegalSection } from "./types";
+
 import { siteConfig } from "@/config/site";
 
 export const privacyEffectiveDate = "July 23, 2026";
