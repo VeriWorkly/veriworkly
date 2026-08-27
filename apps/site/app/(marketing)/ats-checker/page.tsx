@@ -127,10 +127,10 @@ const scoreFacts = [
 ];
 
 const pageFaqIds = [
-  "ats-checker-free",
+  "ats-checker-overview",
   "ats-two-scores-explained",
-  "ats-scoring-transparency",
-  "ats-friendly",
+  "ats-scan-privacy",
+  "ats-friendly-templates",
 ];
 const pageFaqs = pageFaqIds
   .map((id) => faqs.find((faq) => faq.id === id))

@@ -48,13 +48,16 @@ const FaqInteractiveSection = () => {
     return splitIntoColumns(filteredFaqs);
   }, [filteredFaqs]);
 
+  const activeCategoryName =
+    categories.find((c) => c.id === selectedCategory)?.name || "All Questions";
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-6 border-b border-zinc-200/60 pb-6 md:flex-row md:items-center md:justify-between dark:border-zinc-800/60">
+      <div className="border-border/40 flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div
           role="group"
           aria-label="Filter questions by category"
-          className="flex flex-wrap gap-2"
+          className="flex flex-wrap gap-1.5 sm:gap-2"
         >
           {categories.map((cat) => {
             const Icon = cat.icon;
@@ -66,34 +69,29 @@ const FaqInteractiveSection = () => {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 ${
+                className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
                   isActive
-                    ? "bg-blue-600 text-white shadow-[0_4px_16px_rgba(37,99,235,0.3)]"
-                    : "border border-zinc-200 bg-white text-zinc-500 hover:border-blue-500/30 hover:text-zinc-900 dark:border-zinc-800 dark:bg-[#0c0c0c] dark:text-zinc-400 dark:hover:text-white"
+                    ? "bg-accent text-accent-foreground ring-accent/20 font-bold shadow-xs ring-2"
+                    : "border-border/60 bg-card/60 text-muted hover:text-foreground hover:border-border hover:bg-card/90 border"
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                <Icon className="size-3.5" aria-hidden="true" />
                 <span>{cat.name}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="relative flex w-full items-center rounded-full border border-zinc-200 bg-white px-4 py-2 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 md:max-w-xs dark:border-zinc-800 dark:bg-[#0c0c0c]">
-          <Search className="mr-2.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
+        <div className="border-border/60 bg-card/50 focus-within:border-accent focus-within:ring-accent/10 relative flex w-full items-center rounded-full border px-3.5 py-2 backdrop-blur-xs transition-all duration-200 focus-within:ring-3 lg:max-w-xs">
+          <Search className="text-muted mr-2 size-4 shrink-0" aria-hidden="true" />
 
-          {/*
-            A placeholder is not a label - it disappears the moment anything is typed, and
-            screen readers announced this as an unnamed text field. Same for the clear
-            button below, which was an icon inside a button with no text at all.
-          */}
           <input
             type="search"
             value={searchQuery}
             aria-label="Search frequently asked questions"
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search FAQs..."
-            className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-white"
+            placeholder="Search questions..."
+            className="text-foreground placeholder:text-muted/60 w-full bg-transparent text-xs outline-none"
           />
 
           {searchQuery && (
@@ -101,18 +99,35 @@ const FaqInteractiveSection = () => {
               type="button"
               aria-label="Clear search"
               onClick={() => setSearchQuery("")}
-              className="rounded-full p-0.5 hover:bg-zinc-100 dark:hover:bg-white/10"
+              className="text-muted hover:text-foreground cursor-pointer rounded-full p-0.5 transition-colors"
             >
-              <X className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
+              <X className="size-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
       </div>
 
-      {/*
-        Typing or switching category silently rewrites the list. Without this, a screen
-        reader user gets no feedback at all that the search did anything.
-      */}
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted text-[11px] sm:text-xs">
+          Showing <strong className="text-foreground font-semibold">{filteredFaqs.length}</strong>{" "}
+          of {faqs.length} questions in{" "}
+          <span className="text-accent font-medium">{activeCategoryName}</span>
+        </span>
+
+        {(searchQuery || selectedCategory !== "all") && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setSelectedCategory("all");
+            }}
+            className="text-accent cursor-pointer text-[11px] font-semibold hover:underline sm:text-xs"
+          >
+            Reset filters
+          </button>
+        )}
+      </div>
+
       <p className="sr-only" role="status" aria-live="polite">
         {filteredFaqs.length === 0
           ? "No questions match your search."
@@ -120,55 +135,54 @@ const FaqInteractiveSection = () => {
       </p>
 
       {filteredFaqs.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-          <Accordion type="single" collapsible className="gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start">
+          <Accordion type="single" collapsible className="space-y-3">
             {leftColumn.map((faq) => (
               <AccordionItem
                 key={faq.id}
                 value={faq.id}
-                className="rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:border-zinc-800/80 dark:bg-[#0c0c0c]"
+                className="border-border/60 bg-card/40 hover:border-accent/40 rounded-xl border shadow-none backdrop-blur-xs transition-all duration-200"
               >
-                <AccordionTrigger className="text-zinc-900 dark:text-white">
+                <AccordionTrigger className="text-foreground hover:text-accent px-4 py-3.5 text-left text-xs font-semibold transition-colors sm:px-4.5 sm:py-4 sm:text-sm">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="border-zinc-100 dark:border-zinc-900">
-                  <span className="text-zinc-500 dark:text-zinc-400">{faq.answer}</span>
+
+                <AccordionContent className="border-border/30 border-t px-4 pt-3 pb-4 sm:px-4.5 sm:pt-3.5 sm:pb-4.5">
+                  <p className="text-muted text-xs leading-relaxed sm:text-sm">{faq.answer}</p>
                 </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
 
-          <Accordion type="single" collapsible className="gap-4">
+          <Accordion type="single" collapsible className="space-y-3">
             {rightColumn.map((faq) => (
               <AccordionItem
                 key={faq.id}
                 value={faq.id}
-                className="rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:border-zinc-800/80 dark:bg-[#0c0c0c]"
+                className="border-border/60 bg-card/40 hover:border-accent/40 rounded-xl border shadow-none backdrop-blur-xs transition-all duration-200"
               >
-                <AccordionTrigger className="text-zinc-900 dark:text-white">
+                <AccordionTrigger className="text-foreground hover:text-accent px-4 py-3.5 text-left text-xs font-semibold transition-colors sm:px-4.5 sm:py-4 sm:text-sm">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="border-zinc-100 dark:border-zinc-900">
-                  <span className="text-zinc-500 dark:text-zinc-400">{faq.answer}</span>
+
+                <AccordionContent className="border-border/30 border-t px-4 pt-3 pb-4 sm:px-4.5 sm:pt-3.5 sm:pb-4.5">
+                  <p className="text-muted text-xs leading-relaxed sm:text-sm">{faq.answer}</p>
                 </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-zinc-200 bg-white/50 p-12 text-center dark:border-zinc-800 dark:bg-white/5">
-          <HelpCircle
-            className="mx-auto h-10 w-10 animate-pulse text-zinc-400"
-            aria-hidden="true"
-          />
+        <div className="border-border/60 bg-card/30 rounded-2xl border border-dashed p-10 text-center backdrop-blur-xs">
+          <HelpCircle className="text-accent/60 mx-auto size-8 animate-pulse" aria-hidden="true" />
 
-          <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-white">
-            No matches found
+          <h3 className="text-foreground mt-3 text-sm font-bold tracking-tight">
+            No matching questions found
           </h3>
 
-          <p className="mx-auto mt-2 max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
-            We couldn&apos;t find any questions matching your query. Try clearing filters or using
-            another keyword.
+          <p className="text-muted mx-auto mt-1.5 max-w-sm text-xs leading-relaxed">
+            We couldn&apos;t find any questions matching &ldquo;{searchQuery}&rdquo;. Try another
+            keyword or reset your category filters.
           </p>
 
           <button
@@ -177,9 +191,9 @@ const FaqInteractiveSection = () => {
               setSearchQuery("");
               setSelectedCategory("all");
             }}
-            className="mt-4 rounded-full border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:text-white dark:hover:bg-white/5"
+            className="bg-accent text-accent-foreground mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold shadow-xs transition-all duration-200 hover:opacity-90 active:scale-95"
           >
-            Clear Filters
+            <span>Show all questions</span>
           </button>
         </div>
       )}

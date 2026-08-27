@@ -34,7 +34,7 @@ export const ContactFloatingField = ({
   invalid,
 }: FloatingFieldProps) => {
   const sharedClassName =
-    "peer w-full rounded-xl border border-zinc-200 bg-white px-4 pt-6 pb-2.5 text-sm text-zinc-900 transition outline-none placeholder:text-transparent focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-zinc-800 dark:bg-[#080808] dark:text-white";
+    "peer w-full rounded-2xl border border-border/60 bg-background/60 px-4 pt-6 pb-2.5 text-sm text-foreground transition-all duration-200 outline-none placeholder:text-transparent focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:opacity-50 disabled:cursor-not-allowed";
 
   const helperId = helper ? `${id}-helper` : undefined;
 
@@ -59,14 +59,16 @@ export const ContactFloatingField = ({
       ) : (
         <input {...sharedProps} type={type} className={sharedClassName} />
       )}
+
       <label
         htmlFor={id}
-        className="pointer-events-none absolute top-2.5 left-4 text-xs font-semibold tracking-wide text-zinc-400 uppercase transition-all peer-placeholder-shown:top-6 peer-placeholder-shown:text-sm peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-placeholder-shown:text-zinc-400 peer-placeholder-shown:normal-case peer-focus:top-2.5 peer-focus:text-xs peer-focus:font-semibold peer-focus:tracking-wide peer-focus:text-blue-500 peer-focus:uppercase dark:text-zinc-500"
+        className="text-muted peer-placeholder-shown:text-muted peer-focus:text-accent pointer-events-none absolute top-2.5 left-4 font-mono text-[10px] font-bold tracking-wider uppercase transition-all duration-200 peer-placeholder-shown:top-4.5 peer-placeholder-shown:text-sm peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-placeholder-shown:normal-case peer-focus:top-2.5 peer-focus:font-mono peer-focus:text-[10px] peer-focus:font-bold peer-focus:tracking-wider peer-focus:uppercase"
       >
         {label}
       </label>
+
       {helper ? (
-        <p id={helperId} className="mt-1.5 text-right text-[11px] text-zinc-400">
+        <p id={helperId} className="text-muted mt-1.5 text-right font-mono text-[11px]">
           {helper}
         </p>
       ) : null}

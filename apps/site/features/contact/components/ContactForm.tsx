@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
+
 import { fetchApiData } from "@/utils/fetchApiData";
+
 import { Reveal } from "@/components/marketing/Reveal";
+
 import { ContactFloatingField } from "./ContactFloatingField";
 import type { ContactSuccessData } from "./ContactSuccessModal";
 
@@ -16,6 +19,15 @@ const FIELD_LIMITS = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+const TOPIC_SUGGESTIONS = [
+  "Resume & Cover Letters",
+  "AI Credits & Billing",
+  "Portfolio Website",
+  "Bug Report",
+  "Feature Idea",
+  "General Question",
+];
+
 interface ContactFormProps {
   onSuccess: (data: ContactSuccessData) => void;
 }
@@ -23,13 +35,27 @@ interface ContactFormProps {
 export const ContactForm = ({ onSuccess }: ContactFormProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [selectedTopic, setSelectedTopic] = useState("");
+
+  const mountTimestamp = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    mountTimestamp.current = Date.now();
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const handleSelectTopic = (topic: string) => {
+    setSelectedTopic(topic);
+    setSubject(topic);
+  };
+
   const messageRemaining = Math.max(0, MESSAGE_MIN_LENGTH - message.trim().length);
+
   const isValid = useMemo(
     () =>
       name.trim().length > 0 &&
@@ -45,22 +71,27 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
     setLoading(true);
 
     if (!name.trim()) {
-      setError("Name is required");
+      setError("Please enter your name.");
       setLoading(false);
       return;
     }
+
     if (!EMAIL_PATTERN.test(email.trim())) {
-      setError("Valid email is required");
+      setError("Please enter a valid email address so we can reply to you.");
       setLoading(false);
       return;
     }
+
     if (!subject.trim()) {
-      setError("Subject is required");
+      setError("Please enter a subject.");
       setLoading(false);
       return;
     }
+
     if (!message.trim() || message.trim().length < MESSAGE_MIN_LENGTH) {
-      setError(`Message must be at least ${MESSAGE_MIN_LENGTH} characters`);
+      setError(
+        `Your message must be at least ${MESSAGE_MIN_LENGTH} characters so we have enough detail to help.`,
+      );
       setLoading(false);
       return;
     }
@@ -68,7 +99,14 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
     try {
       const response = await fetchApiData<ContactSuccessData>("/contact", {
         method: "POST",
-        body: JSON.stringify({ name, email, subject, message }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          subject: subject.trim(),
+          message: message.trim(),
+          website,
+          _ts: mountTimestamp.current,
+        }),
       });
 
       onSuccess({
@@ -82,9 +120,15 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
       setEmail("");
       setSubject("");
       setMessage("");
+      setSelectedTopic("");
+      setWebsite("");
+
+      mountTimestamp.current = Date.now();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not send message. Please email us directly.",
+        err instanceof Error
+          ? err.message
+          : "Could not send message right now. Please email us directly at info@veriworkly.com.",
       );
     } finally {
       setLoading(false);
@@ -92,45 +136,98 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
   };
 
   return (
-    <Reveal className="rounded-4xl border border-zinc-200 bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] md:p-8 dark:border-zinc-800/80 dark:bg-[#0c0c0c]">
+    <Reveal className="border-border/60 bg-card/40 relative rounded-3xl border p-6 shadow-lg backdrop-blur-sm sm:p-8">
       <div className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-          Direct message
-        </h2>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Send a message to our support and development team.
+        <div className="flex items-center gap-2">
+          <span className="bg-accent size-2 animate-pulse rounded-full" />
+          <span className="text-accent font-mono text-[10px] font-bold tracking-widest uppercase">
+            Send a Direct Note
+          </span>
+        </div>
+
+        <h2 className="text-foreground text-2xl font-bold tracking-tight">How can we help you?</h2>
+
+        <p className="text-muted text-xs leading-relaxed sm:text-sm">
+          Fill out the quick form below. Every note reaches our core engineering and support team
+          directly.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
+      <div className="mt-6 space-y-2">
+        <span className="text-muted block font-mono text-[10px] font-bold tracking-widest uppercase">
+          Select a topic (optional):
+        </span>
+
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          {TOPIC_SUGGESTIONS.map((topic) => {
+            const isSelected = selectedTopic === topic || subject === topic;
+
+            return (
+              <button
+                key={topic}
+                type="button"
+                onClick={() => handleSelectTopic(topic)}
+                className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-all duration-200 ${
+                  isSelected
+                    ? "bg-accent text-accent-foreground ring-accent/30 font-semibold shadow-xs ring-2"
+                    : "border-border/60 bg-background/50 text-muted hover:text-foreground hover:border-border hover:bg-background/90 border"
+                }`}
+              >
+                {topic}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+        <div
+          className="pointer-events-none absolute top-[-9999px] left-[-9999px] h-0 w-0 overflow-hidden opacity-0"
+          aria-hidden="true"
+        >
+          <label htmlFor="contact-field-website">Website URL (leave blank)</label>
+
+          <input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            value={website}
+            autoComplete="off"
+            id="contact-field-website"
+            onChange={(e) => setWebsite(e.target.value)}
+          />
+        </div>
+
         <div role="alert" aria-live="assertive">
           {error && (
-            <div className="flex items-center gap-3 rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-xs font-semibold text-red-600 dark:text-red-400">
-              <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-3 rounded-2xl border p-4 text-xs font-semibold">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+
               <span>{error}</span>
             </div>
           )}
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <ContactFloatingField
+            required
             id="name"
-            label="Name"
             value={name}
+            label="Your Name"
             onChange={setName}
             disabled={loading}
-            required
             autoComplete="name"
             maxLength={FIELD_LIMITS.name}
           />
+
           <ContactFloatingField
             id="email"
-            label="Email"
+            required
             type="email"
             value={email}
-            onChange={setEmail}
+            label="Your Email"
             disabled={loading}
-            required
+            onChange={setEmail}
             autoComplete="email"
             maxLength={FIELD_LIMITS.email}
             invalid={email.trim().length > 0 && !EMAIL_PATTERN.test(email.trim())}
@@ -138,48 +235,52 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
         </div>
 
         <ContactFloatingField
+          required
           id="subject"
           label="Subject"
           value={subject}
-          onChange={setSubject}
           disabled={loading}
-          required
           autoComplete="off"
           maxLength={FIELD_LIMITS.subject}
+          onChange={(val) => {
+            setSubject(val);
+            if (selectedTopic !== val) setSelectedTopic("");
+          }}
         />
 
         <ContactFloatingField
+          required
+          rows={5}
           id="message"
-          label="Message"
           as="textarea"
           value={message}
-          onChange={setMessage}
           disabled={loading}
-          required
+          label="Your Message"
+          onChange={setMessage}
           maxLength={FIELD_LIMITS.message}
           invalid={message.length > 0 && messageRemaining > 0}
           helper={
             messageRemaining > 0
               ? `${messageRemaining} more characters needed`
-              : `${message.trim().length} characters`
+              : `${message.trim().length} / ${FIELD_LIMITS.message} characters`
           }
         />
 
         <button
           type="submit"
           disabled={loading || !isValid}
-          className="group flex h-14 w-full items-center justify-center rounded-full bg-zinc-950 text-base font-semibold text-white shadow-md transition-all duration-300 hover:bg-blue-600 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 dark:bg-white dark:text-zinc-950 dark:hover:bg-blue-500 dark:hover:text-white"
+          className="bg-accent text-accent-foreground group flex h-13 w-full cursor-pointer items-center justify-center rounded-full text-sm font-semibold shadow-md transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
         >
           {loading ? (
             <>
-              <LoaderCircle className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
-              Sending message...
+              <LoaderCircle className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              <span>Sending message...</span>
             </>
           ) : (
             <>
-              Send message
+              <span>Send message to team</span>
               <ArrowRight
-                className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1"
+                className="ml-2 size-4 transition-transform group-hover:translate-x-1"
                 aria-hidden="true"
               />
             </>

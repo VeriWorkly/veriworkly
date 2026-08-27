@@ -25,7 +25,7 @@ const AboutHero = () => {
         </Reveal>
 
         <Reveal priority delay={0.14}>
-          <p className="mx-auto mt-8 max-w-2xl text-center text-lg leading-relaxed text-zinc-400">
+          <p className="mx-auto mt-8 max-w-2xl text-center text-base leading-relaxed text-zinc-400 lg:text-lg">
             We built VeriWorkly because we got tired of the standard playbook: spending an hour
             building a resume, only to find the download button locked behind a $24/month charge.
             VeriWorkly gives you a fast, private studio to build ATS resumes, matched cover letters,

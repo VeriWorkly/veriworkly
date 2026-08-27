@@ -38,28 +38,36 @@ describe("generalMail service", () => {
       message: "Hello\nWorld <iframe src='malicious.com'></iframe>",
     });
 
-    expect(mockSendMail).toHaveBeenCalledWith(
+    expect(mockSendMail).toHaveBeenCalledTimes(2);
+
+    // 1. First call: Admin notification with replyTo
+    expect(mockSendMail).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         to: "admin-recipient@example.com",
-        subject:
-          "[VeriWorkly Contact] Important <b>Notification</b> from <script>alert('XSS')</script> John",
+        replyTo: "attacker@example.com\" onclick=\"alert(1)",
+        subject: "[VeriWorkly Contact] Important <b>Notification</b> from <script>alert('XSS')</script> John",
         text: expect.stringContaining("<script>alert('XSS')</script> John"),
-        html: expect.stringContaining(
-          "&lt;script&gt;alert(&#039;XSS&#039;)&lt;&#x2F;script&gt; John",
-        ),
+        html: expect.stringContaining("&lt;script&gt;alert(&#039;XSS&#039;)&lt;&#x2F;script&gt; John"),
       }),
     );
 
-    const callArgs = mockSendMail.mock.calls[0][0];
-    // Ensure raw HTML tags are escaped in the HTML body
-    expect(callArgs.html).toContain(
-      "&lt;script&gt;alert(&#039;XSS&#039;)&lt;&#x2F;script&gt; John",
+    // 2. Second call: User confirmation receipt
+    expect(mockSendMail).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        to: "attacker@example.com\" onclick=\"alert(1)",
+        subject: expect.stringContaining("We've received your message"),
+        html: expect.stringContaining("Thank you for reaching out"),
+      }),
     );
-    expect(callArgs.html).toContain("attacker@example.com&quot; onclick=&quot;alert(1)");
-    expect(callArgs.html).toContain("Important &lt;b&gt;Notification&lt;&#x2F;b&gt;");
-    expect(callArgs.html).toContain(
-      "World &lt;iframe src=&#039;malicious.com&#039;&gt;&lt;&#x2F;iframe&gt;",
-    );
-    expect(callArgs.html).toContain("Hello<br>World"); // text newlines converted to <br>
+
+
+    const adminHtml = mockSendMail.mock.calls[0][0].html;
+    expect(adminHtml).toContain("&lt;script&gt;alert(&#039;XSS&#039;)&lt;&#x2F;script&gt; John");
+    expect(adminHtml).toContain("attacker@example.com&quot; onclick=&quot;alert(1)");
+    expect(adminHtml).toContain("Important &lt;b&gt;Notification&lt;&#x2F;b&gt;");
+    expect(adminHtml).toContain("World &lt;iframe src=&#039;malicious.com&#039;&gt;&lt;&#x2F;iframe&gt;");
   });
 });
+

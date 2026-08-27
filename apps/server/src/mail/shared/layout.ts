@@ -90,7 +90,7 @@ export function getBaseLayout({ title, preheader, bodyHtml }: MailLayoutOptions)
                         <span style="color:rgba(23, 23, 23, 0.15);">•</span>
                         <a href="https://veriworkly.com/docs" target="_blank" style="color:#2563eb;text-decoration:none;margin:0 8px;">Docs</a>
                         <span style="color:rgba(23, 23, 23, 0.15);">•</span>
-                        <a href="mailto:support@veriworkly.com" style="color:#2563eb;text-decoration:none;margin:0 8px;">Support</a>
+                        <a href="mailto:contact@veriworkly.com" style="color:#2563eb;text-decoration:none;margin:0 8px;">Support</a>
                       </p>
 
                       <p style="margin:24px 0 0 0;font-size:11px;color:#a3a098;">

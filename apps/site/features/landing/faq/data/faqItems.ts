@@ -10,7 +10,7 @@ export const faqs: FAQItem[] = [
     id: "landing-free-tier",
     question: "Is VeriWorkly free to build and export resumes?",
     answer:
-      "Yes. VeriWorkly offers a free tier that lets you create ATS-friendly resumes, generate matching cover letters, and export high-quality PDFs without any hidden fees, subscription traps, or mandatory account creation.",
+      "Yes. VeriWorkly offers a free tier that lets you create your resume and matching cover letter, and export clean, watermark-free PDFs as many times as you need without hidden fees, surprise subscriptions, or forced account creation.",
     category: "Pricing & Plans",
   },
   {
@@ -24,7 +24,7 @@ export const faqs: FAQItem[] = [
     id: "landing-no-signup",
     question: "Do I need to sign up or log in to create a resume?",
     answer:
-      "No. You can immediately launch the VeriWorkly Studio editor, choose a professional template, and build your resume or cover letter right away. Account signup is only required if you choose to enable cloud sync or publish a web portfolio.",
+      "No. You can immediately launch the editor, choose a professional template, and build your resume or cover letter right away. Account signup is only required if you want cloud sync or to publish a web portfolio.",
     category: "Getting Started",
   },
   {

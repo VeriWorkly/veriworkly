@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { ContactChannelsSection } from "./components/ContactChannelsSection";
+
 import { ContactForm } from "./components/ContactForm";
 import { ContactFaqSidebar } from "./components/ContactFaqSidebar";
+import { ContactChannelsSection } from "./components/ContactChannelsSection";
 import { ContactSuccessModal, type ContactSuccessData } from "./components/ContactSuccessModal";
 
 export const ContactExperience = () => {

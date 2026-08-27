@@ -5,3 +5,14 @@ export { renderAccountDeletedEmail } from "./auth/accountDeleted.js";
 export { renderSubscriptionPurchasedEmail } from "./billing/subscriptionPurchased.js";
 export { renderSubscriptionCancelledEmail } from "./billing/subscriptionCancelled.js";
 export { renderPortfolioUpdatedEmail } from "./portfolio/portfolioUpdated.js";
+export {
+  renderAdminContactNotificationEmail,
+  type ContactAdminMailData,
+} from "./general/contactAdmin.js";
+export {
+  renderUserContactConfirmationEmail,
+  type ContactUserMailData,
+} from "./general/contactUser.js";
+
+
+

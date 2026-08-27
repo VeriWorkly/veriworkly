@@ -5,7 +5,10 @@
   "main": "dist/index.js",
   "type": "module",
   "imports": {
-    "#*": "./dist/*.js"
+    "#*": {
+      "types": "./src/*.ts",
+      "default": "./dist/*.js"
+    }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -25,6 +28,7 @@
     "seed:roadmap": "tsx scripts/seed-roadmap.ts",
     "seed:changelog": "tsx scripts/seed-changelog.ts",
     "backfill:changelog-pr-authors": "tsx scripts/backfill-changelog-pr-authors.ts",
+    "preview:emails": "tsx scripts/generate-email-previews.ts",
     "test": "vitest run",
     "test:watch": "vitest --watch"
   },

@@ -79,7 +79,10 @@ export function Accordion({
     (value: string) => {
       setExpanded((prev) => {
         if (type === "single") {
-          return prev.includes(value) && !collapsible ? prev : [value];
+          if (prev.includes(value)) {
+            return collapsible ? [] : prev;
+          }
+          return [value];
         }
 
         if (prev.includes(value)) return prev.filter((item) => item !== value);
@@ -245,15 +248,21 @@ export function AccordionContent({ children, className }: AccordionContentProps)
       aria-hidden={!isOpen}
       aria-labelledby={triggerId}
       className={cn(
-        "border-border/60 grid overflow-hidden border-t px-5 transition-[grid-template-rows,padding,opacity,visibility] duration-300 ease-in-out",
+        "grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-in-out",
         isOpen
-          ? "visible grid-rows-[1fr] py-4 opacity-100"
-          : "invisible grid-rows-[0fr] py-0 opacity-0",
-        className,
+          ? "visible grid-rows-[1fr] opacity-100"
+          : "invisible grid-rows-[0fr] opacity-0 pointer-events-none",
       )}
     >
       <div className="min-h-0 overflow-hidden">
-        <div className="text-muted text-sm leading-7">{children}</div>
+        <div
+          className={cn(
+            "border-border/60 text-muted border-t px-5 py-4 text-sm leading-7",
+            className,
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
