@@ -6,8 +6,8 @@ import { Container } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
 
-import { buildPageMetadata } from "@/utils/metadata";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { buildPageMetadata } from "@/utils/metadata";
 
 import {
   WORKFLOW_STEPS,
@@ -58,6 +58,15 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 const HowItWorksPage = () => {
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      { "@type": "ListItem", position: 2, name: "How It Works", item: pageUrl },
+    ],
+  };
+
   const howToSchema = {
     "@context": "https://schema.org",
     "@type": "HowTo",
@@ -75,6 +84,10 @@ const HowItWorksPage = () => {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScriptProps(howToSchema)} />
 
       <div className="relative flex min-h-screen flex-col overflow-hidden">

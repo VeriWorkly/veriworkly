@@ -97,6 +97,15 @@ const termsTopics: LegalTopic[] = [
 ];
 
 const TermsPage = () => {
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      { "@type": "ListItem", position: 2, name: "Terms of Service", item: pageUrl },
+    ],
+  };
+
   const termsSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -114,6 +123,10 @@ const TermsPage = () => {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScriptProps(termsSchema)} />
 
       <LegalPageShell ambientGlowColor="blue">

@@ -37,11 +37,6 @@ const RoadmapStatsGrid = ({ sections }: { sections: RoadmapSectionResponse[] }) 
           <div className="text-muted/60 border-border/20 mt-3 flex items-center justify-between border-t pt-2.5 font-mono text-[9px]">
             <span>Synchronized</span>
 
-            {/*
-              Server-rendered, so this formats in the container's timezone (UTC), not the
-              reader's - it was showing a UTC clock time dressed up as a local one. Stated
-              explicitly instead, and machine-readable via the `time` element.
-            */}
             <time dateTime={section.fetchedAt}>
               {new Date(section.fetchedAt).toLocaleTimeString("en-GB", {
                 timeZone: "UTC",

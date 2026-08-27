@@ -4,7 +4,9 @@ import {
   type RoadmapStatus,
   type RoadmapResponse,
 } from "@/features/roadmap/services/roadmap-backend";
+
 import { Container } from "@veriworkly/ui";
+
 import { KanbanBoard, type KanbanColumn } from "@/components/roadmap/KanbanBoard";
 
 import RoadmapHeader from "./RoadmapHeader";
@@ -125,8 +127,8 @@ const RoadmapPageShell = ({
           showDescription
           showRoadmapLinks
           columns={columns}
-          columnHrefMap={columnHrefMap}
           refreshPath={basePath}
+          columnHrefMap={columnHrefMap}
         />
       </Container>
     </div>

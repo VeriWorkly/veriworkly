@@ -241,7 +241,7 @@ async function fetchRoadmapStatusItems(
   status: RoadmapStatus,
   sort: RoadmapSort,
 ): Promise<RoadmapFeature[]> {
-  const items: RoadmapFeature[] = [];
+  const itemsMap = new Map<string, RoadmapFeature>();
   let offset = 0;
 
   while (true) {
@@ -254,7 +254,11 @@ async function fetchRoadmapStatusItems(
 
     const listData = await fetchApiData<RoadmapListPayload>(`/roadmap?${query.toString()}`);
 
-    items.push(...listData.items.map(normalizeFeature));
+    for (const rawItem of listData.items) {
+      if (!itemsMap.has(rawItem.id)) {
+        itemsMap.set(rawItem.id, normalizeFeature(rawItem));
+      }
+    }
 
     if (!listData.hasMore || listData.pagination.nextOffset === null) {
       break;
@@ -263,7 +267,7 @@ async function fetchRoadmapStatusItems(
     offset = listData.pagination.nextOffset;
   }
 
-  return items;
+  return Array.from(itemsMap.values());
 }
 
 function nowIso() {

@@ -6,8 +6,8 @@ import { Container } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
 
-import { buildPageMetadata } from "@/utils/metadata";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { buildPageMetadata } from "@/utils/metadata";
 
 import {
   FeaturesHero,
@@ -63,6 +63,15 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 const FeaturesPage = () => {
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      { "@type": "ListItem", position: 2, name: "Features", item: pageUrl },
+    ],
+  };
+
   const featuresSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -74,6 +83,10 @@ const FeaturesPage = () => {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(featuresSchema)}

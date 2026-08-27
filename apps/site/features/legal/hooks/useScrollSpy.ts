@@ -18,7 +18,7 @@ export function useScrollSpy(
 
     let ticking = false;
 
-    const handleScroll = () => {
+    function handleScroll() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const isAtBottom =
@@ -51,7 +51,7 @@ export function useScrollSpy(
 
         ticking = true;
       }
-    };
+    }
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll, { passive: true });

@@ -116,9 +116,9 @@ const KanbanColumnView = ({
             <p className="text-muted/60 mt-1 text-[11px]">Planned items will appear here.</p>
           </div>
         ) : (
-          column.items.map((item) => (
+          column.items.map((item, index) => (
             <KanbanItemCard
-              key={item.id}
+              key={`${item.id}-${index}`}
               item={item}
               showDescription={showDescription}
               showUrl={showUrl}

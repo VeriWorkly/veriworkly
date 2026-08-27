@@ -57,6 +57,15 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 const SecurityPage = () => {
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      { "@type": "ListItem", position: 2, name: "Security", item: pageUrl },
+    ],
+  };
+
   const webPageSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -73,6 +82,10 @@ const SecurityPage = () => {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(webPageSchema)}

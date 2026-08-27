@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { siteConfig } from "@/config/site";
+
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
-import { fetchInrPerUsd } from "@/features/pricing/services/exchange-rate";
+
 import PricingExperience from "@/features/pricing/PricingExperience";
+import { fetchInrPerUsd } from "@/features/pricing/services/exchange-rate";
 
 const pageUrl = `${siteConfig.url}/pricing`;
 const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
@@ -35,6 +37,15 @@ export const metadata: Metadata = buildPageMetadata({
     "AI resume tailoring cost",
   ],
 });
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+    { "@type": "ListItem", position: 2, name: "Pricing", item: pageUrl },
+  ],
+};
 
 const pricingSchema = {
   "@context": "https://schema.org",
@@ -71,40 +82,26 @@ const pricingSchema = {
   },
 };
 
-/**
- * Reads the session to decide whether checkout is unlocked. This is the only part of
- * /pricing that touches cookies, so it is isolated behind its own Suspense boundary —
- * otherwise the single `cookies()` call opts the entire route into dynamic rendering
- * and the whole page (all of it static marketing content) is re-rendered per visit.
- *
- * Split out like this, the shell is prerendered and only this subtree streams in.
- */
 const PricingGate = async ({ inrPerUsd }: { inrPerUsd: number }) => {
-  // Payments are currently not accepted across all environments during this phase
   const paymentsBlocked = true;
 
   return <PricingExperience paymentsBlocked={paymentsBlocked} inrPerUsd={inrPerUsd} />;
 };
 
 const PricingPage = async () => {
-  // Resolved here, on the server, and shared by both the Suspense fallback and the gated
-  // subtree so the two never disagree on a price mid-stream. Cached for 12h, with a
-  // fallback baked in, so this cannot delay or fail the render.
   const inrPerUsd = await fetchInrPerUsd();
 
   return (
     <>
       <script
         type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
+      <script
+        type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(pricingSchema)}
       />
 
-      {/*
-        Fallback renders the identical page with checkout disabled. Every visitor except
-        the admin resolves to exactly this, so there is no visible swap — and defaulting
-        to "blocked" means a slow or failed session lookup can never flash an enabled
-        checkout button. The backend re-checks regardless.
-      */}
       <Suspense fallback={<PricingExperience paymentsBlocked inrPerUsd={inrPerUsd} />}>
         <PricingGate inrPerUsd={inrPerUsd} />
       </Suspense>

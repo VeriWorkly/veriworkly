@@ -1,14 +1,18 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { MessageSquare } from "lucide-react";
+
 import { GithubIcon } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
-import { buildPageMetadata } from "@/utils/metadata";
+
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { buildPageMetadata } from "@/utils/metadata";
+
+import { Reveal } from "@/components/marketing/Reveal";
+
 import { faqs, categories } from "@/features/faq/data/faqItems";
 import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
-import { Reveal } from "@/components/marketing/Reveal";
 import FaqInteractiveSection from "@/features/faq/FaqInteractiveSection";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -34,7 +38,18 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
+const pageUrl = `${siteConfig.url}/faq`;
+
 const FAQPage = () => {
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      { "@type": "ListItem", position: 2, name: "FAQ", item: pageUrl },
+    ],
+  };
+
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -50,19 +65,23 @@ const FAQPage = () => {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScriptProps(faqSchema)} />
 
       <div className="relative flex min-h-screen flex-col overflow-hidden">
         {/* Ambient background glows */}
         <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
         <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[140px]" />
-        <div className="bg-blue-500/5 pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full blur-[130px]" />
+        <div className="pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full bg-blue-500/5 blur-[130px]" />
 
         {/* Hero Section */}
         <section className="relative w-full overflow-hidden pt-28 pb-14 md:pt-36 md:pb-18">
           <div className="mx-auto max-w-4xl px-6 text-center md:px-8">
             <Reveal priority>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/60 px-3.5 py-1 text-xs backdrop-blur-md">
+              <div className="border-border/80 bg-card/60 inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs backdrop-blur-md">
                 <span className="bg-accent h-2 w-2 animate-pulse rounded-full" />
                 <span className="text-foreground font-mono text-[10px] font-bold tracking-widest uppercase">
                   Help Center & Knowledge Base
@@ -79,8 +98,10 @@ const FAQPage = () => {
             </Reveal>
 
             <Reveal priority delay={0.12}>
-              <p className="text-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg leading-relaxed">
-                Clear, honest answers about free PDF exports, ATS keyword matching, online portfolios, AI writing credits, and data privacy. Search below or browse by category.
+              <p className="text-muted mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
+                Clear, honest answers about free PDF exports, ATS keyword matching, online
+                portfolios, AI writing credits, and data privacy. Search below or browse by
+                category.
               </p>
             </Reveal>
 
@@ -94,7 +115,7 @@ const FAQPage = () => {
                       key={cat.id}
                       className="border-border/60 bg-card/50 text-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-xs"
                     >
-                      <cat.icon className="size-3.5 text-accent" aria-hidden="true" />
+                      <cat.icon className="text-accent size-3.5" aria-hidden="true" />
                       <span>{cat.name}</span>
                     </span>
                   ))}
@@ -110,19 +131,20 @@ const FAQPage = () => {
 
         {/* Bottom Help Desk & Open Source Banner */}
         <section className="mx-auto w-full max-w-7xl px-6 pb-20 md:px-8 md:pb-24">
-          <Reveal className="border-border/60 bg-card/50 relative overflow-hidden rounded-3xl border p-8 sm:p-12 backdrop-blur-md shadow-xl">
+          <Reveal className="border-border/60 bg-card/50 relative overflow-hidden rounded-3xl border p-8 shadow-xl backdrop-blur-md sm:p-12">
             <div className="bg-accent/10 pointer-events-none absolute top-0 right-0 size-80 rounded-full blur-3xl" />
 
             <div className="relative z-10 flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
               <div className="space-y-2">
-                <span className="text-accent font-mono text-[10px] font-bold tracking-widest uppercase block">
+                <span className="text-accent block font-mono text-[10px] font-bold tracking-widest uppercase">
                   Still have questions?
                 </span>
-                <h3 className="text-foreground text-2xl sm:text-3xl font-bold tracking-tight text-balance max-w-lg">
+                <h3 className="text-foreground max-w-lg text-2xl font-bold tracking-tight text-balance sm:text-3xl">
                   Talk to our team or explore our open-source community
                 </h3>
-                <p className="text-muted text-xs sm:text-sm leading-relaxed max-w-md">
-                  Every message to our support inbox reaches a real engineer. You can also inspect the codebase or ask questions on GitHub.
+                <p className="text-muted max-w-md text-xs leading-relaxed sm:text-sm">
+                  Every message to our support inbox reaches a real engineer. You can also inspect
+                  the codebase or ask questions on GitHub.
                 </p>
               </div>
 

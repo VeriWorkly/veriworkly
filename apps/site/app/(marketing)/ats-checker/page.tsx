@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+
 import {
+  Type,
+  Lock,
+  Gauge,
+  Scale,
+  Layers,
+  Sparkles,
   ArrowRight,
   FileSearch,
-  Gauge,
-  Layers,
-  Lock,
-  Scale,
   ShieldCheck,
-  Sparkles,
-  Type,
 } from "lucide-react";
+import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
-import { buildPageMetadata } from "@/utils/metadata";
+
 import { jsonLdScriptProps } from "@/utils/json-ld";
-import { faqs } from "@/features/faq/data/faqItems";
-import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
+import { buildPageMetadata } from "@/utils/metadata";
+
 import { Reveal } from "@/components/marketing/Reveal";
 import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
+
+import { faqs } from "@/features/faq/data/faqItems";
+import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
 import { ReportPreview } from "@/features/ats-checker/components/ReportPreview";
 import { TierComparison } from "@/features/ats-checker/components/TierComparison";
 
@@ -35,17 +39,22 @@ const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/ats-checker",
+
   title: `Free ATS Resume Checker — Score & Keyword Match | ${siteConfig.shortName}`,
   description:
     "Scan your resume for parsing risks, missing evidence, and job-description keyword match — free, no account required. Full breakdown with a free account; AI analysis on paid plans.",
+
   ogTitle: "Free ATS Resume Checker",
   ogDescription:
     "The same rules-based scoring engine used inside VeriWorkly — check parsing, structure, evidence, and job match for free.",
+
   twitterTitle: "Is your resume ATS-ready? Check for free",
   twitterDescription:
     "Rules-based readiness score plus a job-description keyword match — no account required to start.",
+
   image: pageOgImage,
   imageAlt: "VeriWorkly Free ATS Resume Checker",
+
   keywords: [
     "free ATS resume checker",
     "ATS resume scanner",
@@ -79,12 +88,6 @@ const checkCategories = [
   },
 ];
 
-/**
- * The literal pipeline a resume travels through. This section exists as much for answer engines
- * as for readers: it is the specific, checkable explanation that gets quoted when someone asks
- * an assistant how applicant tracking systems read a resume, and it maps one-to-one onto what
- * the checker actually scores.
- */
 const pipeline = [
   {
     step: "Upload",
@@ -247,6 +250,7 @@ export default function AtsCheckerPage() {
                     aria-hidden="true"
                   />
                 </Link>
+
                 <Link
                   href="#how-it-scores"
                   className="inline-flex h-14 items-center justify-center rounded-full border border-black/10 bg-white/70 px-8 text-base font-medium text-zinc-800 backdrop-blur-md transition-colors hover:border-blue-500/30 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none dark:border-white/10 dark:bg-black/40 dark:text-zinc-200 dark:hover:text-blue-400"
@@ -274,9 +278,11 @@ export default function AtsCheckerPage() {
       >
         <Reveal className="max-w-2xl">
           <SectionEyebrow icon={Sparkles} label="How it scores" />
+
           <h2 className="mt-6 text-3xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-4xl dark:text-white">
             Four categories, computed from your actual text
           </h2>
+
           <p className="mt-4 text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
             Every check runs against the resume you provide — there is no placeholder score. The
             exact rule weights stay private so the answer key cannot be gamed, but the categories
@@ -294,9 +300,11 @@ export default function AtsCheckerPage() {
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
                 <item.icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
               </span>
+
               <h3 className="mt-5 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
                 {item.title}
               </h3>
+
               <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                 {item.body}
               </p>
@@ -310,6 +318,7 @@ export default function AtsCheckerPage() {
           <h2 className="text-3xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-4xl dark:text-white">
             What an applicant tracking system does to your resume
           </h2>
+
           <p className="mt-4 text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
             Every check above exists because of one of these four stages. Knowing the pipeline is
             most of knowing what to fix.
@@ -326,9 +335,11 @@ export default function AtsCheckerPage() {
                 <span className="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400">
                   {stage.step}
                 </span>
+
                 <h3 className="mt-3 text-base font-semibold tracking-tight text-balance text-zinc-900 dark:text-white">
                   {stage.title}
                 </h3>
+
                 <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                   {stage.body}
                 </p>
@@ -349,9 +360,11 @@ export default function AtsCheckerPage() {
                 strokeWidth={1.75}
                 aria-hidden="true"
               />
+
               <h3 className="mt-4 text-base font-semibold tracking-tight text-zinc-900 dark:text-white">
                 {fact.title}
               </h3>
+
               <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
                 {fact.body}
               </p>
@@ -363,15 +376,18 @@ export default function AtsCheckerPage() {
       <section className="mx-auto w-full max-w-350 border-t border-zinc-200/40 px-6 py-24 md:px-8 md:py-32 dark:border-zinc-800/20">
         <Reveal className="max-w-2xl">
           <SectionEyebrow icon={Sparkles} label="What you get, at each level" />
+
           <h2 className="mt-6 text-3xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-4xl dark:text-white">
             Score for free. Unlock the full breakdown when you are ready.
           </h2>
+
           <p className="mt-4 text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
             Anyone can see how their resume scores and which area is dragging it down. The
             rule-by-rule reasoning takes a free account, and AI-written explanations are part of the
             AI plan.
           </p>
         </Reveal>
+
         <div className="mt-14">
           <TierComparison />
         </div>
@@ -383,6 +399,7 @@ export default function AtsCheckerPage() {
             Common questions
           </h2>
         </Reveal>
+
         <div className="mt-10 space-y-4">
           {pageFaqs.map((faq, index) => (
             <Reveal
@@ -393,6 +410,7 @@ export default function AtsCheckerPage() {
               <h3 className="text-base font-semibold text-zinc-900 dark:text-white">
                 {faq.question}
               </h3>
+
               <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                 {faq.answer}
               </p>
