@@ -39,8 +39,8 @@ const stats: Stat[] = [
     value: 99.9,
     decimals: 1,
     suffix: "%",
-    label: "ATS-Tested Layouts",
-    detail: "Formatted cleanly for Workday, Greenhouse, Lever, and Taleo.",
+    label: "ATS-Scannable Layouts",
+    detail: "Clean single-column hierarchy designed for standard ATS parsers.",
   },
 
   {

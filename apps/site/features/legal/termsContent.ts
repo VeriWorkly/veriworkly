@@ -132,9 +132,11 @@ export const termsSections: LegalSection[] = [
   },
   {
     id: "ats-disclaimer",
-    title: "ATS Checker Disclaimer",
+    title: "ATS Checker & Career Tools Disclaimer",
     intro: [
-      "The ATS Checker's readiness score, keyword-match score, and AI-powered analysis are heuristic, indicative tools based on general, publicly known patterns in applicant tracking systems and job descriptions. They are not a simulation of, or guarantee of compatibility with, any specific employer's actual applicant tracking software, which we have no visibility into and cannot test against. A high ATS score does not guarantee your application will be reviewed, shortlisted, or result in an interview or job offer, and a lower score does not mean your resume will be rejected. Use the ATS Checker as one input among many when preparing your application materials, not as a substitute for your own judgment.",
+      "The ATS Checker's readiness score, keyword-match score, and AI-powered analysis are heuristic, educational tools based on general, publicly known plain-text parsing patterns and job descriptions. They are not a simulation of, or guarantee of compatibility with, any specific employer's actual applicant tracking software (such as Workday, Greenhouse, Taleo, Lever, iCIMS, or any other commercial vendor), which we have no visibility into, do not partner with, and cannot test against.",
+      "A high ATS score does not guarantee your application will be reviewed, shortlisted, or result in an interview or job offer, and a lower score does not mean your resume will be rejected. Use the ATS Checker as an informational guide when preparing your application materials, not as a substitute for your own professional judgment.",
+      "You are solely responsible for ensuring the accuracy, truthfulness, and completeness of all information contained in your resumes, cover letters, and applications. VeriWorkly disclaims all liability for hiring, recruitment, or employment decisions made by prospective employers.",
     ],
   },
   {
@@ -167,6 +169,12 @@ export const termsSections: LegalSection[] = [
         heading: "Open-source code",
         paragraphs: [
           `The document-builder and web engine portions of our codebase are released under the MIT License in our public repository at ${siteConfig.links.github}. That license governs your rights to use, copy, modify, and self-host that code, independently of these Terms, which govern your use of the hosted Service at veriworkly.com. Not all code, templates, or assets in the repository are necessarily covered by the same license terms; check the repository's LICENSE file and any per-directory notices for specifics.`,
+        ],
+      },
+      {
+        heading: "Third-party trademarks",
+        paragraphs: [
+          "All third-party company names, product names, service names, and logos referenced on our website or within our documentation (including applicant tracking systems such as Workday, Greenhouse, Taleo, Lever, iCIMS, SAP, Oracle, and others) are the trademarks or registered trademarks of their respective holders. Reference to them is made solely for nominative, descriptive, or educational identification purposes. Use of these names does not imply or constitute any affiliation with, endorsement by, or sponsorship from the respective trademark owners.",
         ],
       },
       {

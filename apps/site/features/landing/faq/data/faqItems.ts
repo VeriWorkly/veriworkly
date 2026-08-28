@@ -31,7 +31,7 @@ export const faqs: FAQItem[] = [
     id: "landing-ats-friendly",
     question: "Are VeriWorkly resume templates ATS-friendly?",
     answer:
-      "Yes. All VeriWorkly resume templates are benchmarked against top Applicant Tracking Systems (ATS) including Workday, Taleo, Greenhouse, and Lever. Standardized headings, scannable layouts, and clean PDF output ensure maximum parse accuracy.",
+      "Yes. All VeriWorkly resume templates are designed around standard ATS parsing principles: clear headings, standard system fonts, single-column reading flow, and uncorrupted text streams. Standard applicant tracking systems can parse every section without jumbling your text or missing dates.",
     category: "Resumes & ATS",
   },
   {

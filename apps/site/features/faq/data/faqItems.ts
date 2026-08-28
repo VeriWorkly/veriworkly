@@ -85,7 +85,7 @@ export const faqs: FaqItem[] = [
     category: "documents",
     question: "Are your resume templates ATS-friendly?",
     answer:
-      "Yes. Every template uses clear headings, standard system fonts, clean single or dual-column layouts, and uncorrupted text streams. Applicant Tracking Systems like Greenhouse, Workday, Taleo, and Lever can parse every section without jumbling your text or missing dates.",
+      "Yes. Every template uses clear headings, standard system fonts, clean single-column reading hierarchy, and uncorrupted text streams. Standard applicant tracking systems can parse every section without jumbling your text or missing dates.",
   },
   {
     id: "watermarks-on-free-tier",

@@ -10,9 +10,6 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { MotionProvider } from "@/providers/motion-provider";
 
 export const viewport: Viewport = {
-  // Must match `--background` in @veriworkly/ui/styles/themes.css and the manifest's
-  // theme_color, otherwise the browser chrome / PWA status bar renders a colour the app
-  // never actually paints.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f5f4ef" },
     { media: "(prefers-color-scheme: dark)", color: "#0d1117" },
@@ -39,7 +36,7 @@ export const metadata: Metadata = {
     url: siteConfig.url,
     title: "Free AI Resumes, Cover Letters & Web Portfolios | VeriWorkly",
     description:
-      "Build and tailor professional resumes, cover letters, and web portfolios instantly using privacy-first frontier AI models (from Anthropic and OpenAI). Free, open-core, and no signup required.",
+      "Build and tailor professional resumes, cover letters, and web portfolios instantly using privacy-first frontier AI models (from Anthropic, Gemini, OpenAI, Deepseek, etc). Free, open-core, and no signup required.",
     siteName: "VeriWorkly",
     images: [
       {
@@ -173,11 +170,6 @@ const webApplicationSchema = {
   ],
 };
 
-/**
- * The single sitewide Organization node. Page-level code must not declare a second
- * "Organization" schema (see /about, which used to) — two nodes for the same entity on
- * one page is a duplicate-structured-data signal, not two facts. Add fields here instead.
- */
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
