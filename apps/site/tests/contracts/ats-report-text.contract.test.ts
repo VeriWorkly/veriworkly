@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { reportToPlainText } from "@/features/ats-checker/report-text";
-import { scoreTone, sortByCategoryOrder } from "@/features/ats-checker/categories";
-
+import { reportToPlainText } from "@/features/ats-checker/services";
+import { scoreTone, sortByCategoryOrder } from "@/features/ats-checker/data";
 import type { AtsFullReport } from "@/features/ats-checker/types";
 
 function report(overrides: Partial<AtsFullReport> = {}): AtsFullReport {

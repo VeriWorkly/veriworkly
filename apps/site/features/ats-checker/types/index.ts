@@ -12,10 +12,6 @@ export type AtsRuleResult = {
 
 export type AtsVerdict = "strong" | "needs-work" | "weak";
 
-/**
- * Per-area rollup of the deterministic rules. Sent to every caller, authenticated or not: it
- * says which part of the resume is losing points without naming the rule that fired.
- */
 export type AtsCategoryScore = {
   category: string;
   score: number;
@@ -25,7 +21,6 @@ export type AtsCategoryScore = {
   possible: number;
 };
 
-/** Returned for any authenticated caller - every rule, every keyword, every fix. */
 export type AtsFullReport = {
   version: "ats-v2";
   restricted: false;
@@ -45,10 +40,6 @@ export type AtsFullReport = {
   wordCount: number;
 };
 
-/**
- * Returned instead of AtsFullReport when the caller is anonymous - scores, verdict, and the
- * category rollup, but no rule evidence, no keyword lists, and only the single largest fix.
- */
 export type AtsRestrictedReport = {
   version: "ats-v2";
   restricted: true;

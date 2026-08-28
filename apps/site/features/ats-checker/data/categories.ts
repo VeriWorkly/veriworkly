@@ -1,10 +1,7 @@
-import { AtSign, FileSearch, LayoutList, ShieldAlert, Type, type LucideIcon } from "lucide-react";
+import { AtSign, FileSearch, LayoutList, ShieldAlert, Type, Gauge, ShieldCheck, type LucideIcon } from "lucide-react";
 
-/**
- * Display metadata for the deterministic engine's rule categories. The engine sends category
- * *keys*; the labels, ordering, and plain-language descriptions live here so a policy update
- * never has to ship copy, and an unrecognised key still renders (see `categoryMeta`).
- */
+export type ScoreTone = "good" | "warn" | "bad";
+
 const CATEGORY_META: Record<string, { label: string; icon: LucideIcon; blurb: string }> = {
   parse: {
     label: "Parsing",
@@ -45,7 +42,6 @@ export function categoryMeta(category: string) {
   );
 }
 
-/** Stable presentation order: known categories first in reading order, then anything new. */
 export function sortByCategoryOrder<T extends { category: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     const left = CATEGORY_ORDER.indexOf(a.category);
@@ -56,23 +52,12 @@ export function sortByCategoryOrder<T extends { category: string }>(items: T[]):
   });
 }
 
-/**
- * Score bands, shared by the gauge, the category bars, and the verdict copy so a "78" never
- * reads as green in one place and amber in another.
- */
-export type ScoreTone = "good" | "warn" | "bad";
-
 export function scoreTone(score: number): ScoreTone {
   if (score >= 80) return "good";
   if (score >= 55) return "warn";
   return "bad";
 }
 
-/**
- * `text-emerald-600` / `text-amber-600` / `text-red-600` clear 4.5:1 on white; their 400-level
- * counterparts clear it on the near-black dark ground. The 500-level fills are decorative
- * (bars and rings), where the 3:1 non-text threshold applies.
- */
 export const TONE_CLASSES: Record<ScoreTone, { text: string; fill: string; chip: string }> = {
   good: {
     text: "text-emerald-700 dark:text-emerald-400",
@@ -90,3 +75,34 @@ export const TONE_CLASSES: Record<ScoreTone, { text: string; fill: string; chip:
     chip: "bg-red-500/10 text-red-700 dark:text-red-400",
   },
 };
+
+export const SCORING_DIMENSIONS = [
+  {
+    icon: FileSearch,
+    title: "Parsing & Layout Integrity",
+    badge: "Format Sanity",
+    body: "Word count ranges, table characters, multi-column blocks, and header/footer repetitions that cause text extraction algorithms to scramble sequential reading flow.",
+    checks: ["Single-stream text extraction", "No invisible table cells", "Header & footer safety"],
+  },
+  {
+    icon: ShieldCheck,
+    title: "Contact & Section Taxonomy",
+    badge: "Search Indexing",
+    body: "Email, phone number, location, and recognizable Experience, Education, and Skills headers that ATS software categorizes into searchable profile fields.",
+    checks: ["Top 30% contact placement", "Standard ISO section names", "Valid URL syntax verification"],
+  },
+  {
+    icon: Type,
+    title: "Evidence & Impact Quality",
+    badge: "Impact Weight",
+    body: "Quantified outcomes and action verbs, evaluated by what percentage of bullets carry measurable results rather than just passive duty statements.",
+    checks: ["Metric & percentage density", "Action verb power scoring", "Vague duty phrase detection"],
+  },
+  {
+    icon: Gauge,
+    title: "Job Match & Keywords",
+    badge: "Semantic Fit",
+    body: "Keyword matching against a pasted job description, weighted toward terms listed under Requirements over optional nice-to-haves.",
+    checks: ["Requirement term weighting", "Synonym & abbreviation mapping", "Frequency density analysis"],
+  },
+] as const;

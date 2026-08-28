@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeCheckResult,
   type WireCheckResult,
-} from "@/features/ats-checker/normalize-report";
+} from "@/features/ats-checker/services";
 
 import type { AtsQuota, AtsRuleResult } from "@/features/ats-checker/types";
 

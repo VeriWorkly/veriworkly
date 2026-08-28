@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { allowanceCopy, resetCopy } from "@/features/ats-checker/services";
 import type { AtsQuota } from "@/features/ats-checker/types";
-
-import { allowanceCopy, resetCopy } from "@/features/ats-checker/quota-copy";
 
 function quotaFor(tier: AtsQuota["tier"], limit: number): AtsQuota {
   return {

@@ -1,10 +1,6 @@
 import { backendApiUrl, fetchApiData } from "@/utils/fetchApiData";
-
-import type { AtsQuota } from "@/features/ats-checker/types";
-import {
-  normalizeCheckResult,
-  type WireCheckResult,
-} from "@/features/ats-checker/normalize-report";
+import type { AtsQuota } from "../types";
+import { normalizeCheckResult, type WireCheckResult } from "./normalize-report";
 
 export async function runAtsCheck(input: { resume: unknown; jobDescription?: string }) {
   return normalizeCheckResult(
