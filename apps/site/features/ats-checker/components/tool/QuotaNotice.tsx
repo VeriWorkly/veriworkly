@@ -2,27 +2,15 @@ import Link from "next/link";
 import { Clock, Gauge } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
-import { allowanceCopy, resetCopy } from "@/features/ats-checker/quota-copy";
-import type { AtsQuota } from "@/features/ats-checker/types";
+import { allowanceCopy, resetCopy } from "../../services/quota-copy";
+import type { AtsQuota } from "../../types";
 
 export function loginHref(): string {
-  /**
-   * The callback has to be an absolute URL. `/ats-checker/scan` resolves against the *app*
-   * origin once the login page loads there, and app.veriworkly.com has no such route - so the
-   * old relative value silently dropped every user on the dashboard instead of back on their
-   * scan. `getSafeAuthCallback` accepts absolute URLs on trusted origins, of which the
-   * marketing site is one.
-   */
   return `${siteConfig.links.app}/login?callbackURL=${encodeURIComponent(
     `${siteConfig.url}/ats-checker/scan`,
   )}`;
 }
 
-/**
- * Shown before the form, not after a failed submit. Finding out you have no scans left only
- * once you have uploaded a resume and pasted a job description is the worst possible moment
- * to learn it.
- */
 export function QuotaNotice({ quota }: { quota: AtsQuota }) {
   const exhausted = quota.remaining <= 0;
 
@@ -68,3 +56,5 @@ export function QuotaNotice({ quota }: { quota: AtsQuota }) {
     </p>
   );
 }
+
+export default QuotaNotice;

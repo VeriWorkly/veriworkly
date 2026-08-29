@@ -17,12 +17,6 @@ const STEPS_WITHOUT_TARGET = [
   "Reviewing content and evidence quality…",
 ];
 
-/**
- * 420 ms, down from 750. The staged reveal exists so the scan reads as work rather than a coin
- * flip, but the previous pacing held finished results on screen for up to 3.75 s - long enough
- * to feel like latency instead of substance, which is the opposite of the intent. Long enough
- * to read each line, short enough that nobody waits on it.
- */
 const STEP_DURATION_MS = 420;
 
 interface ScanLoaderProps {
@@ -85,3 +79,5 @@ export function ScanLoader({ hasTarget }: ScanLoaderProps) {
 
 export const SCAN_LOADER_MIN_MS = (hasTarget: boolean) =>
   (hasTarget ? STEPS_WITH_TARGET.length : STEPS_WITHOUT_TARGET.length) * STEP_DURATION_MS;
+
+export default ScanLoader;

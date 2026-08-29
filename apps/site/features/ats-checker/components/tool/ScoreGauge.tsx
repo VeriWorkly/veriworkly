@@ -10,7 +10,7 @@ import {
   useTransform,
 } from "framer-motion";
 
-import { scoreTone, TONE_CLASSES } from "@/features/ats-checker/categories";
+import { scoreTone, TONE_CLASSES } from "../../data/categories";
 
 const RADIUS = 44;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -37,8 +37,6 @@ export function ScoreGauge({ score, label, caption, size = "lg" }: ScoreGaugePro
   useMotionValueEvent(scoreMV, "change", (latest) => setAnimated(Math.round(latest)));
 
   useEffect(() => {
-    // Counting up is decoration, not information. Under reduced motion there is no animation
-    // to run at all - the value below is read straight from the score.
     if (shouldReduceMotion) return;
     const controls = animate(scoreMV, clamped, { duration: 1.1, ease: [0.23, 1, 0.32, 1] });
     return () => controls.stop();
@@ -107,3 +105,5 @@ export function ScoreGauge({ score, label, caption, size = "lg" }: ScoreGaugePro
     </div>
   );
 }
+
+export default ScoreGauge;

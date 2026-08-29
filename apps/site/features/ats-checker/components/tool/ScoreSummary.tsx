@@ -1,6 +1,6 @@
-import { ScoreGauge } from "@/features/ats-checker/components/ScoreGauge";
-import { VerdictBadge } from "@/features/ats-checker/components/VerdictBadge";
-import type { AtsVerdict } from "@/features/ats-checker/types";
+import { ScoreGauge } from "./ScoreGauge";
+import { VerdictBadge } from "./VerdictBadge";
+import type { AtsVerdict } from "../../types";
 
 interface ScoreSummaryProps {
   verdict: AtsVerdict;
@@ -10,11 +10,6 @@ interface ScoreSummaryProps {
   checksTotal: number;
 }
 
-/**
- * The one card that answers "how did I do" before any detail. Both scores sit side by side
- * with a caption each, because the most common misreading of this tool is treating readiness
- * and job match as one number - readiness never moves for a given layout, job match does.
- */
 export function ScoreSummary({
   verdict,
   readinessScore,
@@ -66,3 +61,5 @@ export function ScoreSummary({
     </section>
   );
 }
+
+export default ScoreSummary;

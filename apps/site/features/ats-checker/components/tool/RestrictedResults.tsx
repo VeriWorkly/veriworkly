@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Lock, Wrench } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
-import type { AtsRestrictedReport } from "@/features/ats-checker/types";
-import { CategoryBreakdown } from "@/features/ats-checker/components/CategoryBreakdown";
-import { ScoreSummary } from "@/features/ats-checker/components/ScoreSummary";
+import type { AtsRestrictedReport } from "../../types";
+import { CategoryBreakdown } from "./CategoryBreakdown";
+import { ScoreSummary } from "./ScoreSummary";
 
 const LOCKED_ITEMS = [
   "Every check's pass/fail evidence, one by one",
@@ -87,3 +87,5 @@ export function RestrictedResults({ report }: { report: AtsRestrictedReport }) {
     </div>
   );
 }
+
+export default RestrictedResults;

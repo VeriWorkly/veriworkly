@@ -37,7 +37,6 @@ export function Stepper({ steps, current }: StepperProps) {
                   }`}
                 >
                   {label}
-                  {/* Position is visible as a filled circle; screen readers get it as words. */}
                   <span className="sr-only">
                     {state === "done"
                       ? " (completed)"
@@ -62,3 +61,5 @@ export function Stepper({ steps, current }: StepperProps) {
     </nav>
   );
 }
+
+export default Stepper;

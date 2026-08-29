@@ -2,11 +2,11 @@ import Link from "next/link";
 import { AlertCircle, CheckCircle2, Sparkles, TriangleAlert, XCircle } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
-import { categoryMeta, sortByCategoryOrder } from "@/features/ats-checker/categories";
-import type { AtsFullReport, AtsQuota, AtsRuleResult } from "@/features/ats-checker/types";
-import { CategoryBreakdown } from "@/features/ats-checker/components/CategoryBreakdown";
-import { CopyReportButton } from "@/features/ats-checker/components/CopyReportButton";
-import { ScoreSummary } from "@/features/ats-checker/components/ScoreSummary";
+import { categoryMeta, sortByCategoryOrder } from "../../data/categories";
+import type { AtsFullReport, AtsQuota, AtsRuleResult } from "../../types";
+import { CategoryBreakdown } from "./CategoryBreakdown";
+import { CopyReportButton } from "./CopyReportButton";
+import { ScoreSummary } from "./ScoreSummary";
 
 function groupByCategory(rules: AtsRuleResult[]) {
   const groups = new Map<string, AtsRuleResult[]>();
@@ -22,8 +22,6 @@ function groupByCategory(rules: AtsRuleResult[]) {
 
 export function FullResults({ report, quota }: { report: AtsFullReport; quota: AtsQuota }) {
   const categories = groupByCategory(report.rules);
-  // The engine already ranks fixes by how many points they recover; showing that number turns
-  // an undifferentiated to-do list into an order of operations.
   const rankedFixes = [...report.failedChecks].sort((a, b) => b.scoreImpact - a.scoreImpact);
 
   return (
@@ -324,3 +322,5 @@ function KeywordCard({
     </section>
   );
 }
+
+export default FullResults;
