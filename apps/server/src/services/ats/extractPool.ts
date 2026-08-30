@@ -3,7 +3,13 @@ import { fork, type ChildProcess } from "node:child_process";
 import { logger } from "#lib/logger";
 import { ApiError } from "#lib/errors";
 
-import type { AtsExtractFormat, AtsExtractResponse } from "#services/ats/extractChild";
+import type {
+  AtsExtractFormat,
+  AtsExtractLayout,
+  AtsExtractResponse,
+} from "#services/ats/extractChild";
+
+export type AtsExtractOutcome = { text: string; layout?: AtsExtractLayout };
 
 const EXTRACTION_TIMEOUT_MS = 20_000;
 const MAX_QUEUE_DEPTH = 8;
@@ -12,7 +18,7 @@ type PendingJob = {
   id: number;
   format: AtsExtractFormat;
   buffer: Buffer;
-  resolve: (text: string) => void;
+  resolve: (result: AtsExtractOutcome) => void;
   reject: (error: unknown) => void;
 };
 
@@ -80,7 +86,7 @@ function handleMessage(message: AtsExtractResponse) {
   current = null;
   clearTimer();
 
-  if (message.ok) job.resolve(message.text);
+  if (message.ok) job.resolve({ text: message.text, layout: message.layout });
   else job.reject(new ApiError(400, "Resume file could not be read."));
 
   pump();
@@ -158,13 +164,16 @@ function pump() {
  * and the cluster already runs one server worker per CPU. Serializing also means a single
  * pathological file can never occupy more than one extraction process.
  */
-export function extractInChildProcess(format: AtsExtractFormat, buffer: Buffer): Promise<string> {
+export function extractInChildProcess(
+  format: AtsExtractFormat,
+  buffer: Buffer,
+): Promise<AtsExtractOutcome> {
   if (queue.length >= MAX_QUEUE_DEPTH)
     return Promise.reject(
       new ApiError(503, "Too many resume extractions in progress. Please retry shortly."),
     );
 
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<AtsExtractOutcome>((resolve, reject) => {
     queue.push({ id: nextJobId++, format, buffer, resolve, reject });
     pump();
   });

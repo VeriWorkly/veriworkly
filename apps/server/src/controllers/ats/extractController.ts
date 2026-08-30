@@ -21,10 +21,12 @@ export class AtsExtractController {
       if (!req.file) throw new ApiError(400, "Provide a resume file.");
 
       const quota = await AtsQuotaService.consumeExtract(req.authUser?.id, ip(req));
+      // `layout` carries the page geometry measured during parsing. The client echoes it back
+      // with the scan so the format checks can run on the document as it was actually laid out,
+      // not just on the text that fell out of it.
+      const { text, layout } = await AtsResumeExtractService.extract(req.file);
 
-      res.json(
-        createSuccessResponse({ text: await AtsResumeExtractService.extract(req.file), quota }),
-      );
+      res.json(createSuccessResponse({ text, layout, quota }));
     } catch (error) {
       next(error);
     }

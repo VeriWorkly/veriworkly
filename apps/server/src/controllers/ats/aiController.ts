@@ -35,16 +35,35 @@ export class AtsAiController {
         input.fetchJobUrl && input.jobUrl
           ? await AtsJobFetchService.fetch(input.jobUrl)
           : input.jobDescription;
-      const report = AtsScoringService.check(input.resume, jobDescription);
-      const result = await AtsAiService.analyze(
+
+      // Flattened once here and handed to both passes; each used to walk the resume document
+      // independently, and the document can be up to the 4 MB body limit.
+      const resumeText = AtsScoringService.flattenResume(input.resume);
+      const report = AtsScoringService.check(resumeText, jobDescription, input.layout);
+      const { routed, ...result } = await AtsAiService.analyze(
         user.id,
         input.requestId,
-        input.resume,
+        resumeText,
         jobDescription,
         report,
         input.fetchJobUrl,
       );
-      res.json(createSuccessResponse({ report: shapeReport(report, true), ...result, quota }));
+
+      /**
+       * No model could be routed. That is our configuration failing, not the caller's request,
+       * so the scan goes back rather than being spent on an analysis they never received. The
+       * deterministic report is still returned and still useful — but `aiStatus` says plainly
+       * that the AI layer did not run, instead of an empty `ai` field the caller cannot
+       * distinguish from a model that found nothing to say.
+       */
+      res.json(
+        createSuccessResponse({
+          report: shapeReport(report, true),
+          ...result,
+          aiStatus: routed ? "ok" : "unavailable",
+          quota: routed ? quota : await AtsQuotaService.refund(user.id, ip(req)),
+        }),
+      );
     } catch (error) {
       next(error instanceof z.ZodError ? handleValidationError(error) : error);
     }

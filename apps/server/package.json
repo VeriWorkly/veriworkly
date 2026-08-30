@@ -54,6 +54,7 @@
     "nodemailer": "^9.0.3",
     "openai": "^6.49.0",
     "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "5.4.296",
     "pg": "^8.22.0",
     "redis": "^5.12.1",
     "throng": "^5.0.0",

@@ -29,7 +29,7 @@ const RESUME = "Jane Doe, backend engineer with eight years of Node.js and Postg
 describe("AtsResumeExtractService", () => {
   beforeEach(() => {
     extractInChildProcessMock.mockReset();
-    extractInChildProcessMock.mockResolvedValue(RESUME);
+    extractInChildProcessMock.mockResolvedValue({ text: RESUME });
   });
 
   it("routes PDFs to the extraction process", async () => {
@@ -55,11 +55,13 @@ describe("AtsResumeExtractService", () => {
   });
 
   it("handles plain text inline without paying for IPC", async () => {
-    const text = await AtsResumeExtractService.extract(
+    const { text, layout } = await AtsResumeExtractService.extract(
       file(Buffer.from(RESUME), "cv.txt", "text/plain"),
     );
 
     expect(text).toContain("Jane Doe");
+    // Plain text has no geometry to measure, so no layout signal is reported at all.
+    expect(layout).toBeUndefined();
     expect(extractInChildProcessMock).not.toHaveBeenCalled();
   });
 
@@ -73,18 +75,24 @@ describe("AtsResumeExtractService", () => {
     expect(extractInChildProcessMock).not.toHaveBeenCalled();
   });
 
-  it("rejects files that yield too little readable text", async () => {
-    extractInChildProcessMock.mockResolvedValue("hi");
+  it("rejects PDF files that yield too little readable text with actionable OCR diagnostic guidance", async () => {
+    extractInChildProcessMock.mockResolvedValue({ text: "hi" });
 
     await expect(
       AtsResumeExtractService.extract(file(Buffer.from("%PDF-"), "cv.pdf", "application/pdf")),
+    ).rejects.toThrow(/scanned image or flattened graphic/);
+  });
+
+  it("rejects non-PDF files that yield too little readable text with standard message", async () => {
+    await expect(
+      AtsResumeExtractService.extract(file(Buffer.from("hi"), "cv.txt", "text/plain")),
     ).rejects.toThrow(/enough readable text/);
   });
 
   it("truncates very long documents to the character cap", async () => {
-    extractInChildProcessMock.mockResolvedValue("a".repeat(120_000));
+    extractInChildProcessMock.mockResolvedValue({ text: "a".repeat(120_000) });
 
-    const text = await AtsResumeExtractService.extract(
+    const { text } = await AtsResumeExtractService.extract(
       file(Buffer.from("%PDF-"), "cv.pdf", "application/pdf"),
     );
 

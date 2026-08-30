@@ -31,7 +31,7 @@ export class AtsCheckController {
     try {
       const input = atsCheckSchema.parse(req.body);
       const quota = await AtsQuotaService.consume(req.authUser?.id, ip(req));
-      const report = AtsScoringService.check(input.resume, input.jobDescription);
+      const report = AtsScoringService.check(input.resume, input.jobDescription, input.layout);
       res.json(
         createSuccessResponse({
           report: shapeReport(report, Boolean(req.authUser)),
