@@ -9,11 +9,76 @@ A dedicated workspace (`/ats`, requires login) with two layers of analysis over 
 
 ## Core scan
 
-A deterministic, non-AI, free-of-AI-cost rules engine: word count, presence of email/phone/links, required sections (experience/education/skills), action-verb usage, quantified achievements, length, and formatting risk (tables, headers/footers that confuse ATS parsers). Produces a readiness score and, if a job description is pasted in, a keyword-match score.
+A deterministic, non-AI, free-of-AI-cost rules engine. One pass produces **both halves** of the
+report — the scores and the recovered record — so seeing either never costs a second scan.
+
+Produces a **readiness score** (the share of available points the resume kept, on a true 0–100
+scale), a **job-match score** when a job description is supplied, and a **parsed record**.
+
+### What the ATS sees
+
+The parsed record is the half that is not a score. An applicant tracking system does not rank a
+resume: it shreds it into a row per job holding an **employer**, a **job title** and a **date
+range**, and lets recruiters search and filter those rows. A resume whose history cannot be
+recovered arrives with empty columns — invisible to that filter however well the bullets read.
+
+`report.parsed` returns exactly that record: name, email, phone, links, one row per role, education
+with a normalised degree level, the indexed skills list, and **total months of experience** with
+overlapping roles counted once (which is how a "5+ years" filter reads it).
+
+Four rules score the recovery itself — how many rows came back, how many carry all three of title,
+employer and dates, how many have a parseable date range, and whether the header fields were
+recoverable. The parser failing *is* the finding: if it cannot recover a field from your document,
+a real ATS very likely cannot either.
+
+<Callout type="info" title="Anonymous callers get counts, not rows">
+  `POST /ats/check` without a session returns a diagnosis and honest counts — the score, the
+  verdict, the single most serious problem, the highest-impact fix, and how many keywords and
+  work-history rows exist — but no per-area rollup, no keyword lists and no recovered table. The
+  server never sends them, so there is nothing for a client to un-hide.
+</Callout>
+
+What it checks:
+
+- **Parsing** — whether enough readable text came out at all.
+- **Contact** — email, phone, a professional link, and whether they sit in the first quarter of the document.
+- **Structure** — Experience, Education, and Skills headings, matched **on their own line**. The word appearing mid-sentence does not satisfy the check, because a parser maps sections from headings.
+- **Evidence** — the *share* of bullets carrying a metric, and the share opening with an action verb. Density, not a single occurrence somewhere in the document.
+- **Format** — emoji bullets, page-footer artifacts, and, for uploaded PDFs, the page geometry below.
+
+<Callout type="info" title="Layout checks need an uploaded file">
+  Two checks read the document's geometry rather than its text: the share of lines split across a
+  column gutter (a two-column layout, sidebar, or floating text box, all of which extract in a
+  scrambled order) and the number of ruled table grids. Both require the `layout` object returned
+  by `POST /ats/extract` to be passed back with the scan. Pasted text and Studio documents have no
+  geometry, so those rules are **omitted from the report entirely** — neither passed nor failed,
+  and excluded from the score's denominator, so scores stay comparable either way.
+</Callout>
+
+### Job match
+
+The posting is segmented into sections before anything is scored. About-us, benefits, and EEO
+boilerplate are dropped; requirements outweigh nice-to-haves; responsibilities prose sits below
+both. Within what remains, recognised skills and proper nouns outweigh ordinary English, so a
+posting's filler cannot outvote the skills it actually asks for.
+
+Three behaviours worth knowing:
+
+- **Alternatives count once.** "Go or Java" is one requirement satisfied by either side, not two gaps.
+- **Implied skills count.** Listing Terraform credits infrastructure-as-code; PostgreSQL credits relational databases. One-way only — the reverse would credit a tool that was never named.
+- **Synonyms and phrases fold together**, so `k8s`, `Kubernetes`, `CI/CD`, and `continuous integration` all resolve to the same term on both sides.
 
 ## AI-powered deep analysis
 
 Layers an LLM's explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities on top of the core scan. Can fetch a job description directly from a URL instead of requiring paste, with strong server-side SSRF protections (HTTPS-only, blocks private/loopback IP ranges, pins the resolved IP for the actual fetch, caps redirects/response size/timeout).
+
+<Callout type="info" title="If no model can be routed">
+  Model selection is priced against the credit bucket the request would be billed at. When the
+  tier a request is graded into cannot be served inside that margin, it steps down to a cheaper
+  tier rather than dropping the analysis. If nothing can be routed at all, the response carries
+  `aiStatus: "unavailable"`, `ai` is null, no credits are charged, **and the scan quota unit is
+  refunded** — the deterministic report is still returned.
+</Callout>
 
 <Callout type="warn" title="Core scan and AI analysis share one quota">
   This is the single most surprising part of this feature: the core scan and the AI-powered analysis

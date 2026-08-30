@@ -23,8 +23,8 @@ const BrandKitHeader = () => {
       </h1>
 
       <p className="text-muted max-w-2xl text-base leading-8 md:text-lg">
-        Vector logos, both colour palettes, typography, share cards, and voice guidelines for
-        writing or designing about VeriWorkly — in blog posts, integrations, comparisons, or press
+        Official logos, both colour palettes, typography, share cards, and voice guidelines for
+        writing or designing about VeriWorkly - in blog posts, integrations, comparisons, or press
         coverage.
       </p>
 

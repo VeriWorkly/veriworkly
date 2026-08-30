@@ -30,7 +30,7 @@ export async function generateStaticParams() {
 function describe(title: string, version: string, summary: string | null) {
   return (
     summary ||
-    `Everything that shipped in VeriWorkly v${version} — ${title}: new features, improvements, fixes, and the pull requests behind them.`
+    `Everything that shipped in VeriWorkly v${version} - ${title}: new features, improvements, fixes, and the pull requests behind them.`
   );
 }
 
@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
 
   const ogUrl = new URL("/api/og", siteConfig.url);
 
-  ogUrl.searchParams.set("title", `v${entry.version} — ${entry.title}`);
+  ogUrl.searchParams.set("title", `v${entry.version} - ${entry.title}`);
   ogUrl.searchParams.set("description", description);
 
   return buildPageMetadata({
@@ -76,7 +76,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
     ogTitle: `What shipped in VeriWorkly v${entry.version}`,
     ogDescription: description,
 
-    twitterTitle: `VeriWorkly v${entry.version} — ${entry.title}`,
+    twitterTitle: `VeriWorkly v${entry.version} - ${entry.title}`,
     twitterDescription: description,
 
     image: ogUrl.toString(),
@@ -118,7 +118,7 @@ const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    headline: `VeriWorkly v${entry.version} — ${entry.title}`,
+    headline: `VeriWorkly v${entry.version} - ${entry.title}`,
     description,
     url: entryUrl,
     datePublished: entry.publishedAt,

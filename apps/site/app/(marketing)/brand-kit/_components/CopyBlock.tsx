@@ -17,7 +17,7 @@ const CopyBlock = ({ label, text }: CopyBlockProps) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard access can be denied by the browser — the text is still selectable.
+      // Clipboard access can be denied by the browser - the text is still selectable.
     }
   };
 

@@ -729,7 +729,7 @@ export const templateSummaries: TemplateSummary[] = [
     documentType: "resume",
     documentTypeLabel: "Resume",
     description:
-      "The signature VeriWorkly resume: a quiet, editorial layout built around one confident name treatment and three precise touches of brand accent — a rule, a label, and a set of small marks. Nothing else competes for attention, and nothing sits in a table or a column a parser could misread.",
+      "The signature VeriWorkly resume: a quiet, editorial layout built around one confident name treatment and three precise touches of brand accent - a rule, a label, and a set of small marks. Nothing else competes for attention, and nothing sits in a table or a column a parser could misread.",
     shortDescription: "A quiet, editorial resume with one confident name and a precise accent.",
     accentColor: "#2563eb",
     previewImage: "/templates/resume/veriworkly-special.svg",
@@ -748,17 +748,17 @@ export const templateSummaries: TemplateSummary[] = [
       "Pairing with the VeriWorkly Special cover letter for a matched, understated application set.",
     ],
     designVision:
-      "Veriworkly Special spends its entire color budget on three deliberate moments: a tight-tracked name in ink, a wide-tracked accent label under it, a thin accent rule closing the header, and a small accent mark opening each section. Everything else — dates, bullets, body copy — is plain text in a single column, so the three accent touches read as a signature rather than decoration competing with the content.",
+      "Veriworkly Special spends its entire color budget on three deliberate moments: a tight-tracked name in ink, a wide-tracked accent label under it, a thin accent rule closing the header, and a small accent mark opening each section. Everything else - dates, bullets, body copy - is plain text in a single column, so the three accent touches read as a signature rather than decoration competing with the content.",
     typography: [
       "A large, tight-tracked name that carries hierarchy through size and weight, not color.",
-      "A wide-tracked, uppercase accent label under the name — the one place the brand color touches text directly.",
+      "A wide-tracked, uppercase accent label under the name - the one place the brand color touches text directly.",
       "Small, consistent accent marks before each section title instead of a filled background.",
     ],
     structure: [
       {
         title: "Quiet Masthead",
         description:
-          "Name, accent label, contact row, and links sit above a single thin accent rule — no fills, no panels.",
+          "Name, accent label, contact row, and links sit above a single thin accent rule - no fills, no panels.",
         items: ["Tight-tracked name", "Accent label", "Single accent rule"],
       },
       {
@@ -1001,7 +1001,7 @@ export const templateSummaries: TemplateSummary[] = [
       "Letters that need to read as considered and unhurried.",
     ],
     designVision:
-      "Executive frames the sender's identity between two hairlines and centers it, the way a formal letterhead is set, then presents the date and inside address the way a traditional business letter does — dateline first, address beneath it — before the letter runs in calm, single-column prose.",
+      "Executive frames the sender's identity between two hairlines and centers it, the way a formal letterhead is set, then presents the date and inside address the way a traditional business letter does - dateline first, address beneath it - before the letter runs in calm, single-column prose.",
     typography: [
       "A centered name and uppercase title inside a double-rule masthead.",
       "A centered dateline over a left-aligned inside address, not a side-by-side split.",
@@ -1051,7 +1051,7 @@ export const templateSummaries: TemplateSummary[] = [
     documentType: "cover-letter",
     documentTypeLabel: "Cover Letter",
     description:
-      "The classic block-letter format taught in business writing: every line left-aligned with no column split anywhere on the page, no shaded blocks, and no decorative rules beyond a single hairline — built to parse correctly in any ATS.",
+      "The classic block-letter format taught in business writing: every line left-aligned with no column split anywhere on the page, no shaded blocks, and no decorative rules beyond a single hairline - built to parse correctly in any ATS.",
     shortDescription: "The classic left-aligned block letter, with no column split.",
     accentColor: "#57534e",
     previewImage: "/templates/cover-letter/ats-essential.svg",

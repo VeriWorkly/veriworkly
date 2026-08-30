@@ -110,36 +110,23 @@ tokens — the logo does not recolour with the theme.
 
 ### Variants
 
-| File                              | Use                                                                                                                           |
-| :-------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
-| `veriworkly-logo.svg`             | Primary. Preferred everywhere, print included.                                                                                |
-| `veriworkly-logo-mono.svg`        | Single colour via `currentColor`. One-colour print, embroidery, small sizes, and any ground that breaks the facets' contrast. |
-| `veriworkly-logo-256.png`         | Raster fallback where SVG is rejected.                                                                                        |
-| `veriworkly-icon-512.png`         | Store listings, PWA manifest.                                                                                                 |
-| `veriworkly-icon-192.png`         | Android home screen, manifest.                                                                                                |
-| `veriworkly-icon-apple-touch.png` | iOS home screen.                                                                                                              |
+| File                              | Use                                                            |
+| :-------------------------------- | :------------------------------------------------------------- |
+| `veriworkly-logo-256.png`         | Primary mark. For websites, headers, and media placements.     |
+| `veriworkly-icon-512.png`         | Store listings, app launchers, and high-DPI displays.          |
+| `veriworkly-icon-192.png`         | Android home screen, manifest, and favicons.                   |
+| `veriworkly-icon-apple-touch.png` | iOS home screen and web clip.                                  |
 
 All live in `apps/site/public/brand/logo/`. The manifest is `logoAssets` in
 `apps/site/config/brand.ts`; the `.zip` is built from that list, so adding a file there
 and re-running the build is the whole process.
-
-`veriworkly-logo-mono.svg` cannot be rendered through `<img>` or `next/image` when its
-colour needs to change — neither inherits `currentColor`. Use the `LogoMarkMono`
-component (`apps/site/components/brand/LogoMarkMono.tsx`) in those cases.
-
-> **SVG and `next/image`.** Next.js refuses to run SVGs through the image optimiser
-> unless `dangerouslyAllowSVG` is enabled. Rather than loosening that global setting,
-> pass `unoptimized` on any `<Image>` whose `src` is an SVG. Vectors need no optimisation
-> anyway.
 
 ### Usage rules
 
 | Rule                 | Value                                  |
 | :------------------- | :------------------------------------- |
 | Clear space          | 25% of the mark's width, on every side |
-| Minimum, full colour | 32 px                                  |
-| Switch to mono       | 24 px and below                        |
-| Reversed colour      | Foreground token (`#F3F4F6` on dark)   |
+| Minimum display size | 16 px                                  |
 
 Nothing enters the clear-space box — not type, rules, other logos, or the edge of a
 photograph.

@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: template.seo.description,
     ogTitle: `${template.name}: A ${templateTypeLabel} Template Built for ${template.audience[0] ?? "Job Seekers"}`,
     ogDescription: template.shortDescription,
-    twitterTitle: `${template.name} — ${template.documentTypeLabel} Template`,
+    twitterTitle: `${template.name} - ${template.documentTypeLabel} Template`,
     twitterDescription: template.shortDescription,
     image: template.previewImage,
     imageAlt: `${template.name} ${templateTypeLabel} template preview`,

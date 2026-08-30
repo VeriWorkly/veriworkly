@@ -1,4 +1,4 @@
-# Ambassador apply — reaction media
+# Ambassador apply - reaction media
 
 Drop meme images / GIFs for the apply flow in this folder, then point at them from
 `apps/site/features/ambassador/apply-reactions.ts`:
@@ -12,7 +12,7 @@ college: {
 },
 ```
 
-Until `src` is set, the question renders an animated emoji sticker instead — the flow is
+Until `src` is set, the question renders an animated emoji sticker instead - the flow is
 fully functional with zero assets in this folder, so add them at your leisure.
 
 ## Rules
@@ -22,7 +22,7 @@ fully functional with zero assets in this folder, so add them at your leisure.
   so hotlinked Giphy/Tenor URLs and Giphy iframe embeds are both blocked. Download the
   file and commit it here.
 - **Keep them small.** Target < 500 KB each. These load on a mobile signup flow. Prefer
-  animated `.webp` over `.gif` — usually 5–10× smaller for identical output.
+  animated `.webp` over `.gif` - usually 5–10× smaller for identical output.
 - **Check the rights.** Reaction GIFs from film/TV are not automatically cleared for
   commercial marketing use. Safest options are assets you make, licensed stock, or
   clearly-licensed open media.
@@ -35,4 +35,4 @@ fully functional with zero assets in this folder, so add them at your leisure.
 ## Suggested filenames
 
 `intro`, `college`, `year`, `why`, `superpower`, `funfact`, `vibe`, `social`, `review`,
-`success` — matching the keys in `apply-reactions.ts`.
+`success` - matching the keys in `apply-reactions.ts`.

@@ -3,11 +3,10 @@ import Image from "next/image";
 import { ExternalLink, Info } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
-import { LogoMarkMono } from "@/components/brand/LogoMarkMono";
 
 import { SectionHeader } from "./SectionHeader";
 
-const MARK = "/brand/logo/veriworkly-logo.svg";
+const MARK = "/veriworkly-logo.png";
 
 const REFERENCES = [
   {
@@ -43,22 +42,24 @@ export const BrandAssetsSection = () => {
             <p className="text-lg font-semibold">Primary Logo</p>
 
             <p className="text-muted text-sm leading-6">
-              The mark ships as vector. Reach for{" "}
-              <span className="font-mono text-xs">veriworkly-logo.svg</span> on product surfaces,
-              and the single-colour version wherever the facets would lose contrast.
+              The official VeriWorkly logo mark is rendered as high-resolution PNG image assets on
+              product surfaces, application headers, and media embeds.
             </p>
           </div>
 
           <div className="flex shrink-0 gap-3">
-            <div className="border-border bg-background grid size-24 place-items-center rounded-2xl border">
-              <Image width={56} height={56} alt="VeriWorkly logo" src={MARK} unoptimized />
+            <div
+              className="border-border grid size-24 place-items-center rounded-2xl border"
+              style={{ backgroundColor: "#F5F4EF" }}
+            >
+              <Image width={56} height={56} alt="VeriWorkly logo on light background" src={MARK} />
             </div>
 
             <div
-              className="border-border grid size-24 place-items-center rounded-2xl border text-[#F3F4F6]"
+              className="border-border grid size-24 place-items-center rounded-2xl border"
               style={{ backgroundColor: "#0D1117" }}
             >
-              <LogoMarkMono size={56} />
+              <Image width={56} height={56} alt="VeriWorkly logo on dark background" src={MARK} />
             </div>
           </div>
         </div>
@@ -70,7 +71,7 @@ export const BrandAssetsSection = () => {
           <div>
             <p className="text-accent text-sm font-semibold">Need the full brand kit?</p>
             <p className="text-muted mt-1 text-xs">
-              Vector and raster logos, clear-space rules, both palettes, typography, voice
+              High-resolution logo images, clear-space rules, both palettes, typography, voice
               guidelines, share cards, and a downloadable .zip.
             </p>
           </div>

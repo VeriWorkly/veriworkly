@@ -18,7 +18,21 @@ tags:
 
 The checker (`/ats` in Studio) runs two genuinely different kinds of analysis:
 
-**The core scan** is deterministic and free of AI cost — it's a rules engine, not a model. It checks word count, the presence of email/phone/links, whether required sections (experience, education, skills) exist, action-verb usage, quantified achievements, overall length, and formatting risk — tables, headers/footers, and other layout choices that are known to confuse ATS parsers. If you paste in a job description, it also produces a keyword-match score. None of this touches an LLM.
+**The core scan** is deterministic and free of AI cost — it's a rules engine, not a model. It checks word count, the presence of email/phone/links, whether Experience, Education and Skills appear as real headings on their own line, what share of your bullets open with an action verb, what share carry a number, and overall length. None of this touches an LLM.
+
+Two of its checks read the document's geometry rather than its text, and only work on an uploaded PDF: the share of lines split across a column gutter — the signature of a two-column layout, a sidebar, or a floating text box, all of which extract in a scrambled order — and the number of ruled table grids, traced from the page's own drawing operators. Paste your resume in as text instead and there is no geometry to measure, so those two checks are left out of the report entirely rather than quietly passing.
+
+If you paste in a job description, it also produces a keyword-match score. That one deserves a paragraph of its own, below.
+
+## What the keyword match actually does
+
+Most keyword scores are a word-overlap count against the whole posting, which is why they tell you to add "dental" and "stipend". Ours segments the posting first — About us, benefits and equal-opportunity boilerplate are not scored at all — then weights requirements above nice-to-haves, and weights recognised skills and proper nouns above ordinary English.
+
+Three behaviours worth knowing about:
+
+- **"Go or Java" is one requirement, not two.** A posting that offers you a choice shouldn't penalise you for not holding both sides of it. Comma lists work too: "React, Vue, or Angular" is a single ask satisfied by any one of them.
+- **Skills you've evidenced under another name still count.** List Terraform and you are credited with infrastructure-as-code; list PostgreSQL and you are credited with relational databases. This runs one way only — naming the concept does not credit you with the tool.
+- **Abbreviations fold together.** `k8s`, `Kubernetes`, `CI/CD` and `continuous integration` resolve to the same term on both sides.
 
 **The AI-powered deep analysis** sits on top of the core scan: an LLM's plain-language explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities. It can also pull a job description straight from a URL instead of requiring you to paste it, with SSRF-hardened fetching underneath (private IP ranges blocked, resolved IP pinned, timeouts and size caps enforced) so that URL field can't be turned into a way to probe internal infrastructure.
 

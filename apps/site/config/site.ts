@@ -22,7 +22,7 @@ export const siteConfig = {
   /**
    * `siteConfig` is imported by client components (Navbar, PricingExperience,
    * ContactExperience), and only `NEXT_PUBLIC_*` vars are inlined into the client
-   * bundle — a bare `SITE_URL` reads as `undefined` in the browser, so server and
+   * bundle - a bare `SITE_URL` reads as `undefined` in the browser, so server and
    * client would silently disagree on the canonical origin.
    *
    * `NEXT_PUBLIC_SITE_URL` is the value that reaches both. `SITE_URL` is kept as a

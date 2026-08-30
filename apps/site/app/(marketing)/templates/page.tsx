@@ -189,7 +189,7 @@ const TemplatesPortalPage = () => {
 
       <section className="mx-auto w-full max-w-350 border-t border-zinc-200/40 px-6 py-16 md:px-8 md:py-20 dark:border-zinc-800/20">
         {/*
-          `aria-label` on a plain <div> is discarded — a generic element has no role to
+          `aria-label` on a plain <div> is discarded - a generic element has no role to
           attach a name to, so this grid was effectively unlabelled. A <section> can carry
           one.
         */}

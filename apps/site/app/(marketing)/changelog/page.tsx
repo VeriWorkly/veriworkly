@@ -24,15 +24,15 @@ const changelogMetadata = {
 
   title: `Changelog: Every VeriWorkly Release | ${siteConfig.shortName}`,
   description:
-    "See exactly what shipped in every VeriWorkly release — new features, improvements, fixes, and security updates, sourced straight from our public GitHub history.",
+    "See exactly what shipped in every VeriWorkly release - new features, improvements, fixes, and security updates, sourced straight from our public GitHub history.",
 
   ogTitle: "Every VeriWorkly release, in one place",
   ogDescription:
-    "A public, real changelog covering resumes, cover letters, portfolios, the ATS checker, and AI tools — generated from our GitHub releases.",
+    "A public, real changelog covering resumes, cover letters, portfolios, the ATS checker, and AI tools - generated from our GitHub releases.",
 
   twitterTitle: "The VeriWorkly changelog",
   twitterDescription:
-    "What shipped, when it shipped, and the PRs behind it — straight from GitHub.",
+    "What shipped, when it shipped, and the PRs behind it - straight from GitHub.",
 
   image: ogImage,
   imageAlt: `${siteConfig.shortName} | Changelog`,
@@ -77,7 +77,7 @@ export async function generateMetadata({ searchParams }: ChangelogPageProps): Pr
     keywords: [...changelogMetadata.keywords],
     ...(page > 1
       ? {
-          title: `Changelog — Page ${page} | ${siteConfig.shortName}`,
+          title: `Changelog - Page ${page} | ${siteConfig.shortName}`,
           ogTitle: `Every VeriWorkly release, in one place - page ${page}`,
         }
       : {}),
@@ -117,7 +117,7 @@ const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
       itemListElement: data.entries.map((entry, index) => ({
         "@type": "ListItem",
         position: index + 1,
-        name: `v${entry.version} — ${entry.title}`,
+        name: `v${entry.version} - ${entry.title}`,
         url: `${pageUrl}/${entry.id}`,
       })),
     },

@@ -78,8 +78,8 @@ export async function generateMetadata({ searchParams }: StatsPageProps): Promis
     keywords: [...statsMetadata.keywords],
     ...(page > 1
       ? {
-          title: `Development & AI Platform Statistics — Page ${page} | ${siteConfig.shortName}`,
-          ogTitle: `The Development Board, Live and Public — page ${page}`,
+          title: `Development & AI Platform Statistics - Page ${page} | ${siteConfig.shortName}`,
+          ogTitle: `The Development Board, Live and Public - page ${page}`,
         }
       : {}),
     canonicalParams: { page: page > 1 ? page : undefined },

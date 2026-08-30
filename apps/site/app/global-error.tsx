@@ -72,7 +72,7 @@ const GlobalError = ({
             className="vw-ge-muted"
             style={{ margin: "1rem 0 0", lineHeight: 1.7, color: "#5f5c54" }}
           >
-            Something failed before the page could start. This is usually temporary — trying again
+            Something failed before the page could start. This is usually temporary - trying again
             often resolves it.
           </p>
 

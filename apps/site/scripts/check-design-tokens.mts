@@ -1,9 +1,9 @@
 /**
  * Proves the three descriptions of the colour system agree:
  *
- *   1. packages/ui/src/styles/themes.css   — what the product renders
- *   2. apps/site/config/brand.ts           — what /style-guide and /brand-kit publish
- *   3. DESIGN.md                           — what the team is told
+ *   1. packages/ui/src/styles/themes.css   - what the product renders
+ *   2. apps/site/config/brand.ts           - what /style-guide and /brand-kit publish
+ *   3. DESIGN.md                           - what the team is told
  *
  * DESIGN.md tells contributors to change these together. This makes that checkable
  * instead of aspirational. Also flags tokens that exist but were never mapped into a
@@ -151,7 +151,7 @@ for (const token of tokens) {
 const neverMapped = Object.keys(light).filter((t) => !mapped.has(t));
 if (neverMapped.length)
   console.log(
-    `\nDefined but mapped in no app — utilities for these do not exist:\n  ${neverMapped.join("\n  ")}`,
+    `\nDefined but mapped in no app - utilities for these do not exist:\n  ${neverMapped.join("\n  ")}`,
   );
 
 const partial = Object.entries(unmappedPerApp)

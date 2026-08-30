@@ -52,7 +52,7 @@ next-env.d.ts
 /api-index
 
 # NOTE: `/app/api`, `/app/og-generator` and `/app/test` used to be listed here. They are
-# not build artefacts — they are application source (`/api/og` backs every dynamic share
+# not build artefacts - they are application source (`/api/og` backs every dynamic share
 # card, and `/og-generator` is the tool that authors the static ones). Ignoring them meant
 # a clone of this repo built a *different* app than a local checkout: the route existed on
 # the author's disk, so it worked in dev, and 404'd in every git-based deploy. Route

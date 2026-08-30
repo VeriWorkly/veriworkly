@@ -14,7 +14,7 @@ const VOICE_PRINCIPLES = [
   {
     title: "Privacy-forward",
     description:
-      "Be specific about what stays local, what syncs, and why — vague privacy claims read as marketing, specifics read as true.",
+      "Be specific about what stays local, what syncs, and why - vague privacy claims read as marketing, specifics read as true.",
   },
   {
     title: "Built by the same people who use it",
@@ -24,7 +24,7 @@ const VOICE_PRINCIPLES = [
   {
     title: "Confident about being free and open",
     description:
-      '"Free-to-use and open-core" is a real differentiator, not an apology — state it plainly rather than hedging.',
+      '"Free-to-use and open-core" is a real differentiator, not an apology - state it plainly rather than hedging.',
   },
 ];
 
@@ -53,7 +53,7 @@ const VoiceSection = () => {
 
         <ul className="text-muted space-y-2 text-sm leading-relaxed">
           <li>
-            <span className="text-foreground font-semibold">VeriWorkly</span> — the company and
+            <span className="text-foreground font-semibold">VeriWorkly</span> - the company and
             product name. One word, capital V and W, no space and no suffix.
             <span className="mt-2 flex flex-wrap gap-1.5">
               {pressFacts.misspellings.map((wrong) => (
@@ -67,11 +67,11 @@ const VoiceSection = () => {
             </span>
           </li>
           <li>
-            <span className="text-foreground font-semibold">VeriWorkly Resume</span> — used only
+            <span className="text-foreground font-semibold">VeriWorkly Resume</span> - used only
             when disambiguating from other VeriWorkly products (e.g. in the GitHub repo name).
           </li>
           <li>
-            <span className="text-foreground font-semibold">Master Profile</span> — the canonical
+            <span className="text-foreground font-semibold">Master Profile</span> - the canonical
             career-facts record that seeds resumes, cover letters, and portfolios. Capitalized as a
             product term.
           </li>

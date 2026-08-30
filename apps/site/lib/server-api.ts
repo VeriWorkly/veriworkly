@@ -14,7 +14,7 @@ import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
  */
 
 export type ServerApiFailure =
-  /** No session cookie on the request at all — the visitor is browsing anonymously. */
+  /** No session cookie on the request at all - the visitor is browsing anonymously. */
   | "no-session"
   /** A session was sent but the backend rejected it (expired, revoked). */
   | "unauthorized"
@@ -26,7 +26,7 @@ export type ServerApiResult<T> =
 
 // Server Component data fetching, authenticated as the visiting user. `fetchApiData` already
 // forwards a first-party Origin header when called server-side; the one thing it can't do on its
-// own is see the browser's cookies, since Node's fetch has no ambient cookie jar — so we read
+// own is see the browser's cookies, since Node's fetch has no ambient cookie jar - so we read
 // them explicitly from the incoming request via next/headers and forward them along.
 
 export const fetchServerApiResult = cache(async function fetchServerApiResult<T>(

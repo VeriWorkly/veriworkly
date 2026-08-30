@@ -12,7 +12,7 @@ const ColorSection = () => {
       <BrandSectionHeader
         icon={Palette}
         title="Colors"
-        description="Every colour ships in two values — one for light mode, one for dark. Each swatch shows both, composited over the background it belongs to. Copy either value directly."
+        description="Every colour ships in two values - one for light mode, one for dark. Each swatch shows both, composited over the background it belongs to. Copy either value directly."
       />
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

@@ -5,7 +5,7 @@ export const runtime = "edge";
 /**
  * Share cards are pure functions of their query string, so they can be cached hard.
  * Without this every crawler hit and every social unfurl re-rendered the image from
- * scratch — this route backs the OG image for /stats, /pricing, /changelog, all six
+ * scratch - this route backs the OG image for /stats, /pricing, /changelog, all six
  * /compare/* pages, /affiliate, /ambassador and every /roadmap/[id].
  */
 const OG_CACHE_CONTROL = "public, immutable, no-transform, max-age=31536000";
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     /**
      * The mark is drawn inline rather than fetched as a PNG. Satori has to resolve a
      * remote <img> over the network before it can rasterise, and when that fetch fails
-     * the card still renders — just silently missing its logo. Inlining the geometry
+     * the card still renders - just silently missing its logo. Inlining the geometry
      * removes the only network dependency in this route.
      *
      * Path is the single-colour mark from public/brand/logo/veriworkly-logo-mono.svg.
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
 
     /**
      * Satori has no CSS custom properties, so the theme tokens are repeated here as
-     * literals. They must stay equal to packages/ui/src/styles/themes.css — the values
+     * literals. They must stay equal to packages/ui/src/styles/themes.css - the values
      * are documented on /brand-kit#social, and a share card in a colour the design
      * system does not contain is the one brand surface nobody notices is wrong.
      */

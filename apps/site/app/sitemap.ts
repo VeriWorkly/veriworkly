@@ -183,7 +183,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Both helpers swallow their own failures and return empty/null. A backend blip must
-  // degrade the sitemap to its static routes, never fail the route — an erroring
+  // degrade the sitemap to its static routes, never fail the route - an erroring
   // sitemap.xml is worse for crawlers than a temporarily shorter one.
   const [roadmapEntries, changelogLastModified, changelogEntries] = await Promise.all([
     fetchRoadmapSitemapEntries(),

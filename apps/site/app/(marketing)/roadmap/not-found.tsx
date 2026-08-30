@@ -11,7 +11,7 @@ export const metadata: Metadata = buildPageMetadata({
   description: "This roadmap section or item doesn't exist or has been archived.",
   ogTitle: "Roadmap Item Not Found",
   ogDescription: "This roadmap section or item doesn't exist or has been archived.",
-  twitterTitle: "404 — Roadmap Item Not Found",
+  twitterTitle: "404 - Roadmap Item Not Found",
   twitterDescription: "This roadmap section or item doesn't exist or has been archived.",
   image: "/og/roadmap-page-og.png",
   noIndex: true,

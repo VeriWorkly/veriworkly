@@ -12,20 +12,20 @@ interface BuildPageMetadataOptions {
   description: string;
 
   /**
-   * og:title — shown in link unfurls (Slack, LinkedIn, iMessage, Discord). The site
+   * og:title - shown in link unfurls (Slack, LinkedIn, iMessage, Discord). The site
    * name renders separately in most unfurls, so this should lead with the hook/benefit
    * rather than repeating "| VeriWorkly". Deliberately written, not a copy of `title`.
    */
   ogTitle: string;
-  /** og:description — can be more benefit-driven / conversational than the SEO description. */
+  /** og:description - can be more benefit-driven / conversational than the SEO description. */
   ogDescription: string;
 
   /**
-   * twitter:title — Twitter/X truncates card titles harder than OG unfurls, so this
+   * twitter:title - Twitter/X truncates card titles harder than OG unfurls, so this
    * should be the tightest, punchiest variant. Deliberately written, not a copy of `ogTitle`.
    */
   twitterTitle: string;
-  /** twitter:description — short and scannable; the audience skims faster than a Slack unfurl. */
+  /** twitter:description - short and scannable; the audience skims faster than a Slack unfurl. */
   twitterDescription: string;
 
   /** Absolute or root-relative URL to the OG/Twitter share image. */
@@ -45,7 +45,7 @@ interface BuildPageMetadataOptions {
 
   /**
    * Query params to append to the canonical (and og:url). Paginated routes must pass their
-   * page number here — without it every page declares the bare path as its canonical, and
+   * page number here - without it every page declares the bare path as its canonical, and
    * Google drops page 2+ from the index as duplicates. Empty/undefined values are skipped,
    * so page 1 still canonicalises to the clean path.
    */

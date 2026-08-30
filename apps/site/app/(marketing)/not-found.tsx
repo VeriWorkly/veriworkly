@@ -16,7 +16,7 @@ export const metadata: Metadata = buildPageMetadata({
   ogDescription:
     "It may have moved or never existed. Head back home, or browse the templates instead.",
 
-  twitterTitle: "404 — Page Not Found",
+  twitterTitle: "404 - Page Not Found",
 
   twitterDescription: "This page moved or never existed. Head back to VeriWorkly.",
 

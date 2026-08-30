@@ -10,7 +10,7 @@ const FACTS = [
   { label: "Product name", value: pressFacts.spelling },
   { label: "Created by", value: pressFacts.creator },
   { label: "Website", value: pressFacts.website },
-  { label: "Licence", value: `${pressFacts.licence} — ${pressFacts.model}` },
+  { label: "Licence", value: `${pressFacts.licence} - ${pressFacts.model}` },
 ];
 
 const PressSection = () => {
@@ -60,14 +60,14 @@ const PressSection = () => {
 
             <p className="text-sm leading-relaxed">
               For interviews, review units, or anything about brand usage that isn&apos;t answered
-              on this page, email us directly. We answer press mail ourselves — there is no agency
+              on this page, email us directly. We answer press mail ourselves - there is no agency
               in between.
             </p>
           </div>
 
           <div className="space-y-3">
             <Link
-              href={`mailto:${pressFacts.email}?subject=${encodeURIComponent("Press enquiry — VeriWorkly")}`}
+              href={`mailto:${pressFacts.email}?subject=${encodeURIComponent("Press enquiry - VeriWorkly")}`}
               className="bg-accent text-accent-foreground focus-visible:ring-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               <Mail className="size-4" aria-hidden="true" />

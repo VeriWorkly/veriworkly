@@ -120,7 +120,7 @@ const ContactPage = () => {
                 <p className="text-muted max-w-xl text-base leading-relaxed sm:text-lg">
                   No support bots, no unmonitored ticket queues. Whether you need help with a
                   resume, have a question about AI credits, want custom portfolio advice, or found a
-                  bug — we read and reply to every message.
+                  bug - we read and reply to every message.
                 </p>
               </Reveal>
 

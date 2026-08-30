@@ -43,7 +43,7 @@ export const MotionSection = () => {
 
               <p className="text-muted text-sm leading-relaxed">
                 Every interactive element needs a visible keyboard focus state. Tab through these
-                rather than clicking them — the ring appears on{" "}
+                rather than clicking them - the ring appears on{" "}
                 <span className="font-mono text-xs">:focus-visible</span> only, so a mouse click
                 stays quiet.
               </p>
@@ -79,7 +79,7 @@ export const MotionSection = () => {
               A global{" "}
               <span className="font-mono text-xs">@media (prefers-reduced-motion: reduce)</span>{" "}
               rule collapses every animation and transition to 0.01ms and disables smooth scrolling.
-              You do not need to handle this per component — but never encode meaning in motion
+              You do not need to handle this per component - but never encode meaning in motion
               alone, because for some readers there will be none.
             </p>
 

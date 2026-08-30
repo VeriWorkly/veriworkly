@@ -1,8 +1,8 @@
 /**
  * Builds public/brand/veriworkly-brand-kit.zip.
  *
- * The archive is generated from apps/site/config/brand.ts — the same file
- * /brand-kit and /style-guide render from — so the palette in the download can
+ * The archive is generated from apps/site/config/brand.ts - the same file
+ * /brand-kit and /style-guide render from - so the palette in the download can
  * never drift from the palette on the page. That drift is exactly what this
  * script exists to prevent: the previous kit was assembled by hand and its
  * README had already fallen out of step with the site.
@@ -65,7 +65,7 @@ interface Entry {
 }
 
 /**
- * Timestamps are pinned so the archive is byte-identical across runs — a kit that
+ * Timestamps are pinned so the archive is byte-identical across runs - a kit that
  * changes hash on every build produces noisy diffs and defeats caching.
  */
 
@@ -169,7 +169,7 @@ const typeTable = () =>
 const readme = () => `VeriWorkly Brand Kit
 ====================
 
-Generated from the live design system. Do not hand-edit — run
+Generated from the live design system. Do not hand-edit - run
 "npm run build:brand-kit" from apps/site instead, so this file and the published
 pages can never disagree.
 
@@ -183,17 +183,13 @@ Logo
 ----
 ${logoAssets.map((a) => `${pad(`logo/${a.file}`, 38)}${pad(`${a.size} ${a.format}`, 14)}${a.usage}`).join("\n")}
 
-Prefer the SVG. It is the source of truth for the mark's geometry; the PNGs are
-exports of it for places that reject vector.
+Official high-resolution PNG image assets for all digital surfaces and media embeds.
 
 
 Usage
 -----
 - Clear space on every side equals ${logoRules.clearSpaceRatio * 100}% of the mark's width.
-- The full-colour mark holds together down to ${logoRules.minSizePx}px. At ${logoRules.monoBelowPx}px and below,
-  use logo/veriworkly-logo-mono.svg.
-- The mono mark inherits currentColor. Set it to Foreground (see palette) when
-  reversing it out of a dark ground.
+- The mark maintains clarity across all standard digital resolutions.
 - Do not recolour, distort, rotate, or add effects (shadows, gradients, outlines).
 - Do not place the mark on a ground that breaks its contrast.
 - Write "${pressFacts.spelling}" as one word, capital V and W.
@@ -213,8 +209,8 @@ Machine-readable: palette.json
 
 Typography
 ----------
-${fontStack.sans.family} (var(${fontStack.sans.variable})) — ${fontStack.sans.usage}
-${fontStack.mono.family} (var(${fontStack.mono.variable})) — ${fontStack.mono.usage}
+${fontStack.sans.family} (var(${fontStack.sans.variable})) - ${fontStack.sans.usage}
+${fontStack.mono.family} (var(${fontStack.mono.variable})) - ${fontStack.mono.usage}
 
 Both are released by Vercel under the SIL Open Font License 1.1 and are available
 from Google Fonts. Nothing needs to be licensed to typeset the VeriWorkly name.
@@ -226,7 +222,7 @@ Press
 -----
 Created by     ${pressFacts.creator}
 Website        ${pressFacts.website}
-Licence        ${pressFacts.licence} — ${pressFacts.model}
+Licence        ${pressFacts.licence} - ${pressFacts.model}
 Repository     ${pressFacts.repository}
 ${pressFacts.socials.map((s) => `${pad(s.label, 15)}${s.handle}`).join("\n")}
 
@@ -277,7 +273,7 @@ const zip = buildZip(entries);
 writeFileSync(OUT, zip);
 
 console.log(
-  `veriworkly-brand-kit.zip — ${entries.length} files, ${(zip.length / 1024).toFixed(1)} KB`,
+  `veriworkly-brand-kit.zip - ${entries.length} files, ${(zip.length / 1024).toFixed(1)} KB`,
 );
 
 for (const entry of entries) {

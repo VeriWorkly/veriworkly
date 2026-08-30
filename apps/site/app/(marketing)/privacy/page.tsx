@@ -32,11 +32,11 @@ export const metadata: Metadata = buildPageMetadata({
 
   ogTitle: "Your Data Never Leaves Your Browser Without Asking",
   ogDescription:
-    "See exactly what is stored locally, what syncs to the cloud, and what happens when you use AI features — no surprises, no fine print.",
+    "See exactly what is stored locally, what syncs to the cloud, and what happens when you use AI features - no surprises, no fine print.",
 
   twitterTitle: "Local-first by default. Read the full policy.",
   twitterDescription:
-    "Browser storage, encrypted sync, and stateless AI processing — the exact data boundaries VeriWorkly commits to in writing.",
+    "Browser storage, encrypted sync, and stateless AI processing - the exact data boundaries VeriWorkly commits to in writing.",
 
   image: "/og/privacy-page-og.png",
   imageAlt: `${siteConfig.shortName} Privacy Policy`,
