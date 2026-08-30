@@ -10,6 +10,19 @@ export type AtsRuleResult = {
 
 export type AtsVerdict = "strong" | "needs-work" | "weak";
 
+/**
+ * Page geometry measured while parsing an uploaded document: the share of lines split across a
+ * column gutter, and the number of ruled table grids. Echoed back with the scan so the format
+ * checks can read the layout rather than only the text. `columnRatio` is null when the document
+ * was too short for that measurement to carry signal, and the whole object is absent for pasted
+ * text — in both cases the affected checks are skipped rather than assumed to pass.
+ */
+export type AtsLayoutSignals = {
+  columnRatio: number | null;
+  tableCount: number;
+  pageCount: number;
+};
+
 /** Per-area rollup of the deterministic rules, so the panel can show where the score went. */
 export type AtsCategoryScore = {
   category: string;
@@ -18,6 +31,43 @@ export type AtsCategoryScore = {
   total: number;
   lost: number;
   possible: number;
+};
+
+export type AtsDegreeLevel = "diploma" | "associate" | "bachelor" | "master" | "doctorate";
+
+export type AtsParsedDate = { year: number; month: number | null };
+
+export type AtsParsedRole = {
+  title: string;
+  employer: string;
+  start: AtsParsedDate | null;
+  end: AtsParsedDate | null;
+  current: boolean;
+};
+
+export type AtsParsedEducation = {
+  school: string;
+  credential: string;
+  level: AtsDegreeLevel | null;
+  end: AtsParsedDate | null;
+};
+
+/**
+ * The fields an applicant tracking system recovers from the document — one row per job, holding
+ * the employer, title and dates a recruiter actually filters on. Produced by the same
+ * deterministic pass as the scores, so it never costs a second scan to see.
+ */
+export type AtsParsedResume = {
+  name: string;
+  email: string;
+  phone: string;
+  links: string[];
+  roles: AtsParsedRole[];
+  education: AtsParsedEducation[];
+  skills: string[];
+  /** Calendar months covered by at least one role, so overlapping jobs are not double counted. */
+  monthsOfExperience: number | null;
+  highestDegree: AtsDegreeLevel | null;
 };
 
 /**
@@ -41,10 +91,14 @@ export type AtsReport = {
   checksPassed: number;
   checksTotal: number;
   wordCount: number;
+  /** Optional so a server one deploy behind renders an empty panel rather than throwing. */
+  parsed?: AtsParsedResume;
 };
 
 export type AtsResult = {
   report: AtsReport;
+  /** "unavailable" means no model could be routed; the scan quota is handed back. */
+  aiStatus?: "ok" | "unavailable";
   ai: {
     explanation: string;
     missingEvidence: string[];

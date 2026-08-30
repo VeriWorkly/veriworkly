@@ -12,6 +12,18 @@ function report(overrides: Partial<AtsFullReport> = {}): AtsFullReport {
     readinessScore: 74,
     jobMatchScore: 61,
 
+    parsed: {
+      name: "Jane Doe",
+      email: "jane@example.com",
+      phone: "",
+      links: [],
+      roles: [],
+      education: [],
+      skills: [],
+      monthsOfExperience: null,
+      highestDegree: null,
+    },
+
     matchedKeywords: ["react", "typescript"],
     missingKeywords: ["kubernetes"],
     parsingWarnings: [],

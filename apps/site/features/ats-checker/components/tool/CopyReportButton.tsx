@@ -30,7 +30,10 @@ export function CopyReportButton({ report }: { report: AtsFullReport }) {
     >
       {copied ? (
         <>
-          <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          <Check
+            className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          />
           <span>Copied</span>
         </>
       ) : (

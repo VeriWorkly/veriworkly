@@ -42,8 +42,11 @@ export function TierComparison() {
 
             <ul className="border-border/30 mt-6 space-y-3 border-t pt-5">
               {tier.features.map((feature) => (
-                <li key={feature} className="flex items-start gap-2.5 text-xs leading-relaxed sm:text-sm">
-                  <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full">
+                <li
+                  key={feature}
+                  className="flex items-start gap-2.5 text-xs leading-relaxed sm:text-sm"
+                >
+                  <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                     <Check className="size-2.5" strokeWidth={2.5} aria-hidden="true" />
                   </span>
                   <span className="text-foreground/90">{feature}</span>

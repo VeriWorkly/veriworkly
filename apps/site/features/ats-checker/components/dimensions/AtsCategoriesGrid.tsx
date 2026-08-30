@@ -3,7 +3,7 @@ import { SCORING_DIMENSIONS } from "../../data/categories";
 
 export function AtsCategoriesGrid() {
   return (
-    <section id="how-it-scores" className="space-y-10 scroll-mt-28">
+    <section id="how-it-scores" className="scroll-mt-28 space-y-10">
       <div className="flex flex-col items-start space-y-2 text-left">
         <span className="text-accent font-mono text-[10px] font-bold tracking-widest uppercase">
           Scoring Dimensions
@@ -11,8 +11,10 @@ export function AtsCategoriesGrid() {
         <h2 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
           Four categories, computed from your actual text
         </h2>
-        <p className="text-muted max-w-2xl text-xs sm:text-sm leading-relaxed">
-          Every check runs against the text you provide. There are no fake placeholder scores. The exact weights stay private to prevent gaming, but the evaluation dimensions are 100% transparent.
+        <p className="text-muted max-w-2xl text-xs leading-relaxed sm:text-sm">
+          Every check runs against the text you provide. There are no fake placeholder scores. The
+          exact weights stay private to prevent gaming, but the evaluation dimensions are 100%
+          transparent.
         </p>
       </div>
 
@@ -36,9 +38,7 @@ export function AtsCategoriesGrid() {
                     <h3 className="text-foreground text-base font-bold tracking-tight">
                       {item.title}
                     </h3>
-                    <p className="text-muted mt-2 text-xs leading-relaxed">
-                      {item.body}
-                    </p>
+                    <p className="text-muted mt-2 text-xs leading-relaxed">{item.body}</p>
                   </div>
                 </div>
 

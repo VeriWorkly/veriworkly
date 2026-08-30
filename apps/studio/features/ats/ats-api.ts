@@ -1,8 +1,12 @@
 import { fetchApiData } from "@/utils/fetchApiData";
-import type { AtsQuota, AtsResult, ConvertedResume } from "@/features/ats/types";
+import type { AtsLayoutSignals, AtsQuota, AtsResult, ConvertedResume } from "@/features/ats/types";
 import { backendApiUrl } from "@/lib/constants";
 
-export function runAtsCheck(input: { resume: unknown; jobDescription?: string }) {
+export function runAtsCheck(input: {
+  resume: unknown;
+  jobDescription?: string;
+  layout?: AtsLayoutSignals;
+}) {
   return fetchApiData<AtsResult>("/ats/check", { method: "POST", body: JSON.stringify(input) });
 }
 
@@ -16,6 +20,7 @@ export function runAtsAnalysis(input: {
   jobUrl?: string;
   fetchJobUrl: boolean;
   requestId: string;
+  layout?: AtsLayoutSignals;
 }) {
   return fetchApiData<AtsResult>("/ats/analyze", { method: "POST", body: JSON.stringify(input) });
 }
@@ -30,7 +35,8 @@ export async function extractResumeFile(file: File) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.message || "Resume file could not be read.");
-  return payload.data.text as string;
+  // `layout` carries the page geometry measured during parsing; see AtsLayoutSignals.
+  return payload.data as { text: string; layout?: AtsLayoutSignals };
 }
 
 export function convertResumeWithAi(input: { resume: string; requestId: string }) {

@@ -1,7 +1,10 @@
 import { categoryMeta, sortByCategoryOrder } from "../data/categories";
 import type { AtsFullReport, AtsRuleResult } from "../types";
 
-export function reportToPlainText(report: AtsFullReport, siteUrl: string = "https://veriworkly.com"): string {
+export function reportToPlainText(
+  report: AtsFullReport,
+  siteUrl: string = "https://veriworkly.com",
+): string {
   const lines: string[] = [];
 
   lines.push("========================================");

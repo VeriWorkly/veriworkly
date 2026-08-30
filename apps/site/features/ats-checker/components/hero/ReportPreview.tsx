@@ -29,8 +29,18 @@ const TEXT = {
 
 const FIXES = [
   { icon: XCircle, tone: "bad", text: "Only 2 of 14 bullets carry measurable numbers", points: 10 },
-  { icon: TriangleAlert, tone: "warn", text: "Missing recognized skills header section", points: 6 },
-  { icon: CheckCircle2, tone: "good", text: "Contact details sit in the top 30% parsing zone", points: 0 },
+  {
+    icon: TriangleAlert,
+    tone: "warn",
+    text: "Missing recognized skills header section",
+    points: 6,
+  },
+  {
+    icon: CheckCircle2,
+    tone: "good",
+    text: "Contact details sit in the top 30% parsing zone",
+    points: 0,
+  },
 ] as const;
 
 export function ReportPreview() {
@@ -56,7 +66,7 @@ export function ReportPreview() {
           {/* Dual Scores */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-muted font-mono text-xs font-semibold uppercase tracking-wider">
+              <p className="text-muted font-mono text-xs font-semibold tracking-wider uppercase">
                 ATS Readiness
               </p>
               <p className="text-foreground mt-1 flex items-baseline gap-1.5 font-mono text-4xl font-bold tracking-tight tabular-nums">
@@ -66,7 +76,7 @@ export function ReportPreview() {
             </div>
 
             <div className="text-right">
-              <p className="text-muted font-mono text-xs font-semibold uppercase tracking-wider">
+              <p className="text-muted font-mono text-xs font-semibold tracking-wider uppercase">
                 Job Match
               </p>
               <p className="text-foreground mt-1 flex items-baseline justify-end gap-1.5 font-mono text-4xl font-bold tracking-tight tabular-nums">
@@ -78,7 +88,7 @@ export function ReportPreview() {
 
           {/* Verdict Badge */}
           <div className="mt-4">
-            <span className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
               <TriangleAlert className="size-3.5" />
               Needs work before you apply
             </span>
@@ -108,14 +118,14 @@ export function ReportPreview() {
           <ul className="border-border/30 mt-6 space-y-2.5 border-t pt-5">
             {FIXES.map((fix) => (
               <li key={fix.text} className="flex items-start justify-between gap-2.5">
-                <div className="flex items-start gap-2 min-w-0">
+                <div className="flex min-w-0 items-start gap-2">
                   <fix.icon className={`mt-0.5 size-4 shrink-0 ${TEXT[fix.tone]}`} />
-                  <span className="text-muted text-xs leading-relaxed truncate sm:text-wrap">
+                  <span className="text-muted truncate text-xs leading-relaxed sm:text-wrap">
                     {fix.text}
                   </span>
                 </div>
                 {fix.points ? (
-                  <span className="border-border/60 bg-background/80 text-foreground font-mono shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold tabular-nums">
+                  <span className="border-border/60 bg-background/80 text-foreground shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums">
                     +{fix.points} pts
                   </span>
                 ) : null}
@@ -126,7 +136,8 @@ export function ReportPreview() {
       </div>
 
       <figcaption className="text-muted/80 mt-3.5 text-center font-mono text-[11px]">
-        Sample scanner output. Your exact score is computed from your resume text in volatile memory.
+        Sample scanner output. Your exact score is computed from your resume text in volatile
+        memory.
       </figcaption>
     </figure>
   );

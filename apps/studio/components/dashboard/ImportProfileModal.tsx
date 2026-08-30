@@ -149,7 +149,7 @@ export function ImportProfileModal({
     setUploadingPdf(true);
     setLoadingStep("Reading PDF text content...");
     try {
-      const text = await extractResumeFile(file);
+      const { text } = await extractResumeFile(file);
       setLinkedinText(text);
       toast.success("LinkedIn PDF parsed successfully! Check the pasted text below.");
     } catch (error) {

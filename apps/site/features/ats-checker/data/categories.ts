@@ -1,4 +1,13 @@
-import { AtSign, FileSearch, LayoutList, ShieldAlert, Type, Gauge, ShieldCheck, type LucideIcon } from "lucide-react";
+import {
+  AtSign,
+  FileSearch,
+  LayoutList,
+  ShieldAlert,
+  Type,
+  Gauge,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 export type ScoreTone = "good" | "warn" | "bad";
 
@@ -76,33 +85,53 @@ export const TONE_CLASSES: Record<ScoreTone, { text: string; fill: string; chip:
   },
 };
 
+/**
+ * Every claim here maps to a rule the engine actually runs. Keep it that way: if a check is
+ * removed from the policy, the line describing it comes out of this list too.
+ */
 export const SCORING_DIMENSIONS = [
   {
     icon: FileSearch,
     title: "Parsing & Layout Integrity",
     badge: "Format Sanity",
-    body: "Word count ranges, table characters, multi-column blocks, and header/footer repetitions that cause text extraction algorithms to scramble sequential reading flow.",
-    checks: ["Single-stream text extraction", "No invisible table cells", "Header & footer safety"],
+    body: "On an uploaded PDF we read the page geometry, not just the text: whether lines split across a column gutter, and whether content sits inside ruled table grids. Both scramble the order your text comes out in.",
+    checks: [
+      "Column-gutter detection on PDF uploads",
+      "Ruled table grid detection",
+      "Emoji bullets and page-footer artifacts",
+    ],
   },
   {
     icon: ShieldCheck,
-    title: "Contact & Section Taxonomy",
+    title: "Contact & Section Headings",
     badge: "Search Indexing",
-    body: "Email, phone number, location, and recognizable Experience, Education, and Skills headers that ATS software categorizes into searchable profile fields.",
-    checks: ["Top 30% contact placement", "Standard ISO section names", "Valid URL syntax verification"],
+    body: "Email, phone, and a professional link, plus Experience, Education, and Skills headings that parsers map into searchable profile fields. Headings must be real headings — the word appearing mid-sentence does not count.",
+    checks: [
+      "Contact details in the first quarter",
+      "Headings matched on their own line",
+      "Standard employment date ranges",
+    ],
   },
   {
     icon: Type,
     title: "Evidence & Impact Quality",
     badge: "Impact Weight",
-    body: "Quantified outcomes and action verbs, evaluated by what percentage of bullets carry measurable results rather than just passive duty statements.",
-    checks: ["Metric & percentage density", "Action verb power scoring", "Vague duty phrase detection"],
+    body: "Quantified outcomes and action verbs, scored by the share of your bullets that carry them rather than by whether they appear at all — a single strong verb in the document is not the same as a resume written in them.",
+    checks: [
+      "Metric & percentage density per bullet",
+      "Share of bullets opening with an action verb",
+      "Generic filler phrase detection",
+    ],
   },
   {
     icon: Gauge,
     title: "Job Match & Keywords",
     badge: "Semantic Fit",
-    body: "Keyword matching against a pasted job description, weighted toward terms listed under Requirements over optional nice-to-haves.",
-    checks: ["Requirement term weighting", "Synonym & abbreviation mapping", "Frequency density analysis"],
+    body: "Keyword matching against a pasted job description. The posting is split into sections so about-us and benefits copy is not scored, requirements outweigh nice-to-haves, and skills outweigh ordinary English.",
+    checks: [
+      "Requirements weighted above nice-to-haves",
+      "Synonyms, abbreviations, and implied skills",
+      "Alternatives read as one choice",
+    ],
   },
 ] as const;

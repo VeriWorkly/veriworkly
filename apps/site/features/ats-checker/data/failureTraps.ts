@@ -6,35 +6,35 @@ export const FAILURE_TRAPS = [
     badge: "Formatting Trap",
     title: "Multi-Column Layout Scrambling",
     problem:
-      "When a PDF contains two columns, text boxes, or floating sidebars, plain-text extraction algorithms read horizontally across the entire page. Your job titles, company names, and dates get scrambled together into unreadable text.",
+      "When a PDF puts two columns, a sidebar, or a floating text box on the same lines, extraction reads straight across the page. Your job titles, employers, and dates come out interleaved with whatever sat beside them.",
     solution:
-      "Our scanner tests single-stream linear extraction to ensure your text hierarchy maintains clean sequential reading order.",
+      "On an uploaded PDF we measure the page geometry directly and report the share of lines split across a column gutter — the layout itself, not a guess from the text.",
   },
   {
     icon: EyeOff,
     badge: "Indexing Trap",
-    title: "Skills Buried in Graphics or Rating Bars",
+    title: "Sections a Parser Cannot Map",
     problem:
-      "Graphic skill meters (like 4/5 stars or progress bars), icons, and creative section headers like 'What I Love' are completely invisible to parser database indexes.",
+      "Parsers map work history from headings. A creative label like 'What I Love', or a resume where 'experience' only ever appears inside a sentence, leaves those fields empty in the recruiter's database.",
     solution:
-      "We verify standard section taxonomy and ensure all technical capabilities are stored in indexable plain-text strings.",
+      "We match Experience, Education, and Skills headings on their own line only, so the check cannot be satisfied by the word turning up in prose.",
   },
   {
     icon: FileText,
     badge: "Evidence Trap",
     title: "Passive Duties with Zero Metrics",
     problem:
-      "Listing job duties ('Responsible for customer support tickets') instead of measurable outcomes makes you invisible to recruiters searching for proven high performers.",
+      "Listing duties ('Responsible for customer support tickets') instead of measurable outcomes makes you invisible to recruiters searching for proven performers.",
     solution:
-      "We measure metric density (identifying percentages, dollar amounts, and team sizes) and power action verbs across all bullets.",
+      "We score the share of your bullets that carry a number and the share that open with an action verb — density across the resume, not a single occurrence somewhere in it.",
   },
   {
     icon: SearchCheck,
     badge: "Keyword Trap",
-    title: "Missing Exact Job Description Requirements",
+    title: "Missing Job Description Requirements",
     problem:
-      "Recruiters filter candidate databases by specific technical terms and core requirements. If the listing asks for 'PostgreSQL' and you wrote 'SQL databases', you may get filtered out.",
+      "Recruiters filter candidate databases by specific terms. Miss a requirement the posting names and you can drop out of the search — but a keyword score that also counts the benefits section tells you nothing useful.",
     solution:
-      "Our job match engine weighs required skills higher than nice-to-haves and surfaces the exact missing phrases you need to add.",
+      "We score requirements above nice-to-haves, skip about-us and benefits copy, read 'Go or Java' as one choice, and credit skills your resume evidences under another name.",
   },
 ] as const;

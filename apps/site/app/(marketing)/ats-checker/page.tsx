@@ -88,11 +88,11 @@ export default function AtsCheckerPage() {
     isAccessibleForFree: true,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     featureList: [
-      "Parsing & layout format risk scoring",
-      "Contact & standard section taxonomy mapping",
-      "Evidence & quantified impact density scoring",
-      "Job description keyword and requirement matching",
-      "Single-stream plain-text parsing test",
+      "Column-gutter and ruled-table detection on PDF uploads",
+      "Contact placement and section-heading mapping",
+      "Metric and action-verb density scoring across bullets",
+      "Job description keyword matching, weighted by requirement",
+      "Synonym, abbreviation and implied-skill resolution",
     ],
     description:
       "A free, deterministic rules-based ATS resume checker that scores parsing integrity, structure, evidence, and job-description keyword match.",
@@ -158,7 +158,7 @@ export default function AtsCheckerPage() {
         {/* Background Gradients & Grid */}
         <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
         <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[140px]" />
-        <div className="bg-blue-500/5 pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full blur-[130px]" />
+        <div className="pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full bg-blue-500/5 blur-[130px]" />
 
         <Container className="space-y-24 pt-28 pb-20 lg:space-y-32 lg:pt-36">
           {/* Hero Section with Live Report Preview Showcase */}
@@ -177,7 +177,7 @@ export default function AtsCheckerPage() {
           <AtsPipelineSection />
 
           {/* Tier Comparison Matrix Section */}
-          <section className="space-y-10 border-t border-border/40 pt-16">
+          <section className="border-border/40 space-y-10 border-t pt-16">
             <div className="space-y-2 text-left">
               <span className="text-accent font-mono text-[10px] font-bold tracking-widest uppercase">
                 Tier Comparison
@@ -185,8 +185,10 @@ export default function AtsCheckerPage() {
               <h2 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                 Score for free. Unlock the full breakdown when you are ready.
               </h2>
-              <p className="text-muted max-w-2xl text-xs sm:text-sm leading-relaxed">
-                Anyone can check their resume score and see which area drags it down. The rule-by-rule reasoning takes a free account, and AI explanations are included on paid plans.
+              <p className="text-muted max-w-2xl text-xs leading-relaxed sm:text-sm">
+                Anyone can check their resume score and see which area drags it down. The
+                rule-by-rule reasoning takes a free account, and AI explanations are included on
+                paid plans.
               </p>
             </div>
 
@@ -197,9 +199,14 @@ export default function AtsCheckerPage() {
           <AtsFaqSection faqs={pageFaqs} />
 
           {/* Legal and Trademark Notice */}
-          <div className="border-t border-border/30 pt-8 text-center">
-            <p className="text-muted/70 text-[11px] leading-relaxed max-w-3xl mx-auto">
-              <strong>Disclaimer:</strong> VeriWorkly ATS Checker evaluates documents against heuristic parsing standards, keyword density algorithms, and structural guidelines. It does not simulate or guarantee compatibility with any specific proprietary employer software, nor does it guarantee interviews or job offers. All third-party product and company names mentioned are trademarks or registered trademarks of their respective owners. Their mention does not imply endorsement, affiliation, or sponsorship.
+          <div className="border-border/30 border-t pt-8 text-center">
+            <p className="text-muted/70 mx-auto max-w-3xl text-[11px] leading-relaxed">
+              <strong>Disclaimer:</strong> VeriWorkly ATS Checker evaluates documents against
+              heuristic parsing standards, keyword density algorithms, and structural guidelines. It
+              does not simulate or guarantee compatibility with any specific proprietary employer
+              software, nor does it guarantee interviews or job offers. All third-party product and
+              company names mentioned are trademarks or registered trademarks of their respective
+              owners. Their mention does not imply endorsement, affiliation, or sponsorship.
             </p>
           </div>
         </Container>

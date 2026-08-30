@@ -4,12 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, RotateCcw, ScanSearch, TriangleAlert } from "lucide-react";
 
-import {
-  extractResumeFile,
-  getAtsQuota,
-  runAtsCheck,
-} from "../../services/ats-checker-api";
-import type { AtsCheckResult, AtsQuota } from "../../types";
+import { extractResumeFile, getAtsQuota, runAtsCheck } from "../../services/ats-checker-api";
+import type { AtsCheckResult, AtsLayoutSignals, AtsQuota } from "../../types";
 import { ApiRequestError } from "@/utils/fetchApiData";
 import { Stepper } from "./Stepper";
 import { ResumeStep } from "./ResumeStep";
@@ -34,6 +30,9 @@ export function AtsCheckerTool() {
   const [phase, setPhase] = useState<Phase>("resume");
   const [resume, setResume] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
+  // Page geometry from an uploaded file, held alongside its text and sent with the scan so the
+  // format checks can see the layout. Pasted text has none, and the checks are skipped.
+  const [layout, setLayout] = useState<AtsLayoutSignals | undefined>(undefined);
   const [jobDescription, setJobDescription] = useState("");
   const [quota, setQuota] = useState<AtsQuota | null>(null);
   const [result, setResult] = useState<AtsCheckResult | null>(null);
@@ -61,12 +60,15 @@ export function AtsCheckerTool() {
     setError("");
     setExtracting(true);
     try {
-      const text = await extractResumeFile(file);
+      const { text, layout: extractedLayout } = await extractResumeFile(file);
       if (wordCountOf(text) < 30) {
-        setError("This file appears to contain very little readable text. Please try pasting the text.");
+        setError(
+          "This file appears to contain very little readable text. Please try pasting the text.",
+        );
         return;
       }
       setResume(text);
+      setLayout(extractedLayout);
       setSourceLabel(file.name);
       setPhase("target");
     } catch (err) {
@@ -79,16 +81,22 @@ export function AtsCheckerTool() {
   const handlePaste = (text: string) => {
     setError("");
     if (wordCountOf(text) < 30) {
-      setError("Please paste at least a few lines of resume text so we have enough content to score.");
+      setError(
+        "Please paste at least a few lines of resume text so we have enough content to score.",
+      );
       return;
     }
     setResume(text);
+    // Pasted text carries no geometry, so any layout measured from a previous upload no longer
+    // describes this resume and must not be scored against it.
+    setLayout(undefined);
     setSourceLabel("Pasted resume text");
     setPhase("target");
   };
 
   const handleClearResume = () => {
     setResume("");
+    setLayout(undefined);
     setSourceLabel("");
     setError("");
     setPhase("resume");
@@ -110,8 +118,9 @@ export function AtsCheckerTool() {
 
     try {
       const checkPromise = runAtsCheck({
-        resume: { text: resume },
+        resume,
         jobDescription: jobDescription.trim() || undefined,
+        layout,
       });
 
       const [checkResult] = await Promise.all([
@@ -164,10 +173,8 @@ export function AtsCheckerTool() {
               exit={shouldReduceMotion ? undefined : { opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-white/2 sm:p-8">
-                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                  Add your resume
-                </h2>
+              <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 dark:border-zinc-800 dark:bg-white/2">
+                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Add your resume</h2>
                 <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                   Upload a document or paste raw text. The scan runs entirely in volatile memory.
                 </p>
@@ -196,7 +203,7 @@ export function AtsCheckerTool() {
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-white/2 sm:p-8">
+              <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 dark:border-zinc-800 dark:bg-white/2">
                 <ResumeStep
                   hasResume={true}
                   sourceLabel={sourceLabel}
@@ -254,7 +261,9 @@ export function AtsCheckerTool() {
                     onClick={runScan}
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50"
                   >
-                    <span>{jobDescription.trim() ? "Scan with job match" : "Scan resume readiness"}</span>
+                    <span>
+                      {jobDescription.trim() ? "Scan with job match" : "Scan resume readiness"}
+                    </span>
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
@@ -284,7 +293,7 @@ export function AtsCheckerTool() {
               className="space-y-6"
             >
               <div className="flex items-center justify-between gap-4">
-                <span className="inline-flex items-center gap-2 text-xs font-mono font-semibold text-zinc-500 dark:text-zinc-400">
+                <span className="inline-flex items-center gap-2 font-mono text-xs font-semibold text-zinc-500 dark:text-zinc-400">
                   <ScanSearch className="h-4 w-4 text-emerald-500" />
                   Scan complete
                 </span>

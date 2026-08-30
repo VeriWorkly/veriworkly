@@ -1,9 +1,4 @@
-import {
-  categoryMeta,
-  scoreTone,
-  sortByCategoryOrder,
-  TONE_CLASSES,
-} from "../../data/categories";
+import { categoryMeta, scoreTone, sortByCategoryOrder, TONE_CLASSES } from "../../data/categories";
 import type { AtsCategoryScore } from "../../types";
 
 export function CategoryBreakdown({ categories }: { categories: AtsCategoryScore[] }) {

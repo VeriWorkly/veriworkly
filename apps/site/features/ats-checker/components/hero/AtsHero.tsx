@@ -29,9 +29,10 @@ export function AtsHero() {
 
           <Reveal priority delay={0.12}>
             <p className="text-muted max-w-xl text-base leading-relaxed sm:text-lg">
-              Over 75% of qualified resumes get filtered out before a human recruiter reads them.
-              Check formatting risks, missing keywords, and measurable impact scores in 2 seconds
-              using our deterministic rules engine.
+              Applicant tracking systems rarely auto-reject — but they do index your resume into
+              searchable fields, and a two-column layout or a missing section heading can leave you
+              out of the search entirely. Check parsing, structure, evidence, and job-description
+              keyword match in about two seconds.
             </p>
           </Reveal>
 

@@ -4,7 +4,7 @@ import { SCORE_FACTS } from "../../data/scoreFacts";
 
 export function AtsPipelineSection() {
   return (
-    <section className="space-y-16 border-t border-border/40 pt-16">
+    <section className="border-border/40 space-y-16 border-t pt-16">
       {/* Top: Pipeline Heading & Connected Cards */}
       <div className="space-y-10">
         <div className="space-y-2 text-left">
@@ -14,8 +14,9 @@ export function AtsPipelineSection() {
           <h2 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
             What an applicant tracking system does to your resume
           </h2>
-          <p className="text-muted max-w-2xl text-xs sm:text-sm leading-relaxed">
-            Every check in our engine maps directly to one of these 4 stages in standard recruitment software. Understanding the pipeline makes fixing issues straightforward.
+          <p className="text-muted max-w-2xl text-xs leading-relaxed sm:text-sm">
+            Every check in our engine maps directly to one of these 4 stages in standard recruitment
+            software. Understanding the pipeline makes fixing issues straightforward.
           </p>
         </div>
 
@@ -38,9 +39,7 @@ export function AtsPipelineSection() {
                     {stage.title}
                   </h3>
 
-                  <p className="text-muted text-xs leading-relaxed">
-                    {stage.body}
-                  </p>
+                  <p className="text-muted text-xs leading-relaxed">{stage.body}</p>
                 </div>
               </div>
             </Reveal>
@@ -72,9 +71,7 @@ export function AtsPipelineSection() {
                     <h4 className="text-foreground text-sm font-bold tracking-tight">
                       {fact.title}
                     </h4>
-                    <p className="text-muted text-xs leading-relaxed">
-                      {fact.body}
-                    </p>
+                    <p className="text-muted text-xs leading-relaxed">{fact.body}</p>
                   </div>
                 </div>
               </Reveal>

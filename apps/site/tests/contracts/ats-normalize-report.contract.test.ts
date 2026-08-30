@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  normalizeCheckResult,
-  type WireCheckResult,
-} from "@/features/ats-checker/services";
+import { normalizeCheckResult, type WireCheckResult } from "@/features/ats-checker/services";
 
 import type { AtsQuota, AtsRuleResult } from "@/features/ats-checker/types";
 
@@ -87,7 +84,7 @@ function legacyRestrictedResult(): WireCheckResult {
   };
 }
 
-describe("ATS report normalisation — surviving a server one deploy behind", () => {
+describe("ATS report normalisation - surviving a server one deploy behind", () => {
   /**
    * The site and the API ship separately, so this window is guaranteed to exist. Every field
    * the UI treats as required has to survive being absent, because the alternative is a render
@@ -97,9 +94,19 @@ describe("ATS report normalisation — surviving a server one deploy behind", ()
   it("fills the category rollup with an empty list rather than leaving it undefined", () => {
     const { report } = normalizeCheckResult(legacyFullResult());
 
+    if (report.restricted) throw new Error("expected a full report");
     expect(report.categories).toEqual([]);
     // The consumers all branch on `.length`, which is exactly what throws when it is undefined.
     expect(() => report.categories.length).not.toThrow();
+  });
+
+  it("fills the parsed record so the second tab renders empty rather than throwing", () => {
+    const { report } = normalizeCheckResult(legacyFullResult());
+
+    if (report.restricted) throw new Error("expected a full report");
+    expect(report.parsed.roles).toEqual([]);
+    expect(report.parsed.monthsOfExperience).toBeNull();
+    expect(() => report.parsed.skills.length).not.toThrow();
   });
 
   it("recomputes the check counts from the rules an older server did send", () => {
@@ -125,11 +132,14 @@ describe("ATS report normalisation — surviving a server one deploy behind", ()
 
     if (!report.restricted) throw new Error("expected a restricted report");
 
-    expect(report.categories).toEqual([]);
     expect(report.checksPassed).toBe(0);
     expect(report.checksTotal).toBe(0);
     expect(report.matchedKeywordCount).toBe(0);
     expect(report.missingKeywordCount).toBe(0);
+    // Newer than the rest of the restricted shape, so they default rather than arrive undefined.
+    expect(report.primaryWarning).toBeNull();
+    expect(report.parsedRoleCount).toBe(0);
+    expect(report.remainingFixCount).toBe(0);
   });
 
   it("leaves a current server's response untouched", () => {
@@ -150,7 +160,7 @@ describe("ATS report normalisation — surviving a server one deploy behind", ()
 
     if (report.restricted) throw new Error("expected a full report");
     expect(report.categories).toEqual(categories);
-    // Not recomputed from `rules` — the server's own counts win when it sends them.
+    // Not recomputed from `rules` - the server's own counts win when it sends them.
     expect(report.checksPassed).toBe(9);
     expect(report.checksTotal).toBe(11);
     expect(report.wordCount).toBe(612);
