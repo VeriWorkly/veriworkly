@@ -59,7 +59,7 @@ const AffiliateHero = ({ programEnabled }: { programEnabled: boolean }) => {
             className="bg-card/60 border-border/80 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/60"
           >
             <Sparkles className="h-4 w-4 animate-pulse text-blue-600 dark:text-blue-400" />
-            <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+            <span className="text-muted text-xs font-semibold tracking-wider uppercase">
               VeriWorkly Partner Program
             </span>
           </motion.div>
@@ -134,7 +134,7 @@ const AffiliateHero = ({ programEnabled }: { programEnabled: boolean }) => {
                     fill="none"
                   />
                 </defs>
-                <text className="fill-muted-foreground/50 font-mono text-[7.5px] font-bold tracking-widest uppercase dark:fill-zinc-600">
+                <text className="fill-muted/50 font-mono text-[7.5px] font-bold tracking-widest uppercase dark:fill-zinc-600">
                   <textPath href="#textCircle" startOffset="0%">
                     VERIWORKLY PARTNER • SHARE & EARN • LIFETIME REWARDS •
                   </textPath>

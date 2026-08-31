@@ -81,7 +81,7 @@ const AffiliateFAQ = () => {
                   <motion.span
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
-                    className="text-muted-foreground/75"
+                    className="text-muted/75"
                   >
                     <ChevronDown className="h-5 w-5" />
                   </motion.span>
@@ -96,7 +96,7 @@ const AffiliateFAQ = () => {
                       transition={{ duration: 0.25, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <p className="text-muted-foreground/85 border-l-2 border-blue-500/30 pl-4 text-sm leading-relaxed">
+                      <p className="text-muted/85 border-l-2 border-blue-500/30 pl-4 text-sm leading-relaxed">
                         {faq.answer}
                       </p>
                     </motion.div>

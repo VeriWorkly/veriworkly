@@ -26,11 +26,11 @@ const AffiliateResources = () => {
               Media Kit.
             </span>
           </h2>
-          <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">
+          <p className="text-muted max-w-sm text-sm leading-relaxed">
             Access our official high-resolution vector logos, custom logomarks, typography tokens,
             and branding assets to style your promotional materials.
           </p>
-          <div className="text-muted-foreground flex flex-col gap-3 pt-2 font-mono text-[10px]">
+          <div className="text-muted flex flex-col gap-3 pt-2 font-mono text-[10px]">
             <div className="flex items-center gap-2">
               <FileType className="h-4 w-4 text-blue-500" />
               <span>Includes SVG, PNG, and EPS source files</span>
@@ -54,7 +54,7 @@ const AffiliateResources = () => {
               <h4 className="text-foreground text-lg font-bold">Official Media Kit</h4>
             </div>
 
-            <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
+            <p className="text-muted max-w-md text-xs leading-relaxed">
               Download the complete ZIP archive including scalable vector locks, standalone brand
               icons, dark/light visual locks, and clearance spacing parameters.
             </p>

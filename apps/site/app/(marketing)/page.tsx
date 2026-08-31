@@ -123,9 +123,13 @@ const howToSchema = {
     },
   ],
   totalTime: "PT5M",
+  // estimatedCost takes MonetaryAmount or text, not HowToSupply - the previous value
+  // was typed wrong and would not validate. The /ats-checker HowTo already gets this
+  // right.
   estimatedCost: {
-    "@type": "HowToSupply",
-    name: "Free",
+    "@type": "MonetaryAmount",
+    currency: "USD",
+    value: "0",
   },
 };
 

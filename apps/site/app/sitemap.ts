@@ -12,8 +12,6 @@ import {
 
 export const revalidate = 604800;
 
-const DEPLOYED_AT = new Date();
-
 const publicRoutes = [
   {
     url: siteConfig.url,
@@ -166,7 +164,11 @@ const publicRoutes = [
 ] satisfies MetadataRoute.Sitemap;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const lastModified = DEPLOYED_AT;
+  // Evaluated per regeneration, not once at module load. `const DEPLOYED_AT = new
+  // Date()` at module scope froze at server start, so with revalidate = 604800 every
+  // static route reported one identical timestamp for a week - making the field
+  // useless as a freshness signal.
+  const lastModified = new Date();
 
   const templateRoutes = documentTypeSummaries
     .filter((docType) => docType.status === "available")

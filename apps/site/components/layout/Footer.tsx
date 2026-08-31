@@ -13,6 +13,7 @@ const footerColumns: LandingFooterColumn[] = [
     links: [
       { name: "Resume Builder", href: siteConfig.links.app, external: true },
       { name: "Portfolio Builder", href: siteConfig.links.portfolio, external: true },
+      { name: "Free ATS Checker", href: "/ats-checker" },
       { name: "Core Features", href: "/features" },
       { name: "How It Works", href: "/how-it-works" },
       { name: "Template Gallery", href: "/templates" },
@@ -51,9 +52,15 @@ const socialLinks: LandingFooterSocialLink[] = [
   { name: "LinkedIn", href: siteConfig.links.linkedin, iconSrc: "/icons/socials/linkedIn.svg" },
 ];
 
+/**
+ * The bottom bar previously repeated the affiliate and ambassador links that already
+ * appear under "Organization" above, while /ats-checker - the flagship acquisition
+ * page - had no footer link at all. These are the two utility pages that earn a slot
+ * here instead.
+ */
 const navLinks: LandingFooterLink[] = [
-  { name: "Affiliate Program", href: "/affiliate" },
-  { name: "Ambassador Program", href: "/ambassador" },
+  { name: "Free ATS Checker", href: "/ats-checker" },
+  { name: "Public Stats", href: "/stats" },
 ];
 
 const legalLinks: LandingFooterLink[] = [

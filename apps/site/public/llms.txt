@@ -15,7 +15,7 @@ VeriWorkly is a privacy-first AI career workspace engineered for professional do
 - **Home / Workspace Overview**: `https://veriworkly.com/` - Ecosystem landing, core value propositions, and live demo tools.
 - **Free ATS Resume Checker**: `https://veriworkly.com/ats-checker` (Scan tool: `https://veriworkly.com/ats-checker/scan`) - Free, zero-signup deterministic ATS scanner & job match tool.
 - **Template Gallery**: `https://veriworkly.com/templates` - Full catalog of ATS resumes, cover letters, and web portfolio templates:
-  - *Resumes*: Executive Clarity (`executive-clarity`), Precision ATS (`precision-ats`), Modern Minimal (`modern-minimal`), Timeline Focus (`timeline-focus`), Corporate Brief (`corporate-brief`), Bold Impact (`bold-impact`), VeriWorkly Special (`veriworkly-special`).
+  - *Resumes*: Executive Clarity (`resume-executive-clarity`), Precision ATS (`resume-precision-ats`), Modern Minimal (`resume-modern-minimal`), Timeline Focus (`resume-timeline-focus`), Corporate Brief (`resume-corporate-brief`), Bold Impact (`resume-bold-impact`), VeriWorkly Special (`resume-veriworkly-special`).
   - *Cover Letters*: Professional (`cover-letter-professional`), VeriWorkly Special (`cover-letter-veriworkly-special`), Minimalist (`cover-letter-minimalist`), Executive (`cover-letter-executive`), ATS Essential (`cover-letter-ats-essential`).
   - *Portfolios*: Signal (`portfolio-signal`, bento/engineering), Atelier (`portfolio-atelier`, editorial/design), Nimbus (`portfolio-nimbus`, tech-editorial/minimal), Cipher (`portfolio-cipher`, terminal emulator).
 - **Pricing & Plans**: `https://veriworkly.com/pricing` - Managed subscription plans, credit packs, and feature entitlement breakdown.
@@ -23,15 +23,15 @@ VeriWorkly is a privacy-first AI career workspace engineered for professional do
   - `https://veriworkly.com/compare/rezi` (VeriWorkly vs Rezi)
   - `https://veriworkly.com/compare/teal` (VeriWorkly vs Teal)
   - `https://veriworkly.com/compare/kickresume` (VeriWorkly vs Kickresume)
-  - `https://veriworkly.com/compare/rxresu.me` (VeriWorkly vs RxResu.me)
-  - `https://veriworkly.com/compare/flowcv` (VeriWorkly vs FlowCV)
-  - `https://veriworkly.com/compare/visualcv` (VeriWorkly vs VisualCV)
+  - `https://veriworkly.com/compare/novoresume` (VeriWorkly vs Novoresume)
+  - `https://veriworkly.com/compare/zety` (VeriWorkly vs Zety)
+  - `https://veriworkly.com/compare/enhancv` (VeriWorkly vs Enhancv)
 - **How It Works**: `https://veriworkly.com/how-it-works` - Workflow breakdown: Local Edit → Master Profile Sync → ATS Check → PDF/DOCX Export & Subdomain Publish.
 - **Feature Catalog**: `https://veriworkly.com/features` - Detailed specs on Master Profile, AI Tailoring, Zero-Friction Ingestors, and Subdomain Publishing.
 - **Design System Style Guide**: `https://veriworkly.com/style-guide` - Interactive design tokens, color palette, typography scale, and `@veriworkly/ui` primitives.
 - **Brand Kit & Assets**: `https://veriworkly.com/brand-kit` - Official logos (SVG/PNG), brand guidelines, palette JSON, and downloadable `veriworkly-brand-kit.zip`.
 - **Public Roadmap**: `https://veriworkly.com/roadmap` (Status filters: `/roadmap/todo`, `/roadmap/in-progress`, `/roadmap/done`) - Interactive feature request and development roadmap tracker.
-- **Public System Stats**: `https://veriworkly.com/stats` - Live metrics on documents built, exports triggered, and GitHub activity.
+- **Public System Stats**: `https://veriworkly.com/stats` - Live open-source development metrics: GitHub issues, pull requests, and completion rate.
 - **Product Changelog**: `https://veriworkly.com/changelog` - Release notes and architecture updates.
 - **Student Ambassador Program**: `https://veriworkly.com/ambassador` (Apply flow: `https://veriworkly.com/ambassador/apply`) - Campus ambassador application and reward tier breakdown.
 - **Affiliate Program**: `https://veriworkly.com/affiliate` - Affiliate referral tracking, 3-tier commission structure (2%, 3%, 5%), and sign-up flow.
@@ -40,7 +40,7 @@ VeriWorkly is a privacy-first AI career workspace engineered for professional do
 
 ## Core Features & System Architecture
 - **Unified Document Builder (Studio)**: `https://app.veriworkly.com` - Local-first editor for resumes, cover letters, and master profiles. Supports export to PDF, DOCX, HTML, Markdown, Plain Text, and JSON.
-- **Portfolio Publisher**: `https://portfolio.veriworkly.com` - Create responsive web portfolios hosted on custom subdomains (e.g. `username.veriworkly.com`) with automated view tracking, multi-page routing, and watermark control.
+- **Portfolio Publisher**: `https://portfolio.veriworkly.com` - Build responsive web portfolios for a `username.veriworkly.com` subdomain. Free tier: the Signal and Atelier templates, published with a "Built with VeriWorkly" badge. Paid: the Nimbus and Cipher templates, badge removal, visitor analytics, SEO controls, and multi-page routing. Publishing is not yet enabled in production.
 - **Master Profile Store**: Single JSON profile holding complete career history. Seed multiple resumes, cover letters, and portfolios without re-entering data.
 - **Zero-Friction Ingestors**:
   - *GitHub Import*: Real OAuth connection mapping profile & up to 30 repos to skills/projects.

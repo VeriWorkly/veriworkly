@@ -42,7 +42,11 @@ export function LegalSections({ sections }: LegalSectionsProps) {
           filteredSections={filteredSections}
         />
 
-        <main className="space-y-8 lg:col-span-8">
+        {/* Not <main>: AppShell already renders the page-level main landmark around
+            every marketing page, and two "main" regions make landmark navigation
+            ambiguous for screen-reader users - on exactly the two pages that most
+            need to be navigable. */}
+        <div className="space-y-8 lg:col-span-8">
           {filteredSections.length === 0 ? (
             <div className="border-border/60 bg-card/20 text-muted rounded-3xl border p-12 text-center">
               <p className="text-sm">No sections found matching &quot;{searchQuery}&quot;.</p>
@@ -72,7 +76,7 @@ export function LegalSections({ sections }: LegalSectionsProps) {
               );
             })
           )}
-        </main>
+        </div>
       </div>
     </div>
   );

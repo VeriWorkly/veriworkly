@@ -107,13 +107,21 @@ const webApplicationSchema = {
     name: "VeriWorkly",
   },
 
+  /**
+   * Paid offers carry PreOrder because checkout throws for every caller during this
+   * phase - structured data that disagrees with the page is a manual-action risk.
+   * Marked rather than deleted so the pricing rich result survives. Flip these to
+   * InStock in the same change that opens payments.
+   */
   offers: [
     {
       "@type": "Offer",
       name: "Free",
       price: "0",
       priceCurrency: "USD",
-      description: "Unlimited local resumes, cover letters, and PDF exports without login.",
+      description:
+        "Unlimited local drafts, and every export format free with no watermark. One synced document per type with an account.",
+      availability: "https://schema.org/InStock",
     },
     {
       "@type": "Offer",
@@ -121,6 +129,7 @@ const webApplicationSchema = {
       price: "2.99",
       priceCurrency: "USD",
       description: "3 days of Creator Pro hosting + 150 AI writing credits.",
+      availability: "https://schema.org/PreOrder",
     },
     {
       "@type": "Offer",
@@ -128,6 +137,7 @@ const webApplicationSchema = {
       price: "5.99",
       priceCurrency: "USD",
       description: "7 days of Creator Pro hosting + 400 AI writing credits.",
+      availability: "https://schema.org/PreOrder",
     },
     {
       "@type": "Offer",
@@ -135,13 +145,16 @@ const webApplicationSchema = {
       price: "5.99",
       priceCurrency: "USD",
       description: "Standalone AI credits package for document tailoring.",
+      availability: "https://schema.org/PreOrder",
     },
     {
       "@type": "Offer",
       name: "Creator Pro",
       price: "9.99",
       priceCurrency: "USD",
-      description: "Public portfolio hosting with custom subdomain, analytics, and SEO controls.",
+      description:
+        "Premium portfolio templates, badge removal, visitor analytics, and SEO controls on your veriworkly.com subdomain.",
+      availability: "https://schema.org/PreOrder",
     },
     {
       "@type": "Offer",
@@ -149,6 +162,7 @@ const webApplicationSchema = {
       price: "14.99",
       priceCurrency: "USD",
       description: "Full access bundle on monthly billing.",
+      availability: "https://schema.org/PreOrder",
     },
     {
       "@type": "Offer",
@@ -156,6 +170,7 @@ const webApplicationSchema = {
       price: "11.99",
       priceCurrency: "USD",
       description: "Full access bundle on annual billing.",
+      availability: "https://schema.org/PreOrder",
     },
   ],
 

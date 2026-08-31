@@ -40,7 +40,14 @@ interface BuildPageMetadataOptions {
 
   type?: "website" | "article";
 
-  /** Set true for internal/utility pages (e.g. style guide) that should not be indexed. */
+  /**
+   * Set true for pages that should not be indexed - the 404 boundaries, and any
+   * internal or utility route.
+   *
+   * Not the style guide: it is a public design-system reference, linked from the
+   * footer and llms.txt and listed in the sitemap deliberately. This docblock used to
+   * cite it as the example, which contradicted how the page is actually treated.
+   */
   noIndex?: boolean;
 
   /**

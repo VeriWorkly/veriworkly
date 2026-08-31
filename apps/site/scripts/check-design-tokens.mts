@@ -13,7 +13,7 @@
  * Exits non-zero on any drift, so it is safe to put in CI.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
@@ -161,6 +161,63 @@ const partial = Object.entries(unmappedPerApp)
   .sort();
 
 if (partial.length) problems.push(...partial.map((p) => `mapped unevenly: ${p}`));
+
+/**
+ * A token that is defined but mapped into no `@theme` block produces no Tailwind
+ * utility. Referencing it in source is then silent: the class name is valid-looking,
+ * emits no CSS, and the element quietly inherits its parent colour.
+ *
+ * That is exactly how `text-muted-foreground` reached 36 usages across /affiliate
+ * while rendering uncoloured body copy. The report below already listed the token as
+ * "mapped in no app" - it just never failed anything, so nobody acted on it.
+ *
+ * Defining a token without a utility is fine on its own (--fd-accent is consumed
+ * directly by Fumadocs). Defining one *and using it as a utility* is the bug, so that
+ * is what fails here.
+ */
+const utilityPrefixes = ["text", "bg", "border", "ring", "fill", "stroke", "from", "to", "via"];
+
+const sourceGlobs = ["app", "components", "features", "hooks", "utils"].map((dir) =>
+  join(HERE, "..", dir),
+);
+
+const collectSource = (dir: string): string[] => {
+  let entries: import("node:fs").Dirent[];
+
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  return entries.flatMap((entry) => {
+    const full = join(dir, entry.name);
+
+    if (entry.isDirectory()) return collectSource(full);
+
+    return /\.(tsx?|css)$/.test(entry.name) ? [full] : [];
+  });
+};
+
+const sourceText = sourceGlobs
+  .flatMap(collectSource)
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n");
+
+for (const token of neverMapped) {
+  const base = token.replace(/^--/, "");
+
+  const used = utilityPrefixes.filter((prefix) =>
+    new RegExp(`(?<![\\w-])${prefix}-${base}(?![\\w-])`).test(sourceText),
+  );
+
+  if (used.length)
+    problems.push(
+      `unmapped token in use: --${base} is mapped in no @theme block, so ` +
+        `${used.map((p) => `\`${p}-${base}\``).join(", ")} emit no CSS. ` +
+        `Either map it, or use a token that is mapped.`,
+    );
+}
 
 if (problems.length) {
   console.error(`\n${problems.length} problem(s):`);
