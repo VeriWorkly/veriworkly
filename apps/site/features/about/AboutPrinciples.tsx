@@ -29,7 +29,7 @@ const AboutPrinciples = () => {
 
             <div className="mt-6 flex items-center gap-3 rounded-2xl border border-red-500/15 bg-red-500/5 px-4 py-3">
               <span className="text-sm text-zinc-500 line-through decoration-red-400/60 dark:text-zinc-500">
-                $23.95/mo
+                $25.95/4wks
               </span>
 
               <span className="text-xs font-semibold text-red-500">

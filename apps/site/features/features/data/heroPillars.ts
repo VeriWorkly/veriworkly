@@ -22,6 +22,7 @@ export const HERO_PILLARS: HeroPillar[] = [
   {
     icon: Globe,
     title: "Web Portfolios",
-    description: "Publish your personal website on your custom subdomain (core templates free).",
+    description:
+      "Publish on your own veriworkly.com subdomain. Free core templates carry a small badge; premium templates and badge removal are paid. Opening at launch.",
   },
 ];

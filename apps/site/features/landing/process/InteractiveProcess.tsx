@@ -56,7 +56,7 @@ const InteractiveProcess = () => {
       id: "03",
       title: "Export and apply",
       description:
-        "Download a pixel-perfect ATS PDF immediately, or publish your web portfolio to a custom link. Zero paywalls, zero watermarks.",
+        "Download a pixel-perfect ATS PDF immediately — every export format is free and carries no watermark. Portfolio publishing on your own subdomain opens at launch.",
       icon: FileText,
       visual: <Step3Visual />,
     },

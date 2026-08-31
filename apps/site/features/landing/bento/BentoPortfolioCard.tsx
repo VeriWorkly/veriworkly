@@ -55,8 +55,8 @@ const BentoPortfolioCard = ({ yOffset, portfolioTilt, canHover }: BentoPortfolio
         </h3>
 
         <p className="mt-2 text-xs leading-relaxed text-zinc-500 sm:text-sm dark:text-zinc-400">
-          Turn Your Resume into a Live Website. Publish an interactive web portfolio with your
-          projects, GitHub links, and custom domain in one click.
+          Turn your resume into a live website. Publish an interactive web portfolio with your
+          projects and GitHub links on your own veriworkly.com subdomain, opening at launch.
         </p>
       </div>
     </BentoCard>

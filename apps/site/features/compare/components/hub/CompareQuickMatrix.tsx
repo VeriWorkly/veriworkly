@@ -57,13 +57,13 @@ export const CompareQuickMatrix = () => {
                 </td>
 
                 <td className="p-4 font-semibold text-emerald-600 sm:p-5 dark:text-emerald-400">
-                  100% Watermark-Free
+                  Documents: No Watermark
                 </td>
 
                 <td className="text-foreground p-4 font-semibold sm:p-5">Matches Target Job</td>
 
                 <td className="p-4 font-semibold text-emerald-600 sm:p-5 dark:text-emerald-400">
-                  Free (Core templates)
+                  Free core, paid premium
                 </td>
 
                 <td className="text-accent p-4 font-mono font-bold sm:p-5">$0 Free Core</td>
@@ -124,7 +124,7 @@ export const CompareQuickMatrix = () => {
                     {comp.id === "teal" && "~$29/mo (Teal+)"}
                     {comp.id === "kickresume" && "$4-$9/mo"}
                     {comp.id === "novoresume" && "$19.99/mo"}
-                    {comp.id === "zety" && "$1.95 trial → $24.95/mo"}
+                    {comp.id === "zety" && "$1.95 trial → $25.95/4wks"}
                     {comp.id === "enhancv" && "$13-$25/mo"}
                   </td>
 

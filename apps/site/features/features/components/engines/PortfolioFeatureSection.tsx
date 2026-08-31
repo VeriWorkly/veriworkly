@@ -14,13 +14,14 @@ export const PortfolioFeatureSection = () => {
         </span>
 
         <h2 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">
-          Web Portfolios on Custom Subdomains
+          Web Portfolios on Your Own Subdomain
         </h2>
 
         <p className="text-muted max-w-3xl text-sm leading-relaxed sm:text-base">
-          Turn your resume into a personal portfolio website in a single click. Hosted at
-          <span className="text-accent font-mono"> yourname.veriworkly.com</span> with fast edge
-          delivery, mobile responsiveness, and zero tracking cookies.
+          Turn your resume into a personal portfolio website hosted at
+          <span className="text-accent font-mono"> yourname.veriworkly.com</span>, with fast edge
+          delivery, mobile responsiveness, and zero tracking cookies. Build and preview yours today
+          — publishing opens at launch.
         </p>
       </div>
 
@@ -93,15 +94,15 @@ export const PortfolioFeatureSection = () => {
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="border-border/40 bg-background/50 rounded-xl border p-2.5">
-                  <span className="block font-mono font-bold text-emerald-500">0ms Setup</span>
+                  <span className="block font-mono font-bold text-emerald-500">At Launch</span>
 
-                  <span className="text-muted text-[10px]">Instant Publish</span>
+                  <span className="text-muted text-[10px]">Publishing Opens Soon</span>
                 </div>
 
                 <div className="border-border/40 bg-background/50 rounded-xl border p-2.5">
                   <span className="text-foreground block font-mono font-bold">Free Core</span>
 
-                  <span className="text-muted text-[10px]">Included Forever</span>
+                  <span className="text-muted text-[10px]">Signal + Atelier</span>
                 </div>
 
                 <div className="border-border/40 bg-background/50 rounded-xl border p-2.5">
@@ -114,7 +115,7 @@ export const PortfolioFeatureSection = () => {
 
             <div className="border-border/40 mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
               <span className="text-muted text-xs">
-                Choose from Signal, Atelier, and Nimbus themes
+                Four themes: Signal and Atelier free, Nimbus and Cipher premium
               </span>
 
               <Link
@@ -188,7 +189,8 @@ export const PortfolioFeatureSection = () => {
 
             <div className="border-border/60 bg-background/50 flex items-center justify-between rounded-2xl border p-4 text-xs">
               <span className="text-muted">
-                Core themes are 100% free with optional Pro upgrades.
+                Signal and Atelier are free and publish with a small badge. Nimbus and Cipher, and
+                badge removal, come with a paid plan.
               </span>
 
               <Link

@@ -150,7 +150,7 @@ export const faqs: FaqItem[] = [
     category: "ats",
     question: "How many free ATS scans do I get?",
     answer:
-      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Paid plan and pass holders receive high-volume daily scans.",
+      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Paid plan and pass holders get 300 scans per billing period.",
   },
   {
     id: "ats-scan-privacy",
@@ -173,7 +173,7 @@ export const faqs: FaqItem[] = [
     category: "portfolios",
     question: "How does the personal portfolio website builder work?",
     answer:
-      "The portfolio builder turns your career profile into a clean, mobile-friendly personal website in seconds. You can choose a template, select which projects and work experience to show, and publish it on your own custom subdomain (core templates are free to publish, with optional Pro themes available).",
+      "The portfolio builder turns your career profile into a clean, mobile-friendly personal website. You choose a template, select which projects and work experience to show, and publish it on your own veriworkly.com subdomain. Publishing is not switched on yet — you can build and preview a portfolio today, and we will open publishing at launch.",
   },
   {
     id: "custom-subdomain-setup",
@@ -187,7 +187,7 @@ export const faqs: FaqItem[] = [
     category: "portfolios",
     question: "Is portfolio website hosting free?",
     answer:
-      "Yes. You can build, customize, and publish your portfolio website on a custom subdomain using our core templates completely free. Creator Pro or short-term passes unlock additional designer themes, custom analytics, and priority CDN image bandwidth.",
+      "Yes, on the free tier you get the two core templates — Signal and Atelier — published on a veriworkly.com subdomain, and the page carries a small “Built with VeriWorkly” badge. Creator Pro, the Bundle, or a short-term pass unlock the two premium templates (Nimbus and Cipher), remove the badge, and add visitor analytics and SEO controls. Publishing opens at launch; until then you can build and preview.",
   },
   {
     id: "custom-apex-domains",
@@ -201,7 +201,7 @@ export const faqs: FaqItem[] = [
     category: "portfolios",
     question: "Are there limits on images or project screenshots?",
     answer:
-      "You can showcase as many projects as you need. Project screenshots and profile images are automatically optimized and served via our fast global CDN.",
+      "You can showcase as many projects as you need. Project screenshots and profile images are optimized on upload and served from edge storage. There is no separate bandwidth tier — image delivery works the same on every plan.",
   },
   {
     id: "portfolio-analytics-dashboard",
@@ -231,7 +231,7 @@ export const faqs: FaqItem[] = [
     category: "ai",
     question: "Do monthly AI credits roll over?",
     answer:
-      "Monthly subscription plans reset to 1,000 fresh AI credits at the start of each billing cycle. If you purchase an individual one-time top-up pack, those extra credits never expire and stay in your account until you use them.",
+      "Monthly subscription plans reset to 1,000 fresh AI credits at the start of each billing cycle; unused subscription credits do not carry over. One-time top-up packs are valid for 90 days from purchase, which is also what our Terms state.",
   },
   {
     id: "ai-models-used",

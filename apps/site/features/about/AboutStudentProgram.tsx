@@ -16,12 +16,13 @@ const AboutStudentProgram = () => {
 
           <p className="mt-6 text-xl leading-normal font-medium text-balance text-zinc-800 md:text-2xl dark:text-zinc-100">
             A few years ago, I spent an entire Sunday afternoon tailoring a resume for a dream job.
-            When I finally clicked &ldquo;Download PDF,&rdquo; the site demanded a $2.95 trial that
-            auto-renewed at $24 a month. I felt completely scammed. I built VeriWorkly so nobody has
-            to deal with that again. You shouldn&apos;t need a monthly subscription to download a
-            document you wrote yourself. All core document creation and PDF exports are completely
-            free. We only offer optional Pro plans for users who want live web portfolio hosting or
-            heavy AI usage, which helps us pay our infrastructure bills.
+            When I finally clicked &ldquo;Download PDF,&rdquo; the site demanded a couple of dollars
+            for a trial that auto-renewed into a subscription costing more than twenty a month. I
+            felt completely scammed. I built VeriWorkly so nobody has to deal with that again. You
+            shouldn&apos;t need a monthly subscription to download a document you wrote yourself.
+            All core document creation and exports are free, in every format. Paid plans cover the
+            premium portfolio templates, removing the portfolio badge, and heavy AI usage, which is
+            what pays the infrastructure bills.
           </p>
 
           <div className="mt-8 flex items-center gap-3">

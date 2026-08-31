@@ -86,7 +86,7 @@ export const COMPETITORS: Competitor[] = [
       {
         question: "Can Rezi build an online portfolio website?",
         answer:
-          "No, Rezi only makes documents. VeriWorkly includes a personal portfolio builder with custom subdomain hosting (core templates are free, pro templates optional).",
+          "No, Rezi only makes documents. VeriWorkly includes a personal portfolio builder with veriworkly.com subdomain hosting: the two core templates are free and publish with a small badge, and the premium templates plus badge removal come with a paid plan. Publishing opens at launch.",
       },
       {
         question: "How does VeriWorkly's ATS checker compare to Rezi?",
@@ -207,8 +207,12 @@ export const COMPETITORS: Competitor[] = [
       "Quarterly: ~$6/month ($18 billed quarterly)",
       "Yearly: ~$4/month ($48 billed annually)",
     ],
+    // Previously quoted "20,000+ bullet points" and "1,500+ real resumes" as fact,
+    // with no source and no date. Third-party figures stated flatly are the highest-
+    // liability content on these pages and, unlike pricing, sit outside what
+    // PRICING_VERIFIED_AT covers - so the claim is kept qualitative.
     standoutFeature:
-      "Huge library of 20,000+ pre-written bullet points and 1,500+ real resumes from hired applicants.",
+      "A large library of pre-written bullet points and example resumes drawn from hired applicants.",
     knownLimitation:
       "Font pairings, color options, and premium templates are locked on the free tier, and AI credits can run out mid-cycle even on paid plans.",
     whySwitch:
@@ -236,7 +240,7 @@ export const COMPETITORS: Competitor[] = [
         competitorApproach:
           "Basic website conversion is free, but custom themes and custom links require a subscription.",
         veriworklyApproach:
-          "Includes free core portfolio templates with custom subdomain hosting and GitHub project imports.",
+          "Includes free core portfolio templates with veriworkly.com subdomain hosting (at launch) and GitHub project imports.",
         takeaway:
           "Get both a resume and an online portfolio ready for recruiters without extra software.",
       },
@@ -259,7 +263,7 @@ export const COMPETITORS: Competitor[] = [
       {
         question: "Can I build a free portfolio on Kickresume?",
         answer:
-          "Kickresume has basic web page conversion, but premium styles and custom domain options require a paid plan. VeriWorkly lets you host your portfolio on a custom subdomain for free using core templates, with optional Pro themes.",
+          "Kickresume has basic web page conversion, but premium styles and custom domain options require a paid plan. VeriWorkly hosts your portfolio on a veriworkly.com subdomain using the free core templates, which carry a small badge, with premium templates and badge removal on a paid plan. Publishing opens at launch.",
       },
       {
         question: "Can I use Kickresume without creating an account?",
@@ -381,17 +385,17 @@ export const COMPETITORS: Competitor[] = [
     positioning:
       "Zety is a step-by-step guided resume and cover letter wizard aimed at first-time job seekers, with pre-written bullet suggestions.",
     verdict:
-      "Zety has a friendly step-by-step wizard, but only includes a plain text (.txt) download on the free plan. Downloading a formatted PDF or Word resume requires paying, usually through a $1.95 trial that turns into a recurring subscription. VeriWorkly gives you clean, formatted PDF and Word downloads 100% free with no credit card required.",
+      "Zety has a friendly step-by-step wizard, but the free plan only downloads plain text (.txt), which strips the formatting you just built. A formatted PDF or Word file requires paying, usually through a $1.95 14-day trial that renews into a recurring subscription. VeriWorkly gives you formatted PDF and Word downloads free, with no credit card required.",
     bestForCompetitor:
       "First-time resume writers who want an interactive wizard to prompt them for every single field with pre-written sentences.",
     bestForVeriworkly:
       "Anyone who wants to build and download a real resume without hitting a credit card paywall or worrying about auto-renewing subscriptions.",
     pricingSummary:
-      "Building is free, but formatted PDF/Word downloads require payment, usually a $1.95 14-day trial that renews into a ~$24.95/month subscription if not cancelled.",
-    pricingModel: "$1.95 trial renewing into ~$24.95/month subscription",
+      "Building and editing are free, but downloads are restricted to plain TXT. Formatted PDF and Word files require payment, usually a $1.95 14-day trial that renews at $25.95 every 4 weeks unless cancelled before the trial ends.",
+    pricingModel: "$1.95 14-day trial renewing at $25.95 every 4 weeks",
     paidPlans: [
-      "14-Day Trial: $1.95 (auto-renews to ~$24.95/mo unless cancelled)",
-      "Annual Plan: ~$71.40/year",
+      "14-Day Trial: $1.95 (auto-renews at $25.95 every 4 weeks unless cancelled)",
+      "Annual Plan: $71.40 billed upfront (works out at $5.95/month)",
     ],
     standoutFeature:
       "Step-by-step guided creation wizard with contextual pre-written phrases for hundreds of job titles.",
@@ -411,7 +415,7 @@ export const COMPETITORS: Competitor[] = [
       {
         title: "Auto-Renewing Trials",
         competitorApproach:
-          "Offers a $1.95 14-day trial that turns into an ongoing monthly subscription ($24.95+/month) unless cancelled.",
+          "Offers a $1.95 14-day trial that turns into a recurring $25.95 charge every 4 weeks unless cancelled before the trial ends.",
         veriworklyApproach:
           "No credit card required. Free core builder forever, with optional one-time credit packs for AI.",
         takeaway:
@@ -449,7 +453,7 @@ export const COMPETITORS: Competitor[] = [
       {
         question: "What is Zety's $1.95 trial?",
         answer:
-          "Zety offers an introductory 14-day trial for $1.95 to download your resume. If you do not cancel before the 14 days end, it auto-renews into a monthly charge (usually around $24.95/month). VeriWorkly requires no credit card and has no auto-renewing trials.",
+          "Zety offers an introductory 14-day trial for $1.95 so you can download your resume. If you do not cancel before the 14 days end, it auto-renews at $25.95 every 4 weeks. VeriWorkly requires no credit card to build or export.",
       },
       {
         question: "Can I use Zety without creating an account?",
@@ -544,7 +548,7 @@ export const COMPETITORS: Competitor[] = [
       {
         question: "Does Enhancv include an online portfolio builder?",
         answer:
-          "No, Enhancv only makes resumes and cover letters. VeriWorkly includes a portfolio builder to publish a personal website on a custom subdomain (core templates free, pro templates optional).",
+          "No, Enhancv only makes resumes and cover letters. VeriWorkly includes a portfolio builder to publish a personal website on a veriworkly.com subdomain: the two core templates are free and carry a small badge, and the premium templates plus badge removal are paid. Publishing opens at launch.",
       },
       {
         question: "Is Enhancv worth the higher price?",

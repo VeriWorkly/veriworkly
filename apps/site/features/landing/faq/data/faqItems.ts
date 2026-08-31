@@ -24,7 +24,7 @@ export const faqs: FAQItem[] = [
     id: "landing-no-signup",
     question: "Do I need to sign up or log in to create a resume?",
     answer:
-      "No. You can immediately launch the editor, choose a professional template, and build your resume or cover letter right away. Account signup is only required if you want cloud sync or to publish a web portfolio.",
+      "No. Click through as a guest and the editor opens with no account: choose a template and build your resume or cover letter right away. Signing up is only needed for cloud sync across devices, more than one document per type, or publishing a web portfolio.",
     category: "Getting Started",
   },
   {
@@ -38,14 +38,14 @@ export const faqs: FAQItem[] = [
     id: "landing-ai-tailoring",
     question: "How does AI resume tailoring work without hallucinating details?",
     answer:
-      "VeriWorkly's frontier AI models (from Anthropic, Gemini and OpenAI) rewrite and optimize your existing bullet points against job descriptions using your verified Master Profile facts. The AI assists your phrasing without inventing fake roles or unearned metrics.",
+      "VeriWorkly sends the request to a third-party model provider (Anthropic's Claude or OpenAI's GPT) to rewrite your existing bullet points against a job description, grounded in the facts already in your Master Profile. Every change is shown as a diff you approve before it lands, so nothing reaches your document unreviewed. No prompt can make a language model incapable of error — that review step is what protects you.",
     category: "AI Tools",
   },
   {
     id: "landing-web-portfolio",
     question: "How do I publish a live web portfolio on a custom subdomain?",
     answer:
-      "In VeriWorkly, you can transform your master career profile into a live, responsive web portfolio. Select a modern portfolio template and publish it instantly to your own subdomain (such as yourname.veriworkly.com).",
+      "You turn your Master Profile into a responsive web portfolio, pick a template, and publish it to your own subdomain (such as yourname.veriworkly.com). The two core templates, Signal and Atelier, are free and publish with a small “Built with VeriWorkly” badge; Nimbus and Cipher, badge removal, analytics, and SEO controls come with a paid plan. Publishing opens at launch — you can build and preview now.",
     category: "Web Portfolios",
   },
   {
@@ -66,14 +66,14 @@ export const faqs: FAQItem[] = [
     id: "landing-flexible-passes",
     question: "What are Flexible Passes (3-Day and 7-Day Sprint Passes)?",
     answer:
-      "Flexible Passes are one-time payments (3-Day or 7-Day Sprint Passes) that unlock Creator Pro hosting, AI writing credits, and advanced exports for active job hunts without requiring a recurring monthly subscription.",
+      "Flexible Passes are one-time payments (3-Day or 7-Day Sprint Passes) that unlock the premium portfolio templates, portfolio badge removal, analytics, and AI writing credits for an active job hunt, without a recurring subscription. They do not gate exports — every file format is free on every tier.",
     category: "Pricing & Plans",
   },
   {
     id: "landing-file-formats",
     question: "What file formats can I export from VeriWorkly?",
     answer:
-      "You can export your resumes and cover letters as vector-sharp PDFs for job applications, save editable JSON files for local backup, or publish live interactive portfolios directly on the web.",
+      "Six formats, all free and ungated: PDF, Word (DOCX), Markdown, HTML, plain text, and JSON. Publishing a live web portfolio is a separate feature, not an export format.",
     category: "Exports & Formats",
   },
 ];

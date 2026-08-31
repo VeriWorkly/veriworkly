@@ -49,7 +49,8 @@ export const HeroHeader = () => {
 
           <p className="pointer-events-auto mt-8 max-w-2xl text-base leading-relaxed font-medium text-balance text-gray-500 lg:text-lg dark:text-gray-400">
             Create tailored resumes, matching cover letters, and a live web portfolio from one
-            profile. Free to build, free to export, and your data never leaves your browser.
+            profile. Free to build, free to export, and nothing leaves your browser unless you ask
+            for something that needs it.
           </p>
 
           <HeroActionButtons />

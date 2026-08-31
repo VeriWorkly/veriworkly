@@ -42,7 +42,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   {
     name: "Portfolio",
     href: siteConfig.links.portfolio,
-    description: "Live personal websites published free",
+    description: "Personal websites on your own subdomain",
     external: true,
     icon: Globe,
   },

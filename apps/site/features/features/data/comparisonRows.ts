@@ -28,7 +28,7 @@ export const COMPARISON_ROWS: FeatureComparisonRow[] = [
   },
   {
     feature: "Web portfolio hosting",
-    veriworkly: "Custom subdomain with free core themes and edge SSL",
+    veriworkly: "Subdomain hosting with free core themes and edge SSL (at launch)",
     competitor: "Expensive monthly add-on or not supported",
   },
   {

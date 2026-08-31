@@ -11,7 +11,7 @@ export const VERIWORKLY_MATRIX: CompetitorFeatureMatrix = {
   watermarkFree: true,
   atsChecker: "Matches job description",
   coverLetterBuilder: true,
-  portfolioBuilder: "Free core templates (Pro optional)",
+  portfolioBuilder: "Free core templates, premium optional (at launch)",
   multiFormatExport: "PDF, Word (DOCX) & Markdown",
   linkedinImport: true,
   githubImport: true,
@@ -47,9 +47,14 @@ export const FEATURE_ROWS: FeatureRowItem[] = [
   },
   {
     key: "freePlan",
-    label: "Real free plan (no expiring trials)",
+    // "No expiring trials" was dropped: the Terms describe a 7-day free trial for
+    // first-time monthly Bundle and Creator Pro subscribers, so the matrix was
+    // claiming the opposite of our own agreement. The free tier itself is real and
+    // permanent, which is the part worth comparing on.
+    label: "Free plan that does not expire",
     category: "builder",
-    description: "Build and update your resume anytime without countdown clocks or trial cutoffs.",
+    description:
+      "The free tier is permanent, not a countdown. Paid plans offer a 7-day trial on first monthly signup, which you can cancel before it converts.",
   },
   {
     key: "freeExport",
@@ -60,9 +65,13 @@ export const FEATURE_ROWS: FeatureRowItem[] = [
   },
   {
     key: "watermarkFree",
-    label: "No watermarks or vendor logos",
+    // Scoped to documents on purpose. Free published portfolios do carry a small
+    // "Built with VeriWorkly" badge, which paid plans remove - stating this row
+    // unqualified read as covering portfolios too.
+    label: "No watermarks on downloaded documents",
     category: "builder",
-    description: "Your resume looks 100% professional with zero branding or stamps from us.",
+    description:
+      "Every resume and cover letter you export is free of our branding on every tier. (Free published portfolios carry a small badge, which paid plans remove.)",
   },
   {
     key: "multiFormatExport",
@@ -88,7 +97,7 @@ export const FEATURE_ROWS: FeatureRowItem[] = [
     label: "Personal website & portfolio builder",
     category: "integrations",
     description:
-      "Get a live website on a custom subdomain (core templates free, pro templates optional).",
+      "Publish a website on a veriworkly.com subdomain. Free core templates carry a small badge; premium templates and badge removal are paid. Opening at launch.",
   },
   {
     key: "linkedinImport",

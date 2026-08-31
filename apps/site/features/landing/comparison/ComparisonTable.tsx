@@ -10,7 +10,7 @@ const rows: ComparisonRow[] = [
   {
     feature: "Starting price",
     veriworkly: "$0, free forever",
-    competitor: "~$2.95 trial, then $23.95+/mo",
+    competitor: "$1.95 trial, then $25.95 every 4 weeks",
   },
   {
     feature: "PDF export",
@@ -19,7 +19,7 @@ const rows: ComparisonRow[] = [
   },
   {
     feature: "Where your data lives",
-    veriworkly: "100% local, inside your browser",
+    veriworkly: "In your browser, until you ask otherwise",
     competitor: "Stored on central cloud servers",
   },
   {

@@ -112,7 +112,8 @@ export const CompareBentoPillars = () => {
 
               <p className="text-muted text-xs leading-relaxed sm:text-sm">
                 Build your resume, draft a matching cover letter, and publish a personal portfolio
-                website on your own subdomain (core templates free, pro templates optional).
+                website on your own veriworkly.com subdomain. Free core templates carry a small
+                badge; premium templates and badge removal are paid. Opening at launch.
               </p>
             </div>
 

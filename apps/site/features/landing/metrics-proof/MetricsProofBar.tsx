@@ -14,43 +14,51 @@ interface Stat {
   detail: string;
 }
 
+/**
+ * Every figure here has to be something we can point at.
+ *
+ * Removed: a "99.9%" ATS figure that nothing measures and that read as a parse-rate
+ * guarantee, and two counters that animated *down* from 80 and 10 - start values
+ * chosen for the animation, with no meaning, rendered into the SSR markup.
+ *
+ * What is left is countable: six export formats, four portfolio templates, zero
+ * cost to export, zero accounts needed to start.
+ */
 const stats: Stat[] = [
   {
     icon: ShieldCheck,
-    value: 100,
+    value: 0,
     decimals: 0,
-    suffix: "%",
-    label: "100% Local & Private",
-    detail: "Your career data stays in your browser storage. We never see or sell it.",
+    suffix: "",
+    label: "Accounts Needed to Start",
+    detail: "Open the editor and start writing. Sign up only when you want sync or publishing.",
   },
 
   {
     icon: EyeOff,
-    from: 80,
     value: 0,
     decimals: 0,
     suffix: "",
-    label: "$0 to Export PDFs",
-    detail: "Download unlimited vector PDFs without hitting a paywall.",
+    label: "Cost to Export",
+    detail: "Every format is free and ungated, with no watermark on your documents.",
   },
 
   {
     icon: Target,
-    value: 99.9,
-    decimals: 1,
-    suffix: "%",
-    label: "ATS-Scannable Layouts",
-    detail: "Clean single-column hierarchy designed for standard ATS parsers.",
+    value: 6,
+    decimals: 0,
+    suffix: "",
+    label: "Export Formats",
+    detail: "PDF, Word (DOCX), Markdown, HTML, plain text, and JSON.",
   },
 
   {
     icon: KeyRound,
-    from: 10,
-    value: 0,
+    value: 4,
     decimals: 0,
     suffix: "",
-    label: "No Account Required",
-    detail: "Open the editor and start writing right away.",
+    label: "Portfolio Templates",
+    detail: "Signal and Atelier free, Nimbus and Cipher with a paid plan.",
   },
 ];
 

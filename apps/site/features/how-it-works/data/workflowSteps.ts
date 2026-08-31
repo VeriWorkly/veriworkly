@@ -37,11 +37,11 @@ export const WORKFLOW_STEPS: WorkflowStepItem[] = [
   },
   {
     step: "05",
-    title: "Launch a Live Web Portfolio in One Click",
-    subtitle: "Custom Subdomain & Fast Edge Delivery",
+    title: "Launch a Live Web Portfolio",
+    subtitle: "Your Own Subdomain, Opening at Launch",
     description:
-      "Transform your resume into a personal portfolio website hosted at yourname.veriworkly.com. Includes automatic SSL, responsive layouts, dark and light modes, and zero tracking cookies. Core themes are completely free.",
-    tags: ["Custom Subdomain", "Edge Routing", "Zero Cookies", "Mobile Responsive"],
+      "Turn your resume into a personal portfolio website at yourname.veriworkly.com, with automatic SSL, responsive layouts, dark and light modes, and zero tracking cookies. The two core templates are free and publish with a small “Built with VeriWorkly” badge; the premium templates and badge removal come with a paid plan. Publishing opens at launch — build and preview now.",
+    tags: ["Subdomain", "At Launch", "Zero Cookies", "Mobile Responsive"],
   },
 ];
 
