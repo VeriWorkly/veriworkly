@@ -47,9 +47,9 @@ export const IngestionSection = () => {
               </div>
 
               <p className="text-muted text-xs leading-relaxed sm:text-sm">
-                Connect your GitHub account to import repositories, pinned projects, primary
-                programming languages, and star counts straight into your resume and portfolio
-                project showcases.
+                Connect your GitHub account to import your most recently updated repositories, with
+                their primary programming languages, descriptions, and star counts, straight into
+                your resume and portfolio project showcases.
               </p>
 
               <div className="border-border/60 bg-background/70 space-y-2.5 rounded-2xl border p-4 font-mono text-xs">

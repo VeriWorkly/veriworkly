@@ -154,3 +154,44 @@ describe("credit pack expiry is stated consistently", () => {
     expect(pricingMd).not.toMatch(/never expire/i);
   });
 });
+
+describe("the ATS hero preview uses the report's own vocabulary", () => {
+  it("labels every area with a real category label", async () => {
+    // The preview promises what the report will say. It previously used four labels
+    // the engine never renders - "Parsing & extraction", "Document structure",
+    // "Evidence & impact", "Format risk profile" - so the figure set an expectation
+    // the product then broke.
+    const preview = readFileSync(
+      join(
+        __dirname,
+        "..",
+        "..",
+        "features",
+        "ats-checker",
+        "components",
+        "hero",
+        "ReportPreview.tsx",
+      ),
+      "utf8",
+    );
+
+    const { categoryMeta } = await import("@/features/ats-checker/data/categories");
+
+    const realLabels = new Set(
+      ["parse", "contact", "structure", "content", "format"].map((key) => categoryMeta(key).label),
+    );
+
+    const areasBlock = /const AREAS = \[([\s\S]*?)\] as const;/.exec(preview)?.[1] ?? "";
+
+    const previewLabels = [...areasBlock.matchAll(/label: "([^"]+)"/g)].map((match) => match[1]!);
+
+    expect(previewLabels.length).toBeGreaterThan(0);
+
+    for (const label of previewLabels) {
+      expect(
+        realLabels,
+        `ReportPreview shows "${label}", which the real report never renders`,
+      ).toContain(label);
+    }
+  });
+});

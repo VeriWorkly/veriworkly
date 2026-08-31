@@ -32,7 +32,7 @@ export function AtsHero() {
               Applicant tracking systems rarely auto-reject — but they do index your resume into
               searchable fields, and a two-column layout or a missing section heading can leave you
               out of the search entirely. Check parsing, structure, evidence, and job-description
-              keyword match in about two seconds.
+              keyword match, without an account.
             </p>
           </Reveal>
 
@@ -67,7 +67,7 @@ export function AtsHero() {
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <Zap className="size-3.5 shrink-0 text-emerald-500" />
-                <span className="text-muted text-[11px]">Instant 2s Scan</span>
+                <span className="text-muted text-[11px]">Deterministic Scan</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <ShieldCheck className="size-3.5 shrink-0 text-blue-500" />

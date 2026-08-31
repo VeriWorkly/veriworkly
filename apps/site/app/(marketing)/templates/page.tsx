@@ -40,9 +40,26 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
-const heroFan = templateSummaries
-  .filter((template) => !template.previewImage.includes("veriworkly-logo"))
-  .slice(0, 3);
+/**
+ * One of each document type, chosen deliberately.
+ *
+ * This used to be `.slice(0, 3)` over the whole catalog, which takes whatever sorts
+ * first - all four portfolios do - so the hero rendered three landscape web
+ * screenshots cropped into a portrait 8.5x11 paper frame with `object-cover
+ * object-top`. It also carried a `!previewImage.includes("veriworkly-logo")` filter
+ * that matched nothing and was dead.
+ *
+ * Falls back to catalog order if a type is ever missing, so the hero cannot render
+ * empty.
+ */
+const firstOfType = (type: string) =>
+  templateSummaries.find((template) => template.documentType === type);
+
+const heroFan = (
+  ["resume", "cover-letter", "portfolio-website"]
+    .map(firstOfType)
+    .filter(Boolean) as typeof templateSummaries
+).slice(0, 3);
 
 const TemplatesPortalPage = () => {
   const availableDocTypes = documentTypeSummaries.filter(
@@ -125,20 +142,32 @@ const TemplatesPortalPage = () => {
               {heroFan.map((template, idx) => {
                 const rotations = [-8, 0, 8];
                 const offsets = [-24, 0, 24];
+
+                // Portfolio previews are landscape web screenshots. Forcing them into
+                // the 8.5x11 paper frame the documents use crops away most of the page,
+                // so they get a browser-window ratio and are contained rather than
+                // cropped.
+                const isPortfolio = template.documentType === "portfolio-website";
+
                 return (
                   <div
                     key={template.id}
-                    className="absolute top-0 left-1/2 aspect-8.5/11 h-full overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-[0_24px_70px_-30px_rgba(15,23,42,0.5)] transition-transform duration-300 hover:-translate-y-2 dark:border-zinc-800"
+                    className={`absolute top-0 left-1/2 overflow-hidden rounded-lg border border-zinc-200 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.5)] transition-transform duration-300 hover:-translate-y-2 dark:border-zinc-800 ${
+                      isPortfolio
+                        ? "aspect-16/10 h-auto w-56 self-center bg-zinc-50 dark:bg-zinc-900"
+                        : "aspect-8.5/11 h-full bg-white"
+                    }`}
                     style={{
                       transform: `translateX(calc(-50% + ${offsets[idx]}px)) rotate(${rotations[idx]}deg)`,
                       zIndex: idx === 1 ? 10 : 5 - idx,
+                      ...(isPortfolio ? { top: "22%" } : {}),
                     }}
                   >
                     <Image
                       fill
                       alt={`${template.name} template preview`}
                       src={template.previewImage}
-                      className="object-cover object-top"
+                      className={isPortfolio ? "object-contain" : "object-cover object-top"}
                       sizes="220px"
                     />
                   </div>

@@ -60,14 +60,3 @@ export const fetchServerApiResult = cache(async function fetchServerApiResult<T>
     return { ok: false, reason: "unavailable" };
   }
 });
-
-/**
- * Nullable convenience wrapper for callers that genuinely do not care *why* the read
- * failed. Prefer `fetchServerApiResult` on any page that gates or redirects.
- */
-
-export async function fetchServerApiData<T>(path: string): Promise<T | null> {
-  const result = await fetchServerApiResult<T>(path);
-
-  return result.ok ? result.data : null;
-}

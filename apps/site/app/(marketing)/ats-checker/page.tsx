@@ -35,7 +35,7 @@ export const metadata: Metadata = buildPageMetadata({
     "Scan your resume for parsing risks, missing evidence, and job-description keyword match: free, 0 account required. Full breakdown with a free account; AI analysis on paid plans.",
   ogTitle: "Free ATS Resume Checker: Score & Keyword Match",
   ogDescription:
-    "The same rules-based scoring engine used inside VeriWorkly: check parsing, structure, evidence, and job match for free in 2 seconds.",
+    "The same rules-based scoring engine used inside VeriWorkly: check parsing, structure, evidence, and job match for free, with no account needed.",
   twitterTitle: "Is your resume ATS-ready? Check for free",
   twitterDescription:
     "Rules-based readiness score plus a job-description keyword match: 0 account required to start.",

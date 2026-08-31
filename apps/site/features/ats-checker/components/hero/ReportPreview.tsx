@@ -7,12 +7,18 @@ import { CheckCircle2, TriangleAlert, XCircle } from "lucide-react";
  *
  * The numbers are illustrative and labelled as such below the figure.
  */
+/**
+ * Labels must match `categoryMeta` in ../../data/categories.ts exactly - this preview
+ * promises the report's own vocabulary, and previously used four labels the real
+ * report never renders ("Parsing & extraction", "Document structure", "Evidence &
+ * impact", "Format risk profile").
+ */
 const AREAS = [
-  { label: "Parsing & extraction", score: 100, tone: "good" },
+  { label: "Parsing", score: 100, tone: "good" },
   { label: "Contact & links", score: 86, tone: "good" },
-  { label: "Document structure", score: 72, tone: "warn" },
-  { label: "Evidence & impact", score: 48, tone: "bad" },
-  { label: "Format risk profile", score: 91, tone: "good" },
+  { label: "Structure", score: 72, tone: "warn" },
+  { label: "Evidence", score: 48, tone: "bad" },
+  { label: "Format risk", score: 91, tone: "good" },
 ] as const;
 
 const FILL = {

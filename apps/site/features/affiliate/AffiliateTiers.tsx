@@ -63,8 +63,9 @@ const AffiliateTiers = () => {
             </span>
           </h2>
           <p className="text-muted max-w-[30ch] text-base leading-relaxed">
-            Our three-tier partner program scales your commission rate dynamically as you refer more
-            users.
+            Our three-tier partner program pays a higher commission rate as you refer more users.
+            Tier upgrades are applied by us on review rather than automatically, so reach out once
+            you have hit a threshold.
           </p>
         </div>
 
