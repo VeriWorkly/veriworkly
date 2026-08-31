@@ -126,7 +126,7 @@ export default function AtsCheckerPage() {
         "@type": "HowToStep",
         position: 3,
         name: "Review your score and point recovery fixes",
-        text: "Get an instant ATS readiness score, a per-area breakdown, and fixes ordered by how many points each one recovers.",
+        text: "Get an instant ATS readiness score, the most serious issue found, and your highest-impact fix. A free account unlocks the per-area breakdown, the keyword lists, and the recovered work history.",
         url: scanUrl,
       },
     ],
@@ -202,7 +202,7 @@ export default function AtsCheckerPage() {
           <div className="border-border/30 border-t pt-8 text-center">
             <p className="text-muted/70 mx-auto max-w-3xl text-[11px] leading-relaxed">
               <strong>Disclaimer:</strong> VeriWorkly ATS Checker evaluates documents against
-              heuristic parsing standards, keyword density algorithms, and structural guidelines. It
+              heuristic parsing standards, weighted keyword matching, and structural guidelines. It
               does not simulate or guarantee compatibility with any specific proprietary employer
               software, nor does it guarantee interviews or job offers. All third-party product and
               company names mentioned are trademarks or registered trademarks of their respective

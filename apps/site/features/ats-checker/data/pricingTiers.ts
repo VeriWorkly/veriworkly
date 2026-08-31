@@ -11,7 +11,7 @@ export const ATS_TIERS = [
     features: [
       "ATS readiness & job match scores",
       "Verdict: strong, needs work, or weak",
-      "Per-area breakdown of where points were lost",
+      "The most serious issue found, named in full",
       "Your single highest-impact fix",
     ],
     highlight: false,
@@ -25,6 +25,8 @@ export const ATS_TIERS = [
     cta: { label: "Create Free Account", href: `${siteConfig.links.app}/login` },
     features: [
       "Everything in No Account tier",
+      "“What the ATS sees”: your recovered work history, dates and tenure",
+      "Per-area breakdown of where points were lost",
       "Full pass/fail evidence per rule",
       "Complete matched and missing keyword lists",
       "All fixes ranked by points recovered",
@@ -42,8 +44,8 @@ export const ATS_TIERS = [
     features: [
       "Everything in Free Account tier",
       "Deep AI explanation of scoring nuances",
-      "Missing-evidence detection and rewrites",
-      "Edits ranked by recruiter hiring impact",
+      "Missing-evidence detection",
+      "Suggested edits ranked by likely screening impact",
       "Analyze job postings directly from URL",
     ],
     highlight: false,

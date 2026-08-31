@@ -22,9 +22,5 @@ export function useScrolled(threshold = 20): boolean {
     return window.scrollY > threshold;
   }, [threshold]);
 
-  return useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
-  );
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

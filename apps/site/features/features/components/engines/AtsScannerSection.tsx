@@ -25,7 +25,8 @@ export const AtsScannerSection = () => {
         </h2>
 
         <p className="text-muted max-w-3xl text-sm leading-relaxed sm:text-base">
-          Make sure your resume parses cleanly with standard Applicant Tracking Systems and reaches human recruiters without formatting snags or missing keywords.
+          Make sure your resume parses cleanly with standard Applicant Tracking Systems and reaches
+          human recruiters without formatting snags or missing keywords.
         </p>
       </div>
 

@@ -38,7 +38,7 @@ const FIXES = [
   {
     icon: CheckCircle2,
     tone: "good",
-    text: "Contact details sit in the top 30% parsing zone",
+    text: "Contact details sit in the first quarter of the document",
     points: 0,
   },
 ] as const;

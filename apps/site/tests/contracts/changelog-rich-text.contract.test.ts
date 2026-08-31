@@ -65,7 +65,9 @@ describe("ChangelogRichText inline markdown parser", () => {
     const nodes = renderInlineMarkdown("Contributed by @Gautam25Raj in this release");
     expect(nodes.length).toBeGreaterThanOrEqual(3);
     const mentionNode = nodes.find(
-      (n) => React.isValidElement(n) && (n.props as { href?: string }).href === "https://github.com/Gautam25Raj",
+      (n) =>
+        React.isValidElement(n) &&
+        (n.props as { href?: string }).href === "https://github.com/Gautam25Raj",
     );
     expect(mentionNode).toBeDefined();
   });
@@ -87,7 +89,9 @@ describe("ChangelogRichText inline markdown parser", () => {
     );
     expect(nodes.length).toBeGreaterThanOrEqual(3);
     const pkgNode = nodes.find(
-      (n) => React.isValidElement(n) && (n.props as { children?: string }).children === "@veriworkly/profile-core",
+      (n) =>
+        React.isValidElement(n) &&
+        (n.props as { children?: string }).children === "@veriworkly/profile-core",
     );
     expect(pkgNode).toBeDefined();
   });

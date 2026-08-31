@@ -21,4 +21,3 @@ const SkeletonLine = ({
 );
 
 export default SkeletonLine;
-

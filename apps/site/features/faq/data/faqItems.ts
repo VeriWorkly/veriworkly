@@ -143,7 +143,7 @@ export const faqs: FaqItem[] = [
     category: "ats",
     question: "What is the difference between the Readiness Score and Job Match Score?",
     answer:
-      "The Readiness Score checks technical formatting, section order, and readability that apply to every job. The Job Match Score measures how closely your skills and experience match the specific job description you pasted. If you paste a job posting, you get both scores.",
+      "The Readiness Score checks whether a parser can read the document at all: formatting, section headings, contact placement, and evidence quality that apply to every job. The Job Match Score measures how closely your skills and experience match the specific job description you pasted. If you paste a job posting, you get both scores.",
   },
   {
     id: "ats-checker-limits",
@@ -157,7 +157,7 @@ export const faqs: FaqItem[] = [
     category: "ats",
     question: "Do you save or train AI models on my scanned resume?",
     answer:
-      "No. Scans are processed in-memory to generate your score report. We do not store your uploaded document text on our servers or use it to train public AI models.",
+      "The free scan is processed in memory to generate your report and discarded when the response is sent. We do not store your document or its text, and we do not train models on it. If you run the optional AI analysis, that step sends your resume text to a model provider so it can write the explanation — the deterministic scan never leaves our servers.",
   },
   {
     id: "ats-improve-score",

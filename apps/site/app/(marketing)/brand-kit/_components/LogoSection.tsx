@@ -145,12 +145,7 @@ const LogoSection = () => {
               className="border-border grid h-28 place-items-center rounded-2xl border"
               style={{ backgroundColor: "#F5F4EF" }}
             >
-              <Image
-                src={MARK}
-                alt="Primary mark on the light background"
-                width={56}
-                height={56}
-              />
+              <Image src={MARK} alt="Primary mark on the light background" width={56} height={56} />
             </div>
 
             <p className="text-sm font-semibold">Primary on light</p>
@@ -164,12 +159,7 @@ const LogoSection = () => {
               className="border-border grid h-28 place-items-center rounded-2xl border"
               style={{ backgroundColor: "#0D1117" }}
             >
-              <Image
-                src={MARK}
-                alt="Primary mark on the dark background"
-                width={56}
-                height={56}
-              />
+              <Image src={MARK} alt="Primary mark on the dark background" width={56} height={56} />
             </div>
 
             <p className="text-sm font-semibold">Primary on dark</p>

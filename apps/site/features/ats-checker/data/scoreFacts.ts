@@ -13,7 +13,7 @@ export const SCORE_FACTS = [
   },
   {
     icon: Lock,
-    title: "100% Stateless and private by default",
-    body: "Your resume and target job description are processed in volatile memory and immediately discarded. There is zero file retention, no AI training on user data, and no account requirement to scan.",
+    title: "Nothing is stored, and no account is required",
+    body: "The free scan runs entirely in memory on our servers and is discarded when the response is sent. We do not retain your file or its text, and we do not train models on it. The optional AI analysis is the one exception: that step sends your resume text to a model provider to generate the write-up, so it does not stay on our infrastructure.",
   },
 ] as const;

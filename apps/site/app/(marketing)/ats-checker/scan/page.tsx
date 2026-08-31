@@ -16,7 +16,7 @@ export const metadata: Metadata = buildPageMetadata({
   path: "/ats-checker/scan",
   title: `Scan Your Resume: Free ATS Checker | ${siteConfig.shortName}`,
   description:
-    "Upload or paste your resume for a free ATS readiness score, a per-area breakdown, and job-description keyword match: 0 account required to start.",
+    "Upload or paste your resume for a free ATS readiness score, a job-description keyword match, and the single most serious issue found: 0 account required to start.",
   ogTitle: "Scan your resume for free",
   ogDescription: "Upload or paste your resume for an instant ATS readiness score.",
   twitterTitle: "Scan your resume: free ATS check",
@@ -51,7 +51,7 @@ export default function AtsCheckerScanPage() {
       <div className="relative flex min-h-screen flex-col overflow-x-clip">
         <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
         <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[140px]" />
-        <div className="bg-blue-500/5 pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full blur-[130px]" />
+        <div className="pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full bg-blue-500/5 blur-[130px]" />
 
         <Container className="pt-28 pb-24 md:pt-36">
           <div className="mx-auto max-w-2xl">
@@ -74,8 +74,9 @@ export default function AtsCheckerScanPage() {
               <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
                 Scan your resume
               </h1>
-              <p className="text-muted text-xs sm:text-sm leading-relaxed">
-                Two steps and a score. Add a job description in step two if you want keyword match for a specific role.
+              <p className="text-muted text-xs leading-relaxed sm:text-sm">
+                Two steps and a score. Add a job description in step two if you want keyword match
+                for a specific role.
               </p>
             </header>
 
