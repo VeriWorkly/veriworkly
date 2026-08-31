@@ -1,48 +1,64 @@
 import type { EncryptionBoundary } from "../types";
 
+/**
+ * Every spec on this page has to be something the repository can back up, because
+ * this is the page a reader will quote back at us. Claims we could not support have
+ * been removed rather than softened:
+ *
+ * - "LocalStorage encryption" - the studio writes plaintext JSON.
+ * - "In-memory vector rendering (WASM / Canvas)" - exports run through
+ *   @react-pdf/renderer, which is neither.
+ * - "Zero unauthenticated uploads" - POST /ats/extract accepts a 5 MB file from
+ *   anonymous callers by design; that is the ATS checker's own upload path.
+ * - "AES-256 database encryption at rest", "TLS 1.3", "edge SSL rotation",
+ *   "encrypted API gateways" - provider-dependent, with nothing in this repo behind
+ *   them. Our privacy policy deliberately claims none of these, and this page now
+ *   matches its restraint: where a provider makes the guarantee, we attribute it to
+ *   the provider instead of asserting it ourselves.
+ */
 export const ENCRYPTION_BOUNDARIES: EncryptionBoundary[] = [
   {
     number: "01",
-    title: "Client-Side Browser Sandbox",
+    title: "Local-First Browser Storage",
     description:
-      "All documents compile in your browser using local vector rendering. Your career facts and contact details are never transmitted to remote parsing backends during document generation.",
+      "Documents are drafted and rendered in your browser, and your drafts live in that browser's storage. Nothing is sent to us during document generation. Note that browser storage is not encrypted by us: on a shared or compromised machine, treat it as readable.",
     specs: [
-      "LocalStorage encryption",
-      "In-memory vector rendering (WASM / Canvas)",
-      "Zero unauthenticated uploads",
+      "Drafts held in browser storage, not our database",
+      "No transmission during editing or export",
+      "Sign in only when you want sync or publishing",
     ],
   },
   {
     number: "02",
-    title: "Encrypted Cloud Sync & Better Auth",
+    title: "Encrypted Transit & Better Auth",
     description:
-      "When you choose to register and log in, your Master Profile and sandbox documents sync securely. Connections are encrypted in transit via TLS 1.3 and protected by passwordless OTP verification.",
+      "When you register and log in, your Master Profile and documents sync over an encrypted connection, with passwordless OTP verification handled by Better Auth. Storage-layer encryption is provided by our hosting and database providers under their terms, not implemented by us.",
     specs: [
       "Better Auth passwordless OTP login",
-      "TLS 1.3 encrypted transit",
-      "AES-256 database encryption at rest",
+      "Encrypted in transit (HTTPS)",
+      "At-rest encryption per our infrastructure providers",
     ],
   },
   {
     number: "03",
-    title: "Public Portfolios & Custom Subdomains",
+    title: "Public Portfolios & Subdomains",
     description:
-      "Portfolios published to subdomains (yourname.veriworkly.com) are delivered via global CDN edge caches. Visitor counts are calculated in aggregate without using third-party tracking cookies.",
+      "Portfolios published to a veriworkly.com subdomain are served through edge caches with HTTPS. Visitor counts are aggregated without third-party tracking cookies, and unpublishing purges every cache layer that could keep a page readable.",
     specs: [
-      "Edge SSL provisioning & automated rotation",
-      "Zero-cookie analytics",
-      "Instant unpublish switch with cache purge",
+      "HTTPS on every published subdomain",
+      "Zero-cookie visitor aggregation",
+      "Unpublish switch with full cache purge",
     ],
   },
   {
     number: "04",
-    title: "Stateless AI Processing",
+    title: "Third-Party AI Processing",
     description:
-      "When using AI resume tailoring and cover letter drafting, prompts are executed ephemerally through secure API gateways. User inputs are never stored permanently or used to train public models.",
+      "AI tailoring and cover letter drafting send your text to a third-party model provider. We do not store the prompt or the response beyond the request, and we do not train models on your data — but the text does leave our infrastructure, which is why every AI action is something you trigger deliberately.",
     specs: [
-      "Zero model training on user career data",
-      "Ephemeral API gateways with strict rate limiting",
-      "Side-by-side diff review before applying changes",
+      "No model training on your career data",
+      "Prompt and response not retained after the request",
+      "Side-by-side diff review before any change lands",
     ],
   },
 ];

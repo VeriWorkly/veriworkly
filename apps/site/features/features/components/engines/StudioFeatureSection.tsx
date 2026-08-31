@@ -44,9 +44,10 @@ export const StudioFeatureSection = () => {
               </div>
 
               <p className="text-muted text-xs leading-relaxed sm:text-sm">
-                Create multiple targeted resumes from your Master Profile without duplicating
-                effort. Draft cover letters that share the same typographic scale and design theme
-                as your resume for a cohesive application package.
+                Tailor a resume per application from your Master Profile without duplicating effort.
+                Draft cover letters that share the same typographic scale and design theme as your
+                resume for a cohesive application package. Work locally on as many drafts as you
+                like; a free account syncs one active document per type, and Creator Pro lifts that.
               </p>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -57,7 +58,8 @@ export const StudioFeatureSection = () => {
                   </div>
 
                   <p className="text-muted text-[11px] leading-relaxed">
-                    Choose from curated font pairings including Inter, Source Serif, and IBM Plex.
+                    Switch between three typefaces chosen for on-screen and print legibility: Geist,
+                    Manrope, and Inter.
                   </p>
                 </div>
 
@@ -68,8 +70,8 @@ export const StudioFeatureSection = () => {
                   </div>
 
                   <p className="text-muted text-[11px] leading-relaxed">
-                    Fine-tune margins from 0.5x to 1.2x to fit your career history cleanly onto one
-                    or two pages.
+                    Fine-tune page margins from 16px to 52px to fit your career history cleanly onto
+                    one or two pages.
                   </p>
                 </div>
 
@@ -92,7 +94,8 @@ export const StudioFeatureSection = () => {
                   </div>
 
                   <p className="text-muted text-[11px] leading-relaxed">
-                    The in-browser preview is identical to your final compiled PDF download.
+                    The in-browser preview is checked against the compiled PDF by an automated
+                    parity suite on every change.
                   </p>
                 </div>
               </div>
@@ -124,7 +127,7 @@ export const StudioFeatureSection = () => {
                   <span className="size-2.5 rounded-full bg-emerald-500/70" />
 
                   <span className="text-muted ml-2 font-mono text-[10px]">
-                    studio.veriworkly.com/editor
+                    app.veriworkly.com/editor
                   </span>
                 </div>
 
@@ -166,7 +169,7 @@ export const StudioFeatureSection = () => {
                       Page Margin Controls
                     </span>
 
-                    <span className="text-accent font-mono font-bold">0.85x Compact</span>
+                    <span className="text-accent font-mono font-bold">24px Compact</span>
                   </div>
 
                   <div className="bg-muted/30 mt-2 h-1.5 w-full overflow-hidden rounded-full">

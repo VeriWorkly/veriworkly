@@ -9,13 +9,13 @@ export const SECURITY_COMMITMENTS: SecurityCommitment[] = [
   },
   {
     icon: Lock,
-    title: "TLS 1.3 & AES-256",
-    desc: "Encrypted in transit and at rest for optional cloud sync.",
+    title: "Encrypted in Transit",
+    desc: "HTTPS on every connection. At-rest encryption is provided by our infrastructure providers.",
   },
   {
     icon: Zap,
-    title: "24-Hour SLA",
-    desc: "Rapid triage and point of contact for security reports.",
+    title: "24-48h Response",
+    desc: "A named point of contact who acknowledges every security report.",
   },
   {
     icon: Code2,

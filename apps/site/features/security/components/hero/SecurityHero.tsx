@@ -26,13 +26,13 @@ export const SecurityHero = () => {
             </span>
 
             <span className="text-muted/60 font-mono text-[10px]">|</span>
-            <span className="text-muted text-[11px]">Local-First &amp; Client-Encrypted</span>
+            <span className="text-muted text-[11px]">Local-First &amp; Opt-In Sync</span>
           </div>
         </Reveal>
 
         <Reveal priority delay={0.06}>
           <h1 className="text-foreground text-[clamp(2.5rem,5.5vw,4.25rem)] leading-[1.04] font-bold tracking-tight text-balance">
-            Private, client-side security for your career records.
+            Local-first by default, and honest about the exceptions.
           </h1>
         </Reveal>
 

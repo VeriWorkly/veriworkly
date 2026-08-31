@@ -172,9 +172,16 @@ export const IngestionSection = () => {
               </ul>
             </div>
 
+            {/*
+              This previously read "Processed client-side in your browser for total
+              privacy", which was the opposite of what happens: the pasted text is
+              POSTed to /profiles/import/linkedin and forwarded to a third-party model
+              through parseTextToResumeSchema. Our own privacy policy describes the
+              real behaviour, so the marketing copy now matches it.
+            */}
             <div className="border-border/40 mt-6 border-t pt-4">
               <span className="text-muted font-mono text-[11px]">
-                Processed client-side in your browser for total privacy.
+                Parsed on our servers by an AI model, then discarded. Not used for training.
               </span>
             </div>
           </Card>

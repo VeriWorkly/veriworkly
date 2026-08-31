@@ -258,8 +258,8 @@ export const StepDetailCards = () => {
 
                 <p className="text-muted text-xs leading-relaxed sm:text-sm">
                   Documents compile in your browser tab using native vector rendering. Export in
-                  PDF, Word (.docx), Markdown, HTML, JSON Resume, or plain text with zero watermarks
-                  and zero subscription paywalls.
+                  PDF, Word (.docx), Markdown, HTML, JSON, or plain text with no watermark and zero
+                  subscription paywalls.
                 </p>
 
                 <div className="grid gap-2.5 text-xs sm:grid-cols-2">
@@ -287,7 +287,7 @@ export const StepDetailCards = () => {
                 <div className="border-border/40 flex items-center justify-between border-b pb-2">
                   <span className="text-foreground flex items-center gap-1.5 text-[11px] font-semibold">
                     <Download className="size-3.5 text-emerald-500" />
-                    Client-Side Export Engine
+                    Browser Export Engine
                   </span>
 
                   <span className="font-mono text-[10px] font-bold text-emerald-500">
@@ -296,21 +296,16 @@ export const StepDetailCards = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {[
-                    "PDF Vector",
-                    "Word DOCX",
-                    "Markdown",
-                    "JSON Resume",
-                    "Clean HTML",
-                    "Plain Text",
-                  ].map((f) => (
-                    <span
-                      key={f}
-                      className="border-border/60 bg-card text-foreground rounded-md border px-2.5 py-1 font-mono text-[10px] font-medium"
-                    >
-                      {f}
-                    </span>
-                  ))}
+                  {["PDF Vector", "Word DOCX", "Markdown", "JSON", "Clean HTML", "Plain Text"].map(
+                    (f) => (
+                      <span
+                        key={f}
+                        className="border-border/60 bg-card text-foreground rounded-md border px-2.5 py-1 font-mono text-[10px] font-medium"
+                      >
+                        {f}
+                      </span>
+                    ),
+                  )}
                 </div>
               </div>
             </div>

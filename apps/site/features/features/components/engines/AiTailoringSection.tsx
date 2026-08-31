@@ -164,8 +164,9 @@ export const AiTailoringSection = () => {
                 </h4>
 
                 <p className="text-muted text-xs leading-relaxed">
-                  Use your free credits or top up on demand. No recurring monthly subscriptions or
-                  surprise charges when your job search ends.
+                  Buy a credit pack when you need one, valid for 90 days, with no subscription
+                  required. Monthly plans exist if you prefer them, but nothing here bills you again
+                  once your job search ends. Note the free tier includes no AI credits.
                 </p>
               </div>
             </div>

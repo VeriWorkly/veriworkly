@@ -1,11 +1,16 @@
-import { CheckCircle2, XCircle, FileCode } from "lucide-react";
+import { CheckCircle2, XCircle, FileCode, ShieldCheck } from "lucide-react";
 
 import { GithubIcon } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
 
 import { Reveal } from "@/components/marketing/Reveal";
-import { DISCLOSURE_STEPS, DISCLOSURE_IN_SCOPE, DISCLOSURE_OUT_OF_SCOPE } from "../../data";
+import {
+  DISCLOSURE_STEPS,
+  DISCLOSURE_IN_SCOPE,
+  DISCLOSURE_OUT_OF_SCOPE,
+  DISCLOSURE_SAFE_HARBOUR,
+} from "../../data";
 
 export const ResponsibleDisclosureSection = () => {
   const supportEmail = siteConfig.email;
@@ -16,13 +21,19 @@ export const ResponsibleDisclosureSection = () => {
   return (
     <section className="border-border/40 space-y-12 border-t pt-16">
       <div className="max-w-2xl space-y-2">
+        {/*
+          "Bug Bounty" and "24h SLA Guarantee" both came out. There is no bounty
+          anywhere in the repository, and advertising one attracts researchers under a
+          false premise. The badge also contradicted SECURITY.md, which says 24-48
+          hours, and "Guarantee" is a word this page cannot support.
+        */}
         <div className="flex items-center gap-2">
           <span className="text-accent font-mono text-[10px] font-bold tracking-widest uppercase">
-            Responsible Disclosure &amp; Bug Bounty
+            Responsible Disclosure
           </span>
 
           <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-            24h SLA Guarantee
+            24-48h acknowledgement
           </span>
         </div>
 
@@ -31,8 +42,9 @@ export const ResponsibleDisclosureSection = () => {
         </h2>
 
         <p className="text-muted text-xs leading-relaxed sm:text-sm">
-          We investigate security reports proactively. Report issues privately to our engineering
-          team, and we will remediate swiftly.
+          Report it privately and we will work it through with you. We do not run a paid bug bounty,
+          so we cannot offer money — what we can offer is a fast, honest response and credit where
+          you want it.
         </p>
       </div>
 
@@ -116,11 +128,27 @@ export const ResponsibleDisclosureSection = () => {
         </Reveal>
       </div>
 
+      <Reveal>
+        <div className="rounded-3xl border border-emerald-500/25 bg-emerald-500/5 p-6 sm:p-7">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400">
+              <ShieldCheck className="size-4" />
+            </span>
+
+            <h4 className="text-foreground text-base font-bold">{DISCLOSURE_SAFE_HARBOUR.title}</h4>
+          </div>
+
+          <p className="text-muted mt-3 text-xs leading-relaxed sm:text-sm">
+            {DISCLOSURE_SAFE_HARBOUR.body}
+          </p>
+        </div>
+      </Reveal>
+
       <div className="border-border/60 bg-card/40 flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-6 backdrop-blur-sm">
         <div className="space-y-1">
           <h4 className="text-foreground text-sm font-bold">Ready to submit a security report?</h4>
 
-          <p className="text-muted text-xs">Direct inbox to our core engineering maintainers.</p>
+          <p className="text-muted text-xs">Goes straight to the maintainer, not a ticket queue.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

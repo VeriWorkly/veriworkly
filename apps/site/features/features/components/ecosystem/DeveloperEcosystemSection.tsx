@@ -98,8 +98,8 @@ export const DeveloperEcosystemSection = () => {
                 <h3 className="text-foreground text-base font-bold">API &amp; JSON Schema</h3>
 
                 <p className="text-muted text-xs leading-relaxed">
-                  Export valid JSON Resume structures, generate scoped developer API tokens, and
-                  programmatically render portfolio endpoints.
+                  Export your document data as structured JSON, generate scoped developer API
+                  tokens, and programmatically render portfolio endpoints.
                 </p>
               </div>
             </div>

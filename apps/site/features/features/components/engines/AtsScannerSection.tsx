@@ -120,7 +120,9 @@ export const AtsScannerSection = () => {
             </div>
 
             <div className="border-border/40 mt-6 flex items-center justify-between border-t pt-4">
-              <span className="text-muted text-xs">Run as many free scans as you need</span>
+              <span className="text-muted text-xs">
+                Free scans: 1 per 48h as a guest, 2 per 24h with an account
+              </span>
 
               <Link
                 href="/ats-checker"
@@ -196,11 +198,12 @@ export const AtsScannerSection = () => {
             </div>
 
             <div className="border-border/60 bg-background/50 rounded-2xl border p-4 text-xs">
-              <span className="text-foreground font-semibold">100% Free Forever: </span>
+              <span className="text-foreground font-semibold">Free to score: </span>
 
               <span className="text-muted">
-                Unlike other sites that charge $20/month just to view an ATS score, VeriWorkly
-                provides unrestricted scoring.
+                Other sites charge a monthly subscription just to see your ATS score. VeriWorkly
+                scores for free, within a fair-use quota: 1 scan per 48 hours without an account, 2
+                per 24 hours with a free account, and 300 per billing period on a paid plan.
               </span>
             </div>
           </div>

@@ -38,11 +38,13 @@ router.post("/", async (req, res) => {
 
     // 1. Honeypot check: If the hidden 'website' field was filled, it's a bot.
     if (website) {
+      // Identity fields are deliberately not logged here or below. Our privacy policy
+      // describes server logs as "IP address, user agent, request timestamps, and
+      // similar metadata" - logging a submitter's name and email exceeds what we
+      // disclosed. The metadata below is enough to tune the anti-bot heuristics.
       logger.warn("[Contact] Bot blocked via honeypot trap", {
         ip: req.ip,
-        name,
-        email,
-        honeypotValue: website,
+        honeypotLength: website.length,
       });
       // Pretend success so the bot does not adapt, but skip sending any email.
       res.json(
@@ -61,7 +63,6 @@ router.post("/", async (req, res) => {
         logger.warn("[Contact] Bot blocked via fast-submission timing check", {
           ip: req.ip,
           elapsedMs,
-          email,
         });
         res.json(
           createSuccessResponse(
@@ -74,10 +75,8 @@ router.post("/", async (req, res) => {
     }
 
     logger.info("[Contact] Received legitimate contact submission", {
-      name,
-      email,
-      subject,
       ip: req.ip,
+      messageLength: message.length,
     });
 
     await sendContactEmail({ name, email, subject, message });

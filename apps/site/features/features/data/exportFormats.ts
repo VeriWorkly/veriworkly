@@ -27,7 +27,7 @@ export const EXPORT_FORMATS: ExportFormatItem[] = [
   },
   {
     ext: "JSON",
-    name: "JSON Resume",
+    name: "JSON",
     desc: "Standardized JSON schema backup for portable career data.",
     badge: "Open Standard",
   },

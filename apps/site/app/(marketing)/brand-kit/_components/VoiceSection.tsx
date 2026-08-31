@@ -19,7 +19,7 @@ const VOICE_PRINCIPLES = [
   {
     title: "Built by the same people who use it",
     description:
-      "Written by people who build resumes, not a brand team. Plain language over jargon; explain ATS, JSON Resume, etc. on first use.",
+      "Written by people who build resumes, not a brand team. Plain language over jargon; explain ATS, parse rate, etc. on first use.",
   },
   {
     title: "Confident about being free and open",

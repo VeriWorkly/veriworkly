@@ -9,14 +9,14 @@ export const WORKFLOW_STEPS: WorkflowStepItem[] = [
     subtitle: "GitHub OAuth & LinkedIn Data Parser",
     description:
       "Your career DNA starts in your private Master Profile. Connect GitHub to automatically import repositories, star counts, and language breakdowns, or import your LinkedIn data archive in one click. No manual retyping required.",
-    tags: ["GitHub OAuth", "LinkedIn Ingest", "Master Profile", "Client-Side Parsing"],
+    tags: ["GitHub OAuth", "LinkedIn Ingest", "Master Profile", "AI-Parsed on Import"],
   },
   {
     step: "02",
     title: "Draft Inside the Sandboxed Studio",
     subtitle: "Zero Sign-Up & Non-Destructive Editing",
     description:
-      "Open the studio immediately in your browser tab without creating an account or providing a credit card. Choose from proven ATS templates, customize font pairings (Inter, Source Serif, IBM Plex), and adjust margins without overwriting your master profile records.",
+      "Continue as a guest and the studio opens without an account or a credit card. Choose from proven ATS templates, switch between Geist, Manrope, and Inter, and adjust page margins without overwriting your Master Profile records.",
     tags: ["No Sign-Up Needed", "LocalStorage", "Typographic Scales", "Snapshot Isolation"],
   },
   {
@@ -25,15 +25,20 @@ export const WORKFLOW_STEPS: WorkflowStepItem[] = [
     subtitle: "Keyword Gap Analysis & Live Diff Approvals",
     description:
       "Paste any target job description. The scanner checks hard skills, soft skills, and parser readability. Use AI to rewrite vague bullets into quantified achievements, reviewing every suggested edit with side-by-side diffs before accepting.",
-    tags: ["Target Job Matching", "ATS Parser Safety", "AI Diff Previews", "Zero Hallucinations"],
+    tags: [
+      "Target Job Matching",
+      "ATS Parser Safety",
+      "AI Diff Previews",
+      "You Approve Every Edit",
+    ],
   },
   {
     step: "04",
-    title: "100% Watermark-Free Multi-Format Exports",
-    subtitle: "In-Browser Compilation in 6 Formats",
+    title: "Watermark-Free Multi-Format Exports",
+    subtitle: "Six Formats, Free and Ungated",
     description:
-      "What you see in the live preview is rendered and compiled directly in your browser. Download unwatermarked PDFs, editable Microsoft Word (.docx) files, Markdown, clean HTML, plain text, or standardized JSON Resume schemas with zero subscription traps.",
-    tags: ["PDF Export", "Word (.docx)", "Markdown", "JSON Resume", "Zero Watermarks"],
+      "The live preview is rendered in your browser and checked against the PDF by an automated parity suite. Download unwatermarked PDFs, editable Microsoft Word (.docx) files, Markdown, clean HTML, plain text, or a JSON export of your document data. Every format is free on every tier.",
+    tags: ["PDF Export", "Word (.docx)", "Markdown", "JSON", "No Document Watermark"],
   },
   {
     step: "05",
