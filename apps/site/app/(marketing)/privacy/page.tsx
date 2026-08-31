@@ -131,7 +131,7 @@ const PrivacyPage = () => {
               href: "/security",
             }}
             secondaryAction={{
-              label: "Contact privacy officer",
+              label: "Contact our Grievance Officer",
               href: "/contact",
             }}
           />
@@ -149,12 +149,12 @@ const PrivacyPage = () => {
         <LegalContactBanner
           secondaryActionHref="/security"
           secondaryActionIcon={ShieldCheck}
-          primaryActionEmail={siteConfig.email}
+          primaryActionEmail={siteConfig.legalContact.email}
           secondaryActionText="Security Overview"
-          primaryActionText="Contact Privacy Team"
+          primaryActionText="Contact our Grievance Officer"
           tagline="Privacy Inquiries & GDPR Requests"
           title="Have questions about your data privacy?"
-          description="Contact our privacy compliance team directly for data exports, deletions, or policy clarifications."
+          description={`Write to ${siteConfig.legalContact.name}, our named ${siteConfig.legalContact.role}, for data exports, deletions, or anything in this policy that is unclear.`}
         />
       </LegalPageShell>
     </>

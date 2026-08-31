@@ -1,9 +1,12 @@
 # VeriWorkly Security Policy (RFC 9116)
 # https://veriworkly.com/security
+#
+# Acknowledgments is deliberately omitted: we have no acknowledgements page, and
+# pointing the field at /security advertised one that does not exist. We credit
+# reporters by name in release notes instead, where they want that.
 
-Contact: mailto:info@veriworkly.com
+Contact: mailto:grievance@veriworkly.com
 Expires: 2027-12-31T23:59:59.000Z
 Preferred-Languages: en
 Canonical: https://veriworkly.com/.well-known/security.txt
 Policy: https://veriworkly.com/security
-Acknowledgments: https://veriworkly.com/security

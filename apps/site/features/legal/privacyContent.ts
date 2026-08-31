@@ -37,8 +37,28 @@ export const privacySections: LegalSection[] = [
     id: "controller",
     title: "Who We Are & How to Reach Us",
     intro: [
-      `VeriWorkly is operated by an independent team. For all privacy questions, data requests, or complaints, contact us at ${siteConfig.email}. We aim to respond to privacy inquiries within 30 days, and typically much sooner.`,
-      'If your jurisdiction requires you to be told the identity of the party responsible for processing your data (a "data controller" under GDPR or a similar concept elsewhere), that party is VeriWorkly, reachable at the email address above.',
+      "VeriWorkly is a small independent project based in India. We would rather name a person than hide behind a team alias, so there is one named contact for every privacy question, data request, complaint, or takedown notice:",
+    ],
+    subsections: [
+      {
+        heading: "Grievance Officer & Data Protection Contact",
+        list: [
+          `${siteConfig.legalContact.name}, ${siteConfig.legalContact.role}`,
+          `Email: ${siteConfig.legalContact.email}`,
+          `Post: ${siteConfig.legalContact.postalAddress}`,
+        ],
+        paragraphs: [
+          "We acknowledge privacy requests and grievances within 3 business days and aim to resolve them within 30 days. If something will take longer, we will tell you where it stands rather than going quiet.",
+          'If your jurisdiction requires you to be told the identity of the party responsible for processing your data (a "data controller" under the GDPR, or a "Data Fiduciary" under India\'s DPDP framework), that party is VeriWorkly, reachable through the contact above.',
+        ],
+      },
+      {
+        heading: "EEA and UK users: our representative",
+        paragraphs: [
+          "We are established outside the EEA and the UK. A controller outside those regions that targets people inside them is generally required to designate a local representative and publish their details, unless its processing is occasional and low-risk.",
+          "TODO(legal): we have not yet appointed an Article 27 representative for the EEA or the UK. Given that we process career history at scale, we should not assume the occasional-processing exemption applies without a documented assessment. This paragraph must be replaced either with the appointed representative's name and address, or with a short statement of why the exemption applies, before this policy is relied upon for EEA/UK users. Flagged rather than quietly omitted, because the analysis is the deliverable.",
+        ],
+      },
     ],
   },
   {
@@ -180,13 +200,23 @@ export const privacySections: LegalSection[] = [
     ],
     subsections: [
       {
-        heading: "Service providers we use to operate VeriWorkly",
+        heading: "Subprocessors we use to operate VeriWorkly",
+        paragraphs: [
+          "These are every third party that may process your personal data on our behalf, what they do, and what they see. We keep this list current: if we add a subprocessor we update this section, and material additions are noted in the change log at the end of this policy.",
+        ],
         list: [
-          "Dodo Payments - payment processing and billing, under PCI-DSS-compliant handling. Dodo Payments processes your payment method directly; we receive transaction and subscription status, not your full card details.",
-          "Cloudflare R2 - object storage for portfolio images and assets you upload.",
-          "Infrastructure and hosting providers for our PostgreSQL database, Redis cache, and application servers.",
-          "Better Auth (self-hosted authentication library) and, where you choose to use them, the OAuth providers Google, GitHub, and LinkedIn, solely to authenticate your sign-in.",
-          "Third-party AI model providers (see Section 8) when you trigger an AI feature.",
+          "Dodo Payments — payment processing and billing, as merchant of record. They process your payment method directly and we never receive full card details, only transaction and subscription status. Dodo Payments states that it handles card data under PCI-DSS.",
+          "Cloudflare R2 — object storage for portfolio images and other assets you upload.",
+          "Third-party AI model providers (see Section 8) — receive the text you submit when you trigger an AI feature, for the duration of that request. They are contractually prohibited from training on it.",
+          "Better Auth — a self-hosted authentication library running on our own infrastructure, so no data leaves us for it. Where you choose to sign in with Google, GitHub, or LinkedIn, that provider confirms your identity to us; we receive your email address and basic profile, not your password.",
+          "Our hosting, database, and cache providers — run the application servers, PostgreSQL database, and Redis cache that hold synced Account data.",
+        ],
+      },
+      {
+        heading: "Where processing happens, and on what basis",
+        paragraphs: [
+          "Several of the providers above process data outside your country, including outside the EEA and the UK. Where we transfer personal data internationally, we rely on the European Commission's Standard Contractual Clauses (and the UK International Data Transfer Addendum for UK transfers), or on an adequacy decision where one covers the destination.",
+          "TODO(legal): this section must be completed into a dated table naming each subprocessor's processing location, the specific transfer mechanism relied on for it, and confirmation that a data processing agreement is in place, before this policy is relied upon. Naming a mechanism generically is weaker than naming it per recipient, and we would rather flag the gap than paper over it.",
         ],
       },
       {
@@ -218,11 +248,17 @@ export const privacySections: LegalSection[] = [
     subsections: [
       {
         list: [
-          "Account, Master Profile, and synced document data: retained for as long as your Account is active. If you delete your Account, we delete or anonymize this data within a reasonable operational period, except where we are legally required or permitted to retain it longer (for example, billing records for tax/accounting purposes, or fraud-prevention records).",
-          "Guest Session (local-first, no Account): data lives only in your browser and the Guest Session cookie, which expires automatically after 30 days of inactivity.",
-          "Aggregate usage telemetry: retained in aggregate, de-identified form indefinitely, since it is not tied to identifying an individual once aggregated.",
-          "Server and security logs: retained for a limited operational window sufficient for security and debugging purposes, then routinely purged or rotated.",
-          "Billing records: retained as required by applicable tax, accounting, and financial regulations, generally several years after the relevant transaction.",
+          "Account, Master Profile, and synced document data: kept while your Account is active. If you delete your Account we remove this data within 30 days, other than anything we must keep under the rows below.",
+          "Guest Session (local-first, no Account): stays in your browser. The Guest Session cookie expires 30 days after your last visit. We hold nothing server-side for guest use.",
+          "ATS scans: not retained at all. A scan is processed in memory and discarded when the response is sent — there is no database write anywhere in the ATS path.",
+          "AI request text: not retained by us after the request completes. The model provider's own retention applies to the request itself, which is why Section 8 asks you to treat an AI action as a deliberate choice.",
+          "Server and security logs: 90 days, then rotated out.",
+          "Takedown and grievance records: 3 years from resolution, so that we can apply our repeat-infringer policy consistently and show how a complaint was handled.",
+          "Billing and tax records: 8 years from the relevant transaction, which is the retention period Indian tax and accounting rules require of us. We cannot delete these on request, and account deletion does not remove them.",
+          "Aggregate usage telemetry: kept indefinitely in de-identified, aggregated form, from which you cannot be re-identified.",
+        ],
+        paragraphs: [
+          "Two of these pull in opposite directions and we would rather say so plainly than let you discover it. We keep no record of your ATS scans, but we must keep billing records for years — so if you paid us, deleting your Account removes your documents and profile, not the fact of the transaction.",
         ],
       },
     ],
@@ -243,6 +279,14 @@ export const privacySections: LegalSection[] = [
           "Objection / restriction: object to or request that we restrict certain processing, such as aggregate analytics.",
           "Withdraw consent: for anything based on consent (for example, GitHub/LinkedIn import or AI processing), simply stop using that feature, or ask us to delete data already collected through it.",
           "Non-discrimination: we will not deny you service, charge you a different price, or provide a different level of service because you exercised a privacy right.",
+          "Complain to a regulator: if you think we have mishandled your data, you can lodge a complaint with a data protection authority. You do not have to come to us first, though we would like the chance to put it right.",
+        ],
+      },
+      {
+        heading: "Complaining to a regulator",
+        paragraphs: [
+          "If you are in the EEA or the UK, you can complain to the supervisory authority in the country where you live or work, or where you think the problem happened. In the UK that is the Information Commissioner's Office. If you are in India, you can escalate to the Data Protection Board once we have had a chance to respond to your grievance.",
+          "We would rather hear from you first — most problems are quicker to fix directly — but this right exists whether or not you use ours, and we will never treat you differently for exercising it.",
         ],
       },
       {
@@ -280,6 +324,14 @@ export const privacySections: LegalSection[] = [
           "No method of transmission or storage is 100% secure, and we cannot guarantee absolute security. If you discover a security vulnerability, please report it responsibly per our Security Policy rather than disclosing it publicly.",
         ],
       },
+      {
+        heading: "If something goes wrong: breach notification",
+        paragraphs: [
+          "A policy that says nothing about breaches reads as unprepared, so here is our commitment. If personal data we hold is breached, we will notify the relevant supervisory authorities within the deadlines the applicable law sets, which are short — in the EEA and UK that is 72 hours from becoming aware, and India's framework sets its own tight reporting window.",
+          "Where a breach is likely to result in a high risk to your rights and freedoms, we will tell you directly and without undue delay. We will tell you what happened, what data was involved, what we have done about it, and what you can do to protect yourself — in plain language, not a legal notice designed to be skimmed past.",
+          "We will notify you even where doing so is embarrassing for us. If we are still working out the scope, we will say that rather than waiting for a complete picture before telling you anything.",
+        ],
+      },
     ],
   },
   {
@@ -293,7 +345,9 @@ export const privacySections: LegalSection[] = [
     id: "childrens-privacy",
     title: "Children's Privacy",
     intro: [
-      "The Service is not directed to children under 16, and we do not knowingly collect personal data from anyone under that age. If we learn that we have inadvertently collected personal data from a child under 16, we will take reasonable steps to delete it. If you believe a child has provided us with personal data, please contact us.",
+      "The Service is for adults. You must be 18 or over to use it, as our Terms require, and we do not knowingly collect personal data from anyone under 18.",
+      "We set the floor at 18 rather than at a lower age of digital consent because India's data protection framework treats everyone under 18 as a child, with requirements around verifiable parental consent and restrictions on tracking and targeted advertising directed at them. We are not equipped to meet those responsibly, so we do not offer the Service to under-18s at all.",
+      `If we learn that we hold personal data from someone under 18, we will close the account and delete the data. If you believe a child has given us personal data, contact ${siteConfig.legalContact.name} at ${siteConfig.legalContact.email} and we will act on it.`,
     ],
   },
   {

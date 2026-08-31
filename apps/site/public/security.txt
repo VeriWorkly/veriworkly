@@ -1,9 +1,0 @@
-# VeriWorkly Security Policy (RFC 9116)
-# https://veriworkly.com/security
-
-Contact: mailto:info@veriworkly.com
-Expires: 2027-12-31T23:59:59.000Z
-Preferred-Languages: en
-Canonical: https://veriworkly.com/.well-known/security.txt
-Policy: https://veriworkly.com/security
-Acknowledgments: https://veriworkly.com/security

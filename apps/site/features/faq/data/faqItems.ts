@@ -238,7 +238,7 @@ export const faqs: FaqItem[] = [
     category: "ai",
     question: "Which AI models power the assistant?",
     answer:
-      "We use top models from Anthropic, Google Gemini, and OpenAI. They are tuned to produce clear, natural, professional writing without generic corporate buzzwords or artificial phrasing.",
+      "We use frontier models from Anthropic and OpenAI, which are the AI subprocessors named in our Privacy Policy. They are prompted to produce clear, natural, professional writing without generic corporate buzzwords or artificial phrasing.",
   },
   {
     id: "use-without-ai",

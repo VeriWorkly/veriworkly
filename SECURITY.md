@@ -27,7 +27,7 @@ Instead, report it responsibly:
 
 Send an email to:
 
-**[info@veriworkly.com](mailto:info@veriworkly.com)**
+**[grievance@veriworkly.com](mailto:grievance@veriworkly.com)**
 
 ---
 
@@ -50,6 +50,31 @@ Once resolved:
 
 - A security advisory may be published
 - You will be credited (if desired)
+
+---
+
+## 🛡️ Safe Harbour
+
+If you make a good-faith effort to follow this policy while researching a
+vulnerability, we will treat your testing as **authorised**. We will not pursue or
+support legal action against you over it, and if a third party brings action over
+research that followed this policy, we will make it known that your testing was
+authorised.
+
+To stay inside that, please:
+
+- Stay within scope, and work only with your own accounts and your own data.
+- Do not degrade the service for other people.
+- Do not access, modify, or retain anyone else's personal data. If you encounter it
+  by accident, stop, and tell us.
+- Give us a reasonable chance to fix the issue before disclosing it publicly.
+
+If you are unsure whether something is in scope, ask first. We would much rather answer
+the question than have you guess.
+
+**We do not run a paid bug bounty.** We are a very small team without a budget for one,
+and we would rather say that plainly than imply a reward that is not there. What we can
+offer is a fast, honest response and public credit where you want it.
 
 ---
 
