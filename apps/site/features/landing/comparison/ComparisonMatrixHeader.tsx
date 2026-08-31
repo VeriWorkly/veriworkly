@@ -8,7 +8,7 @@ const ComparisonMatrixHeader = () => {
       </div>
 
       <h2 className="font-sans text-3xl font-semibold tracking-tighter text-balance text-zinc-900 sm:text-4xl md:text-5xl lg:text-6xl dark:text-white">
-        Why thousands are leaving subscription resume builders.
+        What subscription resume builders charge you for.
       </h2>
 
       <p className="mx-auto mt-5 max-w-[52ch] text-base leading-relaxed text-zinc-500 sm:mt-6 sm:text-lg dark:text-zinc-400">

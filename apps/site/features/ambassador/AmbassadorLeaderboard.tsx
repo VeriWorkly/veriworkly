@@ -66,8 +66,8 @@ const AmbassadorLeaderboard = () => {
             STANDINGS
           </h2>
           <p className="max-w-sm text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Sample campus standings. Leaderboard ranks are updated automatically based on active
-            peer registrations and approved creator walkthroughs.
+            An illustration of how campus standings will look. These are sample names and figures,
+            not real ambassadors — the program has not launched, and nothing here is live data.
           </p>
         </div>
 

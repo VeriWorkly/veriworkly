@@ -4,16 +4,7 @@ import { useRef, useEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useReducedMotion, motion } from "framer-motion";
-import {
-  UserCheck,
-  Share2,
-  Award,
-  ClipboardList,
-  Send,
-  CheckCircle,
-  Heart,
-  Repeat,
-} from "lucide-react";
+import { UserCheck, Award, ClipboardList, Send } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,32 +17,39 @@ type PlaybookStep = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
+/**
+ * Describes the flow the server actually implements: apply, human review, decision.
+ * An earlier revision claimed an "automated node validator" that "issues campus
+ * ambassador badges instantly" and points that score "automatically" - none of
+ * which exists. Review is AmbassadorService.reviewApplication, run by an admin
+ * against a PENDING row.
+ */
 const steps: PlaybookStep[] = [
   {
     num: "01",
-    title: "Verify student status",
-    subtitle: "Submit academic credentials to activate leader access.",
+    title: "Apply",
+    subtitle: "Tell us about you and your campus.",
     description:
-      "Onboard by entering your (.edu) or local university email. Our automated node validator reviews student registers and issues campus ambassador badges instantly.",
-    badgeLabel: "Step 1: Onboard",
+      "Fill in the application form: your college, graduation year, and a few short answers about why you want in and what you would bring. It takes a few minutes.",
+    badgeLabel: "Step 1: Apply",
     icon: UserCheck,
   },
   {
     num: "02",
-    title: "Promote & publish",
-    subtitle: "Showcase career tools and share reviews on social feeds.",
+    title: "Reviewed by a person",
+    subtitle: "Read by hand, not scored by a bot.",
     description:
-      "Help peers compile resume profiles. Post video walkthroughs or write articles on Twitter/X, Medium, or LinkedIn to start scoring points automatically.",
-    badgeLabel: "Step 2: Share",
-    icon: Share2,
+      "Your application is read by a person, so a decision takes time rather than arriving instantly. The apply page shows your status throughout as pending, approved, or not accepted.",
+    badgeLabel: "Step 2: Review",
+    icon: ClipboardList,
   },
   {
     num: "03",
-    title: "Claim Pro licenses",
-    subtitle: "Accumulate points and exchange for Creator Pro.",
+    title: "Join the founding cohort",
+    subtitle: "Help set the rules before they are fixed.",
     description:
-      "Redeem 1,500 point blocks for 30-day premium Creator Pro licenses. Tokens stack, allowing you to secure permanent pro access on your profile.",
-    badgeLabel: "Step 3: Exchange",
+      "Approved ambassadors get a direct line to the person building VeriWorkly and a say in how the reward system works. We publish the specifics before anyone is asked to earn anything.",
+    badgeLabel: "Step 3: Build",
     icon: Award,
   },
 ];
@@ -99,6 +97,7 @@ const AmbassadorPlaybook = () => {
 
   return (
     <div
+      id="playbook"
       ref={containerRef}
       className="bg-background relative z-25 border-b border-zinc-200/80 dark:border-white/10"
     >
@@ -116,8 +115,8 @@ const AmbassadorPlaybook = () => {
             WORKS
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Scroll down to watch steps stack and view the automated student leader credential
-            process.
+            Scroll down for the three steps, exactly as they run today: you apply, a person reads
+            it, and you hear back.
           </p>
           <div className="flex items-center justify-center gap-1.5 pt-2">
             <span className="h-1 w-6 animate-pulse rounded-full bg-zinc-900 dark:bg-white" />
@@ -162,32 +161,32 @@ const AmbassadorPlaybook = () => {
                   >
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
-                        Academic Validation
+                        Application
                       </span>
-                      <span className="font-mono text-[9px] font-bold text-emerald-600 uppercase dark:text-emerald-400">
-                        ONLINE
+                      <span className="font-mono text-[9px] font-bold text-zinc-400 uppercase dark:text-zinc-500">
+                        Illustrative
                       </span>
                     </div>
 
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <span className="block text-[9px] font-black tracking-widest text-zinc-400 uppercase dark:text-zinc-500">
-                          University Email
+                          Your college
                         </span>
-                        <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-3 font-mono text-xs font-bold text-zinc-900 dark:border-white/10 dark:bg-zinc-950 dark:text-white">
-                          <span>alex.chen@waterloo.ca</span>
+                        <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-3 text-xs font-bold text-zinc-400 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-500">
+                          <span>Where are you studying?</span>
                           <Send className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-3 rounded-xl border border-emerald-500/10 bg-emerald-500/5 p-3.5">
-                        <CheckCircle className="mt-0.5 h-4.5 w-4.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <div className="flex items-start gap-3 rounded-xl border border-indigo-500/10 bg-indigo-500/5 p-3.5">
+                        <ClipboardList className="mt-0.5 h-4.5 w-4.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
                         <div>
                           <span className="block text-[10px] font-black text-zinc-900 uppercase dark:text-white">
-                            Node verified
+                            Sent for review
                           </span>
                           <span className="mt-0.5 block text-[9px] leading-normal text-zinc-500 dark:text-zinc-400">
-                            Waterloo domain validated. Campus Leader credentials issued.
+                            Read by a person, not scored automatically.
                           </span>
                         </div>
                       </div>
@@ -202,39 +201,30 @@ const AmbassadorPlaybook = () => {
                   >
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
-                        Share Verification
+                        Your status
                       </span>
-                      <span className="font-mono text-[9px] font-bold text-indigo-600 uppercase dark:text-indigo-400">
-                        VALIDATED
+                      <span className="font-mono text-[9px] font-bold text-zinc-400 uppercase dark:text-zinc-500">
+                        Illustrative
                       </span>
                     </div>
 
                     <div className="space-y-3">
                       <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-white/10 dark:bg-zinc-950">
-                        <p className="text-xs leading-relaxed text-zinc-900 dark:text-white">
-                          {'"Built my portfolio on '}
-                          <strong className="text-indigo-600 dark:text-indigo-400">
-                            @veriworkly
-                          </strong>
-                          {" privately in 5 mins. Check it out: "}
-                          <span className="text-indigo-600 underline dark:text-indigo-400">
-                            alex.veriworkly.com
-                          </span>
-                          {'"'}
-                        </p>
-                        <div className="flex items-center gap-6 font-mono text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
-                          <span className="flex items-center gap-1">
-                            <Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" /> 148
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Repeat className="h-3.5 w-3.5 text-emerald-500" /> 32
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                          <span className="text-[10px] font-black tracking-widest text-amber-600 uppercase dark:text-amber-500">
+                            Pending review
                           </span>
                         </div>
+                        <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                          Your application is in the queue. One person reads every one of these, so
+                          give it a little time — you will not be left guessing.
+                        </p>
                       </div>
 
                       <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs font-bold dark:border-white/10 dark:bg-zinc-950">
-                        <span className="text-zinc-500 dark:text-zinc-400">Points Credited</span>
-                        <span className="font-mono text-zinc-900 dark:text-white">+50 PTS</span>
+                        <span className="text-zinc-500 dark:text-zinc-400">Decision</span>
+                        <span className="text-zinc-900 dark:text-white">By a human</span>
                       </div>
                     </div>
                   </motion.div>
@@ -247,10 +237,10 @@ const AmbassadorPlaybook = () => {
                   >
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
-                        Upgrade Hub
+                        Founding cohort
                       </span>
-                      <span className="font-mono text-[9px] font-bold text-amber-600 uppercase dark:text-amber-500">
-                        READY
+                      <span className="font-mono text-[9px] font-bold text-zinc-400 uppercase dark:text-zinc-500">
+                        Illustrative
                       </span>
                     </div>
 
@@ -268,10 +258,10 @@ const AmbassadorPlaybook = () => {
                         <div className="flex items-start justify-between">
                           <div>
                             <span className="block text-[8px] font-black tracking-widest text-zinc-500 uppercase">
-                              Upgrade Token
+                              What we are building
                             </span>
                             <h4 className="mt-0.5 text-xs font-bold tracking-tight text-white">
-                              Creator Pro Key
+                              Free paid-tier access
                             </h4>
                           </div>
                           <Award className="h-4.5 w-4.5 text-zinc-400" />
@@ -279,17 +269,17 @@ const AmbassadorPlaybook = () => {
 
                         <div className="mt-3 space-y-1 border-t border-dashed border-white/15 pt-3">
                           <span className="block text-[7px] tracking-widest text-zinc-500 uppercase">
-                            Activation Key
+                            Status
                           </span>
-                          <span className="font-mono text-xs font-bold tracking-widest text-zinc-300">
-                            VW-PRO-K98X-841L
+                          <span className="text-xs font-bold tracking-tight text-zinc-300">
+                            In development — terms published before launch
                           </span>
                         </div>
                       </div>
 
-                      <button className="w-full cursor-pointer rounded-xl bg-zinc-900 py-3 text-[10px] font-bold tracking-wider text-white uppercase transition-transform hover:bg-zinc-800 active:scale-98 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100">
-                        Claim Voucher
-                      </button>
+                      <span className="block w-full rounded-xl border border-zinc-200 py-3 text-center text-[10px] font-bold tracking-wider text-zinc-500 uppercase dark:border-white/10 dark:text-zinc-400">
+                        Rewards not yet live
+                      </span>
                     </div>
                   </motion.div>
                 )}

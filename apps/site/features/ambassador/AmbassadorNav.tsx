@@ -18,7 +18,7 @@ const AmbassadorNav = () => {
 
   const navItems = [
     { label: "Home", target: "hero" },
-    { label: "Earnings", target: "calculator-widget" },
+    { label: "Process", target: "playbook" },
     { label: "FAQ", target: "faq-section" },
   ];
 
