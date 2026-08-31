@@ -224,7 +224,7 @@ export const StepDetailCards = () => {
                     AI Bullet Diff
                   </span>
 
-                  <span className="text-[10px] font-bold text-emerald-500">+38% Match</span>
+                  <span className="text-[10px] font-bold text-emerald-500">Match improved</span>
                 </div>
 
                 <div className="space-y-1.5 text-[11px]">

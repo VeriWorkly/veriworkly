@@ -48,7 +48,7 @@ export const AiTailoringSection = () => {
                 </div>
 
                 <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  +38% ATS Impact
+                  Illustrative
                 </span>
               </div>
 

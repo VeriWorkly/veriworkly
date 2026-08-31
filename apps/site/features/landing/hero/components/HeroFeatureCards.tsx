@@ -13,9 +13,15 @@ import {
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+/**
+ * The scores, match percentages and view counts in these cards are illustrative - they
+ * show what the interface looks like, not anything measured. They are captioned as
+ * such below, following the same convention as ReportPreview on /ats-checker: a
+ * fabricated number rendered without a label reads as a product fact.
+ */
 export const HeroFeatureCards = () => {
   return (
-    <motion.div
+    <motion.figure
       animate={{ opacity: 1, y: 0 }}
       initial={{ opacity: 0, y: 30 }}
       transition={{ duration: 0.7, delay: 0.45, ease: [0.23, 1, 0.32, 1] }}
@@ -153,7 +159,7 @@ export const HeroFeatureCards = () => {
               </div>
 
               <div className="truncate text-[11px] text-gray-500 sm:text-xs">
-                gautam.dev/portfolio
+                yourname.veriworkly.com
               </div>
             </div>
 
@@ -308,7 +314,11 @@ export const HeroFeatureCards = () => {
           Explore Gallery
         </Link>
       </div>
-    </motion.div>
+
+      <figcaption className="text-muted/70 col-span-full mt-4 text-center font-mono text-[11px] lg:mt-8">
+        Interface preview. Scores, match percentages and view counts shown here are illustrative.
+      </figcaption>
+    </motion.figure>
   );
 };
 

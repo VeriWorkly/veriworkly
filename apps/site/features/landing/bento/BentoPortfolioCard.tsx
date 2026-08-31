@@ -30,7 +30,7 @@ const BentoPortfolioCard = ({ yOffset, portfolioTilt, canHover }: BentoPortfolio
             <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
           </div>
 
-          <span className="font-mono text-[8px] text-zinc-400">gautam.dev</span>
+          <span className="font-mono text-[8px] text-zinc-400">yourname.veriworkly.com</span>
         </div>
 
         <div className="flex items-center gap-2">

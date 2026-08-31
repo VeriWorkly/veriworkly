@@ -54,14 +54,20 @@ export const IngestionSection = () => {
 
               <div className="border-border/60 bg-background/70 space-y-2.5 rounded-2xl border p-4 font-mono text-xs">
                 <div className="text-muted border-border/40 flex items-center justify-between border-b pb-2 text-[11px]">
+                  {/*
+                    A generic placeholder, not a real repository. This previously read
+                    "veriworkly/core-engine · 342 stars" - a repository that does not
+                    exist, with an invented star count, rendered as if it were live
+                    data. A mockup should look like a mockup.
+                  */}
                   <span className="text-foreground flex items-center gap-1.5 font-semibold">
                     <GitBranch className="text-accent size-3.5" />
-                    veriworkly/core-engine
+                    your-name/your-project
                   </span>
 
                   <span className="flex items-center gap-1 text-amber-500">
                     <Star className="size-3 fill-amber-500" />
-                    342 stars
+                    stars
                   </span>
                 </div>
 
@@ -85,14 +91,15 @@ export const IngestionSection = () => {
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="text-accent size-3.5 shrink-0" />
 
-                  <span>Calculates verified language proficiency breakdown</span>
+                  <span>Summarises the language mix across your repositories</span>
                 </li>
               </ul>
             </div>
 
             <div className="border-border/40 mt-6 border-t pt-4">
               <span className="text-muted font-mono text-[11px]">
-                Read-only repository access. We never request write permissions.
+                We request no write, commit, or SSH access. GitHub shows you the exact scopes on its
+                consent screen.
               </span>
             </div>
           </Card>
@@ -132,7 +139,7 @@ export const IngestionSection = () => {
                   </span>
 
                   <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                    100% Parsed
+                    Parsed
                   </span>
                 </div>
 
