@@ -159,7 +159,7 @@ export const HeroFeatureCards = () => {
               </div>
 
               <div className="truncate text-[11px] text-gray-500 sm:text-xs">
-                yourname.veriworkly.com
+                gautam.veriworkly.com
               </div>
             </div>
 

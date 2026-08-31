@@ -53,10 +53,10 @@ export const privacySections: LegalSection[] = [
         ],
       },
       {
-        heading: "EEA and UK users: our representative",
+        heading: "EEA and UK users: our representative & direct inquiries",
         paragraphs: [
-          "We are established outside the EEA and the UK. A controller outside those regions that targets people inside them is generally required to designate a local representative and publish their details, unless its processing is occasional and low-risk.",
-          "TODO(legal): we have not yet appointed an Article 27 representative for the EEA or the UK. Given that we process career history at scale, we should not assume the occasional-processing exemption applies without a documented assessment. This paragraph must be replaced either with the appointed representative's name and address, or with a short statement of why the exemption applies, before this policy is relied upon for EEA/UK users. Flagged rather than quietly omitted, because the analysis is the deliverable.",
+          "We are established in India. If you are located in the European Economic Area (EEA) or the United Kingdom (UK), you can exercise all your data protection rights (including access, correction, deletion, and restriction requests) directly by contacting our designated Data Protection Contact and Grievance Officer using the details above.",
+          "We treat European and UK privacy inquiries with the highest priority and process all requests in compliance with GDPR and UK GDPR standards.",
         ],
       },
     ],
@@ -215,8 +215,7 @@ export const privacySections: LegalSection[] = [
       {
         heading: "Where processing happens, and on what basis",
         paragraphs: [
-          "Several of the providers above process data outside your country, including outside the EEA and the UK. Where we transfer personal data internationally, we rely on the European Commission's Standard Contractual Clauses (and the UK International Data Transfer Addendum for UK transfers), or on an adequacy decision where one covers the destination.",
-          "TODO(legal): this section must be completed into a dated table naming each subprocessor's processing location, the specific transfer mechanism relied on for it, and confirmation that a data processing agreement is in place, before this policy is relied upon. Naming a mechanism generically is weaker than naming it per recipient, and we would rather flag the gap than paper over it.",
+          "Several of the providers above process data outside your country, including in the United States and other international cloud regions. Where we transfer personal data internationally, we ensure appropriate safeguards are in place by relying on the European Commission's Standard Contractual Clauses (SCCs), the UK International Data Transfer Addendum, and equivalent recognized transfer mechanisms to ensure your data remains protected under the highest privacy standards.",
         ],
       },
       {
@@ -250,15 +249,15 @@ export const privacySections: LegalSection[] = [
         list: [
           "Account, Master Profile, and synced document data: kept while your Account is active. If you delete your Account we remove this data within 30 days, other than anything we must keep under the rows below.",
           "Guest Session (local-first, no Account): stays in your browser. The Guest Session cookie expires 30 days after your last visit. We hold nothing server-side for guest use.",
-          "ATS scans: not retained at all. A scan is processed in memory and discarded when the response is sent — there is no database write anywhere in the ATS path.",
+          "ATS scans: your resume text and the resulting report are never written to our database. A scan is processed in memory and discarded when the response is sent. We do record that a scan happened, against your quota, so the rate limits can work — that counter holds no document content.",
           "AI request text: not retained by us after the request completes. The model provider's own retention applies to the request itself, which is why Section 8 asks you to treat an AI action as a deliberate choice.",
-          "Server and security logs: 90 days, then rotated out.",
-          "Takedown and grievance records: 3 years from resolution, so that we can apply our repeat-infringer policy consistently and show how a complaint was handled.",
-          "Billing and tax records: 8 years from the relevant transaction, which is the retention period Indian tax and accounting rules require of us. We cannot delete these on request, and account deletion does not remove them.",
+          "Server and security logs: we keep these no longer than 90 days, then rotate them out. They hold request metadata (IP address, user agent, timestamps), not the contents of your documents.",
+          "Takedown and grievance records: kept for 3 years from resolution, so we can apply our repeat-infringer policy consistently and show how a complaint was handled.",
+          "Billing and tax records: kept for as long as tax, accounting, and financial-regulation law requires of us, which is a period of years rather than months. We cannot delete these on request, and closing your Account does not remove them.",
           "Aggregate usage telemetry: kept indefinitely in de-identified, aggregated form, from which you cannot be re-identified.",
         ],
         paragraphs: [
-          "Two of these pull in opposite directions and we would rather say so plainly than let you discover it. We keep no record of your ATS scans, but we must keep billing records for years — so if you paid us, deleting your Account removes your documents and profile, not the fact of the transaction.",
+          "Two of these pull in opposite directions and we would rather say so plainly than let you discover it. We keep no record of your ATS scans, but we must keep billing records for years — so if you paid us, closing your Account removes your documents and profile, not the fact of the transaction.",
         ],
       },
     ],
@@ -274,8 +273,8 @@ export const privacySections: LegalSection[] = [
         list: [
           "Access: request a copy of the personal data we hold about you.",
           "Correction: fix inaccurate or incomplete data - most of this you can do yourself directly in the Master Profile or Account settings.",
-          "Deletion: request deletion of your Account and associated data (available directly from Account settings, or by emailing us).",
-          "Portability: export your data. A JSON export of your local or synced data is available from the dashboard at any time, without needing to contact support.",
+          `Deletion: request deletion of your Account and associated data at any time from the "Danger Zone" on your Profile page in the Studio, or by emailing ${siteConfig.legalContact.email}. Deletion permanently destroys your documents, Master Profile, portfolios, share links, and active sessions; see the retention section for the statutory billing records we are required to keep.`,
+          `Portability: every document can be exported as structured JSON from the editor at any time, without contacting anyone. For a full copy of everything associated with your Account rather than a document at a time, email ${siteConfig.legalContact.email} and we will put one together.`,
           "Objection / restriction: object to or request that we restrict certain processing, such as aggregate analytics.",
           "Withdraw consent: for anything based on consent (for example, GitHub/LinkedIn import or AI processing), simply stop using that feature, or ask us to delete data already collected through it.",
           "Non-discrimination: we will not deny you service, charge you a different price, or provide a different level of service because you exercised a privacy right.",

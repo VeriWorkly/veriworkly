@@ -43,11 +43,11 @@ export const ENCRYPTION_BOUNDARIES: EncryptionBoundary[] = [
     number: "03",
     title: "Public Portfolios & Subdomains",
     description:
-      "Portfolios published to a veriworkly.com subdomain are served through edge caches with HTTPS. Visitor counts are aggregated without third-party tracking cookies, and unpublishing purges every cache layer that could keep a page readable.",
+      "Portfolios published to a veriworkly.com subdomain are served over HTTPS. Visitor counts are aggregated without third-party tracking cookies. Unpublishing takes the page private immediately, clears our own cache, and asks the public site to regenerate — allow a short window for any intermediate caches outside our control to catch up.",
     specs: [
       "HTTPS on every published subdomain",
       "Zero-cookie visitor aggregation",
-      "Unpublish switch with full cache purge",
+      "Unpublish clears our cache and triggers revalidation",
     ],
   },
   {

@@ -150,7 +150,7 @@ export const faqs: FaqItem[] = [
     category: "ats",
     question: "How many free ATS scans do I get?",
     answer:
-      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Paid plan and pass holders get 300 scans per billing period.",
+      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Paid plan and pass holders get 300 scans per billing period. Uploading a file to extract its text draws on a separate, more generous allowance (3 for visitors, 6 for free accounts), so uploading a document never costs you a scan.",
   },
   {
     id: "ats-scan-privacy",

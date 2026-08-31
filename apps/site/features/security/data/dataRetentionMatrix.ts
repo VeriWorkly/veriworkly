@@ -24,9 +24,9 @@ export const DATA_RETENTION_MATRIX: DataRetentionRow[] = [
   },
   {
     platformArea: "Published Web Portfolios",
-    storageLocation: "Global CDN Edge Network Cache",
+    storageLocation: "Published page, plus our own cache",
     retentionPeriod: "While published",
-    deletionMethod: "Instant toggle 'Unpublish' with edge cache invalidation",
+    deletionMethod: "'Unpublish' takes it private, clears our cache, and triggers regeneration",
     encryption: "Automated edge HTTPS",
   },
   {

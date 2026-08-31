@@ -198,4 +198,29 @@ export class PortfolioAssetService {
     await getClient().send(new DeleteObjectCommand({ Bucket: config.r2.bucket, Key: asset.key }));
     await prisma.portfolioAsset.delete({ where: { id: asset.id } });
   }
+
+  static async deleteAllUserAssets(userId: string) {
+    const assets = await prisma.portfolioAsset.findMany({
+      where: { userId },
+      select: { id: true, key: true },
+    });
+
+    if (assets.length === 0) return;
+
+    try {
+      const s3 = getClient();
+      for (const asset of assets) {
+        try {
+          await s3.send(new DeleteObjectCommand({ Bucket: config.r2.bucket, Key: asset.key }));
+        } catch (err) {
+          logger.warn("Failed to delete asset from R2 during user account deletion", {
+            assetId: asset.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    } catch {
+      // Storage might not be configured in dev or test environments
+    }
+  }
 }

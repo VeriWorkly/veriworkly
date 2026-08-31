@@ -7,6 +7,7 @@ import {
 import ProfileHero from "@/features/profile/components/ProfielHero";
 import ProfileDataPanel from "@/features/profile/components/ProfileDataPanel";
 import AccountStatsPanel from "@/features/profile/components/ProfileAccountStats";
+import DangerZoneCard from "@/features/profile/components/DangerZoneCard";
 import { fetchAccountProfile } from "@/features/profile/services/account-profile";
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default async function ProfilePage() {
         <div className="space-y-4">
           <ProfileDataPanel profile={accountProfile} />
           <ProfileLinksGrid />
+          {accountProfile?.email && <DangerZoneCard userEmail={accountProfile.email} />}
         </div>
 
         <AccountStatsPanel profile={accountProfile} />

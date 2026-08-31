@@ -264,7 +264,7 @@ export const termsSections: LegalSection[] = [
         heading: "Subscriptions & auto-renewal",
         paragraphs: [
           "Subscription plans (including Creator Pro, AI Credits Standalone, and the Job Hunter Bundle) automatically renew at the end of each billing period at the then-current price, until you cancel. A 7-day free trial is automatically applied for first-time monthly Job Hunter Bundle / Creator Pro subscribers where offered; unless you cancel before the trial ends, your payment method will be charged automatically when the trial converts to a paid subscription.",
-          "You can cancel a subscription at any time from the Billing page; cancellation takes effect at the end of the current billing period, and you retain access to paid features until then.",
+          "You can cancel a subscription at any time from the Billing page, which opens our payment provider's portal; cancellation takes effect at the end of the current billing period, and you retain access to paid features until then.",
         ],
       },
       {
@@ -304,9 +304,8 @@ export const termsSections: LegalSection[] = [
       {
         heading: "What we tell you before and after you buy",
         paragraphs: [
-          "Before you pay, checkout shows the price, the billing period, whether the plan auto-renews, and — for a trial — the date it converts and the amount you will then be charged. After you pay, we email you a confirmation repeating those terms and how to cancel.",
-          "Before a free trial converts to a paid subscription, we send you a reminder in time to cancel if you no longer want it. We do not rely on you having remembered a date from two weeks ago.",
-          "Cancelling is one click on the Billing page, and never harder than signing up was. We will not make you call us, email us, or sit through a retention flow to leave.",
+          "Before you pay, checkout shows the price, the billing period, whether the plan auto-renews, and — for a trial — the date it converts and the amount you will then be charged. After you pay, we email you a confirmation repeating those terms.",
+          "Cancelling is self-service and never harder than signing up was: open the Billing page and use the Manage Subscription link, which takes you to our payment provider's portal where you can cancel immediately. We will not make you call us, or sit through a retention flow to leave. Cancellation takes effect at the end of the current billing period, and you keep paid features until then.",
         ],
       },
       {
@@ -399,7 +398,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "By you",
         paragraphs: [
-          'You may stop using the Service at any time, and may delete your Account from Account settings or by contacting us. Deleting your Account does not automatically entitle you to a refund of prior payments, subject to Section 14 ("Billing").',
+          `You may stop using the Service at any time. You can permanently delete your Account and all associated data from the "Danger Zone" on your Profile page in the Studio, or by emailing ${siteConfig.legalContact.email}. Deleting your Account does not automatically entitle you to a refund of prior payments, subject to Section 14 ("Billing").`,
         ],
       },
       {

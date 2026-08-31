@@ -1,17 +1,16 @@
 "use client";
 
 import { FileText } from "lucide-react";
-import { motion, MotionValue } from "framer-motion";
+import type { MotionValue } from "framer-motion";
 
 import BentoCard from "./BentoCard";
 
 interface BentoCoverLetterCardProps {
   yOffset: MotionValue<number> | number;
-  textX: MotionValue<number> | number;
   canHover: boolean;
 }
 
-const BentoCoverLetterCard = ({ yOffset, textX, canHover }: BentoCoverLetterCardProps) => {
+const BentoCoverLetterCard = ({ yOffset, canHover }: BentoCoverLetterCardProps) => {
   return (
     <BentoCard
       yOffset={yOffset}
@@ -33,16 +32,13 @@ const BentoCoverLetterCard = ({ yOffset, textX, canHover }: BentoCoverLetterCard
             </span>
           </div>
 
-          <div className="space-y-1 text-[11px] leading-relaxed text-zinc-600 sm:text-xs dark:text-zinc-400">
+          <p className="text-[11px] leading-relaxed text-zinc-600 sm:text-xs dark:text-zinc-400">
             Applying for{" "}
-            <motion.span
-              style={{ x: textX }}
-              className="inline-block rounded bg-blue-100/90 px-1 font-medium text-blue-900 dark:bg-blue-950/60 dark:text-blue-300"
-            >
+            <span className="inline-block rounded bg-blue-100/90 px-1.5 py-0.5 font-medium text-blue-900 dark:bg-blue-950/60 dark:text-blue-300">
               Senior React Developer
-            </motion.span>{" "}
+            </span>{" "}
             - experience matches requirements.
-          </div>
+          </p>
         </div>
       </div>
 

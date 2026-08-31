@@ -12,12 +12,14 @@
   - Master Profile Store & Local Draft Storage
   - Exports: PDF, DOCX, HTML, Markdown, Plain Text, JSON (all formats, ungated, no watermark)
   - Free ATS Resume & Job Match Scanning (1 scan/48h guest, 2 scans/24h logged-in)
-  - GitHub & LinkedIn profile import (free tier: 1 GitHub import per day, for your own
-    connected account only; 1 LinkedIn import per month)
+  - GitHub & LinkedIn profile import. Free tier: 1 GitHub import per rolling 24 hours,
+    restricted to your own connected account; 1 LinkedIn import per rolling 30 days.
+    Both limits are measured from your last import, not reset on a calendar boundary.
   - Portfolio publishing on a `username.veriworkly.com` subdomain using the free core
     templates (Signal, Atelier), which display a "Built with VeriWorkly" badge
-- **Document limit**: 1 active document per type (resume, cover letter, portfolio).
-  Guest/local drafts are not capped.
+- **Document limit**: 1 active synced document per type (resume, cover letter, portfolio,
+  link-in-bio). The cap is per type, so one of each is fine. Guest and local-only drafts
+  are not capped.
 - **AI Writing Credits**: 0 (requires pass or credit add-on)
 
 > **Status**: portfolio publishing is not yet enabled in production. The tiers below

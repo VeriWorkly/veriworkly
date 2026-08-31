@@ -29,15 +29,12 @@ export const siteConfig = {
    * "privacy compliance team", "a designated security engineer") for what is one
    * person. One named contact serves the grievance duty, the data-protection duty,
    * and the takedown route, so it is defined once here.
-   *
-   * TODO(legal): `postalAddress` is incomplete - it needs the building/unit, city,
-   * state and PIN code before these pages are published.
    */
   legalContact: {
     name: "Gautam Raj",
     role: "Grievance Officer & Data Protection Contact",
     email: "grievance@veriworkly.com",
-    postalAddress: "Phase-3, DLF Cyber City",
+    postalAddress: "Phase-3, DLF Cyber City, Gurugram, Haryana 122010, India",
   },
 
   /**

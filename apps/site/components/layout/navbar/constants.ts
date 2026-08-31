@@ -1,15 +1,4 @@
-import {
-  LayoutGrid,
-  Newspaper,
-  BookOpen,
-  BadgeDollarSign,
-  Globe,
-  Gauge,
-  Layers,
-  Workflow,
-  Scale,
-  type LucideIcon,
-} from "lucide-react";
+import { LayoutGrid, BookOpen, BadgeDollarSign, Globe, Gauge, type LucideIcon } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
 
@@ -43,24 +32,6 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     badge: "Free",
   },
   {
-    name: "Features",
-    href: "/features",
-    description: "Every engine, and what each one does",
-    icon: Layers,
-  },
-  {
-    name: "How It Works",
-    href: "/how-it-works",
-    description: "Draft, tailor, check, export, publish",
-    icon: Workflow,
-  },
-  {
-    name: "Compare",
-    href: "/compare",
-    description: "Honestly, against the tools you know",
-    icon: Scale,
-  },
-  {
     name: "Pricing",
     href: "/pricing",
     description: "Transparent pricing, zero hidden locks",
@@ -72,13 +43,6 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     description: "Personal websites on your own subdomain",
     external: true,
     icon: Globe,
-  },
-  {
-    name: "Blog",
-    href: siteConfig.links.blog,
-    description: "Career guides, ATS insights & updates",
-    external: true,
-    icon: Newspaper,
   },
   {
     name: "Docs",
