@@ -58,9 +58,6 @@ export const metadata: Metadata = {
 
   alternates: {
     canonical: pageUrl,
-    languages: {
-      "en-US": pageUrl,
-    },
   },
 };
 

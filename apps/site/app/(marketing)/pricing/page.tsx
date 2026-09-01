@@ -59,6 +59,24 @@ const breadcrumbSchema = {
 const PAID_AVAILABILITY = "https://schema.org/PreOrder";
 const FREE_AVAILABILITY = "https://schema.org/InStock";
 
+/**
+ * One array, everything derived. `offerCount`, `lowPrice`, and `highPrice` were all
+ * hardcoded alongside the list, so adding or repricing an offer silently produced
+ * markup that contradicted itself. Every offer also carries `url` - without one an
+ * offer is not actionable and cannot produce a rich result.
+ */
+const PRICING_OFFERS = [
+  { name: "Free", price: 0, free: true },
+  { name: "3-Day Sprint Pass", price: 2.99 },
+  { name: "AI Standalone", price: 5.99 },
+  { name: "7-Day Hunt Pass", price: 5.99 },
+  { name: "Creator Pro", price: 9.99 },
+  { name: "Job Hunter Bundle (annual, per month)", price: 11.99 },
+  { name: "Job Hunter Bundle (monthly)", price: 14.99 },
+] as const;
+
+const offerPrices = PRICING_OFFERS.map((offer) => offer.price);
+
 const pricingSchema = {
   "@context": "https://schema.org",
   "@type": "Product",
@@ -69,60 +87,17 @@ const pricingSchema = {
   offers: {
     "@type": "AggregateOffer",
     priceCurrency: "USD",
-    lowPrice: "0",
-    highPrice: "14.99",
-    offerCount: "7",
-    offers: [
-      {
-        "@type": "Offer",
-        name: "Free",
-        price: "0",
-        priceCurrency: "USD",
-        availability: FREE_AVAILABILITY,
-      },
-      {
-        "@type": "Offer",
-        name: "AI Standalone",
-        price: "5.99",
-        priceCurrency: "USD",
-        availability: PAID_AVAILABILITY,
-      },
-      {
-        "@type": "Offer",
-        name: "Creator Pro",
-        price: "9.99",
-        priceCurrency: "USD",
-        availability: PAID_AVAILABILITY,
-      },
-      {
-        "@type": "Offer",
-        name: "Job Hunter Bundle (monthly)",
-        price: "14.99",
-        priceCurrency: "USD",
-        availability: PAID_AVAILABILITY,
-      },
-      {
-        "@type": "Offer",
-        name: "Job Hunter Bundle (annual, per month)",
-        price: "11.99",
-        priceCurrency: "USD",
-        availability: PAID_AVAILABILITY,
-      },
-      {
-        "@type": "Offer",
-        name: "3-Day Sprint Pass",
-        price: "2.99",
-        priceCurrency: "USD",
-        availability: PAID_AVAILABILITY,
-      },
-      {
-        "@type": "Offer",
-        name: "7-Day Hunt Pass",
-        price: "5.99",
-        priceCurrency: "USD",
-        availability: PAID_AVAILABILITY,
-      },
-    ],
+    lowPrice: Math.min(...offerPrices).toFixed(2),
+    highPrice: Math.max(...offerPrices).toFixed(2),
+    offerCount: String(PRICING_OFFERS.length),
+    offers: PRICING_OFFERS.map((offer) => ({
+      "@type": "Offer",
+      name: offer.name,
+      price: offer.price.toFixed(2),
+      priceCurrency: "USD",
+      url: pageUrl,
+      availability: "free" in offer && offer.free ? FREE_AVAILABILITY : PAID_AVAILABILITY,
+    })),
   },
 };
 

@@ -143,7 +143,10 @@ const FaqInteractiveSection = () => {
                 value={faq.id}
                 className="border-border/60 bg-card/40 hover:border-accent/40 rounded-xl border shadow-none backdrop-blur-xs transition-all duration-200"
               >
-                <AccordionTrigger className="text-foreground hover:text-accent px-4 py-3.5 text-left text-xs font-semibold transition-colors sm:px-4.5 sm:py-4 sm:text-sm">
+                <AccordionTrigger
+                  headingLevel="h2"
+                  className="text-foreground hover:text-accent px-4 py-3.5 text-left text-xs font-semibold transition-colors sm:px-4.5 sm:py-4 sm:text-sm"
+                >
                   {faq.question}
                 </AccordionTrigger>
 
@@ -161,7 +164,10 @@ const FaqInteractiveSection = () => {
                 value={faq.id}
                 className="border-border/60 bg-card/40 hover:border-accent/40 rounded-xl border shadow-none backdrop-blur-xs transition-all duration-200"
               >
-                <AccordionTrigger className="text-foreground hover:text-accent px-4 py-3.5 text-left text-xs font-semibold transition-colors sm:px-4.5 sm:py-4 sm:text-sm">
+                <AccordionTrigger
+                  headingLevel="h2"
+                  className="text-foreground hover:text-accent px-4 py-3.5 text-left text-xs font-semibold transition-colors sm:px-4.5 sm:py-4 sm:text-sm"
+                >
                   {faq.question}
                 </AccordionTrigger>
 

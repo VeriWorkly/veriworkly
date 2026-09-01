@@ -145,9 +145,24 @@ export function AccordionItem({ value, children, className }: AccordionItemProps
 type AccordionTriggerProps = {
   children: ReactNode;
   className?: string;
+  /**
+   * Heading level to wrap the trigger in. Defaults to `h3`, which is correct when the
+   * accordion sits under a section `h2`.
+   *
+   * It is configurable because the right level depends on the page, not the component:
+   * on /ats-checker the accordion follows an `h2` so `h3` is right, but on /faq the
+   * questions sit directly under the page `h1`, where a hard-coded `h3` skipped a
+   * level on the one page type whose structure matters most for rich results and
+   * answer extraction.
+   */
+  headingLevel?: "h2" | "h3" | "h4";
 };
 
-export function AccordionTrigger({ children, className }: AccordionTriggerProps) {
+export function AccordionTrigger({
+  children,
+  className,
+  headingLevel: Heading = "h3",
+}: AccordionTriggerProps) {
   const { value, triggerId, contentId } = useAccordionItemContext();
   const { expanded, toggleItem } = useAccordionContext();
 
@@ -202,7 +217,7 @@ export function AccordionTrigger({ children, className }: AccordionTriggerProps)
   };
 
   return (
-    <h3>
+    <Heading>
       <button
         type="button"
         id={triggerId}
@@ -226,7 +241,7 @@ export function AccordionTrigger({ children, className }: AccordionTriggerProps)
           )}
         />
       </button>
-    </h3>
+    </Heading>
   );
 }
 
@@ -251,7 +266,7 @@ export function AccordionContent({ children, className }: AccordionContentProps)
         "grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-in-out",
         isOpen
           ? "visible grid-rows-[1fr] opacity-100"
-          : "invisible grid-rows-[0fr] opacity-0 pointer-events-none",
+          : "pointer-events-none invisible grid-rows-[0fr] opacity-0",
       )}
     >
       <div className="min-h-0 overflow-hidden">

@@ -76,7 +76,12 @@ export const LandingFooter = ({
           <div className="grid grid-cols-2 gap-8 pt-2 md:grid-cols-3">
             {footerColumns.map((column) => (
               <div key={column.title}>
-                <h4 className="mb-6 font-semibold text-gray-900 dark:text-white">{column.title}</h4>
+                {/*
+                  h3, not h4. These sit directly under the footer's h2 above, so h4
+                  skipped a level on every page of the site - the single most
+                  widespread heading defect there was.
+                */}
+                <h3 className="mb-6 font-semibold text-gray-900 dark:text-white">{column.title}</h3>
 
                 <ul className="space-y-4">
                   {column.links.map((link) => (

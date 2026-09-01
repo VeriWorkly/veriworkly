@@ -73,9 +73,6 @@ export const metadata: Metadata = {
 
   alternates: {
     canonical: pageUrl,
-    languages: {
-      "en-US": pageUrl,
-    },
   },
 };
 
@@ -98,28 +95,37 @@ const howToSchema = {
   name: "How to Build an ATS Resume & Web Portfolio with VeriWorkly",
   description:
     "Learn how to build a professional, ATS-friendly resume and web portfolio in 4 simple steps without signing up.",
+  // Every step carries `position` and `url`. Two of the four previously had neither,
+  // which makes a step list harder to parse than one that is consistently annotated -
+  // and partial coverage is worse than none, because it implies the gaps are ordering.
   step: [
     {
       "@type": "HowToStep",
+      position: 1,
       name: "Launch the Studio",
-      text: "Open the VeriWorkly Studio editor at app.veriworkly.com.",
+      text: "Open the VeriWorkly Studio editor at app.veriworkly.com. No account is required to start.",
       url: siteConfig.links.app,
     },
     {
       "@type": "HowToStep",
+      position: 2,
       name: "Choose a Template",
-      text: "Select an ATS-optimized resume template or developer web portfolio layout.",
+      text: "Select an ATS-optimized resume template or a web portfolio layout.",
       url: `${siteConfig.url}/templates`,
     },
     {
       "@type": "HowToStep",
+      position: 3,
       name: "Enter Your Experience",
-      text: "Fill in your details or import experience from LinkedIn/GitHub straight into your Master Profile.",
+      text: "Fill in your details, or import your experience from LinkedIn or GitHub straight into your Master Profile.",
+      url: `${siteConfig.url}/how-it-works`,
     },
     {
       "@type": "HowToStep",
-      name: "Export PDF or Publish Portfolio",
-      text: "Download your resume as an ATS PDF instantly or publish your web portfolio to a custom subdomain.",
+      position: 4,
+      name: "Export or Publish",
+      text: "Download your resume as an ATS-ready PDF, or in any of six formats, all free and unwatermarked. Portfolio publishing on your own subdomain opens at launch.",
+      url: `${siteConfig.url}/templates`,
     },
   ],
   totalTime: "PT5M",

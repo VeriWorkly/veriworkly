@@ -113,7 +113,7 @@ const TermsPage = () => {
     url: pageUrl,
     description: "Terms of Service and guidelines for VeriWorkly career workspace.",
     dateModified: termsLastUpdated,
-    inLanguage: "en-US",
+    inLanguage: "en",
     isPartOf: { "@type": "WebSite", name: siteConfig.name, url: siteConfig.url },
     about: {
       "@type": "Thing",

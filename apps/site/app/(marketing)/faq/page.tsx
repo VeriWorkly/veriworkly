@@ -139,9 +139,9 @@ const FAQPage = () => {
                 <span className="text-accent block font-mono text-[10px] font-bold tracking-widest uppercase">
                   Still have questions?
                 </span>
-                <h3 className="text-foreground max-w-lg text-2xl font-bold tracking-tight text-balance sm:text-3xl">
-                  Talk to our team or explore our open-source community
-                </h3>
+                <h2 className="text-foreground max-w-lg text-2xl font-bold tracking-tight text-balance sm:text-3xl">
+                  Ask directly, or explore the open-source repository
+                </h2>
                 <p className="text-muted max-w-md text-xs leading-relaxed sm:text-sm">
                   Every message to our support inbox reaches a real engineer. You can also inspect
                   the codebase or ask questions on GitHub.

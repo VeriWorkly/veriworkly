@@ -99,7 +99,7 @@ const PrivacyPage = () => {
     description:
       "Learn how VeriWorkly secures career data through local-first and encrypted workflows.",
     dateModified: privacyLastUpdated,
-    inLanguage: "en-US",
+    inLanguage: "en",
     isPartOf: { "@type": "WebSite", name: siteConfig.name, url: siteConfig.url },
     about: {
       "@type": "Thing",

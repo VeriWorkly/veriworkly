@@ -190,6 +190,10 @@ const TemplatesPortalPage = () => {
                   >
                     <Image
                       fill
+                      // The hero fan sits above the fold and is this page's LCP
+                      // element. Without `priority` these three are lazy-loaded,
+                      // which delays the largest paint by a round trip for no reason.
+                      priority
                       alt={`${template.name} template preview`}
                       src={template.previewImage}
                       className={isPortfolio ? "object-contain" : "object-cover object-top"}

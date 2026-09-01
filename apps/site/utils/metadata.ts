@@ -60,9 +60,9 @@ interface BuildPageMetadataOptions {
 }
 
 /**
- * Builds a complete Next.js Metadata object with canonical, hreflang, Open Graph,
- * and Twitter Card fields always present, so no marketing page ever ships with a
- * partial <head> block. Next.js does not deep-merge nested metadata fields (openGraph,
+ * Builds a complete Next.js Metadata object with canonical, Open Graph, and Twitter
+ * Card fields always present, so no marketing page ever ships with a partial <head>
+ * block. Next.js does not deep-merge nested metadata fields (openGraph,
  * twitter) from the root layout into page-level metadata, so every field a page needs
  * must be set explicitly here rather than relied on to inherit.
  *
@@ -136,9 +136,9 @@ export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
     },
 
     /**
-     * A noIndex page gets no canonical and no hreflang.
+     * A noIndex page gets no canonical.
      *
-     * Emitting them alongside `robots: noindex` is contradictory markup, and on the
+     * Emitting one alongside `robots: noindex` is contradictory markup, and on the
      * not-found boundaries it was worse: they pass `path: "/404"` and `"/roadmap/404"`,
      * which are not real routes, so every 404 response advertised a canonical pointing
      * at a URL that itself 404s.
@@ -147,16 +147,15 @@ export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
      * root layout's - and the root layout sets `canonical: "/"`. Simply leaving the
      * field out let that inherit through, which made every 404 declare itself the
      * canonical homepage. `null` explicitly clears it.
+     *
+     * No `languages` map either. hreflang points search engines at alternate language
+     * or regional versions of a page, and there is exactly one version of every page
+     * here, so a self-referencing single-entry set tells Google nothing it can act on.
+     * It previously emitted `en-US`, which was the worst of the available options: it
+     * region-locks the page to United States English, while this is an India-based
+     * service with a global English-speaking audience and no US-specific content. If
+     * regional variants are ever added, the correct shape is `en` plus `x-default`.
      */
-    ...(options.noIndex
-      ? { alternates: { canonical: null, languages: {} } }
-      : {
-          alternates: {
-            canonical: url,
-            languages: {
-              "en-US": url,
-            },
-          },
-        }),
+    ...(options.noIndex ? { alternates: { canonical: null } } : { alternates: { canonical: url } }),
   };
 }

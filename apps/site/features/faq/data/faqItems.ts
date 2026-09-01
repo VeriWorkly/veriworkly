@@ -180,7 +180,7 @@ export const faqs: FaqItem[] = [
     category: "portfolios",
     question: "How do custom subdomains and HTTPS work?",
     answer:
-      "You can claim a clean web address like yourname.veriworkly.com. We take care of fast CDN hosting, DDoS protection, and automatic SSL certificates so your portfolio is always fast and secure over HTTPS.",
+      "You claim a clean web address like yourname.veriworkly.com, and we handle the hosting and the HTTPS certificate so the page is served securely without you configuring anything. Publishing opens at launch — you can build and preview a portfolio today.",
   },
   {
     id: "portfolio-free-preview",
@@ -208,7 +208,7 @@ export const faqs: FaqItem[] = [
     category: "portfolios",
     question: "Can I see how many people visited my portfolio?",
     answer:
-      "Creator Pro and pass holders get a private visitor dashboard showing total views and referral sources over time, with zero tracking cookies or invasive tracking.",
+      "Creator Pro and pass holders get a private visitor dashboard showing total views and referral sources over time, with no tracking cookies and no attempt to identify individual visitors. It becomes available when publishing opens at launch.",
   },
 
   // 5. AI Assistant & Writing Credits
@@ -275,7 +275,7 @@ export const faqs: FaqItem[] = [
     category: "billing",
     question: "How do I cancel my subscription?",
     answer:
-      "You can cancel anytime with one click in your account settings. You will keep full access to your paid features until the end of your current billing period, and your card will never be charged again.",
+      "Open the Billing page and use Manage Subscription, which takes you to our payment provider's portal where you can cancel immediately. You keep full access to your paid features until the end of the current billing period, and your card is not charged again. We do not put a retention flow or a phone call in your way.",
   },
   {
     id: "refund-policy",

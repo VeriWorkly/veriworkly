@@ -1,4 +1,14 @@
-import { LayoutGrid, BookOpen, BadgeDollarSign, Globe, Gauge, type LucideIcon } from "lucide-react";
+import {
+  LayoutGrid,
+  BookOpen,
+  BadgeDollarSign,
+  Globe,
+  Gauge,
+  Layers,
+  Workflow,
+  Scale,
+  type LucideIcon,
+} from "lucide-react";
 
 import { siteConfig } from "@/config/site";
 
@@ -23,6 +33,24 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     href: "/templates",
     description: "ATS-ready resume & portfolio layouts",
     icon: LayoutGrid,
+  },
+  {
+    name: "Features",
+    href: "/features",
+    description: "Every engine, and what each one does",
+    icon: Layers,
+  },
+  {
+    name: "How It Works",
+    href: "/how-it-works",
+    description: "Draft, tailor, check, export, publish",
+    icon: Workflow,
+  },
+  {
+    name: "Compare",
+    href: "/compare",
+    description: "Honestly, against the tools you know",
+    icon: Scale,
   },
   {
     name: "ATS Checker",

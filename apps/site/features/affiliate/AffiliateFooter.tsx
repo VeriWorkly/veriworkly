@@ -31,8 +31,8 @@ const AffiliateFooter = () => {
               </span>
             </Link>
             <p className="text-muted max-w-sm text-xs leading-relaxed">
-              Empowering job seekers with the most advanced, privacy-first, and open-source resume
-              building experience. 100% free, forever.
+              A privacy-first, open-core resume and portfolio builder. Free to build and export,
+              with paid plans for premium portfolio templates and AI credits.
             </p>
           </div>
 

@@ -67,17 +67,17 @@ const pageFaqs = pageFaqIds
   .map((id) => faqs.find((faq) => faq.id === id))
   .filter((faq): faq is (typeof faqs)[number] => Boolean(faq));
 
+/**
+ * These five questions render visibly on the page because they are the ones a visitor
+ * to this tool actually asks - but they are NOT emitted as FAQPage JSON-LD.
+ *
+ * They are selected by id from the same `faqs` array that /faq emits in full, so
+ * marking them up here would publish five verbatim-identical Question/Answer pairs on
+ * two URLs. Google's structured data guidelines call that out directly, and it risks
+ * both pages losing eligibility rather than one gaining it. /faq is the canonical
+ * FAQPage; this page keeps the human-readable content and skips the duplicate markup.
+ */
 export default function AtsCheckerPage() {
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: pageFaqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: { "@type": "Answer", text: faq.answer },
-    })),
-  };
-
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -143,7 +143,6 @@ export default function AtsCheckerPage() {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScriptProps(faqSchema)} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(softwareSchema)}
