@@ -4,12 +4,11 @@ import { notFound } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
 
-import { isTemplateId, templates } from "@/templates/catalog/templates";
+import { isTemplateId, templateDetails, templates } from "@/templates/catalog/templates";
 
 import PortfolioPublicFooter from "@/components/PortfolioPublicFooter";
 import { JsonLd } from "@/components/JsonLd";
 
-import { templateDetails } from "@/features/templates/data/template-details";
 import TemplatesNavigation from "@/features/templates/components/TemplatesNavigation";
 import TemplateDetailContainer from "@/features/templates/components/TemplateDetailContainer";
 

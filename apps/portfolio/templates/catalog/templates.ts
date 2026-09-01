@@ -1,3 +1,4 @@
+import type { TemplateDetails } from "@/features/templates/data/template-details";
 import {
   type PrivateTemplateId,
   type TemplateRegistryEntry,
@@ -39,3 +40,7 @@ export function isTemplateId(value: string): value is TemplateId {
 export function isPremiumTemplate(templateId: string): boolean {
   return Boolean(templatesRegistry[templateId as TemplateId]?.isPremium);
 }
+
+export const templateDetails: Record<TemplateId, TemplateDetails> = Object.fromEntries(
+  Object.entries(templatesRegistry).map(([id, entry]) => [id, entry.design]),
+) as unknown as Record<TemplateId, TemplateDetails>;

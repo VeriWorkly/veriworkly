@@ -1,5 +1,3 @@
-import type { TemplateId } from "@/templates/catalog/templates";
-import { templatesRegistry } from "@/template-library/registry";
 
 export interface TemplateSystemOverview {
   genre: string;
@@ -116,7 +114,3 @@ export type TemplateDetails = {
   faqs?: Array<{ question: string; answer: string }>;
   guidelines?: { do: string[]; dont: string[] };
 };
-
-export const templateDetails: Record<TemplateId, TemplateDetails> = Object.fromEntries(
-  Object.entries(templatesRegistry).map(([id, entry]) => [id, entry.design]),
-) as unknown as Record<TemplateId, TemplateDetails>;
