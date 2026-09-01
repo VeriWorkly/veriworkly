@@ -28,6 +28,8 @@ const policySchema = z.record(z.enum(AI_ACTION_KEYS), actionPolicySchema);
 
 export type AiActionPolicy = z.infer<typeof actionPolicySchema>;
 
+import { logger } from "#lib/logger";
+
 let cachedPolicy: z.infer<typeof policySchema> | null = null;
 
 function loadPolicy() {
@@ -41,7 +43,12 @@ function loadPolicy() {
     return cachedPolicy;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    throw new ApiError(503, "AI generation policy is invalid.");
+    if (error instanceof z.ZodError) {
+      logger.error("AI actions policy failed validation", {
+        issues: error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).slice(0, 10),
+      });
+    }
+    throw new ApiError(503, `AI generation policy is invalid: ${(error as Error).message}`);
   }
 }
 

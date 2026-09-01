@@ -47,13 +47,20 @@ const atsPolicySchema = z.object({
 export type AtsComplexity = "standard" | "detailed" | "advanced" | "expert";
 let cached: z.infer<typeof atsPolicySchema> | null = null;
 
+import { logger } from "#lib/logger";
+
 function loadAtsAiPolicy() {
   if (!cached) {
     try {
       cached = atsPolicySchema.parse(getAtsAiPolicyJson());
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(503, "AI ATS policy is invalid.");
+      if (error instanceof z.ZodError) {
+        logger.error("ATS AI policy failed validation", {
+          issues: error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).slice(0, 10),
+        });
+      }
+      throw new ApiError(503, `AI ATS policy is invalid: ${(error as Error).message}`);
     }
   }
   return cached;
