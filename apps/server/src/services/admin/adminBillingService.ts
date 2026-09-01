@@ -24,7 +24,7 @@ type WalletListQuery = z.infer<typeof adminCreditWalletListQuerySchema>;
 type WebhookListQuery = z.infer<typeof adminWebhookListQuerySchema>;
 type EntitlementKey = (typeof ENTITLEMENT_KEYS)[number];
 
-const PAYING_STATUSES = ["ACTIVE", "TRIALING", "PAST_DUE"] as const;
+const PAYING_STATUSES = ["ACTIVE", "PAST_DUE"] as const;
 
 const SUBSCRIBER_SELECT = {
   id: true,

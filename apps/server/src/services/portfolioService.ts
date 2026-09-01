@@ -145,7 +145,7 @@ export class PortfolioService {
                 productKey: { in: ["portfolio_pro", "bundle"] },
                 OR: [
                   {
-                    status: { in: ["ACTIVE", "TRIALING"] },
+                    status: { in: ["ACTIVE"] },
                     OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date() } }],
                   },
                   { graceEndsAt: { gt: new Date() } },
@@ -164,9 +164,7 @@ export class PortfolioService {
 
     const accessSubscription = publication.user.subscriptions[0];
     const graceEndsAt =
-      accessSubscription?.status === "ACTIVE" || accessSubscription?.status === "TRIALING"
-        ? null
-        : (accessSubscription?.graceEndsAt ?? null);
+      accessSubscription?.status === "ACTIVE" ? null : (accessSubscription?.graceEndsAt ?? null);
 
     if (publication.status === "GRACE" && !accessSubscription) {
       await prisma.portfolioPublication.update({

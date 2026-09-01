@@ -75,7 +75,6 @@ const ACTION_QUEUE_ITEMS: Array<{
 /** Subscription lifecycle, ordered healthiest first so the bar reads left-to-right as decay. */
 const SUBSCRIPTION_SERIES: Array<{ status: string; series: ChartSeries }> = [
   { status: "ACTIVE", series: 3 },
-  { status: "TRIALING", series: 1 },
   { status: "PAST_DUE", series: 4 },
   { status: "CANCELED", series: 5 },
   { status: "INACTIVE", series: 2 },

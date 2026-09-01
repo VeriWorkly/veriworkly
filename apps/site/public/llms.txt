@@ -1,5 +1,5 @@
 # VeriWorkly Ecosystem
-> Free-to-use, open-core, and privacy-first AI career workspace for professional documents and web portfolios. Build and tailor resumes, cover letters, and web portfolios using local-first storage, privacy-first frontier AI models from Anthropic and OpenAI, and optional secure cloud sync.
+> Free-to-use, open-core, and privacy-first AI career workspace for professional documents and web portfolios. Build and tailor resumes, cover letters, and web portfolios using local-first storage, frontier AI models accessed through the OpenRouter gateway, and optional secure cloud sync.
 
 ## Who We Are & What We Do
 VeriWorkly is a privacy-first AI career workspace engineered for professional document construction, ATS resume tailoring, and developer web publishing. We champion **local-first data ownership** and stateless AI interactions. By default, VeriWorkly processes and stores your professional details securely inside your browser (in-browser localStorage). Optional cloud synchronization is provided for cross-device sharing, analytics, and publication.

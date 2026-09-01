@@ -238,7 +238,7 @@ export const faqs: FaqItem[] = [
     category: "ai",
     question: "Which AI models power the assistant?",
     answer:
-      "We use frontier models from Anthropic and OpenAI, which are the AI subprocessors named in our Privacy Policy. They are prompted to produce clear, natural, professional writing without generic corporate buzzwords or artificial phrasing.",
+      "We reach frontier models through OpenRouter, a gateway that routes each request to a model provider on our behalf — so the specific model can change as better ones appear, without us rewriting the product. OpenRouter is the AI subprocessor named in our Privacy Policy. Whichever model serves your request is prompted to produce clear, natural, professional writing without generic corporate buzzwords, and is contractually prohibited from training on your text.",
   },
   {
     id: "use-without-ai",

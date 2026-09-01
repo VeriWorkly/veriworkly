@@ -95,14 +95,13 @@ function addYears(date: Date, years: number) {
 
 function statusFromDodo(rawStatus: string) {
   switch (rawStatus) {
+    // We never request a trial, so Dodo should never report one. It is still mapped
+    // rather than dropped: the provider owns the status vocabulary, and falling through
+    // to the default would mark such a subscription INACTIVE and revoke access someone
+    // is paying for. Treating it as ACTIVE fails safe for the subscriber.
     case "active":
-      return "ACTIVE" as const;
-    // Kept even though we no longer create trials. Any subscription started before
-    // trials were removed can still report this status, and the provider owns the
-    // lifecycle - dropping the case would map a live trialing subscriber to INACTIVE
-    // and revoke access they have paid for.
     case "trialing":
-      return "TRIALING" as const;
+      return "ACTIVE" as const;
     case "on_hold":
     case "failed":
       return "PAST_DUE" as const;
@@ -122,7 +121,7 @@ function accessStatus(
   const now = new Date();
 
   if (
-    (subscription.status === "ACTIVE" || subscription.status === "TRIALING") &&
+    subscription.status === "ACTIVE" &&
     (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > now)
   )
     return { canPublish: true, publicationStatus: "LIVE" as const };
@@ -158,7 +157,7 @@ export class BillingService {
       prisma.subscription.findMany({
         where: {
           userId,
-          status: { in: ["ACTIVE", "TRIALING"] },
+          status: { in: ["ACTIVE"] },
           OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date() } }],
         },
         select: { productKey: true, currentPeriodEnd: true },
@@ -201,7 +200,6 @@ export class BillingService {
       cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
       graceEndsAt: subscription?.graceEndsAt ?? null,
       canPublish: entitlementCurrent,
-      eligibleForTrial: !subscription,
       accessEndsAt: portfolioAccessEndsAt,
       publicationStatus: entitlementCurrent
         ? "LIVE"
@@ -284,7 +282,7 @@ export class BillingService {
               : {
                   in: [productKey, "bundle"],
                 },
-          status: { in: ["ACTIVE", "TRIALING"] },
+          status: { in: ["ACTIVE"] },
           OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date() } }],
         },
         select: { id: true },
@@ -707,7 +705,7 @@ export class BillingService {
       ApiKeyService.invalidateAuthCacheForUser(userId),
     ]);
 
-    if (isNewSubscription && (normalizedStatus === "ACTIVE" || normalizedStatus === "TRIALING")) {
+    if (isNewSubscription && normalizedStatus === "ACTIVE") {
       void this.notifySubscriptionPurchased(userId, productKey);
     } else if (previousStatus && previousStatus !== "CANCELED" && normalizedStatus === "CANCELED") {
       void this.notifySubscriptionCancelled(userId);

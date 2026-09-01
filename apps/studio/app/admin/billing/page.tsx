@@ -38,7 +38,6 @@ const FILTERS = [
     options: [
       { label: "Any status", value: "" },
       { label: "Active", value: "ACTIVE" },
-      { label: "Trialing", value: "TRIALING" },
       { label: "Past due", value: "PAST_DUE" },
       { label: "Canceled", value: "CANCELED" },
       { label: "Inactive", value: "INACTIVE" },

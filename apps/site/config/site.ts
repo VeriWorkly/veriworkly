@@ -49,7 +49,7 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || links.main,
 
   description:
-    "Free-to-use, open-core, and privacy-first AI career workspace. Build and tailor professional resumes, cover letters, and web portfolios with local-first ownership, optional secure cloud sync, and frontier AI models from Anthropic and OpenAI.",
+    "Free-to-use, open-core, and privacy-first AI career workspace. Build and tailor professional resumes, cover letters, and web portfolios with local-first ownership, optional secure cloud sync, and frontier AI models accessed through a privacy-conscious gateway.",
 
   tagline: "Free AI resumes, cover letters & web portfolios. No login required.",
 

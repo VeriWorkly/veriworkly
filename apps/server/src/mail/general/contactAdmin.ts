@@ -12,7 +12,6 @@ export interface ContactAdminMailData {
  * Modern, high-visibility team alert template sent to ADMIN_EMAIL
  */
 export function renderAdminContactNotificationEmail(data: ContactAdminMailData): string {
-
   const sanitizedName = escapeHtml(data.name);
   const sanitizedEmail = escapeHtml(data.email);
   const sanitizedSubject = escapeHtml(data.subject);

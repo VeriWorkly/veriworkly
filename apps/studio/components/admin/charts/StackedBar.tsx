@@ -58,8 +58,8 @@ const StackedBar = ({
       </div>
 
       {/*
-        One column, not two. The two-column legend paired statuses arbitrarily ("Active | Trialing"
-        on one line) which invited a comparison the layout didn't mean, squeezed each label/value/
+        One column, not two. The two-column legend paired statuses arbitrarily (two unrelated
+        ones on a line) which invited a comparison the layout didn't mean, squeezed each label/value/
         percent trio into half the width, and left an odd status stranded alone on the last row
         whenever the count was odd. Stacked, it reads as the ranked breakdown it actually is —
         and it gives the panel enough height to sit level with its neighbours in a grid row

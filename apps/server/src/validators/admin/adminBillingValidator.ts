@@ -18,7 +18,7 @@ export const ENTITLEMENT_KEYS = [
 export const adminSubscriptionListQuerySchema = adminPaginationSchema
   .merge(adminSearchSchema)
   .extend({
-    status: z.enum(["INACTIVE", "TRIALING", "ACTIVE", "PAST_DUE", "CANCELED"]).optional(),
+    status: z.enum(["INACTIVE", "ACTIVE", "PAST_DUE", "CANCELED"]).optional(),
     productKey: z.string().trim().min(1).max(64).optional(),
     interval: z.enum(["ONE_DAY", "SEVEN_DAY", "MONTHLY", "ANNUAL"]).optional(),
     sort: z.enum(["newest", "updated", "periodEnd"]).default("updated"),
@@ -31,7 +31,7 @@ export const adminSubscriptionListQuerySchema = adminPaginationSchema
  */
 export const adminSubscriptionUpdateSchema = z
   .object({
-    status: z.enum(["INACTIVE", "TRIALING", "ACTIVE", "PAST_DUE", "CANCELED"]).optional(),
+    status: z.enum(["INACTIVE", "ACTIVE", "PAST_DUE", "CANCELED"]).optional(),
     cancelAtPeriodEnd: z.boolean().optional(),
     currentPeriodEnd: z.string().datetime().nullable().optional(),
     graceEndsAt: z.string().datetime().nullable().optional(),

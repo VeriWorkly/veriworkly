@@ -55,7 +55,7 @@ async function paidPeriod(userId: string) {
     where: {
       userId,
       productKey: { in: ["ai_credits", "bundle"] },
-      status: { in: ["ACTIVE", "TRIALING"] },
+      status: { in: ["ACTIVE"] },
     },
     orderBy: { updatedAt: "desc" },
     select: { interval: true, currentPeriodEnd: true, createdAt: true },

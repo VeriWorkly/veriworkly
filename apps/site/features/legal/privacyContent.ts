@@ -148,7 +148,7 @@ export const privacySections: LegalSection[] = [
     id: "ai-processing",
     title: "AI Features & Third-Party AI Processing",
     intro: [
-      "VeriWorkly's AI writing assistant, resume tailoring, cover letter generation, portfolio copy generation, and the AI-powered layer of the ATS Checker are built on third-party large language model providers (currently including Anthropic's Claude and OpenAI's GPT models). This section explains, in plain terms, what that means for your data.",
+      "VeriWorkly's AI writing assistant, resume tailoring, cover letter generation, portfolio copy generation, and the AI-powered layer of the ATS Checker all run on third-party large language models. We reach them through OpenRouter, a gateway that forwards each request to a model provider on our behalf — we hold no direct account with any model vendor, and which model serves a given request is set in our configuration and can change. This section explains, in plain terms, what that means for your data.",
     ],
     subsections: [
       {
@@ -210,24 +210,19 @@ export const privacySections: LegalSection[] = [
         list: [
           "Neon (serverless PostgreSQL) — our primary database, holding your Account, Master Profile, synced documents, portfolio publications, credits, and billing records. Processing region: Asia-Pacific (Singapore). Transfer basis: Standard Contractual Clauses.",
           "OpenRouter — the AI gateway we send requests through. It receives the text you submit when you use an AI feature (resume tailoring, cover letter drafting, portfolio copy, AI ATS analysis, and LinkedIn import parsing) and routes it to a model provider on our behalf. It is the reason we describe the AI boundary as leaving our infrastructure. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
-          "Model providers reached through OpenRouter — the underlying model that answers a request (for example Anthropic or OpenAI models). Which model handles a given request is set in our runtime configuration and can change, so we name the gateway rather than promise a specific model. They receive only the text of that request, are contractually prohibited from training on it, and we do not send them your name, email, or account identifiers. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          "Model providers reached through OpenRouter — the underlying model that answers a request, such as an Anthropic, OpenAI, or Google model. We hold no direct account with any of them: every AI request goes through OpenRouter, and which model serves it is set in our runtime configuration and can change. That is why we name the gateway rather than promise you a specific vendor. The model provider receives only the text of that request, is contractually prohibited from training on it, and never receives your name, email, or account identifiers. Processing region: primarily the United States, depending on the model selected. Transfer basis: Standard Contractual Clauses.",
           "Dodo Payments — merchant of record for all purchases. It collects and processes your payment method directly; we never receive or store a full card number, only transaction status, subscription state, and the metadata needed to grant what you bought. Dodo Payments states that it handles card data under PCI-DSS. Processing region: United States and India. Transfer basis: Standard Contractual Clauses.",
           "Cloudflare R2 — object storage for portfolio images, avatars, and other files you upload. It sees the file contents and filenames, not your Account details. Processing region: distributed, with automatic region selection. Transfer basis: Standard Contractual Clauses.",
-          "Hostinger (SMTP) — delivers our transactional email: sign-in codes, purchase confirmations, portfolio notifications, and account-deletion confirmations. It sees your email address and the content of those messages. Processing region: European Union (Lithuania). Transfer basis: EU adequacy — no additional mechanism needed for EEA transfers.",
           "Google, GitHub, and LinkedIn (OAuth) — only if you choose to sign in with one of them. They confirm your identity to us and share your email address and basic profile; we never receive your password. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
           "GitHub API — only if you use GitHub import. We read the public repository and profile data you authorise. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
-          // TODO(legal): name the hosting provider explicitly. It is not determinable
-          // from this repository - deployment is containerised (Dockerfile) with no
-          // provider config committed - and inventing a name here would be exactly the
-          // kind of unverified claim this policy is meant to avoid.
-          "Our application hosting provider — runs the servers that serve the web applications and the API, and processes the request metadata described in Section 4 (IP address, user agent, timestamps). Contact our Grievance Officer if you need the provider named and its processing region for a specific request; we will tell you.",
+          "Hostinger (VPS) — the virtual private server that runs our web applications and API, and that our Redis cache runs on. It processes the request metadata described in Section 4 (IP address, user agent, timestamps) and, as the host, has infrastructure-level access to the machine our services run on. Hostinger also delivers our transactional email over SMTP: sign-in codes, purchase confirmations, portfolio notifications, and account-deletion confirmations, which means it sees your email address and the content of those messages. Processing region: European Union (Lithuania). Transfer basis: EU adequacy — no additional mechanism is needed for EEA transfers.",
         ],
       },
       {
         heading: "What is NOT a subprocessor",
         paragraphs: [
-          "Better Auth is an authentication library that runs on our own servers, not a service we send you to. No personal data leaves our infrastructure for it, so it is deliberately not listed above even though it handles your session.",
-          "Our Redis cache runs on our own infrastructure alongside the application. It holds short-lived session and rate-limit data, not a separate copy of your documents.",
+          "Better Auth is an authentication library that runs on our own server, not a service we send you to. Your session data never leaves the machine described above, so it is deliberately not listed as a subprocessor even though it handles your login.",
+          "Our Redis cache runs on that same server rather than as a separate hosted service. It holds short-lived session and rate-limit data, not a copy of your documents. It is covered by the Hostinger entry above rather than being its own subprocessor.",
           "We use no advertising networks, no analytics vendors, no session-recording or heatmap tools, and no data brokers. There is nothing to list under those headings because we do not use any.",
         ],
       },

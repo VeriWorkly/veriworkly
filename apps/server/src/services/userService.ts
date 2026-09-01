@@ -189,7 +189,7 @@ export class UserService {
     const liveSubscription = await prisma.subscription.findFirst({
       where: {
         userId,
-        status: { in: ["ACTIVE", "TRIALING", "PAST_DUE"] },
+        status: { in: ["ACTIVE", "PAST_DUE"] },
         cancelAtPeriodEnd: false,
       },
       select: { id: true },

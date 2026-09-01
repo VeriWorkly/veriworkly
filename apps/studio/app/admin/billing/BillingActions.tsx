@@ -56,7 +56,6 @@ export function SubscriptionActions({
         onChange={(event) => setNextStatus(event.target.value as SubscriptionStatus)}
       >
         <option value="ACTIVE">Active</option>
-        <option value="TRIALING">Trialing</option>
         <option value="PAST_DUE">Past due</option>
         <option value="CANCELED">Canceled</option>
         <option value="INACTIVE">Inactive</option>

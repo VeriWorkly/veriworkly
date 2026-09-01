@@ -10,7 +10,6 @@ export interface ContactUserMailData {
  * Modern, customer-centric auto-confirmation receipt template sent to user.email
  */
 export function renderUserContactConfirmationEmail(data: ContactUserMailData): string {
-
   const sanitizedName = escapeHtml(data.name || "there");
   const sanitizedSubject = escapeHtml(data.subject);
   const sanitizedMessage = escapeHtml(data.message);

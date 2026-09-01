@@ -52,7 +52,6 @@ export async function sendMail({
       throw new Error("SMTP provider selected but SMTP environment values are incomplete");
     }
 
-
     try {
       const transporter = getSmtpTransporter();
 
@@ -93,4 +92,3 @@ export async function sendMail({
     text,
   });
 }
-

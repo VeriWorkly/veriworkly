@@ -7,13 +7,41 @@ const MAX_TOP_CONTRIBUTORS = 30;
 
 // Known repository core contributors as base fallback
 const KNOWN_CORE_CONTRIBUTORS: ChangelogContributor[] = [
-  { login: "Gautam25Raj", avatarUrl: "https://avatars.githubusercontent.com/u/63155224?v=4", htmlUrl: "https://github.com/Gautam25Raj" },
-  { login: "Atharv-Shandilya", avatarUrl: "https://avatars.githubusercontent.com/u/135959630?v=4", htmlUrl: "https://github.com/Atharv-Shandilya" },
-  { login: "aaditya-rathore", avatarUrl: "https://avatars.githubusercontent.com/u/123990694?v=4", htmlUrl: "https://github.com/aaditya-rathore" },
-  { login: "HirenGajjar", avatarUrl: "https://avatars.githubusercontent.com/u/40492198?v=4", htmlUrl: "https://github.com/HirenGajjar" },
-  { login: "Akshay7057017063", avatarUrl: "https://avatars.githubusercontent.com/u/114216378?v=4", htmlUrl: "https://github.com/Akshay7057017063" },
-  { login: "subhan-f", avatarUrl: "https://avatars.githubusercontent.com/u/67074140?v=4", htmlUrl: "https://github.com/subhan-f" },
-  { login: "dicnunz", avatarUrl: "https://avatars.githubusercontent.com/u/139033898?v=4", htmlUrl: "https://github.com/dicnunz" },
+  {
+    login: "Gautam25Raj",
+    avatarUrl: "https://avatars.githubusercontent.com/u/63155224?v=4",
+    htmlUrl: "https://github.com/Gautam25Raj",
+  },
+  {
+    login: "Atharv-Shandilya",
+    avatarUrl: "https://avatars.githubusercontent.com/u/135959630?v=4",
+    htmlUrl: "https://github.com/Atharv-Shandilya",
+  },
+  {
+    login: "aaditya-rathore",
+    avatarUrl: "https://avatars.githubusercontent.com/u/123990694?v=4",
+    htmlUrl: "https://github.com/aaditya-rathore",
+  },
+  {
+    login: "HirenGajjar",
+    avatarUrl: "https://avatars.githubusercontent.com/u/40492198?v=4",
+    htmlUrl: "https://github.com/HirenGajjar",
+  },
+  {
+    login: "Akshay7057017063",
+    avatarUrl: "https://avatars.githubusercontent.com/u/114216378?v=4",
+    htmlUrl: "https://github.com/Akshay7057017063",
+  },
+  {
+    login: "subhan-f",
+    avatarUrl: "https://avatars.githubusercontent.com/u/67074140?v=4",
+    htmlUrl: "https://github.com/subhan-f",
+  },
+  {
+    login: "dicnunz",
+    avatarUrl: "https://avatars.githubusercontent.com/u/139033898?v=4",
+    htmlUrl: "https://github.com/dicnunz",
+  },
 ];
 
 /**

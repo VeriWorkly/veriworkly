@@ -65,10 +65,12 @@ export async function sendContactEmail(payload: {
       userEmail: mailData.email,
     });
   } catch (userMailError) {
-    logger.warn("[Contact] Failed to send user confirmation receipt email (admin email was delivered)", {
-      userEmail: mailData.email,
-      error: userMailError instanceof Error ? userMailError.message : String(userMailError),
-    });
+    logger.warn(
+      "[Contact] Failed to send user confirmation receipt email (admin email was delivered)",
+      {
+        userEmail: mailData.email,
+        error: userMailError instanceof Error ? userMailError.message : String(userMailError),
+      },
+    );
   }
 }
-

@@ -16,7 +16,6 @@ vi.mock("#lib/logger", () => ({
   },
 }));
 
-
 describe("contact route", () => {
   let req: Partial<Request>;
   let res: Partial<Response>;
@@ -127,7 +126,10 @@ describe("contact route", () => {
           expect.objectContaining({ path: "name", message: "Name is required" }),
           expect.objectContaining({ path: "email", message: "Invalid email address" }),
           expect.objectContaining({ path: "subject", message: "Subject is required" }),
-          expect.objectContaining({ path: "message", message: "Message must be at least 10 characters" }),
+          expect.objectContaining({
+            path: "message",
+            message: "Message must be at least 10 characters",
+          }),
         ]),
       }),
     );
@@ -156,4 +158,3 @@ describe("contact route", () => {
     );
   });
 });
-

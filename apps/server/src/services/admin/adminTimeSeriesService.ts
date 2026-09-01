@@ -87,7 +87,7 @@ async function buildAdminTimeSeries(days: number) {
     prisma.$queryRaw<DailyRow[]>`
       SELECT date_trunc('day', "createdAt" AT TIME ZONE 'UTC') AS bucket, COUNT(*) AS value
       FROM "Subscription"
-      WHERE "createdAt" >= ${since} AND "status" IN ('ACTIVE', 'TRIALING')
+      WHERE "createdAt" >= ${since} AND "status" = 'ACTIVE'
       GROUP BY bucket
     `,
     prisma.$queryRaw<DailyRow[]>`

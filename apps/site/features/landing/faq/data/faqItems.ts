@@ -38,7 +38,7 @@ export const faqs: FAQItem[] = [
     id: "landing-ai-tailoring",
     question: "How does AI resume tailoring work without hallucinating details?",
     answer:
-      "VeriWorkly sends the request to a third-party model provider (Anthropic's Claude or OpenAI's GPT) to rewrite your existing bullet points against a job description, grounded in the facts already in your Master Profile. Every change is shown as a diff you approve before it lands, so nothing reaches your document unreviewed. No prompt can make a language model incapable of error — that review step is what protects you.",
+      "VeriWorkly sends the request through OpenRouter to a frontier model, which rewrites your existing bullet points against a job description, grounded in the facts already in your Master Profile. Every change is shown as a diff you approve before it lands, so nothing reaches your document unreviewed. No prompt can make a language model incapable of error — that review step is what protects you.",
     category: "AI Tools",
   },
   {

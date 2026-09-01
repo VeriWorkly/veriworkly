@@ -172,9 +172,12 @@ model Document {
   @@index([userId, deletedAt, updatedAt])
 }
 
+// No TRIALING. VeriWorkly does not offer a free trial on any plan, and never had a
+// paying subscriber while the short-lived Creator Pro trial existed, so there are no
+// rows to migrate. If a trial is ever reintroduced, this value comes back together
+// with the disclosure and reminder machinery that a trial requires.
 enum SubscriptionStatus {
   INACTIVE
-  TRIALING
   ACTIVE
   PAST_DUE
   CANCELED

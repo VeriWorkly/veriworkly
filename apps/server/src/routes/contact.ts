@@ -11,13 +11,16 @@ const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name is too long"),
   email: z.string().trim().email("Invalid email address").max(254, "Email is too long"),
   subject: z.string().trim().min(1, "Subject is required").max(200, "Subject is too long"),
-  message: z.string().trim().min(10, "Message must be at least 10 characters").max(5000, "Message is too long"),
+  message: z
+    .string()
+    .trim()
+    .min(10, "Message must be at least 10 characters")
+    .max(5000, "Message is too long"),
   // Honeypot: a hidden field real users never see or fill. Bots filling it will be caught in the route logic.
   website: z.string().optional().or(z.literal("")),
   // Optional client-side timestamp in milliseconds when form was loaded.
   _ts: z.number().optional(),
 });
-
 
 router.post("/", async (req, res) => {
   try {
@@ -101,4 +104,3 @@ router.post("/", async (req, res) => {
 });
 
 export default router;
-

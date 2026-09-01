@@ -17,7 +17,7 @@ export interface AdminPaginatedResponse<T> {
 export type Role = "USER" | "AMBASSADOR" | "ADMIN";
 export type AffiliateStatus = "NOT_ENROLLED" | "PENDING" | "ACTIVE" | "SUSPENDED";
 export type AffiliateTier = "TIER_1" | "TIER_2" | "TIER_3";
-export type SubscriptionStatus = "INACTIVE" | "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
+export type SubscriptionStatus = "INACTIVE" | "ACTIVE" | "PAST_DUE" | "CANCELED";
 export type PublicationStatus = "LIVE" | "GRACE" | "SUSPENDED";
 export type DocumentType = "RESUME" | "COVER_LETTER" | "PORTFOLIO" | "LINK_IN_BIO";
 export type Visibility = "PRIVATE" | "UNLISTED" | "PUBLIC";

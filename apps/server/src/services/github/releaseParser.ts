@@ -10,7 +10,10 @@ const CATEGORY_KEYWORDS: Array<{
   { pattern: /breaking/i, category: "breaking" },
   { pattern: /fix|bug|patch|resolved/i, category: "fixed" },
   { pattern: /improve|enhance|refactor|update|perf|polish/i, category: "improved" },
-  { pattern: /feature|feat|added|addition|add\b|new\s+feature|what'?s changed/i, category: "added" },
+  {
+    pattern: /feature|feat|added|addition|add\b|new\s+feature|what'?s changed/i,
+    category: "added",
+  },
 ];
 
 /**
@@ -64,7 +67,10 @@ export function parseReleaseBody(body: string | null): ParsedReleaseBody {
 
     if (isBullet) {
       isPreamble = false;
-      const item = line.replace(/^[-*+•]\s+/, "").replace(/^\d+\.\s+/, "").trim();
+      const item = line
+        .replace(/^[-*+•]\s+/, "")
+        .replace(/^\d+\.\s+/, "")
+        .trim();
 
       if (currentCategory === "skip") {
         continue;
@@ -80,7 +86,12 @@ export function parseReleaseBody(body: string | null): ParsedReleaseBody {
     }
 
     // Indented or wrapped continuation of previous bullet
-    if (!isPreamble && currentCategory && currentCategory !== "skip" && currentCategory !== "summary") {
+    if (
+      !isPreamble &&
+      currentCategory &&
+      currentCategory !== "skip" &&
+      currentCategory !== "summary"
+    ) {
       const targetCategory = currentCategory;
       const currentList = result[targetCategory];
       if (currentList.length > 0 && (/^\s{2,}/.test(rawLine) || !/^[A-Z#]/.test(line))) {
