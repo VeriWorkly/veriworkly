@@ -21,7 +21,7 @@ export const metadata: Metadata = buildPageMetadata({
   path: "/brand-kit",
   title: `Brand Kit: Logos, Colors & Guidelines | ${siteConfig.shortName}`,
   description:
-    "Download the VeriWorkly logo, color palette, typography, and voice guidelines — everything you need to write or design about VeriWorkly accurately.",
+    "Download the VeriWorkly logo, color palette, typography, and voice guidelines - everything you need to write or design about VeriWorkly accurately.",
   ogTitle: "The VeriWorkly Brand Kit",
   ogDescription: "Logos, colors, typography, and voice guidelines in one downloadable kit.",
   twitterTitle: "VeriWorkly Brand Kit",

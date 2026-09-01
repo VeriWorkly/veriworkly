@@ -2,6 +2,11 @@
 
 > Structured pricing reference for human visitors and AI agents.
 
+**No free trials.** VeriWorkly does not offer a trial on any plan. The free tier is how
+you try the product, for as long as you like. Subscriptions charge at checkout for the
+period you chose, and the 3-Day Sprint and 7-Day Hunt passes are one-time purchases that
+expire rather than renew. Nothing converts from free to paid on its own.
+
 ## Subscription Tiers & Passes
 
 ### 1. Free Tier
@@ -10,36 +15,46 @@
 - **Includes**:
   - Full Resume & Cover Letter Editor
   - Master Profile Store & Local Draft Storage
-  - Local Exports: PDF, DOCX, HTML, Markdown, Plain Text, JSON
+  - Exports: PDF, DOCX, HTML, Markdown, Plain Text, JSON (all formats, ungated, no watermark)
   - Free ATS Resume & Job Match Scanning (1 scan/48h guest, 2 scans/24h logged-in)
-  - GitHub & LinkedIn profile import
+  - GitHub & LinkedIn profile import. Free tier: 1 GitHub import per rolling 24 hours,
+    restricted to your own connected account; 1 LinkedIn import per rolling 30 days.
+    Both limits are measured from your last import, not reset on a calendar boundary.
+  - Portfolio publishing on a `username.veriworkly.com` subdomain using the free core
+    templates (Signal, Atelier), which display a "Built with VeriWorkly" badge
+- **Document limit**: 1 active synced document per type (resume, cover letter, portfolio,
+  link-in-bio). The cap is per type, so one of each is fine. Guest and local-only drafts
+  are not capped.
 - **AI Writing Credits**: 0 (requires pass or credit add-on)
+
+> **Status**: portfolio publishing is not yet enabled in production. The tiers below
+> describe the model at launch.
 
 ### 2. 3-Day Sprint Pass
 
 - **Price**: $2.99 (one-time)
 - **Includes**:
-  - 3 days of Creator Pro Subdomain Portfolio Hosting (`username.veriworkly.com`)
+  - 3 days of Creator Pro portfolio features on `username.veriworkly.com`
   - 150 AI Writing Credits (valid during pass)
-  - Watermark Removal & Portfolio Analytics
+  - Premium portfolio templates (Nimbus, Cipher), badge removal & portfolio analytics
 
 ### 3. 7-Day Hunt Pass
 
 - **Price**: $5.99 (one-time)
 - **Includes**:
-  - 7 days of Creator Pro Subdomain Portfolio Hosting (`username.veriworkly.com`)
+  - 7 days of Creator Pro portfolio features on `username.veriworkly.com`
   - 400 AI Writing Credits (valid during pass)
-  - Watermark Removal & Portfolio Analytics
+  - Premium portfolio templates (Nimbus, Cipher), badge removal & portfolio analytics
 
 ### 4. Monthly Pro Bundle
 
 - **Price**: $14.99 / month
 - **Includes**:
-  - Creator Pro Subdomain Portfolio Hosting (`username.veriworkly.com`)
+  - Creator Pro portfolio features on `username.veriworkly.com`
   - 1,000 Monthly AI Writing Credits (refreshed monthly)
   - 300 ATS Scans per billing period
-  - Full Portfolio Analytics & Watermark Removal
-  - Priority GitHub & LinkedIn imports
+  - Premium portfolio templates (Nimbus, Cipher), badge removal & full portfolio analytics
+  - Unmetered GitHub & LinkedIn profile imports (the free-tier daily/monthly caps are lifted)
 
 ### 5. Annual Pro Bundle
 
@@ -50,7 +65,7 @@
 ### 6. Creator Pro Standalone (Hosting Only)
 
 - **Price**: $9.99 / month or $7.99 / month ($95.88 billed annually)
-- **Includes**: Custom subdomain hosting, multi-page portfolios, analytics, watermark removal (no AI credits).
+- **Includes**: Premium portfolio templates (Nimbus, Cipher), multi-page portfolios, portfolio badge removal, visitor analytics, and SEO controls on your `username.veriworkly.com` subdomain (no AI credits).
 
 ### 7. AI Credits Standalone (Writing Only)
 

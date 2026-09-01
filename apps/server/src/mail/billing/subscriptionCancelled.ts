@@ -15,7 +15,7 @@ export function renderSubscriptionCancelledEmail(name: string): string {
     </p>
 
     <p style="margin:0;font-size:13px;line-height:1.6;color:#8f8c85;text-align:center;">
-      Changed your mind? You can resubscribe anytime from your billing settings. Questions? Reach us at support@veriworkly.com.
+      Changed your mind? You can resubscribe anytime from your billing settings. Questions? Reach us at contact@veriworkly.com.
     </p>
   `;
 

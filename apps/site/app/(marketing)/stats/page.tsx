@@ -64,12 +64,6 @@ interface StatsPageProps {
   }>;
 }
 
-/**
- * Pagination has to be resolved at request time: a static `metadata` export would
- * canonicalise every page to the bare `/stats`, and Google drops pages 2+ as
- * duplicates. Filtered views are noindex,follow instead — they are subsets of the
- * same issues and would otherwise open unbounded crawl space.
- */
 export async function generateMetadata({ searchParams }: StatsPageProps): Promise<Metadata> {
   const params = await searchParams;
   const page = parsePage(params.page);
@@ -84,8 +78,8 @@ export async function generateMetadata({ searchParams }: StatsPageProps): Promis
     keywords: [...statsMetadata.keywords],
     ...(page > 1
       ? {
-          title: `Development & AI Platform Statistics — Page ${page} | ${siteConfig.shortName}`,
-          ogTitle: `The Development Board, Live and Public — page ${page}`,
+          title: `Development & AI Platform Statistics - Page ${page} | ${siteConfig.shortName}`,
+          ogTitle: `The Development Board, Live and Public - page ${page}`,
         }
       : {}),
     canonicalParams: { page: page > 1 ? page : undefined },
@@ -133,6 +127,15 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
   const totalPages = Math.max(1, Math.ceil((issuePage?.total ?? 0) / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      { "@type": "ListItem", position: 2, name: "Development Statistics", item: pageUrl },
+    ],
+  };
+
   const statsSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -145,6 +148,10 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScriptProps(statsSchema)} />
 
       <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />

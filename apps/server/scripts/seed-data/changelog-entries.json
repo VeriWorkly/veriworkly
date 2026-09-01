@@ -1,5 +1,49 @@
 [
   {
+    "id": "v3-24-1",
+    "version": "3.24.1",
+    "title": "Monorepo Sync, OpenAPI Alignment, Profile Normalization & CI Workflows",
+    "summary": "This patch release aligns documentation and OpenAPI specs across all five monorepo apps, improves profile normalization in @veriworkly/profile-core, synchronizes environment templates, and updates GitHub Actions workflows to compile shared packages before running test suites.",
+    "type": "patch",
+    "publishedAt": "2026-08-23T14:49:10Z",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.24.1",
+    "added": [
+      "Build Shared Packages step in GitHub Actions CI workflows (builds.yaml and tests.yaml) to compile @veriworkly/profile-core before app builds and unit tests execute",
+      "Helper functions (itemLabel, itemProse, itemFirst, itemList, itemLinkUrl, formatPeriod) in the portfolio mock template library to enable local and CI test runs without private submodule access",
+      "Comprehensive environment variable documentation in ENV_SETUP.md and 24 missing configuration keys in apps/server/.env.example",
+      "Preview asset for the VeriWorkly Special resume template"
+    ],
+    "improved": [
+      "Synchronized bundled OpenAPI 3.1 specifications (openapi.json and openapi.yaml) across all five consumer applications",
+      "Aligned agent discovery manifests (.well-known/agent.json) and llms.txt endpoints across all apps",
+      "Standardized WCAG accessibility target across PRODUCT.md, veriworkly.md, and coding standards to WCAG 2.2 Level AA",
+      "Updated documentation platform with complete 12-template catalog (7 resume + 5 cover letter) and v3 per-document localStorage architecture",
+      "Refreshed app READMEs with current port numbers, cron job schedules, and setup guides",
+      "Clarified paid GitHub import limits in FAQ documentation and reconciled pricing across all public markdown files"
+    ],
+    "fixed": [
+      "Master profile normalization now accepts unknown input data and falls back safely to default fields instead of throwing runtime cast errors",
+      "Document creation delays UUID allocation until profile parsing succeeds, preventing orphaned IDs if an import fails",
+      "Tightened cover letter default values to match the latest profile-core projection output shape",
+      "Fixed LaTeX math expression parsing errors in state-management.mdx during static docs compilation"
+    ],
+    "breaking": [],
+    "security": [],
+    "prRefs": [
+      {
+        "number": 196,
+        "title": "[Docs]: comprehensive audit reconciliation and monorepo sync",
+        "url": "https://github.com/VeriWorkly/veriworkly/pull/196",
+        "author": {
+          "login": "Gautam25Raj",
+          "avatarUrl": "https://avatars.githubusercontent.com/u/63155224?v=4",
+          "htmlUrl": "https://github.com/Gautam25Raj"
+        }
+      }
+    ],
+    "tags": ["profile-core", "openapi", "documentation", "ci-cd", "portfolio", "sync"]
+  },
+  {
     "id": "v3-24-0",
     "version": "3.24.0",
     "title": "Profile Core Package, Cover Letter Templates, Typed Section Editor, and Master Profile Import",

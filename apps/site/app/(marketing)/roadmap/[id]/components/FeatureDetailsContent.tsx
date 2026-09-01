@@ -208,7 +208,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
               For Developers
             </span>
             <span className="text-muted text-xs">
-              The technical detail behind this update — skip if you just wanted the summary above.
+              The technical detail behind this update - skip if you just wanted the summary above.
             </span>
           </div>
 

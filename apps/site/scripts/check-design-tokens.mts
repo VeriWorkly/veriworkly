@@ -1,9 +1,9 @@
 /**
  * Proves the three descriptions of the colour system agree:
  *
- *   1. packages/ui/src/styles/themes.css   — what the product renders
- *   2. apps/site/config/brand.ts           — what /style-guide and /brand-kit publish
- *   3. DESIGN.md                           — what the team is told
+ *   1. packages/ui/src/styles/themes.css   - what the product renders
+ *   2. apps/site/config/brand.ts           - what /style-guide and /brand-kit publish
+ *   3. DESIGN.md                           - what the team is told
  *
  * DESIGN.md tells contributors to change these together. This makes that checkable
  * instead of aspirational. Also flags tokens that exist but were never mapped into a
@@ -13,7 +13,7 @@
  * Exits non-zero on any drift, so it is safe to put in CI.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
@@ -151,7 +151,7 @@ for (const token of tokens) {
 const neverMapped = Object.keys(light).filter((t) => !mapped.has(t));
 if (neverMapped.length)
   console.log(
-    `\nDefined but mapped in no app — utilities for these do not exist:\n  ${neverMapped.join("\n  ")}`,
+    `\nDefined but mapped in no app - utilities for these do not exist:\n  ${neverMapped.join("\n  ")}`,
   );
 
 const partial = Object.entries(unmappedPerApp)
@@ -161,6 +161,68 @@ const partial = Object.entries(unmappedPerApp)
   .sort();
 
 if (partial.length) problems.push(...partial.map((p) => `mapped unevenly: ${p}`));
+
+/**
+ * A token that is defined but mapped into no `@theme` block produces no Tailwind
+ * utility. Referencing it in source is then silent: the class name is valid-looking,
+ * emits no CSS, and the element quietly inherits its parent colour.
+ *
+ * That is how `text-muted-foreground` once reached 36 usages across /affiliate while
+ * rendering uncoloured body copy. Those are now fixed, so this guard currently catches
+ * nothing in apps/site - it exists to keep it that way. The report below already
+ * listed the token as "mapped in no app"; it just never failed anything, so nobody
+ * acted on it.
+ *
+ * Note apps/studio still has ~100 `text-muted-foreground` usages with the same dead
+ * mapping. This script only scans apps/site, so they are not caught here.
+ *
+ * Defining a token without a utility is fine on its own (--fd-accent is consumed
+ * directly by Fumadocs). Defining one *and using it as a utility* is the bug, so that
+ * is what fails here.
+ */
+const utilityPrefixes = ["text", "bg", "border", "ring", "fill", "stroke", "from", "to", "via"];
+
+const sourceGlobs = ["app", "components", "features", "hooks", "utils"].map((dir) =>
+  join(HERE, "..", dir),
+);
+
+const collectSource = (dir: string): string[] => {
+  let entries: import("node:fs").Dirent[];
+
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  return entries.flatMap((entry) => {
+    const full = join(dir, entry.name);
+
+    if (entry.isDirectory()) return collectSource(full);
+
+    return /\.(tsx?|css)$/.test(entry.name) ? [full] : [];
+  });
+};
+
+const sourceText = sourceGlobs
+  .flatMap(collectSource)
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n");
+
+for (const token of neverMapped) {
+  const base = token.replace(/^--/, "");
+
+  const used = utilityPrefixes.filter((prefix) =>
+    new RegExp(`(?<![\\w-])${prefix}-${base}(?![\\w-])`).test(sourceText),
+  );
+
+  if (used.length)
+    problems.push(
+      `unmapped token in use: --${base} is mapped in no @theme block, so ` +
+        `${used.map((p) => `\`${p}-${base}\``).join(", ")} emit no CSS. ` +
+        `Either map it, or use a token that is mapped.`,
+    );
+}
 
 if (problems.length) {
   console.error(`\n${problems.length} problem(s):`);

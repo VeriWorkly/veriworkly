@@ -10,9 +10,6 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { MotionProvider } from "@/providers/motion-provider";
 
 export const viewport: Viewport = {
-  // Must match `--background` in @veriworkly/ui/styles/themes.css and the manifest's
-  // theme_color, otherwise the browser chrome / PWA status bar renders a colour the app
-  // never actually paints.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f5f4ef" },
     { media: "(prefers-color-scheme: dark)", color: "#0d1117" },
@@ -39,7 +36,7 @@ export const metadata: Metadata = {
     url: siteConfig.url,
     title: "Free AI Resumes, Cover Letters & Web Portfolios | VeriWorkly",
     description:
-      "Build and tailor professional resumes, cover letters, and web portfolios instantly using privacy-first frontier AI models (from Anthropic and OpenAI). Free, open-core, and no signup required.",
+      "Build and tailor professional resumes, cover letters, and web portfolios instantly using frontier AI models, accessed through a privacy-conscious gateway. Free, open-core, and no signup required.",
     siteName: "VeriWorkly",
     images: [
       {
@@ -79,17 +76,59 @@ export const metadata: Metadata = {
     },
   },
 
+  // No `languages` map: see utils/metadata.ts. One language, one version of every
+  // page, so hreflang conveys nothing - and `en-US` region-locked a global service.
   alternates: {
     canonical: "/",
-    languages: {
-      "en-US": "/",
-    },
   },
+};
+
+/**
+ * Stable @id anchors. Every schema on the site references the founder, the
+ * organisation, and the site through these rather than re-declaring them, so a parser
+ * can resolve six mentions of "VeriWorkly" as one entity instead of six unrelated ones.
+ *
+ * Offers deliberately live on /pricing only. They used to be declared here too, which
+ * shipped seven Offer nodes into the <head> of /privacy and /terms and gave /pricing
+ * two competing offer graphs for the same seven products.
+ */
+const PERSON_ID = `${siteConfig.url}/#gautam-raj`;
+const ORGANIZATION_ID = `${siteConfig.url}/#organization`;
+const WEBSITE_ID = `${siteConfig.url}/#website`;
+
+/**
+ * One real, named human. VeriWorkly is built and maintained by one person, and saying
+ * so plainly is a stronger trust signal than an implied team - it is also verifiable
+ * from the public repository and the live GitHub metrics on /stats.
+ *
+ * `knowsAbout` belongs here rather than on the Organization: expertise is a property
+ * of people.
+ */
+const personSchema = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "@id": PERSON_ID,
+  name: siteConfig.creator,
+  url: `${siteConfig.url}/about`,
+  jobTitle: "Founder and sole maintainer",
+  description:
+    "Builds and maintains VeriWorkly single-handedly: the document studio, the ATS scoring engine, the portfolio publisher, and the API. Works in the open — the codebase, the roadmap, and the development metrics are all public.",
+  worksFor: { "@id": ORGANIZATION_ID },
+  knowsAbout: [
+    "AI resume writing",
+    "ATS resume optimization",
+    "Applicant tracking system parsing",
+    "Cover letter generation",
+    "Portfolio website publishing",
+    "Privacy-first and local-first data storage",
+  ],
+  sameAs: [siteConfig.links.github, siteConfig.links.linkedin, siteConfig.links.twitter],
 };
 
 const webApplicationSchema = {
   "@context": "https://schema.org",
   "@type": ["WebApplication", "SoftwareApplication"],
+  "@id": `${siteConfig.url}/#app`,
 
   name: "VeriWorkly",
   url: siteConfig.url,
@@ -100,67 +139,8 @@ const webApplicationSchema = {
   operatingSystem: "All",
   browserRequirements: "Requires JavaScript",
 
-  creator: {
-    "@type": "Person",
-    name: "Gautam Raj",
-  },
-
-  publisher: {
-    "@type": "Organization",
-    name: "VeriWorkly",
-  },
-
-  offers: [
-    {
-      "@type": "Offer",
-      name: "Free",
-      price: "0",
-      priceCurrency: "USD",
-      description: "Unlimited local resumes, cover letters, and PDF exports without login.",
-    },
-    {
-      "@type": "Offer",
-      name: "3-Day Sprint Pass",
-      price: "2.99",
-      priceCurrency: "USD",
-      description: "3 days of Creator Pro hosting + 150 AI writing credits.",
-    },
-    {
-      "@type": "Offer",
-      name: "7-Day Hunt Pass",
-      price: "5.99",
-      priceCurrency: "USD",
-      description: "7 days of Creator Pro hosting + 400 AI writing credits.",
-    },
-    {
-      "@type": "Offer",
-      name: "AI Standalone",
-      price: "5.99",
-      priceCurrency: "USD",
-      description: "Standalone AI credits package for document tailoring.",
-    },
-    {
-      "@type": "Offer",
-      name: "Creator Pro",
-      price: "9.99",
-      priceCurrency: "USD",
-      description: "Public portfolio hosting with custom subdomain, analytics, and SEO controls.",
-    },
-    {
-      "@type": "Offer",
-      name: "Job Hunter Bundle (monthly)",
-      price: "14.99",
-      priceCurrency: "USD",
-      description: "Full access bundle on monthly billing.",
-    },
-    {
-      "@type": "Offer",
-      name: "Job Hunter Bundle (annual, per month)",
-      price: "11.99",
-      priceCurrency: "USD",
-      description: "Full access bundle on annual billing.",
-    },
-  ],
+  creator: { "@id": PERSON_ID },
+  publisher: { "@id": ORGANIZATION_ID },
 
   featureList: [
     "No login required & local-first",
@@ -173,32 +153,43 @@ const webApplicationSchema = {
   ],
 };
 
-/**
- * The single sitewide Organization node. Page-level code must not declare a second
- * "Organization" schema (see /about, which used to) — two nodes for the same entity on
- * one page is a duplicate-structured-data signal, not two facts. Add fields here instead.
- */
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": ORGANIZATION_ID,
   name: siteConfig.name,
   url: siteConfig.url,
-  logo: `${siteConfig.url}/veriworkly-logo.png`,
+  logo: {
+    "@type": "ImageObject",
+    url: `${siteConfig.url}/veriworkly-logo.png`,
+    width: 512,
+    height: 512,
+  },
   description: siteConfig.description,
   email: siteConfig.email,
-  founder: {
-    "@type": "Person",
-    name: siteConfig.creator,
-    url: siteConfig.links.github,
-  },
-  knowsAbout: [
-    "AI resume writing",
-    "ATS resume optimization",
-    "Cover letter generation",
-    "Portfolio website publishing",
-    "Privacy-first data storage",
-  ],
+  founder: { "@id": PERSON_ID },
   sameAs: [siteConfig.links.github, siteConfig.links.twitter, siteConfig.links.linkedin],
+};
+
+/**
+ * The root WebSite node. Without one there is no site-level `inLanguage` and no
+ * publisher linkage from the site to the organisation.
+ *
+ * Deliberately no `SearchAction`. A sitelinks searchbox needs a URL that returns
+ * results for a query string, and this site has none: /templates and /faq both filter
+ * in the client (see TemplateExplorer, which keeps filter state out of searchParams so
+ * the route can stay static). Declaring one would advertise a deep link that renders
+ * the unfiltered page - a broken promise to the one visitor who uses it.
+ */
+const webSiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": WEBSITE_ID,
+  name: siteConfig.name,
+  url: siteConfig.url,
+  description: siteConfig.description,
+  inLanguage: "en",
+  publisher: { "@id": ORGANIZATION_ID },
 };
 
 const RootLayout = ({
@@ -211,12 +202,22 @@ const RootLayout = ({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={jsonLdScriptProps(webApplicationSchema)}
+          dangerouslySetInnerHTML={jsonLdScriptProps(webSiteSchema)}
         />
 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={jsonLdScriptProps(organizationSchema)}
+        />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLdScriptProps(personSchema)}
+        />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLdScriptProps(webApplicationSchema)}
         />
       </head>
 

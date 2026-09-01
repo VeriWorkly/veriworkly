@@ -3,17 +3,6 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
-/**
- * Last-resort boundary: this replaces the root layout entirely, so it must render its
- * own <html>/<body> and cannot rely on anything the layout provides — no theme
- * provider, no fonts, no guarantee the app stylesheet was applied.
- *
- * Everything here is therefore self-contained inline styling, with dark mode driven
- * straight off `prefers-color-scheme` rather than the `.dark` class next-themes would
- * normally have set. `app/error.tsx` handles the ordinary case and keeps full branding;
- * this only runs when that boundary itself could not mount.
- */
-
 const GlobalError = ({
   error,
   reset,
@@ -30,13 +19,13 @@ const GlobalError = ({
       <body
         style={{
           margin: 0,
-          minHeight: "100dvh",
+          padding: "24px",
           display: "flex",
+          color: "#171717",
+          minHeight: "100dvh",
           alignItems: "center",
           justifyContent: "center",
-          padding: "24px",
           backgroundColor: "#f5f4ef",
-          color: "#171717",
           fontFamily:
             "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
         }}
@@ -58,11 +47,11 @@ const GlobalError = ({
           <p
             style={{
               margin: 0,
-              fontSize: "0.75rem",
               fontWeight: 700,
+              color: "#dc2626",
+              fontSize: "0.75rem",
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              color: "#dc2626",
             }}
           >
             Application Error
@@ -70,10 +59,10 @@ const GlobalError = ({
 
           <h1
             style={{
-              margin: "1rem 0 0",
-              fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
               fontWeight: 700,
+              margin: "1rem 0 0",
               letterSpacing: "-0.02em",
+              fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
             }}
           >
             This page couldn&rsquo;t load
@@ -83,7 +72,7 @@ const GlobalError = ({
             className="vw-ge-muted"
             style={{ margin: "1rem 0 0", lineHeight: 1.7, color: "#5f5c54" }}
           >
-            Something failed before the page could start. This is usually temporary — trying again
+            Something failed before the page could start. This is usually temporary - trying again
             often resolves it.
           </p>
 
@@ -91,10 +80,10 @@ const GlobalError = ({
             <p
               className="vw-ge-muted"
               style={{
-                margin: "1.5rem 0 0",
-                fontSize: "0.75rem",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
                 color: "#5f5c54",
+                fontSize: "0.75rem",
+                margin: "1.5rem 0 0",
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
               }}
             >
               Reference: {error.digest}
@@ -103,11 +92,11 @@ const GlobalError = ({
 
           <div
             style={{
+              gap: "0.75rem",
               display: "flex",
               flexWrap: "wrap",
-              gap: "0.75rem",
-              justifyContent: "center",
               marginTop: "2rem",
+              justifyContent: "center",
             }}
           >
             <button
@@ -115,14 +104,14 @@ const GlobalError = ({
               onClick={() => reset()}
               className="vw-ge-button"
               style={{
-                cursor: "pointer",
                 border: 0,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#ffffff",
+                fontSize: "0.875rem",
                 borderRadius: "9999px",
                 padding: "0.75rem 2rem",
-                fontSize: "0.875rem",
-                fontWeight: 600,
                 backgroundColor: "#2563eb",
-                color: "#ffffff",
               }}
             >
               Try again
@@ -132,12 +121,12 @@ const GlobalError = ({
               href="/"
               className="vw-ge-link"
               style={{
-                borderRadius: "9999px",
-                padding: "0.75rem 2rem",
-                fontSize: "0.875rem",
                 fontWeight: 600,
                 color: "#2563eb",
+                fontSize: "0.875rem",
+                borderRadius: "9999px",
                 textDecoration: "none",
+                padding: "0.75rem 2rem",
               }}
             >
               Back to home

@@ -8,7 +8,6 @@ export type BillingSummary = {
   cancelAtPeriodEnd: boolean;
   graceEndsAt: string | null;
   canPublish: boolean;
-  eligibleForTrial: boolean;
   entitlements: string[];
   credits: {
     balance: number;

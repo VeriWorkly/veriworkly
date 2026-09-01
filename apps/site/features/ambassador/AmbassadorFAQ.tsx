@@ -10,46 +10,44 @@ type FAQItem = {
   answer: string;
 };
 
+/**
+ * These answers describe only what the program actually does today: an application,
+ * a manual review, and an approve/reject decision. The server implements exactly
+ * that (AmbassadorService.apply / getStatus / listApplications / reviewApplication)
+ * and nothing else - there is no points model, no voucher model, no leaderboard,
+ * and no automated .edu verification. Any reward mechanics described in numbers
+ * would read as a live program, so they stay out until they exist.
+ */
 const faqItems: FAQItem[] = [
   {
-    question: "Is there a cash payout or budget for student ambassadors?",
+    question: "Is there a cash payout for student ambassadors?",
     answer:
-      "No. VeriWorkly is a free, open-source project. Because we operate without a direct commercial marketing budget, we run a points-based system instead of cash payouts. Points can be exchanged for premium platform access tokens.",
+      "No. VeriWorkly is a free, open-core project with no commercial marketing budget, so the program is not a paid role. We are designing the reward side around free access to paid features rather than cash, and we will publish the specifics before anyone is asked to earn anything.",
   },
   {
-    question: "How do classmate invite points work and how do we prevent spam?",
+    question: "What do ambassadors actually get right now?",
     answer:
-      "You earn 10 points for every peer who registers. To prevent invite spam or fake self-referral accounts, invites are only officially 'qualified' and credited once the classmate actively engages with the builder and scores at least 250 platform points (e.g. creating their resume, Master Profile, or customization).",
+      "The program is in its earliest phase, so we are honest about this: what you get today is direct access to the person building VeriWorkly, early influence over the roadmap, and first claim on the rewards once they launch. If you want a program with a settled points table, wait for the next intake rather than this one.",
   },
   {
-    question: "How does the upgrade boost work?",
+    question: "How does the application work?",
     answer:
-      "If a classmate you invited upgrades to a paid plan (Creator Pro, AI Credits, or the Bundle), you receive a 1.2x boost of +20 points (totaling 30 points for that referral).",
+      "You fill in the application form with your college, graduation year, and a few short answers. It is then read by a person - there is no automated validator and no instant badge. You will see your status on the apply page as pending, approved, or not accepted.",
   },
   {
-    question: "Do my points expire?",
+    question: "How long does review take?",
     answer:
-      "Yes. To keep the program structured and encourage active participation, all points expire at the end of each calendar year. For example, all points earned in 2026 will reset on January 1, 2027. Be sure to redeem your points before the end of the year!",
-  },
-  {
-    question: "What are the limits on social posts, articles, and videos?",
-    answer:
-      "Ambassadors can create and upload up to 30 videos (50 pts each), 30 articles/blog posts (40 pts each), and 30 Twitter/X or LinkedIn shares (5 pts each) per month. To maintain high quality and prevent system spam, a daily limit of 1 post count per day applies across all channels.",
-  },
-  {
-    question: "What platforms are allowed for video walkthroughs and articles?",
-    answer:
-      "Videos must be posted on LinkedIn or Twitter/X (videos uploaded on TikTok or YouTube are not credited). Articles and blog posts must be published on Medium, Dev.to, LinkedIn Articles, or a reputable personal blog. All posts are reviewed manually.",
-  },
-  {
-    question: "How do I redeem Creator Pro access and when does it expire?",
-    answer:
-      "You can redeem 30 days of Creator Pro at any time for 1,500 points. The 30-day Pro license begins the day you claim it and expires after 30 days, regardless of whether you keep a portfolio published or not.",
+      "Applications are reviewed by hand by one person, so this is not instant. We aim to get back to every applicant, and the apply page always shows your current status rather than leaving you guessing.",
   },
   {
     question: "How is my student status verified?",
     answer:
-      "Submit your application using a valid university email domain (.edu or your institution's local equivalent). Once validated, your account is activated as a Campus Ambassador.",
+      "Manually, from what you tell us on the form and your public profiles. We do not currently run an automated university-domain check, so do not rely on a .edu address alone being enough - the review is a human reading your application.",
+  },
+  {
+    question: "What will ambassadors be asked to do?",
+    answer:
+      "Introduce VeriWorkly to classmates who are job hunting, tell us where the product falls short for students, and help us understand what campus hiring actually looks like where you are. Anything beyond that will be agreed with you, not assigned to you.",
   },
 ];
 
@@ -75,7 +73,7 @@ const AmbassadorFAQ = () => {
             QUESTIONS
           </h2>
           <p className="max-w-xs text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Need clarification on points verification, caps, or voucher expirations?
+            Something here not answered, or want to know where the program is headed?
           </p>
 
           <div className="max-w-xs space-y-1 border-t border-zinc-200 pt-6 dark:border-white/10">

@@ -17,7 +17,7 @@ import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { buildEditorUrl, buildPreviewUrl } from "@/features/templates/utils";
-import TemplateDetailHeader from "@/features/templates/TemplateHeader";
+import TemplateDetailHeader from "@/features/templates/TemplateDetailHeader";
 
 type PageProps = {
   params: Promise<{ docType: string; templateId: string }>;
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: template.seo.description,
     ogTitle: `${template.name}: A ${templateTypeLabel} Template Built for ${template.audience[0] ?? "Job Seekers"}`,
     ogDescription: template.shortDescription,
-    twitterTitle: `${template.name} — ${template.documentTypeLabel} Template`,
+    twitterTitle: `${template.name} - ${template.documentTypeLabel} Template`,
     twitterDescription: template.shortDescription,
     image: template.previewImage,
     imageAlt: `${template.name} ${templateTypeLabel} template preview`,

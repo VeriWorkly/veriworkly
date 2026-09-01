@@ -15,7 +15,7 @@ const SupportSidebar = () => {
 
         <div className="mt-6 space-y-3">
           <a
-            href="mailto:support@veriworkly.com"
+            href="mailto:contact@veriworkly.com"
             className="group border-line bg-paper/40 hover:bg-paper-2 text-ink flex items-center justify-between rounded-2xl border p-4 text-xs font-bold uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
           >
             <div className="flex items-center gap-3">

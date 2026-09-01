@@ -30,6 +30,15 @@ const INCREMENT_SCRIPT = `local current = tonumber(redis.call("GET", KEYS[1]) or
          if current == 1 then redis.call("EXPIRE", KEYS[1], tonumber(ARGV[2])) end
          return current`;
 
+/**
+ * Hands one unit back. Guarded on the key still existing and still being positive so a refund
+ * that races the window expiring cannot create a negative counter, which would silently grant
+ * the next caller an extra scan.
+ */
+const DECREMENT_SCRIPT = `local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+         if current <= 0 then return 0 end
+         return redis.call("DECR", KEYS[1])`;
+
 function anonymousId(ip: string) {
   return createHmac("sha256", config.auth.secret).update(ip).digest("hex").slice(0, 32);
 }
@@ -46,7 +55,7 @@ async function paidPeriod(userId: string) {
     where: {
       userId,
       productKey: { in: ["ai_credits", "bundle"] },
-      status: { in: ["ACTIVE", "TRIALING"] },
+      status: { in: ["ACTIVE"] },
     },
     orderBy: { updatedAt: "desc" },
     select: { interval: true, currentPeriodEnd: true, createdAt: true },
@@ -62,76 +71,108 @@ async function paidPeriod(userId: string) {
   return { key: `ats:quota:subscriber:${userId}:${start.toISOString().slice(0, 10)}`, end };
 }
 
-async function readCounter(key: string, windowSeconds: number, paidTtlSeconds: number | null) {
-  const redis = getRedis();
-  const used = Number((await redis.get(key)) ?? 0);
-  const rawTtl = paidTtlSeconds ?? (await redis.ttl(key));
-  const ttl = rawTtl > 0 ? rawTtl : windowSeconds;
-  return { used, ttl };
+type QuotaContext = {
+  tier: AtsQuotaSummary["tier"];
+  paid: boolean;
+  key: string;
+  extractKey: string;
+  limit: number;
+  extractLimit: number;
+  windowSeconds: number;
+  ttlSeconds: number;
+};
+
+/**
+ * Everything a quota decision needs, resolved in one pass.
+ *
+ * `consume` previously built a full summary (Redis GET + TTL on two counters, an entitlement
+ * check, and a subscription query), then re-ran `paidPeriod` for a second identical
+ * subscription query, then built the whole summary a third time for the response — roughly
+ * three database round trips and seven Redis calls for one increment, on the free
+ * unauthenticated endpoint that takes the most traffic. Resolving the context once and deriving
+ * the response from the counter the increment already returned removes all of that.
+ */
+async function resolveContext(userId: string | undefined, ip: string): Promise<QuotaContext> {
+  const paid = userId ? await paidPeriod(userId) : null;
+  const tier = paid ? "subscriber" : userId ? "free" : "anonymous";
+  const identity = userId ?? anonymousId(ip);
+  const windowSeconds = userId ? FREE_WINDOW_SECONDS : ANONYMOUS_WINDOW_SECONDS;
+
+  return {
+    tier,
+    paid: Boolean(paid),
+    key: paid?.key ?? `ats:quota:${tier}:${identity}`,
+    extractKey: paid?.key ? `${paid.key}:extract` : `ats:extract-quota:${tier}:${identity}`,
+    limit: paid ? PAID_LIMIT : userId ? 2 : 1,
+    extractLimit: paid ? PAID_EXTRACT_LIMIT : userId ? FREE_EXTRACT_LIMIT : ANONYMOUS_EXTRACT_LIMIT,
+    windowSeconds,
+    ttlSeconds: paid
+      ? Math.max(1, Math.ceil((paid.end.getTime() - Date.now()) / 1000))
+      : windowSeconds,
+  };
 }
 
-async function incrementCounter(key: string, limit: number, ttlSeconds: number) {
-  const used = Number(
+/**
+ * Builds the wire summary from an already-resolved context.
+ *
+ * `knownUsed` lets a caller that just incremented a counter supply the value the Lua script
+ * returned instead of reading it back, which is both one fewer round trip and immune to another
+ * request landing in between.
+ */
+async function summarize(
+  ctx: QuotaContext,
+  knownUsed?: { scans?: number; extracts?: number },
+): Promise<AtsQuotaSummary> {
+  const redis = getRedis();
+  const [scanUsed, extractUsed, rawTtl] = await Promise.all([
+    knownUsed?.scans !== undefined ? knownUsed.scans : redis.get(ctx.key).then(Number),
+    knownUsed?.extracts !== undefined ? knownUsed.extracts : redis.get(ctx.extractKey).then(Number),
+    ctx.paid ? Promise.resolve(ctx.ttlSeconds) : redis.ttl(ctx.key),
+  ]);
+
+  const ttl = rawTtl > 0 ? rawTtl : ctx.windowSeconds;
+
+  return {
+    tier: ctx.tier,
+    limit: ctx.limit,
+    used: scanUsed,
+    remaining: Math.max(0, ctx.limit - scanUsed),
+    resetsAt: new Date(Date.now() + ttl * 1000).toISOString(),
+    canConvertResume: ctx.paid,
+    pricing: publicAtsPolicy(),
+    extract: {
+      limit: ctx.extractLimit,
+      used: extractUsed,
+      remaining: Math.max(0, ctx.extractLimit - extractUsed),
+    },
+  };
+}
+
+async function increment(key: string, limit: number, ttlSeconds: number) {
+  return Number(
     await getRedis().eval(INCREMENT_SCRIPT, {
       keys: [key],
       arguments: [String(limit), String(ttlSeconds)],
     }),
   );
-  return used >= 0;
 }
 
 export class AtsQuotaService {
   static async summary(userId: string | undefined, ip: string): Promise<AtsQuotaSummary> {
-    const paid = userId ? await paidPeriod(userId) : null;
-    const tier = paid ? "subscriber" : userId ? "free" : "anonymous";
-    const limit = paid ? PAID_LIMIT : userId ? 2 : 1;
-    const extractLimit = paid
-      ? PAID_EXTRACT_LIMIT
-      : userId
-        ? FREE_EXTRACT_LIMIT
-        : ANONYMOUS_EXTRACT_LIMIT;
-    const windowSeconds = userId ? FREE_WINDOW_SECONDS : ANONYMOUS_WINDOW_SECONDS;
-    const paidTtlSeconds = paid
-      ? Math.max(1, Math.ceil((paid.end.getTime() - Date.now()) / 1000))
-      : null;
-    const key = paid?.key ?? `ats:quota:${tier}:${userId ?? anonymousId(ip)}`;
-    const extractKey = paid?.key
-      ? `${paid.key}:extract`
-      : `ats:extract-quota:${tier}:${userId ?? anonymousId(ip)}`;
-
-    const [{ used, ttl }, extractCounter] = await Promise.all([
-      readCounter(key, windowSeconds, paidTtlSeconds),
-      readCounter(extractKey, windowSeconds, paidTtlSeconds),
-    ]);
-
-    return {
-      tier,
-      limit,
-      used,
-      remaining: Math.max(0, limit - used),
-      resetsAt: new Date(Date.now() + ttl * 1000).toISOString(),
-      canConvertResume: Boolean(paid),
-      pricing: publicAtsPolicy(),
-      extract: {
-        limit: extractLimit,
-        used: extractCounter.used,
-        remaining: Math.max(0, extractLimit - extractCounter.used),
-      },
-    };
+    return summarize(await resolveContext(userId, ip));
   }
 
   static async consume(userId: string | undefined, ip: string) {
-    const summary = await this.summary(userId, ip);
-    const paid = userId ? await paidPeriod(userId) : null;
-    const key = paid?.key ?? `ats:quota:${summary.tier}:${userId ?? anonymousId(ip)}`;
-    const windowSeconds = userId ? FREE_WINDOW_SECONDS : ANONYMOUS_WINDOW_SECONDS;
-    const ttl = paid
-      ? Math.max(1, Math.ceil((paid.end.getTime() - Date.now()) / 1000))
-      : windowSeconds;
+    const ctx = await resolveContext(userId, ip);
+    const used = await increment(ctx.key, ctx.limit, ctx.ttlSeconds);
 
-    const ok = await incrementCounter(key, summary.limit, ttl);
-    if (!ok) throw new ApiError(429, "ATS scan quota exceeded.", await this.summary(userId, ip));
-    return this.summary(userId, ip);
+    if (used < 0)
+      throw new ApiError(
+        429,
+        "ATS scan quota exceeded.",
+        await summarize(ctx, { scans: ctx.limit }),
+      );
+    return summarize(ctx, { scans: used });
   }
 
   /**
@@ -139,23 +180,24 @@ export class AtsQuotaService {
    * see the comment on ANONYMOUS_EXTRACT_LIMIT.
    */
   static async consumeExtract(userId: string | undefined, ip: string) {
-    const paid = userId ? await paidPeriod(userId) : null;
-    const tier = paid ? "subscriber" : userId ? "free" : "anonymous";
-    const extractLimit = paid
-      ? PAID_EXTRACT_LIMIT
-      : userId
-        ? FREE_EXTRACT_LIMIT
-        : ANONYMOUS_EXTRACT_LIMIT;
-    const windowSeconds = userId ? FREE_WINDOW_SECONDS : ANONYMOUS_WINDOW_SECONDS;
-    const ttl = paid
-      ? Math.max(1, Math.ceil((paid.end.getTime() - Date.now()) / 1000))
-      : windowSeconds;
-    const extractKey = paid?.key
-      ? `${paid.key}:extract`
-      : `ats:extract-quota:${tier}:${userId ?? anonymousId(ip)}`;
+    const ctx = await resolveContext(userId, ip);
+    const used = await increment(ctx.extractKey, ctx.extractLimit, ctx.ttlSeconds);
 
-    const ok = await incrementCounter(extractKey, extractLimit, ttl);
-    if (!ok) throw new ApiError(429, "ATS upload quota exceeded.", await this.summary(userId, ip));
-    return this.summary(userId, ip);
+    if (used < 0) throw new ApiError(429, "ATS upload quota exceeded.", await summarize(ctx));
+    return summarize(ctx, { extracts: used });
+  }
+
+  /**
+   * Returns a scan to the caller's allowance.
+   *
+   * Used only when the server could not deliver the analysis the scan was spent on — a routing
+   * or configuration failure on our side. Deliberately not wired to every error path: metering
+   * runs before the outbound job-page fetch precisely so quota bounds server-initiated egress,
+   * and refunding on a failed fetch would hand that budget straight back.
+   */
+  static async refund(userId: string | undefined, ip: string) {
+    const ctx = await resolveContext(userId, ip);
+    await getRedis().eval(DECREMENT_SCRIPT, { keys: [ctx.key], arguments: [] });
+    return summarize(ctx);
   }
 }

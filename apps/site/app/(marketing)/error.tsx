@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ArrowRight, Check, Copy, RotateCw, TriangleAlert } from "lucide-react";
 
-export default function MarketingError({
+const MarketingError = ({
   error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}) => {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -19,13 +19,17 @@ export default function MarketingError({
 
   useEffect(() => {
     if (!copied) return;
+
     const timeout = setTimeout(() => setCopied(false), 1800);
+
     return () => clearTimeout(timeout);
   }, [copied]);
 
   const handleCopy = async () => {
     if (!error.digest) return;
+
     await navigator.clipboard.writeText(error.digest);
+
     setCopied(true);
   };
 
@@ -41,7 +45,9 @@ export default function MarketingError({
         <div className="relative z-10 flex max-w-xl flex-col items-center">
           <div className="relative mb-8 flex h-20 w-20 items-center justify-center">
             <span className="animate-pulse-ring absolute inset-0 rounded-full border border-red-500/30 motion-reduce:animate-none" />
+
             <span className="animate-pulse-ring absolute inset-0 rounded-full border border-red-500/30 [animation-delay:1.2s] motion-reduce:animate-none" />
+
             <div className="relative flex h-full w-full items-center justify-center rounded-full bg-red-500/10 text-red-600 dark:text-red-400">
               <TriangleAlert className="h-8 w-8" aria-hidden="true" />
             </div>
@@ -64,17 +70,18 @@ export default function MarketingError({
             <button
               type="button"
               onClick={() => reset()}
-              className="group inline-flex h-14 items-center justify-center gap-2 rounded-full bg-zinc-950 px-8 text-base font-semibold text-white shadow-md transition-all duration-300 hover:bg-blue-600 active:scale-[0.97] dark:bg-white dark:text-zinc-950 dark:hover:bg-blue-500 dark:hover:text-white"
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-zinc-950 px-8 text-base font-semibold text-white shadow-md transition-all duration-300 hover:bg-blue-600 active:scale-[0.97] dark:bg-white dark:text-zinc-950 dark:hover:bg-blue-500 dark:hover:text-white"
             >
               <RotateCw
-                className="h-4 w-4 transition-transform duration-500 group-hover:rotate-180"
                 aria-hidden="true"
+                className="h-4 w-4 transition-transform duration-500 group-hover:rotate-180"
               />
               Try again
             </button>
+
             <Link
               href="/"
-              className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-black/10 bg-white/70 px-8 text-base font-medium text-zinc-800 backdrop-blur-md transition-colors hover:border-blue-500/30 hover:text-blue-600 dark:border-white/10 dark:bg-black/40 dark:text-zinc-200 dark:hover:text-blue-400"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-white/70 px-8 text-base font-medium text-zinc-800 backdrop-blur-md transition-colors hover:border-blue-500/30 hover:text-blue-600 dark:border-white/10 dark:bg-black/40 dark:text-zinc-200 dark:hover:text-blue-400"
             >
               Back to Home
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -99,4 +106,6 @@ export default function MarketingError({
       </div>
     </section>
   );
-}
+};
+
+export default MarketingError;

@@ -51,7 +51,7 @@ async function suspendExpiredGracePeriods() {
               productKey: { in: ["portfolio_pro", "bundle"] },
               OR: [
                 {
-                  status: { in: ["ACTIVE", "TRIALING"] },
+                  status: { in: ["ACTIVE"] },
                   OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: now } }],
                 },
                 { graceEndsAt: { gt: now } },

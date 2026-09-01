@@ -20,9 +20,27 @@ export const siteConfig = {
   email: "info@veriworkly.com",
 
   /**
+   * The single named human behind grievances, takedown notices, and data-protection
+   * questions. Published on /terms and /privacy.
+   *
+   * An India-based service that hosts user content and processes personal data is
+   * generally expected to publish a *named* contact, not a shared alias - and the
+   * legal pages previously named only roles that do not exist ("privacy officer",
+   * "privacy compliance team", "a designated security engineer") for what is one
+   * person. One named contact serves the grievance duty, the data-protection duty,
+   * and the takedown route, so it is defined once here.
+   */
+  legalContact: {
+    name: "Gautam Raj",
+    role: "Grievance Officer & Data Protection Contact",
+    email: "grievance@veriworkly.com",
+    postalAddress: "Phase-3, DLF Cyber City, Gurugram, Haryana 122010, India",
+  },
+
+  /**
    * `siteConfig` is imported by client components (Navbar, PricingExperience,
    * ContactExperience), and only `NEXT_PUBLIC_*` vars are inlined into the client
-   * bundle — a bare `SITE_URL` reads as `undefined` in the browser, so server and
+   * bundle - a bare `SITE_URL` reads as `undefined` in the browser, so server and
    * client would silently disagree on the canonical origin.
    *
    * `NEXT_PUBLIC_SITE_URL` is the value that reaches both. `SITE_URL` is kept as a
@@ -31,7 +49,7 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || links.main,
 
   description:
-    "Free-to-use, open-core, and privacy-first AI career workspace. Build and tailor professional resumes, cover letters, and web portfolios with local-first ownership, optional secure cloud sync, and advanced frontier AI models (from Anthropic and OpenAI).",
+    "Free-to-use, open-core, and privacy-first AI career workspace. Build and tailor professional resumes, cover letters, and web portfolios with local-first ownership, optional secure cloud sync, and frontier AI models accessed through a privacy-conscious gateway.",
 
   tagline: "Free AI resumes, cover letters & web portfolios. No login required.",
 

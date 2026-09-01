@@ -10,7 +10,7 @@ export const adminUserListQuerySchema = adminPaginationSchema.merge(adminSearchS
   role: z.enum(["USER", "AMBASSADOR", "ADMIN"]).optional(),
   affiliateStatus: z.enum(["NOT_ENROLLED", "PENDING", "ACTIVE", "SUSPENDED"]).optional(),
   ambassadorStatus: z.enum(["NONE", "PENDING", "APPROVED", "REJECTED"]).optional(),
-  subscription: z.enum(["ACTIVE", "TRIALING", "PAST_DUE", "CANCELED", "NONE"]).optional(),
+  subscription: z.enum(["ACTIVE", "PAST_DUE", "CANCELED", "NONE"]).optional(),
   sort: z.enum(["newest", "oldest", "name", "email"]).default("newest"),
 });
 

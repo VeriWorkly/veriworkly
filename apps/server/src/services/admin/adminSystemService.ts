@@ -7,7 +7,7 @@ import { cacheDelByPrefix, getRedis } from "#lib/redis";
 import { toCreatedAtFilter } from "#validators/admin/adminCommonValidator";
 
 import { getAdminDashboardMetrics, getUsageSnapshotForDate } from "#services/analyticsService";
-import { getGitHubStats, syncGitHubStatsFromGitHub } from "#services/githubService";
+import { getGitHubStats, syncGitHubStatsFromGitHub } from "#services/github/index";
 
 import type {
   adminCacheFlushSchema,

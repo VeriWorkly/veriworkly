@@ -12,20 +12,20 @@ interface BuildPageMetadataOptions {
   description: string;
 
   /**
-   * og:title — shown in link unfurls (Slack, LinkedIn, iMessage, Discord). The site
+   * og:title - shown in link unfurls (Slack, LinkedIn, iMessage, Discord). The site
    * name renders separately in most unfurls, so this should lead with the hook/benefit
    * rather than repeating "| VeriWorkly". Deliberately written, not a copy of `title`.
    */
   ogTitle: string;
-  /** og:description — can be more benefit-driven / conversational than the SEO description. */
+  /** og:description - can be more benefit-driven / conversational than the SEO description. */
   ogDescription: string;
 
   /**
-   * twitter:title — Twitter/X truncates card titles harder than OG unfurls, so this
+   * twitter:title - Twitter/X truncates card titles harder than OG unfurls, so this
    * should be the tightest, punchiest variant. Deliberately written, not a copy of `ogTitle`.
    */
   twitterTitle: string;
-  /** twitter:description — short and scannable; the audience skims faster than a Slack unfurl. */
+  /** twitter:description - short and scannable; the audience skims faster than a Slack unfurl. */
   twitterDescription: string;
 
   /** Absolute or root-relative URL to the OG/Twitter share image. */
@@ -40,12 +40,19 @@ interface BuildPageMetadataOptions {
 
   type?: "website" | "article";
 
-  /** Set true for internal/utility pages (e.g. style guide) that should not be indexed. */
+  /**
+   * Set true for pages that should not be indexed - the 404 boundaries, and any
+   * internal or utility route.
+   *
+   * Not the style guide: it is a public design-system reference, linked from the
+   * footer and llms.txt and listed in the sitemap deliberately. This docblock used to
+   * cite it as the example, which contradicted how the page is actually treated.
+   */
   noIndex?: boolean;
 
   /**
    * Query params to append to the canonical (and og:url). Paginated routes must pass their
-   * page number here — without it every page declares the bare path as its canonical, and
+   * page number here - without it every page declares the bare path as its canonical, and
    * Google drops page 2+ from the index as duplicates. Empty/undefined values are skipped,
    * so page 1 still canonicalises to the clean path.
    */
@@ -53,9 +60,9 @@ interface BuildPageMetadataOptions {
 }
 
 /**
- * Builds a complete Next.js Metadata object with canonical, hreflang, Open Graph,
- * and Twitter Card fields always present, so no marketing page ever ships with a
- * partial <head> block. Next.js does not deep-merge nested metadata fields (openGraph,
+ * Builds a complete Next.js Metadata object with canonical, Open Graph, and Twitter
+ * Card fields always present, so no marketing page ever ships with a partial <head>
+ * block. Next.js does not deep-merge nested metadata fields (openGraph,
  * twitter) from the root layout into page-level metadata, so every field a page needs
  * must be set explicitly here rather than relied on to inherit.
  *
@@ -100,7 +107,10 @@ export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
       : {}),
 
     openGraph: {
-      url,
+      // `og:url` is omitted on noIndex pages for the same reason as the canonical
+      // below - it is a self-reference to a URL that should not be treated as a
+      // destination, and for the 404 boundaries it names a route that does not exist.
+      ...(options.noIndex ? {} : { url }),
       title: options.ogTitle,
       type: options.type ?? "website",
       description: options.ogDescription,
@@ -125,11 +135,27 @@ export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
       site: siteConfig.twitter.site,
     },
 
-    alternates: {
-      canonical: url,
-      languages: {
-        "en-US": url,
-      },
-    },
+    /**
+     * A noIndex page gets no canonical.
+     *
+     * Emitting one alongside `robots: noindex` is contradictory markup, and on the
+     * not-found boundaries it was worse: they pass `path: "/404"` and `"/roadmap/404"`,
+     * which are not real routes, so every 404 response advertised a canonical pointing
+     * at a URL that itself 404s.
+     *
+     * `null` rather than an omitted key, because Next.js merges page metadata over the
+     * root layout's - and the root layout sets `canonical: "/"`. Simply leaving the
+     * field out let that inherit through, which made every 404 declare itself the
+     * canonical homepage. `null` explicitly clears it.
+     *
+     * No `languages` map either. hreflang points search engines at alternate language
+     * or regional versions of a page, and there is exactly one version of every page
+     * here, so a self-referencing single-entry set tells Google nothing it can act on.
+     * It previously emitted `en-US`, which was the worst of the available options: it
+     * region-locks the page to United States English, while this is an India-based
+     * service with a global English-speaking audience and no US-specific content. If
+     * regional variants are ever added, the correct shape is `en` plus `x-default`.
+     */
+    ...(options.noIndex ? { alternates: { canonical: null } } : { alternates: { canonical: url } }),
   };
 }

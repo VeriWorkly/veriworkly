@@ -9,7 +9,7 @@ import CopyBlock from "./CopyBlock";
 const BoilerplateSection = () => {
   const short = siteConfig.tagline;
   const medium =
-    "VeriWorkly is a free, open-core, privacy-first AI career workspace — a resume, cover letter, and portfolio builder that requires no login to start and keeps data local-first with optional cloud sync.";
+    "VeriWorkly is a free, open-core, privacy-first AI career workspace - a resume, cover letter, and portfolio builder that requires no login to start and keeps data local-first with optional cloud sync.";
   const long = siteConfig.description;
 
   return (

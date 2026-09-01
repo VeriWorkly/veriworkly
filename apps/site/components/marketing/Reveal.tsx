@@ -6,7 +6,7 @@ interface RevealProps extends HTMLMotionProps<"div"> {
   delay?: number;
   /**
    * Set on above-the-fold content. Skips the hidden initial state so the block
-   * paints on the server render instead of waiting for hydration — starting the
+   * paints on the server render instead of waiting for hydration - starting the
    * LCP candidate at `opacity: 0` measurably delays it.
    */
   priority?: boolean;

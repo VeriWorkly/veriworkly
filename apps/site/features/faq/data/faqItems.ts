@@ -1,280 +1,331 @@
-import { Globe, FileText, Code, DollarSign, HelpCircle, KeyRound, Shield } from "lucide-react";
+import {
+  Code,
+  Globe,
+  Shield,
+  FileText,
+  Sparkles,
+  HelpCircle,
+  DollarSign,
+  CheckCircle2,
+} from "lucide-react";
 
 export const categories = [
   { id: "all", name: "All Questions", icon: HelpCircle },
   { id: "general", name: "General & Privacy", icon: Shield },
   { id: "documents", name: "Resumes & Documents", icon: FileText },
+  { id: "ats", name: "ATS Resume Checker", icon: CheckCircle2 },
   { id: "portfolios", name: "Web Portfolios", icon: Globe },
-  { id: "billing", name: "Billing & AI Credits", icon: DollarSign },
-  { id: "developer", name: "ATS, Imports & API", icon: KeyRound },
-  { id: "contribute", name: "Open Source & Contributions", icon: Code },
+  { id: "ai", name: "AI & Writing Credits", icon: Sparkles },
+  { id: "billing", name: "Pricing, Passes & Billing", icon: DollarSign },
+  { id: "developer", name: "Imports, API & Open Source", icon: Code },
 ] as const;
 
-export const faqs = [
+export interface FaqItem {
+  id: string;
+  category: (typeof categories)[number]["id"];
+  question: string;
+  answer: string;
+}
+
+export const faqs: FaqItem[] = [
+  // 1. General & Privacy
   {
-    id: "data-privacy",
+    id: "is-it-really-free",
     category: "general",
-    question: "Is my data really private?",
+    question: "Is VeriWorkly really free, or will I hit a surprise paywall at the end?",
     answer:
-      "Yes. VeriWorkly uses a local-first architecture. Your document drafts and profile data are stored directly inside your browser's local storage (LocalStorage). Optional features like cloud backups and web portfolio subdomains are only activated when you choose to register and log in.",
+      "You will never be tricked into paying at the end. On the free tier, you can create 1 resume and 1 cover letter, customize your layouts, and download your clean PDF, Word, or Markdown files as many times as you want without entering a credit card or hitting a paywall.",
+  },
+  {
+    id: "data-privacy-storage",
+    category: "general",
+    question: "Where is my resume and personal career data stored?",
+    answer:
+      "Your data stays on your own device by default. VeriWorkly uses a local-first system that saves your resume drafts directly in your browser local storage. Nothing is sent to our servers or stored in any database unless you sign up for cloud sync or publish a web portfolio.",
   },
   {
     id: "account-requirement",
     category: "general",
-    question: "Do I need an account to use VeriWorkly?",
+    question: "Do I need to create an account to use VeriWorkly?",
     answer:
-      "No. You can open the editor, build your resume or cover letter, and export high-fidelity PDFs completely without an account. Sign-up is only required if you want to back up data in the cloud, publish portfolios to a subdomain, or utilize AI credit features.",
+      "No. You can open the editor, create your resume and cover letter, and download your files right away without signing up. An account is only needed if you want cloud backups across devices, multiple documents, a public portfolio link, or paid AI writing credits.",
   },
   {
     id: "master-profile-concept",
     category: "general",
-    question: "What is the Master Profile?",
+    question: "What is the Master Profile and how does it work?",
     answer:
-      "Your Master Profile serves as a central, private database of your career accomplishments. When you create a new resume, cover letter, or portfolio, the system copies information from this Master Profile to seed the new document. You can then edit and customize that document independently, so changes inside documents do not affect or overwrite your Master Profile data.",
+      "The Master Profile is your personal career master file. You list all your past jobs, degrees, certifications, projects, and skills in one place. When you want to apply for a job, VeriWorkly creates a separate copy of that data for your new resume. You can edit and tailor that document as much as you like without changing your original master file.",
+  },
+  {
+    id: "data-migration-transfer",
+    category: "general",
+    question: "How do I move my resume data to another computer?",
+    answer:
+      "You can download a backup JSON file from the editor settings and upload it to another computer or browser. If you prefer automatic sync, creating a free account backs up your data securely to the cloud so you can log in anywhere.",
   },
   {
     id: "analytics-tracking",
     category: "general",
-    question: "How is visitor analytics handled?",
+    question: "Do you track visitors or sell user data?",
     answer:
-      "We track visitor views and referral sources in aggregate to show you portfolio traffic statistics. We do not use tracking cookies, we do not follow visitors across other websites, and we never sell your data.",
+      "No. We never sell personal data or track your activity across other websites. If you publish a public portfolio, our system counts basic page views and traffic sources anonymously so you can see how many people visited your link. We do not use third-party advertising cookies.",
   },
   {
-    id: "mobile-compatibility",
+    id: "mobile-support",
     category: "general",
-    question: "Can I use VeriWorkly on mobile?",
+    question: "Can I edit and download resumes on my phone or tablet?",
     answer:
-      "Yes. The editing interface, dashboards, and landing pages are fully responsive. You can update your career details and export documents directly from your tablet or mobile browser.",
+      "Yes. The editor is fully mobile friendly. You can adjust bullet points, change templates, and download PDFs directly on your phone or tablet browser.",
   },
+
+  // 2. Resumes & Cover Letters
   {
-    id: "ats-friendly",
+    id: "ats-friendly-templates",
     category: "documents",
-    question: "Are the resume templates ATS-friendly?",
+    question: "Are your resume templates ATS-friendly?",
     answer:
-      "Yes. All document templates focus on structured single-column and multi-column designs with clean standard typography. They are continuously tested against popular Applicant Tracking Systems (ATS) to ensure parser compliance.",
+      "Yes. Every template uses clear headings, standard system fonts, clean single-column reading hierarchy, and uncorrupted text streams. Standard applicant tracking systems can parse every section without jumbling your text or missing dates.",
   },
   {
-    id: "deep-customization",
+    id: "watermarks-on-free-tier",
     category: "documents",
-    question: "Can I customize the template design?",
+    question: "Do free PDF downloads have a watermark or logo?",
     answer:
-      "Yes. Visual customization controls let you scale margins, line-heights, letter-spacing, page paddings, font pairings, section order, and section visibility dynamically to match your target role.",
+      "No. Your exported PDF, Word, and Markdown files are 100% clean and professional. We never add VeriWorkly logos, watermarks, or promotional footer text to your documents.",
   },
   {
-    id: "master-profile-overwrite",
+    id: "export-file-formats",
     category: "documents",
-    question: "Does editing a resume update my Master Profile?",
+    question: "What file formats can I download?",
     answer:
-      "No. When you create a resume, it is seeded with a snapshot of your Master Profile. Any edits, section removals, or wording tweaks you perform within that resume are isolated to that document. This lets you tailor multiple resumes for different job descriptions without messing up your master data.",
+      "You can export in PDF, Microsoft Word (DOCX), Markdown, HTML, plain text, and JSON backup format. Every export format is completely free.",
   },
   {
-    id: "custom-sections",
+    id: "resume-customization-options",
     category: "documents",
-    question: "Can I include custom sections like projects or volunteer work?",
+    question: "How much can I customize the visual style of my resume?",
     answer:
-      "Yes. You can add standard sections (Experience, Education, Skills) as well as custom sections for certifications, volunteer work, awards, publications, and languages.",
+      "You can adjust page margins, line spacing, font combinations, accent colors, and date formats. You can also reorder sections, hide sections you do not need, and watch changes update instantly in the live preview.",
   },
   {
-    id: "pdf-free-downloads",
+    id: "custom-sections-support",
     category: "documents",
-    question: "Can I download my resume as a PDF for free?",
+    question: "Can I add custom sections like Projects, Certifications, or Languages?",
     answer:
-      "Yes. Creating, editing, and exporting high-quality, print-ready PDF resumes and cover letters is completely free. There are no hidden fees or paywalled PDF downloads.",
+      "Yes. You can add as many custom sections as you want. Along with standard work experience and education, you can create sections for side projects, certifications, volunteer work, awards, publications, and languages.",
   },
   {
-    id: "portfolio-difference",
+    id: "cover-letter-matching",
+    category: "documents",
+    question: "Can I create a matching cover letter for my resume?",
+    answer:
+      "Yes. You can build cover letters that automatically match your resume font, header style, and accent colors so your job application looks clean and consistent.",
+  },
+  {
+    id: "password-protect-documents",
+    category: "documents",
+    question: "Can I password-protect shared links to my resume or cover letter?",
+    answer:
+      "Yes. If you share a live web link to your resume or cover letter, you can add a password so only recruiters or contacts with the password can open it.",
+  },
+
+  // 3. Free ATS Resume Checker
+  {
+    id: "ats-checker-overview",
+    category: "ats",
+    question: "How does the free ATS Resume Checker work?",
+    answer:
+      "Paste your resume text or upload your document, and optionally paste a job description. The scanner evaluates your document against core ATS requirements, checking formatting safety, contact info placement, clear headings, active verbs, and keyword alignment.",
+  },
+  {
+    id: "ats-two-scores-explained",
+    category: "ats",
+    question: "What is the difference between the Readiness Score and Job Match Score?",
+    answer:
+      "The Readiness Score checks whether a parser can read the document at all: formatting, section headings, contact placement, and evidence quality that apply to every job. The Job Match Score measures how closely your skills and experience match the specific job description you pasted. If you paste a job posting, you get both scores.",
+  },
+  {
+    id: "ats-checker-limits",
+    category: "ats",
+    question: "How many free ATS scans do I get?",
+    answer:
+      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Paid plan and pass holders get 300 scans per billing period. Uploading a file to extract its text draws on a separate, more generous allowance (3 for visitors, 6 for free accounts), so uploading a document never costs you a scan.",
+  },
+  {
+    id: "ats-scan-privacy",
+    category: "ats",
+    question: "Do you save or train AI models on my scanned resume?",
+    answer:
+      "The free scan is processed in memory to generate your report and discarded when the response is sent. We do not store your document or its text, and we do not train models on it. If you run the optional AI analysis, that step sends your resume text to a model provider so it can write the explanation — the deterministic scan never leaves our servers.",
+  },
+  {
+    id: "ats-improve-score",
+    category: "ats",
+    question: "How do I raise my Job Match Score?",
+    answer:
+      "Look at the missing keywords and skills identified in your report. Add the relevant tools, technologies, and responsibilities that you have real experience with into your work history and skills section.",
+  },
+
+  // 4. Web Portfolios & Hosting
+  {
+    id: "portfolio-builder-overview",
     category: "portfolios",
-    question: "How does the portfolio builder work?",
+    question: "How does the personal portfolio website builder work?",
     answer:
-      "The portfolio builder takes your profile facts and converts them into a modern, responsive website. You select a styled portfolio template, configure your public project displays, and publish instantly. The layout updates on the fly while preserving your text content.",
+      "The portfolio builder turns your career profile into a clean, mobile-friendly personal website. You choose a template, select which projects and work experience to show, and publish it on your own veriworkly.com subdomain. Publishing is not switched on yet — you can build and preview a portfolio today, and we will open publishing at launch.",
   },
   {
-    id: "custom-subdomains",
+    id: "custom-subdomain-setup",
     category: "portfolios",
-    question: "How do subdomains and SSL certificates work?",
+    question: "How do custom subdomains and HTTPS work?",
     answer:
-      "Subdomain mapping is included in our Creator Pro tier. You can secure a unique URL (such as yourname.veriworkly.com). We automatically generate and renew SSL certificates to ensure your site is served securely via HTTPS.",
+      "You claim a clean web address like yourname.veriworkly.com, and we handle the hosting and the HTTPS certificate so the page is served securely without you configuring anything. Publishing opens at launch — you can build and preview a portfolio today.",
+  },
+  {
+    id: "portfolio-free-preview",
+    category: "portfolios",
+    question: "Is portfolio website hosting free?",
+    answer:
+      "Yes, on the free tier you get the two core templates — Signal and Atelier — published on a veriworkly.com subdomain, and the page carries a small “Built with VeriWorkly” badge. Creator Pro, the Bundle, or a short-term pass unlock the two premium templates (Nimbus and Cipher), remove the badge, and add visitor analytics and SEO controls. Publishing opens at launch; until then you can build and preview.",
+  },
+  {
+    id: "custom-apex-domains",
+    category: "portfolios",
+    question: "Can I connect my own custom domain like myname.com?",
+    answer:
+      "Right now, portfolios are hosted on clean veriworkly.com subdomains. Direct custom domain mapping (like yourname.com) is on our public roadmap and will be released in an upcoming update.",
   },
   {
     id: "media-hosting-limits",
     category: "portfolios",
-    question: "Is there a limit on image and media hosting?",
+    question: "Are there limits on images or project screenshots?",
     answer:
-      "Our paid tiers include fast, CDN-backed image hosting. You can upload project screenshots, avatars, custom icons, and portfolio assets. There are no hard limits on the number of projects you can showcase.",
+      "You can showcase as many projects as you need. Project screenshots and profile images are optimized on upload and served from edge storage. There is no separate bandwidth tier — image delivery works the same on every plan.",
   },
   {
-    id: "portfolio-draft-previews",
+    id: "portfolio-analytics-dashboard",
     category: "portfolios",
-    question: "Can I build and preview my portfolio before upgrading?",
+    question: "Can I see how many people visited my portfolio?",
     answer:
-      "Yes. You can create portfolio drafts, select templates, arrange projects, and view live interactive previews in your dashboard completely free of charge before upgrading to public hosting.",
+      "Creator Pro and pass holders get a private visitor dashboard showing total views and referral sources over time, with no tracking cookies and no attempt to identify individual visitors. It becomes available when publishing opens at launch.",
+  },
+
+  // 5. AI Assistant & Writing Credits
+  {
+    id: "ai-no-hallucinations",
+    category: "ai",
+    question: "How does the AI tailor resumes without inventing fake experience?",
+    answer:
+      "Our AI assistant is strictly grounded in the facts from your Master Profile. It rephrases bullet points, improves sentence flow, and aligns your wording with target job requirements, but it will never invent fake companies, unearned degrees, or fabricated metrics.",
   },
   {
-    id: "pricing-tiers",
+    id: "ai-credits-usage",
+    category: "ai",
+    question: "What actions consume AI credits?",
+    answer:
+      "AI credits are only used when you generate a new cover letter, tailor bullet points to a specific job description, or rewrite summary text with AI. Standard editing, typing, changing templates, and exporting files are always free and use zero credits.",
+  },
+  {
+    id: "ai-credits-rollover",
+    category: "ai",
+    question: "Do monthly AI credits roll over?",
+    answer:
+      "Monthly subscription plans reset to 1,000 fresh AI credits at the start of each billing cycle; unused subscription credits do not carry over. One-time top-up packs are valid for 90 days from purchase, which is also what our Terms state.",
+  },
+  {
+    id: "ai-models-used",
+    category: "ai",
+    question: "Which AI models power the assistant?",
+    answer:
+      "We reach frontier models through OpenRouter, a gateway that routes each request to a model provider on our behalf — so the specific model can change as better ones appear, without us rewriting the product. OpenRouter is the AI subprocessor named in our Privacy Policy. Whichever model serves your request is prompted to produce clear, natural, professional writing without generic corporate buzzwords, and is contractually prohibited from training on your text.",
+  },
+  {
+    id: "use-without-ai",
+    category: "ai",
+    question: "Can I use VeriWorkly completely without AI?",
+    answer:
+      "Yes. All templates, document editors, manual writing tools, and PDF exports work without using AI. You have total control over every single word in your document.",
+  },
+
+  // 6. Pricing, Passes & Billing
+  {
+    id: "flexible-passes-vs-subscriptions",
     category: "billing",
-    question: "What paid plans are available?",
+    question: "What are Flexible Sprint Passes and how do they work?",
     answer:
-      "We offer standalone Creator Pro ($9.99/mo, or $7.99/mo billed annually) for subdomain hosting, analytics, and watermark removal. The Job Hunter Bundle ($14.99/mo, or $11.99/mo billed annually) adds 1,000 monthly AI credits and unlocks full resume tailoring tools. Standalone AI Credits are available for $5.99/mo if you do not need hosting.",
+      "Flexible Sprint Passes are one-time purchases for active job searches. You pay once for 3 days ($2.99) or 7 days ($5.99) to get portfolio hosting and AI writing credits. They expire automatically with zero recurring charges, so you never have to worry about forgetting to cancel a subscription.",
   },
   {
-    id: "short-term-passes",
+    id: "paid-plans-summary",
     category: "billing",
-    question: "Do you offer short-term passes instead of subscriptions?",
+    question: "What paid plans and passes are available?",
     answer:
-      "Yes. We offer a 3-Day Sprint Pass with 150 AI credits and a 7-Day Hunt Pass with 400 AI credits. Both passes grant full Creator Pro subdomain publishing and expire automatically without recurring charges.",
+      "We offer the 3-Day Sprint Pass ($2.99 one-time) and 7-Day Hunt Pass ($5.99 one-time). For ongoing searches, we offer the Job Hunter Bundle ($14.99/month, or $11.99/month billed annually with 1,000 monthly AI credits), Creator Pro hosting ($9.99/month, or $7.99/month billed annually), and AI Standalone ($5.99/month).",
   },
   {
-    id: "ai-credits-reset",
+    id: "payment-security",
     category: "billing",
-    question: "How do AI credits work and do they roll over?",
+    question: "How secure is the checkout process?",
     answer:
-      "AI credits are consumed when generating cover letters, tailoring resumes, or optimizing summary statements. Unused credits do not roll over to the next month; subscriptions reset to 1,000 credits each billing cycle, and passes expire at the end of their term.",
+      "All payments are processed by Dodo Payments in compliance with strict PCI-DSS standards. We never see, store, or handle your credit card numbers.",
   },
   {
-    id: "payment-security-provider",
+    id: "cancel-subscription",
     category: "billing",
-    question: "Is my payment information secure?",
+    question: "How do I cancel my subscription?",
     answer:
-      "Yes. All payment and billing operations are securely processed by Dodo Payments in compliance with strict PCI-DSS standards. VeriWorkly never stores or handles your credit card credentials.",
-  },
-  {
-    id: "bug-reporting-path",
-    category: "contribute",
-    question: "Where should I report bugs or regressions?",
-    answer:
-      "Please open an issue on our official GitHub repository. Provide a clear description, reproducible steps, expected vs. actual outcomes, and screenshots if possible.",
-  },
-  {
-    id: "feature-proposals",
-    category: "contribute",
-    question: "How do I suggest features?",
-    answer:
-      "Review our public roadmap first. If your feature is not already planned, open a feature proposal on GitHub detailing your use case and design ideas.",
-  },
-  {
-    id: "contribution-safety",
-    category: "contribute",
-    question: "How can I contribute code safely?",
-    answer:
-      "Check out our contributor guidelines. Start with small, focused pull requests, follow existing code formatting standards, and ensure your additions include verification steps.",
-  },
-  {
-    id: "pull-request-quality",
-    category: "contribute",
-    question: "What makes a high-quality pull request here?",
-    answer:
-      "A high-quality pull request has a focused scope, clear reasoning, no unrelated style modifications, and verified local build outcomes before submission.",
-  },
-  {
-    id: "large-contributions",
-    category: "contribute",
-    question: "Should I open an issue before a large contribution?",
-    answer:
-      "Yes. For larger features or system refactors, please open an issue first to discuss the scope and avoid duplicating efforts.",
-  },
-  {
-    id: "open-source-licensing",
-    category: "contribute",
-    question: "How is the project licensed?",
-    answer:
-      "VeriWorkly's core document builder and web engines are licensed under the permissive MIT License, encouraging transparency, custom audits, and developer integrations.",
-  },
-  {
-    id: "custom-domain-mapping",
-    category: "portfolios",
-    question: "Can I map a custom domain instead of a subdomain?",
-    answer:
-      "Today, Creator Pro publishes to a unique VeriWorkly subdomain (e.g. yourname.veriworkly.com) with automatic SSL. Fully custom domains (e.g. yourname.com) are not available yet — check the public roadmap for the latest status on that request.",
-  },
-  {
-    id: "local-data-migration",
-    category: "general",
-    question: "How do I move my local-first data to a new computer?",
-    answer:
-      "To migrate your local data without an account, export a backup JSON file from the dashboard on your old computer, then import it on your new computer. Alternatively, register for a free account to automatically sync your profile data securely to the cloud.",
-  },
-  {
-    id: "credit-top-ups",
-    category: "billing",
-    question: "What happens if I run out of AI credits?",
-    answer:
-      "If you run out of credits, you can wait for your next monthly cycle reset, buy a one-time AI credit top-up, or purchase a 3-Day or 7-Day pass to reload your credit balance.",
+      "Open the Billing page and use Manage Subscription, which takes you to our payment provider's portal where you can cancel immediately. You keep full access to your paid features until the end of the current billing period, and your card is not charged again. We do not put a retention flow or a phone call in your way.",
   },
   {
     id: "refund-policy",
     category: "billing",
-    question: "Do you offer refunds on passes or subscriptions?",
+    question: "What is your refund policy?",
     answer:
-      "Because we offer low-cost, time-boxed passes to fully test our hosting and AI systems before committing to a subscription, we generally do not issue refunds. However, if you experience double-billing or a technical failure, contact support to request a manual review.",
+      "Because we offer affordable short-term passes to try everything with no commitment, we generally do not offer refunds once a paid period begins. If you run into a technical bug or an accidental double charge, reach out to our support team and we will fix it for you promptly.",
   },
   {
-    id: "password-protection",
-    category: "documents",
-    question: "Can I password-protect shared documents or portfolio links?",
+    id: "affiliate-ambassador-programs",
+    category: "billing",
+    question: "Do you have an affiliate or campus ambassador program?",
     answer:
-      "Yes. When creating shared links for resumes, cover letters, or portfolio drafts, you can enable password protection. Only visitors or recruiters who enter the password will be able to view your public page.",
+      "Yes. Our affiliate program offers 2% to 5% recurring monthly commissions on referred customers. We also run a Student Ambassador program with free pro access and career resources for campus organizers.",
   },
+
+  // 7. Imports, API & Open Source
   {
-    id: "cover-letter-ai",
-    category: "documents",
-    question: "Can AI write my cover letter, or just my resume?",
-    answer:
-      "Both. The same AI writing assistant covers resumes and cover letters: generate a full cover letter from a job description, rewrite a section in Standard or Expert mode, or tailor an existing letter to a specific role. You always see the AI's draft and choose to replace your text or discard it — nothing is overwritten silently.",
-  },
-  {
-    id: "ats-checker-free",
+    id: "linkedin-profile-import",
     category: "developer",
-    question: "Is there a free ATS resume checker?",
+    question: "How does LinkedIn profile import work?",
     answer:
-      "Yes. The ATS Checker runs a free, rules-based core scan (word count, contact details, required sections, action verbs, quantified achievements, and formatting risks like tables or headers that confuse parsers) and gives a readiness score plus a keyword-match score against a pasted job description. Anonymous visitors get 1 scan every 48 hours, and free logged-in accounts get 2 scans every 24 hours. A deeper AI-powered analysis layer — with missing-evidence detection and prioritized recommendations — is available on paid plans.",
+      "You can upload your exported LinkedIn profile data or paste the text directly into the importer. Our parser automatically organizes your job titles, company names, dates, descriptions, and skills into your Master Profile in seconds.",
   },
   {
-    id: "ats-two-scores-explained",
+    id: "github-repository-import",
     category: "developer",
-    question: "Why are there two scores, and why doesn't the readiness score change much?",
+    question: "Can I import projects directly from GitHub?",
     answer:
-      'The readiness score measures parsing and formatting only — contact details, section labels, action verbs, quantified evidence, length, and table/header risks. It has nothing to do with any specific job, so two well-formatted resumes will land in a similar range even if their content is very different. The job match score is the one that changes with the role: it compares your resume against the pasted job description using synonym- and phrase-aware keyword matching, weighted toward terms in a "Requirements" section over a "Nice to have" one. If you want the match score to move, add a job description — the readiness score alone won\'t.',
+      "Yes. Connect your GitHub account via OAuth to import your public repositories, repository descriptions, star counts, and primary coding languages directly into your resume or portfolio projects.",
   },
   {
-    id: "ats-scoring-transparency",
-    category: "developer",
-    question: "Can I see exactly how the ATS Checker calculates its score?",
-    answer:
-      "The scanning categories are public — parsing, contact details, structure, evidence, and format risk, described above and on the checker page itself. The exact rule weights, regex patterns, and the synonym/phrase dictionary behind keyword matching are kept private, the same way the rest of VeriWorkly's AI prompts are: publishing the literal answer key would let anyone reverse-engineer a resume that scores well without actually being easier to parse or a better match for the role.",
-  },
-  {
-    id: "github-import",
-    category: "developer",
-    question: "Can I import my GitHub profile into a resume?",
-    answer:
-      "Yes. GitHub import is a real OAuth connection: it pulls your profile and up to 30 repositories, then deterministically (no AI guesswork) maps your languages to skills and repositories to project entries. Free accounts can import their own connected GitHub account once per day; paid accounts can import any public GitHub username up to 50 times per day.",
-  },
-  {
-    id: "linkedin-import",
-    category: "developer",
-    question: "How does LinkedIn import actually work?",
-    answer:
-      "LinkedIn does not offer a public API for profile data, so import works by pasting or uploading your exported LinkedIn profile text (for example, LinkedIn's own \"Save to PDF\" export). An AI call parses that text into structured resume data. This is different from GitHub import, which is a true OAuth API connection — we're upfront about that distinction. Free accounts get 1 LinkedIn import per month; paid accounts get unlimited imports.",
-  },
-  {
-    id: "export-formats",
-    category: "documents",
-    question: "What file formats can I export my resume in?",
-    answer:
-      "Every resume and cover letter exports as PDF, DOCX, HTML, Markdown, plain text, or JSON from the same export menu — all free, with no format locked behind a paywall.",
-  },
-  {
-    id: "developer-api",
+    id: "developer-api-access",
     category: "developer",
     question: "Does VeriWorkly have a developer API?",
     answer:
-      "Yes. From the API Keys page you can generate scoped keys to read or write your account and resume data, or read the public roadmap and your GitHub import data programmatically. Keys are stored as irreversible hashes, are rate-limited, and expire automatically after 365 days by default.",
+      "Yes. You can create secure, hashed API keys in your dashboard to access your profile data, document outputs, or public roadmap programmatically. API requests are rate-limited and protected by secure authentication.",
   },
   {
-    id: "affiliate-program-summary",
-    category: "billing",
-    question: "Does VeriWorkly have an affiliate or referral program?",
+    id: "open-source-license",
+    category: "developer",
+    question: "Is VeriWorkly open-source and how is it licensed?",
     answer:
-      "Yes. The affiliate program pays a recurring commission on referred subscriptions across three tiers — 2% with no minimum, 3% after 10 conversions, and 5% after 50 conversions — tracked through a partner dashboard with click and conversion analytics and a $25 minimum payout. There's also a separate Student Ambassador program for campus representatives. See the Affiliate and Ambassador pages for details.",
+      "Yes. The core document builder and web engines are open-source under the MIT License on GitHub. You can view the source code, review our roadmap, or self-host the application.",
+  },
+  {
+    id: "report-bugs-suggest-features",
+    category: "developer",
+    question: "Where can I report bugs or suggest new features?",
+    answer:
+      "You can open an issue or start a discussion on our official GitHub repository. You can also visit our public roadmap page to see what features we are building and vote on upcoming items.",
   },
 ];

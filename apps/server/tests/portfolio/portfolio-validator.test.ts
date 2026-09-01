@@ -4,6 +4,7 @@ import {
   portfolioContentSchema,
   portfolioDraftContentSchema,
 } from "../../src/validators/portfolioValidator";
+import { resolveWatermarkFlag } from "../../src/services/portfolioService";
 
 const validPortfolio = {
   schemaVersion: 1,
@@ -54,5 +55,24 @@ describe("portfolio validator", () => {
         socialLinks: [{ id: "unsafe", label: "Unsafe", url: "javascript:alert(1)" }],
       }),
     ).toThrow();
+  });
+});
+
+describe("resolveWatermarkFlag", () => {
+  // `removeWatermark` rides inside the client-supplied content payload, so publish must
+  // overwrite it with the server's entitlement decision rather than storing what was posted.
+  it("stores false for a publisher without the entitlement, whatever was requested", () => {
+    expect(resolveWatermarkFlag(true, false)).toBe(false);
+    expect(resolveWatermarkFlag(false, false)).toBe(false);
+    expect(resolveWatermarkFlag(undefined, false)).toBe(false);
+  });
+
+  it("honours the request only when the entitlement is held", () => {
+    expect(resolveWatermarkFlag(true, true)).toBe(true);
+    expect(resolveWatermarkFlag(false, true)).toBe(false);
+  });
+
+  it("defaults an entitled publisher who sent nothing to a visible watermark", () => {
+    expect(resolveWatermarkFlag(undefined, true)).toBe(false);
   });
 });

@@ -1,20 +1,42 @@
-import type { AtsCategoryScore, AtsReport } from "#services/ats/types";
+import type { AtsReport } from "#services/ats/types";
 
 export type AtsVerdict = "strong" | "needs-work" | "weak";
 
+/**
+ * What an anonymous visitor receives.
+ *
+ * Deliberately a diagnosis without the prescription: the score, the verdict band, the single
+ * most costly problem stated plainly, and honest counts of everything still withheld. The counts
+ * are the point — "7 required keywords missing" and "3 roles recovered" are true, specific, and
+ * useless to act on without the lists behind them, which is precisely the trade being offered.
+ *
+ * Note this is narrower than it used to be: the per-category rollup has moved behind the login.
+ * That was a deliberate reversal. The rollup let a visitor read off *where* the resume was losing
+ * points, which is most of the diagnostic value, and the earlier reasoning — that a bare number
+ * felt like a teaser — is answered better by naming one concrete failure than by handing over the
+ * whole breakdown.
+ *
+ * Enforced here, server-side. The restricted object simply never contains the withheld fields,
+ * so there is nothing for a client to un-hide or a network tab to reveal.
+ */
 export type AtsRestrictedReport = {
   version: AtsReport["version"];
   restricted: true;
   readinessScore: number;
   jobMatchScore: number | null;
   verdict: AtsVerdict;
+  /** The single highest-impact failure, named in full. The rest of the list is withheld. */
   topFix: string | null;
-  /** Aggregate only — which areas lost points, never which rule or by how much per rule. */
-  categories: AtsCategoryScore[];
+  /** The most severe formatting or parsing failure, phrased as the risk it creates. */
+  primaryWarning: string | null;
   checksPassed: number;
   checksTotal: number;
+  /** Counts only, never the terms themselves. */
   matchedKeywordCount: number;
   missingKeywordCount: number;
+  /** Counts only, never the recovered rows. */
+  parsedRoleCount: number;
+  remainingFixCount: number;
 };
 
 export type AtsFullReport = AtsReport & { restricted: false; verdict: AtsVerdict };
@@ -30,16 +52,23 @@ export function computeVerdict(report: AtsReport): AtsVerdict {
 }
 
 /**
- * Anonymous callers get the score, a verdict, and a per-category rollup — not the answer key.
- * Rule-by-rule evidence, the literal keyword lists, and the full fix list require a VeriWorkly
- * account. This is enforced here, server-side, not by hiding fields in the UI: the restricted
- * shape simply never contains them.
+ * The one failure most worth stating up front.
  *
- * The rollup is included deliberately. A bare number tells a visitor nothing actionable, which
- * made the free tier feel like a paywall with a teaser rather than a tool; category percentages
- * and pass counts are aggregates of impacts the full report already exposes, so they say *where*
- * the resume is losing points without revealing which rule fired or what it weighs.
+ * Parsing and formatting failures outrank everything else here regardless of their point value,
+ * because they are the ones a candidate cannot see for themselves — a missing keyword is visible
+ * by reading the posting, a column layout that scrambles your job titles is not.
  */
+function primaryWarning(report: AtsReport) {
+  const structural = report.failedChecks.filter(
+    (rule) => rule.category === "parse" || rule.category === "format",
+  );
+  const ranked = (structural.length ? structural : report.failedChecks)
+    .slice()
+    .sort((a, b) => b.scoreImpact - a.scoreImpact);
+
+  return ranked[0]?.evidence ?? null;
+}
+
 export function shapeReport(report: AtsReport, authenticated: boolean): AtsShapedReport {
   if (authenticated) return { ...report, restricted: false, verdict: computeVerdict(report) };
 
@@ -50,10 +79,12 @@ export function shapeReport(report: AtsReport, authenticated: boolean): AtsShape
     jobMatchScore: report.jobMatchScore,
     verdict: computeVerdict(report),
     topFix: report.prioritizedFixes[0] ?? null,
-    categories: report.categories,
+    primaryWarning: primaryWarning(report),
     checksPassed: report.checksPassed,
     checksTotal: report.checksTotal,
     matchedKeywordCount: report.matchedKeywords.length,
     missingKeywordCount: report.missingKeywords.length,
+    parsedRoleCount: report.parsed.roles.length,
+    remainingFixCount: Math.max(0, report.prioritizedFixes.length - 1),
   };
 }

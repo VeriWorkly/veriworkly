@@ -22,7 +22,7 @@ export class ApiRequestError extends Error {
 
 /**
  * Wall-clock budget for a single backend call. Without this, a backend that accepts
- * the connection but never responds pins a Node render worker indefinitely — a
+ * the connection but never responds pins a Node render worker indefinitely - a
  * connection *refused* fails fast, but a connection that hangs does not. Callers that
  * legitimately need longer can pass their own `signal`.
  */

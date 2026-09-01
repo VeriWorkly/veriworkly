@@ -6,8 +6,7 @@ import {
   deleteChangelogEntry,
   updateChangelogEntry,
 } from "#services/admin/adminChangelogService";
-import { type ChangelogType } from "#services/changelogService";
-import { syncChangelogFromGitHubReleases } from "#services/changelogSyncService";
+import { type ChangelogType, syncChangelogFromGitHubReleases } from "#services/changelog/index";
 
 import {
   changelogAdminCreateSchema,

@@ -30,14 +30,14 @@ const AffiliateFooter = () => {
                 VeriWorkly
               </span>
             </Link>
-            <p className="text-muted-foreground max-w-sm text-xs leading-relaxed">
-              Empowering job seekers with the most advanced, privacy-first, and open-source resume
-              building experience. 100% free, forever.
+            <p className="text-muted max-w-sm text-xs leading-relaxed">
+              A privacy-first, open-core resume and portfolio builder. Free to build and export,
+              with paid plans for premium portfolio templates and AI credits.
             </p>
           </div>
 
           <div className="flex items-center justify-start lg:col-span-7 lg:justify-end">
-            <div className="text-muted-foreground flex w-fit items-center gap-2 rounded-full border border-zinc-200/50 bg-zinc-50 px-4 py-1.5 text-[10px] font-bold shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60">
+            <div className="text-muted flex w-fit items-center gap-2 rounded-full border border-zinc-200/50 bg-zinc-50 px-4 py-1.5 text-[10px] font-bold shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60">
               <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
               <span>Operational</span>
             </div>
@@ -49,7 +49,7 @@ const AffiliateFooter = () => {
             <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Platform
             </h5>
-            <ul className="text-muted-foreground space-y-2.5 text-xs">
+            <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link
                   href={siteConfig.links.app}
@@ -83,7 +83,7 @@ const AffiliateFooter = () => {
             <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Resources
             </h5>
-            <ul className="text-muted-foreground space-y-2.5 text-xs">
+            <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link href="/templates" className="hover:text-foreground transition-colors">
                   Template Gallery
@@ -111,7 +111,7 @@ const AffiliateFooter = () => {
             <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Company
             </h5>
-            <ul className="text-muted-foreground space-y-2.5 text-xs">
+            <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link href="/about" className="hover:text-foreground transition-colors">
                   Our Mission
@@ -139,7 +139,7 @@ const AffiliateFooter = () => {
             <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Socials
             </h5>
-            <ul className="text-muted-foreground space-y-2.5 text-xs">
+            <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link
                   href={siteConfig.links.twitter}
@@ -174,7 +174,7 @@ const AffiliateFooter = () => {
                 </Link>
               </li>
               {/*
-                Was a hardcoded `discord.gg/veriworkly` invite — the only social URL on the
+                Was a hardcoded `discord.gg/veriworkly` invite - the only social URL on the
                 site that bypassed `siteConfig`, referenced nowhere else, and pointing at a
                 server no other page acknowledges. GitHub Discussions is the community
                 channel /contact and /security actually direct people to.
@@ -195,7 +195,7 @@ const AffiliateFooter = () => {
         </div>
       </div>
 
-      <div className="text-muted-foreground/80 mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 pt-6 text-[11px] font-semibold md:flex-row">
+      <div className="text-muted/80 mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 pt-6 text-[11px] font-semibold md:flex-row">
         <div>&copy; {currentYear} VeriWorkly</div>
         <div className="flex gap-4">
           <Link href="/terms" className="hover:text-foreground transition-colors">

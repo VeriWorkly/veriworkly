@@ -28,7 +28,7 @@ const USER_LIST_SELECT = {
   updatedAt: true,
 } satisfies Prisma.UserSelect;
 
-const SUBSCRIPTION_ACTIVE_STATUSES = ["ACTIVE", "TRIALING", "PAST_DUE"] as const;
+const SUBSCRIPTION_ACTIVE_STATUSES = ["ACTIVE", "PAST_DUE"] as const;
 
 function buildUserOrderBy(sort: AdminUserListQuery["sort"]): Prisma.UserOrderByWithRelationInput {
   switch (sort) {

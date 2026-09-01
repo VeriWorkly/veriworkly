@@ -55,7 +55,7 @@ const SocialSection = () => {
       <BrandSectionHeader
         icon={Share2}
         title="Social & Open Graph"
-        description="Share cards are generated from the query string rather than designed one at a time, so no page ever ships without one — and every card uses the same tokens as the site."
+        description="Share cards are generated from the query string rather than designed one at a time, so no page ever ships without one - and every card uses the same tokens as the site."
       />
 
       <div className="grid gap-4 sm:grid-cols-2">

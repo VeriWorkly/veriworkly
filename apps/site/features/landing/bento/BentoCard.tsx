@@ -2,6 +2,7 @@
 
 import React, { useRef } from "react";
 import { motion, MotionValue } from "framer-motion";
+
 import { cn } from "@veriworkly/ui";
 
 interface BentoCardProps {
@@ -23,9 +24,12 @@ const BentoCard = ({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
+
     const { left, top } = cardRef.current.getBoundingClientRect();
+
     const x = e.clientX - left;
     const y = e.clientY - top;
+
     cardRef.current.style.setProperty("--mouse-x", `${x}px`);
     cardRef.current.style.setProperty("--mouse-y", `${y}px`);
   };
@@ -33,10 +37,10 @@ const BentoCard = ({
   return (
     <motion.div
       ref={cardRef}
-      onMouseMove={handleMouseMove}
       style={{ y: yOffset }}
+      onMouseMove={handleMouseMove}
       className={cn(
-        "group relative overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-white p-10 transition-all duration-300 active:scale-[0.98] dark:border-zinc-800/80 dark:bg-[#080808]",
+        "group relative overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 transition-all duration-300 active:scale-[0.98] sm:rounded-[2.5rem] sm:p-8 lg:p-10 dark:border-zinc-800/80 dark:bg-[#080808]",
         className,
       )}
     >
@@ -48,6 +52,7 @@ const BentoCard = ({
           background: `radial-gradient(350px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}, transparent 80%)`,
         }}
       />
+
       <div
         className={`pointer-events-none absolute inset-0 -z-10 rounded-[2.5rem] p-px opacity-0 transition-opacity duration-300 ${
           canHover ? "group-hover:opacity-100" : ""

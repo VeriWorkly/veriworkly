@@ -40,9 +40,41 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
-const heroFan = templateSummaries
-  .filter((template) => !template.previewImage.includes("veriworkly-logo"))
-  .slice(0, 3);
+/**
+ * One of each document type, chosen deliberately.
+ *
+ * This used to be `.slice(0, 3)` over the whole catalog, which takes whatever sorts
+ * first - all four portfolios do - so the hero rendered three landscape web
+ * screenshots cropped into a portrait 8.5x11 paper frame with `object-cover
+ * object-top`. It also carried a `!previewImage.includes("veriworkly-logo")` filter
+ * that matched nothing and was dead.
+ *
+ * The fan is always exactly three cards. `rotations[idx]` and `offsets[idx]` are
+ * indexed positionally below, so a short array would interpolate `undefined` into a
+ * `calc()` and collapse the layout. Rather than guard at the render site, we top the
+ * selection back up from catalog order, which keeps the render unconditional.
+ */
+const HERO_FAN_TYPES = ["resume", "cover-letter", "portfolio-website"] as const;
+const HERO_FAN_SIZE = 3;
+
+const heroFan = (() => {
+  const picked = HERO_FAN_TYPES.map((type) =>
+    templateSummaries.find((template) => template.documentType === type),
+  ).filter((template): template is (typeof templateSummaries)[number] => Boolean(template));
+
+  if (picked.length === HERO_FAN_SIZE) return picked;
+
+  // A type is missing from the catalog. Backfill with anything not already chosen so
+  // the hero still renders a full fan.
+  const chosen = new Set(picked.map((template) => template.id));
+
+  for (const template of templateSummaries) {
+    if (picked.length === HERO_FAN_SIZE) break;
+    if (!chosen.has(template.id)) picked.push(template);
+  }
+
+  return picked;
+})();
 
 const TemplatesPortalPage = () => {
   const availableDocTypes = documentTypeSummaries.filter(
@@ -125,20 +157,46 @@ const TemplatesPortalPage = () => {
               {heroFan.map((template, idx) => {
                 const rotations = [-8, 0, 8];
                 const offsets = [-24, 0, 24];
+
+                /**
+                 * Portfolio previews are landscape web screenshots. Forcing them into
+                 * the 8.5x11 paper frame the documents use crops away most of the page,
+                 * so they get a browser-window ratio and are contained, not cropped.
+                 *
+                 * Both branches size from the same container height rather than mixing
+                 * `h-full` with an intrinsic aspect-ratio box - two sizing models in one
+                 * absolutely-positioned stack made the z-order assumption below depend
+                 * on which type happened to land in the middle.
+                 */
+                const isPortfolio = template.documentType === "portfolio-website";
+
                 return (
                   <div
                     key={template.id}
-                    className="absolute top-0 left-1/2 aspect-8.5/11 h-full overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-[0_24px_70px_-30px_rgba(15,23,42,0.5)] transition-transform duration-300 hover:-translate-y-2 dark:border-zinc-800"
+                    className={`absolute left-1/2 overflow-hidden rounded-lg border border-zinc-200 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.5)] transition-transform duration-300 hover:-translate-y-2 dark:border-zinc-800 ${
+                      isPortfolio
+                        ? "aspect-16/10 bg-zinc-50 dark:bg-zinc-900"
+                        : "aspect-8.5/11 bg-white"
+                    }`}
                     style={{
+                      // Portfolios are shorter and vertically centred in the stack;
+                      // documents fill it. Expressed the same way for both so the fan
+                      // stays predictable.
+                      top: isPortfolio ? "26%" : 0,
+                      height: isPortfolio ? "48%" : "100%",
                       transform: `translateX(calc(-50% + ${offsets[idx]}px)) rotate(${rotations[idx]}deg)`,
                       zIndex: idx === 1 ? 10 : 5 - idx,
                     }}
                   >
                     <Image
                       fill
+                      // The hero fan sits above the fold and is this page's LCP
+                      // element. Without `priority` these three are lazy-loaded,
+                      // which delays the largest paint by a round trip for no reason.
+                      priority
                       alt={`${template.name} template preview`}
                       src={template.previewImage}
-                      className="object-cover object-top"
+                      className={isPortfolio ? "object-contain" : "object-cover object-top"}
                       sizes="220px"
                     />
                   </div>
@@ -189,7 +247,7 @@ const TemplatesPortalPage = () => {
 
       <section className="mx-auto w-full max-w-350 border-t border-zinc-200/40 px-6 py-16 md:px-8 md:py-20 dark:border-zinc-800/20">
         {/*
-          `aria-label` on a plain <div> is discarded — a generic element has no role to
+          `aria-label` on a plain <div> is discarded - a generic element has no role to
           attach a name to, so this grid was effectively unlabelled. A <section> can carry
           one.
         */}

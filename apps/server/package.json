@@ -1,11 +1,14 @@
 {
   "name": "@veriworkly/server",
-  "version": "3.24.1",
+  "version": "3.24.2",
   "description": "VeriWorkly Resume Backend API",
   "main": "dist/index.js",
   "type": "module",
   "imports": {
-    "#*": "./dist/*.js"
+    "#*": {
+      "types": "./src/*.ts",
+      "default": "./dist/*.js"
+    }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -21,9 +24,11 @@
     "db:redis": "npx redis-commander --redis-host 127.0.0.1 --redis-port 6379",
     "db:generate": "prisma generate",
     "sync:github": "tsx src/jobs/runGithubSyncOnce.ts",
+    "sync:changelog": "tsx scripts/sync-changelog-releases.ts",
     "seed:roadmap": "tsx scripts/seed-roadmap.ts",
     "seed:changelog": "tsx scripts/seed-changelog.ts",
     "backfill:changelog-pr-authors": "tsx scripts/backfill-changelog-pr-authors.ts",
+    "preview:emails": "tsx scripts/generate-email-previews.ts",
     "test": "vitest run",
     "test:watch": "vitest --watch"
   },
@@ -49,6 +54,7 @@
     "nodemailer": "^9.0.3",
     "openai": "^6.49.0",
     "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "5.4.296",
     "pg": "^8.22.0",
     "redis": "^5.12.1",
     "throng": "^5.0.0",

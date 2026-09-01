@@ -7,8 +7,8 @@ const RoadmapSEOContent = () => {
 
       <p className="text-muted text-sm leading-6">
         The VeriWorkly roadmap is a public, admin-managed backlog that shows exactly what we&apos;re
-        building next across the whole workspace — resume and cover letter templates, the ATS
-        checker, GitHub and LinkedIn import, portfolio publishing, and AI writing tools — not just
+        building next across the whole workspace - resume and cover letter templates, the ATS
+        checker, GitHub and LinkedIn import, portfolio publishing, and AI writing tools - not just
         resumes. Every item shows its status (planned, in progress, or released), an ETA where one
         exists, and the reasoning behind it.
       </p>

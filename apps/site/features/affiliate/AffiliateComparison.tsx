@@ -34,7 +34,7 @@ const COMPARISON_DATA: ComparisonRow[] = [
     description: "How long a referral link stays credited to you.",
     veriworkly: {
       value: "No Expiry Window",
-      description: "Credited the first time your invitee signs in — it doesn't expire.",
+      description: "Credited the first time your invitee signs in - it doesn't expire.",
       icon: Clock,
     },
     industry: {
@@ -97,14 +97,14 @@ const AffiliateComparison = () => {
               Outperform.
             </span>
           </h2>
-          <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+          <p className="text-muted max-w-md text-sm leading-relaxed">
             Compare our partner benefits. We remove standard industry hurdles to align payouts with
             your long-term creative and financial success.
           </p>
         </div>
 
         <div className="overflow-hidden rounded-3xl border border-zinc-200/60 bg-white/40 shadow-sm backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/20">
-          <div className="text-muted-foreground grid grid-cols-1 border-b border-zinc-200/60 bg-zinc-50/50 p-6 font-mono text-xs font-bold tracking-wider uppercase md:grid-cols-3 md:p-8 dark:border-zinc-800 dark:bg-zinc-900/10">
+          <div className="text-muted grid grid-cols-1 border-b border-zinc-200/60 bg-zinc-50/50 p-6 font-mono text-xs font-bold tracking-wider uppercase md:grid-cols-3 md:p-8 dark:border-zinc-800 dark:bg-zinc-900/10">
             <div>Program Feature</div>
             <div className="mt-4 flex items-center gap-1.5 text-blue-600 md:mt-0 dark:text-blue-400">
               VeriWorkly
@@ -122,9 +122,7 @@ const AffiliateComparison = () => {
                   <h4 className="text-foreground text-sm font-bold tracking-tight">
                     {row.feature}
                   </h4>
-                  <p className="text-muted-foreground max-w-70 text-xs leading-relaxed">
-                    {row.description}
-                  </p>
+                  <p className="text-muted max-w-70 text-xs leading-relaxed">{row.description}</p>
                 </div>
 
                 <div className="mt-4 flex flex-col justify-center space-y-2.5 pr-4 md:mt-0">
@@ -136,7 +134,7 @@ const AffiliateComparison = () => {
                       {row.veriworkly.value}
                     </span>
                   </div>
-                  <p className="text-muted-foreground pl-7 text-xs leading-relaxed">
+                  <p className="text-muted pl-7 text-xs leading-relaxed">
                     {row.veriworkly.description}
                   </p>
                 </div>
@@ -146,11 +144,11 @@ const AffiliateComparison = () => {
                     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600">
                       <X className="h-3 w-3" />
                     </div>
-                    <span className="text-muted-foreground text-sm font-medium tracking-tight">
+                    <span className="text-muted text-sm font-medium tracking-tight">
                       {row.industry.value}
                     </span>
                   </div>
-                  <p className="text-muted-foreground/60 pl-7 text-xs leading-relaxed">
+                  <p className="text-muted/60 pl-7 text-xs leading-relaxed">
                     {row.industry.description}
                   </p>
                 </div>

@@ -1,10 +1,11 @@
-import { siteConfig } from "@/config/site";
 import {
   LandingFooter,
+  LandingFooterLink,
   LandingFooterColumn,
   LandingFooterSocialLink,
-  LandingFooterLink,
 } from "./LandingFooter";
+
+import { siteConfig } from "@/config/site";
 
 const footerColumns: LandingFooterColumn[] = [
   {
@@ -12,6 +13,7 @@ const footerColumns: LandingFooterColumn[] = [
     links: [
       { name: "Resume Builder", href: siteConfig.links.app, external: true },
       { name: "Portfolio Builder", href: siteConfig.links.portfolio, external: true },
+      { name: "Free ATS Checker", href: "/ats-checker" },
       { name: "Core Features", href: "/features" },
       { name: "How It Works", href: "/how-it-works" },
       { name: "Template Gallery", href: "/templates" },
@@ -50,10 +52,15 @@ const socialLinks: LandingFooterSocialLink[] = [
   { name: "LinkedIn", href: siteConfig.links.linkedin, iconSrc: "/icons/socials/linkedIn.svg" },
 ];
 
+/**
+ * The bottom bar previously repeated the affiliate and ambassador links that already
+ * appear under "Organization" above, while /ats-checker - the flagship acquisition
+ * page - had no footer link at all. These are the two utility pages that earn a slot
+ * here instead.
+ */
 const navLinks: LandingFooterLink[] = [
-  { name: "Home", href: "/" },
-  { name: "About Us", href: "/about" },
-  { name: "Features", href: "/features" },
+  { name: "Free ATS Checker", href: "/ats-checker" },
+  { name: "Public Stats", href: "/stats" },
 ];
 
 const legalLinks: LandingFooterLink[] = [
@@ -66,8 +73,6 @@ const Footer = () => {
     <LandingFooter
       shortName={siteConfig.shortName}
       headingPrefix="Are You Interested"
-      // Was pointing at the Studio dashboard, so the one button labelled "Contact" was
-      // the only footer link that could not reach anyone.
       ctaText="Talk to the team"
       ctaHref="/contact"
       logoSrc="/veriworkly-logo.png"

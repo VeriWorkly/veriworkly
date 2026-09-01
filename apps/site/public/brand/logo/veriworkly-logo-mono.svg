@@ -2,7 +2,7 @@
   <title>VeriWorkly</title>
   <!--
     Single-colour logomark. Inherits `currentColor`, so it takes the surrounding
-    text colour — set it explicitly when you need white on a dark ground.
+    text colour - set it explicitly when you need white on a dark ground.
     Use this for one-colour print, embroidery, favicons under 32px, and any
     ground where the faceted mark would lose contrast.
     Same geometry as veriworkly-logo.svg.

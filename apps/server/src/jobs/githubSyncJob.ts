@@ -4,7 +4,7 @@ import { config } from "#config";
 import { logger } from "#lib/logger";
 import { ApiError } from "#lib/errors";
 
-import { shouldSyncGitHubStats, syncGitHubStatsFromGitHub } from "#services/githubService";
+import { shouldSyncGitHubStats, syncGitHubStatsFromGitHub } from "#services/github/index";
 
 let job: ScheduledTask | null = null;
 

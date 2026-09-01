@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
 import { faqs } from "@/features/landing/faq/data/faqItems";
 
 interface FAQCardProps {
@@ -16,9 +17,6 @@ interface FAQCardProps {
 const FAQCard = ({ question, answer, isOpen, onToggle, index }: FAQCardProps) => {
   const number = String(index + 1).padStart(2, "0");
 
-  // `aria-expanded` on its own only announces a state; without `aria-controls` pointing at
-  // a real element, nothing tells assistive tech *what* just expanded, and the answer that
-  // appears has no relationship to the control that revealed it.
   const panelId = `faq-panel-${index}`;
   const buttonId = `faq-trigger-${index}`;
 
@@ -58,9 +56,11 @@ const FAQCard = ({ question, answer, isOpen, onToggle, index }: FAQCardProps) =>
         >
           {number}
         </span>
+
         <span className="flex-1 text-base font-bold text-zinc-900 transition-colors dark:text-white">
           {question}
         </span>
+
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -80,11 +80,11 @@ const FAQCard = ({ question, answer, isOpen, onToggle, index }: FAQCardProps) =>
             id={panelId}
             role="region"
             aria-labelledby={buttonId}
+            className="overflow-hidden"
+            exit={{ height: 0, opacity: 0 }}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className="overflow-hidden"
           >
             <div className="w-full px-6 pb-6 text-left">
               <p className="pl-13 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-400">
@@ -110,14 +110,15 @@ const FAQList = () => {
         {leftColFaqs.map((faq) => {
           const globalIdx = faqs.indexOf(faq);
           const isOpen = openIndex === globalIdx;
+
           return (
             <FAQCard
               key={globalIdx}
-              question={faq.question}
-              answer={faq.answer}
               isOpen={isOpen}
-              onToggle={() => setOpenIndex(isOpen ? null : globalIdx)}
               index={globalIdx}
+              answer={faq.answer}
+              question={faq.question}
+              onToggle={() => setOpenIndex(isOpen ? null : globalIdx)}
             />
           );
         })}
@@ -127,14 +128,15 @@ const FAQList = () => {
         {rightColFaqs.map((faq) => {
           const globalIdx = faqs.indexOf(faq);
           const isOpen = openIndex === globalIdx;
+
           return (
             <FAQCard
               key={globalIdx}
-              question={faq.question}
-              answer={faq.answer}
               isOpen={isOpen}
-              onToggle={() => setOpenIndex(isOpen ? null : globalIdx)}
               index={globalIdx}
+              answer={faq.answer}
+              question={faq.question}
+              onToggle={() => setOpenIndex(isOpen ? null : globalIdx)}
             />
           );
         })}

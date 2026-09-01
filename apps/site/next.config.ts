@@ -81,14 +81,25 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
     formats: ["image/avif", "image/webp"],
+    /**
+     * Only hosts we actually render from. Both entries serve GitHub contributor
+     * avatars on /changelog - `avatars.githubusercontent.com` for the API-supplied
+     * URL, `github.com/<user>.png` as the fallback shape.
+     *
+     * `images.unsplash.com` used to be here for two stock photos on /ambassador.
+     * Those were replaced with product UI, so the pattern came out with them: every
+     * allowed host is a host the optimizer will fetch and cache on request, so the
+     * list should never outlive its usage.
+     */
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "images.unsplash.com",
+        hostname: "avatars.githubusercontent.com",
       },
       {
         protocol: "https",
-        hostname: "avatars.githubusercontent.com",
+        hostname: "github.com",
+        pathname: "/*.png",
       },
     ],
   },

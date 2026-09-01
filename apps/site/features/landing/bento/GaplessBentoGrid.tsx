@@ -27,9 +27,6 @@ const GaplessBentoGrid = () => {
   const col1Y = useSpring(col1YRaw, { stiffness: 50, damping: 20 });
   const col2Y = useSpring(col2YRaw, { stiffness: 50, damping: 20 });
 
-  const textXRaw = useTransform(scrollYProgress, [0, 1], [-40, 20]);
-  const textX = useSpring(textXRaw, { stiffness: 45, damping: 18 });
-
   const portfolioTiltRaw = useTransform(scrollYProgress, [0, 1], [15, -15]);
   const portfolioTilt = useSpring(portfolioTiltRaw, { stiffness: 50, damping: 20 });
 
@@ -39,7 +36,7 @@ const GaplessBentoGrid = () => {
       className="grid grid-flow-dense auto-rows-85 grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4"
     >
       <BentoResumeCard yOffset={col1Y} canHover={canHover} />
-      <BentoCoverLetterCard yOffset={col2Y} textX={textX} canHover={canHover} />
+      <BentoCoverLetterCard yOffset={col2Y} canHover={canHover} />
       <BentoPortfolioCard yOffset={col2Y} portfolioTilt={portfolioTilt} canHover={canHover} />
       <BentoPrivacyCard yOffset={col1Y} canHover={canHover} />
     </div>

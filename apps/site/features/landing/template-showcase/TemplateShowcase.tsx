@@ -1,6 +1,6 @@
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Sparkles, ArrowRight } from "lucide-react";
-import { siteConfig } from "@/config/site";
 
 const TemplateShowcaseTracks = dynamic(
   () => import("@/features/landing/template-showcase/TemplateShowcaseTracks"),
@@ -17,12 +17,14 @@ const TemplateShowcase = () => {
           <div className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border border-blue-500/10 bg-blue-500/5 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
             <Sparkles className="h-3.5 w-3.5" /> High-End Templates
           </div>
+
           <h2 className="mx-auto max-w-3xl font-sans text-4xl font-semibold tracking-tighter text-balance text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">
-            Visual layouts built for recruiter compliance
+            Clean, modern templates recruiters actually want to read.
           </h2>
+
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Designed to parse flawlessly on applicant tracking systems while retaining an editorial,
-            high-end visual aesthetic.
+            No over-designed graphics that break ATS scanners. Just crisp typography, clear
+            hierarchies, and polished layouts.
           </p>
         </div>
       </div>
@@ -30,13 +32,13 @@ const TemplateShowcase = () => {
       <TemplateShowcaseTracks />
 
       <div className="flex justify-center">
-        <a
-          href={`${siteConfig.links.app}/templates`}
+        <Link
+          href={"/templates"}
           className="group flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
         >
           Explore all templates
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </a>
+        </Link>
       </div>
     </section>
   );

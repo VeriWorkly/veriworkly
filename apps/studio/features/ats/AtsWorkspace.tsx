@@ -28,7 +28,14 @@ import {
   runAtsAnalysis,
   runAtsCheck,
 } from "@/features/ats/ats-api";
-import type { AtsQuota, AtsResult, ConvertedResume } from "@/features/ats/types";
+import type {
+  AtsLayoutSignals,
+  AtsParsedDate,
+  AtsParsedResume,
+  AtsQuota,
+  AtsResult,
+  ConvertedResume,
+} from "@/features/ats/types";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import {
@@ -44,6 +51,10 @@ export function AtsWorkspace() {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [resume, setResume] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
+  // Page geometry from an uploaded file, kept beside its text so the format checks can read the
+  // layout. Cleared whenever the resume comes from anywhere else, since it would then describe
+  // a document that is no longer loaded.
+  const [layout, setLayout] = useState<AtsLayoutSignals | undefined>(undefined);
   const [jobDescription, setJobDescription] = useState("");
   const [jobUrl, setJobUrl] = useState("");
   const [useJobUrl, setUseJobUrl] = useState(false);
@@ -85,8 +96,9 @@ export function AtsWorkspace() {
             jobUrl: useJobUrl ? jobUrl || undefined : undefined,
             fetchJobUrl: useJobUrl,
             requestId: crypto.randomUUID(),
+            layout,
           })
-        : await runAtsCheck({ resume, jobDescription: jobDescription || undefined });
+        : await runAtsCheck({ resume, jobDescription: jobDescription || undefined, layout });
       setResult(next);
       setQuota(next.quota);
     } catch (cause) {
@@ -193,7 +205,9 @@ export function AtsWorkspace() {
                   setBusy("extract");
                   setError("");
                   try {
-                    setResume(await extractResumeFile(file));
+                    const extracted = await extractResumeFile(file);
+                    setResume(extracted.text);
+                    setLayout(extracted.layout);
                     setSourceLabel(file.name);
                     setResult(null);
                     setConverted(null);
@@ -219,6 +233,7 @@ export function AtsWorkspace() {
                     const selected = readResumeById(event.target.value);
                     if (!selected) return;
                     setResume(JSON.stringify(selected));
+                    setLayout(undefined);
                     setSourceLabel(
                       saved.find((item) => item.id === event.target.value)?.title ??
                         "Studio resume",
@@ -242,6 +257,7 @@ export function AtsWorkspace() {
               value={resume}
               onChange={(event) => {
                 setResume(event.target.value);
+                setLayout(undefined);
                 setSourceLabel(event.target.value ? "Pasted resume" : "");
               }}
               rows={9}
@@ -604,6 +620,120 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_ORDER = ["parse", "contact", "structure", "content", "format"];
 
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function formatParsedDate(date: AtsParsedDate | null) {
+  if (!date) return null;
+  return date.month ? `${MONTH_LABELS[date.month - 1]} ${date.year}` : String(date.year);
+}
+
+function formatMonths(months: number) {
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  if (!years) return `${rest} mo`;
+  return rest ? `${years} yr ${rest} mo` : `${years} yr`;
+}
+
+/**
+ * The record an applicant tracking system would build from this document.
+ *
+ * Shown as the table it becomes, because that is what a recruiter searches. A blank employer or
+ * a missing date range is not a presentation problem — it is a column their filter cannot match
+ * on, and seeing the gap is more use than any score.
+ */
+function ParsedRecord({ parsed }: { parsed: AtsParsedResume }) {
+  const missing = <span className="text-amber-600 dark:text-amber-400">not found</span>;
+
+  return (
+    <section className="bg-card ring-border rounded-xl p-5 ring-1">
+      <div className="flex items-center gap-2 text-sm font-black">
+        <FileSearch className="text-accent h-4 w-4" /> What the ATS sees
+      </div>
+      <p className="text-muted mt-1 text-xs leading-5">
+        Recovered by the same scan, at no extra cost to your quota.
+      </p>
+
+      <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+        {[
+          ["Name", parsed.name],
+          ["Email", parsed.email],
+          ["Phone", parsed.phone],
+        ].map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-muted text-[11px] font-semibold tracking-wide uppercase">
+              {label}
+            </dt>
+            <dd className="mt-0.5 text-sm break-words">{value || missing}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-5">
+        <p className="text-muted text-[11px] font-semibold tracking-wide uppercase">
+          Work history — {parsed.roles.length} {parsed.roles.length === 1 ? "row" : "rows"}
+        </p>
+        {parsed.roles.length ? (
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[460px] text-left text-sm">
+              <thead>
+                <tr className="border-border text-muted border-b text-[11px]">
+                  <th className="pb-1.5 font-semibold">Title</th>
+                  <th className="pb-1.5 font-semibold">Employer</th>
+                  <th className="pb-1.5 font-semibold">Dates</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parsed.roles.map((role, index) => (
+                  <tr
+                    key={`${role.title}-${index}`}
+                    className="border-border/60 border-b last:border-0"
+                  >
+                    <td className="py-2 pr-3">{role.title || missing}</td>
+                    <td className="py-2 pr-3">{role.employer || missing}</td>
+                    <td className="py-2 tabular-nums">
+                      {role.start
+                        ? `${formatParsedDate(role.start)} – ${role.current ? "Present" : (formatParsedDate(role.end) ?? "?")}`
+                        : missing}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+            No work history could be recovered. Give each role an employer, a title and a date range
+            on one line — a parser builds its rows from exactly those three fields.
+          </p>
+        )}
+      </div>
+
+      {parsed.monthsOfExperience !== null ? (
+        <p className="text-muted border-border mt-4 border-t pt-3 text-sm">
+          Total experience read from your dates:{" "}
+          <span className="text-foreground font-semibold tabular-nums">
+            {formatMonths(parsed.monthsOfExperience)}
+          </span>{" "}
+          — overlapping roles counted once.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function CategoryRollup({ categories }: { categories: AtsResult["report"]["categories"] }) {
   if (!categories?.length) return null;
 
@@ -720,6 +850,7 @@ function ResultsPanel({ result }: { result: AtsResult }) {
           </p>
         ) : null}
       </div>
+      {result.report.parsed ? <ParsedRecord parsed={result.report.parsed} /> : null}
       <CategoryRollup categories={result.report.categories} />
       <RankedFixes failedChecks={result.report.failedChecks} />
       {result.report.jobMatchScore !== null ? (
@@ -741,6 +872,24 @@ function ResultsPanel({ result }: { result: AtsResult }) {
           <ReportList title="Recommended edits" items={result.ai.recommendedImprovements} />
           <ReportList title="Keyword opportunities" items={result.ai.keywordOpportunities} />
         </>
+      ) : null}
+      {/*
+       * The AI layer was asked for and could not run. Saying so is the point: an empty `ai`
+       * field on its own is indistinguishable from a model that had nothing to add, and the
+       * user has no way to tell that the failure was ours. The scan was handed back, so say
+       * that too rather than leaving them to work out whether they were charged.
+       */}
+      {result.aiStatus === "unavailable" ? (
+        <section className="rounded-xl bg-amber-500/10 p-5 ring-1 ring-amber-500/30">
+          <div className="flex items-center gap-2 text-sm font-black text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="h-4 w-4" /> AI analysis did not run
+          </div>
+          <p className="mt-2 text-sm leading-6">
+            We could not reach a model for this scan, so only the deterministic report above was
+            produced. No credits were charged and this scan was returned to your allowance — please
+            try again shortly.
+          </p>
+        </section>
       ) : null}
       <ReportList title="What already works" items={result.report.strengths} />
       <p className="text-muted px-1 text-xs">

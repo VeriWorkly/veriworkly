@@ -338,7 +338,7 @@ importLinkedin:
           schema:
             $ref: "../components/schemas.yaml#/ImportLinkedinRequest"
           example:
-            profileText: "Jane Doe\nSoftware Engineer at Acme Corp\n..."
+            profileText: "Jane Doe\nSoftware Engineer at VeriWorkly\n..."
             replaceMaster: false
     responses:
       "200":

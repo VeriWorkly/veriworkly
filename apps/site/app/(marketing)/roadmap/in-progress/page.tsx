@@ -18,7 +18,7 @@ export const metadata: Metadata = buildPageMetadata({
     "Track AI-powered capabilities, document compilers, and active improvements currently in development for VeriWorkly.",
   ogTitle: "Watch Features Get Built in Real Time",
   ogDescription:
-    "Active implementation work across AI features, the ATS checker, and portfolio tools — updated as it ships.",
+    "Active implementation work across AI features, the ATS checker, and portfolio tools - updated as it ships.",
   twitterTitle: "Currently in progress at VeriWorkly",
   twitterDescription: "See what features are currently being built in the VeriWorkly platform.",
   image: "/og/roadmap/roadmap-progress-page-og.png",

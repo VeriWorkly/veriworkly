@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { href: "#brand-assets", label: "Brand Assets" },
   { href: "#effects", label: "Effects" },
   { href: "#layout", label: "Layout" },
+  { href: "#motion", label: "Motion" },
 ];
 
 export const StyleGuideHeader = () => {

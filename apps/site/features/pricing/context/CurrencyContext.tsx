@@ -17,7 +17,7 @@ interface CurrencyContextType {
 
 /**
  * Display-only fallback, mirroring `FALLBACK_INR_PER_USD` in the server-side rate service.
- * The live figure is resolved on the server and handed down as `inrPerUsd` — see
+ * The live figure is resolved on the server and handed down as `inrPerUsd` - see
  * `features/pricing/services/exchange-rate.ts` for why it is not fetched from the browser.
  */
 const FALLBACK_INR_PER_USD = 98;
@@ -55,7 +55,7 @@ export const CurrencyProvider: React.FC<{
   children: React.ReactNode;
   /**
    * Resolved on the server so the rate is identical in the SSR markup and after
-   * hydration — a client-side lookup would have re-rendered every price mid-read.
+   * hydration - a client-side lookup would have re-rendered every price mid-read.
    */
   inrPerUsd?: number;
 }> = ({ children, inrPerUsd = FALLBACK_INR_PER_USD }) => {
@@ -64,7 +64,7 @@ export const CurrencyProvider: React.FC<{
 
   // Adopts the stored preference and the locale-detected region once on mount. Both are
   // browser-only values that cannot exist during SSR, so the first render must be the
-  // "USD" default and this reconciles afterwards — the one legitimate shape of
+  // "USD" default and this reconciles afterwards - the one legitimate shape of
   // setState-in-effect, matching the `mounted` pattern used elsewhere in this app.
   useEffect(() => {
     let saved: Currency | null = null;
@@ -88,7 +88,7 @@ export const CurrencyProvider: React.FC<{
         tz.toLowerCase().includes("india") ||
         lang.toLowerCase().includes("-in");
     } catch {
-      // Locale APIs unavailable — stay on the default.
+      // Locale APIs unavailable - stay on the default.
     }
 
     // eslint-disable-next-line react-hooks/set-state-in-effect

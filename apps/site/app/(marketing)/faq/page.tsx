@@ -1,39 +1,55 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { HelpCircle } from "lucide-react";
+import type { Metadata } from "next";
+import { MessageSquare } from "lucide-react";
+
 import { GithubIcon } from "@veriworkly/ui";
+
 import { siteConfig } from "@/config/site";
-import { buildPageMetadata } from "@/utils/metadata";
+
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { buildPageMetadata } from "@/utils/metadata";
+
+import { Reveal } from "@/components/marketing/Reveal";
+
 import { faqs, categories } from "@/features/faq/data/faqItems";
 import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
-import { Reveal } from "@/components/marketing/Reveal";
-import { SectionEyebrow } from "@/components/marketing/SectionEyebrow";
 import FaqInteractiveSection from "@/features/faq/FaqInteractiveSection";
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/faq",
-  title: `FAQ: ATS Checker, AI Credits & Imports | ${siteConfig.shortName}`,
+  title: `Frequently Asked Questions (FAQ) | ${siteConfig.shortName}`,
   description:
-    "Answers on resumes, cover letters, the free ATS checker, GitHub/LinkedIn import, custom subdomains, AI credits, and billing.",
-  ogTitle: "Got Questions About VeriWorkly? Start Here",
+    "Clear, straightforward answers about VeriWorkly: free PDF exports, ATS scoring, web portfolios, AI credits, passes, data privacy, and imports.",
+  ogTitle: "Frequently Asked Questions About VeriWorkly",
   ogDescription:
-    "Searchable answers on documents, the ATS checker, imports, portfolios, AI credits, and billing — organized by topic.",
-  twitterTitle: "Every VeriWorkly question, answered",
+    "Searchable answers on free document downloads, the ATS checker, web portfolios, AI credits, and data privacy.",
+  twitterTitle: "VeriWorkly FAQ: Every Question Answered",
   twitterDescription:
-    "From AI credits to ATS scoring to custom subdomains — search the VeriWorkly FAQ or browse by topic.",
+    "Learn about free PDF downloads, ATS keyword matching, AI credits, and custom portfolio subdomains.",
   image: "/og/faq-page-og.png",
   imageAlt: "VeriWorkly FAQ",
   keywords: [
     "VeriWorkly FAQ",
     "AI resume builder questions",
-    "ATS checker FAQ",
+    "free ATS checker FAQ",
     "AI credits explained",
     "resume builder pricing questions",
+    "portfolio subdomain hosting",
   ],
 });
 
+const pageUrl = `${siteConfig.url}/faq`;
+
 const FAQPage = () => {
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      { "@type": "ListItem", position: 2, name: "FAQ", item: pageUrl },
+    ],
+  };
+
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -49,96 +65,114 @@ const FAQPage = () => {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScriptProps(faqSchema)} />
 
-      <section className="relative w-full overflow-hidden bg-white pt-32 pb-16 md:pt-40 md:pb-20 dark:bg-[#000000]">
-        <div className="pointer-events-none absolute top-0 left-1/2 h-95 w-full max-w-200 -translate-x-1/2 rounded-full bg-blue-500/10 blur-[120px] dark:bg-blue-500/10" />
+      <div className="relative flex min-h-screen flex-col overflow-hidden">
+        {/* Ambient background glows */}
+        <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
+        <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[140px]" />
+        <div className="pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full bg-blue-500/5 blur-[130px]" />
 
-        <div className="relative z-10 mx-auto max-w-2xl px-6 text-center md:px-8">
-          <Reveal priority>
-            <SectionEyebrow
-              icon={HelpCircle}
-              label={`${faqs.length} answers`}
-              className="mx-auto"
-            />
-          </Reveal>
-          <Reveal priority delay={0.06}>
-            <h1 className="mt-6 text-4xl font-semibold tracking-tighter text-balance text-zinc-900 sm:text-5xl md:text-6xl dark:text-white">
-              Frequently asked questions
-            </h1>
-          </Reveal>
-          <Reveal priority delay={0.12}>
-            <p className="mt-6 text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Resumes, cover letters, portfolios, the ATS checker, GitHub/LinkedIn import, billing,
-              and the developer API — search below or browse by topic.
-            </p>
-          </Reveal>
+        {/* Hero Section */}
+        <section className="relative w-full overflow-hidden pt-28 pb-14 md:pt-36 md:pb-18">
+          <div className="mx-auto max-w-4xl px-6 text-center md:px-8">
+            <Reveal priority>
+              <div className="border-border/80 bg-card/60 inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs backdrop-blur-md">
+                <span className="bg-accent h-2 w-2 animate-pulse rounded-full" />
+                <span className="text-foreground font-mono text-[10px] font-bold tracking-widest uppercase">
+                  Help Center & Knowledge Base
+                </span>
+                <span className="text-muted/60 font-mono text-[10px]">|</span>
+                <span className="text-muted text-[11px]">{faqs.length} Answers</span>
+              </div>
+            </Reveal>
 
-          <Reveal delay={0.18}>
-            <div className="mt-8 flex flex-wrap justify-center gap-2">
-              {categories
-                .filter((cat) => cat.id !== "all")
-                .map((cat) => (
-                  <span
-                    key={cat.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:bg-white/5 dark:text-zinc-400"
-                  >
-                    <cat.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                    {cat.name}
-                  </span>
-                ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
+            <Reveal priority delay={0.06}>
+              <h1 className="text-foreground mt-5 text-[clamp(2.5rem,5.5vw,4.25rem)] leading-[1.02] font-bold tracking-tight text-balance">
+                Frequently asked questions
+              </h1>
+            </Reveal>
 
-      <section className="mx-auto w-full max-w-300 px-6 pb-24 md:px-8 md:pb-32">
-        <FaqInteractiveSection />
-      </section>
-
-      <section className="mx-auto w-full max-w-350 px-6 pb-24 md:px-8 md:pb-32">
-        <Reveal className="relative overflow-hidden rounded-4xl bg-zinc-950 px-8 py-12 md:px-14 md:py-16">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(120,119,198,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,119,198,0.06)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_70%_at_20%_50%,#000_60%,transparent_100%)] bg-size-[26px_26px]" />
-          <div className="relative z-10 flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-            <div>
-              <p className="text-xs font-bold tracking-widest text-blue-400 uppercase">
-                Didn&apos;t find your answer?
+            <Reveal priority delay={0.12}>
+              <p className="text-muted mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
+                Clear, honest answers about free PDF exports, ATS keyword matching, online
+                portfolios, AI writing credits, and data privacy. Search below or browse by
+                category.
               </p>
-              <h3 className="mt-3 max-w-lg text-2xl font-semibold tracking-tight text-balance text-white">
-                VeriWorkly is open-source. Read the code, or ask the community.
-              </h3>
-            </div>
-            <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
-              <Link
-                href={siteConfig.links.github}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-zinc-950 transition-colors hover:bg-blue-500 hover:text-white"
-              >
-                <GithubIcon className="h-4 w-4" aria-hidden="true" />
-                GitHub Repository
-              </Link>
-              <Link
-                href="/contact"
-                className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-6 text-sm font-semibold text-zinc-200 transition-colors hover:border-blue-400/40 hover:text-blue-300"
-              >
-                Contact Support
-              </Link>
-            </div>
+            </Reveal>
+
+            {/* Quick Category Chips Preview */}
+            <Reveal delay={0.18}>
+              <div className="mt-8 flex flex-wrap justify-center gap-2">
+                {categories
+                  .filter((cat) => cat.id !== "all")
+                  .map((cat) => (
+                    <span
+                      key={cat.id}
+                      className="border-border/60 bg-card/50 text-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-xs"
+                    >
+                      <cat.icon className="text-accent size-3.5" aria-hidden="true" />
+                      <span>{cat.name}</span>
+                    </span>
+                  ))}
+              </div>
+            </Reveal>
           </div>
-        </Reveal>
-      </section>
+        </section>
 
-      <InteractiveCTA />
+        {/* Main Interactive FAQ Filter & Accordion Section */}
+        <section className="mx-auto w-full max-w-7xl px-6 pb-20 md:px-8 md:pb-24">
+          <FaqInteractiveSection />
+        </section>
 
-      <section className="sr-only">
-        <h2>VeriWorkly FAQ</h2>
-        <p>
-          Find answers about ATS-friendly resumes and cover letters, the free ATS checker, GitHub
-          and LinkedIn import, custom portfolio subdomains, developer API keys, privacy policies,
-          and AI credit usage.
-        </p>
-      </section>
+        {/* Bottom Help Desk & Open Source Banner */}
+        <section className="mx-auto w-full max-w-7xl px-6 pb-20 md:px-8 md:pb-24">
+          <Reveal className="border-border/60 bg-card/50 relative overflow-hidden rounded-3xl border p-8 shadow-xl backdrop-blur-md sm:p-12">
+            <div className="bg-accent/10 pointer-events-none absolute top-0 right-0 size-80 rounded-full blur-3xl" />
+
+            <div className="relative z-10 flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+              <div className="space-y-2">
+                <span className="text-accent block font-mono text-[10px] font-bold tracking-widest uppercase">
+                  Still have questions?
+                </span>
+                <h2 className="text-foreground max-w-lg text-2xl font-bold tracking-tight text-balance sm:text-3xl">
+                  Ask directly, or explore the open-source repository
+                </h2>
+                <p className="text-muted max-w-md text-xs leading-relaxed sm:text-sm">
+                  Every message to our support inbox reaches a real engineer. You can also inspect
+                  the codebase or ask questions on GitHub.
+                </p>
+              </div>
+
+              <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/contact"
+                  className="bg-accent text-accent-foreground inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold shadow-md transition-all duration-200 hover:opacity-90 active:scale-[0.97]"
+                >
+                  <MessageSquare className="size-4" />
+                  <span>Contact Support</span>
+                </Link>
+
+                <Link
+                  href={siteConfig.links.github}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="border-border/80 bg-background/60 text-foreground hover:bg-card inline-flex h-12 items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold transition-all duration-200 active:scale-[0.97]"
+                >
+                  <GithubIcon className="size-4" aria-hidden="true" />
+                  <span>GitHub Repository</span>
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </section>
+
+        <InteractiveCTA />
+      </div>
     </>
   );
 };

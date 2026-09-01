@@ -12,6 +12,7 @@ import { initRedis, closeRedis } from "#lib/redis";
 import { stopExtractPool } from "#services/ats/extractPool";
 import { validateAiRuntimeConfig } from "#services/aiPolicy";
 import { validateAtsAiRuntimeConfig } from "#services/ats/aiPolicy";
+import { validateAtsEngineRuntimeConfig } from "#services/ats/enginePolicy";
 import { ensureAdminUserExists, validateAuthRuntimeConfig } from "#auth/runtime";
 import { validateBillingAndStorageRuntimeConfig } from "#config/validateRuntimeConfig";
 
@@ -187,6 +188,7 @@ function main() {
     validateAuthRuntimeConfig();
     validateAiRuntimeConfig();
     validateAtsAiRuntimeConfig();
+    validateAtsEngineRuntimeConfig();
     validateBillingAndStorageRuntimeConfig();
 
     const { clusteringEnabled, workers } = config.server;

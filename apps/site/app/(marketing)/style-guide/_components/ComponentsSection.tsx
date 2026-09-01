@@ -84,8 +84,12 @@ export const ComponentsSection = () => {
           <h3 className="text-lg font-semibold">Interactive Elements</h3>
 
           <div className="flex flex-col items-start gap-4">
+            {/* Docs live on their own subdomain. `/docs` is not a route on this app
+                and was a soft-404. */}
             <Link
-              href="/docs"
+              target="_blank"
+              rel="noreferrer"
+              href={siteConfig.links.docs}
               className="group text-accent focus-visible:ring-accent flex items-center gap-2 rounded text-sm font-bold tracking-wider uppercase focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               Open Docs

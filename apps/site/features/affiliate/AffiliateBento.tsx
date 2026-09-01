@@ -44,7 +44,7 @@ const AffiliateBento = () => {
             Dashboard & Security
           </span>
         </h2>
-        <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+        <p className="text-muted max-w-md text-sm leading-relaxed">
           Track link performance, manage your cashflow limits, and audit conversions through our
           localized safety framework.
         </p>
@@ -67,7 +67,7 @@ const AffiliateBento = () => {
               <h3 className="text-foreground text-lg font-bold tracking-tight">
                 Real-time URL Generator
               </h3>
-              <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
+              <p className="text-muted max-w-md text-xs leading-relaxed">
                 Generate tracking links instantly. Enter your unique handle below, then copy and
                 distribute to start accumulating lifetime MRR rewards.
               </p>
@@ -77,9 +77,7 @@ const AffiliateBento = () => {
           <div className="relative z-10 space-y-3 pt-6">
             <div className="flex items-center gap-2">
               <div className="flex flex-1 items-center rounded-xl border border-zinc-200/80 bg-zinc-100/60 px-3.5 py-2.5 transition-colors focus-within:border-blue-500/50 dark:border-zinc-800 dark:bg-zinc-950/60">
-                <span className="text-muted-foreground pr-1 font-mono text-xs select-none">
-                  ref=
-                </span>
+                <span className="text-muted pr-1 font-mono text-xs select-none">ref=</span>
                 <input
                   type="text"
                   value={username}
@@ -131,7 +129,7 @@ const AffiliateBento = () => {
             </div>
             <div className="space-y-1.5">
               <h3 className="text-foreground text-lg font-bold tracking-tight">Conversions</h3>
-              <p className="text-muted-foreground text-xs leading-relaxed">
+              <p className="text-muted text-xs leading-relaxed">
                 Visual monthly metrics and click logs updated inside your live analytics panel.
               </p>
             </div>
@@ -169,10 +167,10 @@ const AffiliateBento = () => {
             </div>
             <div className="space-y-1.5">
               <h3 className="text-foreground text-lg font-bold tracking-tight">Payout Floor</h3>
-              <p className="text-muted-foreground text-xs leading-relaxed">
+              <p className="text-muted text-xs leading-relaxed">
                 Request a withdrawal as soon as you cross the minimum threshold ($25.00). Our team
                 reviews each request and issues payouts directly (bank transfer or local payout
-                methods) — billing runs on Dodo Payments, which doesn&apos;t yet support automated
+                methods) - billing runs on Dodo Payments, which doesn&apos;t yet support automated
                 payout transfers.
               </p>
             </div>
@@ -180,14 +178,14 @@ const AffiliateBento = () => {
 
           <div className="relative z-10 space-y-3 pt-4">
             <div className="flex w-full flex-col gap-1 rounded-2xl border border-zinc-200/60 bg-zinc-50 p-4 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/40">
-              <span className="text-muted-foreground font-mono text-[10px] tracking-wider uppercase">
+              <span className="text-muted font-mono text-[10px] tracking-wider uppercase">
                 Transfer Limit
               </span>
               <span className="font-mono text-lg font-bold text-amber-600 dark:text-amber-400">
                 $25.00 Minimum
               </span>
             </div>
-            <div className="text-muted-foreground flex items-center gap-2 pl-1 text-[10px]">
+            <div className="text-muted flex items-center gap-2 pl-1 text-[10px]">
               <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-500" />
               <span>Reviewed and paid out by our team</span>
             </div>

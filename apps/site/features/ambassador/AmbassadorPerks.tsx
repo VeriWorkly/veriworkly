@@ -3,38 +3,44 @@
 import { motion } from "framer-motion";
 
 const AmbassadorPerks = () => {
+  /**
+   * Framed as what the program is being built to do, not as live mechanics. The
+   * server implements apply, review, and status only: there is no points ledger,
+   * no voucher issuance, and no automated student verification behind any of this.
+   * Specific point values here would read as a running economy, so they are out.
+   */
   const perks = [
     {
       num: "01",
-      title: "Invite Points System",
-      badge: "Standard Node",
+      title: "Free access to paid features",
+      badge: "In development",
       description:
-        "Earn 10 points for every peer invited to VeriWorkly. Boost to +30 points automatically when the classmate upgrades to a Pro seat.",
-      details: ["+10 points standard verify", "+30 points pro seat multiplier"],
+        "The reward we are building first: ambassadors get the paid tier free while they are active, so you can use the premium portfolio templates and AI credits you are telling classmates about.",
+      details: ["Terms published before launch", "No cash payouts"],
     },
     {
       num: "02",
-      title: "Security & Abuse Control",
-      badge: "Verification",
+      title: "Reviewed by a person",
+      badge: "How it works today",
       description:
-        "Points settle only after account verifies student credentials & reaches 250 platform activity score. Prevents bot registrations.",
-      details: ["Verified (.edu) university domain check", "Anti-abuse activity scoring active"],
+        "Every application is read by hand. There is no automated validator and no instant badge, which means slower decisions and far fewer fake accounts in the program.",
+      details: ["Manual review of each application", "Status visible on the apply page"],
     },
     {
       num: "03",
-      title: "Voucher Exchange",
-      badge: "Milestone Claims",
+      title: "A direct line to the builder",
+      badge: "Available now",
       description:
-        "Claim permanent license keys instantly. Every block of 1,500 points can be redeemed for a 30-day premium Creator Pro voucher code.",
-      details: ["1500 points = 30-day upgrade key", "Stackable license extensions supported"],
+        "VeriWorkly is built by one person. Ambassadors get to say what is broken for students on their campus and see it fixed, which is the part we can promise today without qualification.",
+      details: ["Direct contact, not a support queue", "Roadmap input taken seriously"],
     },
     {
       num: "04",
-      title: "Walkthrough Showcase",
-      badge: "Creator Channels",
+      title: "Shape the reward system",
+      badge: "Founding intake",
       description:
-        "Publish video reviews or blog posts demonstrating the local-first editor. Receive up to 50 points per approved creator post.",
-      details: ["Video reviews: +50 points each", "Blog articles: +40 points each"],
+        "The first cohort helps decide what earns recognition and what it is worth. Joining now means influencing the rules rather than inheriting them.",
+      details: ["Founding-cohort input", "Specifics published before anyone earns"],
     },
   ];
 
@@ -50,8 +56,9 @@ const AmbassadorPerks = () => {
             BENEFITS
           </h2>
           <p className="max-w-sm text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Structured points offsets, verification safeguards, and custom license inventory claims
-            built for verified student leaders.
+            What the campus program offers today, and what we are building next. Reward mechanics
+            are still being designed — we will publish them in full before anyone is asked to earn
+            anything.
           </p>
         </div>
 

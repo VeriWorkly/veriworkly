@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { flexibleAuth } from "#middleware/flexibleAuth";
-import { requireApiKeyScopes } from "#middleware/apiKeyScope";
+import { denyApiKeyAuth, requireApiKeyScopes } from "#middleware/apiKeyScope";
 
 import { UserController } from "#controllers/userController";
 
@@ -15,5 +15,8 @@ router.get("/me", requireApiKeyScopes("user:read"), UserController.getCurrentUse
 router.put("/me/name", requireApiKeyScopes("user:write"), UserController.updateUserName);
 router.put("/me/username", requireApiKeyScopes("user:write"), UserController.updateUsername);
 router.put("/me/sync", requireApiKeyScopes("user:write"), UserController.updateAutoSync);
+// Session-only, deliberately. See denyApiKeyAuth: `user:write` is the same scope that
+// renames an account, and an integration token must not be able to destroy one.
+router.delete("/me", denyApiKeyAuth, UserController.deleteCurrentUser);
 
 export default router;

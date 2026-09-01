@@ -1,4 +1,5 @@
-import type { LegalSection } from "@/components/legal/LegalSections";
+import type { LegalSection } from "./types";
+
 import { siteConfig } from "@/config/site";
 
 export const privacyEffectiveDate = "July 23, 2026";
@@ -27,7 +28,7 @@ export const privacySections: LegalSection[] = [
           '"Document" means any resume, cover letter, portfolio, or link-in-bio record you create, whether stored locally, synced to our servers, or published publicly.',
           '"Local-First Storage" means data stored in your browser\'s LocalStorage rather than on our servers.',
           '"Personal Data" means any information that identifies or could reasonably be used to identify you.',
-          '"Processing" means anything done with data — collecting, storing, using, disclosing, or deleting it.',
+          '"Processing" means anything done with data - collecting, storing, using, disclosing, or deleting it.',
         ],
       },
     ],
@@ -36,8 +37,30 @@ export const privacySections: LegalSection[] = [
     id: "controller",
     title: "Who We Are & How to Reach Us",
     intro: [
-      `VeriWorkly is operated by an independent team. For all privacy questions, data requests, or complaints, contact us at ${siteConfig.email}. We aim to respond to privacy inquiries within 30 days, and typically much sooner.`,
-      'If your jurisdiction requires you to be told the identity of the party responsible for processing your data (a "data controller" under GDPR or a similar concept elsewhere), that party is VeriWorkly, reachable at the email address above.',
+      "VeriWorkly is a small independent project based in India. We would rather name a person than hide behind a team alias, so there is one named contact for every privacy question, data request, complaint, or takedown notice:",
+    ],
+    subsections: [
+      {
+        heading: "Grievance Officer & Data Protection Contact",
+        list: [
+          `${siteConfig.legalContact.name}, ${siteConfig.legalContact.role}`,
+          `Email: ${siteConfig.legalContact.email}`,
+          `Post: ${siteConfig.legalContact.postalAddress}`,
+        ],
+        paragraphs: [
+          "We acknowledge privacy requests and grievances within 3 business days and aim to resolve them within 30 days. If something will take longer, we will tell you where it stands rather than going quiet.",
+          'If your jurisdiction requires you to be told the identity of the party responsible for processing your data (a "data controller" under the GDPR, or a "Data Fiduciary" under India\'s DPDP framework), that party is VeriWorkly, reachable through the contact above.',
+        ],
+      },
+      {
+        heading: "EEA and UK users: how to reach us, and why there is no local representative",
+        paragraphs: [
+          "We are established in India. If you are in the European Economic Area or the United Kingdom, you can exercise every data protection right you have — access, correction, deletion, restriction, objection, portability — by writing to the Grievance Officer above. We answer those requests on the same timelines the GDPR and UK GDPR set, and we do not treat a request differently because of where it comes from.",
+          "We have not appointed an Article 27 representative inside the EEA or the UK. We would rather explain that than leave you to notice it. VeriWorkly is an open-core project run by one person without outside funding, and a representative service is a recurring cost we cannot currently carry. We also process no special-category data, run no advertising or profiling, and offer the service to individuals rather than targeting EEA users specifically — which is the basis on which we currently consider the exemption for occasional, low-risk processing to apply to us.",
+          "That is our reasoning, stated openly rather than assumed. We know a supervisory authority might weigh it differently, and if the project's scale or funding changes we will appoint a representative and name them here. In the meantime nothing about the absence of one limits your rights or your route to us: the contact above is a real person who reads and answers.",
+          "You can also complain to the supervisory authority where you live or work, without coming to us first. See the rights section below.",
+        ],
+      },
     ],
   },
   {
@@ -52,7 +75,7 @@ export const privacySections: LegalSection[] = [
           "Portfolio content and media: text, project descriptions, and any images or screenshots you upload for a published portfolio (stored via Cloudflare R2 object storage).",
           "Billing information: when you subscribe or make a purchase, our payment processor, Dodo Payments, collects your payment card or payment method details directly. We do not receive or store your full card number.",
           "Support and contact form submissions: your name, email, subject, and message when you contact us.",
-          "Affiliate and Ambassador program applications: referral codes, payout details necessary to pay commissions, and — for the Student Ambassador program — your college/university name and graduation year.",
+          "Affiliate and Ambassador program applications: referral codes, payout details necessary to pay commissions, and - for the Student Ambassador program - your college/university name and graduation year.",
           "Content you choose to import: if you use GitHub import, the repositories and profile data you authorize us to read. If you use LinkedIn import, the exported profile text you paste or upload. If you upload a legacy resume file (PDF, DOCX, TXT, MD, or JSON) for extraction, the contents of that file.",
         ],
       },
@@ -70,7 +93,7 @@ export const privacySections: LegalSection[] = [
         list: [
           "OAuth sign-in providers (Google, GitHub, LinkedIn) share the basic profile information you authorize when you use them to sign in.",
           "GitHub's API, when you use GitHub import, shares your public profile and repository data that you authorize us to access.",
-          "Dodo Payments shares transaction status, subscription state, and the metadata necessary for us to grant entitlements and credits after a purchase — not your full payment credentials.",
+          "Dodo Payments shares transaction status, subscription state, and the metadata necessary for us to grant entitlements and credits after a purchase - not your full payment credentials.",
         ],
       },
     ],
@@ -81,6 +104,7 @@ export const privacySections: LegalSection[] = [
     intro: [
       "VeriWorkly is built local-first. When you open the Document Studio or Portfolio Builder without logging in, your documents and Master Profile data are written directly to your browser's LocalStorage. Nothing is transmitted to our servers unless you take an action that requires it (for example, using an AI feature, requesting an ATS scan, importing from GitHub/LinkedIn, or logging in to enable cloud sync).",
       "If you never create an Account, your data lives only in that browser's local storage (plus a 30-day Guest Session cookie so you don't lose your place). Clearing your browser's site data, using a different browser or device, or reinstalling your OS will remove locally stored, un-synced data. We strongly recommend exporting a backup (available from the dashboard) or creating a free Account if you want durability across devices.",
+      "When you use the ATS Resume Checker (whether as a guest or logged-in user), your uploaded resume file, pasted text, and any target job description are processed strictly in volatile runtime memory (RAM) for the few seconds required to execute deterministic parsing rules, and are immediately discarded. We do not store, archive, or index your scanned documents on persistent databases, and we never use your scanned application materials to train AI models.",
       'If you log in, your Master Profile and documents are synchronized to our servers (PostgreSQL, with Redis used for caching and rate-limiting) so they\'re available across devices. You can opt individual documents out of cloud sync ("keep local only") from the dashboard.',
     ],
   },
@@ -91,7 +115,7 @@ export const privacySections: LegalSection[] = [
     subsections: [
       {
         list: [
-          "Provide, operate, and maintain the Service — including the Document Studio, Master Profile, ATS Checker, Portfolio Builder, sharing, and export features.",
+          "Provide, operate, and maintain the Service - including the Document Studio, Master Profile, ATS Checker, Portfolio Builder, sharing, and export features.",
           'Process the AI features you explicitly trigger (see Section 8, "AI Features & Third-Party AI Processing").',
           "Process payments, manage subscriptions and credit balances, and enforce entitlements.",
           "Send transactional emails: welcome emails, new-device login alerts, and account-deletion confirmations. We do not send marketing email unless you separately opt in, and any such email would include an unsubscribe option.",
@@ -124,27 +148,27 @@ export const privacySections: LegalSection[] = [
     id: "ai-processing",
     title: "AI Features & Third-Party AI Processing",
     intro: [
-      "VeriWorkly's AI writing assistant, resume tailoring, cover letter generation, portfolio copy generation, and the AI-powered layer of the ATS Checker are built on third-party large language model providers (currently including Anthropic's Claude and OpenAI's GPT models). This section explains, in plain terms, what that means for your data.",
+      "VeriWorkly's AI writing assistant, resume tailoring, cover letter generation, portfolio copy generation, and the AI-powered layer of the ATS Checker all run on third-party large language models. We reach them through OpenRouter, a gateway that forwards each request to a model provider on our behalf — we hold no direct account with any model vendor, and which model serves a given request is set in our configuration and can change. This section explains, in plain terms, what that means for your data.",
     ],
     subsections: [
       {
         heading: "What gets sent, and when",
         paragraphs: [
-          'Content is only sent to an AI model provider when you explicitly trigger an AI action — for example, clicking "Improve with AI," requesting AI resume tailoring against a job description, generating a cover letter, or requesting the AI-powered ATS deep-analysis layer. We do not run your Master Profile or documents through AI models in the background without your action.',
-          "Before an AI action runs, the Service shows you the credit cost and mode (Standard or Expert) so you know what you're triggering. After generation, you explicitly choose to replace your existing text or discard the AI's draft — nothing is overwritten silently.",
+          'Content is only sent to an AI model provider when you explicitly trigger an AI action - for example, clicking "Improve with AI," requesting AI resume tailoring against a job description, generating a cover letter, or requesting the AI-powered ATS deep-analysis layer. We do not run your Master Profile or documents through AI models in the background without your action.',
+          "Before an AI action runs, the Service shows you the credit cost and mode (Standard or Expert) so you know what you're triggering. After generation, you explicitly choose to replace your existing text or discard the AI's draft - nothing is overwritten silently.",
         ],
       },
       {
         heading: "How third-party AI providers handle that data",
         paragraphs: [
-          "Content sent for AI processing is transmitted to the relevant third-party model provider's API solely to generate the requested output, and is subject to that provider's own data handling, retention, and (where applicable) API-data-training policies, which are outside our direct control. We do not use your content to train our own foundation models, and to the extent we can configure it, we use API terms with model providers that are intended to exclude submitted content from being used to train their models — but you should not treat this Policy as a substitute for reading a given provider's own privacy documentation if you have specific concerns.",
+          "Content sent for AI processing is transmitted to the relevant third-party model provider's API solely to generate the requested output, and is subject to that provider's own data handling, retention, and (where applicable) API-data-training policies, which are outside our direct control. We do not use your content to train our own foundation models, and to the extent we can configure it, we use API terms with model providers that are intended to exclude submitted content from being used to train their models - but you should not treat this Policy as a substitute for reading a given provider's own privacy documentation if you have specific concerns.",
           "We recommend avoiding pasting highly sensitive personal data (for example, government ID numbers, medical information, or financial account numbers) into AI-assisted fields beyond what is normal for a resume or cover letter.",
         ],
       },
       {
         heading: "Credits and processing records",
         paragraphs: [
-          "We keep a ledger of AI credit grants, reservations, and debits tied to your Account so that a failed generation doesn't consume your balance, and so you can review your usage history from the Credits page. This ledger records that an AI action occurred and its cost — not necessarily the full content generated.",
+          "We keep a ledger of AI credit grants, reservations, and debits tied to your Account so that a failed generation doesn't consume your balance, and so you can review your usage history from the Credits page. This ledger records that an AI action occurred and its cost - not necessarily the full content generated.",
         ],
       },
     ],
@@ -178,13 +202,35 @@ export const privacySections: LegalSection[] = [
     ],
     subsections: [
       {
-        heading: "Service providers we use to operate VeriWorkly",
+        heading: "Subprocessors: who processes your data, what they see, and where",
+        paragraphs: [
+          "This is the complete list of third parties that may process your personal data on our behalf. Each entry says what the provider does for us, exactly what personal data reaches it, and where it processes that data. If we add or replace a subprocessor we update this list and note the change in the revision history at the end of this policy.",
+          "Some of these are unavoidable to run the service at all (hosting, database, email). Others are only reached when you take a specific action — no AI provider sees anything unless you use an AI feature, and no payment provider sees anything unless you buy something.",
+        ],
         list: [
-          "Dodo Payments — payment processing and billing, under PCI-DSS-compliant handling. Dodo Payments processes your payment method directly; we receive transaction and subscription status, not your full card details.",
-          "Cloudflare R2 — object storage for portfolio images and assets you upload.",
-          "Infrastructure and hosting providers for our PostgreSQL database, Redis cache, and application servers.",
-          "Better Auth (self-hosted authentication library) and, where you choose to use them, the OAuth providers Google, GitHub, and LinkedIn, solely to authenticate your sign-in.",
-          "Third-party AI model providers (see Section 8) when you trigger an AI feature.",
+          "Neon (serverless PostgreSQL) — our primary database, holding your Account, Master Profile, synced documents, portfolio publications, credits, and billing records. Processing region: Asia-Pacific (Singapore). Transfer basis: Standard Contractual Clauses.",
+          "OpenRouter — the AI gateway we send requests through. It receives the text you submit when you use an AI feature (resume tailoring, cover letter drafting, portfolio copy, AI ATS analysis, and LinkedIn import parsing) and routes it to a model provider on our behalf. It is the reason we describe the AI boundary as leaving our infrastructure. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          "Model providers reached through OpenRouter — the underlying model that answers a request, such as an Anthropic, OpenAI, or Google model. We hold no direct account with any of them: every AI request goes through OpenRouter, and which model serves it is set in our runtime configuration and can change. That is why we name the gateway rather than promise you a specific vendor. The model provider receives only the text of that request, is contractually prohibited from training on it, and never receives your name, email, or account identifiers. Processing region: primarily the United States, depending on the model selected. Transfer basis: Standard Contractual Clauses.",
+          "Dodo Payments — merchant of record for all purchases. It collects and processes your payment method directly; we never receive or store a full card number, only transaction status, subscription state, and the metadata needed to grant what you bought. Dodo Payments states that it handles card data under PCI-DSS. Processing region: United States and India. Transfer basis: Standard Contractual Clauses.",
+          "Cloudflare R2 — object storage for portfolio images, avatars, and other files you upload. It sees the file contents and filenames, not your Account details. Processing region: distributed, with automatic region selection. Transfer basis: Standard Contractual Clauses.",
+          "Google, GitHub, and LinkedIn (OAuth) — only if you choose to sign in with one of them. They confirm your identity to us and share your email address and basic profile; we never receive your password. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          "GitHub API — only if you use GitHub import. We read the public repository and profile data you authorise. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          "Hostinger (VPS) — the virtual private server that runs our web applications and API, and that our Redis cache runs on. It processes the request metadata described in Section 4 (IP address, user agent, timestamps) and, as the host, has infrastructure-level access to the machine our services run on. Hostinger also delivers our transactional email over SMTP: sign-in codes, purchase confirmations, portfolio notifications, and account-deletion confirmations, which means it sees your email address and the content of those messages. Processing region: European Union (Lithuania). Transfer basis: EU adequacy — no additional mechanism is needed for EEA transfers.",
+        ],
+      },
+      {
+        heading: "What is NOT a subprocessor",
+        paragraphs: [
+          "Better Auth is an authentication library that runs on our own server, not a service we send you to. Your session data never leaves the machine described above, so it is deliberately not listed as a subprocessor even though it handles your login.",
+          "Our Redis cache runs on that same server rather than as a separate hosted service. It holds short-lived session and rate-limit data, not a copy of your documents. It is covered by the Hostinger entry above rather than being its own subprocessor.",
+          "We use no advertising networks, no analytics vendors, no session-recording or heatmap tools, and no data brokers. There is nothing to list under those headings because we do not use any.",
+        ],
+      },
+      {
+        heading: "International transfers, and being honest about the limits",
+        paragraphs: [
+          "We are established in India, and as the table shows, most of our providers process data in the United States or across distributed regions. Where personal data moves internationally we rely on the transfer mechanism named against each provider — in almost every case the European Commission's Standard Contractual Clauses, together with the UK International Data Transfer Addendum for UK transfers, or an adequacy decision where one covers the destination.",
+          "In practice these mechanisms are the ones each provider offers in its own data processing agreement, which we accept as their customer. We are a small independent project: we are not in a position to negotiate bespoke terms with a hosting or payment provider, and we would rather tell you that than imply a level of control we do not have. If a particular transfer matters to you, ask us and we will tell you exactly what is in place for it.",
         ],
       },
       {
@@ -216,11 +262,18 @@ export const privacySections: LegalSection[] = [
     subsections: [
       {
         list: [
-          "Account, Master Profile, and synced document data: retained for as long as your Account is active. If you delete your Account, we delete or anonymize this data within a reasonable operational period, except where we are legally required or permitted to retain it longer (for example, billing records for tax/accounting purposes, or fraud-prevention records).",
-          "Guest Session (local-first, no Account): data lives only in your browser and the Guest Session cookie, which expires automatically after 30 days of inactivity.",
-          "Aggregate usage telemetry: retained in aggregate, de-identified form indefinitely, since it is not tied to identifying an individual once aggregated.",
-          "Server and security logs: retained for a limited operational window sufficient for security and debugging purposes, then routinely purged or rotated.",
-          "Billing records: retained as required by applicable tax, accounting, and financial regulations, generally several years after the relevant transaction.",
+          "Account, Master Profile, and synced document data: kept while your Account is active. If you delete your Account we remove this data within 30 days, other than anything we must keep under the rows below.",
+          "Guest Session (local-first, no Account): stays in your browser. The Guest Session cookie expires 30 days after your last visit. We hold nothing server-side for guest use.",
+          "ATS scans: your resume text and the resulting report are never written to our database. A scan is processed in memory and discarded when the response is sent. We do record that a scan happened, against your quota, so the rate limits can work — that counter holds no document content.",
+          "AI request text: not retained by us after the request completes. The model provider's own retention applies to the request itself, which is why Section 8 asks you to treat an AI action as a deliberate choice.",
+          "Server and security logs: we do store these. They hold request metadata (IP address, user agent, timestamps, error traces), not the contents of your documents. We have not yet built an automatic deletion schedule for them, so we will not quote you a number we do not enforce: today they are kept as long as our hosting provider retains them, and we delete them when they are no longer useful for security, abuse prevention, or debugging. If you want yours removed sooner, ask our Grievance Officer.",
+          "Takedown and grievance records: kept for up to 3 years from resolution, so we can apply our repeat-infringer policy consistently and show how a complaint was handled. These are reviewed and cleared by hand rather than by an automated job.",
+          "Billing and tax records: kept for as long as tax, accounting, and financial-regulation law requires of us, which is a period of years rather than months. We cannot delete these on request, and closing your Account does not remove them.",
+          "Aggregate usage telemetry: kept indefinitely in de-identified, aggregated form, from which you cannot be re-identified.",
+        ],
+        paragraphs: [
+          "Two of these pull in opposite directions and we would rather say so plainly than let you discover it. We keep no record of your ATS scans, but we must keep billing records for years — so if you paid us, closing your Account removes your documents and profile, not the fact of the transaction.",
+          "A note on how these periods work in practice. Account deletion is a real, immediate operation: it removes the rows and the uploaded files. The other periods above are policies we follow, not timers enforced by scheduled jobs — we are a small team and we have not built that automation yet. We have written what we actually do rather than the tidier version, because a retention period you can hold us to is worth more than one that only reads well.",
         ],
       },
     ],
@@ -235,18 +288,26 @@ export const privacySections: LegalSection[] = [
       {
         list: [
           "Access: request a copy of the personal data we hold about you.",
-          "Correction: fix inaccurate or incomplete data — most of this you can do yourself directly in the Master Profile or Account settings.",
-          "Deletion: request deletion of your Account and associated data (available directly from Account settings, or by emailing us).",
-          "Portability: export your data. A JSON export of your local or synced data is available from the dashboard at any time, without needing to contact support.",
+          "Correction: fix inaccurate or incomplete data - most of this you can do yourself directly in the Master Profile or Account settings.",
+          `Deletion: request deletion of your Account and associated data at any time from the "Danger Zone" on your Profile page in the Studio, or by emailing ${siteConfig.legalContact.email}. Deletion permanently destroys your documents, Master Profile, portfolios, share links, and active sessions; see the retention section for the statutory billing records we are required to keep.`,
+          `Portability: every document can be exported as structured JSON from the editor at any time, without contacting anyone. For a full copy of everything associated with your Account rather than a document at a time, email ${siteConfig.legalContact.email} and we will put one together.`,
           "Objection / restriction: object to or request that we restrict certain processing, such as aggregate analytics.",
           "Withdraw consent: for anything based on consent (for example, GitHub/LinkedIn import or AI processing), simply stop using that feature, or ask us to delete data already collected through it.",
           "Non-discrimination: we will not deny you service, charge you a different price, or provide a different level of service because you exercised a privacy right.",
+          "Complain to a regulator: if you think we have mishandled your data, you can lodge a complaint with a data protection authority. You do not have to come to us first, though we would like the chance to put it right.",
+        ],
+      },
+      {
+        heading: "Complaining to a regulator",
+        paragraphs: [
+          "If you are in the EEA or the UK, you can complain to the supervisory authority in the country where you live or work, or where you think the problem happened. In the UK that is the Information Commissioner's Office. If you are in India, you can escalate to the Data Protection Board once we have had a chance to respond to your grievance.",
+          "We would rather hear from you first — most problems are quicker to fix directly — but this right exists whether or not you use ours, and we will never treat you differently for exercising it.",
         ],
       },
       {
         heading: "California residents (CCPA/CPRA)",
         paragraphs: [
-          'California residents have the rights above, plus the right to know the categories of personal information we\'ve collected and the categories of third parties we\'ve shared it with (both described in this Policy), and the right to opt out of the "sale" or "sharing" of personal information — which we do not do; we do not sell or share your personal information for cross-context behavioral advertising.',
+          'California residents have the rights above, plus the right to know the categories of personal information we\'ve collected and the categories of third parties we\'ve shared it with (both described in this Policy), and the right to opt out of the "sale" or "sharing" of personal information - which we do not do; we do not sell or share your personal information for cross-context behavioral advertising.',
         ],
       },
       {
@@ -278,6 +339,14 @@ export const privacySections: LegalSection[] = [
           "No method of transmission or storage is 100% secure, and we cannot guarantee absolute security. If you discover a security vulnerability, please report it responsibly per our Security Policy rather than disclosing it publicly.",
         ],
       },
+      {
+        heading: "If something goes wrong: breach notification",
+        paragraphs: [
+          "A policy that says nothing about breaches reads as unprepared, so here is our commitment. If personal data we hold is breached, we will notify the relevant supervisory authorities within the deadlines the applicable law sets, which are short — in the EEA and UK that is 72 hours from becoming aware, and India's framework sets its own tight reporting window.",
+          "Where a breach is likely to result in a high risk to your rights and freedoms, we will tell you directly and without undue delay. We will tell you what happened, what data was involved, what we have done about it, and what you can do to protect yourself — in plain language, not a legal notice designed to be skimmed past.",
+          "We will notify you even where doing so is embarrassing for us. If we are still working out the scope, we will say that rather than waiting for a complete picture before telling you anything.",
+        ],
+      },
     ],
   },
   {
@@ -291,28 +360,30 @@ export const privacySections: LegalSection[] = [
     id: "childrens-privacy",
     title: "Children's Privacy",
     intro: [
-      "The Service is not directed to children under 16, and we do not knowingly collect personal data from anyone under that age. If we learn that we have inadvertently collected personal data from a child under 16, we will take reasonable steps to delete it. If you believe a child has provided us with personal data, please contact us.",
+      "The Service is for adults. You must be 18 or over to use it, as our Terms require, and we do not knowingly collect personal data from anyone under 18.",
+      "We set the floor at 18 rather than at a lower age of digital consent because India's data protection framework treats everyone under 18 as a child, with requirements around verifiable parental consent and restrictions on tracking and targeted advertising directed at them. We are not equipped to meet those responsibly, so we do not offer the Service to under-18s at all.",
+      `If we learn that we hold personal data from someone under 18, we will close the account and delete the data. If you believe a child has given us personal data, contact ${siteConfig.legalContact.name} at ${siteConfig.legalContact.email} and we will act on it.`,
     ],
   },
   {
     id: "do-not-track",
     title: "Do Not Track Signals",
     intro: [
-      'Some browsers offer a "Do Not Track" (DNT) signal. Because there is no single, industry-agreed way to interpret DNT signals, we do not currently respond to them differently — but as noted above, we already do not run third-party advertising trackers or cross-site behavioral tracking regardless of your browser\'s DNT setting.',
+      'Some browsers offer a "Do Not Track" (DNT) signal. Because there is no single, industry-agreed way to interpret DNT signals, we do not currently respond to them differently - but as noted above, we already do not run third-party advertising trackers or cross-site behavioral tracking regardless of your browser\'s DNT setting.',
     ],
   },
   {
     id: "third-party-links",
     title: "Third-Party Links & Services",
     intro: [
-      "The Service links to and integrates with third-party services — GitHub, LinkedIn, Google, and Dodo Payments among them — and published portfolios may link to other websites you or other users control. We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies independently.",
+      "The Service links to and integrates with third-party services - GitHub, LinkedIn, Google, and Dodo Payments among them - and published portfolios may link to other websites you or other users control. We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies independently.",
     ],
   },
   {
     id: "open-source-self-hosted",
     title: "Open Source & Self-Hosted Deployments",
     intro: [
-      "VeriWorkly's core document-builder and web engines are released under the MIT License. If you or someone else runs a self-hosted or forked instance of that code — rather than using the hosted Service at veriworkly.com and its official subdomains — this Privacy Policy does not apply to that independent deployment. The operator of that self-hosted instance is solely responsible for its own data practices, and you should direct privacy questions about it to them, not to us.",
+      "VeriWorkly's core document-builder and web engines are released under the MIT License. If you or someone else runs a self-hosted or forked instance of that code - rather than using the hosted Service at veriworkly.com and its official subdomains - this Privacy Policy does not apply to that independent deployment. The operator of that self-hosted instance is solely responsible for its own data practices, and you should direct privacy questions about it to them, not to us.",
     ],
   },
   {
@@ -333,7 +404,7 @@ export const privacySections: LegalSection[] = [
     id: "contact",
     title: "Contact Us",
     intro: [
-      `Questions, requests, or concerns about this Privacy Policy or your data can be sent to ${siteConfig.email}. You can also reach us through the Contact page, or — for source-code-level questions about how data is handled — review the public repository at ${siteConfig.links.github}.`,
+      `Questions, requests, or concerns about this Privacy Policy or your data can be sent to ${siteConfig.email}. You can also reach us through the Contact page, or - for source-code-level questions about how data is handled - review the public repository at ${siteConfig.links.github}.`,
     ],
   },
 ];

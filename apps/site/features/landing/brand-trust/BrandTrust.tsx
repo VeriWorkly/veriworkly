@@ -1,4 +1,3 @@
-import React from "react";
 import BrandTrustMarquee from "./BrandTrustMarquee";
 
 const BrandTrust = () => {
@@ -11,6 +10,7 @@ const BrandTrust = () => {
         <span className="text-[10px] font-black tracking-[0.25em] text-zinc-400 uppercase select-none dark:text-zinc-500">
           Backed by core tech stack
         </span>
+
         <div className="w-full overflow-hidden">
           <BrandTrustMarquee />
         </div>

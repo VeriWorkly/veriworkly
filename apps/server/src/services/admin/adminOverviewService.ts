@@ -171,7 +171,7 @@ async function buildRecentActivity() {
       take: 10,
     }),
     prisma.subscription.findMany({
-      where: { status: { in: ["ACTIVE", "TRIALING"] } },
+      where: { status: { in: ["ACTIVE"] } },
       select: {
         id: true,
         productKey: true,

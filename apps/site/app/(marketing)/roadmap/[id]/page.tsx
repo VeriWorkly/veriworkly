@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: RoadmapDetailPageProps): Prom
     description: metadataDescription,
     ogTitle: `${item.title} | VeriWorkly Roadmap`,
     ogDescription: metadataDescription,
-    twitterTitle: `${item.title} — VeriWorkly Roadmap`,
+    twitterTitle: `${item.title} - VeriWorkly Roadmap`,
     twitterDescription: metadataDescription,
     image: ogUrl.toString(),
     imageAlt: `${item.title} Roadmap Feature`,

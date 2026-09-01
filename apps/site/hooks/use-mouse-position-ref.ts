@@ -20,7 +20,13 @@ export const useMousePositionRef = (containerRef?: RefObject<HTMLElement | SVGEl
     };
 
     const handleTouchMove = (ev: TouchEvent) => {
+      // touches can be empty (the last finger lifting mid-move fires this with an
+      // empty list), and `noUncheckedIndexedAccess` is off, so tsc types this as
+      // always-present and cannot see the throw.
       const touch = ev.touches[0];
+
+      if (!touch) return;
+
       updatePosition(touch.clientX, touch.clientY);
     };
 

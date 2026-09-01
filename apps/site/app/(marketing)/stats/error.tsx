@@ -17,7 +17,7 @@ export default function StatsError({
 
       <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
 
-      <div className="bg-destructive/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-[600px] w-[600px] rounded-full blur-[130px]" />
+      <div className="bg-destructive/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[130px]" />
 
       <Container className="relative pt-28 pb-20 text-center lg:pt-36">
         <header className="mx-auto mb-12 max-w-2xl space-y-4">
@@ -43,9 +43,9 @@ export default function StatsError({
           <div className="bg-destructive/10 text-destructive border-destructive/20 mb-6 flex h-16 w-16 items-center justify-center rounded-full border">
             <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
+                strokeWidth={1.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={1.5}
                 d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
               />
             </svg>

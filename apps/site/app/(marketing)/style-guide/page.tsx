@@ -20,7 +20,7 @@ export const metadata: Metadata = buildPageMetadata({
     "Explore the VeriWorkly design system including colors, typography, UI components, and branding guidelines.",
   ogTitle: "The Design System Behind VeriWorkly",
   ogDescription:
-    "Colors, typography, components, and brand assets — the same design system that powers the whole VeriWorkly product.",
+    "Colors, typography, components, and brand assets - the same design system that powers the whole VeriWorkly product.",
   twitterTitle: "VeriWorkly's design system, in the open",
   twitterDescription:
     "Explore the official VeriWorkly UI kit, typography, colors, and design system guidelines.",

@@ -9,7 +9,7 @@ import {
   incrementUsageMetric,
   getAdminDashboardMetrics,
 } from "#services/analyticsService";
-import { getGitHubStats } from "#services/githubService";
+import { getGitHubStats } from "#services/github/index";
 
 /**
  * Validation schema for incoming usage metrics.

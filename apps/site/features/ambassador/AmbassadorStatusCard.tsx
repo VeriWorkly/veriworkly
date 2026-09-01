@@ -58,7 +58,7 @@ export function AmbassadorComingSoonCard() {
       }
     >
       <p>
-        The Campus Ambassador program is still being set up. Nothing to fill in just yet — check the
+        The Campus Ambassador program is still being set up. Nothing to fill in just yet - check the
         program page for what&apos;s coming.
       </p>
     </StatusShell>
@@ -82,7 +82,7 @@ export function AmbassadorUnavailableCard() {
       }
     >
       <p>
-        Something on our end is having a moment. Your answers weren&apos;t lost — give it a few
+        Something on our end is having a moment. Your answers weren&apos;t lost - give it a few
         seconds and reload.
       </p>
     </StatusShell>
@@ -99,7 +99,7 @@ export function AmbassadorAlreadyAcceptedCard() {
         You&apos;re already a Campus Ambassador
       </h1>
       <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-        No need to re-apply — your dashboard, perks, and referral tools are waiting for you in
+        No need to re-apply - your dashboard, perks, and referral tools are waiting for you in
         studio.
       </p>
       <Link
@@ -123,7 +123,7 @@ export function AmbassadorPendingCard() {
       </h1>
       <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-500 dark:text-zinc-400">
         We&apos;ve got it, we&apos;re reading it, we&apos;re probably smiling about it. Check back
-        soon — decisions land in your inbox.
+        soon - decisions land in your inbox.
       </p>
       <Link
         href="/ambassador"

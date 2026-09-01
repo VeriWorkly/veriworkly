@@ -150,7 +150,7 @@ export function revokeAdminShareLink(id: string, reason: string) {
 export function updateAdminSubscription(
   id: string,
   payload: {
-    status?: "INACTIVE" | "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
+    status?: "INACTIVE" | "ACTIVE" | "PAST_DUE" | "CANCELED";
     cancelAtPeriodEnd?: boolean;
     currentPeriodEnd?: string | null;
     graceEndsAt?: string | null;

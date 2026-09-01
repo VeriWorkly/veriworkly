@@ -39,7 +39,7 @@ describe("API Key Service Validation", () => {
     prismaFindMock.mockReset();
   });
 
-  it("permits validation if user has active/trialing subscription or no subscription", async () => {
+  it("permits validation if user has an active subscription or no subscription", async () => {
     cacheGetMock.mockResolvedValue(null);
     prismaFindMock.mockResolvedValue({
       id: "key-1",

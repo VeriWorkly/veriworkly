@@ -19,14 +19,14 @@ const loginUrl = `${siteConfig.links.app}/login?callbackURL=${encodeURIComponent
 
 /**
  * Never prerender. The page is per-visitor (session, prefill, application status) and the
- * feature-flag branch below short-circuits before anything touches `cookies()` — without
+ * feature-flag branch below short-circuits before anything touches `cookies()` - without
  * this, a build with the flag off bakes "applications open soon" into a static page that
  * flipping the env var at runtime would never undo.
  */
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Apply — Campus Ambassador Program | VeriWorkly",
+  title: "Apply - Campus Ambassador Program | VeriWorkly",
   description:
     "Seven quick, fun questions and you're in the running to become a VeriWorkly Campus Ambassador.",
   alternates: { canonical: pageUrl },
@@ -72,7 +72,7 @@ export default async function AmbassadorApplyPage() {
     );
   }
 
-  // No session (or a stale one). Let them answer everything anyway — the form parks the
+  // No session (or a stale one). Let them answer everything anyway - the form parks the
   // draft and signs them in at submit time.
   if (!result.ok) {
     return (
@@ -105,7 +105,7 @@ export default async function AmbassadorApplyPage() {
     isAuthenticated: true,
     name: status.name,
     // Prefill from the account, plus any previous answers if they're re-applying after a
-    // rejection. `/ambassador/me` already returned these — the form used to discard them
+    // rejection. `/ambassador/me` already returned these - the form used to discard them
     // and make people retype everything.
     draft: {
       collegeName: application?.collegeName ?? status.collegeName ?? undefined,

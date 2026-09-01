@@ -84,7 +84,7 @@ const AffiliateCalculator = () => {
                 Estimated Monthly Recurring Revenue
               </div>
               <div className="text-foreground flex items-baseline font-mono text-6xl font-black tracking-tighter select-none md:text-7xl">
-                <span className="text-muted-foreground mr-1 text-3xl font-semibold">$</span>
+                <span className="text-muted mr-1 text-3xl font-semibold">$</span>
                 <motion.span
                   key={`${monthlyEarnings}-${selectedPlan}`}
                   initial={{ scale: 0.92, opacity: 0.8, filter: "blur(2px)" }}
@@ -101,7 +101,7 @@ const AffiliateCalculator = () => {
                 Annual Yield Projection (ARR)
               </div>
               <div className="text-foreground/80 flex items-baseline font-mono text-3xl font-extrabold tracking-tight select-none">
-                <span className="text-muted-foreground mr-1 text-base font-medium">$</span>
+                <span className="text-muted mr-1 text-base font-medium">$</span>
                 <motion.span
                   key={`${annualEarnings}-${selectedPlan}`}
                   initial={{ opacity: 0.8 }}
@@ -129,7 +129,7 @@ const AffiliateCalculator = () => {
                   className={`rounded-xl px-4 py-2.5 text-xs font-bold transition-all duration-200 ${
                     selectedPlan === "pro"
                       ? "bg-white text-blue-600 shadow-sm dark:bg-zinc-900 dark:text-blue-400"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted hover:text-foreground"
                   }`}
                 >
                   Creator Pro ($9.99/mo)
@@ -139,7 +139,7 @@ const AffiliateCalculator = () => {
                   className={`rounded-xl px-4 py-2.5 text-xs font-bold transition-all duration-200 ${
                     selectedPlan === "bundle"
                       ? "bg-white text-blue-600 shadow-sm dark:bg-zinc-900 dark:text-blue-400"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted hover:text-foreground"
                   }`}
                 >
                   Job Hunter ($14.99/mo)
@@ -168,7 +168,7 @@ const AffiliateCalculator = () => {
                 className="custom-slider my-4"
               />
 
-              <div className="text-muted-foreground/60 flex justify-between font-mono text-[9px] font-bold tracking-widest uppercase">
+              <div className="text-muted/60 flex justify-between font-mono text-[9px] font-bold tracking-widest uppercase">
                 <span>0 Referrals</span>
                 <span>50 (Partner Tier)</span>
                 <span>250 Referrals</span>
@@ -204,7 +204,7 @@ const AffiliateCalculator = () => {
               )}
             </div>
 
-            <div className="text-muted-foreground/80 flex items-start gap-3 rounded-2xl border border-blue-500/10 bg-blue-500/5 p-4 text-xs leading-relaxed">
+            <div className="text-muted/80 flex items-start gap-3 rounded-2xl border border-blue-500/10 bg-blue-500/5 p-4 text-xs leading-relaxed">
               <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               <p>
                 Calculates yield based on the active plan level select: **Creator Pro ($9.99/mo)**

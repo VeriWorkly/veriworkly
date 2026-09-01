@@ -169,43 +169,27 @@ export const coreBrandColors = brandColors.filter((token) => token.core);
 export interface LogoAsset {
   name: string;
   file: string;
-  /** Human-readable dimensions, or "Vector" for SVG. */
+  /** Human-readable dimensions. */
   size: string;
-  format: "SVG" | "PNG";
+  format: "PNG";
   usage: string;
 }
 
 export const logoAssets: LogoAsset[] = [
   {
     name: "Primary Mark",
-    file: "veriworkly-logo.svg",
-    size: "Vector",
-    format: "SVG",
-    usage: "Preferred everywhere. Scales to any size, print included.",
-  },
-
-  {
-    name: "Single Colour",
-    file: "veriworkly-logo-mono.svg",
-    size: "Vector",
-    format: "SVG",
-    usage: "One-colour print, embroidery, and any ground where the facets lose contrast.",
-  },
-
-  {
-    name: "Raster Mark",
     file: "veriworkly-logo-256.png",
     size: "256×256",
     format: "PNG",
-    usage: "Fallback where SVG is not accepted.",
+    usage: "Primary logo mark. For websites, headers, and media placements.",
   },
 
   {
-    name: "App Icon",
+    name: "App Icon (Large)",
     file: "veriworkly-icon-512.png",
     size: "512×512",
     format: "PNG",
-    usage: "Store listings and PWA manifests.",
+    usage: "Store listings, app launchers, and high-DPI displays.",
   },
 
   {
@@ -213,7 +197,7 @@ export const logoAssets: LogoAsset[] = [
     file: "veriworkly-icon-192.png",
     size: "192×192",
     format: "PNG",
-    usage: "Android home screen and manifest.",
+    usage: "Android home screen, manifest, and favicons.",
   },
 
   {
@@ -221,17 +205,15 @@ export const logoAssets: LogoAsset[] = [
     file: "veriworkly-icon-apple-touch.png",
     size: "180×180",
     format: "PNG",
-    usage: "iOS home screen.",
+    usage: "iOS home screen and web clip.",
   },
 ];
 
 export const logoRules = {
   /** Clear space on every side, as a fraction of the mark's width. */
   clearSpaceRatio: 0.25,
-  /** Smallest size the faceted mark stays legible at, in px. */
-  minSizePx: 32,
-  /** Below this, switch to the single-colour mark. */
-  monoBelowPx: 24,
+  /** Smallest size the mark stays legible at, in px. */
+  minSizePx: 16,
   /** Mark geometry inside its square canvas, as percentages. */
   geometry: { widthPct: 74, heightPct: 54 },
 } as const;

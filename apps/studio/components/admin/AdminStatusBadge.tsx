@@ -42,7 +42,6 @@ const STATUS_TONES: Record<string, Tone> = {
   PENDING: "warning",
   REQUESTED: "warning",
   PROCESSING: "warning",
-  TRIALING: "warning",
   GRACE: "warning",
   PAST_DUE: "warning",
   degraded: "warning",

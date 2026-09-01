@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 
 import { config } from "#config";
 import { BillingService } from "#services/billingService";
+import { EntitlementService } from "#services/entitlementService";
+import { ENTITLEMENT_KEYS } from "#services/productCatalog";
 
 import {
   invalidatePublicPortfolioCaches,
@@ -47,6 +49,23 @@ function normalizeReferrerHost(referrer?: string) {
   } catch {
     return "";
   }
+}
+
+/**
+ * `removeWatermark` arrives inside the client-supplied content payload, so it is a
+ * request rather than a fact. The published snapshot must record the server's own
+ * decision: a publisher without the `watermark_removal` entitlement always stores
+ * `false`, whatever was posted.
+ *
+ * The public renderer independently guards on `isPremium`, so this is defence in
+ * depth - but it also keeps the persisted snapshot honest for everything that reads
+ * it later (admin views, support, any future export of the publication).
+ */
+export function resolveWatermarkFlag(
+  requested: boolean | undefined,
+  canRemoveWatermark: boolean,
+): boolean {
+  return canRemoveWatermark ? requested === true : false;
 }
 
 function collectAssetIds(content: PortfolioContentInput) {
@@ -126,7 +145,7 @@ export class PortfolioService {
                 productKey: { in: ["portfolio_pro", "bundle"] },
                 OR: [
                   {
-                    status: { in: ["ACTIVE", "TRIALING"] },
+                    status: { in: ["ACTIVE"] },
                     OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date() } }],
                   },
                   { graceEndsAt: { gt: new Date() } },
@@ -145,9 +164,7 @@ export class PortfolioService {
 
     const accessSubscription = publication.user.subscriptions[0];
     const graceEndsAt =
-      accessSubscription?.status === "ACTIVE" || accessSubscription?.status === "TRIALING"
-        ? null
-        : (accessSubscription?.graceEndsAt ?? null);
+      accessSubscription?.status === "ACTIVE" ? null : (accessSubscription?.graceEndsAt ?? null);
 
     if (publication.status === "GRACE" && !accessSubscription) {
       await prisma.portfolioPublication.update({
@@ -381,6 +398,17 @@ export class PortfolioService {
         throw new ApiError(400, "Portfolio contains an unavailable or invalid image.");
     }
 
+    // See resolveWatermarkFlag: the posted value is a request, not a fact.
+    const canRemoveWatermark = await EntitlementService.has(
+      userId,
+      ENTITLEMENT_KEYS.WATERMARK_REMOVAL,
+    );
+
+    const snapshot: PortfolioContentInput = {
+      ...publishable.data,
+      removeWatermark: resolveWatermarkFlag(publishable.data.removeWatermark, canRemoveWatermark),
+    };
+
     const existingPublication = await prisma.portfolioPublication.findUnique({
       where: { userId },
       select: { documentId: true, subdomain: true, status: true },
@@ -407,14 +435,14 @@ export class PortfolioService {
             documentId: document.id,
             subdomain,
             templateId: document.templateId,
-            snapshot: publishable.data as Prisma.InputJsonValue,
+            snapshot: snapshot as Prisma.InputJsonValue,
             publishedRevision: document.revision,
           },
           update: {
             documentId: document.id,
             subdomain,
             templateId: document.templateId,
-            snapshot: publishable.data as Prisma.InputJsonValue,
+            snapshot: snapshot as Prisma.InputJsonValue,
             publishedRevision: document.revision,
             status: "LIVE",
             suspensionReason: null,

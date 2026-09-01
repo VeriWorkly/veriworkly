@@ -41,6 +41,20 @@ const policy = {
       fix: "move contact up",
     },
     {
+      id: "test.structure.dates",
+      category: "structure",
+      severity: "warning" as const,
+      kind: "presence" as const,
+      pattern:
+        "\\b(?:19|20)\\d{2}\\s*(?:-|–|—|to)\\s*(?:(?:19|20)\\d{2}|present|current)|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+(?:19|20)\\d{2}\\b",
+      flags: "i",
+      invert: false,
+      weight: 4,
+      passEvidence: "dates found",
+      failEvidence: "no dates",
+      fix: "add employment dates",
+    },
+    {
       id: "test.format.tables",
       category: "format",
       severity: "warning" as const,
@@ -103,15 +117,43 @@ const policy = {
   keywordMatch: {
     requiredWeight: 2,
     preferredWeight: 0.5,
+    responsibilitiesWeight: 1,
     defaultWeight: 1,
-    requiredSectionPattern: "requirements[\\s\\S]{0,60}",
-    requiredSectionFlags: "gi",
-    preferredSectionPattern: "nice to have[\\s\\S]{0,60}",
-    preferredSectionFlags: "gi",
-    stopwords: ["and", "the", "with", "for", "our", "you"],
-    synonyms: { js: "javascript", ml: "machine learning" },
-    phrases: ["machine learning", "project management"],
+    generalTermWeight: 0.35,
+    sections: {
+      required: "^\\W*(requirements?|qualifications?)\\b",
+      preferred: "^\\W*(nice[- ]to[- ]have|preferred qualifications?)\\b",
+      responsibilities: "^\\W*(responsibilities|what you.{0,3}ll do)\\b",
+      excluded: "^\\W*(about us|benefits|perks|equal opportunity)\\b",
+    },
+    stopwords: ["and", "the", "with", "for", "our", "you", "is", "a", "of", "to", "or"],
+    synonyms: {
+      js: "javascript",
+      ml: "machine learning",
+      ".net": ".net",
+      "ci/cd": "continuous integration and deployment",
+    },
+    implies: { terraform: ["infrastructure as code"] },
+    phrases: ["machine learning", "project management", "continuous integration and deployment"],
     buzzwords: ["team player", "hardworking"],
+  },
+  resumeParse: {
+    sections: {
+      experience: "^\\W*(experience|employment|work history)\\b",
+      education: "^\\W*(education|academic)\\b",
+      skills: "^\\W*(skills|technologies)\\b",
+      projects: "^\\W*(projects?)\\b",
+      other: "^\\W*(summary|profile|certifications?|awards?)\\b",
+    },
+    titleWords: ["engineer", "manager", "developer", "analyst", "designer"],
+    schoolWords: ["university", "college", "institute"],
+    degrees: {
+      diploma: "\\b(diploma|certificate)\\b",
+      associate: "(?:\\b|^)(associate(?:'?s)?|a\\.?a\\.?s?\\.?)(?![a-z])",
+      bachelor: "(?:\\b|^)(bachelor(?:'?s)?|b\\.?sc?\\.?|b\\.?a\\.?)(?![a-z])",
+      master: "(?:\\b|^)(master(?:'?s)?|m\\.?sc?\\.?|mba)(?![a-z])",
+      doctorate: "(?:\\b|^)(doctorate|ph\\.?d\\.?)(?![a-z])",
+    },
   },
 };
 
@@ -278,9 +320,34 @@ describe("ATS category rollup", () => {
       "content",
       "format",
       "parse",
+      "structure",
     ]);
     expect(report.categories.reduce((sum, entry) => sum + entry.total, 0)).toBe(report.checksTotal);
     expect(report.checksPassed).toBe(report.rules.filter((rule) => rule.passed).length);
+  });
+
+  it("accurately parses and matches tech tokens like .NET and CI/CD without dropping leading dots or slashes", async () => {
+    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const resume =
+      "jane@example.com Engineered microservices using .NET and set up CI/CD pipelines.";
+    const jobDescription = ["Requirements", ".NET and CI/CD required."].join("\n");
+
+    const report = AtsScoringService.check(resume, jobDescription);
+    expect(report.matchedKeywords).toContain(".net");
+    expect(report.matchedKeywords).toContain("continuous integration and deployment");
+  });
+
+  it("evaluates standard employment date formats", async () => {
+    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const resumeWithDates = AtsScoringService.check(
+      "Jane Doe jane@example.com Experience Software Engineer 2021 - Present Built web apps Skills",
+    );
+    expect(ruleFor(resumeWithDates.rules, "test.structure.dates").passed).toBe(true);
+
+    const resumeWithoutDates = AtsScoringService.check(
+      "Jane Doe jane@example.com Experience Software Engineer Built web apps Skills",
+    );
+    expect(ruleFor(resumeWithoutDates.rules, "test.structure.dates").passed).toBe(false);
   });
 
   it("caps recursion so a deeply nested resume object cannot overflow the stack", async () => {

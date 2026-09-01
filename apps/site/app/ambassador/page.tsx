@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { siteConfig } from "@/config/site";
+import { isAmbassadorProgramEnabled } from "@/lib/feature-flags";
+import { buildPageMetadata } from "@/utils/metadata";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import AmbassadorNav from "@/features/ambassador/AmbassadorNav";
 import AmbassadorHero from "@/features/ambassador/AmbassadorHero";
@@ -11,58 +13,46 @@ import AmbassadorFooter from "@/features/ambassador/AmbassadorFooter";
 import "./ambassador.css";
 
 const AmbassadorPlaybook = dynamic(() => import("@/features/ambassador/AmbassadorPlaybook"));
-const AmbassadorCalculator = dynamic(() => import("@/features/ambassador/AmbassadorCalculator"));
 
 const pageUrl = `${siteConfig.url}/ambassador`;
 const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
   "Student Ambassador Program",
 )}&description=${encodeURIComponent(
-  "Represent VeriWorkly on campus and unlock free Creator Pro access.",
+  "Represent VeriWorkly on campus. Founding cohort applications open.",
 )}`;
 
-export const metadata: Metadata = {
-  title: "Student Ambassador Program | VeriWorkly",
+export const metadata: Metadata = buildPageMetadata({
+  path: "/ambassador",
+
+  title: `Student Ambassador Program | ${siteConfig.shortName}`,
+
   description:
-    "Gated campus program for college students. Share local-first career editors, earn points for social shares or peer referrals, and unlock free Creator Pro access.",
-  alternates: {
-    canonical: pageUrl,
-    languages: {
-      "en-US": pageUrl,
-    },
-  },
-  openGraph: {
-    title: "Student Ambassador Program | VeriWorkly",
-    description:
-      "Help your peers build professional resumes and portfolios. Earn point multipliers and redeem them for free Creator Pro upgrades.",
-    url: pageUrl,
-    siteName: siteConfig.shortName,
-    type: "website",
-    images: [
-      {
-        url: pageOgImage,
-        width: 1200,
-        height: 630,
-        alt: "VeriWorkly Student Ambassador Program",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Student Ambassador Program | VeriWorkly",
-    description:
-      "Earn campus points and redeem them for free Creator Pro access as a student ambassador.",
-    images: [pageOgImage],
-  },
-};
+    "A campus program for college students, in its founding phase. Apply to represent VeriWorkly, shape what ambassadors get, and help build privacy-first career tools for students.",
+
+  ogTitle: "Represent VeriWorkly on Campus",
+  ogDescription:
+    "Applications are open for the founding cohort. Every one is read by a person, and the first ambassadors help decide how the program rewards its leaders.",
+
+  twitterTitle: "VeriWorkly Campus Ambassadors",
+  twitterDescription:
+    "Founding cohort applications for the student ambassador program. Reviewed by hand.",
+
+  image: pageOgImage,
+  imageAlt: "VeriWorkly Student Ambassador Program",
+});
 
 const AmbassadorPage = () => {
+  // Mirrors /affiliate. Without this the pitch rendered in full while the Apply
+  // button dead-ended on the flagged-off apply page (B-08).
+  const programEnabled = isAmbassadorProgramEnabled();
+
   const ambassadorSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
     name: "VeriWorkly Student Ambassador Program",
     url: pageUrl,
     description:
-      "Represent VeriWorkly on campus, earn points by sharing with peers, and get free Pro access.",
+      "A founding-phase campus program. Apply to represent VeriWorkly at your college and help shape how the program rewards its ambassadors.",
   };
 
   return (
@@ -77,10 +67,9 @@ const AmbassadorPage = () => {
         <AmbassadorNav />
 
         <main>
-          <AmbassadorHero />
+          <AmbassadorHero programEnabled={programEnabled} />
           <AmbassadorPerks />
           <AmbassadorPlaybook />
-          <AmbassadorCalculator />
           <AmbassadorLeaderboard />
           <AmbassadorFAQ />
         </main>

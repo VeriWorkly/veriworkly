@@ -1,42 +1,46 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
 import {
   motion,
-  useInView,
-  useMotionValue,
-  useTransform,
-  useMotionValueEvent,
   animate,
+  useInView,
+  useTransform,
+  useMotionValue,
+  useMotionValueEvent,
 } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 const AtsGauge = () => {
   const gaugeRef = useRef<HTMLDivElement>(null);
+
   const isInView = useInView(gaugeRef, { once: true, amount: 0.5 });
 
   const scoreMV = useMotionValue(0);
   const strokeDashOffset = useTransform(scoreMV, [0, 98], [277, 277 - 271]);
 
   const [score, setScore] = useState(0);
+
   useMotionValueEvent(scoreMV, "change", (latest) => setScore(Math.round(latest)));
 
   useEffect(() => {
     if (!isInView) return;
+
     const controls = animate(scoreMV, 98, {
       duration: 1.4,
       delay: 0.2,
       ease: [0.23, 1, 0.32, 1],
     });
+
     return () => controls.stop();
   }, [isInView, scoreMV]);
 
   return (
     <div
       ref={gaugeRef}
-      className="absolute top-1/2 right-10 hidden h-64 w-64 -translate-y-1/2 flex-col items-center justify-center rounded-3xl border border-white/5 bg-white/2 p-6 backdrop-blur-md transition-transform duration-700 ease-out group-hover:scale-[1.03] lg:flex"
+      className="absolute top-1/2 right-4 hidden -translate-y-1/2 flex-col items-center justify-center rounded-3xl border border-white/5 bg-white/2 p-4 backdrop-blur-md transition-transform duration-700 ease-out group-hover:scale-[1.03] sm:flex sm:h-48 sm:w-48 lg:right-8 lg:h-60 lg:w-60 lg:p-6"
     >
-      <div className="relative flex h-32 w-32 items-center justify-center">
+      <div className="relative flex h-24 w-24 items-center justify-center sm:h-28 sm:w-28 lg:h-32 lg:w-32">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
           <circle
             cx="50"
@@ -62,13 +66,16 @@ const AtsGauge = () => {
             }}
           />
         </svg>
+
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-3xl font-bold tracking-tighter text-white">
             <span>{score}</span>
+
             <span className="text-lg text-zinc-400">%</span>
           </span>
         </div>
       </div>
+
       <div className="mt-6 flex items-center gap-2 rounded-full bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-400">
         <CheckCircle2 className="h-4 w-4" />
         ATS Optimized

@@ -11,7 +11,7 @@ const TiersList = [
     description:
       "Perfect for sharing with friends and peers. Earn recurring commission from day one.",
     style: "bg-card/40 border-border/80 text-foreground",
-    accent: "text-muted-foreground",
+    accent: "text-muted",
   },
   {
     name: "Tier 2: Growth",
@@ -63,8 +63,9 @@ const AffiliateTiers = () => {
             </span>
           </h2>
           <p className="text-muted max-w-[30ch] text-base leading-relaxed">
-            Our three-tier partner program scales your commission rate dynamically as you refer more
-            users.
+            Our three-tier partner program pays a higher commission rate as you refer more users.
+            Tier upgrades are applied by us on review rather than automatically, so reach out once
+            you have hit a threshold.
           </p>
         </div>
 
@@ -106,9 +107,7 @@ const AffiliateTiers = () => {
                   >
                     {tier.commission}
                   </div>
-                  <p className="text-muted-foreground/80 pt-2 text-sm leading-relaxed">
-                    {tier.description}
-                  </p>
+                  <p className="text-muted/80 pt-2 text-sm leading-relaxed">{tier.description}</p>
                 </div>
               </div>
 
@@ -116,7 +115,7 @@ const AffiliateTiers = () => {
                 <span className="text-xs font-bold tracking-wider uppercase transition-colors duration-300 group-hover:text-blue-500 dark:group-hover:text-blue-400">
                   Tier Active
                 </span>
-                <ArrowUpRight className="text-muted-foreground h-4 w-4 opacity-50 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
+                <ArrowUpRight className="text-muted h-4 w-4 opacity-50 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
               </div>
             </motion.div>
           ))}

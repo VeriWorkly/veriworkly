@@ -117,4 +117,38 @@ export class UserController {
       next(error);
     }
   }
+
+  /**
+   * Permanently delete the current authenticated user's account and all associated data.
+   * Clears session cookies and responds with success.
+   *
+   * @param req Express request
+   * @param res Express response
+   * @param next Express next function
+   */
+  static async deleteCurrentUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = requireAuthUser(req);
+
+      await UserService.deleteUserAccount(user.id);
+
+      const cookieHeader = req.headers.cookie || "";
+      if (cookieHeader) {
+        await invalidateSessionCache(cookieHeader);
+      }
+
+      // Clear auth cookies
+      res.clearCookie("veriworkly-auth.session_token", { path: "/" });
+      res.clearCookie("__Secure-veriworkly-auth.session_token", { path: "/" });
+
+      res.json(
+        createSuccessResponse(
+          null,
+          "Your account and all associated documents, portfolios, and data have been permanently deleted.",
+        ),
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }

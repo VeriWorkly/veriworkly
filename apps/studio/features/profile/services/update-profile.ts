@@ -34,3 +34,13 @@ export async function updateAutoSyncPreference(enabled: boolean): Promise<Accoun
     errorMessage: "Failed to update sync preference",
   });
 }
+
+/**
+ * Deliberately passes no `errorMessage`: fetchApiData prefers the override over the
+ * server's own message, and the server sends messages here that the user must actually
+ * read — notably the 409 telling them to cancel a live subscription before deleting,
+ * which "Failed to delete account" would hide.
+ */
+export async function deleteAccount(): Promise<void> {
+  return fetchApiData<void>("/users/me", { method: "DELETE" });
+}

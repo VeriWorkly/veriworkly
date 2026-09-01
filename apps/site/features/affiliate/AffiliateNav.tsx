@@ -11,7 +11,7 @@ const AffiliateNav = () => {
           <ArrowLeft className="h-4 w-4" />
           Back to VeriWorkly
         </Link>
-        <div className="text-muted-foreground flex items-center gap-2 font-mono text-xs">
+        <div className="text-muted flex items-center gap-2 font-mono text-xs">
           <Shield className="h-4 w-4 text-blue-500" />
           <span>Opt-in Partner Program</span>
         </div>

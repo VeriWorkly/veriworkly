@@ -96,6 +96,33 @@ PR titles **must** follow the format:
 
 ---
 
+## ✍️ Sign your commits (DCO)
+
+We use the [Developer Certificate of Origin](https://developercertificate.org/). It is a
+one-line sign-off, not a contributor licence agreement — you keep the copyright in your
+work, and there is no paperwork to sign or email to us.
+
+Add a `Signed-off-by` line to each commit:
+
+```
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+`git commit -s` adds it for you from your configured `user.name` and `user.email`. To
+fix an existing commit, use `git commit --amend -s`; for several, `git rebase --signoff`.
+
+By signing off you are certifying the DCO: that you wrote the change, or have the right
+to submit it under this project's licence, and that you are happy for it to be
+distributed under the MIT License along with your sign-off record.
+
+**Why we ask.** Without it we cannot show a clear chain of provenance for the codebase,
+which matters if we ever need to relicense, dual-license, or defend the project's origin.
+The DCO closes that gap from today forward at the cost of one line per commit. It does
+not give us your copyright and it does not let us relicense your contribution without
+your agreement — see [`LICENSING.md`](LICENSING.md).
+
+---
+
 ## 🤝 Code of Conduct
 
 We expect all contributors to follow our [Code of Conduct](CODE_OF_CONDUCT.md). Be respectful, inclusive, and collaborative.

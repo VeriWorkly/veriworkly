@@ -1992,7 +1992,7 @@
             "application/json": {
               "schema": { "$ref": "#/components/schemas/ImportLinkedinRequest" },
               "example": {
-                "profileText": "Jane Doe\nSoftware Engineer at Acme Corp\n...",
+                "profileText": "Jane Doe\nSoftware Engineer at VeriWorkly\n...",
                 "replaceMaster": false
               }
             }
@@ -5549,12 +5549,13 @@
           "wordCount": {
             "type": "integer",
             "description": "Words counted in the extracted resume text."
-          }
+          },
+          "parsed": { "$ref": "#/components/schemas/AtsParsedResume" }
         }
       },
       "AtsCategoryScore": {
         "type": "object",
-        "description": "Per-area rollup of the deterministic rules. Returned to authenticated and anonymous callers\nalike: it is an aggregate of per-rule impacts, so it says which part of the resume is losing\npoints without revealing which rule fired or what that rule weighs.\n",
+        "description": "Per-area rollup of the deterministic rules, saying which part of the resume is losing points\nwithout revealing which rule fired or what it weighs. Authenticated callers only — the rollup\ncarries most of the diagnostic value, so it is not part of the anonymous shape.\n",
         "properties": {
           "category": {
             "type": "string",
@@ -5575,17 +5576,22 @@
       },
       "AtsRestrictedReport": {
         "type": "object",
-        "description": "Returned instead of AtsFullReport when /ats/check is called anonymously — scores, a verdict,\nand the per-area rollup, but no rule evidence, no keyword lists, and only the single\nhighest-impact fix.\n",
+        "description": "Returned instead of AtsFullReport when /ats/check is called anonymously. A diagnosis without\nthe prescription: scores, a verdict, the single most serious problem and the single\nhighest-impact fix stated in full, plus honest counts of everything withheld. No per-area\nrollup, no rule evidence, no keyword lists, and no recovered work history — the server never\nsends them, so there is nothing for a client to un-hide.\n",
         "properties": {
           "version": { "type": "string", "enum": ["ats-v2"] },
           "restricted": { "type": "boolean", "enum": [true] },
           "readinessScore": { "type": "integer" },
           "jobMatchScore": { "type": "integer", "nullable": true },
           "verdict": { "type": "string", "enum": ["strong", "needs-work", "weak"] },
-          "topFix": { "type": "string", "nullable": true },
-          "categories": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/AtsCategoryScore" }
+          "topFix": {
+            "type": "string",
+            "nullable": true,
+            "description": "The single highest-impact fix, in full. The rest of the list requires auth."
+          },
+          "primaryWarning": {
+            "type": "string",
+            "nullable": true,
+            "description": "The most serious parsing or formatting failure, phrased as the risk it creates. Structural\nfailures outrank heavier content ones here because a candidate cannot self-diagnose them:\na missing keyword is visible by reading the posting, a column layout that scrambles your\njob titles on extraction is not.\n"
           },
           "checksPassed": { "type": "integer" },
           "checksTotal": { "type": "integer" },
@@ -5596,6 +5602,14 @@
           "missingKeywordCount": {
             "type": "integer",
             "description": "How many job-description terms the resume is missing. The terms themselves require auth."
+          },
+          "parsedRoleCount": {
+            "type": "integer",
+            "description": "How many work-history rows were recovered. The rows themselves require auth."
+          },
+          "remainingFixCount": {
+            "type": "integer",
+            "description": "Prioritised fixes beyond the one shown."
           }
         }
       },
@@ -5660,6 +5674,89 @@
           "data": { "$ref": "#/components/schemas/AtsQuotaSummary" }
         }
       },
+      "AtsParsedResume": {
+        "type": "object",
+        "description": "The fields an applicant tracking system recovers from the document — the \"what the ATS sees\"\nview. Produced by the same deterministic pass as the scores, so it never costs a second scan.\nA blank employer or a missing date range is a column a recruiter's filter cannot match on,\nwhich is why the rows are returned verbatim rather than only summarised.\n",
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "phone": { "type": "string" },
+          "links": { "type": "array", "items": { "type": "string" } },
+          "roles": {
+            "type": "array",
+            "description": "One row per job, in the shape an ATS stores it.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string" },
+                "employer": { "type": "string" },
+                "current": { "type": "boolean" },
+                "start": { "$ref": "#/components/schemas/AtsParsedDate" },
+                "end": { "$ref": "#/components/schemas/AtsParsedDate" }
+              }
+            }
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "school": { "type": "string" },
+                "credential": { "type": "string" },
+                "level": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": ["diploma", "associate", "bachelor", "master", "doctorate"]
+                },
+                "end": { "$ref": "#/components/schemas/AtsParsedDate" }
+              }
+            }
+          },
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "monthsOfExperience": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Calendar months covered by at least one role, so overlapping jobs are counted once."
+          },
+          "highestDegree": {
+            "type": "string",
+            "nullable": true,
+            "enum": ["diploma", "associate", "bachelor", "master", "doctorate"]
+          }
+        }
+      },
+      "AtsParsedDate": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "year": { "type": "integer" },
+          "month": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Null when the resume gave only a year."
+          }
+        }
+      },
+      "AtsLayoutSignals": {
+        "type": "object",
+        "required": ["columnRatio", "tableCount", "pageCount"],
+        "description": "Page geometry measured while parsing an uploaded document, for the format checks that text\nalone cannot answer. Returned by `POST /ats/extract` and accepted back by `/ats/check` and\n`/ats/analyze`. When it is omitted, the rules that depend on it are left out of the report\nentirely — neither passed nor failed — and out of the score's denominator.\n",
+        "properties": {
+          "columnRatio": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Share of content lines split across a horizontal gutter — the signature of a two-column layout, sidebar, or floating text box, all of which extract in a scrambled reading order. Null when the document had too few content lines for the measurement to carry signal."
+          },
+          "tableCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of ruled table grids found by tracing the page's vector drawing operators."
+          },
+          "pageCount": { "type": "integer", "minimum": 0 }
+        }
+      },
       "AtsExtractResponse": {
         "type": "object",
         "required": ["success", "message", "data"],
@@ -5672,7 +5769,8 @@
               "text": {
                 "type": "string",
                 "description": "Plain text extracted from the uploaded PDF, DOCX, TXT, Markdown, or JSON resume file (max ~50,000 characters)."
-              }
+              },
+              "layout": { "$ref": "#/components/schemas/AtsLayoutSignals" }
             }
           }
         }
@@ -5688,7 +5786,8 @@
           "jobDescription": {
             "type": "string",
             "description": "Optional plain-text job description to compute a jobMatchScore against."
-          }
+          },
+          "layout": { "$ref": "#/components/schemas/AtsLayoutSignals" }
         }
       },
       "AtsCheckResponse": {
@@ -5726,7 +5825,8 @@
             "type": "string",
             "minLength": 8,
             "description": "Client-generated idempotency key for the underlying AI credit reservation."
-          }
+          },
+          "layout": { "$ref": "#/components/schemas/AtsLayoutSignals" }
         }
       },
       "AtsAnalyzeResponse": {
@@ -5741,6 +5841,11 @@
             "properties": {
               "report": { "$ref": "#/components/schemas/AtsReport" },
               "ai": { "$ref": "#/components/schemas/AtsAiInsights" },
+              "aiStatus": {
+                "type": "string",
+                "enum": ["ok", "unavailable"],
+                "description": "`unavailable` means no model could be routed for this request — a server-side\nconfiguration problem, not a bad request. The deterministic report is still returned,\n`ai` is null, no credits are charged, and the scan quota unit is refunded, so\n`quota` reflects the balance after the refund.\n"
+              },
               "creditsSpent": { "type": "integer" },
               "quota": { "$ref": "#/components/schemas/AtsQuotaSummary" }
             }

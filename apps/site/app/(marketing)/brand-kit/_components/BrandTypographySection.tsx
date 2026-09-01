@@ -22,7 +22,7 @@ const BrandTypographySection = () => {
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="space-y-3 p-8">
           <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-            Primary — {fontStack.sans.family}
+            Primary - {fontStack.sans.family}
           </p>
 
           <p className="text-4xl font-semibold tracking-tight">VeriWorkly</p>
@@ -33,7 +33,7 @@ const BrandTypographySection = () => {
 
         <Card className="space-y-3 p-8">
           <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-            Monospace — {fontStack.mono.family}
+            Monospace - {fontStack.mono.family}
           </p>
 
           <p className="font-mono text-4xl font-semibold tracking-tight">VeriWorkly</p>
@@ -67,7 +67,7 @@ const BrandTypographySection = () => {
             Geist Sans and Geist Mono are released by Vercel under the SIL Open Font License 1.1. We
             load them through <span className="font-mono">next/font</span> in{" "}
             <span className="font-mono">@veriworkly/ui</span>, which self-hosts them at build time.
-            Nothing needs to be purchased or requested to typeset the VeriWorkly name — download
+            Nothing needs to be purchased or requested to typeset the VeriWorkly name - download
             them from Google Fonts.
           </p>
         </div>

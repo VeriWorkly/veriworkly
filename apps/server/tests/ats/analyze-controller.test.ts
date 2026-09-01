@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const consume = vi.fn();
+const refund = vi.fn();
 const fetchJobPage = vi.fn();
 const check = vi.fn();
 const analyze = vi.fn();
@@ -11,7 +12,10 @@ vi.mock("#middleware/auth", () => ({
 }));
 
 vi.mock("#services/ats/quota", () => ({
-  AtsQuotaService: { consume: (...args: unknown[]) => consume(...args) },
+  AtsQuotaService: {
+    consume: (...args: unknown[]) => consume(...args),
+    refund: (...args: unknown[]) => refund(...args),
+  },
 }));
 
 vi.mock("#services/ats/jobFetch", () => ({
@@ -19,7 +23,10 @@ vi.mock("#services/ats/jobFetch", () => ({
 }));
 
 vi.mock("#services/ats/scoring", () => ({
-  AtsScoringService: { check: (...args: unknown[]) => check(...args) },
+  AtsScoringService: {
+    check: (...args: unknown[]) => check(...args),
+    flattenResume: (resume: unknown) => String(resume),
+  },
 }));
 
 vi.mock("#services/ats/ai", () => ({
@@ -52,9 +59,10 @@ const baseBody = {
 beforeEach(() => {
   vi.clearAllMocks();
   check.mockReturnValue({ version: "ats-v2", failedChecks: [], prioritizedFixes: [] });
-  analyze.mockResolvedValue({ ai: null, creditsSpent: 0 });
+  analyze.mockResolvedValue({ ai: null, creditsSpent: 0, routed: true });
   fetchJobPage.mockResolvedValue("a job description long enough to score");
   consume.mockResolvedValue({ tier: "free", limit: 2, used: 1, remaining: 1 });
+  refund.mockResolvedValue({ tier: "free", limit: 2, used: 0, remaining: 2 });
 });
 
 describe("POST /ats/analyze — quota gates outbound egress", () => {
@@ -121,6 +129,70 @@ describe("POST /ats/analyze — quota gates outbound egress", () => {
 
     expect(consume).toHaveBeenCalledTimes(1);
     expect(fetchJobPage).not.toHaveBeenCalled();
-    expect(check).toHaveBeenCalledWith(baseBody.resume, "pasted description");
+    expect(check).toHaveBeenCalledWith(baseBody.resume, "pasted description", undefined);
+  });
+
+  it("flattens the resume once and hands the same text to scoring and to the model", async () => {
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted description" }),
+      responseSpy().res,
+      vi.fn(),
+    );
+
+    const scoredText = check.mock.calls[0][0];
+    expect(analyze.mock.calls[0][2]).toBe(scoredText);
+  });
+
+  it("passes uploaded page geometry through to the scoring pass", async () => {
+    const layout = { columnRatio: 0.6, tableCount: 2, pageCount: 1 };
+
+    await AtsAiController.analyze(
+      requestFor({
+        resume: baseBody.resume,
+        requestId: baseBody.requestId,
+        jobDescription: "pasted description",
+        fetchJobUrl: false,
+        layout,
+      }),
+      responseSpy().res,
+      vi.fn(),
+    );
+
+    expect(check).toHaveBeenCalledWith(baseBody.resume, "pasted description", layout);
+  });
+
+  /**
+   * Being unable to route a model is a configuration failure on our side. Charging a scan for
+   * it and returning a 200 the caller cannot tell apart from an analysis that found nothing was
+   * the worst of both: the user lost one of two daily scans and was never told why.
+   */
+  it("refunds the scan and says so when no model could be routed", async () => {
+    analyze.mockResolvedValue({ ai: null, creditsSpent: 0, routed: false });
+    const { res, json } = responseSpy();
+
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted description" }),
+      res,
+      vi.fn(),
+    );
+
+    expect(refund).toHaveBeenCalledWith("user-1", "203.0.113.9");
+    expect(json.mock.calls[0][0].data).toMatchObject({
+      aiStatus: "unavailable",
+      quota: { remaining: 2 },
+    });
+  });
+
+  it("does not refund when the analysis actually ran", async () => {
+    const { res, json } = responseSpy();
+
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted description" }),
+      res,
+      vi.fn(),
+    );
+
+    expect(refund).not.toHaveBeenCalled();
+    expect(json.mock.calls[0][0].data).toMatchObject({ aiStatus: "ok" });
   });
 });

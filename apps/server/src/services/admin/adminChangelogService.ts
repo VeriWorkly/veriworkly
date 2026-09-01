@@ -1,57 +1,18 @@
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 
 import { config } from "#config";
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
-import { cacheDelByPrefix } from "#lib/redis";
 import { logger } from "#lib/logger";
 
-import { Prisma } from "@prisma/client";
-
-import { ChangelogType } from "#services/changelogService";
-import { fetchPullRequestSummary } from "#services/githubService";
+import {
+  type ChangelogAdminCreateInput,
+  type ChangelogAdminUpdateInput,
+  invalidateChangelogReadCaches,
+} from "#services/changelog/index";
+import { fetchPullRequestSummary } from "#services/github/index";
 import { slugifyVersion } from "#utils/changelogVersion";
-
-interface ChangelogAdminCreateInput {
-  id?: string;
-  version: string;
-  title: string;
-  summary?: string | null;
-  type: ChangelogType;
-  publishedAt?: Date;
-  githubUrl?: string | null;
-  added?: string[];
-  improved?: string[];
-  fixed?: string[];
-  breaking?: string[];
-  security?: string[];
-  tags?: string[];
-  prRefs?: unknown;
-}
-
-interface ChangelogAdminUpdateInput {
-  version?: string;
-  title?: string;
-  summary?: string | null;
-  type?: ChangelogType;
-  publishedAt?: Date;
-  githubUrl?: string | null;
-  added?: string[];
-  improved?: string[];
-  fixed?: string[];
-  breaking?: string[];
-  security?: string[];
-  tags?: string[];
-  prRefs?: unknown;
-}
-
-async function invalidateChangelogCache(): Promise<void> {
-  try {
-    await cacheDelByPrefix("changelog:");
-  } catch {
-    // Cache invalidation is best-effort and should not fail write operations.
-  }
-}
 
 interface ChangelogPrRefInput {
   number: number;
@@ -65,7 +26,6 @@ interface ChangelogPrRefInput {
  * author/title/url data. Never throws — a failed lookup (rate limit,
  * deleted PR, missing token) just leaves the original ref untouched.
  */
-
 async function enrichPrRefs(prRefs: unknown): Promise<unknown> {
   if (!Array.isArray(prRefs)) return prRefs;
 
@@ -116,7 +76,7 @@ export async function createChangelogEntry(input: ChangelogAdminCreateInput) {
     },
   });
 
-  await invalidateChangelogCache();
+  await invalidateChangelogReadCaches();
   return entry;
 }
 
@@ -151,7 +111,7 @@ export async function updateChangelogEntry(id: string, input: ChangelogAdminUpda
     },
   });
 
-  await invalidateChangelogCache();
+  await invalidateChangelogReadCaches();
   return entry;
 }
 
@@ -163,7 +123,7 @@ export async function deleteChangelogEntry(id: string) {
   }
 
   await prisma.changelogEntry.delete({ where: { id } });
-  await invalidateChangelogCache();
+  await invalidateChangelogReadCaches();
 
   return { id };
 }

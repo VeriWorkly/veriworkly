@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     path: `/templates/${docType}`,
     title: docTypeData.seoTitle,
     description: docTypeData.seoDescription,
-    ogTitle: `${docTypeData.pluralLabel} — Compare Layouts Side by Side`,
+    ogTitle: `${docTypeData.pluralLabel} - Compare Layouts Side by Side`,
     ogDescription: docTypeData.description,
     twitterTitle: `${docTypeData.pluralLabel}: Free & AI-Ready`,
     twitterDescription: docTypeData.seoDescription,

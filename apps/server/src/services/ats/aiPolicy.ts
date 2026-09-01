@@ -12,6 +12,12 @@ const modelSchema = z.object({
   maxOutputTokens: z.number().int().positive().max(16_000),
   retries: z.number().int().min(0).max(2).default(0),
   feeMultiplier: z.number().min(1).max(2).default(1.06),
+  /**
+   * Policy-driven like every other model knob. It was previously hardcoded at the call site,
+   * which made it the one parameter that needed a deploy to change while `resumeConversion`
+   * next door read its own from here.
+   */
+  temperature: z.number().min(0).max(2).default(0.2),
   providerOptions: z.record(z.unknown()).optional(),
 });
 

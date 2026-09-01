@@ -79,7 +79,10 @@ export function Accordion({
     (value: string) => {
       setExpanded((prev) => {
         if (type === "single") {
-          return prev.includes(value) && !collapsible ? prev : [value];
+          if (prev.includes(value)) {
+            return collapsible ? [] : prev;
+          }
+          return [value];
         }
 
         if (prev.includes(value)) return prev.filter((item) => item !== value);
@@ -142,9 +145,24 @@ export function AccordionItem({ value, children, className }: AccordionItemProps
 type AccordionTriggerProps = {
   children: ReactNode;
   className?: string;
+  /**
+   * Heading level to wrap the trigger in. Defaults to `h3`, which is correct when the
+   * accordion sits under a section `h2`.
+   *
+   * It is configurable because the right level depends on the page, not the component:
+   * on /ats-checker the accordion follows an `h2` so `h3` is right, but on /faq the
+   * questions sit directly under the page `h1`, where a hard-coded `h3` skipped a
+   * level on the one page type whose structure matters most for rich results and
+   * answer extraction.
+   */
+  headingLevel?: "h2" | "h3" | "h4";
 };
 
-export function AccordionTrigger({ children, className }: AccordionTriggerProps) {
+export function AccordionTrigger({
+  children,
+  className,
+  headingLevel: Heading = "h3",
+}: AccordionTriggerProps) {
   const { value, triggerId, contentId } = useAccordionItemContext();
   const { expanded, toggleItem } = useAccordionContext();
 
@@ -199,7 +217,7 @@ export function AccordionTrigger({ children, className }: AccordionTriggerProps)
   };
 
   return (
-    <h3>
+    <Heading>
       <button
         type="button"
         id={triggerId}
@@ -223,7 +241,7 @@ export function AccordionTrigger({ children, className }: AccordionTriggerProps)
           )}
         />
       </button>
-    </h3>
+    </Heading>
   );
 }
 
@@ -245,15 +263,21 @@ export function AccordionContent({ children, className }: AccordionContentProps)
       aria-hidden={!isOpen}
       aria-labelledby={triggerId}
       className={cn(
-        "border-border/60 grid overflow-hidden border-t px-5 transition-[grid-template-rows,padding,opacity,visibility] duration-300 ease-in-out",
+        "grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-in-out",
         isOpen
-          ? "visible grid-rows-[1fr] py-4 opacity-100"
-          : "invisible grid-rows-[0fr] py-0 opacity-0",
-        className,
+          ? "visible grid-rows-[1fr] opacity-100"
+          : "pointer-events-none invisible grid-rows-[0fr] opacity-0",
       )}
     >
       <div className="min-h-0 overflow-hidden">
-        <div className="text-muted text-sm leading-7">{children}</div>
+        <div
+          className={cn(
+            "border-border/60 text-muted border-t px-5 py-4 text-sm leading-7",
+            className,
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
