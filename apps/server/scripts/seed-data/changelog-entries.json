@@ -6,7 +6,7 @@
     "summary": "This patch release rebuilds the ATS parsing engine with layout detection and a worker extraction pool, adds self-service account deletion, and remediates a full audit of every public claim on the marketing site against the code that has to honour it. Marketing copy that promised features which did not exist has been removed or labelled as forthcoming, the security page has been rebuilt from what the repository can actually prove, and the Terms and Privacy Policy have been given the structural sections they were missing.",
     "type": "patch",
     "publishedAt": "2026-09-01T16:08:24Z",
-    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.24.2",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/Release-v3.24.2",
     "added": [
       "AtsResumeParseService with bounding-box layout detection, identifying multi-column resumes and ruled table grids that scramble text extraction order",
       "Worker-based PDF and DOCX stream extraction via ExtractPool, with contact extraction, section segmentation, and keyword tokenization",
