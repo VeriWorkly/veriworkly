@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 
-import { describe, expect, it, vi } from "vitest";
+import { computeVerdict, type AtsLayoutSignals } from "../src/index.js";
+import { livePolicy as policy, livePolicyLoadError, livePolicyPath } from "./livePolicy.js";
 
 /**
  * Calibration suite: exercises the engine against the *real* shipped policy rather than a
@@ -10,24 +10,13 @@ import { describe, expect, it, vi } from "vitest";
  * was not visible in any unit test written against a five-rule fixture.
  *
  * The policy is private and gitignored, so the suite skips itself when it is not present rather
- * than failing a checkout that legitimately does not have it.
+ * than failing a checkout that legitimately does not have it. See `./livePolicy.ts` for how it
+ * is resolved — the path moved when this file did.
  */
-// Resolved from this file rather than the working directory, which differs depending on whether
-// the suite is run from the repo root or from apps/server.
-const policyPath = fileURLToPath(
-  new URL("../../../../.private/ats-engine-policy.dev.json", import.meta.url),
-);
-
-let policy: unknown;
-try {
-  policy = JSON.parse(readFileSync(policyPath, "utf8"));
-} catch {
-  policy = null;
-}
-
-vi.mock("#services/aiPrivateConfig", () => ({
-  getAtsEnginePolicyJson: () => policy,
-}));
+const check = async (resume: unknown, jobDescription?: string, layout?: AtsLayoutSignals) => {
+  const { AtsScoringService } = await import("../src/index.js");
+  return AtsScoringService.check(resume, policy!, jobDescription, layout);
+};
 
 const STRONG_RESUME = [
   "Jane Doe",
@@ -95,12 +84,29 @@ const POSTING = [
   "Northwind is an equal opportunity employer.",
 ].join("\n");
 
+/**
+ * Proof that the suite below is actually running.
+ *
+ * Everything here is gated on the private policy being present, and a `skipIf` that silently
+ * stops matching is indistinguishable from a passing run. That is not hypothetical: this file
+ * moved, and the relative path to `.private/` moved with it. This test does not skip, so a
+ * broken path fails loudly and names the location it tried, instead of quietly reporting green
+ * on nothing at all.
+ */
+it("resolves the private policy, or explains why the calibration suite is skipped", () => {
+  if (policy) {
+    expect(policy.rules.length).toBeGreaterThan(0);
+    return;
+  }
+  console.warn(
+    `[ats-engine] calibration suite SKIPPED — no policy at ${livePolicyPath}: ${livePolicyLoadError}`,
+  );
+  expect(livePolicyLoadError).toBeTruthy();
+});
+
 describe.skipIf(!policy)("ATS engine calibration against the shipped policy", () => {
   it("scores a candidate who meets every stated requirement as a strong match", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-    const { computeVerdict } = await import("../../src/services/ats/reportShaping");
-
-    const report = AtsScoringService.check(STRONG_RESUME, POSTING);
+    const report = await check(STRONG_RESUME, POSTING);
 
     // Before section scoping and specificity weighting this pair scored 30 and was labelled
     // "weak" — the posting's benefits copy and company name outvoted the skills it asked for.
@@ -110,8 +116,7 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("never advises the candidate to add function words or benefits boilerplate", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-    const report = AtsScoringService.check(STRONG_RESUME, POSTING);
+    const report = await check(STRONG_RESUME, POSTING);
 
     const junk = [
       "or",
@@ -137,8 +142,7 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("drops excluded blocks so the employer's own boilerplate is never a keyword", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-    const report = AtsScoringService.check(STRONG_RESUME, POSTING);
+    const report = await check(STRONG_RESUME, POSTING);
     const surfaced = [...report.matchedKeywords, ...report.missingKeywords];
 
     expect(surfaced).not.toContain("northwind");
@@ -147,8 +151,6 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("keeps a nice-to-have from being billed at the required weight", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const base = "jane@example.com\nExperience\nEducation\nSkills\n";
     const posting = [
       "Requirements",
@@ -158,8 +160,8 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
       "Terraform is a plus.",
     ].join("\n");
 
-    const withRequired = AtsScoringService.check(`${base}Deployed Kubernetes clusters`, posting);
-    const withPreferred = AtsScoringService.check(`${base}Wrote Terraform modules`, posting);
+    const withRequired = await check(`${base}Deployed Kubernetes clusters`, posting);
+    const withPreferred = await check(`${base}Wrote Terraform modules`, posting);
 
     // The old fixed 600-character window ran past "Requirements" into the nice-to-haves, so
     // both terms carried the required weight and these two scored identically.
@@ -167,9 +169,7 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("matches a phrase in the resume against its component words in the posting", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
-    const report = AtsScoringService.check(
+    const report = await check(
       "jane@example.com I do machine learning every day and ship models.",
       "Requirements\nStrong machine learning ability and model deployment.",
     );
@@ -181,8 +181,6 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("requires a real heading before crediting a section", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const prose = [
       "Jane Doe",
       "jane@example.com",
@@ -190,15 +188,15 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
       "My skills include Go and Python and I led a team of four.",
     ].join("\n");
 
-    const structure = (text: string) =>
-      AtsScoringService.check(text)
-        .rules.filter((rule) => rule.category === "structure")
+    const structure = async (text: string) =>
+      (await check(text)).rules
+        .filter((rule) => rule.category === "structure")
         .filter((rule) => rule.id.match(/experience|education|skills$/))
         .every((rule) => rule.passed);
 
-    expect(structure(prose)).toBe(false);
+    expect(await structure(prose)).toBe(false);
     expect(
-      structure(
+      await structure(
         [
           "Jane Doe",
           "jane@example.com",
@@ -214,8 +212,6 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("detects emoji bullets, which the collapsed document could never surface", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const emoji = [
       "Jane Doe",
       "jane@example.com",
@@ -229,25 +225,23 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
       "- Shipped 12 features",
     ].join("\n");
 
-    const ruleOf = (text: string) =>
-      AtsScoringService.check(text).rules.find((rule) => rule.id === "ats-v2.format.bullets");
+    const ruleOf = async (text: string) =>
+      (await check(text)).rules.find((rule) => rule.id === "ats-v2.format.bullets");
 
-    expect(ruleOf(emoji)?.passed).toBe(false);
-    expect(ruleOf(plain)?.passed).toBe(true);
+    expect((await ruleOf(emoji))?.passed).toBe(false);
+    expect((await ruleOf(plain))?.passed).toBe(true);
   });
 
   it("omits layout rules entirely when no geometry was captured, and scores them when it was", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
-    const pasted = AtsScoringService.check(STRONG_RESUME);
+    const pasted = await check(STRONG_RESUME);
     expect(pasted.rules.map((rule) => rule.id)).not.toContain("ats-v2.format.columns");
 
-    const singleColumn = AtsScoringService.check(STRONG_RESUME, undefined, {
+    const singleColumn = await check(STRONG_RESUME, undefined, {
       columnRatio: 0.02,
       tableCount: 0,
       pageCount: 1,
     });
-    const twoColumn = AtsScoringService.check(STRONG_RESUME, undefined, {
+    const twoColumn = await check(STRONG_RESUME, undefined, {
       columnRatio: 0.72,
       tableCount: 3,
       pageCount: 1,
@@ -259,9 +253,7 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("credits a skill the resume evidences under a different name", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
-    const report = AtsScoringService.check(
+    const report = await check(
       "jane@example.com\nSkills\nTerraform, Kubernetes, PostgreSQL, Kafka",
       "Requirements\n- Infrastructure as code\n- Containerized deployments\n- Relational databases\n- Event streaming",
     );
@@ -271,36 +263,29 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("treats alternatives as one requirement satisfied by either side", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const base = "jane@example.com\nExperience\nEducation\nSkills\n";
     const posting = "Requirements\n- Strong proficiency with Go or Java\n- Kubernetes";
 
-    const withGo = AtsScoringService.check(`${base}Shipped services in Go on Kubernetes`, posting);
+    const withGo = await check(`${base}Shipped services in Go on Kubernetes`, posting);
     expect(withGo.jobMatchScore).toBe(100);
     expect(withGo.missingKeywords).not.toContain("java");
 
     // A candidate holding neither still sees the choice stated as the posting framed it.
-    const withNeither = AtsScoringService.check(`${base}Shipped services on Kubernetes`, posting);
+    const withNeither = await check(`${base}Shipped services on Kubernetes`, posting);
     expect(withNeither.missingKeywords.join(" ")).toMatch(/go or java|java or go/);
   });
 
   it("groups a three-way list written with an Oxford comma", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const base = "jane@example.com\nExperience\nEducation\nSkills\n";
     const posting = "Requirements\n- React, Vue, or Angular\n- TypeScript";
 
     // Any one of the three satisfies the requirement, and it is counted once.
     for (const framework of ["React", "Vue", "Angular"]) {
-      const report = AtsScoringService.check(
-        `${base}Built interfaces in ${framework} and TypeScript`,
-        posting,
-      );
+      const report = await check(`${base}Built interfaces in ${framework} and TypeScript`, posting);
       expect(report.jobMatchScore).toBe(100);
     }
 
-    const none = AtsScoringService.check(`${base}Wrote TypeScript`, posting);
+    const none = await check(`${base}Wrote TypeScript`, posting);
     expect(none.missingKeywords.join(" ")).toMatch(/react or vue or angular/);
   });
 
@@ -310,10 +295,8 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
    * one group, so a Java-only resume scored 100 and Python vanished from the missing list.
    */
   it("never lets a filler word merge two separate requirements", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const base = "jane@example.com\nExperience\nEducation\nSkills\n";
-    const report = AtsScoringService.check(
+    const report = await check(
       `${base}Built services in Java on Kubernetes`,
       "Requirements\n- Java or equivalent\n- Python or equivalent\n- Kubernetes",
     );
@@ -323,10 +306,8 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("keeps two overlapping choices as two choices", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const base = "jane@example.com\nExperience\nEducation\nSkills\n";
-    const report = AtsScoringService.check(
+    const report = await check(
       `${base}Shipped Android apps in Kotlin`,
       "Requirements\n- Java or Kotlin\n- Kotlin or Swift",
     );
@@ -342,11 +323,10 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
    * posting, on the free unauthenticated endpoint. This pins the linear replacement.
    */
   it("stays fast on a comma list built to make a backtracking scanner suffer", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
     const bomb = Array.from({ length: 4000 }, (_, index) => `term${index}`).join(", ");
 
     const startedAt = Date.now();
-    AtsScoringService.check("jane@example.com\nSkills\nGo", `Requirements\n${bomb}`);
+    await check("jane@example.com\nSkills\nGo", `Requirements\n${bomb}`);
     expect(Date.now() - startedAt).toBeLessThan(150);
   });
 
@@ -357,8 +337,6 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
    * changes, which is exactly what the rules read.
    */
   it("maps sections from a Studio resume document, not just from text", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     const document = {
       basics: { fullName: "Jane Doe", email: "jane@example.com" },
       experience: [{ company: "Acme", highlights: ["Led migration reducing latency by 42%"] }],
@@ -366,24 +344,30 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
       skills: [{ name: "Core", keywords: ["Go", "Kubernetes"] }],
     };
 
-    const structure = AtsScoringService.check(
-      document,
-      "Requirements\n- Go and Kubernetes",
-    ).rules.filter((rule) => /experience|education|skills$/.test(rule.id));
+    const structure = (await check(document, "Requirements\n- Go and Kubernetes")).rules.filter(
+      (rule) => /experience|education|skills$/.test(rule.id),
+    );
 
     expect(structure).toHaveLength(3);
     expect(structure.every((rule) => rule.passed)).toBe(true);
   });
 
   it("survives every degenerate input without throwing", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
-    for (const resume of [null, undefined, 42, "", "   \n\n  ", {}, [], { a: { b: [] } }])
-      expect(() => AtsScoringService.check(resume)).not.toThrow();
+    // Resolved first, then asserted synchronously: `check` is async here only because it imports
+    // the engine, and a rejected promise would sail straight past `.not.toThrow()`.
+    for (const resume of [null, undefined, 42, "", "   \n\n  ", {}, [], { a: { b: [] } }]) {
+      const report = await check(resume).then(
+        (value) => () => value,
+        (error: unknown) => () => {
+          throw error;
+        },
+      );
+      expect(report).not.toThrow();
+    }
 
     // A posting made entirely of about-us and benefits copy yields no scoreable term. Reporting
     // no score is right; inventing one from boilerplate is what the rewrite exists to prevent.
-    const boilerplate = AtsScoringService.check(
+    const boilerplate = await check(
       "jane@example.com\nSkills\nGo",
       "About us\nWe are great.\n\nBenefits\nDental and vision coverage.",
     );
@@ -391,8 +375,6 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
   });
 
   it("reports readiness as a true share of the points actually at stake", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
-
     // Table glyphs, emoji bullets, page furniture, filler phrases, no contact, no headings,
     // and far past the length ceiling.
     const bad = [
@@ -403,9 +385,9 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
     ].join("\n");
 
     for (const report of [
-      AtsScoringService.check(bad),
-      AtsScoringService.check(STRONG_RESUME),
-      AtsScoringService.check(STRONG_RESUME, undefined, {
+      await check(bad),
+      await check(STRONG_RESUME),
+      await check(STRONG_RESUME, undefined, {
         columnRatio: 0.8,
         tableCount: 4,
         pageCount: 2,
@@ -418,6 +400,6 @@ describe.skipIf(!policy)("ATS engine calibration against the shipped policy", ()
       expect(report.readinessScore).toBe(Math.max(0, Math.round((1 - lost / possible) * 100)));
     }
 
-    expect(AtsScoringService.check(bad).readinessScore).toBeLessThan(25);
+    expect((await check(bad)).readinessScore).toBeLessThan(25);
   });
 });

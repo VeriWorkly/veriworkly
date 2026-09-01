@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import type { AtsEnginePolicy, AtsLayoutSignals } from "../src/index.js";
 
 const policy = {
   version: "ats-v2" as const,
@@ -157,9 +159,79 @@ const policy = {
   },
 };
 
-vi.mock("#services/ats/enginePolicy", () => ({
-  getAtsEnginePolicy: vi.fn(() => policy),
-}));
+/**
+ * The engine takes the policy as an argument rather than fetching it, so the fixture is injected
+ * here instead of mocked into a module. `check` keeps the arity the tests were written against.
+ */
+/**
+ * The fixture as the engine receives it.
+ *
+ * Not run through `parseAtsPolicy`: this fixture deliberately declares an `implies` entry whose
+ * multi-word term is absent from `phrases`, which the schema's cross-field check rejects — and
+ * it always has. Under the previous arrangement it reached the scorer through a mocked
+ * `getAtsEnginePolicy`, so validation never saw it. Validating it now would mean editing the
+ * fixture, which would change what these tests exercise; the point of this suite is the scoring
+ * behaviour, and `engine-policy.test.ts` is what covers the schema. So the fixture is injected
+ * exactly as the mock delivered it, with only the schema's own defaults filled in.
+ */
+const fixture = {
+  ...policy,
+  text: {
+    contentLineVerbs: [
+      "managed",
+      "led",
+      "built",
+      "developed",
+      "designed",
+      "improved",
+      "reduced",
+      "increased",
+      "delivered",
+      "achieved",
+      "created",
+      "generated",
+      "optimized",
+      "launched",
+      "spearheaded",
+      "engineered",
+      "maintained",
+      "scaled",
+      "automated",
+    ],
+  },
+  resumeParse: {
+    ...policy.resumeParse,
+    months: {
+      jan: 1,
+      feb: 2,
+      mar: 3,
+      apr: 4,
+      may: 5,
+      jun: 6,
+      jul: 7,
+      aug: 8,
+      sep: 9,
+      sept: 9,
+      oct: 10,
+      nov: 11,
+      dec: 12,
+    },
+    openEnded: ["present", "current", "now", "ongoing", "to date", "till date"],
+  },
+} as unknown as AtsEnginePolicy;
+
+async function loadScoring() {
+  const { AtsScoringService: Engine } = await import("../src/index.js");
+  const parsed = fixture;
+  return {
+    AtsScoringService: {
+      flattenResume: (resume: unknown) => Engine.flattenResume(resume),
+      extractText: (resume: unknown) => Engine.extractText(resume),
+      check: (resume: unknown, jobDescription?: string, layout?: AtsLayoutSignals) =>
+        Engine.check(resume, parsed, jobDescription, layout),
+    },
+  };
+}
 
 function ruleFor(rules: { id: string }[], id: string) {
   const rule = rules.find((r) => r.id === id);
@@ -169,7 +241,7 @@ function ruleFor(rules: { id: string }[], id: string) {
 
 describe("ATS deterministic scoring — policy-driven engine", () => {
   it("pulls rule content from the injected policy, not from hardcoded source", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const report = AtsScoringService.check("Jane Doe jane@example.com Experience Skills");
 
     expect(report.version).toBe("ats-v2");
@@ -177,7 +249,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
   });
 
   it("grades word count and metric density instead of a flat pass/fail", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const resume = [
       "Jane Doe",
       "jane@example.com",
@@ -202,7 +274,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
   });
 
   it("flags contact info buried past the position window even though it exists", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const padding = "Relevant experience and accomplishments. ".repeat(40);
     const buried = `${padding}Reach me at jane@example.com for more.`;
 
@@ -216,7 +288,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
   });
 
   it("penalizes generic filler phrases via the buzzword band", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const report = AtsScoringService.check(
       "jane@example.com A hardworking team player who is also a team player and hardworking.",
     );
@@ -226,7 +298,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
   });
 
   it("matches synonyms, abbreviations, and multi-word phrases across resume and job text", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const resume =
       "jane@example.com Built systems with JavaScript. Led project management for a cross-team initiative.";
     const jobDescription = [
@@ -248,7 +320,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
   });
 
   it("weights a required-section term above a nice-to-have term with the same resume", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const jobDescription = [
       "Requirements",
       "JS required.",
@@ -277,7 +349,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
   });
 
   it("returns no job match score when no job description is given", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const report = AtsScoringService.check("jane@example.com Experience Skills padding word count");
 
     expect(report.jobMatchScore).toBeNull();
@@ -286,7 +358,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
   });
 
   it("still prioritizes missing parseable content the way the old engine did", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const report = AtsScoringService.check("Short resume");
 
     expect(report.readinessScore).toBeLessThan(60);
@@ -297,7 +369,7 @@ describe("ATS deterministic scoring — policy-driven engine", () => {
 
 describe("ATS category rollup", () => {
   it("scores each category by the share of its own weight the resume kept", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     // Contact carries two rules: email (weight 10) and position (weight 5). With no contact
     // details at all, email fails outright but position passes vacuously — so the category
     // keeps 5 of its 15 possible points.
@@ -312,7 +384,7 @@ describe("ATS category rollup", () => {
   });
 
   it("reports one entry per category, covering every rule exactly once", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const report = AtsScoringService.check("jane@example.com Experience Skills Education");
 
     expect(report.categories.map((entry) => entry.category).sort()).toEqual([
@@ -327,7 +399,7 @@ describe("ATS category rollup", () => {
   });
 
   it("accurately parses and matches tech tokens like .NET and CI/CD without dropping leading dots or slashes", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const resume =
       "jane@example.com Engineered microservices using .NET and set up CI/CD pipelines.";
     const jobDescription = ["Requirements", ".NET and CI/CD required."].join("\n");
@@ -338,7 +410,7 @@ describe("ATS category rollup", () => {
   });
 
   it("evaluates standard employment date formats", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     const resumeWithDates = AtsScoringService.check(
       "Jane Doe jane@example.com Experience Software Engineer 2021 - Present Built web apps Skills",
     );
@@ -351,7 +423,7 @@ describe("ATS category rollup", () => {
   });
 
   it("caps recursion so a deeply nested resume object cannot overflow the stack", async () => {
-    const { AtsScoringService } = await import("../../src/services/ats/scoring");
+    const { AtsScoringService } = await loadScoring();
     let nested: unknown = "jane@example.com deeply buried contact detail";
     for (let depth = 0; depth < 50_000; depth += 1) nested = { value: nested };
 

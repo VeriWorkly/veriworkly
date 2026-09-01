@@ -1,36 +1,21 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 
-import { describe, expect, it, vi } from "vitest";
+import { livePolicy as policy } from "./livePolicy.js";
 
 /**
  * The parser recovers the fields an applicant tracking system stores. These cover the layouts
  * real resumes actually use — dates on the header line and on their own line, employer-first and
  * title-first ordering, and the sections that must *not* be read as work history.
  */
-const policyPath = fileURLToPath(
-  new URL("../../../../.private/ats-engine-policy.dev.json", import.meta.url),
-);
-
-let policy: unknown;
-try {
-  policy = JSON.parse(readFileSync(policyPath, "utf8"));
-} catch {
-  policy = null;
-}
-
-vi.mock("#services/aiPrivateConfig", () => ({ getAtsEnginePolicyJson: () => policy }));
-
 const NOW = new Date(Date.UTC(2026, 7, 31));
 
 async function parse(text: string) {
-  const { parseResume } = await import("../../src/services/ats/resumeParse");
-  const { getAtsEnginePolicy } = await import("../../src/services/ats/enginePolicy");
+  const { parseResume } = await import("../src/index.js");
   const lines = text
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-  return parseResume(lines, getAtsEnginePolicy(), NOW);
+  return parseResume(lines, policy!, NOW);
 }
 
 describe.skipIf(!policy)("resume parsing — what an ATS recovers", () => {
@@ -166,7 +151,7 @@ describe.skipIf(!policy)("resume parsing — what an ATS recovers", () => {
   });
 
   it("reports what it could not recover rather than inventing it", async () => {
-    const { parseQuality } = await import("../../src/services/ats/resumeParse");
+    const { parseQuality } = await import("../src/index.js");
 
     // A resume whose history is prose: no date ranges, so no rows an ATS could store.
     const parsed = await parse(

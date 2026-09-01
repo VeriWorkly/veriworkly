@@ -1,6 +1,7 @@
-import type { AtsReport } from "#services/ats/types";
+import { computeVerdict } from "@veriworkly/ats-engine";
+import type { AtsReport, AtsVerdict } from "@veriworkly/ats-engine";
 
-export type AtsVerdict = "strong" | "needs-work" | "weak";
+export type { AtsVerdict };
 
 /**
  * What an anonymous visitor receives.
@@ -43,13 +44,7 @@ export type AtsFullReport = AtsReport & { restricted: false; verdict: AtsVerdict
 
 export type AtsShapedReport = AtsFullReport | AtsRestrictedReport;
 
-/** Job match matters more than raw formatting once a target role is on the table. */
-export function computeVerdict(report: AtsReport): AtsVerdict {
-  const primary = report.jobMatchScore ?? report.readinessScore;
-  if (primary >= 75) return "strong";
-  if (primary >= 45) return "needs-work";
-  return "weak";
-}
+export { computeVerdict };
 
 /**
  * The one failure most worth stating up front.
