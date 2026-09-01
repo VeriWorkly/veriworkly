@@ -120,20 +120,62 @@ describe("published claims stay consistent with the portfolio model", () => {
    * drifted badly here - nineteen surfaces said publishing was free and unqualified
    * while pricingData and the README said it was a paid entitlement.
    */
-  const FREE_TEMPLATES = ["signal", "atelier"];
-  const PREMIUM_TEMPLATES = ["nimbus", "cipher"];
+  const FREE_TEMPLATES = ["Signal", "Atelier"];
+  const PREMIUM_TEMPLATES = ["Nimbus", "Cipher"];
 
-  it("pricing.md names the free templates and the badge that comes with them", () => {
-    for (const name of FREE_TEMPLATES) {
-      expect(pricingMd.toLowerCase()).toContain(name);
+  /**
+   * Splits pricing.md on its `### N. Tier Name` headings, so a template can be asserted
+   * to sit in a *particular* tier.
+   *
+   * The first version of these tests checked only that the word appeared somewhere in
+   * the file, which is near-tautological: moving Nimbus into the free tier would still
+   * have passed, and that is precisely the drift this file exists to catch.
+   */
+  const tierSections = (() => {
+    const sections = new Map<string, string>();
+    const parts = pricingMd.split(/^### /m).slice(1);
+
+    for (const part of parts) {
+      const heading = part.slice(0, part.indexOf("\n")).trim();
+      sections.set(heading, part);
     }
 
-    expect(pricingMd).toMatch(/Built with VeriWorkly/i);
+    return sections;
+  })();
+
+  const freeTierBody = [...tierSections.entries()].find(([heading]) =>
+    /free tier/i.test(heading),
+  )?.[1];
+
+  const paidTierBodies = [...tierSections.entries()]
+    .filter(([heading]) => !/free tier/i.test(heading))
+    .map(([, body]) => body)
+    .join("\n");
+
+  it("parses the tier headings it asserts against", () => {
+    // Guards the two tests below from silently passing on an unparsed file.
+    expect(freeTierBody, "no '### N. Free Tier' heading found in pricing.md").toBeTruthy();
+    expect(tierSections.size).toBeGreaterThan(2);
   });
 
-  it("pricing.md keeps the premium templates on the paid tiers", () => {
+  it("puts the free core templates in the free tier, with their badge", () => {
+    for (const name of FREE_TEMPLATES) {
+      expect(freeTierBody, `pricing.md does not offer ${name} on the free tier`).toContain(name);
+    }
+
+    expect(freeTierBody, "the free tier does not mention the badge free portfolios carry").toMatch(
+      /Built with VeriWorkly/i,
+    );
+  });
+
+  it("keeps the premium templates out of the free tier", () => {
     for (const name of PREMIUM_TEMPLATES) {
-      expect(pricingMd.toLowerCase()).toContain(name);
+      expect(
+        freeTierBody,
+        `pricing.md lists the premium template ${name} under the free tier`,
+      ).not.toContain(name);
+
+      expect(paidTierBodies, `pricing.md never offers ${name} on a paid tier`).toContain(name);
     }
   });
 

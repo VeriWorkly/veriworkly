@@ -167,9 +167,14 @@ if (partial.length) problems.push(...partial.map((p) => `mapped unevenly: ${p}`)
  * utility. Referencing it in source is then silent: the class name is valid-looking,
  * emits no CSS, and the element quietly inherits its parent colour.
  *
- * That is exactly how `text-muted-foreground` reached 36 usages across /affiliate
- * while rendering uncoloured body copy. The report below already listed the token as
- * "mapped in no app" - it just never failed anything, so nobody acted on it.
+ * That is how `text-muted-foreground` once reached 36 usages across /affiliate while
+ * rendering uncoloured body copy. Those are now fixed, so this guard currently catches
+ * nothing in apps/site - it exists to keep it that way. The report below already
+ * listed the token as "mapped in no app"; it just never failed anything, so nobody
+ * acted on it.
+ *
+ * Note apps/studio still has ~100 `text-muted-foreground` usages with the same dead
+ * mapping. This script only scans apps/site, so they are not caught here.
  *
  * Defining a token without a utility is fine on its own (--fd-accent is consumed
  * directly by Fumadocs). Defining one *and using it as a utility* is the bug, so that

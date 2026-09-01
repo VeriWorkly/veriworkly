@@ -49,17 +49,32 @@ export const metadata: Metadata = buildPageMetadata({
  * object-top`. It also carried a `!previewImage.includes("veriworkly-logo")` filter
  * that matched nothing and was dead.
  *
- * Falls back to catalog order if a type is ever missing, so the hero cannot render
- * empty.
+ * The fan is always exactly three cards. `rotations[idx]` and `offsets[idx]` are
+ * indexed positionally below, so a short array would interpolate `undefined` into a
+ * `calc()` and collapse the layout. Rather than guard at the render site, we top the
+ * selection back up from catalog order, which keeps the render unconditional.
  */
-const firstOfType = (type: string) =>
-  templateSummaries.find((template) => template.documentType === type);
+const HERO_FAN_TYPES = ["resume", "cover-letter", "portfolio-website"] as const;
+const HERO_FAN_SIZE = 3;
 
-const heroFan = (
-  ["resume", "cover-letter", "portfolio-website"]
-    .map(firstOfType)
-    .filter(Boolean) as typeof templateSummaries
-).slice(0, 3);
+const heroFan = (() => {
+  const picked = HERO_FAN_TYPES.map((type) =>
+    templateSummaries.find((template) => template.documentType === type),
+  ).filter((template): template is (typeof templateSummaries)[number] => Boolean(template));
+
+  if (picked.length === HERO_FAN_SIZE) return picked;
+
+  // A type is missing from the catalog. Backfill with anything not already chosen so
+  // the hero still renders a full fan.
+  const chosen = new Set(picked.map((template) => template.id));
+
+  for (const template of templateSummaries) {
+    if (picked.length === HERO_FAN_SIZE) break;
+    if (!chosen.has(template.id)) picked.push(template);
+  }
+
+  return picked;
+})();
 
 const TemplatesPortalPage = () => {
   const availableDocTypes = documentTypeSummaries.filter(
@@ -143,24 +158,34 @@ const TemplatesPortalPage = () => {
                 const rotations = [-8, 0, 8];
                 const offsets = [-24, 0, 24];
 
-                // Portfolio previews are landscape web screenshots. Forcing them into
-                // the 8.5x11 paper frame the documents use crops away most of the page,
-                // so they get a browser-window ratio and are contained rather than
-                // cropped.
+                /**
+                 * Portfolio previews are landscape web screenshots. Forcing them into
+                 * the 8.5x11 paper frame the documents use crops away most of the page,
+                 * so they get a browser-window ratio and are contained, not cropped.
+                 *
+                 * Both branches size from the same container height rather than mixing
+                 * `h-full` with an intrinsic aspect-ratio box - two sizing models in one
+                 * absolutely-positioned stack made the z-order assumption below depend
+                 * on which type happened to land in the middle.
+                 */
                 const isPortfolio = template.documentType === "portfolio-website";
 
                 return (
                   <div
                     key={template.id}
-                    className={`absolute top-0 left-1/2 overflow-hidden rounded-lg border border-zinc-200 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.5)] transition-transform duration-300 hover:-translate-y-2 dark:border-zinc-800 ${
+                    className={`absolute left-1/2 overflow-hidden rounded-lg border border-zinc-200 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.5)] transition-transform duration-300 hover:-translate-y-2 dark:border-zinc-800 ${
                       isPortfolio
-                        ? "aspect-16/10 h-auto w-56 self-center bg-zinc-50 dark:bg-zinc-900"
-                        : "aspect-8.5/11 h-full bg-white"
+                        ? "aspect-16/10 bg-zinc-50 dark:bg-zinc-900"
+                        : "aspect-8.5/11 bg-white"
                     }`}
                     style={{
+                      // Portfolios are shorter and vertically centred in the stack;
+                      // documents fill it. Expressed the same way for both so the fan
+                      // stays predictable.
+                      top: isPortfolio ? "26%" : 0,
+                      height: isPortfolio ? "48%" : "100%",
                       transform: `translateX(calc(-50% + ${offsets[idx]}px)) rotate(${rotations[idx]}deg)`,
                       zIndex: idx === 1 ? 10 : 5 - idx,
-                      ...(isPortfolio ? { top: "22%" } : {}),
                     }}
                   >
                     <Image

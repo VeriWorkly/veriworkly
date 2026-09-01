@@ -107,7 +107,10 @@ export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
       : {}),
 
     openGraph: {
-      url,
+      // `og:url` is omitted on noIndex pages for the same reason as the canonical
+      // below - it is a self-reference to a URL that should not be treated as a
+      // destination, and for the 404 boundaries it names a route that does not exist.
+      ...(options.noIndex ? {} : { url }),
       title: options.ogTitle,
       type: options.type ?? "website",
       description: options.ogDescription,
@@ -132,11 +135,28 @@ export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
       site: siteConfig.twitter.site,
     },
 
-    alternates: {
-      canonical: url,
-      languages: {
-        "en-US": url,
-      },
-    },
+    /**
+     * A noIndex page gets no canonical and no hreflang.
+     *
+     * Emitting them alongside `robots: noindex` is contradictory markup, and on the
+     * not-found boundaries it was worse: they pass `path: "/404"` and `"/roadmap/404"`,
+     * which are not real routes, so every 404 response advertised a canonical pointing
+     * at a URL that itself 404s.
+     *
+     * `null` rather than an omitted key, because Next.js merges page metadata over the
+     * root layout's - and the root layout sets `canonical: "/"`. Simply leaving the
+     * field out let that inherit through, which made every 404 declare itself the
+     * canonical homepage. `null` explicitly clears it.
+     */
+    ...(options.noIndex
+      ? { alternates: { canonical: null, languages: {} } }
+      : {
+          alternates: {
+            canonical: url,
+            languages: {
+              "en-US": url,
+            },
+          },
+        }),
   };
 }
