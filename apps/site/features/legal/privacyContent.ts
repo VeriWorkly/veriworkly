@@ -53,10 +53,12 @@ export const privacySections: LegalSection[] = [
         ],
       },
       {
-        heading: "EEA and UK users: our representative & direct inquiries",
+        heading: "EEA and UK users: how to reach us, and why there is no local representative",
         paragraphs: [
-          "We are established in India. If you are located in the European Economic Area (EEA) or the United Kingdom (UK), you can exercise all your data protection rights (including access, correction, deletion, and restriction requests) directly by contacting our designated Data Protection Contact and Grievance Officer using the details above.",
-          "We treat European and UK privacy inquiries with the highest priority and process all requests in compliance with GDPR and UK GDPR standards.",
+          "We are established in India. If you are in the European Economic Area or the United Kingdom, you can exercise every data protection right you have — access, correction, deletion, restriction, objection, portability — by writing to the Grievance Officer above. We answer those requests on the same timelines the GDPR and UK GDPR set, and we do not treat a request differently because of where it comes from.",
+          "We have not appointed an Article 27 representative inside the EEA or the UK. We would rather explain that than leave you to notice it. VeriWorkly is an open-core project run by one person without outside funding, and a representative service is a recurring cost we cannot currently carry. We also process no special-category data, run no advertising or profiling, and offer the service to individuals rather than targeting EEA users specifically — which is the basis on which we currently consider the exemption for occasional, low-risk processing to apply to us.",
+          "That is our reasoning, stated openly rather than assumed. We know a supervisory authority might weigh it differently, and if the project's scale or funding changes we will appoint a representative and name them here. In the meantime nothing about the absence of one limits your rights or your route to us: the contact above is a real person who reads and answers.",
+          "You can also complain to the supervisory authority where you live or work, without coming to us first. See the rights section below.",
         ],
       },
     ],
@@ -200,22 +202,40 @@ export const privacySections: LegalSection[] = [
     ],
     subsections: [
       {
-        heading: "Subprocessors we use to operate VeriWorkly",
+        heading: "Subprocessors: who processes your data, what they see, and where",
         paragraphs: [
-          "These are every third party that may process your personal data on our behalf, what they do, and what they see. We keep this list current: if we add a subprocessor we update this section, and material additions are noted in the change log at the end of this policy.",
+          "This is the complete list of third parties that may process your personal data on our behalf. Each entry says what the provider does for us, exactly what personal data reaches it, and where it processes that data. If we add or replace a subprocessor we update this list and note the change in the revision history at the end of this policy.",
+          "Some of these are unavoidable to run the service at all (hosting, database, email). Others are only reached when you take a specific action — no AI provider sees anything unless you use an AI feature, and no payment provider sees anything unless you buy something.",
         ],
         list: [
-          "Dodo Payments — payment processing and billing, as merchant of record. They process your payment method directly and we never receive full card details, only transaction and subscription status. Dodo Payments states that it handles card data under PCI-DSS.",
-          "Cloudflare R2 — object storage for portfolio images and other assets you upload.",
-          "Third-party AI model providers (see Section 8) — receive the text you submit when you trigger an AI feature, for the duration of that request. They are contractually prohibited from training on it.",
-          "Better Auth — a self-hosted authentication library running on our own infrastructure, so no data leaves us for it. Where you choose to sign in with Google, GitHub, or LinkedIn, that provider confirms your identity to us; we receive your email address and basic profile, not your password.",
-          "Our hosting, database, and cache providers — run the application servers, PostgreSQL database, and Redis cache that hold synced Account data.",
+          "Neon (serverless PostgreSQL) — our primary database, holding your Account, Master Profile, synced documents, portfolio publications, credits, and billing records. Processing region: Asia-Pacific (Singapore). Transfer basis: Standard Contractual Clauses.",
+          "OpenRouter — the AI gateway we send requests through. It receives the text you submit when you use an AI feature (resume tailoring, cover letter drafting, portfolio copy, AI ATS analysis, and LinkedIn import parsing) and routes it to a model provider on our behalf. It is the reason we describe the AI boundary as leaving our infrastructure. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          "Model providers reached through OpenRouter — the underlying model that answers a request (for example Anthropic or OpenAI models). Which model handles a given request is set in our runtime configuration and can change, so we name the gateway rather than promise a specific model. They receive only the text of that request, are contractually prohibited from training on it, and we do not send them your name, email, or account identifiers. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          "Dodo Payments — merchant of record for all purchases. It collects and processes your payment method directly; we never receive or store a full card number, only transaction status, subscription state, and the metadata needed to grant what you bought. Dodo Payments states that it handles card data under PCI-DSS. Processing region: United States and India. Transfer basis: Standard Contractual Clauses.",
+          "Cloudflare R2 — object storage for portfolio images, avatars, and other files you upload. It sees the file contents and filenames, not your Account details. Processing region: distributed, with automatic region selection. Transfer basis: Standard Contractual Clauses.",
+          "Hostinger (SMTP) — delivers our transactional email: sign-in codes, purchase confirmations, portfolio notifications, and account-deletion confirmations. It sees your email address and the content of those messages. Processing region: European Union (Lithuania). Transfer basis: EU adequacy — no additional mechanism needed for EEA transfers.",
+          "Google, GitHub, and LinkedIn (OAuth) — only if you choose to sign in with one of them. They confirm your identity to us and share your email address and basic profile; we never receive your password. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          "GitHub API — only if you use GitHub import. We read the public repository and profile data you authorise. Processing region: United States. Transfer basis: Standard Contractual Clauses.",
+          // TODO(legal): name the hosting provider explicitly. It is not determinable
+          // from this repository - deployment is containerised (Dockerfile) with no
+          // provider config committed - and inventing a name here would be exactly the
+          // kind of unverified claim this policy is meant to avoid.
+          "Our application hosting provider — runs the servers that serve the web applications and the API, and processes the request metadata described in Section 4 (IP address, user agent, timestamps). Contact our Grievance Officer if you need the provider named and its processing region for a specific request; we will tell you.",
         ],
       },
       {
-        heading: "Where processing happens, and on what basis",
+        heading: "What is NOT a subprocessor",
         paragraphs: [
-          "Several of the providers above process data outside your country, including in the United States and other international cloud regions. Where we transfer personal data internationally, we ensure appropriate safeguards are in place by relying on the European Commission's Standard Contractual Clauses (SCCs), the UK International Data Transfer Addendum, and equivalent recognized transfer mechanisms to ensure your data remains protected under the highest privacy standards.",
+          "Better Auth is an authentication library that runs on our own servers, not a service we send you to. No personal data leaves our infrastructure for it, so it is deliberately not listed above even though it handles your session.",
+          "Our Redis cache runs on our own infrastructure alongside the application. It holds short-lived session and rate-limit data, not a separate copy of your documents.",
+          "We use no advertising networks, no analytics vendors, no session-recording or heatmap tools, and no data brokers. There is nothing to list under those headings because we do not use any.",
+        ],
+      },
+      {
+        heading: "International transfers, and being honest about the limits",
+        paragraphs: [
+          "We are established in India, and as the table shows, most of our providers process data in the United States or across distributed regions. Where personal data moves internationally we rely on the transfer mechanism named against each provider — in almost every case the European Commission's Standard Contractual Clauses, together with the UK International Data Transfer Addendum for UK transfers, or an adequacy decision where one covers the destination.",
+          "In practice these mechanisms are the ones each provider offers in its own data processing agreement, which we accept as their customer. We are a small independent project: we are not in a position to negotiate bespoke terms with a hosting or payment provider, and we would rather tell you that than imply a level of control we do not have. If a particular transfer matters to you, ask us and we will tell you exactly what is in place for it.",
         ],
       },
       {
@@ -251,13 +271,14 @@ export const privacySections: LegalSection[] = [
           "Guest Session (local-first, no Account): stays in your browser. The Guest Session cookie expires 30 days after your last visit. We hold nothing server-side for guest use.",
           "ATS scans: your resume text and the resulting report are never written to our database. A scan is processed in memory and discarded when the response is sent. We do record that a scan happened, against your quota, so the rate limits can work — that counter holds no document content.",
           "AI request text: not retained by us after the request completes. The model provider's own retention applies to the request itself, which is why Section 8 asks you to treat an AI action as a deliberate choice.",
-          "Server and security logs: we keep these no longer than 90 days, then rotate them out. They hold request metadata (IP address, user agent, timestamps), not the contents of your documents.",
-          "Takedown and grievance records: kept for 3 years from resolution, so we can apply our repeat-infringer policy consistently and show how a complaint was handled.",
+          "Server and security logs: we do store these. They hold request metadata (IP address, user agent, timestamps, error traces), not the contents of your documents. We have not yet built an automatic deletion schedule for them, so we will not quote you a number we do not enforce: today they are kept as long as our hosting provider retains them, and we delete them when they are no longer useful for security, abuse prevention, or debugging. If you want yours removed sooner, ask our Grievance Officer.",
+          "Takedown and grievance records: kept for up to 3 years from resolution, so we can apply our repeat-infringer policy consistently and show how a complaint was handled. These are reviewed and cleared by hand rather than by an automated job.",
           "Billing and tax records: kept for as long as tax, accounting, and financial-regulation law requires of us, which is a period of years rather than months. We cannot delete these on request, and closing your Account does not remove them.",
           "Aggregate usage telemetry: kept indefinitely in de-identified, aggregated form, from which you cannot be re-identified.",
         ],
         paragraphs: [
           "Two of these pull in opposite directions and we would rather say so plainly than let you discover it. We keep no record of your ATS scans, but we must keep billing records for years — so if you paid us, closing your Account removes your documents and profile, not the fact of the transaction.",
+          "A note on how these periods work in practice. Account deletion is a real, immediate operation: it removes the rows and the uploaded files. The other periods above are policies we follow, not timers enforced by scheduled jobs — we are a small team and we have not built that automation yet. We have written what we actually do rather than the tidier version, because a retention period you can hold us to is worth more than one that only reads well.",
         ],
       },
     ],

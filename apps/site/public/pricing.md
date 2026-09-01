@@ -2,6 +2,11 @@
 
 > Structured pricing reference for human visitors and AI agents.
 
+**No free trials.** VeriWorkly does not offer a trial on any plan. The free tier is how
+you try the product, for as long as you like. Subscriptions charge at checkout for the
+period you chose, and the 3-Day Sprint and 7-Day Hunt passes are one-time purchases that
+expire rather than renew. Nothing converts from free to paid on its own.
+
 ## Subscription Tiers & Passes
 
 ### 1. Free Tier

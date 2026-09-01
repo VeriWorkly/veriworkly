@@ -97,6 +97,10 @@ function statusFromDodo(rawStatus: string) {
   switch (rawStatus) {
     case "active":
       return "ACTIVE" as const;
+    // Kept even though we no longer create trials. Any subscription started before
+    // trials were removed can still report this status, and the provider owns the
+    // lifecycle - dropping the case would map a live trialing subscriber to INACTIVE
+    // and revoke access they have paid for.
     case "trialing":
       return "TRIALING" as const;
     case "on_hold":
@@ -265,10 +269,10 @@ export class BillingService {
         throw new ApiError(400, "That billing interval is not available for this product.");
       if (!productId) throw new ApiError(503, "The selected billing product is not configured.");
 
-      const [user, previousSubscription] = await Promise.all([
-        prisma.user.findUnique({ where: { id: userId } }),
-        prisma.subscription.findFirst({ where: { userId }, select: { id: true } }),
-      ]);
+      // The "has this user subscribed before" lookup that used to sit here existed only
+      // to decide trial eligibility. With no trials, it is a query per checkout for a
+      // value nothing reads.
+      const user = await prisma.user.findUnique({ where: { id: userId } });
 
       if (!user) throw new ApiError(404, "User not found");
       const activeProduct = await prisma.subscription.findFirst({
@@ -310,9 +314,11 @@ export class BillingService {
           veriworkly_product: productKey,
           veriworkly_interval: interval,
         },
-        ...(productKey === "portfolio_pro" && interval === "monthly" && !previousSubscription
-          ? { subscription_data: { trial_period_days: 7 } }
-          : {}),
+        // No trial on any plan. Creator Pro monthly previously received an automatic
+        // 7-day trial on a first subscription; it was removed as a product decision.
+        // Trials carry disclosure and reminder duties under several US state
+        // auto-renewal statutes, and we would rather not offer one than offer one we
+        // cannot service properly. Every plan now charges at checkout.
         return_url: buildRedirectUrl(config.dodo.checkoutReturnUrl, redirectUrl),
         cancel_url: buildRedirectUrl(config.dodo.checkoutCancelUrl, redirectUrl),
       });

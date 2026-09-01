@@ -47,14 +47,13 @@ export const FEATURE_ROWS: FeatureRowItem[] = [
   },
   {
     key: "freePlan",
-    // "No expiring trials" was dropped: the Terms describe a 7-day free trial for
-    // first-time monthly Bundle and Creator Pro subscribers, so the matrix was
-    // claiming the opposite of our own agreement. The free tier itself is real and
-    // permanent, which is the part worth comparing on.
-    label: "Free plan that does not expire",
+    // Accurate again as of Sep 2026: trials were removed from the product entirely
+    // (see billingService.createCheckoutSession), so there is no expiring trial on any
+    // plan. The free tier is how you try VeriWorkly.
+    label: "Real free plan (no expiring trials)",
     category: "builder",
     description:
-      "The free tier is permanent, not a countdown. Paid plans offer a 7-day trial on first monthly signup, which you can cancel before it converts.",
+      "The free tier is permanent, not a countdown. We do not run free trials at all — nothing converts to a paid charge behind your back. Try it on the free plan for as long as you like, and subscribe only if you want the paid features.",
   },
   {
     key: "freeExport",

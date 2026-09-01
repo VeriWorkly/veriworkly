@@ -263,7 +263,8 @@ export const termsSections: LegalSection[] = [
       {
         heading: "Subscriptions & auto-renewal",
         paragraphs: [
-          "Subscription plans (including Creator Pro, AI Credits Standalone, and the Job Hunter Bundle) automatically renew at the end of each billing period at the then-current price, until you cancel. A 7-day free trial is automatically applied for first-time monthly Job Hunter Bundle / Creator Pro subscribers where offered; unless you cancel before the trial ends, your payment method will be charged automatically when the trial converts to a paid subscription.",
+          "Subscription plans (Creator Pro, AI Credits Standalone, and the Job Hunter Bundle) automatically renew at the end of each billing period at the then-current price, until you cancel.",
+          "We do not offer free trials on any plan. There is no trial period to forget about and no automatic conversion from free to paid: when you subscribe, you are charged at checkout for the period you chose, and the price and billing period are shown before you pay. The 3-Day Sprint and 7-Day Hunt passes are one-time purchases that simply expire — they do not renew.",
           "You can cancel a subscription at any time from the Billing page, which opens our payment provider's portal; cancellation takes effect at the end of the current billing period, and you retain access to paid features until then.",
         ],
       },

@@ -237,3 +237,25 @@ describe("the ATS hero preview uses the report's own vocabulary", () => {
     }
   });
 });
+
+describe("the no-trial policy is stated consistently", () => {
+  /**
+   * Trials were removed from the product entirely (billingService no longer passes
+   * `trial_period_days` to checkout). Before that, the Terms described a trial for
+   * "Job Hunter Bundle / Creator Pro" while the code applied one to Creator Pro
+   * monthly only — the docs were wrong about a charge users would actually see.
+   *
+   * These assert the current state so a re-added trial cannot land in code while the
+   * published pricing still promises none.
+   */
+  it("pricing.md states plainly that there are no trials", () => {
+    expect(pricingMd).toMatch(/no free trials/i);
+  });
+
+  it("pricing.md does not advertise a trial on any tier", () => {
+    // Deliberately narrow: matches an offered trial, not the word in prose such as
+    // "no free trials" above.
+    expect(pricingMd).not.toMatch(/\d+[- ]day free trial/i);
+    expect(pricingMd).not.toMatch(/\*\*Free trial\*\*/i);
+  });
+});
