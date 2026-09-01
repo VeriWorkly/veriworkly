@@ -1,5 +1,97 @@
 [
   {
+    "id": "v3-24-2",
+    "version": "3.24.2",
+    "title": "ATS Engine Rebuild, Claims Accuracy Audit, Account Deletion & Legal Remediation",
+    "summary": "This patch release rebuilds the ATS parsing engine with layout detection and a worker extraction pool, adds self-service account deletion, and remediates a full audit of every public claim on the marketing site against the code that has to honour it. Marketing copy that promised features which did not exist has been removed or labelled as forthcoming, the security page has been rebuilt from what the repository can actually prove, and the Terms and Privacy Policy have been given the structural sections they were missing.",
+    "type": "patch",
+    "publishedAt": "2026-09-01T16:08:24Z",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/v3.24.2",
+    "added": [
+      "AtsResumeParseService with bounding-box layout detection, identifying multi-column resumes and ruled table grids that scramble text extraction order",
+      "Worker-based PDF and DOCX stream extraction via ExtractPool, with contact extraction, section segmentation, and keyword tokenization",
+      "Separate, more generous ATS extraction quota (3 anonymous, 6 free account, 300 paid) so uploading a file no longer consumes a scan from the smaller scan budget",
+      "ParsedView component in the ATS scanner exposing the raw parsed stream, detected sections, and linear reading flow the engine actually sees",
+      "Self-service account deletion from the Studio profile page, with a Danger Zone card and a type-your-email confirmation modal listing exactly what is destroyed",
+      "denyApiKeyAuth middleware, restricting irreversible whole-account actions to session-authenticated requests from first-party origins",
+      "Notice-and-takedown section in the Terms of Service with a reporting address, required notice contents, acknowledgement and decision timelines, a counter-notice route, and a repeat-infringer policy",
+      "Named Grievance Officer and Data Protection Contact published in both the Terms and the Privacy Policy, with a dedicated email address and postal address",
+      "Complete subprocessor table in the Privacy Policy naming every third party, what personal data each receives, its processing region, and the transfer mechanism relied on",
+      "Breach-notification commitment, concrete data retention periods, and the right to complain to a supervisory authority in the Privacy Policy",
+      "TRADEMARK.md and LICENSING.md at the repository root, stating precisely what the MIT licence covers and what it does not",
+      "Developer Certificate of Origin sign-off requirement in CONTRIBUTING.md",
+      "Safe-harbour clause for good-faith security research in SECURITY.md and on the security page",
+      "Skip-to-content link in AppShell, satisfying WCAG 2.4.1 Bypass Blocks (Level A), which had no implementation anywhere in the application",
+      "Person entity in JSON-LD with a stable @id, sameAs, jobTitle, and knowsAbout, plus a root WebSite node and @id graph linking across all schemas",
+      "Claims contract test suite asserting cross-file agreement between marketing copy and the server: template IDs resolve, compare routes exist, the portfolio model matches enforcement, credit-pack expiry is stated, and ATS preview labels match the engine",
+      "Prisma migration removing TRIALING from the SubscriptionStatus enum"
+    ],
+    "improved": [
+      "ATS checker landing and scan pages rebuilt from monolithic files into domain-driven modules under components/tool, components/hero, and components/guide",
+      "Navbar decomposed into LogoPill, DesktopNav, ActionsPill, and MobileMenu, with useMounted and useScrolled layout hooks",
+      "Features, how-it-works, security, compare, contact, and FAQ pages modularized into composable sections with decoupled static datasets",
+      "Changelog and GitHub services broken out of monolithic files into services/github and services/changelog subfolders with distinct responsibilities",
+      "Navbar now links Features, How It Works, and Compare, which previously had no header link from anywhere on the site",
+      "check-design-tokens now fails the build when a design token mapped in no @theme block is used as a utility class, rather than only printing a warning",
+      "Portfolio publishing model stated identically across every surface: Signal and Atelier free with a badge, Nimbus and Cipher on a paid plan, all qualified as opening at launch",
+      "Security page claims rebuilt from what the repository can prove, with third-party compliance attributed to the provider rather than asserted directly",
+      "JSON-LD offers consolidated onto the pricing page, with offerCount and price bounds derived from a single array rather than hardcoded alongside it",
+      "AccordionTrigger accepts a configurable heading level, so FAQ questions sit at the correct depth per page instead of a hard-coded h3"
+    ],
+    "fixed": [
+      "Root 404 boundary was a copy of the error boundary: its primary button called an undefined reset(), throwing a TypeError on every unmatched URL outside the marketing route group",
+      "DELETE /users/me was reachable with any API key holding the user:write scope, the same scope used to rename an account, allowing an integration token to irreversibly destroy an entire account",
+      "Account deletion dropped the local subscription record without cancelling at the payment provider, which would have left users charged for an account that no longer existed; deletion is now blocked while a subscription would renew",
+      "Account deletion removed R2 storage objects before the database transaction, so a failed transaction left an intact account whose uploaded images had silently vanished",
+      "Deleting an account left the user's published portfolio served from cache; the subdomain is now captured before deletion and its caches invalidated",
+      "removeWatermark arrived inside the client-supplied portfolio payload and was persisted verbatim, without being checked against the watermark_removal entitlement",
+      "text-muted-foreground was mapped into no @theme block, so 36 usages in apps/site and 98 in apps/studio emitted no CSS and rendered uncoloured",
+      "LegalSections rendered a second main landmark inside AppShell's, giving the privacy and terms pages two main regions for screen-reader navigation",
+      "Contact form submissions logged the sender's name, email, and subject, exceeding the server-log contents disclosed in the Privacy Policy",
+      "llms.txt advertised three /compare routes that hard-404 under dynamicParams = false while omitting three that exist, and listed every resume template ID without its resume- prefix, breaking all seven template links",
+      "FAQPage structured data was duplicated verbatim between /faq and /ats-checker, and seven Offer nodes shipped into the head of every route including /privacy and /terms",
+      "The /faq page had no h2 elements in its own content, leaving every question as an orphaned h3 beneath the page h1; the footer emitted an h2 to h4 skip on every page",
+      "hreflang emitted only en-US, region-locking an India-based service with a global English-speaking audience; single-language sites should emit none",
+      "noIndex pages emitted a canonical URL, and the 404 boundaries pointed theirs at /404 and /roadmap/404, routes that do not exist",
+      "Homepage HowTo structured data used an invalid HowToSupply type for estimatedCost, and two of four steps carried neither position nor url",
+      "Unguarded ev.touches[0] in use-mouse-position-ref threw when the touch list was empty",
+      "A Suspense boundary on the pricing page wrapped a component that awaited nothing, rendering a second copy of a large client tree that never displayed",
+      "Templates hero fan selected the first three catalog entries, which are all portfolios, cropping landscape screenshots into a portrait paper frame",
+      "manifest.json declared the standard icons as maskable, which Android crops to a safe zone and would clip on home screens"
+    ],
+    "breaking": [
+      "Free trials have been removed from all plans. Creator Pro monthly previously applied an automatic 7-day trial for first-time subscribers; no plan now carries one, and the TRIALING subscription status has been removed from the schema. No subscription was ever created under the trial, so no existing records are affected."
+    ],
+    "security": [
+      "Account deletion is now session-only. DELETE /users/me previously accepted any API key holding user:write, the same scope required to rename an account, which put a long-lived integration token one call away from irreversibly destroying every document, portfolio, credit, and payout record on the account",
+      "Published portfolio snapshots now record the server's own watermark decision rather than the client-supplied removeWatermark flag, which was persisted without being checked against the watermark_removal entitlement",
+      "Contact form logging no longer records submitter identity fields, aligning server logs with what the Privacy Policy discloses",
+      "The security page no longer asserts LocalStorage encryption, AES-256 at rest, TLS 1.3, zero logging, cryptographic purge, or WASM/Canvas rendering, none of which the repository implements or can verify; a stated but unsupported security guarantee is worse than no claim",
+      "Removed the advertised bug bounty and 24-hour SLA guarantee, neither of which existed, and added a safe-harbour clause so good-faith researchers have stated authorisation"
+    ],
+    "prRefs": [
+      {
+        "number": 197,
+        "title": "v3.24.2 — ATS engine, claims accuracy audit, account deletion, and legal remediation",
+        "url": "https://github.com/VeriWorkly/veriworkly/pull/197",
+        "author": {
+          "login": "Gautam25Raj",
+          "avatarUrl": "https://avatars.githubusercontent.com/u/63155224?v=4",
+          "htmlUrl": "https://github.com/Gautam25Raj"
+        }
+      }
+    ],
+    "tags": [
+      "ats-engine",
+      "security",
+      "legal",
+      "privacy",
+      "seo",
+      "accessibility",
+      "account-deletion"
+    ]
+  },
+  {
     "id": "v3-24-1",
     "version": "3.24.1",
     "title": "Monorepo Sync, OpenAPI Alignment, Profile Normalization & CI Workflows",
