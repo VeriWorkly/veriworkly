@@ -35,7 +35,7 @@ another user's account.
 **Our runtime AI configuration.** Model selection and prompt policy resolve at runtime
 from a private configuration and are not in this repository. The code that consumes
 them is MIT; the values are not published. This is why we describe the project as
-*open-core* rather than fully open-source — the distinction is real and we would rather
+_open-core_ rather than fully open-source — the distinction is real and we would rather
 name it than blur it.
 
 **Third-party dependencies.** Each carries its own licence. `npm ls` and the lockfile

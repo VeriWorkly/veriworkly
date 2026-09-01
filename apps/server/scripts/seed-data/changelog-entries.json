@@ -41,14 +41,7 @@
         }
       }
     ],
-    "tags": [
-      "profile-core",
-      "openapi",
-      "documentation",
-      "ci-cd",
-      "portfolio",
-      "sync"
-    ]
+    "tags": ["profile-core", "openapi", "documentation", "ci-cd", "portfolio", "sync"]
   },
   {
     "id": "v3-24-0",

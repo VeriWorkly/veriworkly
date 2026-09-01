@@ -110,12 +110,12 @@ tokens — the logo does not recolour with the theme.
 
 ### Variants
 
-| File                              | Use                                                            |
-| :-------------------------------- | :------------------------------------------------------------- |
-| `veriworkly-logo-256.png`         | Primary mark. For websites, headers, and media placements.     |
-| `veriworkly-icon-512.png`         | Store listings, app launchers, and high-DPI displays.          |
-| `veriworkly-icon-192.png`         | Android home screen, manifest, and favicons.                   |
-| `veriworkly-icon-apple-touch.png` | iOS home screen and web clip.                                  |
+| File                              | Use                                                        |
+| :-------------------------------- | :--------------------------------------------------------- |
+| `veriworkly-logo-256.png`         | Primary mark. For websites, headers, and media placements. |
+| `veriworkly-icon-512.png`         | Store listings, app launchers, and high-DPI displays.      |
+| `veriworkly-icon-192.png`         | Android home screen, manifest, and favicons.               |
+| `veriworkly-icon-apple-touch.png` | iOS home screen and web clip.                              |
 
 All live in `apps/site/public/brand/logo/`. The manifest is `logoAssets` in
 `apps/site/config/brand.ts`; the `.zip` is built from that list, so adding a file there
