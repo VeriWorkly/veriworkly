@@ -1,6 +1,6 @@
 {
   "name": "veriworkly",
-  "version": "3.24.2",
+  "version": "3.24.3",
   "private": true,
   "packageManager": "npm@11.16.0",
   "engines": {
@@ -57,11 +57,6 @@
   },
   "overrides": {
     "postcss": "8.5.25",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "next": {
-      "sharp": "0.35.3"
-    },
     "prisma": {
       "@prisma/dev": {
         "@hono/node-server": "2.0.12",
@@ -70,19 +65,19 @@
     },
     "@hono/node-server": "2.0.12",
     "hono": "4.12.32",
-    "fast-uri": "3.1.4",
+    "fast-uri": "3.1.7",
     "body-parser": "1.20.6",
     "better-sqlite3": "12.11.1",
     "fumadocs-core": "16.13.0",
     "fumadocs-mdx": {
-      "js-yaml": "4.3.0",
+      "js-yaml": "4.3.2",
       "fumadocs-core": "16.13.0"
     },
     "fumadocs-openapi": {
-      "js-yaml": "4.3.0"
+      "js-yaml": "4.3.2"
     },
     "eslint": {
-      "js-yaml": "4.3.0"
+      "js-yaml": "4.3.2"
     },
     "fumadocs-ui": "16.13.0",
     "@fumadocs/api-docs": {

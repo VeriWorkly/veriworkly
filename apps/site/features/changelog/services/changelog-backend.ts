@@ -318,7 +318,7 @@ export async function fetchChangelogEntryById(id: string): Promise<ChangelogEntr
 
     return normalizeEntry(entry);
   } catch (err) {
-    if (err instanceof ApiRequestError && err.status === 404) return null;
+    if (err instanceof ApiRequestError) return null;
 
     throw err;
   }

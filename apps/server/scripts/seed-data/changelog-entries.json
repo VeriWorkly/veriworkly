@@ -1,5 +1,38 @@
 [
   {
+    "id": "v3-24-3",
+    "version": "3.24.3",
+    "title": "Next.js 16.3.5 Security Upgrade, Dependency Cleanup, and ATS Engine Modularization",
+    "summary": "This release upgrades Next.js to 16.3.5 across all frontend apps to patch a critical remote code execution vulnerability, updates React to 19.3.0, and updates Sharp to 0.35.4. We also removed redundant React and Sharp overrides from the root package configuration, updated Multer and Nodemailer to patched versions, added offline safety to the changelog static export, and extracted the ATS scoring and parsing engine into a dedicated workspace package.",
+    "type": "patch",
+    "publishedAt": "2026-09-12T17:20:00Z",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/Release-v3.24.3",
+    "added": [
+      "Extracted ATS scoring, tokenizer, and parsing rules into a shared @veriworkly/ats-engine package consumed by the server and frontend applications.",
+      "Added ATS AI processing service with strict schema formatting, grounding validation, and automated repair routines.",
+      "Added generate script in root package.json for building docs API routes."
+    ],
+    "improved": [
+      "Upgraded Next.js and eslint-config-next from 16.2.12 to 16.3.5 across apps/site, apps/studio, apps/portfolio, apps/blog-platform, and apps/docs-platform.",
+      "Upgraded React and react-dom to 19.3.0 across all frontend applications.",
+      "Removed root package overrides for React, react-dom, and Sharp, allowing npm workspace hoisting to resolve deduplicated copies directly.",
+      "Updated veriworkly.md tech stack documentation to reference Next.js 16.3.5 and React 19.3.0."
+    ],
+    "fixed": [
+      "Resolved static build failure in apps/site when prerendering changelog release pages without an active backend server.",
+      "Broke circular module dependency between template registry and template-details in apps/portfolio.",
+      "Improved private policy error reporting and path resolution in apps/server."
+    ],
+    "security": [
+      "Patched critical remote code execution vulnerability on Windows-hosted servers (GHSA-p293-qw3h-jr36) and Image Optimization API flaw (GHSA-2xp9-vwfh-vxw4) by upgrading Next.js to 16.3.5.",
+      "Patched libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c) by updating Sharp to 0.35.4.",
+      "Updated multer to 2.3.0 in apps/server to patch multipart parsing denial-of-service vulnerabilities.",
+      "Updated nodemailer to 9.1.1 in apps/server to patch recipient-domain validation and address-parser denial-of-service flaws.",
+      "Updated root overrides for fast-uri to 3.1.7 and js-yaml to 4.3.2 to remediate upstream advisories."
+    ],
+    "tags": ["nextjs", "security", "dependencies", "ats-engine", "react"]
+  },
+  {
     "id": "v3-24-2",
     "version": "3.24.2",
     "title": "ATS Engine Rebuild, Claims Accuracy Audit, Account Deletion & Legal Remediation",

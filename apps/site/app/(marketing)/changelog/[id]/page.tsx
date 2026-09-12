@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
 const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
   const { id } = await params;
 
-  const detail = await fetchChangelogDetail(id);
+  const detail = await fetchChangelogDetail(id).catch(() => null);
 
   if (!detail) notFound();
 
