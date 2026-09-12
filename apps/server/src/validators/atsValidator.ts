@@ -25,6 +25,13 @@ export const atsAnalyzeSchema = atsCheckSchema.extend({
   jobUrl: z.string().url().max(2_048).optional(),
   fetchJobUrl: z.boolean().default(false),
   requestId: z.string().trim().min(8).max(128),
+  /**
+   * Opt in to the AI parse-repair pass. Off by default and never inferred from a bad parse:
+   * repair costs credits, so spending them is the caller's decision, not ours. The response
+   * always reports whether repair *would* help (`repairAvailable`), which is what lets the UI
+   * offer it rather than silently bill for it.
+   */
+  repairParse: z.boolean().default(false),
 });
 
 export const atsConvertResumeSchema = z.object({

@@ -18,6 +18,18 @@ const modelSchema = z.object({
    * next door read its own from here.
    */
   temperature: z.number().min(0).max(2).default(0.2),
+  /**
+   * Opt in to `response_format: json_schema` for this model.
+   *
+   * Off by default, and deliberately per-model rather than global. Structured outputs are the
+   * better mode — JSON mode guarantees only that the body parses, not that it matches the
+   * shape, so a schema violation costs a whole retry — but support is a property of the
+   * model *and* the serving provider, and an endpoint that lacks it rejects the request
+   * outright instead of degrading to JSON mode. Model IDs here resolve from deployment
+   * secrets, so whether any given one supports it is not knowable from this repo: it has to
+   * be a per-model switch someone flips after checking that model's providers.
+   */
+  structuredOutputs: z.boolean().default(false),
   providerOptions: z.record(z.unknown()).optional(),
 });
 
@@ -26,6 +38,8 @@ const generationSchema = z.object({
   model: z.string().min(1),
   maxOutputTokens: z.number().int().positive().max(16_000),
   temperature: z.number().min(0).max(2).default(0.2),
+  /** See `modelSchema.structuredOutputs`. Same switch, same reason to default it off. */
+  structuredOutputs: z.boolean().default(false),
   providerOptions: z.record(z.unknown()).optional(),
 });
 
@@ -42,6 +56,13 @@ const atsPolicySchema = z.object({
   }),
   models: z.array(modelSchema).min(1),
   resumeConversion: generationSchema,
+  /**
+   * The AI parse-repair route. Optional: a deployment that has not configured one simply does
+   * not offer repair, and `AtsRepairService` returns no repair rather than failing the scan.
+   * The deterministic parse is what the user came for and it has already succeeded or failed
+   * on its own terms by this point.
+   */
+  parseRepair: generationSchema.optional(),
 });
 
 export type AtsComplexity = "standard" | "detailed" | "advanced" | "expert";

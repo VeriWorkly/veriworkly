@@ -76,14 +76,14 @@ const layers: SecurityLayer[] = [
   {
     id: "ai-privacy",
     title: "4. AI Privacy Shield",
-    badge: "Zero Retention",
+    badge: "Named Subprocessor",
     badgeTone: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
     detail:
-      "AI resume tailoring prompts are stateless. Your data is never used to train public LLM models.",
+      "We keep no copy of AI request text after a request completes, and our provider terms prohibit training on it. The Privacy Policy names every AI subprocessor.",
     icon: Cpu,
     specs: [
-      "Stateless prompt execution",
-      "Zero model training on user resumes",
+      "AI request text not retained by VeriWorkly",
+      "Provider terms prohibit training on your text",
       "Side-by-side diff review before applying changes",
       "Encrypted API gateway with rate-limiting",
     ],

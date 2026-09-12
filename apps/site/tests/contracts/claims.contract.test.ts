@@ -259,3 +259,114 @@ describe("the no-trial policy is stated consistently", () => {
     expect(pricingMd).not.toMatch(/\*\*Free trial\*\*/i);
   });
 });
+
+describe("ATS copy does not overclaim what a bad parse causes", () => {
+  /**
+   * The evidence supports "formatting changes how a resume is parsed" and does not support
+   * "a bad parse silently rejects you". Workday's own admin documentation says results "can
+   * vary based on resume format and order of words" — which is the premise the product is
+   * built on — but the same documentation describes a review step where a candidate can
+   * correct parsed data before submitting, and Workday does not autofill Skills or Languages.
+   *
+   * So a parse failure is recoverable friction that creates real work and a real chance of an
+   * uncaught error. It is not a machine binning the application unseen. The stronger claim is
+   * the one a competitor's marketing reaches for, it is the easy sentence to write when
+   * someone is asked to make this page convert harder, and it is not true. This asserts the
+   * current, accurate framing so the overclaim breaks CI instead of shipping.
+   *
+   * See AI-REGULATORY-POSTURE.md.
+   */
+  const atsPagePath = join(__dirname, "..", "..", "app", "(marketing)", "ats-checker", "page.tsx");
+  const atsCopy = readFileSync(atsPagePath, "utf8");
+
+  /** Phrasings that assert silent, unappealable rejection rather than parsing risk. */
+  const OVERCLAIMS = [
+    /never (?:be )?(?:seen|read|reaches?|reviewed) by (?:a )?(?:human|person|recruiter)/i,
+    /auto(?:matically)?[- ]rejects?/i,
+    /(?:resume|application|cv) (?:is |gets? |was )?(?:silently )?(?:binned|discarded|trashed)/i,
+    /thrown (?:out|away) by (?:the )?(?:ats|robot|machine|bot)/i,
+    /screened out before/i,
+    /75% of (?:resumes|applications)/i,
+  ];
+
+  it("the ATS checker page claims parsing risk, not silent rejection", () => {
+    for (const pattern of OVERCLAIMS) {
+      expect(atsCopy, `ATS page copy matches the unsupported claim ${pattern}`).not.toMatch(
+        pattern,
+      );
+    }
+  });
+
+  it("llms.txt does not assert silent rejection either", () => {
+    for (const pattern of OVERCLAIMS) {
+      expect(llmsTxt, `llms.txt matches the unsupported claim ${pattern}`).not.toMatch(pattern);
+    }
+  });
+});
+
+/**
+ * Data-handling claims the code cannot substantiate.
+ *
+ * The privacy policy body is careful — it says provider retention is "outside our direct
+ * control" and qualifies training-exclusion with "to the extent we can configure it". Two other
+ * surfaces were not: the privacy page's SEO metadata sold "stateless AI processing" as settled
+ * fact, and a security card carried a flat "Zero Retention" badge.
+ *
+ * Neither is enforced anywhere — no zero-data-retention routing flag is set on the AI client —
+ * so both were promising something unverifiable. These tests stop that drifting back in. If
+ * ZDR routing is genuinely enabled later, the honest move is to delete the relevant assertion
+ * here in the same change that turns the flag on, so the claim and its evidence land together.
+ */
+describe("AI data-handling claims stay within what we can substantiate", () => {
+  const privacyPage = readFileSync(
+    join(__dirname, "..", "..", "app", "(marketing)", "privacy", "page.tsx"),
+    "utf8",
+  );
+  const securityDiagram = readFileSync(
+    join(
+      __dirname,
+      "..",
+      "..",
+      "features",
+      "security",
+      "components",
+      "matrix",
+      "SecurityBoundaryDiagram.tsx",
+    ),
+    "utf8",
+  );
+
+  /** Absolute retention/statelessness claims about third-party model processing. */
+  const UNSUBSTANTIATED = [
+    /stateless ai/i,
+    /prompts are stateless/i,
+    /stateless prompt/i,
+    /zero retention/i,
+    /never retained/i,
+  ];
+
+  for (const [label, source] of [
+    ["the privacy page", privacyPage],
+    ["the security boundary diagram", securityDiagram],
+  ] as const) {
+    it(`${label} does not claim statelessness or zero retention`, () => {
+      for (const pattern of UNSUBSTANTIATED) {
+        expect(source, `${label} matches the unsubstantiated claim ${pattern}`).not.toMatch(
+          pattern,
+        );
+      }
+    });
+  }
+
+  it("the privacy policy still names the AI subprocessor", () => {
+    const privacyContent = readFileSync(
+      join(__dirname, "..", "..", "features", "legal", "privacyContent.ts"),
+      "utf8",
+    );
+
+    // Disclosure is the thing that makes the narrower claims honest, so it is asserted rather
+    // than assumed. Losing it would be a regression even though nothing else would break.
+    expect(privacyContent).toMatch(/OpenRouter/);
+    expect(privacyContent).toMatch(/Standard Contractual Clauses/);
+  });
+});

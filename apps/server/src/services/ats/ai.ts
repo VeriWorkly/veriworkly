@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import { createAiClient } from "#services/aiClient";
 import { getAtsAiPolicy, type AtsComplexity } from "#services/ats/aiPolicy";
+import {
+  CONVERTED_RESUME_JSON_SCHEMA,
+  INSIGHTS_JSON_SCHEMA,
+  jsonResponseFormat,
+  providerRouting,
+} from "#services/ats/aiResponseFormat";
 import type { AtsAiInsights, AtsReport } from "#services/ats/types";
 import { CreditService } from "#services/creditService";
 import { EntitlementService } from "#services/entitlementService";
@@ -38,7 +44,8 @@ const nullableStringArray = (maxItemLen: number, maxItems: number) =>
     .optional()
     .transform((val) => val ?? []);
 
-const insightsSchema = z.object({
+/** Exported so `tests/ats/ai-response-format.test.ts` can hold it against its JSON Schema twin. */
+export const insightsSchema = z.object({
   explanation: nullableString(4_000),
   missingEvidence: nullableStringArray(500, 12),
   keywordOpportunities: nullableStringArray(200, 20),
@@ -281,7 +288,7 @@ export class AtsAiService {
        */
       const { completion, ai } = await withRetries(route.model.retries, requestId, async () => {
         const call = await createAiClient().chat.completions.create({
-          ...(route.model.providerOptions ?? {}),
+          ...providerRouting(route.model.structuredOutputs, route.model.providerOptions),
           model: route.model.model,
           messages: [
             { role: "system", content: route.systemPrompt },
@@ -297,7 +304,11 @@ export class AtsAiService {
           ],
           max_tokens: route.model.maxOutputTokens,
           temperature: route.model.temperature,
-          response_format: { type: "json_object" },
+          response_format: jsonResponseFormat(
+            route.model.structuredOutputs,
+            "ats_insights",
+            INSIGHTS_JSON_SCHEMA,
+          ),
           stream: false,
         } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
 
@@ -346,7 +357,7 @@ export class AtsAiService {
 
     try {
       const completion = await createAiClient().chat.completions.create({
-        ...(route.providerOptions ?? {}),
+        ...providerRouting(route.structuredOutputs, route.providerOptions),
         model: route.model,
         messages: [
           { role: "system", content: policy.prompts.resumeConversion },
@@ -361,7 +372,11 @@ export class AtsAiService {
         ],
         max_tokens: route.maxOutputTokens,
         temperature: route.temperature,
-        response_format: { type: "json_object" },
+        response_format: jsonResponseFormat(
+          route.structuredOutputs,
+          "converted_resume",
+          CONVERTED_RESUME_JSON_SCHEMA,
+        ),
         stream: false,
       } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
       const content = completion.choices[0]?.message?.content;

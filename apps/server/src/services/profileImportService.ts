@@ -12,6 +12,11 @@ import { logger } from "#lib/logger";
 import { masterProfileContentSchema } from "#validators/masterProfileValidator";
 import { createAiClient } from "#services/aiClient";
 import { getAtsAiPolicy } from "#services/ats/aiPolicy";
+import {
+  CONVERTED_RESUME_JSON_SCHEMA,
+  jsonResponseFormat,
+  providerRouting,
+} from "#services/ats/aiResponseFormat";
 import { DocumentService } from "#services/documentService";
 import { ProfileService } from "#services/profileService";
 import { convertedResumeSchema } from "#services/ats/ai";
@@ -364,12 +369,13 @@ export class ProfileImportService {
    */
   private static async parseTextToResumeSchema(text: string) {
     const policy = getAtsAiPolicy();
-    const model = policy.resumeConversion.model;
+    const route = policy.resumeConversion;
     const systemPrompt = policy.prompts.resumeConversion;
 
     try {
       const completion = await createAiClient().chat.completions.create({
-        model,
+        ...providerRouting(route.structuredOutputs, route.providerOptions),
+        model: route.model,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -382,7 +388,11 @@ export class ProfileImportService {
         ],
         max_tokens: 4000,
         temperature: 0.1,
-        response_format: { type: "json_object" },
+        response_format: jsonResponseFormat(
+          route.structuredOutputs,
+          "converted_resume",
+          CONVERTED_RESUME_JSON_SCHEMA,
+        ),
       });
 
       const content = completion.choices[0]?.message?.content?.trim();

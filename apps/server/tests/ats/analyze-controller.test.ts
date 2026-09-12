@@ -33,6 +33,19 @@ vi.mock("#services/ats/ai", () => ({
   AtsAiService: { analyze: (...args: unknown[]) => analyze(...args) },
 }));
 
+/**
+ * Repair is opt-in. Defaulted off here so the quota assertions below stay meaningful — they
+ * would prove nothing if an unrequested repair could spend credits behind them — and switched
+ * on individually by the cases that exercise the offer.
+ */
+const needsRepairMock = vi.fn(() => false);
+const repairMock = vi.fn();
+
+vi.mock("#services/ats/repair", () => ({
+  needsRepair: (...args: unknown[]) => needsRepairMock(...(args as [])),
+  AtsRepairService: { repair: (...args: unknown[]) => repairMock(...args) },
+}));
+
 vi.mock("#utils/requestIp", () => ({
   getRequestIpDetails: vi.fn(() => ({ resolvedIp: "203.0.113.9" })),
 }));
@@ -58,6 +71,7 @@ const baseBody = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  needsRepairMock.mockReturnValue(false);
   check.mockReturnValue({ version: "ats-v2", failedChecks: [], prioritizedFixes: [] });
   analyze.mockResolvedValue({ ai: null, creditsSpent: 0, routed: true });
   fetchJobPage.mockResolvedValue("a job description long enough to score");
@@ -194,5 +208,73 @@ describe("POST /ats/analyze — quota gates outbound egress", () => {
 
     expect(refund).not.toHaveBeenCalled();
     expect(json.mock.calls[0][0].data).toMatchObject({ aiStatus: "ok" });
+  });
+});
+
+/**
+ * Parse repair spends credits, so the contract that matters is that it cannot run unasked.
+ * A thin parse advertises the option; only an explicit `repairParse` actually buys it.
+ */
+describe("POST /ats/analyze — parse repair is offered, not imposed", () => {
+  it("advertises repair on a thin parse without running it", async () => {
+    needsRepairMock.mockReturnValue(true);
+    const { res, json } = responseSpy();
+
+    await AtsAiController.analyze(requestFor({ ...baseBody }), res, vi.fn());
+
+    expect(repairMock).not.toHaveBeenCalled();
+    expect(json.mock.calls[0][0].data.repair).toMatchObject({
+      available: true,
+      applied: false,
+      fields: [],
+      creditsSpent: 0,
+    });
+  });
+
+  it("does not offer repair when the deterministic parse was good enough", async () => {
+    needsRepairMock.mockReturnValue(false);
+    const { res, json } = responseSpy();
+
+    await AtsAiController.analyze(requestFor({ ...baseBody, repairParse: true }), res, vi.fn());
+
+    // Opted in, but there is nothing to repair — so nothing is charged.
+    expect(repairMock).not.toHaveBeenCalled();
+    expect(json.mock.calls[0][0].data.repair).toMatchObject({ available: false, applied: false });
+  });
+
+  it("runs repair when asked, and names the fields a model supplied", async () => {
+    needsRepairMock.mockReturnValue(true);
+    check.mockReturnValue({
+      version: "ats-v2",
+      failedChecks: [],
+      prioritizedFixes: [],
+      parsed: { name: "", email: "", phone: "", roles: [], education: [], skills: [] },
+    });
+    repairMock.mockResolvedValue({
+      repaired: {
+        name: "Jane Doe",
+        email: "",
+        phone: "",
+        roles: [{ title: "Engineer", employer: "Acme", start: null, end: null, current: false }],
+        education: [],
+        skills: [],
+      },
+      creditsSpent: 2,
+      rejectedValues: 1,
+    });
+    const { res, json } = responseSpy();
+
+    await AtsAiController.analyze(requestFor({ ...baseBody, repairParse: true }), res, vi.fn());
+
+    expect(repairMock).toHaveBeenCalledTimes(1);
+    expect(json.mock.calls[0][0].data.repair).toMatchObject({
+      available: true,
+      applied: true,
+      creditsSpent: 2,
+      // Surfaced so the grounding check is visibly working rather than merely trusted.
+      rejectedValues: 1,
+    });
+    // Only the fields the parser left empty and the model filled — provenance, not a blanket flag.
+    expect(json.mock.calls[0][0].data.repair.fields).toEqual(["name", "roles"]);
   });
 });

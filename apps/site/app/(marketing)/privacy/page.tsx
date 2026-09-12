@@ -28,7 +28,7 @@ export const metadata: Metadata = buildPageMetadata({
 
   title: `Privacy Policy: Privacy-First AI Career Workspace | ${siteConfig.shortName}`,
   description:
-    "How VeriWorkly protects resumes, cover letters, and portfolios: local-first storage, encrypted sync, stateless AI, and zero ad tracking.",
+    "How VeriWorkly protects resumes, cover letters, and portfolios: local-first storage, encrypted sync, a named AI subprocessor, and zero ad tracking.",
 
   ogTitle: "Your Data Never Leaves Your Browser Without Asking",
   ogDescription:
@@ -36,7 +36,7 @@ export const metadata: Metadata = buildPageMetadata({
 
   twitterTitle: "Local-first by default. Read the full policy.",
   twitterDescription:
-    "Browser storage, encrypted sync, and stateless AI processing - the exact data boundaries VeriWorkly commits to in writing.",
+    "Browser storage, encrypted sync, and every AI subprocessor named - including what we cannot control once a request leaves us.",
 
   image: "/og/privacy-page-og.png",
   imageAlt: `${siteConfig.shortName} Privacy Policy`,
