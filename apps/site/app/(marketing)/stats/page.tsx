@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
-import { buildPageMetadata } from "@/utils/metadata";
+
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { buildPageMetadata } from "@/utils/metadata";
 
 import {
   PAGE_SIZE,

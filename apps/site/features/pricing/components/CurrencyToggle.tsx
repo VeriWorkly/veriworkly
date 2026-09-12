@@ -9,6 +9,7 @@ interface CurrencyToggleProps {
 }
 
 export const CurrencyToggle: React.FC<CurrencyToggleProps> = ({ className = "" }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { currency, setCurrency, exchangeRate, detectedRegion } = useCurrency();
 
   return (
@@ -21,6 +22,7 @@ export const CurrencyToggle: React.FC<CurrencyToggleProps> = ({ className = "" }
         <Globe className="h-3.5 w-3.5 text-blue-500" aria-hidden="true" />
         {detectedRegion === "IN" ? "India detected" : "Currency"}
       </span>
+
       <div className="flex items-center rounded-full bg-zinc-100 p-0.5 dark:bg-zinc-800">
         <button
           type="button"
@@ -34,6 +36,7 @@ export const CurrencyToggle: React.FC<CurrencyToggleProps> = ({ className = "" }
         >
           USD ($)
         </button>
+
         <button
           type="button"
           onClick={() => setCurrency("INR")}
@@ -47,6 +50,7 @@ export const CurrencyToggle: React.FC<CurrencyToggleProps> = ({ className = "" }
           INR (₹)
         </button>
       </div>
+
       {/*
         Checkout is billed in USD, so an INR figure is an estimate and has to read as one.
         Quoting a precise-looking converted number with no qualifier is the kind of detail
@@ -54,11 +58,11 @@ export const CurrencyToggle: React.FC<CurrencyToggleProps> = ({ className = "" }
       */}
       {/* Rounded: the live rate arrives with full float precision, and ₹88.2371/$1 implies
           an exactness that a USD-billed checkout cannot honour anyway. */}
-      {currency === "INR" && (
+      {/* {currency === "INR" && (
         <span className="pr-3 font-mono text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
           approx. ₹{Math.round(exchangeRate)}/$1 · billed in USD
         </span>
-      )}
+      )} */}
     </div>
   );
 };

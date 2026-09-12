@@ -2,24 +2,9 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-/**
- * Share cards are pure functions of their query string, so they can be cached hard.
- * Without this every crawler hit and every social unfurl re-rendered the image from
- * scratch - this route backs the OG image for /stats, /pricing, /changelog, all six
- * /compare/* pages, /affiliate, /ambassador and every /roadmap/[id].
- */
 const OG_CACHE_CONTROL = "public, immutable, no-transform, max-age=31536000";
 
-/**
- * Text is rendered onto an image served from our own origin, so unbounded input would
- * let anyone mint a convincing `veriworkly.com/api/og?title=...` card for a phishing
- * unfurl. Control characters are stripped and length is capped; the remaining surface
- * is plain text on a branded background, which is the intended use.
- */
 function sanitizeText(value: string | null, fallback: string, maxLength: number) {
-  // Strips C0/C1 control characters plus zero-width and bidi-override codepoints, which
-  // can otherwise be used to disguise what the rendered card actually says. Done by
-  // codepoint rather than a regex character class so the source stays plain ASCII.
   const cleaned = Array.from(value ?? "")
     .map((char) => {
       const code = char.codePointAt(0) ?? 0;
@@ -50,25 +35,9 @@ export async function GET(request: Request) {
 
     const isDark = theme === "dark";
 
-    /**
-     * The mark is drawn inline rather than fetched as a PNG. Satori has to resolve a
-     * remote <img> over the network before it can rasterise, and when that fetch fails
-     * the card still renders - just silently missing its logo. Inlining the geometry
-     * removes the only network dependency in this route.
-     *
-     * Path is the single-colour mark from public/brand/logo/veriworkly-logo-mono.svg.
-     * The faceted version needs a clipPath and seven gradients, which Satori does not
-     * support reliably; one colour is also the correct choice at chip scale.
-     */
     const MARK_PATH =
       "M66 117H156l57.2 137.6L236.1 200h39.8l22.9 54.6L356 117h90L322 395h-35.6L256 324l-30.4 71H190Z";
 
-    /**
-     * Satori has no CSS custom properties, so the theme tokens are repeated here as
-     * literals. They must stay equal to packages/ui/src/styles/themes.css - the values
-     * are documented on /brand-kit#social, and a share card in a colour the design
-     * system does not contain is the one brand surface nobody notices is wrong.
-     */
     const t = isDark
       ? {
           background: "#0d1117",

@@ -6,13 +6,8 @@ import { Check, Copy } from "lucide-react";
 import { Card } from "@veriworkly/ui";
 import type { BrandColorToken } from "@/config/brand";
 
-/**
- * Both grounds are painted explicitly rather than inherited, because several
- * tokens (--border, --fd-accent) are alpha values that only read correctly when
- * composited over the background of their own theme.
- */
-const LIGHT_GROUND = "#F5F4EF";
 const DARK_GROUND = "#0D1117";
+const LIGHT_GROUND = "#F5F4EF";
 
 interface ValueRowProps {
   theme: "Light" | "Dark";

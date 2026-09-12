@@ -15,8 +15,8 @@ export const LogoPill = () => {
         width={22}
         height={22}
         alt="VeriWorkly"
-        className="h-5.5 w-auto transition-transform duration-200 group-hover:rotate-6"
         src="/veriworkly-logo.png"
+        className="h-5.5 w-auto transition-transform duration-200 group-hover:rotate-6"
       />
       <span className="hidden font-mono text-sm font-bold tracking-tight text-zinc-900 sm:block dark:text-white">
         {siteConfig.shortName || "VeriWorkly"}

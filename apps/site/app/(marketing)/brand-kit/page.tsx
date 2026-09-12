@@ -4,14 +4,14 @@ import { Container } from "@veriworkly/ui";
 import { siteConfig } from "@/config/site";
 import { buildPageMetadata } from "@/utils/metadata";
 
-import BrandKitHeader from "./_components/BrandKitHeader";
 import LogoSection from "./_components/LogoSection";
 import ColorSection from "./_components/ColorSection";
-import BrandTypographySection from "./_components/BrandTypographySection";
-import SocialSection from "./_components/SocialSection";
 import VoiceSection from "./_components/VoiceSection";
-import BoilerplateSection from "./_components/BoilerplateSection";
 import PressSection from "./_components/PressSection";
+import SocialSection from "./_components/SocialSection";
+import BrandKitHeader from "./_components/BrandKitHeader";
+import BoilerplateSection from "./_components/BoilerplateSection";
+import BrandTypographySection from "./_components/BrandTypographySection";
 
 const ogImage = `/api/og?title=${encodeURIComponent("Brand Kit")}&description=${encodeURIComponent(
   "Logos, colors, typography, and voice guidelines for VeriWorkly.",

@@ -28,6 +28,7 @@
       "purpose": "any"
     }
   ],
+
   "_comment_icons": "The maskable entries were removed rather than left pointing at the standard icons. Android crops a maskable icon to a safe zone roughly 80% of its width, so declaring an unpadded mark as maskable clips it on home screens - worse than declaring none, which lets the platform letterbox the 'any' icon instead. To restore them, export 192 and 512 variants with the mark inside the safe zone and add them back with purpose: maskable.",
 
   "theme_color": "#f5f4ef",

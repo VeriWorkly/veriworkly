@@ -1,6 +1,6 @@
 # VeriWorkly Marketing Site
 
-The public-facing marketing site for VeriWorkly (veriworkly.com). Built with Next.js 16 (App Router), React 19, and Tailwind CSS 4.
+The public-facing marketing site for VeriWorkly ([veriworkly.com](https://veriworkly.com)). Built with Next.js 16 (App Router), React 19, and Tailwind CSS 4.
 
 ## 🚀 Quick Start
 
@@ -10,7 +10,7 @@ The public-facing marketing site for VeriWorkly (veriworkly.com). Built with Nex
    npm install
    ```
 
-2. **Copy the environment file** and fill it in (see `.env.example` for what each var does):
+2. **Copy the environment file** and configure your values (see `.env.example` for details):
 
    ```bash
    cp .env.example .env
@@ -20,79 +20,106 @@ The public-facing marketing site for VeriWorkly (veriworkly.com). Built with Nex
 
    ```bash
    npm run dev:site
+   # or from monorepo root:
+   npm run dev -w @veriworkly/site
    ```
 
-The site runs on `http://localhost:3000`. Sibling apps have fixed dev ports that `config/site.ts` hardcodes for local link resolution: studio `3001`, docs `3002`, blog `3003`, portfolio `3004`. If you move one, update `links` in `config/site.ts` too or cross-app navigation breaks in dev only.
+The site runs on `http://localhost:3000`. Sibling apps have fixed dev ports that `config/site.ts` hardcodes for local link resolution: Studio `3001`, Docs `3002`, Blog `3003`, Portfolio `3004`, and Server `8080`. If you change one, update `links` in `config/site.ts` too or cross-app navigation breaks in local dev.
 
 ## 🏗️ Architecture
 
-- **Next.js 16 (App Router)** - most marketing routes are statically prerendered. `/pricing` is the notable exception: it reads the session behind its own `<Suspense>` boundary so a single `cookies()` call does not opt the whole page into dynamic rendering.
-- **Tailwind CSS 4** - styling via the shared design system in `@veriworkly/ui` (`transpilePackages`, plus `@source` in `globals.css` so the UI package's classes survive the content scan).
-- **Framer Motion** - all animation is wrapped in `<MotionConfig reducedMotion="user">` (`providers/motion-provider.tsx`). The CSS `prefers-reduced-motion` block in `@veriworkly/ui/styles/globals.css` only neutralises CSS animations; framer-motion drives inline transforms from JS and has to be opted in separately. **Any new animation must go through framer-motion or a CSS animation - never a raw `requestAnimationFrame` loop**, or it will ignore the user's motion preference.
-- **CSP** - `next.config.ts` sets a strict Content-Security-Policy. `connect-src` is an explicit allowlist (`'self'`, `NEXT_PUBLIC_BACKEND_URL`'s origin, `https://*.veriworkly.com`). **Any new third-party `fetch()` from the browser must be added there or it fails silently in production.**
+- **Next.js 16 (App Router)** - Marketing pages are statically prerendered (SSG/ISR). Dynamic server routes are limited to live data integrations: `/api/og` (edge image generator), `/stats` (live GitHub dev activity), `/roadmap` & `/changelog` (fetched live from the backend API), and `/ambassador/apply`. Pages like `/pricing` use ISR (12-hour revalidation) with static JSON-LD schemas and client-side checkout initiation.
+- **Tailwind CSS 4** - Styling via the shared design system in `@veriworkly/ui` (`transpilePackages`, plus `@source` in `globals.css` so the UI package's classes survive the content scan).
+- **Framer Motion** - Site-wide motion is wrapped in `<MotionConfig reducedMotion="user">` (`providers/motion-provider.tsx`). The CSS `prefers-reduced-motion` rule in `@veriworkly/ui/styles/globals.css` neutralizes CSS transitions; framer-motion drives inline transforms from JS and respects the user preference via this provider. **Any new animation must go through Framer Motion or CSS - never a raw `requestAnimationFrame` loop.**
+- **Strict CSP & Security Headers** - `next.config.ts` enforces a strict Content-Security-Policy. `connect-src` is an explicit allowlist (`'self'`, `NEXT_PUBLIC_BACKEND_URL`'s origin, `https://*.veriworkly.com`). Security headers also enforce HSTS, `nosniff`, `same-origin-allow-popups` (COOP), `same-site` (CORP), and frame restrictions. Any new third-party client-side API endpoint must be explicitly added to `connectSrc` in `next.config.ts`.
 
 ## 📄 What's on this site
 
-Beyond landing, pricing, features, how-it-works, and FAQ:
+- **Landing & Product Pages**: `/` (homepage), `/features`, `/how-it-works`, `/pricing`, `/about`, `/contact`, and `/faq`.
+- **ATS Checker**: `/ats-checker` and `/ats-checker/scan` - in-browser ATS scoring, keyword density extraction, and document analysis.
+- **Templates Gallery**: `/templates` and `/templates/[docType]/[templateId]` - showcase of ATS-optimized resume, cover letter, and portfolio layouts.
+- **Competitor Comparison**: `/compare` and `/compare/[tool]` - objective comparison pages with feature matrices against Rezi, Teal, Kickresume, Novoresume, Zety, and Enhancv (backed by `@/features/compare`).
+- **Brand Kit**: `/brand-kit` - brand assets, color token swatches, typography showcase, and downloadable `veriworkly-brand-kit.zip`.
+- **Changelog**: `/changelog` and `/changelog/[id]` - public release notes, version history, and GitHub contributor integrations.
+- **Public Roadmap**: `/roadmap` and subviews (`/roadmap/todo`, `/roadmap/in-progress`, `/roadmap/done`, `/roadmap/[id]`) - synced with the administrative Studio board.
+- **Dev Stats**: `/stats` - live repository metrics and activity board.
+- **Growth Programs**: `/affiliate` and `/ambassador` (with `/ambassador/apply`) - gated by runtime feature flags (`AFFILIATE_PROGRAM_ENABLED`, `AMBASSADOR_PROGRAM_ENABLED`).
+- **Legal & Security**: `/security` (responsible disclosure and data storage breakdown), `/privacy`, and `/terms`.
+- **Open Graph Generator**: `/api/og` - dynamic Open Graph card generator backing share cards across all pages.
+- **Machine-Readable / AI Search Layer**:
+  - `public/llms.txt` and `public/pricing.md` - structured Markdown for AI assistants and LLM crawlers.
+  - `public/.well-known/agent.json` - Web Agent Card / AEO discovery manifest.
+  - `public/.well-known/security.txt` - RFC 9116 security reporting contact.
+  - `public/openapi.json` - backend API specification.
+  - `app/robots.ts` - explicit crawler allowlists (`GPTBot`, `ClaudeBot`, `PerplexityBot`, `Google-Extended`, etc.).
 
-- **`/affiliate`** and **`/ambassador`** - marketing pages for both growth programs. Both programs are gated in the product itself by a boot-time feature flag (`config.growth.affiliateProgramEnabled` / `ambassadorProgramEnabled`), default-off in production until explicitly enabled.
-- **`/security`** - a real responsible-disclosure policy plus a "what data lives where" breakdown.
-- **`/stats`** - a public live board of the VeriWorkly GitHub repo's own dev activity.
-- **`/style-guide`** - a public showcase of the shared design system, the public counterpart to `packages/ui`.
-- **`/roadmap`** and subpages - fully backend-driven from the same data admins manage in Studio.
-- **`/compare/[tool]`** - competitor comparison pages generated from `config/compare.ts`. See the accuracy contract below; these make dated claims about third parties.
-- **`/templates`** - a resume/cover-letter template showcase (distinct from the Portfolio app's own template gallery).
-- **`/api/og`** - runtime Open Graph card generator. Backs the share image for `/stats`, `/pricing`, `/changelog`, every `/compare/*`, `/affiliate`, `/ambassador`, and every `/roadmap/[id]`. (Static card authoring tool lives at `/og-generator` in `apps/portfolio`).
-- **An "AI answer engine" content layer** - `public/llms.txt` and `public/pricing.md` are machine-readable summaries of the product aimed at AI crawlers and chat assistants; `robots.ts` explicitly allowlists `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `PerplexityBot`, `Google-Extended`, and `CCBot`.
-
-## ✅ Content accuracy contract
+## ✅ Content Accuracy Contract
 
 This site makes pricing, quota, and capability claims that are also enforced in code elsewhere in the monorepo. When those drift, the site publishes false information - including into structured data (JSON-LD) that search engines and LLMs quote back at users. Reconcile **downward**, never upward:
 
-1. **`apps/server/src/services/productCatalog.ts`** - the only real source of truth for what exists and what it costs. Prices are in cents. Credit allowances live in `creditAllowance`.
-2. **`apps/server/src/services/ats/quota.ts`** and **`profileImportQuotaService.ts`** - the real source of truth for every "N scans / N imports" number.
-3. **`public/pricing.md`** and **`public/llms.txt`** - the human-maintained prose layer. Must match (1) and (2).
-4. **Site UI copy** - `features/pricing/**`, `features/faq/data/faqItems.ts`, `features/landing/faq/data/faqItems.ts`, `config/compare.ts`, and the JSON-LD blocks in `app/layout.tsx` + `app/(marketing)/page.tsx` + `app/(marketing)/pricing/page.tsx`. Must match (3).
+1. **`apps/server/src/services/productCatalog.ts`** - the single source of truth for products, prices (in cents), and credit allowances.
+2. **`apps/server/src/services/ats/quota.ts`** and **`profileImportQuotaService.ts`** - source of truth for ATS scan and import quotas.
+3. **`public/pricing.md`**, **`public/llms.txt`**, and **`public/.well-known/agent.json`** - machine-readable docs that must match (1) and (2).
+4. **Site UI Copy & JSON-LD**: `features/pricing/**`, `features/faq/data/faqItems.ts`, `features/landing/faq/data/faqItems.ts`, `features/compare/**`, and schema blocks in `app/layout.tsx`, `app/(marketing)/page.tsx`, and `app/(marketing)/pricing/page.tsx`.
 
-Known gotchas when editing:
+### Known Gotchas When Editing Copy
 
-- **The `one_day` billing interval is the 3-day Sprint Pass.** The key is historical; `billingService.ts` grants `addDays(eventTime, 3)`. Do not "fix" the label to 1 day, and make sure the Dodo product's own billing period matches 3 days - `currentPeriodEnd` prefers the provider's `next_billing_date` over the local fallback.
-- **"Unlimited" GitHub import is capped** at `PAID_GITHUB_IMPORT_DAILY_LIMIT` (50/day) to protect the shared server token. Don't write "unlimited" without that qualifier.
-- **The free tier has zero AI writing credits.** Any free-tier copy using "generate", "AI-tailored", or similar is wrong. LinkedIn import is AI-parsed, so check the entitlement path before describing it as a free-tier feature.
-- **Portfolio publishing is free on the core templates, paid on the premium ones.** `portfolioService.publish` gates `nimbus` and `cipher` behind a subscription; `signal` and `atelier` are free and publish with a "Built with VeriWorkly" badge that the `watermark_removal` entitlement removes. Two things to keep copy honest about: publishing is **still blocked in production** for everyone but the admin email (`portfolioController.ts`), so every publishing claim needs an "at launch" qualifier; and the badge is portfolio-only - document exports carry no watermark on any tier, so never let one row imply the other.
-- **AI model names are not in this repo.** They resolve at runtime from a private config via `env:VAR` indirection (`apps/server/src/services/aiPrivateConfig.ts`). Hardcoding a model name in marketing copy creates a claim that can silently go stale - prefer capability language.
-- **`config/compare.ts` makes dated claims about competitors' pricing.** `PRICING_VERIFIED_AT` is displayed to users; re-verify against each vendor's live pricing page before bumping it.
+- **The `one_day` billing interval is the 3-day Sprint Pass.** `billingService.ts` grants `addDays(eventTime, 3)`. Do not "fix" the label to 1 day; ensure provider billing periods match 3 days.
+- **"Unlimited" GitHub import is capped** at `PAID_GITHUB_IMPORT_DAILY_LIMIT` (50/day) to protect the shared server token. Never write "unlimited" without this qualifier.
+- **The free tier has zero AI writing credits.** Do not use "generate", "AI-tailored", or similar for free-tier copy. LinkedIn import is AI-parsed, so verify entitlements before describing features as free.
+- **Portfolio publishing is free on core templates, paid on premium ones.** Nimbus and Cipher require a subscription; Signal and Atelier publish free with a "Built with VeriWorkly" badge. Document exports (PDF/DOCX) never carry watermarks on any tier.
+- **AI model names are not hardcoded.** They resolve at runtime via `env:VAR` indirection (`apps/server/src/services/aiPrivateConfig.ts`). Prefer capability-based phrasing over specific model names that can become stale.
+- **Competitor comparison pricing claims.** `features/compare/data/competitors.ts` includes `PRICING_VERIFIED_AT`. Re-verify live vendor pricing before bumping this date.
 
-Before shipping copy that states a number, grep the server for it.
+## ♿ Accessibility Baseline
 
-## ♿ Accessibility baseline
+Target is **WCAG 2.2 Level AA**:
 
-Target is WCAG 2.2 Level AA. Conventions in place that new code must not regress:
-
-- `AppShell` (`@veriworkly/ui`) provides the single `<main>` landmark. Page components render into it - don't nest another `<main>`.
-- Modal/overlay focus management goes through `hooks/use-focus-trap.ts`, which handles focus-in, focus restore, Escape, and body scroll lock. Use it rather than hand-rolling.
-- **Anything clickable must be a `<button>` or `<a>`.** A `div`/`motion.div` with `onClick` is not keyboard-reachable and has no role. Disclosure widgets additionally need `aria-expanded` and `aria-controls`.
-- Icon-only controls need an `aria-label`; the icon itself gets `aria-hidden="true"`.
-- Inputs need a real `<label>` or `aria-label` - a `placeholder` is not an accessible name.
-- Decorative product mockups (the hero cards, bento previews) contain fabricated sample data. Mark them `aria-hidden="true"` so assistive tech doesn't read invented metrics as fact, and don't use `<h1>`–`<h6>` inside them - it corrupts the page heading outline.
-- State conveyed by colour alone fails 1.4.1. Selected filter chips need `aria-pressed`; comparison-table check/dash cells need `sr-only` text.
-- Sections that hardcode `zinc-*`/`gray-*` instead of design-system tokens bypass theming **and** the contrast that was checked for those tokens. Verify both themes at 4.5:1 (normal text) / 3:1 (large text ≥24px or ≥19px bold).
+- `AppShell` (`@veriworkly/ui`) provides the single `<main>` landmark. Page components render into it - do not nest another `<main>`.
+- Modal/overlay focus management uses `hooks/use-focus-trap.ts` (handles focus trapping, focus restoration, Escape key, and body scroll locking).
+- **Interactive elements**: Anything clickable must be a `<button>` or `<a>`. Disclosure widgets must include `aria-expanded` and `aria-controls`.
+- **Labels**: Icon-only controls must have an `aria-label`; icons take `aria-hidden="true"`. Form inputs must have an explicit `<label>` or `aria-label`.
+- **Decorative mockups**: Hero preview cards and bento cards containing demo data must include `aria-hidden="true"` and avoid heading tags (`<h1>`-`<h6>`) that corrupt the document outline.
+- **Color contrast**: Tokens in `themes.css` are calibrated to WCAG AA contrast (4.5:1 for normal text, 3:1 for large text). Avoid raw ad-hoc `zinc-*`/`gray-*` classes that bypass theming. Filter chips and toggles must use `aria-pressed` or `aria-selected` rather than color alone.
 
 ## 📁 Folder Structure
 
-- `app/`: Next.js routes, layouts, `robots.ts`, `sitemap.ts`, and the `/api/og` handler.
-- `components/`: Shared layout and presentational components (navbar, footer, legal, roadmap, marketing primitives).
-- `config/`: Static content data - `site.ts` (URLs, nav, keywords), `compare.ts` (competitor matrix), `templates.ts` (template catalogue).
-- `features/`: Domain-specific marketing logic (landing sections, affiliate, ambassador, pricing, FAQ, roadmap, stats, style guide, templates).
-- `hooks/`, `providers/`, `utils/`, `lib/`: Focus trap, theme/motion providers, metadata + JSON-LD builders, server-side API helpers.
-- `public/`: Static assets, OG images, and the `llms.txt`/`pricing.md` AI-crawler content layer.
+- `app/` - Next.js App Router pages, marketing route group `(marketing)/`, layouts, `robots.ts`, `sitemap.ts`, and `/api/og`.
+- `components/` - Shared UI components (layout, navbar, footer, marketing primitives, brand swatches, roadmap kanban).
+- `config/` - Static configuration:
+  - `brand.ts` - Color tokens, palette metadata, brand download assets.
+  - `site.ts` - Canonical URLs, external links, navigation structure, legal contacts.
+  - `templates.ts` - Resume, cover letter, and portfolio template catalog summaries.
+- `features/` - Domain modules (`landing`, `ats-checker`, `compare`, `pricing`, `roadmap`, `changelog`, `templates`, `stats`, `faq`, `about`, `legal`, `affiliate`, `ambassador`).
+- `hooks/`, `providers/`, `utils/`, `lib/` - Client hooks (`useMediaQuery`, `useFocusTrap`, etc.), theme/motion providers, JSON-LD schema helpers, metadata builders, and API fetch wrappers.
+- `scripts/`:
+  - `check-design-tokens.mts` - Validates token consistency across `themes.css`, `brand.ts`, and `DESIGN.md`.
+  - `build-brand-kit.mts` - Generates the downloadable `veriworkly-brand-kit.zip` bundle.
+- `tests/`:
+  - `tests/contracts/` - Automated contract tests ensuring pricing claims, ATS quotas, changelog markdown parsing, and competitor data remain synchronized.
+- `public/` - Static images, logos, templates previews, and the machine-readable discovery layer (`llms.txt`, `pricing.md`, `.well-known/agent.json`, `.well-known/security.txt`, `openapi.json`).
 
-## 🔍 Checks
+## 🔍 Validation & Scripts
+
+Run these commands to validate site integrity:
 
 ```bash
-npm run lint          # eslint
-npm run format        # prettier --check
-npm run build         # production build
+# Contract testing (asserts marketing claims match backend catalogs and quotas)
+npm run test:contracts
+
+# Design token verification (themes.css, brand.ts, DESIGN.md)
+npm run check:design
+
+# Build brand kit asset archive (runs automatically in prebuild)
+npm run build:brand-kit
+
+# Code quality & formatting
+npm run lint
+npm run format
+npm run format:write
+
+# Production build
+npm run build
 ```
 
-`sitemap.ts` and the roadmap/changelog services fetch from the backend at build time but swallow their own failures, so a backend outage degrades the sitemap to its static routes rather than failing the build.
+`sitemap.ts` and the roadmap/changelog services fetch from the backend at build time and gracefully fall back to static definitions if the backend is unreachable during build.

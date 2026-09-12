@@ -12,16 +12,10 @@ const FOCUSABLE_SELECTOR = [
 ].join(",");
 
 interface UseFocusTrapOptions {
-  /** Called when the user presses Escape while the trap is active. */
   onEscape?: () => void;
-  /** Locks `document.body` scrolling while the trap is active. Defaults to true. */
   lockScroll?: boolean;
 }
 
-/**
- * Traps Tab focus inside `containerRef` while `active` is true, moves focus into
- * the container on open, and restores it to the previously focused element on close.
- */
 export const useFocusTrap = <T extends HTMLElement>(
   active: boolean,
   containerRef: React.RefObject<T | null>,
@@ -29,8 +23,6 @@ export const useFocusTrap = <T extends HTMLElement>(
 ) => {
   const escapeRef = useRef(onEscape);
 
-  // Kept in a ref so a caller passing an inline arrow doesn't tear down and
-  // rebuild the trap (and steal focus) on every render.
   useEffect(() => {
     escapeRef.current = onEscape;
   }, [onEscape]);

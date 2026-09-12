@@ -48,6 +48,7 @@ export const LandingFooter = ({
     <footer className="relative z-0 w-full overflow-hidden border-t border-black/5 bg-[#FAFAFA] pt-24 dark:border-white/5 dark:bg-[#0A0A0A]">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-b from-transparent via-blue-50/50 to-blue-100/80 mix-blend-multiply dark:via-blue-900/10 dark:to-blue-900/20 dark:mix-blend-screen" />
+
         <div
           className="absolute inset-0 opacity-[0.05] mix-blend-overlay dark:opacity-[0.02]"
           style={{
@@ -76,11 +77,6 @@ export const LandingFooter = ({
           <div className="grid grid-cols-2 gap-8 pt-2 md:grid-cols-3">
             {footerColumns.map((column) => (
               <div key={column.title}>
-                {/*
-                  h3, not h4. These sit directly under the footer's h2 above, so h4
-                  skipped a level on every page of the site - the single most
-                  widespread heading defect there was.
-                */}
                 <h3 className="mb-6 font-semibold text-gray-900 dark:text-white">{column.title}</h3>
 
                 <ul className="space-y-4">

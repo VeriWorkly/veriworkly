@@ -5,17 +5,17 @@ import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
-import { faqs } from "@/features/faq/data/faqItems";
-import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
 import {
   AtsHero,
+  AtsFaqSection,
+  TierComparison,
   AtsDirectAnswer,
   AtsFailureTraps,
   AtsCategoriesGrid,
   AtsPipelineSection,
-  TierComparison,
-  AtsFaqSection,
 } from "@/features/ats-checker";
+import { faqs } from "@/features/faq/data/faqItems";
+import InteractiveCTA from "@/features/marketing/cta/InteractiveCTA";
 
 export const revalidate = false;
 export const dynamic = "force-static";
@@ -67,16 +67,6 @@ const pageFaqs = pageFaqIds
   .map((id) => faqs.find((faq) => faq.id === id))
   .filter((faq): faq is (typeof faqs)[number] => Boolean(faq));
 
-/**
- * These five questions render visibly on the page because they are the ones a visitor
- * to this tool actually asks - but they are NOT emitted as FAQPage JSON-LD.
- *
- * They are selected by id from the same `faqs` array that /faq emits in full, so
- * marking them up here would publish five verbatim-identical Question/Answer pairs on
- * two URLs. Google's structured data guidelines call that out directly, and it risks
- * both pages losing eligibility rather than one gaining it. /faq is the canonical
- * FAQPage; this page keeps the human-readable content and skips the duplicate markup.
- */
 export default function AtsCheckerPage() {
   const softwareSchema = {
     "@context": "https://schema.org",
@@ -154,36 +144,27 @@ export default function AtsCheckerPage() {
       />
 
       <div className="relative flex min-h-screen flex-col overflow-x-clip">
-        {/* Background Gradients & Grid */}
         <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
         <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[140px]" />
         <div className="pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full bg-blue-500/5 blur-[130px]" />
 
         <Container className="space-y-24 pt-28 pb-20 lg:space-y-32 lg:pt-36">
-          {/* Hero Section with Live Report Preview Showcase */}
           <AtsHero />
-
-          {/* Direct Answer & AEO Definitional Guide */}
           <AtsDirectAnswer />
-
-          {/* The 4 Fatal ATS Failure Traps */}
           <AtsFailureTraps />
-
-          {/* 4 Scoring Dimensions Bento Grid */}
           <AtsCategoriesGrid />
-
-          {/* 4-Step ATS Pipeline & 3 Score Realities */}
           <AtsPipelineSection />
 
-          {/* Tier Comparison Matrix Section */}
           <section className="border-border/40 space-y-10 border-t pt-16">
             <div className="space-y-2 text-left">
               <span className="text-accent font-mono text-[10px] font-bold tracking-widest uppercase">
                 Tier Comparison
               </span>
+
               <h2 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                 Score for free. Unlock the full breakdown when you are ready.
               </h2>
+
               <p className="text-muted max-w-2xl text-xs leading-relaxed sm:text-sm">
                 Anyone can check their resume score and see which area drags it down. The
                 rule-by-rule reasoning takes a free account, and AI explanations are included on
@@ -194,10 +175,8 @@ export default function AtsCheckerPage() {
             <TierComparison />
           </section>
 
-          {/* Frequently Asked Questions Interactive Accordion */}
           <AtsFaqSection faqs={pageFaqs} />
 
-          {/* Legal and Trademark Notice */}
           <div className="border-border/30 border-t pt-8 text-center">
             <p className="text-muted/70 mx-auto max-w-3xl text-[11px] leading-relaxed">
               <strong>Disclaimer:</strong> VeriWorkly ATS Checker evaluates documents against
@@ -210,7 +189,6 @@ export default function AtsCheckerPage() {
           </div>
         </Container>
 
-        {/* Global Interactive CTA */}
         <InteractiveCTA />
       </div>
     </>

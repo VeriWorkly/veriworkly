@@ -1,4 +1,5 @@
 import { FileSignature, FileText, Globe, User } from "lucide-react";
+
 import { Reveal } from "@/components/marketing/Reveal";
 
 const documents = [

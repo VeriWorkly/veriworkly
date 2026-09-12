@@ -1,13 +1,13 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import {
+  motion,
+  Transition,
+  MotionProps,
   AnimatePresence,
   AnimatePresenceProps,
-  motion,
-  MotionProps,
-  Transition,
 } from "framer-motion";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 
 import { cn } from "@veriworkly/ui";
 
@@ -22,8 +22,8 @@ interface TextRotateProps {
   staggerDuration?: number;
   staggerFrom?: "first" | "last" | "center" | number | "random";
   transition?: Transition;
-  loop?: boolean; // Whether to start from the first text when the last one is reached
-  auto?: boolean; // Whether to start the animation automatically
+  loop?: boolean;
+  auto?: boolean;
   splitBy?: "words" | "characters" | "lines" | string;
   onNext?: (index: number) => void;
   mainClassName?: string;
@@ -75,19 +75,23 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
         const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
         return Array.from(segmenter.segment(text), ({ segment }) => segment);
       }
+
       // Fallback for browsers that don't support Intl.Segmenter
       return Array.from(text);
     };
 
     const elements = useMemo(() => {
       const currentText = texts[currentTextIndex];
+
       if (splitBy === "characters") {
         const text = currentText.split(" ");
+
         return text.map((word, i) => ({
           characters: splitIntoCharacters(word),
           needsSpace: i !== text.length - 1,
         }));
       }
+
       return splitBy === "words"
         ? currentText.split(" ")
         : splitBy === "lines"
@@ -98,16 +102,20 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
     const getStaggerDelay = useCallback(
       (index: number, totalChars: number) => {
         const total = totalChars;
+
         if (staggerFrom === "first") return index * staggerDuration;
         if (staggerFrom === "last") return (total - 1 - index) * staggerDuration;
+
         if (staggerFrom === "center") {
           const center = Math.floor(total / 2);
           return Math.abs(center - index) * staggerDuration;
         }
+
         if (staggerFrom === "random") {
           const randomIndex = Math.floor(Math.random() * total);
           return Math.abs(randomIndex - index) * staggerDuration;
         }
+
         return Math.abs(staggerFrom - index) * staggerDuration;
       },
       [staggerFrom, staggerDuration],
@@ -119,6 +127,7 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
         setCurrentTextIndex(newIndex);
         onNext?.(newIndex);
       },
+
       [onNext],
     );
 
@@ -130,9 +139,7 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
             : currentTextIndex
           : currentTextIndex + 1;
 
-      if (nextIndex !== currentTextIndex) {
-        handleIndexChange(nextIndex);
-      }
+      if (nextIndex !== currentTextIndex) handleIndexChange(nextIndex);
     }, [currentTextIndex, texts.length, loop, handleIndexChange]);
 
     const previous = useCallback(() => {
@@ -143,25 +150,20 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
             : currentTextIndex
           : currentTextIndex - 1;
 
-      if (prevIndex !== currentTextIndex) {
-        handleIndexChange(prevIndex);
-      }
+      if (prevIndex !== currentTextIndex) handleIndexChange(prevIndex);
     }, [currentTextIndex, texts.length, loop, handleIndexChange]);
 
     const jumpTo = useCallback(
       (index: number) => {
         const validIndex = Math.max(0, Math.min(index, texts.length - 1));
-        if (validIndex !== currentTextIndex) {
-          handleIndexChange(validIndex);
-        }
+
+        if (validIndex !== currentTextIndex) handleIndexChange(validIndex);
       },
       [texts.length, currentTextIndex, handleIndexChange],
     );
 
     const reset = useCallback(() => {
-      if (currentTextIndex !== 0) {
-        handleIndexChange(0);
-      }
+      if (currentTextIndex !== 0) handleIndexChange(0);
     }, [currentTextIndex, handleIndexChange]);
 
     // Expose all navigation functions via ref
@@ -179,6 +181,7 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
     useEffect(() => {
       if (!auto) return;
       const intervalId = setInterval(next, rotationInterval);
+
       return () => clearInterval(intervalId);
     }, [next, rotationInterval, auto]);
 
@@ -213,9 +216,9 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
                 <span key={wordIndex} className={cn("inline-flex", splitLevelClassName)}>
                   {wordObj.characters.map((char, charIndex) => (
                     <motion.span
+                      exit={exit}
                       initial={initial}
                       animate={animate}
-                      exit={exit}
                       key={charIndex}
                       transition={{
                         ...transition,

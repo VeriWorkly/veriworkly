@@ -72,20 +72,20 @@ const FAQPage = () => {
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScriptProps(faqSchema)} />
 
       <div className="relative flex min-h-screen flex-col overflow-hidden">
-        {/* Ambient background glows */}
         <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
         <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[140px]" />
         <div className="pointer-events-none absolute top-96 right-10 -z-10 h-120 w-120 rounded-full bg-blue-500/5 blur-[130px]" />
 
-        {/* Hero Section */}
         <section className="relative w-full overflow-hidden pt-28 pb-14 md:pt-36 md:pb-18">
           <div className="mx-auto max-w-4xl px-6 text-center md:px-8">
             <Reveal priority>
               <div className="border-border/80 bg-card/60 inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs backdrop-blur-md">
                 <span className="bg-accent h-2 w-2 animate-pulse rounded-full" />
+
                 <span className="text-foreground font-mono text-[10px] font-bold tracking-widest uppercase">
                   Help Center & Knowledge Base
                 </span>
+
                 <span className="text-muted/60 font-mono text-[10px]">|</span>
                 <span className="text-muted text-[11px]">{faqs.length} Answers</span>
               </div>
@@ -105,7 +105,6 @@ const FAQPage = () => {
               </p>
             </Reveal>
 
-            {/* Quick Category Chips Preview */}
             <Reveal delay={0.18}>
               <div className="mt-8 flex flex-wrap justify-center gap-2">
                 {categories
@@ -124,12 +123,10 @@ const FAQPage = () => {
           </div>
         </section>
 
-        {/* Main Interactive FAQ Filter & Accordion Section */}
         <section className="mx-auto w-full max-w-7xl px-6 pb-20 md:px-8 md:pb-24">
           <FaqInteractiveSection />
         </section>
 
-        {/* Bottom Help Desk & Open Source Banner */}
         <section className="mx-auto w-full max-w-7xl px-6 pb-20 md:px-8 md:pb-24">
           <Reveal className="border-border/60 bg-card/50 relative overflow-hidden rounded-3xl border p-8 shadow-xl backdrop-blur-md sm:p-12">
             <div className="bg-accent/10 pointer-events-none absolute top-0 right-0 size-80 rounded-full blur-3xl" />

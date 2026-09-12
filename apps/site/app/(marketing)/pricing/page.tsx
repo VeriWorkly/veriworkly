@@ -46,25 +46,9 @@ const breadcrumbSchema = {
   ],
 };
 
-/**
- * Structured data that disagrees with the page is a manual-action risk, and every paid
- * offer below is currently unbuyable - checkout throws for all callers during this
- * phase (see PAYMENTS_BLOCKED).
- *
- * Rather than delete the offers, which would lose the pricing rich result entirely,
- * they are marked PreOrder so the markup states what the page states. The free tier is
- * genuinely available now, so it keeps InStock. Flip `PAID_AVAILABILITY` to InStock in
- * the same change that opens payments.
- */
 const PAID_AVAILABILITY = "https://schema.org/PreOrder";
 const FREE_AVAILABILITY = "https://schema.org/InStock";
 
-/**
- * One array, everything derived. `offerCount`, `lowPrice`, and `highPrice` were all
- * hardcoded alongside the list, so adding or repricing an offer silently produced
- * markup that contradicted itself. Every offer also carries `url` - without one an
- * offer is not actionable and cannot produce a rich result.
- */
 const PRICING_OFFERS = [
   { name: "Free", price: 0, free: true },
   { name: "3-Day Sprint Pass", price: 2.99 },
@@ -101,17 +85,6 @@ const pricingSchema = {
   },
 };
 
-/**
- * Payments are off for everyone during this phase, matching the server: checkout
- * throws for every caller, and `portfolioController` refuses to publish for any
- * non-admin email.
- *
- * This is a flat constant rather than a per-user computation on purpose. The marketing
- * site has no session - it never reads the user - so it cannot tell whether the visitor
- * is the admin, and a previous comment here claimed it resolved `ADMIN_EMAIL`
- * server-side, which it never did. The admin exercises checkout from the studio, where
- * the session actually exists. When payments open, flip this to `false`.
- */
 const PAYMENTS_BLOCKED = true;
 
 const PricingPage = async () => {
@@ -128,12 +101,6 @@ const PricingPage = async () => {
         dangerouslySetInnerHTML={jsonLdScriptProps(pricingSchema)}
       />
 
-      {/*
-        No Suspense boundary here. The only await on this page is fetchInrPerUsd
-        above, which resolves before render; the wrapper that used to sit here
-        awaited nothing, so it never suspended and its fallback - a second full
-        copy of the PricingExperience client tree - was pure weight.
-      */}
       <PricingExperience paymentsBlocked={PAYMENTS_BLOCKED} inrPerUsd={inrPerUsd} />
     </>
   );

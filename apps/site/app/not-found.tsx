@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ArrowRight, Compass, LayoutTemplate } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
@@ -25,14 +25,6 @@ export const metadata: Metadata = buildPageMetadata({
   noIndex: true,
 });
 
-/**
- * Root-level 404 boundary.
- *
- * Serves every unmatched URL outside the (marketing) route group, including
- * /affiliate/* and /ambassador/*. Next.js passes NO props to not-found.tsx, so
- * this must not accept `error`/`reset` — an earlier revision was a copy of
- * app/error.tsx and its primary button called an undefined `reset()`.
- */
 const NotFound = () => {
   return (
     <main className="w-full bg-[#f3f4f6] p-2 md:p-3 lg:p-4 dark:bg-black">
@@ -69,10 +61,11 @@ const NotFound = () => {
             >
               Back to Home
               <ArrowRight
-                className="h-4 w-4 transition-transform group-hover:translate-x-1"
                 aria-hidden="true"
+                className="h-4 w-4 transition-transform group-hover:translate-x-1"
               />
             </Link>
+
             <Link
               href="/templates"
               className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-black/10 bg-white/70 px-8 text-base font-medium text-zinc-800 backdrop-blur-md transition-colors hover:border-blue-500/30 hover:text-blue-600 dark:border-white/10 dark:bg-black/40 dark:text-zinc-200 dark:hover:text-blue-400"

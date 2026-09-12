@@ -76,34 +76,15 @@ export const metadata: Metadata = {
     },
   },
 
-  // No `languages` map: see utils/metadata.ts. One language, one version of every
-  // page, so hreflang conveys nothing - and `en-US` region-locked a global service.
   alternates: {
     canonical: "/",
   },
 };
 
-/**
- * Stable @id anchors. Every schema on the site references the founder, the
- * organisation, and the site through these rather than re-declaring them, so a parser
- * can resolve six mentions of "VeriWorkly" as one entity instead of six unrelated ones.
- *
- * Offers deliberately live on /pricing only. They used to be declared here too, which
- * shipped seven Offer nodes into the <head> of /privacy and /terms and gave /pricing
- * two competing offer graphs for the same seven products.
- */
+const WEBSITE_ID = `${siteConfig.url}/#website`;
 const PERSON_ID = `${siteConfig.url}/#gautam-raj`;
 const ORGANIZATION_ID = `${siteConfig.url}/#organization`;
-const WEBSITE_ID = `${siteConfig.url}/#website`;
 
-/**
- * One real, named human. VeriWorkly is built and maintained by one person, and saying
- * so plainly is a stronger trust signal than an implied team - it is also verifiable
- * from the public repository and the live GitHub metrics on /stats.
- *
- * `knowsAbout` belongs here rather than on the Organization: expertise is a property
- * of people.
- */
 const personSchema = {
   "@context": "https://schema.org",
   "@type": "Person",
@@ -171,16 +152,6 @@ const organizationSchema = {
   sameAs: [siteConfig.links.github, siteConfig.links.twitter, siteConfig.links.linkedin],
 };
 
-/**
- * The root WebSite node. Without one there is no site-level `inLanguage` and no
- * publisher linkage from the site to the organisation.
- *
- * Deliberately no `SearchAction`. A sitelinks searchbox needs a URL that returns
- * results for a query string, and this site has none: /templates and /faq both filter
- * in the client (see TemplateExplorer, which keeps filter state out of searchParams so
- * the route can stay static). Declaring one would advertise a deep link that renders
- * the unfiltered page - a broken promise to the one visitor who uses it.
- */
 const webSiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",

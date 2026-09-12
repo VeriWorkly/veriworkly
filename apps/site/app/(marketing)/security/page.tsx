@@ -4,8 +4,8 @@ import { Container } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
 
-import { buildPageMetadata } from "@/utils/metadata";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { buildPageMetadata } from "@/utils/metadata";
 
 import {
   SecurityHero,

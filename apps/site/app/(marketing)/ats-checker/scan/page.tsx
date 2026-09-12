@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+
 import Link from "next/link";
 import { ChevronLeft, Lock } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
-import { buildPageMetadata } from "@/utils/metadata";
-import { jsonLdScriptProps } from "@/utils/json-ld";
-import { AtsCheckerTool } from "@/features/ats-checker";
+
 import { Container } from "@veriworkly/ui";
+
+import { jsonLdScriptProps } from "@/utils/json-ld";
+import { buildPageMetadata } from "@/utils/metadata";
+
+import { AtsCheckerTool } from "@/features/ats-checker";
 
 const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
   "Scan Your Resume",
@@ -74,6 +78,7 @@ export default function AtsCheckerScanPage() {
               <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
                 Scan your resume
               </h1>
+
               <p className="text-muted text-xs leading-relaxed sm:text-sm">
                 Two steps and a score. Add a job description in step two if you want keyword match
                 for a specific role.

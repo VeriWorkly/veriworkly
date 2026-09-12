@@ -52,12 +52,6 @@ const socialLinks: LandingFooterSocialLink[] = [
   { name: "LinkedIn", href: siteConfig.links.linkedin, iconSrc: "/icons/socials/linkedIn.svg" },
 ];
 
-/**
- * The bottom bar previously repeated the affiliate and ambassador links that already
- * appear under "Organization" above, while /ats-checker - the flagship acquisition
- * page - had no footer link at all. These are the two utility pages that earn a slot
- * here instead.
- */
 const navLinks: LandingFooterLink[] = [
   { name: "Free ATS Checker", href: "/ats-checker" },
   { name: "Public Stats", href: "/stats" },
@@ -71,16 +65,16 @@ const legalLinks: LandingFooterLink[] = [
 const Footer = () => {
   return (
     <LandingFooter
+      ctaHref="/contact"
+      navLinks={navLinks}
+      authorName="Gautam Raj"
+      legalLinks={legalLinks}
+      socialLinks={socialLinks}
+      ctaText="Talk to the team"
+      footerColumns={footerColumns}
+      logoSrc="/veriworkly-logo.png"
       shortName={siteConfig.shortName}
       headingPrefix="Are You Interested"
-      ctaText="Talk to the team"
-      ctaHref="/contact"
-      logoSrc="/veriworkly-logo.png"
-      authorName="Gautam Raj"
-      socialLinks={socialLinks}
-      footerColumns={footerColumns}
-      navLinks={navLinks}
-      legalLinks={legalLinks}
     />
   );
 };

@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ArrowRight, Compass, LayoutTemplate } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
@@ -61,10 +61,11 @@ const MarketingNotFound = () => {
             >
               Back to Home
               <ArrowRight
-                className="h-4 w-4 transition-transform group-hover:translate-x-1"
                 aria-hidden="true"
+                className="h-4 w-4 transition-transform group-hover:translate-x-1"
               />
             </Link>
+
             <Link
               href="/templates"
               className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-black/10 bg-white/70 px-8 text-base font-medium text-zinc-800 backdrop-blur-md transition-colors hover:border-blue-500/30 hover:text-blue-600 dark:border-white/10 dark:bg-black/40 dark:text-zinc-200 dark:hover:text-blue-400"

@@ -82,8 +82,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       `${competitor.name} pricing comparison`,
       `${competitor.name} ATS checker alternative`,
       "free resume builder no watermark",
-      // Derived, not hardcoded: "best resume builder 2026" was baked into all six
-      // compare pages and went stale on a fixed date with nothing to catch it.
       `best resume builder ${new Date().getFullYear()}`,
     ],
   });

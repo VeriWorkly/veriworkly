@@ -95,9 +95,7 @@ const howToSchema = {
   name: "How to Build an ATS Resume & Web Portfolio with VeriWorkly",
   description:
     "Learn how to build a professional, ATS-friendly resume and web portfolio in 4 simple steps without signing up.",
-  // Every step carries `position` and `url`. Two of the four previously had neither,
-  // which makes a step list harder to parse than one that is consistently annotated -
-  // and partial coverage is worse than none, because it implies the gaps are ordering.
+
   step: [
     {
       "@type": "HowToStep",
@@ -129,9 +127,7 @@ const howToSchema = {
     },
   ],
   totalTime: "PT5M",
-  // estimatedCost takes MonetaryAmount or text, not HowToSupply - the previous value
-  // was typed wrong and would not validate. The /ats-checker HowTo already gets this
-  // right.
+
   estimatedCost: {
     "@type": "MonetaryAmount",
     currency: "USD",

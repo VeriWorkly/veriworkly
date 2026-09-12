@@ -1,14 +1,14 @@
 import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/config/site";
-import { COMPETITORS } from "@/config/compare";
+import { COMPETITORS } from "@/features/compare";
 import { documentTypeSummaries, templateSummaries } from "@/config/templates";
 
-import { fetchRoadmapSitemapEntries } from "@/features/roadmap/services/roadmap-backend";
 import {
   fetchChangelogIndex,
   fetchLatestChangelogPublishedAt,
 } from "@/features/changelog/services/changelog-backend";
+import { fetchRoadmapSitemapEntries } from "@/features/roadmap/services/roadmap-backend";
 
 export const revalidate = 604800;
 
@@ -164,10 +164,6 @@ const publicRoutes = [
 ] satisfies MetadataRoute.Sitemap;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Evaluated per regeneration, not once at module load. `const DEPLOYED_AT = new
-  // Date()` at module scope froze at server start, so with revalidate = 604800 every
-  // static route reported one identical timestamp for a week - making the field
-  // useless as a freshness signal.
   const lastModified = new Date();
 
   const templateRoutes = documentTypeSummaries
@@ -184,9 +180,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }));
 
-  // Both helpers swallow their own failures and return empty/null. A backend blip must
-  // degrade the sitemap to its static routes, never fail the route - an erroring
-  // sitemap.xml is worse for crawlers than a temporarily shorter one.
   const [roadmapEntries, changelogLastModified, changelogEntries] = await Promise.all([
     fetchRoadmapSitemapEntries(),
     fetchLatestChangelogPublishedAt(),
