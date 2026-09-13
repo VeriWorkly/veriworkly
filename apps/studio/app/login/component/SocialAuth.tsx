@@ -38,10 +38,12 @@ const SocialAuth = ({ isLoading, setIsLoading }: SocialAuthProps) => {
         `/login/callback?callbackURL=${encodeURIComponent(callbackURL)}` +
         (ref ? `&ref=${encodeURIComponent(ref)}` : "");
       const absoluteCallbackURL = `${window.location.origin}${callbackPath}`;
+      const absoluteErrorCallbackURL = `${window.location.origin}/login?error=cancelled`;
 
       await authClient.signIn.social({
         provider,
         callbackURL: absoluteCallbackURL,
+        errorCallbackURL: absoluteErrorCallbackURL,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Social authentication failed.";

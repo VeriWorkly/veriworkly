@@ -52,6 +52,25 @@ const LoginPage = () => {
     }).catch(() => sessionStorage.removeItem(`affiliate-click:${code}`));
   }, []);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const error = searchParams.get("error");
+
+    if (error) {
+      if (error === "access_denied" || error === "cancelled") {
+        toast.info("Sign in was cancelled.");
+      } else {
+        toast.error("Sign in failed. Please try again.");
+      }
+
+      // Clean up the error query parameters from URL without reloading
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      url.searchParams.delete("error_description");
+      window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+    }
+  }, []);
+
   const handleGuestAccess = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const callbackURL = searchParams.get("callbackURL");
