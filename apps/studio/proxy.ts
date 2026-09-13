@@ -2,15 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getSafeAuthCallback } from "@/lib/auth-redirect";
 
-/**
- * Every `/_next/` path is excluded, not just `static` and `image`.
- *
- * The framework's own endpoints live under that prefix too — in development
- * that includes the HMR socket, and answering its upgrade request with a normal
- * `NextResponse.next()` (carrying a `Set-Cookie`) fails the handshake. The dev
- * client then retries instead of bootstrapping, and the page never hydrates.
- * Auth redirects have no business on those routes in any case.
- */
 export const config = {
   matcher: ["/((?!_next/|favicon.ico).*)"],
 };
@@ -36,16 +27,10 @@ export default async function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/share") ||
-    // Test-only harness (`app/parity/[type]/[templateId]/page.tsx`): renders
-    // sample data with no auth by design, and 404s itself outside development.
-    // The guest-mode gate below would otherwise block the parity test suite,
-    // which never sends a guest cookie.
     pathname.startsWith("/parity") ||
     looksLikeStaticAssetPath(pathname);
 
-  if (isBypassed) {
-    return NextResponse.next();
-  }
+  if (isBypassed) return NextResponse.next();
 
   const sessionCookie =
     request.cookies.get("__Secure-veriworkly-auth.session_token")?.value ||
@@ -53,6 +38,7 @@ export default async function proxy(request: NextRequest) {
 
   const hasGuestCookie = request.cookies.get(GUEST_COOKIE_NAME)?.value === "true";
   const isAuthenticated = !!sessionCookie;
+
   const isLoginPage = pathname === "/login" || pathname.startsWith("/login/");
 
   if (isLoginPage) {
@@ -68,7 +54,6 @@ export default async function proxy(request: NextRequest) {
 
   const isProtectedPath = isProtectedStudioPath(pathname);
 
-  // Account-sensitive routes always require a real authenticated session
   if (isProtectedPath && !isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackURL", `${pathname}${request.nextUrl.search}`);
@@ -76,7 +61,6 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Dashboard / builder routes require either authentication or explicit guest mode
   if (!isAuthenticated && !hasGuestCookie) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackURL", `${pathname}${request.nextUrl.search}`);

@@ -1,39 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState } from "react";
+import { usePathname } from "next/navigation";
 
-import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { ChevronsLeft, ChevronsRight, Menu as MenuIcon, Search, X } from "lucide-react";
-
-import type { DocumentType } from "@/features/documents/core/document-types";
-
-import {
-  mainNav,
-  NavGroup,
-  bottomNav,
-  supportNav,
-  StudioNavLink,
-} from "@/components/dashboard/StudioNavigation";
-import { toast } from "sonner";
-import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
-import { AccountMenu } from "@/components/dashboard/AccountMenu";
-import { WorkspaceSearchModal } from "@/components/dashboard/WorkspaceSearchModal";
-import { NewDocumentButton, NewDocumentModal } from "@/components/dashboard/NewDocumentModal";
-import { ImportProfileModal } from "@/components/dashboard/ImportProfileModal";
-
-import { getDocumentEditorPath } from "@/features/documents/core/routes";
-import {
-  listDocuments,
-  createDocumentFromMasterProfile,
-} from "@/features/documents/services/document-workspace-service";
-import { fetchApiData } from "@/utils/fetchApiData";
-import type { BillingSummary } from "@/features/billing/types";
+import { StudioSidebar } from "./sidebar/StudioSidebar";
+import { MobileHeader } from "./header/MobileHeader";
+import { MobileNavDrawer } from "./header/MobileNavDrawer";
+import { DashboardModalsHost } from "./modals/DashboardModalsHost";
+import { useCreateDocument } from "./hooks/useCreateDocument";
+import { useStudioShortcuts } from "./hooks/useStudioShortcuts";
 
 import { cn } from "@/lib/utils";
-
 import { useUserStore } from "@/store/useUserStore";
 
 interface StudioShellProps {
@@ -43,10 +21,8 @@ interface StudioShellProps {
 
 const STUDIO_VERSION = "v3.24.3";
 
-const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
-  const router = useRouter();
+export function StudioShell({ children, mainClassName }: StudioShellProps) {
   const pathname = usePathname();
-
   const { user } = useUserStore();
 
   const [collapsed, setCollapsed] = useState(false);
@@ -59,51 +35,17 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
   const email = user?.email || "No account connected";
   const displayName = user?.name || user?.email?.split("@")[0] || "Local builder";
 
-  const createNewDocument = async (type: DocumentType) => {
-    const existingDocs = listDocuments(type);
+  const { createNewDocument } = useCreateDocument();
 
-    let isPaid = false;
-    if (user?.email) {
-      try {
-        const billingData = await fetchApiData<BillingSummary>("/billing/me");
-        isPaid = billingData && billingData.plan !== "FREE";
-      } catch {
-        // ignore fetch failures
-      }
-    }
-
-    if (!isPaid && existingDocs.length >= 1) {
-      toast.error(
-        `Free/guest users can only have 1 active ${type.toLowerCase().replace("_", " ")} at a time. Upgrade to Creator Pro to create unlimited documents.`,
-      );
-      return;
-    }
-
-    const document = await createDocumentFromMasterProfile(type);
-    router.push(getDocumentEditorPath(type, document.id));
+  const handleOpenImport = (provider: "linkedin" | "github" = "linkedin") => {
+    setImportProvider(provider);
+    setImportModalOpen(true);
   };
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-
-    const handleOpenImport = () => {
-      setImportProvider("linkedin");
-      setImportModalOpen(true);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("open-import-profile", handleOpenImport);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("open-import-profile", handleOpenImport);
-    };
-  }, []);
+  useStudioShortcuts({
+    onOpenSearch: () => setSearchOpen(true),
+    onOpenImport: handleOpenImport,
+  });
 
   return (
     <div
@@ -112,171 +54,44 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
         collapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[16.5rem_minmax(0,1fr)]",
       )}
     >
-      {/* Mobile Navigation */}
-      <aside className="border-border/70 bg-background/95 sticky top-0 z-40 hidden h-dvh flex-col border-r lg:flex">
-        <div
-          className={cn(
-            "flex items-center gap-3 px-3 py-4",
-            collapsed && "flex-col justify-center px-2",
-          )}
-        >
-          <Link href="/" className="shrink-0" aria-label="Go to VeriWorkly dashboard">
-            <Image
-              priority
-              width={36}
-              height={36}
-              aria-hidden="true"
-              alt="VeriWorkly Logo"
-              src="/veriworkly-logo.png"
-              className="h-9 w-9 rounded-xl object-contain"
-            />
-          </Link>
-
-          {!collapsed ? (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-extrabold tracking-tight">VeriWorkly</p>
-              <p className="text-muted truncate text-xs">Document Studio</p>
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            aria-expanded={!collapsed}
-            onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn(
-              "text-muted hover:bg-card hover:text-foreground hidden h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg transition lg:flex",
-              collapsed && "order-first",
-            )}
-          >
-            {collapsed ? (
-              <ChevronsRight className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
-            )}
-          </button>
-        </div>
-
-        <div className="px-2">
-          <NewDocumentButton collapsed={collapsed} onClick={() => setNewDocumentOpen(true)} />
-        </div>
-
-        {!collapsed ? (
-          <div className="px-2 pt-3">
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              className="border-border bg-card/70 text-muted hover:bg-card hover:text-foreground flex h-9 w-full items-center gap-2 rounded-lg border px-3 text-sm transition"
-            >
-              <Search className="h-4 w-4 shrink-0" />
-
-              <span className="truncate">Search workspace</span>
-              <span className="ml-auto text-[10px]">Ctrl K</span>
-            </button>
-          </div>
-        ) : null}
-
-        <nav className="flex-1 space-y-5 overflow-y-auto px-2 py-4" aria-label="Studio navigation">
-          <NavGroup items={mainNav} pathname={pathname} collapsed={collapsed} />
-          <NavGroup
-            label="Resources"
-            items={supportNav}
-            pathname={pathname}
-            collapsed={collapsed}
-          />
-        </nav>
-
-        <nav className="space-y-1 px-2 pb-3" aria-label="Studio utility navigation">
-          <NavGroup items={bottomNav} pathname={pathname} collapsed={collapsed} />
-        </nav>
-
-        <div className="border-border/70 p-2">
-          <AccountMenu
-            email={email}
-            collapsed={collapsed}
-            version={STUDIO_VERSION}
-            displayName={displayName}
-          />
-        </div>
-      </aside>
+      <StudioSidebar
+        email={email}
+        pathname={pathname}
+        collapsed={collapsed}
+        version={STUDIO_VERSION}
+        displayName={displayName}
+        onOpenSearch={() => setSearchOpen(true)}
+        onOpenNewDocument={() => setNewDocumentOpen(true)}
+        onToggleCollapse={() => setCollapsed((value) => !value)}
+      />
 
       <div className="flex min-h-dvh min-w-0 flex-col">
-        <header className="border-border/70 bg-background/90 sticky top-0 z-40 flex items-center justify-between border-b px-4 py-3 backdrop-blur lg:hidden">
-          <Link href="/" className="flex items-center gap-3" aria-label="VeriWorkly dashboard">
-            <Image
-              priority
-              width={36}
-              height={36}
-              alt="VeriWorkly"
-              src="/veriworkly-logo.png"
-              className="h-9 w-9 rounded-xl object-contain"
-            />
-
-            <span className="font-extrabold">VeriWorkly</span>
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <NewDocumentButton compact onClick={() => setNewDocumentOpen(true)} />
-
-            <button
-              type="button"
-              aria-expanded={mobileNavOpen}
-              aria-label="Toggle navigation"
-              onClick={() => setMobileNavOpen((open) => !open)}
-              className="border-border bg-card text-foreground flex h-10 w-10 items-center justify-center rounded-xl border"
-            >
-              {mobileNavOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-            </button>
-          </div>
-        </header>
+        <MobileHeader
+          mobileNavOpen={mobileNavOpen}
+          onOpenNewDocument={() => setNewDocumentOpen(true)}
+          onToggleMobileNav={() => setMobileNavOpen((open) => !open)}
+        />
 
         {mobileNavOpen ? (
-          <div className="border-border/70 bg-background/95 space-y-4 border-b p-4 backdrop-blur lg:hidden">
-            <nav className="grid gap-1" aria-label="Mobile studio navigation">
-              {[...mainNav, ...supportNav, ...bottomNav].map((item) => (
-                <StudioNavLink
-                  item={item}
-                  key={item.href}
-                  active={item.match(pathname)}
-                  onNavigate={() => setMobileNavOpen(false)}
-                />
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <AccountMenu
-                  collapsed={false}
-                  displayName={displayName}
-                  email={email}
-                  version={STUDIO_VERSION}
-                />
-              </div>
-              <ThemeToggle className="h-9 w-9 shrink-0 rounded-xl px-0" />
-            </div>
-          </div>
+          <MobileNavDrawer
+            email={email}
+            pathname={pathname}
+            version={STUDIO_VERSION}
+            displayName={displayName}
+            onClose={() => setMobileNavOpen(false)}
+          />
         ) : null}
 
-        <WorkspaceSearchModal
-          open={searchOpen}
-          onClose={() => setSearchOpen(false)}
-          onOpenDocument={(doc) => router.push(getDocumentEditorPath(doc.type, doc.id))}
-        />
-
-        <NewDocumentModal
-          open={newDocumentOpen}
-          onCreate={createNewDocument}
-          onClose={() => setNewDocumentOpen(false)}
-          onImportAction={(provider) => {
-            setImportProvider(provider);
-            setImportModalOpen(true);
-          }}
-        />
-
-        <ImportProfileModal
-          open={importModalOpen}
-          onClose={() => setImportModalOpen(false)}
-          initialProvider={importProvider}
+        <DashboardModalsHost
+          searchOpen={searchOpen}
+          importProvider={importProvider}
+          newDocumentOpen={newDocumentOpen}
+          importModalOpen={importModalOpen}
+          onOpenImport={handleOpenImport}
+          onCreateNewDocument={createNewDocument}
+          onCloseSearch={() => setSearchOpen(false)}
+          onCloseImportModal={() => setImportModalOpen(false)}
+          onCloseNewDocument={() => setNewDocumentOpen(false)}
         />
 
         <div
@@ -290,6 +105,6 @@ const StudioShell = ({ children, mainClassName }: StudioShellProps) => {
       </div>
     </div>
   );
-};
+}
 
 export default StudioShell;
