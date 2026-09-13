@@ -12,7 +12,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "prebuild": "prisma generate",
+    "prebuild": "npm run build -w @veriworkly/profile-core --if-present && npm run build -w @veriworkly/ats-engine --if-present && prisma generate",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint src",
