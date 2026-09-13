@@ -23,7 +23,7 @@ export function renderSubscriptionPurchasedEmail(name: string, planName: string)
     </table>
 
     <p style="margin:0;font-size:13px;line-height:1.6;color:#8f8c85;text-align:center;">
-      Manage your subscription anytime from your billing settings. Questions? Reach us at contact@veriworkly.com.
+      Manage your subscription anytime from your billing settings. Questions? Reach us at info@veriworkly.com.
     </p>
   `;
 
