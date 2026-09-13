@@ -36,7 +36,9 @@ jobs:
         run: npm exec -w @veriworkly/server -- prisma generate --schema=prisma/schema.prisma
 
       - name: Build Shared Packages
-        run: npm run build -w @veriworkly/profile-core --if-present
+        run: |
+          npm run build -w @veriworkly/profile-core --if-present
+          npm run build -w @veriworkly/ats-engine --if-present
 
       - name: Run Backend Tests
         run: npm run test -w @veriworkly/server --if-present

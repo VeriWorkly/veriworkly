@@ -160,8 +160,7 @@ export function needsRepair(report: AtsReport): boolean {
       ? parsed.roles.filter((role) => role.title && role.employer && role.start).length /
         parsed.roles.length
       : 0,
-    contactCompleteness:
-      [parsed.name, parsed.email, parsed.phone].filter(Boolean).length / 3,
+    contactCompleteness: [parsed.name, parsed.email, parsed.phone].filter(Boolean).length / 3,
   };
 
   // No roles at all from a document with real content is the archetype failure: an unknown
@@ -327,9 +326,7 @@ export function mergeGrounded(
   }
 
   if (merged.skills.length === 0) {
-    merged.skills = candidate.skills.filter((skill, index) =>
-      ok(`skills[${index}]`, skill),
-    );
+    merged.skills = candidate.skills.filter((skill, index) => ok(`skills[${index}]`, skill));
   }
 
   return { merged, rejectedValues: violations.length };
