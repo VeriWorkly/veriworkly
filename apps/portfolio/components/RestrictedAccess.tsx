@@ -8,7 +8,7 @@ import { veriworklyProductLinks } from "@/config/site";
 export function RestrictedAccess() {
   return (
     <main className="text-ink-2 selection:bg-accent selection:text-accent-ink bg-paper relative flex min-h-dvh flex-col items-center justify-center overflow-x-clip px-6 py-12">
-      <div className="bg-accent/10 pointer-events-none absolute top-1/2 left-1/2 size-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]" />
+      <div className="bg-accent/10 pointer-events-none absolute top-1/2 left-1/2 size-150 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-ink)_0.8px,transparent_0.8px)] bg-size-[24px_24px] opacity-[0.06]" />
 
       <div className="border-line bg-panel relative z-10 w-full max-w-lg rounded-3xl border p-8 text-center shadow-lg md:p-12">

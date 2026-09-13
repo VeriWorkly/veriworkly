@@ -38,9 +38,8 @@ async function fetchAccountProfileSummary(cookieHeader?: string) {
       typeof window === "undefined" &&
       cookieHeader !== undefined &&
       !cookieHeader.includes("veriworkly-auth")
-    ) {
+    )
       return null;
-    }
 
     const response = await fetch(backendApiUrl("/users/me"), {
       method: "GET",
@@ -49,9 +48,9 @@ async function fetchAccountProfileSummary(cookieHeader?: string) {
     });
 
     if (!response.ok) {
-      if (typeof window !== "undefined" && isInvalidSessionResponse("/users/me", response.status)) {
+      if (typeof window !== "undefined" && isInvalidSessionResponse("/users/me", response.status))
         await clearInvalidSessionAndRedirect();
-      }
+
       return null;
     }
 
@@ -85,7 +84,9 @@ export async function fetchCurrentUser(force = false): Promise<SessionUser | nul
       const cookieStore = await cookies();
       const cookieHeader = cookieStore.toString();
       const summary = await fetchAccountProfileSummary(cookieHeader);
+
       if (!summary?.id || !summary?.email) return null;
+
       return summary as SessionUser;
     } catch {
       return null;
@@ -120,8 +121,6 @@ export async function signOutCurrentUser() {
   } finally {
     memoryCache = null;
 
-    if (typeof window !== "undefined") {
-      useUserStore.getState().logout();
-    }
+    if (typeof window !== "undefined") useUserStore.getState().logout();
   }
 }

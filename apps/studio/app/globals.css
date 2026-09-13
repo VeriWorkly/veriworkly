@@ -7,29 +7,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Admin console tokens.
- *
- * The admin surface is a dense operations tool, not a marketing page, so it needs a few
- * things the shared theme deliberately does not define: a recessed chrome colour for the
- * sidebar, a subtle inset fill for table headers and empty states, and a categorical chart
- * palette. These live here rather than in packages/ui/styles/themes.css because no other
- * app renders charts or an admin shell — adding them to the shared theme would publish
- * tokens to /style-guide and /brand-kit that nothing outside /admin can use.
- *
- * The chart ramp is ordered by how often a series is used, not by hue: --chart-1 is the
- * brand accent so the primary series always reads as "the main number", and 2-6 are spaced
- * far enough apart in hue to stay separable for the most common forms of colour blindness.
- * Each has a dark-mode variant lifted in lightness so it survives the #0d1117 background.
- */
 :root {
-  /*
-   * Chrome sits a clear step below the page, not a hair below it. The previous #efeee8 was
-   * within ~2 points of lightness of --background (#f5f4ef), so the rail and the topbar read
-   * as the same surface as the content well and the whole console looked like one undivided
-   * field of off-white. Three near-identical warm whites (page / chrome / white cards) is what
-   * made the light theme look muddy; widening this gap is what separates chrome from content.
-   */
   --admin-chrome: #eae7dd;
   --admin-inset: rgba(23, 23, 23, 0.045);
   --admin-ring: rgba(37, 99, 235, 0.35);
@@ -62,18 +40,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-muted: var(--muted);
-  /*
-   * `text-muted-foreground` is used ~98 times across the dashboard, profile, admin,
-   * and login views but was never mapped, so Tailwind emitted no rule for it and
-   * every one of those elements silently inherited its parent colour.
-   *
-   * Mapped to `--muted` (#5f5c54 light, #94a3b8 dark) rather than the shared
-   * package's `--muted-foreground`, which is #171717 in both themes and would be
-   * near-black text on the dark dashboard. That token means "text on a muted fill",
-   * a light surface in both themes, so it is deliberately not the body-copy colour.
-   *
-   * Same mapping and same reasoning as apps/blog-platform.
-   */
+
   --color-muted-foreground: var(--muted);
   --color-border: var(--border);
   --color-accent: var(--accent);
@@ -99,17 +66,11 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/*
- * Every metric in the admin is set in tabular figures. Without this, a column of numbers in a
- * table jitters horizontally between rows as digit widths change, which makes a long list
- * genuinely harder to scan.
- */
 .admin-numeric {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 
-/* Shared eyebrow/label treatment for stat labels, table headers and section kickers. */
 .admin-label {
   font-size: 0.6875rem;
   line-height: 1rem;
@@ -198,20 +159,6 @@ body {
   box-shadow: 0 4px 14px color-mix(in oklab, var(--foreground) 18%, transparent);
 }
 
-/*
- * Document fonts, served from the same files the PDF embeds.
- *
- * The preview used to load these from Google Fonts while
- * `templates/pdf/fonts.ts` registered the local TTFs with @react-pdf. Two
- * different builds of a family can ship different advance widths, which shifts
- * where lines wrap — so the preview and the export could disagree even with
- * identical CSS. Pointing both at /public/fonts removes that variable.
- *
- * Only 400 and 700 are declared, matching `pdfFonts` in
- * `features/documents/constants/fonts.ts`. Both engines then resolve an
- * in-between request (600) to 700 by the same CSS fallback rule, with no
- * synthetic bold on either side.
- */
 @font-face {
   font-family: "Geist";
   font-style: normal;

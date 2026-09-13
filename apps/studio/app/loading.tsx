@@ -1,8 +1,8 @@
 import { Container } from "@veriworkly/ui";
 
-export default function AppLoading() {
+const AppLoading = () => {
   return (
-    <div className="surface-grid border-border/50 relative mx-4 my-8 flex min-h-[80vh] items-center justify-center overflow-hidden rounded-3xl border md:mx-8 md:my-12">
+    <div className="surface-grid border-border/50 relative flex items-center justify-center overflow-hidden border">
       <div className="from-background/0 via-background/20 to-background/80 pointer-events-none absolute inset-0 bg-linear-to-b" />
 
       <Container className="relative flex flex-col items-center py-20 text-center">
@@ -28,4 +28,6 @@ export default function AppLoading() {
       </Container>
     </div>
   );
-}
+};
+
+export default AppLoading;
