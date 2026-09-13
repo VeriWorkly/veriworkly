@@ -155,7 +155,13 @@ describe("merge: AI values only fill gaps, and only when grounded", () => {
       emptyParsed,
       candidate({
         roles: [
-          { title: "Chief Fabricator", employer: "Initech", start: null, end: null, current: false },
+          {
+            title: "Chief Fabricator",
+            employer: "Initech",
+            start: null,
+            end: null,
+            current: false,
+          },
         ],
       }),
       SOURCE,

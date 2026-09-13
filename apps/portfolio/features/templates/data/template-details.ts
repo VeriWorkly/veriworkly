@@ -1,4 +1,3 @@
-
 export interface TemplateSystemOverview {
   genre: string;
   canvas: string;
