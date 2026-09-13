@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Lock, ArrowLeft, ArrowRight, AppWindow } from "lucide-react";
 
-import { siteConfig, veriworklyProductLinks } from "@/config/site";
+import { veriworklyProductLinks } from "@/config/site";
 
 export function RestrictedAccess() {
   return (
@@ -52,7 +52,7 @@ export function RestrictedAccess() {
           </Link>
 
           <Link
-            href={siteConfig.links.main}
+            href="/"
             className="border-line text-ink-soft hover:bg-paper-2 flex items-center justify-center gap-2 rounded-xl border px-5 py-3.5 text-sm font-bold transition-colors duration-200"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Homepage
