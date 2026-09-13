@@ -23,9 +23,9 @@ export { default as AccountMenuTheme } from "./account-menu/AccountMenuTheme";
 
 // Modals
 export { DashboardModalsHost } from "./modals/DashboardModalsHost";
-export { NewDocumentButton, NewDocumentModal } from "./NewDocumentModal";
-export { WorkspaceSearchModal } from "./WorkspaceSearchModal";
-export { ImportProfileModal } from "./ImportProfileModal";
+export { NewDocumentButton, NewDocumentModal } from "./modals/NewDocumentModal";
+export { WorkspaceSearchModal } from "./modals/WorkspaceSearchModal";
+export { ImportProfileModal } from "./modals/ImportProfileModal";
 
 // Utility Components
 export { ThemeToggle } from "./ThemeToggle";

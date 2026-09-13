@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu as MenuIcon, X } from "lucide-react";
 
-import { NewDocumentButton } from "../NewDocumentModal";
+import { NewDocumentButton } from "../modals/NewDocumentModal";
 
 interface MobileHeaderProps {
   mobileNavOpen: boolean;
