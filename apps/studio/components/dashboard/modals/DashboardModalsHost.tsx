@@ -7,17 +7,17 @@ import type { DocumentType } from "@/features/documents/core/document-types";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 
 const WorkspaceSearchModal = dynamic(
-  () => import("../WorkspaceSearchModal").then((mod) => mod.WorkspaceSearchModal),
+  () => import("./WorkspaceSearchModal").then((mod) => mod.WorkspaceSearchModal),
   { ssr: false },
 );
 
 const NewDocumentModal = dynamic(
-  () => import("../NewDocumentModal").then((mod) => mod.NewDocumentModal),
+  () => import("./NewDocumentModal").then((mod) => mod.NewDocumentModal),
   { ssr: false },
 );
 
 const ImportProfileModal = dynamic(
-  () => import("../ImportProfileModal").then((mod) => mod.ImportProfileModal),
+  () => import("./ImportProfileModal").then((mod) => mod.ImportProfileModal),
   { ssr: false },
 );
 

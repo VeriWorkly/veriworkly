@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 
 import { StudioSidebarHeader } from "./StudioSidebarHeader";
 import { mainNav, supportNav, bottomNav, NavGroup } from "./StudioNavigation";
-import { NewDocumentButton } from "../NewDocumentModal";
+import { NewDocumentButton } from "../modals/NewDocumentModal";
 import { AccountMenu } from "../account-menu/AccountMenu";
 
 interface StudioSidebarProps {
