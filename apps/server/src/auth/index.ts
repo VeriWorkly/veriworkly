@@ -73,6 +73,10 @@ export const auth = betterAuth({
   basePath: "/api/v1/auth",
   trustedOrigins: config.allowedOrigins,
 
+  onAPIError: {
+    errorURL: config.auth.studioLoginUrl,
+  },
+
   rateLimit: {
     enabled: true,
     window: Math.max(1, Math.ceil(config.rateLimit.authWindowMs / 1000)),

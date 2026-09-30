@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from "nodemailer";
+import { Resend } from "resend";
 
 import { config, isDevelopment } from "#config";
 
@@ -13,6 +14,9 @@ let smtpTransporter: Transporter | null = null;
 function getSmtpTransporter() {
   if (!smtpTransporter)
     smtpTransporter = nodemailer.createTransport({
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
       host: config.auth.smtpHost,
       port: config.auth.smtpPort,
       secure: config.auth.smtpSecure,
@@ -20,9 +24,21 @@ function getSmtpTransporter() {
         user: config.auth.smtpUser,
         pass: config.auth.smtpPass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
 
   return smtpTransporter;
+}
+
+let resendClient: Resend | null = null;
+
+function getResendClient() {
+  if (!resendClient) {
+    resendClient = new Resend(config.auth.resendApiKey);
+  }
+  return resendClient;
 }
 
 /**
@@ -41,6 +57,55 @@ export async function sendMail({
   html: string;
   replyTo?: string;
 }) {
+  if (config.auth.emailProvider === "resend") {
+    if (!config.auth.resendApiKey) {
+      logger.error("[Mail] Missing RESEND_API_KEY for resend email provider");
+      throw new Error(
+        "Resend provider selected but RESEND_API_KEY environment variable is missing",
+      );
+    }
+
+    try {
+      const resend = getResendClient();
+      const { data, error } = await resend.emails.send({
+        from: config.auth.emailFrom,
+        to,
+        subject,
+        text,
+        html,
+        replyTo: replyTo || undefined,
+      });
+
+      if (error) {
+        logger.error("[Mail] Failed to send email via Resend:", {
+          to,
+          subject,
+          error: error.message,
+          name: error.name,
+        });
+        throw new Error(`Resend email delivery failed: ${error.message}`);
+      }
+
+      logger.info("[Mail] Email dispatched successfully via Resend", {
+        to,
+        subject,
+        messageId: data?.id,
+      });
+
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Resend email delivery failed:")) {
+        throw error;
+      }
+      logger.error("[Mail] Unexpected error sending email via Resend:", {
+        to,
+        subject,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
   if (config.auth.emailProvider === "smtp") {
     if (!validateSmtpConfig()) {
       const missing = [

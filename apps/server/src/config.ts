@@ -36,18 +36,38 @@ function parseTrustProxy(value: string | undefined): boolean | string | number {
   return trimmed;
 }
 
+function getOriginSafe(urlStr: string): string | null {
+  try {
+    return new URL(urlStr).origin;
+  } catch {
+    return null;
+  }
+}
+
+const defaultStudioUrl = isProductionEnv ? "https://app.veriworkly.com" : "http://localhost:3001";
+const configuredStudioUrl =
+  process.env.STUDIO_URL || process.env.NEXT_PUBLIC_APP_URL || defaultStudioUrl;
+const configuredStudioLoginUrl =
+  process.env.STUDIO_LOGIN_URL || `${configuredStudioUrl.replace(/\/+$/, "")}/login`;
+const studioOrigin = getOriginSafe(configuredStudioUrl);
+
 export const config = {
   nodeEnv: process.env.NODE_ENV || "development",
 
   port: parseInt(process.env.PORT || "8080", 10),
 
-  allowedOrigins: (
-    process.env.ALLOWED_ORIGINS ||
-    "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:8080"
-  )
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  allowedOrigins: Array.from(
+    new Set(
+      (
+        process.env.ALLOWED_ORIGINS ||
+        "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:8080"
+      )
+        .split(",")
+        .map((origin) => origin.trim())
+        .concat(studioOrigin || [])
+        .filter(Boolean),
+    ),
+  ),
 
   database: {
     url: process.env.DATABASE_URL || "",
@@ -60,6 +80,8 @@ export const config = {
   auth: {
     secret: process.env.AUTH_SECRET || "dev-auth-secret",
     baseUrl: process.env.AUTH_BASE_URL || "http://localhost:8080",
+    studioUrl: configuredStudioUrl,
+    studioLoginUrl: configuredStudioLoginUrl,
     ipAddressHeaders: (
       process.env.AUTH_IP_ADDRESS_HEADERS ||
       "x-client-ip,x-forwarded-for,x-real-ip,cf-connecting-ip"
@@ -81,6 +103,7 @@ export const config = {
     otpAllowedAttempts: parseInt(process.env.AUTH_OTP_ALLOWED_ATTEMPTS || "3", 10),
     emailProvider: process.env.AUTH_EMAIL_PROVIDER || "console",
     emailFrom: process.env.AUTH_EMAIL_FROM || "VeriWorkly <no-reply@veriworkly.com>",
+    resendApiKey: process.env.RESEND_API_KEY || "",
     smtpHost: process.env.AUTH_SMTP_HOST || "",
     smtpPort: parseInt(process.env.AUTH_SMTP_PORT || "587", 10),
     smtpSecure: parseBoolean(process.env.AUTH_SMTP_SECURE, false),

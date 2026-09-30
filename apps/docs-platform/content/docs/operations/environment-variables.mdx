@@ -117,14 +117,15 @@ Each provider is registered only if **both** of its values are set.
 
 ### Email
 
-| Variable                            | Description                                                                                | Default                                |
-| :---------------------------------- | :----------------------------------------------------------------------------------------- | :------------------------------------- |
-| `AUTH_EMAIL_PROVIDER`               | `smtp` or `console`. `console` logs instead of sending, and is **rejected in production**. | `console`                              |
-| `AUTH_EMAIL_FROM`                   | Sender address and display name.                                                           | `VeriWorkly <no-reply@veriworkly.com>` |
-| `AUTH_SMTP_HOST`                    | SMTP hostname. Required when the provider is `smtp`.                                       | —                                      |
-| `AUTH_SMTP_PORT`                    | SMTP port.                                                                                 | `587`                                  |
-| `AUTH_SMTP_SECURE`                  | Use implicit TLS.                                                                          | `false`                                |
-| `AUTH_SMTP_USER` / `AUTH_SMTP_PASS` | SMTP credentials. Both required when the provider is `smtp`.                               | —                                      |
+| Variable                            | Description                                                                                           | Default                                |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------------------------- |
+| `AUTH_EMAIL_PROVIDER`               | `resend`, `smtp`, or `console`. `console` logs instead of sending, and is **rejected in production**. | `console`                              |
+| `AUTH_EMAIL_FROM`                   | Sender address and display name.                                                                      | `VeriWorkly <no-reply@veriworkly.com>` |
+| `RESEND_API_KEY`                    | Resend API key (`re_...`). Required when the provider is `resend`.                                    | —                                      |
+| `AUTH_SMTP_HOST`                    | SMTP hostname (e.g., `smtp.resend.com`). Required when provider is `smtp`.                            | —                                      |
+| `AUTH_SMTP_PORT`                    | SMTP port (`465` for SSL, `587` for STARTTLS).                                                        | `587`                                  |
+| `AUTH_SMTP_SECURE`                  | Use implicit TLS (set to `true` for port 465).                                                        | `false`                                |
+| `AUTH_SMTP_USER` / `AUTH_SMTP_PASS` | SMTP credentials. Both required when the provider is `smtp`.                                          | —                                      |
 
 ### Rate limiting
 
@@ -286,10 +287,11 @@ startup with a message naming the variable.
 - `ADMIN_EMAIL`, `AUTH_SECRET`, and `AUTH_BASE_URL` are set.
 - Every numeric auth and API-key setting parses to a positive integer.
 - When `AUTH_EMAIL_PROVIDER=smtp`, the SMTP host, user, and password are all set.
+- When `AUTH_EMAIL_PROVIDER=resend`, `RESEND_API_KEY` is set.
 
 **Production only**
 
-- `AUTH_EMAIL_PROVIDER` is `smtp` — the `console` provider does not send mail.
+- `AUTH_EMAIL_PROVIDER` is `resend` or `smtp` (the `console` provider is rejected in production).
 - `AUTH_SECRET` is not the development default `dev-auth-secret`.
 - `AUTH_BASE_URL` starts with `https://`.
 - `TRUST_PROXY` is **not** a bare `true` — use an explicit hop count or CIDR.
