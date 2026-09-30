@@ -157,4 +157,9 @@ describe("Better Auth configuration", () => {
       "linkedin",
     ]);
   });
+
+  it("configures onAPIError with studioLoginUrl to redirect auth failures to studio login", () => {
+    expect(options.onAPIError).toBeDefined();
+    expect(options.onAPIError?.errorURL).toBe("http://localhost:3001/login");
+  });
 });

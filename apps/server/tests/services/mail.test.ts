@@ -1,12 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { mockSendMail, mockCreateTransport } = vi.hoisted(() => {
+const { mockSendMail, mockCreateTransport, mockResendSend } = vi.hoisted(() => {
   const sendMail = vi.fn();
+  const resendSend = vi.fn().mockResolvedValue({
+    data: { id: "resend-msg-123" },
+    error: null,
+  });
   return {
     mockSendMail: sendMail,
     mockCreateTransport: vi.fn().mockReturnValue({
       sendMail,
     }),
+    mockResendSend: resendSend,
   };
 });
 
@@ -14,6 +19,16 @@ vi.mock("nodemailer", () => ({
   default: {
     createTransport: mockCreateTransport,
   },
+}));
+
+vi.mock("resend", () => ({
+  Resend: vi.fn().mockImplementation(function () {
+    return {
+      emails: {
+        send: mockResendSend,
+      },
+    };
+  }),
 }));
 
 const { mockLogger } = vi.hoisted(() => {
@@ -35,6 +50,7 @@ const mockConfig = vi.hoisted(() => ({
   auth: {
     emailProvider: "console",
     emailFrom: "VeriWorkly <no-reply@veriworkly.com>",
+    resendApiKey: "re_test_key_12345",
     smtpHost: "smtp.example.com",
     smtpPort: 587,
     smtpSecure: false,
@@ -158,6 +174,67 @@ describe("mail service", () => {
       ).rejects.toThrow("SMTP provider selected but SMTP environment values are incomplete");
 
       mockConfig.auth.smtpHost = "smtp.example.com"; // restore config
+    });
+  });
+
+  describe("production Resend mode", () => {
+    beforeEach(() => {
+      mockConfig.auth.emailProvider = "resend";
+      mockConfig.auth.resendApiKey = "re_test_key_12345";
+    });
+
+    it("sends OTP email via Resend when configured", async () => {
+      await sendAuthOtpEmail({
+        email: "resend-test@example.com",
+        otp: "112233",
+        type: "sign-in",
+      });
+
+      expect(mockResendSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: "VeriWorkly <no-reply@veriworkly.com>",
+          to: "resend-test@example.com",
+          subject: "Your VeriWorkly sign-in code",
+          text: expect.stringContaining("112233"),
+          html: expect.stringContaining("112233"),
+        }),
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining("Email dispatched successfully via Resend"),
+        expect.objectContaining({
+          to: "resend-test@example.com",
+          messageId: "resend-msg-123",
+        }),
+      );
+    });
+
+    it("throws error if RESEND_API_KEY is missing", async () => {
+      mockConfig.auth.resendApiKey = "";
+
+      await expect(
+        sendAuthOtpEmail({
+          email: "resend-test@example.com",
+          otp: "112233",
+          type: "sign-in",
+        }),
+      ).rejects.toThrow(
+        "Resend provider selected but RESEND_API_KEY environment variable is missing",
+      );
+    });
+
+    it("throws error if Resend API returns an error", async () => {
+      mockResendSend.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Invalid API Key", name: "validation_error" },
+      });
+
+      await expect(
+        sendAuthOtpEmail({
+          email: "resend-test@example.com",
+          otp: "112233",
+          type: "sign-in",
+        }),
+      ).rejects.toThrow("Resend email delivery failed: Invalid API Key");
     });
   });
 });

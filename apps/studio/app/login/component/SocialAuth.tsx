@@ -5,9 +5,12 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { useSearchParams } from "next/navigation";
+
 import { Button } from "@veriworkly/ui";
 
 import { authClient } from "@/lib/auth-client";
+import { siteConfig } from "@/config/site";
 
 interface SocialAuthProps {
   isLoading: boolean;
@@ -15,6 +18,7 @@ interface SocialAuthProps {
 }
 
 const SocialAuth = ({ isLoading, setIsLoading }: SocialAuthProps) => {
+  const searchParams = useSearchParams();
   const [activeProvider, setActiveProvider] = useState<"google" | "github" | "linkedin" | null>(
     null,
   );
@@ -26,24 +30,17 @@ const SocialAuth = ({ isLoading, setIsLoading }: SocialAuthProps) => {
     setActiveProvider(provider);
 
     try {
-      const searchParams = new URLSearchParams(window.location.search);
-
-      const callbackURL =
-        searchParams.get("callbackURL") ||
-        (typeof document !== "undefined" ? document.referrer : null) ||
-        "/";
+      const callbackURL = searchParams.get("callbackURL") || "/";
       const ref = searchParams.get("ref");
 
       const callbackPath =
         `/login/callback?callbackURL=${encodeURIComponent(callbackURL)}` +
         (ref ? `&ref=${encodeURIComponent(ref)}` : "");
-      const absoluteCallbackURL = `${window.location.origin}${callbackPath}`;
-      const absoluteErrorCallbackURL = `${window.location.origin}/login?error=cancelled`;
+      const fullCallbackURL = `${siteConfig.links.app}${callbackPath}`;
 
       await authClient.signIn.social({
         provider,
-        callbackURL: absoluteCallbackURL,
-        errorCallbackURL: absoluteErrorCallbackURL,
+        callbackURL: fullCallbackURL,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Social authentication failed.";

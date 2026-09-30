@@ -3,7 +3,7 @@
 import { toast } from "sonner";
 import { useState } from "react";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Shield, Lock, Check } from "lucide-react";
 
 import { Input, Button } from "@veriworkly/ui";
@@ -19,6 +19,7 @@ import { fetchApiData } from "@/utils/fetchApiData";
 
 const LoginPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -27,7 +28,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("ref");
+    const code = searchParams.get("ref");
 
     if (!code || sessionStorage.getItem(`affiliate-click:${code}`)) return;
 
@@ -50,29 +51,33 @@ const LoginPage = () => {
         referrerHost,
       }),
     }).catch(() => sessionStorage.removeItem(`affiliate-click:${code}`));
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
     const error = searchParams.get("error");
+    const errorDescription = searchParams.get("error_description");
 
     if (error) {
       if (error === "access_denied" || error === "cancelled") {
-        toast.info("Sign in was cancelled.");
+        toast.info(errorDescription || "Sign in was cancelled.");
       } else {
-        toast.error("Sign in failed. Please try again.");
+        toast.error(errorDescription || "Sign in failed. Please try again.");
       }
 
       // Clean up the error query parameters from URL without reloading
       const url = new URL(window.location.href);
       url.searchParams.delete("error");
       url.searchParams.delete("error_description");
-      window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+      const remainingSearch = url.searchParams.toString();
+      window.history.replaceState(
+        {},
+        "",
+        url.pathname + (remainingSearch ? `?${remainingSearch}` : ""),
+      );
     }
-  }, []);
+  }, [searchParams]);
 
   const handleGuestAccess = () => {
-    const searchParams = new URLSearchParams(window.location.search);
     const callbackURL = searchParams.get("callbackURL");
     const target = getSafeAuthCallback(callbackURL);
 

@@ -35,10 +35,18 @@ export function validateAuthRuntimeConfig(): void {
     ensure(Boolean(config.auth.smtpHost), "AUTH_SMTP_HOST must be configured when using SMTP");
     ensure(Boolean(config.auth.smtpUser), "AUTH_SMTP_USER must be configured when using SMTP");
     ensure(Boolean(config.auth.smtpPass), "AUTH_SMTP_PASS must be configured when using SMTP");
+  } else if (config.auth.emailProvider === "resend") {
+    ensure(
+      Boolean(config.auth.resendApiKey),
+      "RESEND_API_KEY must be configured when using Resend",
+    );
   }
 
   if (isProduction) {
-    ensure(config.auth.emailProvider === "smtp", "AUTH_EMAIL_PROVIDER must be smtp in production");
+    ensure(
+      config.auth.emailProvider === "smtp" || config.auth.emailProvider === "resend",
+      "AUTH_EMAIL_PROVIDER must be smtp or resend in production",
+    );
     ensure(
       config.auth.secret !== "dev-auth-secret",
       "AUTH_SECRET must be a strong non-default value in production",
