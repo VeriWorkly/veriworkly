@@ -117,15 +117,15 @@ Each provider is registered only if **both** of its values are set.
 
 ### Email
 
-| Variable                            | Description                                                                                          | Default                                |
-| :---------------------------------- | :--------------------------------------------------------------------------------------------------- | :------------------------------------- |
+| Variable                            | Description                                                                                           | Default                                |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------------------------- |
 | `AUTH_EMAIL_PROVIDER`               | `resend`, `smtp`, or `console`. `console` logs instead of sending, and is **rejected in production**. | `console`                              |
-| `AUTH_EMAIL_FROM`                   | Sender address and display name.                                                                     | `VeriWorkly <no-reply@veriworkly.com>` |
+| `AUTH_EMAIL_FROM`                   | Sender address and display name.                                                                      | `VeriWorkly <no-reply@veriworkly.com>` |
 | `RESEND_API_KEY`                    | Resend API key (`re_...`). Required when the provider is `resend`.                                    | —                                      |
-| `AUTH_SMTP_HOST`                    | SMTP hostname (e.g., `smtp.resend.com`). Required when provider is `smtp`.                             | —                                      |
-| `AUTH_SMTP_PORT`                    | SMTP port (`465` for SSL, `587` for STARTTLS).                                                       | `587`                                  |
-| `AUTH_SMTP_SECURE`                  | Use implicit TLS (set to `true` for port 465).                                                       | `false`                                |
-| `AUTH_SMTP_USER` / `AUTH_SMTP_PASS` | SMTP credentials. Both required when the provider is `smtp`.                                         | —                                      |
+| `AUTH_SMTP_HOST`                    | SMTP hostname (e.g., `smtp.resend.com`). Required when provider is `smtp`.                            | —                                      |
+| `AUTH_SMTP_PORT`                    | SMTP port (`465` for SSL, `587` for STARTTLS).                                                        | `587`                                  |
+| `AUTH_SMTP_SECURE`                  | Use implicit TLS (set to `true` for port 465).                                                        | `false`                                |
+| `AUTH_SMTP_USER` / `AUTH_SMTP_PASS` | SMTP credentials. Both required when the provider is `smtp`.                                          | —                                      |
 
 ### Rate limiting
 
