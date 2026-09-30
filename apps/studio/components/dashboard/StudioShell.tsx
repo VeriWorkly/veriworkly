@@ -19,7 +19,7 @@ interface StudioShellProps {
   mainClassName?: string;
 }
 
-const STUDIO_VERSION = "v3.24.3";
+const STUDIO_VERSION = "v3.24.4";
 
 export function StudioShell({ children, mainClassName }: StudioShellProps) {
   const pathname = usePathname();

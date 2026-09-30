@@ -1,5 +1,30 @@
 [
   {
+    "id": "v3-24-4",
+    "version": "3.24.4",
+    "title": "Resend API Email Integration, Connection-Pooled SMTP & OAuth Cancellation Redirect Fix",
+    "summary": "This release adds native Resend transactional email integration via its REST API, hardens the SMTP transport with connection pooling and socket timeouts, and fixes a Better Auth redirect issue where cancelling social login sent users to raw API JSON instead of the Studio login screen.",
+    "type": "patch",
+    "publishedAt": "2026-09-30T18:30:00Z",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/Release-v3.24.4",
+    "added": [
+      "Native Resend email provider support via the official SDK and RESEND_API_KEY for fast, firewall-resilient transactional email delivery over HTTPS.",
+      "Connection pooling, keepalive, and socket timeouts for Nodemailer SMTP transport to prevent socket exhaustion and timeouts on relays.",
+      "Dedicated unit test suites covering Resend dispatch, error handling, and production runtime startup validation."
+    ],
+    "improved": [
+      "Updated validateAuthRuntimeConfig to accept both resend and smtp as valid production email providers.",
+      "Replaced direct window object calls in Studio SocialAuth with idiomatic Next.js useSearchParams and site config URLs.",
+      "Updated environment documentation across .env.example, .env.docker.example, compose.yaml, and operations docs."
+    ],
+    "fixed": [
+      "Fixed Better Auth OAuth cancellation fallback redirecting to root API JSON instead of the Studio login page with an informative toast.",
+      "Fixed query parameter persistence on the Studio login page by cleaning error params from browser history after acknowledgement."
+    ],
+    "security": [],
+    "tags": ["auth", "email", "resend", "smtp", "better-auth", "studio"]
+  },
+  {
     "id": "v3-24-3",
     "version": "3.24.3",
     "title": "Next.js 16.3.5 Security Upgrade, Dependency Cleanup, and ATS Engine Modularization",
