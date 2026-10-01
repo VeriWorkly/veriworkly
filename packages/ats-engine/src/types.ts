@@ -1,22 +1,13 @@
-export type AtsSeverity = "info" | "warning" | "error";
-
 /**
- * Geometry recovered while parsing an uploaded document, for the checks that text cannot answer.
- *
- * `columnRatio` is the share of content lines whose text items are separated by a horizontal gap
- * wide enough to read as a column gutter — the signature of a two-column layout, a sidebar, or a
- * floating text box, all of which extract in a scrambled order. `tableCount` is the number of
- * ruled table grids found by tracing the page's vector drawing operators.
- *
- * Absent for pasted text and Studio documents, which have no geometry to measure; the rules that
- * depend on it are then omitted from the report rather than assumed to pass.
+ * The public report types. The parsed record and the layout signals have files of their own
+ * under `./types/`, re-exported here so every import of `types.js` keeps working.
  */
-export type AtsLayoutSignals = {
-  /** `null` when the document had too few content lines for the ratio to mean anything. */
-  columnRatio: number | null;
-  tableCount: number;
-  pageCount: number;
-};
+import type { AtsParsedResume } from "./types/parsed.js";
+
+export type * from "./types/layout.js";
+export type * from "./types/parsed.js";
+
+export type AtsSeverity = "info" | "warning" | "error";
 
 export type AtsRuleResult = {
   id: string;
@@ -44,48 +35,29 @@ export type AtsCategoryScore = {
   possible: number;
 };
 
-export type AtsDegreeLevel = "diploma" | "associate" | "bachelor" | "master" | "doctorate";
-
-export type AtsParsedDate = { year: number; month: number | null };
-
-/** One row of work history, in the shape an applicant tracking system stores it. */
-export type AtsParsedRole = {
-  title: string;
-  employer: string;
-  start: AtsParsedDate | null;
-  end: AtsParsedDate | null;
-  current: boolean;
-};
-
-export type AtsParsedEducation = {
-  school: string;
-  credential: string;
-  level: AtsDegreeLevel | null;
-  end: AtsParsedDate | null;
-};
-
 /**
- * What a parser recovers from the document — the fields a recruiter actually searches on.
- *
- * Returned to the caller as well as scored, because showing the candidate the rows we recovered
- * is more useful than any number: an empty employer or a missing date range is a column the
- * hiring team's filter cannot match, and seeing it is what makes that concrete.
+ * One requirement of the posting, judged against the resume, the way a per-qualification
+ * screener grades it (Workday HiredScore, Ashby): met or not, with the resume's own words as
+ * evidence. `unverifiable`: not something a resume settles — the right to work, a clearance —
+ * unless it says so; such a question is asked in the application, and often filters there.
  */
-export type AtsParsedResume = {
-  name: string;
-  email: string;
-  phone: string;
-  links: string[];
-  roles: AtsParsedRole[];
-  education: AtsParsedEducation[];
-  skills: string[];
-  /** Calendar months covered by at least one role, so overlapping jobs are not double counted. */
-  monthsOfExperience: number | null;
-  highestDegree: AtsDegreeLevel | null;
+export type AtsRequirement = {
+  /** The requirement as the posting wrote it. */
+  text: string;
+  importance: "required" | "preferred";
+  kind: "skills" | "experience" | "education" | "authorization" | "clearance" | "language";
+  status: "met" | "partial" | "missing" | "unverifiable";
+  /** What the requirement names, and whether the resume has each. Skills and languages. */
+  terms: Array<{ term: string; found: boolean }>;
+  /** Resume lines that show it, quoted. Work history first; a skills list last. */
+  evidence: string[];
+  /** For years and degrees: what was compared, "6 years in the work history, 5 asked". */
+  detail?: string;
 };
 
 export type AtsReport = {
-  version: "ats-v2";
+  /** The scoring policy's declared `version` ("ats-v2" for the community policy). */
+  version: string;
   readinessScore: number;
   jobMatchScore: number | null;
   matchedKeywords: string[];
@@ -101,4 +73,22 @@ export type AtsReport = {
   wordCount: number;
   /** The fields an ATS would recover from this document. See AtsParsedResume. */
   parsed: AtsParsedResume;
+  /**
+   * The locale packs the resume was read with: languages detected (or asked for) beyond the
+   * policy's base vocabulary, and the region applied. Empty and null without packs attached.
+   */
+  locale: { languages: string[]; region: string | null };
+  /**
+   * What produced this report: the engine's version and a fingerprint of the policy as applied.
+   * The same input, reference date (`now`), engine and policy fingerprint always give the same
+   * report; a score that moved with neither changed was not this engine's doing.
+   */
+  engine: { version: string; policy: string };
+  /** The posting's requirements, each judged; empty without a job description. At most 25. */
+  requirements: AtsRequirement[];
+  /**
+   * The text in the order the engine read it — after wrapped lines were rejoined and spaced
+   * letters read back — when `includeLines` was asked for. At most 500 lines.
+   */
+  lines?: string[];
 };
