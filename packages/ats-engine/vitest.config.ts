@@ -7,5 +7,7 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     restoreMocks: true,
+    // The first DOCX test pays for a cold `mammoth` import, which under parallel load passed 5s.
+    testTimeout: 15_000,
   },
 });
