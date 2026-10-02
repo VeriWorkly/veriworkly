@@ -30,12 +30,12 @@ export function computeJobMatch(
   policy: AtsEnginePolicy,
 ): JobMatch {
   const km = policy.keywordMatch;
-  const jobText = jobDescription?.trim();
+  const jobText = typeof jobDescription === "string" ? jobDescription.trim() : "";
   if (!jobText) return { score: null, matched: [], missing: [] };
 
   const vocab = buildVocabulary(km);
-  const sections = segmentJob(jobText, km);
-  const proper = properNounTokens(jobText);
+  const sections = segmentJob(jobText, policy);
+  const proper = properNounTokens(jobText, km.nounsCapitalized);
 
   const sectionWeight: Record<JobSectionKind, number> = {
     required: km.requiredWeight,
@@ -59,6 +59,10 @@ export function computeJobMatch(
 
     for (const [token, term] of extractVocabulary(section.text, km, vocab)) {
       const skill = term.skill || proper.has(term.label) || proper.has(token);
+      // One- and two-letter words carry meaning only as a named skill or acronym ("Go", "AI",
+      // "JS"). Otherwise they are function words — "in", "to", "or", "a" — and scoring them told
+      // candidates to add "or" to their resume, and credited them for having written "a".
+      if (!skill && term.label.length <= 2) continue;
       const specificity = skill ? 1 : km.generalTermWeight;
       const scored = weight * specificity;
       const existing = terms.get(token);
@@ -70,7 +74,7 @@ export function computeJobMatch(
   if (terms.size === 0) return { score: null, matched: [], missing: [] };
 
   const held = resumeCapabilities(extractVocabulary(resumeText, km, vocab), vocab);
-  const find = alternationGroups(scoredLines, km, vocab);
+  const { find, separatorOf } = alternationGroups(scoredLines, km, vocab);
 
   // Alternatives collapse into one requirement worth one member's weight, satisfied by any of
   // them. "Go or Java" is a single ask, not two.
@@ -78,12 +82,19 @@ export function computeJobMatch(
     members: Array<{ label: string; skill: boolean }>;
     weight: number;
     matched: string | null;
+    /** The word the posting offered the alternatives with: "or", "oder". */
+    separator: string;
   };
   const groups = new Map<string, Group>();
 
   for (const [token, term] of terms) {
     const root = find(token);
-    const group = groups.get(root) ?? { members: [], weight: 0, matched: null };
+    const group = groups.get(root) ?? {
+      members: [],
+      weight: 0,
+      matched: null,
+      separator: separatorOf(token) ?? km.alternationWords[0],
+    };
     group.members.push({ label: term.label, skill: term.skill });
     group.weight = Math.max(group.weight, term.weight);
     if (group.matched === null && held.has(token)) group.matched = term.label;
@@ -105,7 +116,7 @@ export function computeJobMatch(
       // Named as the choice the posting actually offered, so the advice reads "Go or Java"
       // rather than listing each alternative as a separate gap.
       missing.push({
-        label: group.members.map((member) => member.label).join(" or "),
+        label: group.members.map((member) => member.label).join(` ${group.separator} `),
         weight: group.weight,
         skill,
       });

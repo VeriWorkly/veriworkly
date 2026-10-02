@@ -1,5 +1,6 @@
-import { isHeadingLine } from "../parser/sections.js";
+import { classifyHeading, headingConnector, type HeadingMatchers } from "../parser/sections.js";
 import type { AtsEnginePolicy } from "../policy/schema.js";
+import { policyRegex } from "../policy/regex.js";
 
 export type JobSectionKind = "required" | "preferred" | "responsibilities" | "body" | "excluded";
 
@@ -18,13 +19,17 @@ export type JobSection = { kind: JobSectionKind; text: string };
  * A posting with no recognisable headings yields a single `body` block. That is intentional:
  * scoring still works, and the specificity weighting below is what keeps boilerplate in check.
  */
-export function segmentJob(jobText: string, km: AtsEnginePolicy["keywordMatch"]): JobSection[] {
-  const matchers: Array<{ kind: JobSectionKind; re: RegExp }> = [
-    { kind: "required", re: new RegExp(km.sections.required, "i") },
-    { kind: "preferred", re: new RegExp(km.sections.preferred, "i") },
-    { kind: "responsibilities", re: new RegExp(km.sections.responsibilities, "i") },
-    { kind: "excluded", re: new RegExp(km.sections.excluded, "i") },
-  ];
+export function segmentJob(jobText: string, policy: AtsEnginePolicy): JobSection[] {
+  const km = policy.keywordMatch;
+  const matchers: HeadingMatchers<JobSectionKind> = {
+    kinds: [
+      { kind: "required", re: policyRegex(km.sections.required, "i") },
+      { kind: "preferred", re: policyRegex(km.sections.preferred, "i") },
+      { kind: "responsibilities", re: policyRegex(km.sections.responsibilities, "i") },
+      { kind: "excluded", re: policyRegex(km.sections.excluded, "i") },
+    ],
+    connector: headingConnector(policy.resumeParse),
+  };
 
   const sections: JobSection[] = [];
   let current: JobSection = { kind: "body", text: "" };
@@ -33,16 +38,13 @@ export function segmentJob(jobText: string, km: AtsEnginePolicy["keywordMatch"])
     const line = rawLine.trim();
     // A heading is a short standalone line. Requiring that shape stops a requirement written as
     // prose ("...you will be responsible for...") from re-labelling everything after it.
-    const heading = isHeadingLine(line)
-      ? matchers.find(({ re }) => re.test(line))?.kind
-      : undefined;
-
-    if (heading) {
-      if (current.text.trim()) sections.push(current);
-      current = { kind: heading, text: "" };
+    const heading = classifyHeading(line, matchers);
+    if (!heading) {
+      current.text += `${line}\n`;
       continue;
     }
-    current.text += `${line}\n`;
+    if (current.text.trim()) sections.push(current);
+    current = { kind: heading.kind, text: heading.rest ? `${heading.rest}\n` : "" };
   }
   if (current.text.trim()) sections.push(current);
 
