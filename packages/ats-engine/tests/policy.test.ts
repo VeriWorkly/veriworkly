@@ -211,7 +211,7 @@ describe("DEFAULT_POLICY", () => {
   it("exercises every rule kind, so the default is a real demonstration", () => {
     const kinds = new Set(DEFAULT_POLICY.rules.map((rule) => rule.kind));
     expect(kinds).toEqual(
-      new Set(["min-words", "presence", "position", "bands", "layout", "parsed"]),
+      new Set(["min-words", "presence", "position", "bands", "layout", "parsed", "section"]),
     );
   });
 
@@ -252,7 +252,7 @@ describe("DEFAULT_POLICY", () => {
     const report = AtsScoringService.check(
       "jane@example.com\nSkills\nTerraform, PostgreSQL",
       DEFAULT_POLICY,
-      "Requirements\n- Infrastructure as code\n- Relational databases",
+      { jobDescription: "Requirements\n- Infrastructure as code\n- Relational databases" },
     );
     expect(report.missingKeywords).not.toContain("infrastructure as code");
     expect(report.jobMatchScore).toBeGreaterThan(0);
@@ -262,7 +262,7 @@ describe("DEFAULT_POLICY", () => {
     const report = AtsScoringService.check(
       "jane@example.com\nExperience\nShipped services in Go",
       DEFAULT_POLICY,
-      "Requirements\n- Go or Java",
+      { jobDescription: "Requirements\n- Go or Java" },
     );
     expect(report.missingKeywords).not.toContain("java");
   });
@@ -289,7 +289,7 @@ describe("the engine holds no state", () => {
         AtsScoringService.check(
           "Jane Doe\njane@x.com\nExperience\nEngineer, Acme - Jan 2020 - Dec 2022",
           DEFAULT_POLICY,
-          "Requirements\nGo or Java",
+          { jobDescription: "Requirements\nGo or Java" },
         ),
       );
     expect(run()).toBe(run());

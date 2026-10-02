@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { AtsEnginePolicy, AtsLayoutSignals } from "../src/index.js";
+import { DEFAULT_POLICY } from "../src/index.js";
+import type { AtsEnginePolicy, AtsLayoutSignals, AtsResumeInput } from "../src/index.js";
 
 const policy = {
   version: "ats-v2" as const,
@@ -172,52 +173,16 @@ const policy = {
  * `getAtsEnginePolicy`, so validation never saw it. Validating it now would mean editing the
  * fixture, which would change what these tests exercise; the point of this suite is the scoring
  * behaviour, and `engine-policy.test.ts` is what covers the schema. So the fixture is injected
- * exactly as the mock delivered it, with only the schema's own defaults filled in.
+ * exactly as the mock delivered it, with only the schema's own defaults filled in — taken from
+ * `DEFAULT_POLICY`, which carries every one of them, so a field added to the schema later
+ * reaches this fixture too instead of leaving it a step behind.
  */
 const fixture = {
   ...policy,
-  text: {
-    contentLineVerbs: [
-      "managed",
-      "led",
-      "built",
-      "developed",
-      "designed",
-      "improved",
-      "reduced",
-      "increased",
-      "delivered",
-      "achieved",
-      "created",
-      "generated",
-      "optimized",
-      "launched",
-      "spearheaded",
-      "engineered",
-      "maintained",
-      "scaled",
-      "automated",
-    ],
-  },
-  resumeParse: {
-    ...policy.resumeParse,
-    months: {
-      jan: 1,
-      feb: 2,
-      mar: 3,
-      apr: 4,
-      may: 5,
-      jun: 6,
-      jul: 7,
-      aug: 8,
-      sep: 9,
-      sept: 9,
-      oct: 10,
-      nov: 11,
-      dec: 12,
-    },
-    openEnded: ["present", "current", "now", "ongoing", "to date", "till date"],
-  },
+  text: DEFAULT_POLICY.text,
+  locales: DEFAULT_POLICY.locales,
+  resumeParse: { ...DEFAULT_POLICY.resumeParse, ...policy.resumeParse },
+  keywordMatch: { ...DEFAULT_POLICY.keywordMatch, ...policy.keywordMatch },
 } as unknown as AtsEnginePolicy;
 
 async function loadScoring() {
@@ -225,10 +190,8 @@ async function loadScoring() {
   const parsed = fixture;
   return {
     AtsScoringService: {
-      flattenResume: (resume: unknown) => Engine.flattenResume(resume),
-      extractText: (resume: unknown) => Engine.extractText(resume),
-      check: (resume: unknown, jobDescription?: string, layout?: AtsLayoutSignals) =>
-        Engine.check(resume, parsed, jobDescription, layout),
+      check: (resume: AtsResumeInput, jobDescription?: string, layout?: AtsLayoutSignals) =>
+        Engine.check(resume, parsed, { jobDescription, layout }),
     },
   };
 }
@@ -371,13 +334,13 @@ describe("ATS category rollup", () => {
   it("scores each category by the share of its own weight the resume kept", async () => {
     const { AtsScoringService } = await loadScoring();
     // Contact carries two rules: email (weight 10) and position (weight 5). With no contact
-    // details at all, email fails outright but position passes vacuously — so the category
-    // keeps 5 of its 15 possible points.
+    // details at all, email fails outright and position has nothing to locate, so it is dropped
+    // rather than passed — the category keeps none of its 10 possible points.
     const report = AtsScoringService.check("Experience Skills Education summary of work history");
 
     const contact = report.categories.find((entry) => entry.category === "contact");
-    expect(contact).toMatchObject({ passed: 1, total: 2, lost: 10, possible: 15 });
-    expect(contact?.score).toBe(33);
+    expect(contact).toMatchObject({ passed: 0, total: 1, lost: 10, possible: 10 });
+    expect(contact?.score).toBe(0);
 
     const format = report.categories.find((entry) => entry.category === "format");
     expect(format).toMatchObject({ score: 100, passed: 1, total: 1, lost: 0 });

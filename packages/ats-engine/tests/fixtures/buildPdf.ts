@@ -5,28 +5,46 @@
  * test itself: the difference between the two-column and single-column cases is two numbers,
  * and a reviewer can see exactly what is being asserted without opening a PDF viewer.
  */
-export function buildPdf(contentStream: string): Buffer {
+/**
+ * `resources` is added to the page's resource dictionary, e.g. an inline `/ExtGState<<…>>`.
+ * `info` is the body of the document Info dictionary, e.g. `/Keywords(…)`.
+ * `extra` objects are numbered from 7 on, for resources that must be indirect: a form XObject,
+ * an image XObject (`<</Type/XObject…>>\nstream\n…\nendstream`; see `stream`).
+ */
+export function buildPdf(
+  contentStream: string,
+  resources = "",
+  info = "",
+  extra: string[] = [],
+): Buffer {
   const objects = [
     "<</Type/Catalog/Pages 2 0 R>>",
     "<</Type/Pages/Kids[3 0 R]/Count 1>>",
-    "<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>",
+    `<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>${resources}>>/Contents 5 0 R>>`,
     "<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
-    `<</Length ${Buffer.byteLength(contentStream)}>>\nstream\n${contentStream}\nendstream`,
+    `<</Length ${Buffer.byteLength(contentStream, "latin1")}>>\nstream\n${contentStream}\nendstream`,
+    `<<${info}>>`,
+    ...extra,
   ];
 
   let pdf = "%PDF-1.4\n";
   const offsets: number[] = [];
   objects.forEach((body, index) => {
-    offsets.push(Buffer.byteLength(pdf));
+    offsets.push(Buffer.byteLength(pdf, "latin1"));
     pdf += `${index + 1} 0 obj\n${body}\nendobj\n`;
   });
 
-  const xrefAt = Buffer.byteLength(pdf);
+  const xrefAt = Buffer.byteLength(pdf, "latin1");
   pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
   for (const offset of offsets) pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
-  pdf += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xrefAt}\n%%EOF\n`;
+  pdf += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R/Info 6 0 R>>\nstartxref\n${xrefAt}\n%%EOF\n`;
 
   return Buffer.from(pdf, "latin1");
+}
+
+/** A stream object for `buildPdf`'s `extra`: `dictionary` without its `<<>>` or `/Length`. */
+export function stream(dictionary: string, content: string) {
+  return `<<${dictionary}/Length ${Buffer.byteLength(content, "latin1")}>>\nstream\n${content}\nendstream`;
 }
 
 /** One text-showing operator at an absolute page position, in points from the bottom left. */

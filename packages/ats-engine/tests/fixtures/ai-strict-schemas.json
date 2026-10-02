@@ -1,0 +1,319 @@
+{
+  "ats_insights": {
+    "type": "object",
+    "properties": {
+      "explanation": {
+        "type": ["string", "null"]
+      },
+      "missingEvidence": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "string"
+        }
+      },
+      "keywordOpportunities": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "string"
+        }
+      },
+      "recommendedImprovements": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "string"
+        }
+      },
+      "priorityOrder": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "explanation",
+      "missingEvidence",
+      "keywordOpportunities",
+      "recommendedImprovements",
+      "priorityOrder"
+    ],
+    "additionalProperties": false
+  },
+  "converted_resume": {
+    "type": "object",
+    "properties": {
+      "basics": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": ["string", "null"]
+          },
+          "role": {
+            "type": ["string", "null"]
+          },
+          "headline": {
+            "type": ["string", "null"]
+          },
+          "email": {
+            "type": ["string", "null"]
+          },
+          "phone": {
+            "type": ["string", "null"]
+          },
+          "location": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["fullName", "role", "headline", "email", "phone", "location"],
+        "additionalProperties": false
+      },
+      "links": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": ["string", "null"]
+            },
+            "url": {
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["label", "url"],
+          "additionalProperties": false
+        }
+      },
+      "summary": {
+        "type": ["string", "null"]
+      },
+      "experience": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "company": {
+              "type": ["string", "null"]
+            },
+            "role": {
+              "type": ["string", "null"]
+            },
+            "location": {
+              "type": ["string", "null"]
+            },
+            "startDate": {
+              "type": ["string", "null"]
+            },
+            "endDate": {
+              "type": ["string", "null"]
+            },
+            "current": {
+              "type": ["boolean", "null"]
+            },
+            "summary": {
+              "type": ["string", "null"]
+            },
+            "highlights": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "company",
+            "role",
+            "location",
+            "startDate",
+            "endDate",
+            "current",
+            "summary",
+            "highlights"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "education": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "school": {
+              "type": ["string", "null"]
+            },
+            "degree": {
+              "type": ["string", "null"]
+            },
+            "field": {
+              "type": ["string", "null"]
+            },
+            "startDate": {
+              "type": ["string", "null"]
+            },
+            "endDate": {
+              "type": ["string", "null"]
+            },
+            "current": {
+              "type": ["boolean", "null"]
+            },
+            "summary": {
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["school", "degree", "field", "startDate", "endDate", "current", "summary"],
+          "additionalProperties": false
+        }
+      },
+      "projects": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": ["string", "null"]
+            },
+            "role": {
+              "type": ["string", "null"]
+            },
+            "link": {
+              "type": ["string", "null"]
+            },
+            "summary": {
+              "type": ["string", "null"]
+            },
+            "highlights": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "string"
+              }
+            },
+            "skills": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["name", "role", "link", "summary", "highlights", "skills"],
+          "additionalProperties": false
+        }
+      },
+      "skills": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": ["string", "null"]
+            },
+            "keywords": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["name", "keywords"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["basics", "links", "summary", "experience", "education", "projects", "skills"],
+    "additionalProperties": false
+  },
+  "repaired_resume": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": ["string", "null"]
+      },
+      "email": {
+        "type": ["string", "null"]
+      },
+      "phone": {
+        "type": ["string", "null"]
+      },
+      "roles": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": ["string", "null"]
+            },
+            "employer": {
+              "type": ["string", "null"]
+            },
+            "start": {
+              "type": ["object", "null"],
+              "properties": {
+                "year": {
+                  "type": ["integer", "null"]
+                },
+                "month": {
+                  "type": ["integer", "null"]
+                }
+              },
+              "required": ["year", "month"],
+              "additionalProperties": false
+            },
+            "end": {
+              "type": ["object", "null"],
+              "properties": {
+                "year": {
+                  "type": ["integer", "null"]
+                },
+                "month": {
+                  "type": ["integer", "null"]
+                }
+              },
+              "required": ["year", "month"],
+              "additionalProperties": false
+            },
+            "current": {
+              "type": ["boolean", "null"]
+            }
+          },
+          "required": ["title", "employer", "start", "end", "current"],
+          "additionalProperties": false
+        }
+      },
+      "education": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "school": {
+              "type": ["string", "null"]
+            },
+            "credential": {
+              "type": ["string", "null"]
+            },
+            "end": {
+              "type": ["object", "null"],
+              "properties": {
+                "year": {
+                  "type": ["integer", "null"]
+                },
+                "month": {
+                  "type": ["integer", "null"]
+                }
+              },
+              "required": ["year", "month"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["school", "credential", "end"],
+          "additionalProperties": false
+        }
+      },
+      "skills": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["name", "email", "phone", "roles", "education", "skills"],
+    "additionalProperties": false
+  }
+}
