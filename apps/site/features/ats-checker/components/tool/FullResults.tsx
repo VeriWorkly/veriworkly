@@ -18,6 +18,7 @@ import type { AtsFullReport, AtsQuota, AtsRuleResult } from "../../types";
 import { CategoryBreakdown } from "./CategoryBreakdown";
 import { CopyReportButton } from "./CopyReportButton";
 import { ParsedView } from "./ParsedView";
+import { RequirementsPanel } from "./RequirementsPanel";
 import { ScoreSummary } from "./ScoreSummary";
 
 function groupByCategory(rules: AtsRuleResult[]) {
@@ -168,6 +169,8 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
             </p>
           </section>
         )}
+
+        <RequirementsPanel requirements={report.requirements} />
 
         {report.jobMatchScore !== null ? (
           <div className="grid gap-4 sm:grid-cols-2">

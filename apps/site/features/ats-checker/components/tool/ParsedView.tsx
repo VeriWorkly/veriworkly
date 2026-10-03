@@ -1,39 +1,14 @@
 import { AlertCircle, Building2, GraduationCap, User, Wrench } from "lucide-react";
 
-import type { AtsParsedDate, AtsParsedResume } from "../../types";
+import {
+  DEGREE_LABELS,
+  ISCED_LABELS,
+  formatRoleDates,
+  formatTenure,
+  roleSpanMonths,
+} from "@veriworkly/ats-engine/format";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-const DEGREE_LABELS: Record<string, string> = {
-  diploma: "Diploma",
-  associate: "Associate",
-  bachelor: "Bachelor's",
-  master: "Master's",
-  doctorate: "Doctorate",
-};
-
-function formatDate(date: AtsParsedDate | null) {
-  if (!date) return null;
-  return date.month ? `${MONTHS[date.month - 1]} ${date.year}` : String(date.year);
-}
-
-function formatSpan(months: number) {
-  const years = Math.floor(months / 12);
-  const rest = months % 12;
-  if (!years) return `${rest} mo`;
-  return rest ? `${years} yr ${rest} mo` : `${years} yr`;
-}
-
-function monthsBetween(start: AtsParsedDate, end: AtsParsedDate | null, current: boolean) {
-  const now = new Date();
-  const from = start.year * 12 + (start.month ?? 1) - 1;
-  const to = current
-    ? now.getFullYear() * 12 + now.getMonth()
-    : end
-      ? end.year * 12 + (end.month ?? 12) - 1
-      : from;
-  return Math.max(0, to - from + 1);
-}
+import type { AtsParsedResume } from "../../types";
 
 /** A field the parser could not recover, shown as the empty column it actually is. */
 function Missing({ label }: { label: string }) {
@@ -131,8 +106,7 @@ export function ParsedView({ parsed }: { parsed: AtsParsedResume }) {
               </thead>
               <tbody>
                 {parsed.roles.map((role, index) => {
-                  const from = formatDate(role.start);
-                  const to = role.current ? "Present" : formatDate(role.end);
+                  const dates = formatRoleDates(role);
                   return (
                     <tr
                       key={`${role.title}-${role.employer}-${index}`}
@@ -145,12 +119,10 @@ export function ParsedView({ parsed }: { parsed: AtsParsedResume }) {
                         {role.employer || <Missing label="employer" />}
                       </td>
                       <td className="py-2.5 pr-3 text-zinc-700 tabular-nums dark:text-zinc-300">
-                        {from ? `${from} – ${to ?? "?"}` : <Missing label="dates" />}
+                        {dates ?? <Missing label="dates" />}
                       </td>
                       <td className="py-2.5 text-zinc-500 tabular-nums dark:text-zinc-400">
-                        {role.start
-                          ? formatSpan(monthsBetween(role.start, role.end, role.current))
-                          : "—"}
+                        {role.start ? formatTenure(roleSpanMonths(role)) : "—"}
                       </td>
                     </tr>
                   );
@@ -170,7 +142,7 @@ export function ParsedView({ parsed }: { parsed: AtsParsedResume }) {
           <p className="mt-4 border-t border-zinc-100 pt-3 text-sm text-zinc-600 dark:border-zinc-900 dark:text-zinc-300">
             Total experience read from your dates:{" "}
             <span className="font-semibold text-zinc-900 tabular-nums dark:text-white">
-              {formatSpan(parsed.monthsOfExperience)}
+              {formatTenure(parsed.monthsOfExperience)}
             </span>
             <span className="text-zinc-500 dark:text-zinc-400">
               {" "}
@@ -207,11 +179,13 @@ export function ParsedView({ parsed }: { parsed: AtsParsedResume }) {
               No education entries recovered.
             </p>
           )}
-          {parsed.highestDegree ? (
+          {parsed.highestIsced || parsed.highestDegree ? (
             <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-              Highest degree read:{" "}
+              Highest level read:{" "}
               <span className="font-medium text-zinc-700 dark:text-zinc-200">
-                {DEGREE_LABELS[parsed.highestDegree]}
+                {parsed.highestIsced
+                  ? ISCED_LABELS[parsed.highestIsced]
+                  : DEGREE_LABELS[parsed.highestDegree!]}
               </span>
             </p>
           ) : null}
