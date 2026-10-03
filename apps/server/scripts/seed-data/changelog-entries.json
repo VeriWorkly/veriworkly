@@ -2,44 +2,46 @@
   {
     "id": "v3-25-0",
     "version": "3.25.0",
-    "title": "ATS Engine on npm, Job Requirements Analysis & Resume Integrity Checks",
-    "summary": "This release moves VeriWorkly's ATS scoring and parsing into @veriworkly/ats-engine, an open-source package now published on npm, adds a requirements panel that judges every line of a job posting against the resume, and adds integrity checks for the tricks candidates are told to use on screeners. ATS scores change for the same resume compared with 3.24.x.",
+    "title": "Requirement-by-Requirement Matching, Resume Integrity Checks & an Open-Source ATS Engine",
+    "summary": "This release changes how the ATS checker reads and scores a resume. Every requirement in a job posting is now checked against your resume one by one, the checker catches the hidden-text and keyword tricks that get resumes rejected, and our resume templates now come through ATS text extraction intact. The engine behind all of it is now open source and published on npm as @veriworkly/ats-engine, so anyone can see exactly how a resume is read and scored.",
     "type": "minor",
-    "publishedAt": "2026-10-03T18:30:00Z",
+    "publishedAt": "2026-10-03T19:00:00Z",
     "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/Release-v3.25.0",
     "added": [
-      "Published @veriworkly/ats-engine 0.1.0 to npm with build provenance, developed in the VeriWorkly/ats-engine repository and installed by the server, site and studio.",
-      "Requirements panel in the ATS checker marking each posting requirement met, partly met, missing or unverifiable, with the resume lines that support it.",
-      "Integrity checks for hidden text in PDF and DOCX files, invisible and look-alike characters, instructions aimed at AI screeners, pasted job postings and keyword stuffing.",
-      "German and Hindi language support and US, German and Indian regional conventions for phone numbers, date order and credentials.",
-      "Structured resume documents from the Studio ATS workspace, scored exactly as written."
+      "Requirement-by-requirement matching: paste a job posting and each requirement is marked Met, Partly met, Not shown, or Answer in the application (for things a resume cannot settle, such as the right to work), together with the lines from your resume it relied on.",
+      "Integrity checks for white or tiny text, text hidden in PDF and Word files, invisible and look-alike characters, instructions written for AI screeners, a pasted job posting, and keywords repeated far beyond normal use. They only lower the score when something is found: an honest resume scores exactly as if these checks did not exist.",
+      "German and Hindi support: resumes and job postings in German and Hindi are read in their own language, with US, German and Indian conventions for phone numbers, date order and qualifications.",
+      "The ATS engine is open source: @veriworkly/ats-engine is published on npm under the MIT license with build provenance, and developed in its own repository at github.com/VeriWorkly/ats-engine."
     ],
     "improved": [
-      "Scoring follows a published rubric with readiness, job-match and per-category scores and a verdict; rules with no evidence are left out instead of passed.",
-      "Parsing reads dates with a day, sentence-case and letter-spaced headings, titles beginning with a section word, title and employer joined by @, and school names apart from their degree.",
-      "Requirement matching understands degree-or-experience alternatives, year ranges such as 3 to 5 years, and language lists, and no longer reads US state codes as degrees.",
-      "AI analysis and resume conversion redact personal details before sending and accept only values that appear in the resume.",
-      "Resume templates cap section-title letter spacing and stack the headline under the name so ATS text extraction keeps headings and names intact.",
-      "OpenAPI specification updated for the ATS endpoints."
+      "Studio's ATS workspace now sends your resume as structured data instead of having it re-read from a PDF, so it is scored exactly as you wrote it.",
+      "Resume templates are ATS-safe: section titles were spaced so widely that PDF readers split them into single letters and an ATS found no Experience section. Spacing is now capped on every template, and the headline sits under your name instead of beside it, where it was being read as part of the name.",
+      "More resumes are read correctly, including dates written with a day (15 March 2020), headings in sentence case (Education and certifications), job titles that begin with a section word (Education Coordinator), and titles written as Data Scientist @ Netflix.",
+      "Requirement matching is smarter: a bachelor's degree or 4 years of experience is met by either one, 3 to 5 years asks for 3, a list of languages is read as a list, and a state code such as Boston, MA is no longer mistaken for a master's degree.",
+      "AI analysis is more private: your name, email and phone number are removed before your resume is sent to the AI model, and anything the model returns must actually appear in your resume before it is shown.",
+      "The server, site and Studio now use the published engine instead of keeping their own copies of the same logic, and the API documentation describes the new report fields."
     ],
     "fixed": [
-      "Phone numbers no longer absorb digits from the following line.",
-      "Lines beginning with .NET are no longer read as bullet points.",
-      "Honest content is no longer flagged as hidden text: white text on dark table cells, Arabic and Hebrew phone formatting, and Greek letters in scientific terms."
+      "A phone number followed by a line that starts with digits no longer swallows those digits.",
+      "Lines beginning with .NET are no longer mistaken for bullet points.",
+      "White text in dark table cells, phone numbers in Arabic and Hebrew resumes, and Greek letters in scientific terms such as TNFα are no longer flagged as hidden or suspicious."
+    ],
+    "breaking": [
+      "ATS scores change: the same resume and job posting will usually score differently than on 3.24.x. Scoring now follows a published rubric, a check with nothing to judge is left out instead of being counted as a pass, and a resume caught gaming the screener can no longer earn a strong verdict from its job match alone."
     ],
     "security": [
-      "DOCX uploads are measured exactly as the document reader opens them, so compressed zip bombs are refused before they are unpacked.",
-      "Resume, posting and AI-output processing runs in linear time on hostile input, closing slow-regex and slow-matching denial-of-service paths."
+      "Word uploads are measured exactly the way the document reader opens them, so a small file built to expand into gigabytes (a zip bomb) is refused before it is ever unpacked.",
+      "Resumes, job postings and AI responses are processed in linear time even when they are deliberately crafted to be slow, closing several ways a single upload could tie up the server."
     ],
     "tags": [
       "ats",
       "ats-engine",
+      "open-source",
       "npm",
       "requirements",
       "integrity",
-      "parsing",
-      "security",
-      "studio"
+      "studio",
+      "security"
     ]
   },
   {
