@@ -21,6 +21,8 @@ export function runAtsAnalysis(input: {
   fetchJobUrl: boolean;
   requestId: string;
   layout?: AtsLayoutSignals;
+  /** Opt in to AI parse repair. It runs, and is charged, only when the parse came back thin. */
+  repairParse?: boolean;
 }) {
   return fetchApiData<AtsResult>("/ats/analyze", { method: "POST", body: JSON.stringify(input) });
 }

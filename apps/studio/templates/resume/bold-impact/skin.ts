@@ -6,7 +6,7 @@ export const boldImpactScale = createTypeScale({
   role: 14,
   contact: 11.5,
   sectionTitle: 11,
-  sectionTitleTracking: 2.4,
+  sectionTitleTracking: 0.55,
   nameTracking: 1.5,
   roleTracking: 0.4,
   itemTitle: 15,

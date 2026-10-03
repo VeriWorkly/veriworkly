@@ -6,7 +6,7 @@ export const modernMinimalScale = createTypeScale({
   role: 14,
   contact: 11.5,
   sectionTitle: 10,
-  sectionTitleTracking: 2.2,
+  sectionTitleTracking: 0.5,
   nameTracking: -0.3,
   itemTitle: 14.5,
   meta: 11.5,

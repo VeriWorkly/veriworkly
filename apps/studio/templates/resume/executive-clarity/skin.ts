@@ -10,7 +10,7 @@ export const executiveClarityScale = createTypeScale({
   role: 18,
   contact: 14,
   sectionTitle: 12,
-  sectionTitleTracking: 1.2,
+  sectionTitleTracking: 0.6,
   itemTitle: 16,
   meta: 14,
   body: 14,
@@ -32,7 +32,6 @@ export const executiveClarityScale = createTypeScale({
 export const executiveClarityGeometry = {
   headerGap: 24,
   headerPadBottom: 24,
-  nameGapX: 12,
   nameGapY: 4,
   contactTop: 8,
   linksTop: 8,

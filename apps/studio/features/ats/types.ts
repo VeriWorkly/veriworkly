@@ -1,104 +1,46 @@
-export type AtsRuleResult = {
-  id: string;
-  category: string;
-  severity: "info" | "warning" | "error";
-  passed: boolean;
-  evidence: string;
-  scoreImpact: number;
-  fix: string;
-};
+/**
+ * Report types come from the engine that produces them, so Studio cannot drift from the shape
+ * the server sends. What stays declared here is the server API envelope around a report.
+ */
+import type { AtsFullReport, AtsParsedField, AtsParsedResume } from "@veriworkly/ats-engine";
 
-export type AtsVerdict = "strong" | "needs-work" | "weak";
+export type {
+  AtsCategoryScore,
+  AtsDegreeLevel,
+  AtsLayoutSignals,
+  AtsParsedDate,
+  AtsParsedEducation,
+  AtsParsedField,
+  AtsParsedResume,
+  AtsParsedRole,
+  AtsProvenance,
+  AtsRuleResult,
+  AtsVerdict,
+} from "@veriworkly/ats-engine";
 
 /**
- * Page geometry measured while parsing an uploaded document: the share of lines split across a
- * column gutter, and the number of ruled table grids. Echoed back with the scan so the format
- * checks can read the layout rather than only the text. `columnRatio` is null when the document
- * was too short for that measurement to carry signal, and the whole object is absent for pasted
- * text — in both cases the affected checks are skipped rather than assumed to pass.
+ * Studio only ever scans while logged in, so it always receives the full report. `parsed` is
+ * optional so a server one deploy behind renders an empty panel rather than throwing.
  */
-export type AtsLayoutSignals = {
-  columnRatio: number | null;
-  tableCount: number;
-  pageCount: number;
-};
+export type AtsReport = Omit<AtsFullReport, "parsed"> & { parsed?: AtsParsedResume };
 
-/** Per-area rollup of the deterministic rules, so the panel can show where the score went. */
-export type AtsCategoryScore = {
-  category: string;
-  score: number;
-  passed: number;
-  total: number;
-  lost: number;
-  possible: number;
-};
-
-export type AtsDegreeLevel = "diploma" | "associate" | "bachelor" | "master" | "doctorate";
-
-export type AtsParsedDate = { year: number; month: number | null };
-
-export type AtsParsedRole = {
-  title: string;
-  employer: string;
-  start: AtsParsedDate | null;
-  end: AtsParsedDate | null;
-  current: boolean;
-};
-
-export type AtsParsedEducation = {
-  school: string;
-  credential: string;
-  level: AtsDegreeLevel | null;
-  end: AtsParsedDate | null;
-};
-
-/**
- * The fields an applicant tracking system recovers from the document — one row per job, holding
- * the employer, title and dates a recruiter actually filters on. Produced by the same
- * deterministic pass as the scores, so it never costs a second scan to see.
- */
-export type AtsParsedResume = {
-  name: string;
-  email: string;
-  phone: string;
-  links: string[];
-  roles: AtsParsedRole[];
-  education: AtsParsedEducation[];
-  skills: string[];
-  /** Calendar months covered by at least one role, so overlapping jobs are not double counted. */
-  monthsOfExperience: number | null;
-  highestDegree: AtsDegreeLevel | null;
-};
-
-/**
- * Studio only ever calls /ats/check and /ats/analyze while logged in, so it always receives
- * the full (unrestricted) report — the anonymous, score-only shape is a site-checker concern.
- */
-export type AtsReport = {
-  version: "ats-v2";
-  restricted: false;
-  verdict: AtsVerdict;
-  readinessScore: number;
-  jobMatchScore: number | null;
-  matchedKeywords: string[];
-  missingKeywords: string[];
-  parsingWarnings: string[];
-  strengths: string[];
-  failedChecks: AtsRuleResult[];
-  prioritizedFixes: string[];
-  rules: AtsRuleResult[];
-  categories: AtsCategoryScore[];
-  checksPassed: number;
-  checksTotal: number;
-  wordCount: number;
-  /** Optional so a server one deploy behind renders an empty panel rather than throwing. */
-  parsed?: AtsParsedResume;
+/** Outcome of the optional AI parse repair. Returned by /ats/analyze only. */
+export type AtsRepairSummary = {
+  /** The deterministic parse was thin enough that a repair pass would likely help. */
+  available: boolean;
+  applied: boolean;
+  /** Fields in `report.parsed` a model supplied rather than the parser. */
+  fields: AtsParsedField[];
+  /** Values the model returned that do not occur in the resume, and were dropped. */
+  rejectedValues: number;
+  creditsSpent: number;
 };
 
 export type AtsResult = {
   report: AtsReport;
   /** "unavailable" means no model could be routed; the scan quota is handed back. */
   aiStatus?: "ok" | "unavailable";
+  repair?: AtsRepairSummary;
   ai: {
     explanation: string;
     missingEvidence: string[];
@@ -123,6 +65,8 @@ export type AtsPricing = {
   analysisCredits: { min: number; max: number };
   jobUrlAnalysisCredits: { min: number; max: number };
   resumeConversionCredits: number;
+  /** `null` when repair is not offered; optional so a server one deploy behind still type-checks. */
+  parseRepairCredits?: number | null;
 };
 
 export type AtsQuota = AtsResult["quota"];

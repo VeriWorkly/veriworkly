@@ -24,14 +24,13 @@ function Header(ctx: ResumeWebContext) {
     >
       {model.showBasics && (
         <>
-          {/* flex-end, not baseline: react-pdf resolves "baseline" to the box
-              bottom, so bottom alignment is the one rule both engines share. */}
+          {/* Stacked, never side by side: text extractors read glyphs sharing a
+              baseline as one line, so a headline beside the name became part of
+              it and the ATS lost the name. */}
           <div
             style={{
-              alignItems: "flex-end",
-              columnGap: px(geometry.nameGapX),
               display: "flex",
-              flexWrap: "wrap",
+              flexDirection: "column",
               rowGap: px(geometry.nameGapY),
             }}
           >

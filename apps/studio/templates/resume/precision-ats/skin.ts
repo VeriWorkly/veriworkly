@@ -9,7 +9,7 @@ export const precisionAtsScale = createTypeScale({
   role: 14,
   contact: 12,
   sectionTitle: 11.5,
-  sectionTitleTracking: 1.84,
+  sectionTitleTracking: 0.57,
   itemTitle: 14,
   meta: 12,
   body: 14,
@@ -31,7 +31,6 @@ export const precisionAtsScale = createTypeScale({
 export const precisionAtsGeometry = {
   headerGap: 16,
   headerPadBottom: 12,
-  nameGapX: 12,
   nameGapY: 4,
   contactTop: 8,
   linksTop: 4,
