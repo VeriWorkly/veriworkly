@@ -5499,7 +5499,7 @@
           "id": { "type": "string" },
           "category": {
             "type": "string",
-            "description": "One of: parse, contact, structure, content, format."
+            "description": "One of: integrity, parse, contact, structure, content, format. Integrity checks (hidden text, instructions aimed at an AI screener, a copied posting, keyword stuffing) deduct their impact from the score in points rather than weighing in its denominator."
           },
           "severity": { "type": "string", "enum": ["info", "warning", "error"] },
           "passed": { "type": "boolean" },
@@ -5550,7 +5550,64 @@
             "type": "integer",
             "description": "Words counted in the extracted resume text."
           },
-          "parsed": { "$ref": "#/components/schemas/AtsParsedResume" }
+          "parsed": { "$ref": "#/components/schemas/AtsParsedResume" },
+          "locale": {
+            "type": "object",
+            "description": "What the resume (and posting) were read as: the language packs detected beyond English,\nand the region applied (from a +country-code phone number, else the language's usual\ncountry). Regions set phone and date conventions and weigh country-specific checks\nsuch as a stated date of birth or a photo.\n",
+            "properties": {
+              "languages": { "type": "array", "items": { "type": "string", "example": "de" } },
+              "region": { "type": "string", "nullable": true, "example": "DE" }
+            }
+          },
+          "engine": {
+            "type": "object",
+            "description": "What produced the report. The same input, reference date, engine version and policy\nfingerprint always give the same report.\n",
+            "properties": {
+              "version": { "type": "string", "example": "0.1.0" },
+              "policy": {
+                "type": "string",
+                "description": "The policy's declared version and a hash of its content as applied, locale packs included.",
+                "example": "ats-v2+1a2b3c4d"
+              }
+            }
+          },
+          "requirements": {
+            "type": "array",
+            "maxItems": 25,
+            "description": "The job posting's requirements, each judged against the resume. Empty without a job description.",
+            "items": { "$ref": "#/components/schemas/AtsRequirement" }
+          }
+        }
+      },
+      "AtsRequirement": {
+        "type": "object",
+        "description": "One requirement of the posting, as a per-qualification screener grades it. `unverifiable`\nmeans the resume cannot settle it — the right to work, a clearance — unless it states it.\n",
+        "properties": {
+          "text": { "type": "string" },
+          "importance": { "type": "string", "enum": ["required", "preferred"] },
+          "kind": {
+            "type": "string",
+            "enum": ["skills", "experience", "education", "authorization", "clearance", "language"]
+          },
+          "status": { "type": "string", "enum": ["met", "partial", "missing", "unverifiable"] },
+          "terms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "term": { "type": "string" }, "found": { "type": "boolean" } }
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "maxItems": 2,
+            "description": "Resume lines that show it, work history first.",
+            "items": { "type": "string" }
+          },
+          "detail": {
+            "type": "string",
+            "description": "For years and degrees, what was compared.",
+            "example": "6 years in the work history, 5 asked"
+          }
         }
       },
       "AtsCategoryScore": {
@@ -5651,7 +5708,12 @@
                 "type": "object",
                 "properties": { "min": { "type": "integer" }, "max": { "type": "integer" } }
               },
-              "resumeConversionCredits": { "type": "integer" }
+              "resumeConversionCredits": { "type": "integer" },
+              "parseRepairCredits": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Credits charged by the optional AI parse repair (`repairParse` on `/ats/analyze`),\non top of the analysis. `null` when this deployment does not offer repair.\n"
+              }
             }
           },
           "extract": {
@@ -5703,10 +5765,18 @@
               "properties": {
                 "school": { "type": "string" },
                 "credential": { "type": "string" },
+                "isced": {
+                  "type": "integer",
+                  "nullable": true,
+                  "enum": [2, 3, 4, 5, 6, 7, 8],
+                  "description": "The ISCED 2011 level of the credential — 3 upper secondary (Abitur, Class XII), 6 bachelor's or equivalent, 7 master's or equivalent (a German Diplom), 8 doctoral."
+                },
                 "level": {
                   "type": "string",
                   "nullable": true,
-                  "enum": ["diploma", "associate", "bachelor", "master", "doctorate"]
+                  "deprecated": true,
+                  "enum": ["diploma", "associate", "bachelor", "master", "doctorate"],
+                  "description": "Derived from isced (2–4 read as diploma). Kept for one minor version."
                 },
                 "end": { "$ref": "#/components/schemas/AtsParsedDate" }
               }
@@ -5718,10 +5788,86 @@
             "nullable": true,
             "description": "Calendar months covered by at least one role, so overlapping jobs are counted once."
           },
+          "highestIsced": {
+            "type": "integer",
+            "nullable": true,
+            "enum": [2, 3, 4, 5, 6, 7, 8],
+            "description": "The highest ISCED 2011 level among the education entries."
+          },
           "highestDegree": {
             "type": "string",
             "nullable": true,
-            "enum": ["diploma", "associate", "bachelor", "master", "doctorate"]
+            "deprecated": true,
+            "enum": ["diploma", "associate", "bachelor", "master", "doctorate"],
+            "description": "Derived from highestIsced. Kept for one minor version."
+          },
+          "provenance": {
+            "type": "object",
+            "description": "Where each group of fields came from. `parser` was read from the text by the deterministic\nparser — what an ATS would see. `structured` was taken from the typed fields of an\n`AtsResumeDocument` or a JSON Resume. `ai` was recovered by the optional parse repair and\ngrounded against the text. `none` means nothing was recovered.\n",
+            "required": ["name", "email", "phone", "roles", "education", "skills"],
+            "properties": {
+              "name": { "$ref": "#/components/schemas/AtsProvenance" },
+              "email": { "$ref": "#/components/schemas/AtsProvenance" },
+              "phone": { "$ref": "#/components/schemas/AtsProvenance" },
+              "roles": { "$ref": "#/components/schemas/AtsProvenance" },
+              "education": { "$ref": "#/components/schemas/AtsProvenance" },
+              "skills": { "$ref": "#/components/schemas/AtsProvenance" }
+            }
+          }
+        }
+      },
+      "AtsProvenance": { "type": "string", "enum": ["parser", "structured", "ai", "none"] },
+      "AtsResumeInput": {
+        "description": "The resume, in any of three shapes:\n\n- **Text** — extracted from a file or pasted. Parsed deterministically.\n- **`AtsResumeDocument`** — structured data, identified by `format: \"ats-resume@1\"`. The ATS\n  record is read from its fields; the content checks run on its rendered text. An invalid\n  document is rejected with 400 before any quota is consumed.\n- **JSON Resume** (jsonresume.org) — recognised by shape and read the same way as a document.\n  One that exceeds the document limits is scored as flattened text instead.\n\nAny other object is flattened to text, keys on their own lines.\n",
+        "oneOf": [
+          { "type": "string", "maxLength": 50000 },
+          { "$ref": "#/components/schemas/AtsResumeDocument" },
+          { "type": "object", "additionalProperties": true }
+        ]
+      },
+      "AtsResumeDocument": {
+        "type": "object",
+        "required": ["format", "basics", "sections"],
+        "description": "A resume as structured data. Dates are `YYYY-MM` or `YYYY`. Sections are in page order;\nleave out hidden ones. `title` is the heading as printed, in the resume's own language.\n",
+        "properties": {
+          "format": { "type": "string", "enum": ["ats-resume@1"] },
+          "basics": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "maxLength": 200 },
+              "headline": { "type": "string", "maxLength": 500 },
+              "email": { "type": "string", "maxLength": 320 },
+              "phone": { "type": "string", "maxLength": 64 },
+              "location": { "type": "string", "maxLength": 300 },
+              "links": {
+                "type": "array",
+                "maxItems": 50,
+                "items": { "type": "string", "maxLength": 2048 }
+              }
+            }
+          },
+          "sections": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {
+              "type": "object",
+              "required": ["kind", "title"],
+              "description": "`summary` carries `text`; every other kind carries `items` (at most 200):\n`experience` — { title, employer, location?, start?, end?, current?, summary?, highlights? };\n`education` — { school, credential?, field?, start?, end?, current?, summary? };\n`projects` — { name, role?, url?, summary?, highlights?, skills? };\n`skills` — { name?, keywords };\n`other` — { heading?, lines? }, for certifications, awards, languages and the like.\nSections in `other` never count toward years of experience.\n",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["summary", "experience", "education", "projects", "skills", "other"]
+                },
+                "title": { "type": "string", "maxLength": 200 },
+                "text": { "type": "string", "maxLength": 10000 },
+                "items": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "items": { "type": "object", "additionalProperties": true }
+                }
+              }
+            }
           }
         }
       },
@@ -5754,7 +5900,32 @@
             "minimum": 0,
             "description": "Number of ruled table grids found by tracing the page's vector drawing operators."
           },
-          "pageCount": { "type": "integer", "minimum": 0 }
+          "pageCount": { "type": "integer", "minimum": 0 },
+          "imageCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Images printed at least 50pt a side and smaller than half the page — most likely a photo. Absent when not measured, which leaves the photo check out of the report."
+          },
+          "hiddenTextChars": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Characters an ATS reads but a reader cannot see — in the background's colour or close to\nit, under 2pt, off the page, invisible, transparent, or covered by an image. The OCR text\nlayer of a scan is not counted. Feeds the integrity check `ats-v2.integrity.hiddenText`.\n"
+          },
+          "hiddenTextSample": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The start of that hidden text, quoted back in the check's evidence."
+          },
+          "imageOnlyPages": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Pages that are an image with no text layer — a scan, or a page saved as a picture."
+          },
+          "metadataText": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "The file's title, subject, keywords and author. Never scored as resume text; read only for instructions aimed at an AI screener."
+          }
         }
       },
       "AtsExtractResponse": {
@@ -5779,10 +5950,7 @@
         "type": "object",
         "required": ["resume"],
         "properties": {
-          "resume": {
-            "description": "Resume text, or a JSON Resume-shaped object. Either is accepted.",
-            "oneOf": [{ "type": "string" }, { "type": "object", "additionalProperties": true }]
-          },
+          "resume": { "$ref": "#/components/schemas/AtsResumeInput" },
           "jobDescription": {
             "type": "string",
             "description": "Optional plain-text job description to compute a jobMatchScore against."
@@ -5811,9 +5979,7 @@
         "type": "object",
         "required": ["resume", "requestId"],
         "properties": {
-          "resume": {
-            "oneOf": [{ "type": "string" }, { "type": "object", "additionalProperties": true }]
-          },
+          "resume": { "$ref": "#/components/schemas/AtsResumeInput" },
           "jobDescription": { "type": "string" },
           "jobUrl": {
             "type": "string",
@@ -5826,7 +5992,12 @@
             "minLength": 8,
             "description": "Client-generated idempotency key for the underlying AI credit reservation."
           },
-          "layout": { "$ref": "#/components/schemas/AtsLayoutSignals" }
+          "layout": { "$ref": "#/components/schemas/AtsLayoutSignals" },
+          "repairParse": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the AI parse-repair pass. It runs only when this is true **and** the\ndeterministic parse came back thin (`repair.available` in the response), and it spends\ncredits separately from the analysis. Every value the model returns must occur in the\nresume text; values that do not are dropped and counted in `repair.rejectedValues`.\nRequires an active AI Credits or Bundle plan.\n"
+          }
         }
       },
       "AtsAnalyzeResponse": {
@@ -5847,8 +6018,40 @@
                 "description": "`unavailable` means no model could be routed for this request — a server-side\nconfiguration problem, not a bad request. The deterministic report is still returned,\n`ai` is null, no credits are charged, and the scan quota unit is refunded, so\n`quota` reflects the balance after the refund.\n"
               },
               "creditsSpent": { "type": "integer" },
+              "repair": { "$ref": "#/components/schemas/AtsRepairSummary" },
               "quota": { "$ref": "#/components/schemas/AtsQuotaSummary" }
             }
+          }
+        }
+      },
+      "AtsRepairSummary": {
+        "type": "object",
+        "required": ["available", "applied", "fields", "rejectedValues", "creditsSpent"],
+        "description": "Outcome of the optional AI parse-repair pass. Present on every analyze response, whether or\nnot repair was requested, so a client can offer it when it would help.\n",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "The deterministic parse was thin enough that a repair pass would likely help."
+          },
+          "applied": {
+            "type": "boolean",
+            "description": "Repair ran and filled at least one field."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["name", "email", "phone", "roles", "education", "skills"]
+            },
+            "description": "Fields in `report.parsed` supplied by the model rather than the deterministic parser.\nRepair only ever fills fields the parser left empty; it never overwrites one.\n"
+          },
+          "rejectedValues": {
+            "type": "integer",
+            "description": "Values the model returned that do not occur in the resume and were dropped."
+          },
+          "creditsSpent": {
+            "type": "integer",
+            "description": "Credits spent on repair, in addition to the analysis `creditsSpent`."
           }
         }
       },
