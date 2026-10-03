@@ -37,6 +37,12 @@ const generationSchema = z.object({
   credits: z.number().int().positive(),
   model: z.string().min(1),
   maxOutputTokens: z.number().int().positive().max(16_000),
+  /**
+   * Extra attempts after a malformed, empty or truncated response, or a transient provider
+   * fault. Off by default: unlike analysis, these routes are not priced per attempt, so a retry
+   * is margin spent and should be a deliberate choice.
+   */
+  retries: z.number().int().min(0).max(2).default(0),
   temperature: z.number().min(0).max(2).default(0.2),
   /** See `modelSchema.structuredOutputs`. Same switch, same reason to default it off. */
   structuredOutputs: z.boolean().default(false),
@@ -48,6 +54,8 @@ const atsPolicySchema = z.object({
     standardAnalysis: z.string().min(1),
     onlineAnalysis: z.string().min(1),
     resumeConversion: z.string().min(1),
+    /** Optional: without it, parse repair uses the package's default prompt. */
+    parseRepair: z.string().min(1).optional(),
   }),
   pricing: z.object({
     creditRevenueUsd: z.number().positive(),
@@ -81,7 +89,7 @@ function loadAtsAiPolicy() {
           issues: error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).slice(0, 10),
         });
       }
-      throw new ApiError(503, `AI ATS policy is invalid: ${(error as Error).message}`);
+      throw new ApiError(503, "AI ATS policy is invalid.");
     }
   }
   return cached;
@@ -96,6 +104,11 @@ export function getAtsAiPolicy() {
       ...policy.resumeConversion,
       model: resolvePrivateAiModel(policy.resumeConversion.model),
     },
+    // Resolved like the other two routes. It was passed through verbatim, so a policy that named
+    // its repair model as `env:SOME_VAR` sent the literal string "env:SOME_VAR" to the provider.
+    parseRepair: policy.parseRepair
+      ? { ...policy.parseRepair, model: resolvePrivateAiModel(policy.parseRepair.model) }
+      : undefined,
   };
 }
 
@@ -110,6 +123,8 @@ export function publicAtsPolicy() {
       max: (analysis.at(-1) ?? analysis[0]) * policy.pricing.onlineMultiplier,
     },
     resumeConversionCredits: policy.resumeConversion.credits,
+    // `null` when the deployment has no repair route, so a client knows not to offer it.
+    parseRepairCredits: policy.parseRepair?.credits ?? null,
   };
 }
 

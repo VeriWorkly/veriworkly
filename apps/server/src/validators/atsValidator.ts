@@ -13,6 +13,11 @@ const layoutSchema = z.object({
   columnRatio: z.number().min(0).max(1).nullable(),
   tableCount: z.number().int().min(0).max(500),
   pageCount: z.number().int().min(0).max(200),
+  imageCount: z.number().int().min(0).max(500).optional(),
+  hiddenTextChars: z.number().int().min(0).max(100_000).optional(),
+  hiddenTextSample: z.string().max(200).optional(),
+  imageOnlyPages: z.number().int().min(0).max(200).optional(),
+  metadataText: z.string().max(2_000).optional(),
 });
 
 export const atsCheckSchema = z.object({
@@ -28,7 +33,7 @@ export const atsAnalyzeSchema = atsCheckSchema.extend({
   /**
    * Opt in to the AI parse-repair pass. Off by default and never inferred from a bad parse:
    * repair costs credits, so spending them is the caller's decision, not ours. The response
-   * always reports whether repair *would* help (`repairAvailable`), which is what lets the UI
+   * always reports whether repair *would* help (`repair.available`), which is what lets the UI
    * offer it rather than silently bill for it.
    */
   repairParse: z.boolean().default(false),

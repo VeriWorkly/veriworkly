@@ -1,9 +1,40 @@
 {
   "name": "@veriworkly/ats-engine",
   "version": "0.1.0",
-  "private": true,
+  "description": "Reads a resume the way an applicant tracking system does, shows what it would store, and scores it with a published rubric. Deterministic, locale-aware, browser- and edge-safe.",
+  "keywords": [
+    "ats",
+    "resume",
+    "cv",
+    "applicant-tracking-system",
+    "resume-parser",
+    "job-match",
+    "scoring",
+    "pdf",
+    "docx"
+  ],
+  "license": "MIT",
+  "author": "Gautam Raj",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VeriWorkly/ats-engine.git"
+  },
+  "homepage": "https://github.com/VeriWorkly/ats-engine#readme",
+  "bugs": {
+    "url": "https://github.com/VeriWorkly/ats-engine/issues"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/node/child.js",
+    "./dist/cli/index.js"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -11,23 +42,122 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./document": {
+      "types": "./dist/document/index.d.ts",
+      "import": "./dist/document/index.js",
+      "default": "./dist/document/index.js"
+    },
+    "./format": {
+      "types": "./dist/format/index.d.ts",
+      "import": "./dist/format/index.js",
+      "default": "./dist/format/index.js"
+    },
+    "./locales": {
+      "types": "./dist/locales/index.d.ts",
+      "import": "./dist/locales/index.js",
+      "default": "./dist/locales/index.js"
+    },
+    "./ai": {
+      "types": "./dist/ai/index.d.ts",
+      "import": "./dist/ai/index.js",
+      "default": "./dist/ai/index.js"
+    },
+    "./ai/openai-compatible": {
+      "types": "./dist/ai/openai-compatible.d.ts",
+      "import": "./dist/ai/openai-compatible.js",
+      "default": "./dist/ai/openai-compatible.js"
+    },
+    "./ai/anthropic": {
+      "types": "./dist/ai/anthropic.d.ts",
+      "import": "./dist/ai/anthropic.js",
+      "default": "./dist/ai/anthropic.js"
+    },
+    "./ai/testing": {
+      "types": "./dist/ai/testing/index.d.ts",
+      "import": "./dist/ai/testing/index.js",
+      "default": "./dist/ai/testing/index.js"
+    },
+    "./job": {
+      "types": "./dist/job/index.d.ts",
+      "import": "./dist/job/index.js",
+      "default": "./dist/job/index.js"
+    },
+    "./node": {
+      "types": "./dist/node/index.d.ts",
+      "import": "./dist/node/index.js",
+      "default": "./dist/node/index.js"
+    },
+    "./node/child": {
+      "default": "./dist/node/child.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "RUBRIC.md",
+    "LOCALES.md",
+    "CHANGELOG.md",
+    "ARCHITECTURE.md",
+    "SECURITY.md",
+    "NOTICE"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "clean": "rimraf dist",
+    "build": "npm run clean && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json",
+    "dev": "tsc -p tsconfig.node.json --watch",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "typecheck": "tsc --noEmit -p tests/tsconfig.json",
+    "lint": "eslint . && prettier --check src tests scripts bench",
+    "format": "prettier --write src tests scripts bench",
     "test": "vitest run",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "size": "node scripts/size.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "bench": "node --import tsx bench/run.ts",
+    "check": "npm run build && npm run typecheck && npm run lint && npm test && npm run size && npm run smoke && npm pack --dry-run",
+    "eval:live": "vitest run tests/ai-eval.live.test.ts",
+    "rubric": "vitest run tests/rubric.test.ts -u",
+    "changeset": "changeset",
+    "version-packages": "changeset version && node scripts/sync-version.mjs && npm run rubric",
+    "release": "npm run check && changeset publish"
   },
   "dependencies": {
-    "zod": "^3.25.76"
+    "libphonenumber-js": "^1.13.11",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^25.9.5",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "5.4.296",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
     "typescript": "^6",
+    "typescript-eslint": "^8.71.0",
     "vitest": "^4.1.10"
+  },
+  "bin": {
+    "ats-engine": "./dist/cli/index.js"
+  },
+  "peerDependencies": {
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.296"
+  },
+  "peerDependenciesMeta": {
+    "mammoth": {
+      "optional": true
+    },
+    "pdf-parse": {
+      "optional": true
+    },
+    "pdfjs-dist": {
+      "optional": true
+    }
   }
 }

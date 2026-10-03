@@ -29,17 +29,10 @@ function Header(ctx: ResumePdfContext) {
     >
       {model.showBasics && (
         <>
-          {/* flex-end, not baseline: react-pdf resolves "baseline" to the box
-              bottom, so bottom alignment is the one rule both engines share. */}
-          <View
-            style={{
-              alignItems: "flex-end",
-              columnGap: pxToPt(geometry.nameGapX),
-              flexDirection: "row",
-              flexWrap: "wrap",
-              rowGap: pxToPt(geometry.nameGapY),
-            }}
-          >
+          {/* Stacked, never side by side: text extractors read glyphs sharing a
+              baseline as one line, so a headline beside the name became part of
+              it and the ATS lost the name. */}
+          <View style={{ flexDirection: "column", rowGap: pxToPt(geometry.nameGapY) }}>
             <Text style={styles.name}>
               {cleanResumeText(resume.basics.fullName) || "Your Name"}
             </Text>

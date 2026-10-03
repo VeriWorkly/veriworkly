@@ -21,7 +21,16 @@ function report(overrides: Partial<AtsFullReport> = {}): AtsFullReport {
       education: [],
       skills: [],
       monthsOfExperience: null,
+      highestIsced: null,
       highestDegree: null,
+      provenance: {
+        name: "parser",
+        email: "parser",
+        phone: "none",
+        roles: "none",
+        education: "none",
+        skills: "none",
+      },
     },
 
     matchedKeywords: ["react", "typescript"],
@@ -62,6 +71,9 @@ function report(overrides: Partial<AtsFullReport> = {}): AtsFullReport {
     checksPassed: 9,
     checksTotal: 11,
     wordCount: 612,
+    locale: { languages: [], region: null },
+    engine: { version: "0.1.0", policy: "ats-v2+00000000" },
+    requirements: [],
     ...overrides,
   };
 }

@@ -1,7 +1,9 @@
 import type { AtsEnginePolicy } from "../policy/schema.js";
+import { memo } from "../util/memo.js";
+import { wordListPattern } from "../text/text.js";
 import { canonicalize, type Vocabulary } from "./vocabulary.js";
 
-const isTermChar = (char: string) => /[a-z0-9+#./-]/i.test(char);
+const isTermChar = (char: string) => /[\p{L}\p{M}\p{N}+#./-]/u.test(char);
 
 /**
  * Caps how many alternatives one "or" can bind together. A real posting offers a handful;
@@ -56,15 +58,19 @@ function leadingList(text: string) {
  * is a within-sentence relationship; a term appearing on its own elsewhere joins the same group
  * through the union-find, which is what makes chained lists collapse correctly.
  *
- * `or` is the only separator honoured. A slash would be ambiguous against tokens that legally
- * contain one — ci/cd, tcp/ip, a/b — and splitting those would do more harm than the extra
- * coverage is worth.
+ * The policy's `alternationWords` ("or", "oder") are the only separators honoured. A slash would
+ * be ambiguous against tokens that legally contain one — ci/cd, tcp/ip, a/b — and splitting
+ * those would do more harm than the extra coverage is worth.
+ *
+ * Returns the union-find root of a term, and the separator word that grouped it, so the
+ * missing-keyword label can read "Go oder Java" for a German posting.
  */
 export function alternationGroups(
   lines: string[],
   km: AtsEnginePolicy["keywordMatch"],
   vocab: Vocabulary,
 ) {
+  const separatorOf = new Map<string, string>();
   const parent = new Map<string, string>();
   const find = (token: string): string => {
     const seen = parent.get(token);
@@ -97,18 +103,27 @@ export function alternationGroups(
     // every possible split at every start position. Measured at 546 ms for one such job
     // description against 10 ms for a normal one, on an endpoint that is free, unauthenticated,
     // and single-threaded. The hand-rolled scan below is linear and needs no such care.
-    const parts = line.split(/\bor\b/i);
-    if (parts.length < 2) continue;
+    // The capture keeps the separators: [text, "or", text, "oder", text].
+    const parts = line.split(splitterOf(km));
+    if (parts.length < 3) continue;
 
-    for (let i = 1; i < parts.length; i += 1) {
-      const members = [...trailingList(parts[i - 1]), ...leadingList(parts[i])]
+    for (let i = 2; i < parts.length; i += 2) {
+      const members = [...trailingList(parts[i - 2]), ...leadingList(parts[i])]
         .map((word) => canonicalize(word, km, vocab))
         .filter((token): token is string => token !== null && !grouped.has(token));
 
-      for (const member of members) grouped.add(member);
+      for (const member of members) {
+        grouped.add(member);
+        separatorOf.set(member, parts[i - 1].toLowerCase());
+      }
       for (let member = 1; member < members.length; member += 1) union(members[0], members[member]);
     }
   }
 
-  return find;
+  return { find, separatorOf: (token: string) => separatorOf.get(token) };
 }
+
+const splitterOf = memo(
+  (km: AtsEnginePolicy["keywordMatch"]) =>
+    new RegExp(`(${wordListPattern(km.alternationWords)})`, "iu"),
+);

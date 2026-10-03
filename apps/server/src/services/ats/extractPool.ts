@@ -1,22 +1,24 @@
 import { fork, type ChildProcess } from "node:child_process";
+import { createRequire } from "node:module";
+
+import type { AtsLayoutSignals } from "@veriworkly/ats-engine";
+import type {
+  AtsExtractRequest,
+  AtsExtractResponse,
+  AtsResumeFormat,
+} from "@veriworkly/ats-engine/node";
 
 import { logger } from "#lib/logger";
 import { ApiError } from "#lib/errors";
 
-import type {
-  AtsExtractFormat,
-  AtsExtractLayout,
-  AtsExtractResponse,
-} from "#services/ats/extractChild";
-
-export type AtsExtractOutcome = { text: string; layout?: AtsExtractLayout };
+export type AtsExtractOutcome = { text: string; layout?: AtsLayoutSignals };
 
 const EXTRACTION_TIMEOUT_MS = 20_000;
 const MAX_QUEUE_DEPTH = 8;
 
 type PendingJob = {
   id: number;
-  format: AtsExtractFormat;
+  format: AtsResumeFormat;
   buffer: Buffer;
   resolve: (result: AtsExtractOutcome) => void;
   reject: (error: unknown) => void;
@@ -30,14 +32,23 @@ let nextJobId = 1;
 const queue: PendingJob[] = [];
 
 /**
- * Resolves the compiled child entrypoint next to this module. Under `tsx watch` (dev)
- * `import.meta.url` ends in `.ts` and tsx's loader applies to forked children; under
- * `node dist/index.js` (prod) it ends in `.js`. Both land on a sibling file, so no build step
- * or asset copy is required.
+ * The extraction child is the package's compiled `node/child.js`.
+ *
+ * It used to be a sibling of this file, forked by extension: compiled `.js` in a production
+ * build, the `.ts` source everywhere else. The source never started. `fork` with an explicit
+ * `execArgv` replaces the parent's, so `tsx`'s loader was dropped in development, and Node
+ * before 23.6 (CI runs 22, the image 20) cannot run `.ts` on its own — PDF and DOCX extraction
+ * failed under `npm run dev`, and the tests that cover it failed in CI. Compiled JavaScript
+ * needs no loader.
+ *
+ * Resolved on first use, not at import: a missing or stale package build then fails resume
+ * extraction with a 503, rather than the whole server at boot.
  */
-function childEntrypoint() {
-  const extension = import.meta.url.endsWith(".ts") ? ".ts" : ".js";
-  return new URL(`./extractChild${extension}`, import.meta.url);
+let childEntrypoint: string | null = null;
+
+function resolveChildEntrypoint() {
+  childEntrypoint ??= createRequire(import.meta.url).resolve("@veriworkly/ats-engine/node/child");
+  return childEntrypoint;
 }
 
 function clearTimer() {
@@ -95,7 +106,7 @@ function handleMessage(message: AtsExtractResponse) {
 function ensureChild(): ChildProcess {
   if (child?.connected) return child;
 
-  child = fork(childEntrypoint(), {
+  child = fork(resolveChildEntrypoint(), {
     // No stdio from the child; it communicates over the IPC channel only.
     stdio: ["ignore", "ignore", "ignore", "ipc"],
     // Caps a decompression bomb rather than letting it consume host memory.
@@ -138,7 +149,7 @@ function pump() {
       id: job.id,
       format: job.format,
       buffer: job.buffer.toString("base64"),
-    });
+    } satisfies AtsExtractRequest);
   } catch (error) {
     recycleChild(
       `send failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -165,7 +176,7 @@ function pump() {
  * pathological file can never occupy more than one extraction process.
  */
 export function extractInChildProcess(
-  format: AtsExtractFormat,
+  format: AtsResumeFormat,
   buffer: Buffer,
 ): Promise<AtsExtractOutcome> {
   if (queue.length >= MAX_QUEUE_DEPTH)

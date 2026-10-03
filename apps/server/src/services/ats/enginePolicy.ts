@@ -1,5 +1,6 @@
-import { AtsPolicyError, parseAtsPolicy } from "@veriworkly/ats-engine";
-import type { AtsEnginePolicy } from "@veriworkly/ats-engine";
+import { AtsPolicyError } from "@veriworkly/ats-engine";
+import type { AtsEnginePolicy, AtsEnginePolicyInput } from "@veriworkly/ats-engine";
+import { BUILT_IN_LOCALES, withLocales } from "@veriworkly/ats-engine/locales";
 
 import { config } from "#config";
 import { getAtsEnginePolicyJson } from "#services/aiPrivateConfig";
@@ -36,7 +37,9 @@ export function getAtsEnginePolicy(): AtsEnginePolicy {
   if (cached) return cached;
 
   try {
-    cached = parseAtsPolicy(getAtsEnginePolicyJson());
+    // The built-in German and Hindi packs and the US, DE and IN regions, attached to whatever
+    // policy is configured: each resume is then read in the language it is written in.
+    cached = withLocales(getAtsEnginePolicyJson() as AtsEnginePolicyInput, BUILT_IN_LOCALES);
   } catch (error) {
     if (error instanceof ApiError) throw error;
     // The policy is operator-supplied and never reaches a caller, so the specific field that

@@ -15,7 +15,8 @@ import { getResumeAdditionalBlocks } from "@/features/documents/rendering/resume
 import { downloadBlob } from "../download";
 import { createDocxParagraph } from "./docx-paragraph";
 
-async function buildResumeDocx(resume: ResumeData): Promise<Blob> {
+/** The DOCX export as a file, for download or for reading back (see template-ats.contract). */
+export async function buildResumeDocx(resume: ResumeData): Promise<Blob> {
   const children: Paragraph[] = [];
 
   const visibleSections = getVisibleSectionMap(resume);

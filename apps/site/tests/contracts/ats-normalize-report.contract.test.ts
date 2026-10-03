@@ -109,6 +109,60 @@ describe("ATS report normalisation - surviving a server one deploy behind", () =
     expect(() => report.parsed.skills.length).not.toThrow();
   });
 
+  it("infers provenance for a parsed record from a server that predates it", () => {
+    const legacy = legacyFullResult();
+    if (legacy.report.restricted) throw new Error("expected a full report");
+    legacy.report.parsed = {
+      name: "Jane Doe",
+      email: "",
+      phone: "",
+      links: [],
+      roles: [{ title: "Engineer", employer: "Acme", start: null, end: null, current: false }],
+      education: [],
+      skills: [],
+      monthsOfExperience: null,
+      highestDegree: null,
+    };
+
+    const { report } = normalizeCheckResult(legacy);
+
+    if (report.restricted) throw new Error("expected a full report");
+    // An older server only ever parsed text: what it recovered is the parser's, the rest is none.
+    expect(report.parsed.provenance).toEqual({
+      name: "parser",
+      email: "none",
+      phone: "none",
+      roles: "parser",
+      education: "none",
+      skills: "none",
+    });
+  });
+
+  it("fills ISCED levels and the locale for a server that predates them", () => {
+    const legacy = legacyFullResult();
+    if (legacy.report.restricted) throw new Error("expected a full report");
+    legacy.report.parsed = {
+      name: "Jane Doe",
+      email: "",
+      phone: "",
+      links: [],
+      roles: [],
+      education: [{ school: "State University", credential: "B.S.", level: "bachelor", end: null }],
+      skills: [],
+      monthsOfExperience: null,
+      highestDegree: "bachelor",
+    };
+
+    const { report } = normalizeCheckResult(legacy);
+
+    if (report.restricted) throw new Error("expected a full report");
+    expect(report.parsed.highestIsced).toBeNull();
+    expect(report.parsed.education[0].isced).toBeNull();
+    // The old label is still what the results panel falls back to.
+    expect(report.parsed.highestDegree).toBe("bachelor");
+    expect(report.locale).toEqual({ languages: [], region: null });
+  });
+
   it("recomputes the check counts from the rules an older server did send", () => {
     const { report } = normalizeCheckResult(legacyFullResult());
 

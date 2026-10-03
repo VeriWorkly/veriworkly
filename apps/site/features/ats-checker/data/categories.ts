@@ -8,63 +8,51 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
+import {
+  categoryLabel,
+  scoreTone,
+  sortByCategoryOrder,
+  type AtsScoreTone,
+} from "@veriworkly/ats-engine/format";
 
-export type ScoreTone = "good" | "warn" | "bad";
+/**
+ * Label, order and score bands come from the engine's format helpers so the checker, Studio and
+ * the copied report agree. What stays here is the site's own presentation: icons and blurbs.
+ */
+export { scoreTone, sortByCategoryOrder };
+export type ScoreTone = AtsScoreTone;
 
-const CATEGORY_META: Record<string, { label: string; icon: LucideIcon; blurb: string }> = {
+const CATEGORY_META: Record<string, { icon: LucideIcon; blurb: string }> = {
   parse: {
-    label: "Parsing",
     icon: FileSearch,
     blurb: "Whether a parser can read the document at all: length, encoding, and stray glyphs.",
   },
   contact: {
-    label: "Contact & links",
     icon: AtSign,
     blurb: "Email, phone, and a professional link, placed where an ATS looks for them.",
   },
   structure: {
-    label: "Structure",
     icon: LayoutList,
     blurb: "Clearly labelled Experience, Education, and Skills sections an ATS can map.",
   },
   content: {
-    label: "Evidence",
     icon: Type,
     blurb: "Action verbs, quantified outcomes, and length a recruiter can skim.",
   },
   format: {
-    label: "Format risk",
     icon: ShieldAlert,
     blurb: "Tables, columns, and repeated headers that scramble content during extraction.",
   },
+  integrity: {
+    icon: ShieldCheck,
+    blurb:
+      "Hidden text, instructions aimed at AI screeners, and copied or stuffed keywords that recruiters reject on sight.",
+  },
 };
 
-const CATEGORY_ORDER = ["parse", "contact", "structure", "content", "format"];
-
 export function categoryMeta(category: string) {
-  return (
-    CATEGORY_META[category] ?? {
-      label: category.charAt(0).toUpperCase() + category.slice(1),
-      icon: FileSearch,
-      blurb: "",
-    }
-  );
-}
-
-export function sortByCategoryOrder<T extends { category: string }>(items: T[]): T[] {
-  return [...items].sort((a, b) => {
-    const left = CATEGORY_ORDER.indexOf(a.category);
-    const right = CATEGORY_ORDER.indexOf(b.category);
-    return (
-      (left === -1 ? CATEGORY_ORDER.length : left) - (right === -1 ? CATEGORY_ORDER.length : right)
-    );
-  });
-}
-
-export function scoreTone(score: number): ScoreTone {
-  if (score >= 80) return "good";
-  if (score >= 55) return "warn";
-  return "bad";
+  const meta = CATEGORY_META[category] ?? { icon: FileSearch, blurb: "" };
+  return { label: categoryLabel(category), ...meta };
 }
 
 export const TONE_CLASSES: Record<ScoreTone, { text: string; fill: string; chip: string }> = {

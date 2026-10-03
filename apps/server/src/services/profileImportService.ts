@@ -10,16 +10,10 @@ import { config } from "#config";
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
 import { masterProfileContentSchema } from "#validators/masterProfileValidator";
-import { createAiClient } from "#services/aiClient";
 import { getAtsAiPolicy } from "#services/ats/aiPolicy";
-import {
-  CONVERTED_RESUME_JSON_SCHEMA,
-  jsonResponseFormat,
-  providerRouting,
-} from "#services/ats/aiResponseFormat";
+import { aiFailure, createServerAtsAi, taskRoute } from "#services/ats/atsAi";
 import { DocumentService } from "#services/documentService";
 import { ProfileService } from "#services/profileService";
-import { convertedResumeSchema } from "#services/ats/ai";
 import { ProfileImportQuotaService } from "#services/profileImportQuotaService";
 import { EntitlementService } from "#services/entitlementService";
 
@@ -370,41 +364,28 @@ export class ProfileImportService {
   private static async parseTextToResumeSchema(text: string) {
     const policy = getAtsAiPolicy();
     const route = policy.resumeConversion;
-    const systemPrompt = policy.prompts.resumeConversion;
 
     try {
-      const completion = await createAiClient().chat.completions.create({
-        ...providerRouting(route.structuredOutputs, route.providerOptions),
-        model: route.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: JSON.stringify({
-              instruction: "Extract only facts explicitly present and return JSON only.",
-              resume: text.trim().slice(0, 50000),
-            }),
-          },
-        ],
-        max_tokens: 4000,
-        temperature: 0.1,
-        response_format: jsonResponseFormat(
-          route.structuredOutputs,
-          "converted_resume",
-          CONVERTED_RESUME_JSON_SCHEMA,
-        ),
-      });
-
-      const content = completion.choices[0]?.message?.content?.trim();
-      if (!content) {
-        throw new ApiError(502, "The AI provider returned an empty response.");
+      /*
+       * The same task as the ATS resume conversion, and grounded the same way: an identity
+       * value the model returns that does not occur in the pasted text — an employer, a school,
+       * an email address — is blanked. An empty employer field is visible and fixable in the
+       * editor; a fabricated one is not.
+       */
+      const outcome = await createServerAtsAi("profile-import").convertResume(
+        { resumeText: text },
+        taskRoute(route, policy.prompts.resumeConversion),
+      );
+      if (outcome.rejected.length) {
+        logger.warn("AI profile import returned ungrounded values", {
+          rejectedValues: outcome.rejected.length,
+          paths: outcome.rejected.map((violation) => violation.path).slice(0, 20),
+        });
       }
-
-      const parsed = convertedResumeSchema.parse(JSON.parse(content));
-      const mapped = mapParsedToResumeData(parsed);
+      const mapped = mapParsedToResumeData(outcome.result);
 
       /*
-       * `convertedResumeSchema` checks the model's own output shape; this checks that what
+       * The task checks the model's own output shape; this checks that what
        * we built from it is a master profile the studio can actually load. The model can
        * return anything — a date as "Jan 2020", a 400-character role — and persisting that
        * used to leave the user with a profile that silently failed to parse on read.
@@ -422,6 +403,7 @@ export class ProfileImportService {
       return validated.data;
     } catch (error) {
       if (error instanceof ApiError) throw error;
+      logger.error("AI profile import failed", aiFailure(error));
       throw new ApiError(502, "Failed to parse profile data using AI. Please try again.");
     }
   }

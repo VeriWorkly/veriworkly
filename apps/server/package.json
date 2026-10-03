@@ -11,6 +11,7 @@
     }
   },
   "scripts": {
+    "predev": "npm run build -w @veriworkly/profile-core && npm run build -w @veriworkly/ats-engine",
     "dev": "tsx watch src/index.ts",
     "prebuild": "npm run build -w @veriworkly/profile-core --if-present && npm run build -w @veriworkly/ats-engine --if-present && prisma generate",
     "build": "tsc",

@@ -1,3 +1,10 @@
+import {
+  needsRepair,
+  shapeReport,
+  type AtsParsedField,
+  type AtsParsedResume,
+  type PreparedResume,
+} from "@veriworkly/ats-engine";
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
@@ -6,38 +13,30 @@ import { AtsAiService } from "#services/ats/ai";
 import { AtsJobFetchService } from "#services/ats/jobFetch";
 import { AtsQuotaService } from "#services/ats/quota";
 import { AtsScoringService } from "#services/ats/scoring";
-import { shapeReport } from "#services/ats/reportShaping";
-import { AtsRepairService, needsRepair } from "#services/ats/repair";
+import { AtsRepairService } from "#services/ats/repair";
 import { createSuccessResponse, handleValidationError, ApiError } from "#lib/errors";
 import { getRequestIpDetails } from "#utils/requestIp";
-import { atsAnalyzeSchema, atsConvertResumeSchema } from "#validators/atsValidator";
-import type { AtsParsedResume } from "#services/ats/types";
+import {
+  atsAnalyzeSchema,
+  atsConvertResumeSchema,
+  type AtsAnalyzeInput,
+} from "#validators/atsValidator";
+import { logger } from "#lib/logger";
 
 function ip(req: Request) {
   return getRequestIpDetails(req).resolvedIp;
 }
 
 /**
- * Which recovered fields came from the repair pass rather than the deterministic parser.
- *
- * Derived by comparing before and after rather than threaded through the engine, so
- * `AtsParsedResume` stays a plain description of what was recovered and gains no notion of who
- * recovered it. The merge only ever fills fields the parser left empty, so a field that changed
- * is by construction a field the model supplied.
- *
- * Returned to the caller because a repaired row and a parsed row are not the same claim: one is
- * what a parser read, the other is what a model read. Showing them identically would spend the
- * credibility the "what the software sees" table exists to earn.
+ * The recovered fields a model supplied rather than the deterministic parser, read from the
+ * record's provenance. Returned to the caller because a repaired row and a parsed row are not
+ * the same claim, and showing them identically would spend the credibility the "what the
+ * software sees" table exists to earn.
  */
-function repairedFields(before: AtsParsedResume, after: AtsParsedResume): string[] {
-  const changed: string[] = [];
-  if (!before.name && after.name) changed.push("name");
-  if (!before.email && after.email) changed.push("email");
-  if (!before.phone && after.phone) changed.push("phone");
-  if (before.roles.length === 0 && after.roles.length > 0) changed.push("roles");
-  if (before.education.length === 0 && after.education.length > 0) changed.push("education");
-  if (before.skills.length === 0 && after.skills.length > 0) changed.push("skills");
-  return changed;
+function aiFilledFields(parsed: AtsParsedResume): AtsParsedField[] {
+  return (Object.keys(parsed.provenance) as AtsParsedField[]).filter(
+    (field) => parsed.provenance[field] === "ai",
+  );
 }
 
 export class AtsAiController {
@@ -47,6 +46,10 @@ export class AtsAiController {
       const input = atsAnalyzeSchema.parse(req.body);
       if (input.fetchJobUrl && !input.jobUrl)
         throw new ApiError(400, "Provide a job URL to analyze online.");
+
+      // Read once, and before metering: a malformed document is a 400 that costs nothing, and
+      // the same prepared text feeds the report, the repair pass and the analysis.
+      const resume = AtsScoringService.prepare(input.resume);
 
       /**
        * Metering happens before the outbound fetch, not after. Fetching first meant a caller
@@ -61,76 +64,109 @@ export class AtsAiController {
           ? await AtsJobFetchService.fetch(input.jobUrl)
           : input.jobDescription;
 
-      // Flattened once here and handed to both passes; each used to walk the resume document
-      // independently, and the document can be up to the 4 MB body limit.
-      const resumeText = AtsScoringService.flattenResume(input.resume);
-      const report = AtsScoringService.check(resumeText, jobDescription, input.layout);
+      // From here on a failure is ours, not the caller's, so the scan goes back. The job fetch
+      // above is deliberately outside this: refunding a failed fetch would make fetching free.
+      try {
+        res.json(
+          createSuccessResponse(
+            await AtsAiController.run(user.id, req, input, resume, jobDescription, quota),
+          ),
+        );
+      } catch (error) {
+        await AtsQuotaService.refund(user.id, ip(req));
+        throw error;
+      }
+    } catch (error) {
+      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+    }
+  }
 
-      /**
-       * Parse repair is offered, never imposed.
-       *
-       * `repairAvailable` says the deterministic parse came back thin enough that a second read
-       * would probably help; the pass itself runs only when the caller asked for it, because it
-       * spends credits and that is their call. A caller who never opts in is billed nothing and
-       * still learns that the option exists.
-       */
-      const repairAvailable = needsRepair(report);
-      let repairedFieldList: string[] = [];
-      let repairCreditsSpent = 0;
-      let rejectedValues = 0;
+  private static async run(
+    userId: string,
+    req: Request,
+    input: AtsAnalyzeInput,
+    resume: PreparedResume,
+    jobDescription: string | undefined,
+    quota: Awaited<ReturnType<typeof AtsQuotaService.consume>>,
+  ) {
+    const resumeText = resume.text;
+    const report = AtsScoringService.check(resume, { jobDescription, layout: input.layout });
 
-      if (repairAvailable && input.repairParse) {
-        const deterministic = report.parsed;
-        const outcome = await AtsRepairService.repair(user.id, input.requestId, resumeText, report);
+    /**
+     * Parse repair is offered, never imposed.
+     *
+     * `repairAvailable` says the deterministic parse came back thin enough that a second read
+     * would probably help; the pass itself runs only when the caller asked for it, because it
+     * spends credits and that is their call. A caller who never opts in is billed nothing and
+     * still learns that the option exists.
+     */
+    const repairAvailable = needsRepair(report);
+    let repairedFieldList: AtsParsedField[] = [];
+    let repairCreditsSpent = 0;
+    let rejectedValues = 0;
+
+    if (repairAvailable && input.repairParse) {
+      try {
+        // Its own reservation id: credit reservations are unique per request id, so sharing
+        // the analysis id made the analysis reservation fail with a 409 after repair was paid.
+        const outcome = await AtsRepairService.repair(
+          userId,
+          `${input.requestId}:repair`,
+          resumeText,
+          report,
+        );
         repairCreditsSpent = outcome.creditsSpent;
         rejectedValues = outcome.rejectedValues;
         if (outcome.repaired) {
           report.parsed = outcome.repaired;
-          repairedFieldList = repairedFields(deterministic, outcome.repaired);
+          repairedFieldList = aiFilledFields(outcome.repaired);
         }
+      } catch (error) {
+        // Repair is optional: its own failure releases its credits and must not cost the
+        // caller the analysis they also asked for. It is reported as not applied.
+        logger.warn("ATS parse repair failed; continuing without it", {
+          requestId: input.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
-
-      const { routed, ...result } = await AtsAiService.analyze(
-        user.id,
-        input.requestId,
-        resumeText,
-        jobDescription,
-        report,
-        input.fetchJobUrl,
-      );
-
-      /**
-       * No model could be routed. That is our configuration failing, not the caller's request,
-       * so the scan goes back rather than being spent on an analysis they never received. The
-       * deterministic report is still returned and still useful — but `aiStatus` says plainly
-       * that the AI layer did not run, instead of an empty `ai` field the caller cannot
-       * distinguish from a model that found nothing to say.
-       */
-      res.json(
-        createSuccessResponse({
-          report: shapeReport(report, true),
-          ...result,
-          aiStatus: routed ? "ok" : "unavailable",
-          /**
-           * `available` lets the UI offer the pass; `fields` tells it which recovered values a
-           * model supplied, so a repaired row can be labelled rather than shown as though a
-           * parser found it. `rejectedValues` counts values the model returned that did not
-           * occur in the document and were therefore dropped — worth surfacing, because it is
-           * the grounding check visibly doing its job.
-           */
-          repair: {
-            available: repairAvailable,
-            applied: repairedFieldList.length > 0,
-            fields: repairedFieldList,
-            rejectedValues,
-            creditsSpent: repairCreditsSpent,
-          },
-          quota: routed ? quota : await AtsQuotaService.refund(user.id, ip(req)),
-        }),
-      );
-    } catch (error) {
-      next(error instanceof z.ZodError ? handleValidationError(error) : error);
     }
+
+    const { routed, ...result } = await AtsAiService.analyze(
+      userId,
+      input.requestId,
+      resumeText,
+      jobDescription,
+      report,
+      input.fetchJobUrl,
+    );
+
+    /**
+     * No model could be routed. That is our configuration failing, not the caller's request,
+     * so the scan goes back rather than being spent on an analysis they never received. The
+     * deterministic report is still returned and still useful — but `aiStatus` says plainly
+     * that the AI layer did not run, instead of an empty `ai` field the caller cannot
+     * distinguish from a model that found nothing to say.
+     */
+    return {
+      report: shapeReport(report, "full"),
+      ...result,
+      aiStatus: routed ? "ok" : "unavailable",
+      /**
+       * `available` lets the UI offer the pass; `fields` tells it which recovered values a
+       * model supplied, so a repaired row can be labelled rather than shown as though a
+       * parser found it. `rejectedValues` counts values the model returned that did not
+       * occur in the document and were therefore dropped — worth surfacing, because it is
+       * the grounding check visibly doing its job.
+       */
+      repair: {
+        available: repairAvailable,
+        applied: repairedFieldList.length > 0,
+        fields: repairedFieldList,
+        rejectedValues,
+        creditsSpent: repairCreditsSpent,
+      },
+      quota: routed ? quota : await AtsQuotaService.refund(userId, ip(req)),
+    };
   }
 
   static async convertResume(req: Request, res: Response, next: NextFunction) {

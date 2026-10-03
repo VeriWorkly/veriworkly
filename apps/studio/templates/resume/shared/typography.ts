@@ -23,6 +23,12 @@ export interface ResumeTypeScale {
   body: number;
 
   // --- Letter spacing -------------------------------------------------------
+  // At most 0.05em (tracking / size). A PDF has no words, only positioned
+  // glyphs, and text extractors call a gap wider than a fraction of the font
+  // size a space: measured on this renderer's output, Poppler splits headings
+  // into letters from 0.07em, pdf.js from 0.09em and PDFBox from 0.1em. An ATS
+  // that reads "E X P E R I E N C E" finds no Experience section.
+  // `tests/contracts/template-ats.contract.test.tsx` holds every template to it.
   sectionTitleTracking: number;
   nameTracking: number;
   roleTracking: number;
@@ -70,7 +76,7 @@ export const BASE_TYPE_SCALE: ResumeTypeScale = {
   meta: 12,
   body: 13,
 
-  sectionTitleTracking: 1.6,
+  sectionTitleTracking: 0.55,
   nameTracking: 0,
   roleTracking: 0,
 

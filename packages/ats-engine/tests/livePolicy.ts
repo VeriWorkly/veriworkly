@@ -16,9 +16,10 @@ import { parseAtsPolicy, type AtsEnginePolicy } from "../src/index.js";
  * actually running rather than quietly skipping — a skip that nobody notices is how a
  * calibration suite stops catching anything.
  */
-const policyPath = fileURLToPath(
-  new URL("../../../.private/ats-engine-policy.dev.json", import.meta.url),
-);
+// `ATS_ENGINE_POLICY` points at it from anywhere; the default is the monorepo's .private folder.
+const policyPath =
+  process.env.ATS_ENGINE_POLICY ??
+  fileURLToPath(new URL("../../../.private/ats-engine-policy.dev.json", import.meta.url));
 
 let policy: AtsEnginePolicy | null = null;
 let loadError: string | null = null;

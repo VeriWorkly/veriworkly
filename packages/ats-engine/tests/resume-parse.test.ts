@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { livePolicy as policy } from "./livePolicy.js";
+import { DEFAULT_POLICY } from "../src/index.js";
+import { livePolicy } from "./livePolicy.js";
+
+// The live policy when present, the public default otherwise: parsing is exercised in every
+// checkout, not only in ones that hold the private file.
+const policy = livePolicy ?? DEFAULT_POLICY;
 
 /**
  * The parser recovers the fields an applicant tracking system stores. These cover the layouts
@@ -15,10 +20,10 @@ async function parse(text: string) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-  return parseResume(lines, policy!, NOW);
+  return parseResume(lines, policy, NOW);
 }
 
-describe.skipIf(!policy)("resume parsing — what an ATS recovers", () => {
+describe("resume parsing — what an ATS recovers", () => {
   it("recovers a row per job from a conventional chronological resume", async () => {
     const parsed = await parse(
       [

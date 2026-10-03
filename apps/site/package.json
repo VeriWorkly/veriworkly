@@ -3,6 +3,7 @@
   "version": "3.24.4",
   "private": true,
   "scripts": {
+    "predev": "npm run build -w @veriworkly/ats-engine",
     "dev": "next dev",
     "prebuild": "npm run check:design && npm run build:brand-kit",
     "build": "next build",
@@ -15,6 +16,7 @@
     "test:contracts": "vitest run"
   },
   "dependencies": {
+    "@veriworkly/ats-engine": "*",
     "@veriworkly/ui": "*",
     "clsx": "^2.1.1",
     "framer-motion": "^12.43.0",

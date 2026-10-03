@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeVerdict, type AtsLayoutSignals } from "../src/index.js";
+import { computeVerdict, type AtsLayoutSignals, type AtsResumeInput } from "../src/index.js";
 import { livePolicy as policy, livePolicyLoadError, livePolicyPath } from "./livePolicy.js";
 
 /**
@@ -13,9 +13,13 @@ import { livePolicy as policy, livePolicyLoadError, livePolicyPath } from "./liv
  * than failing a checkout that legitimately does not have it. See `./livePolicy.ts` for how it
  * is resolved — the path moved when this file did.
  */
-const check = async (resume: unknown, jobDescription?: string, layout?: AtsLayoutSignals) => {
+const check = async (
+  resume: AtsResumeInput,
+  jobDescription?: string,
+  layout?: AtsLayoutSignals,
+) => {
   const { AtsScoringService } = await import("../src/index.js");
-  return AtsScoringService.check(resume, policy!, jobDescription, layout);
+  return AtsScoringService.check(resume, policy!, { jobDescription, layout });
 };
 
 const STRONG_RESUME = [

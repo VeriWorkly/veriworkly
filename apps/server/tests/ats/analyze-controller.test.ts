@@ -25,7 +25,7 @@ vi.mock("#services/ats/jobFetch", () => ({
 vi.mock("#services/ats/scoring", () => ({
   AtsScoringService: {
     check: (...args: unknown[]) => check(...args),
-    flattenResume: (resume: unknown) => String(resume),
+    prepare: (resume: unknown) => ({ text: String(resume), document: null }),
   },
 }));
 
@@ -42,8 +42,13 @@ const needsRepairMock = vi.fn(() => false);
 const repairMock = vi.fn();
 
 vi.mock("#services/ats/repair", () => ({
-  needsRepair: (...args: unknown[]) => needsRepairMock(...(args as [])),
   AtsRepairService: { repair: (...args: unknown[]) => repairMock(...args) },
+}));
+
+// Only the repair trigger is replaced; report shaping stays the real implementation.
+vi.mock("@veriworkly/ats-engine", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@veriworkly/ats-engine")>()),
+  needsRepair: (...args: unknown[]) => needsRepairMock(...(args as [])),
 }));
 
 vi.mock("#utils/requestIp", () => ({
@@ -143,18 +148,21 @@ describe("POST /ats/analyze — quota gates outbound egress", () => {
 
     expect(consume).toHaveBeenCalledTimes(1);
     expect(fetchJobPage).not.toHaveBeenCalled();
-    expect(check).toHaveBeenCalledWith(baseBody.resume, "pasted description", undefined);
+    expect(check).toHaveBeenCalledWith(expect.objectContaining({ text: baseBody.resume }), {
+      jobDescription: "pasted description",
+      layout: undefined,
+    });
   });
 
-  it("flattens the resume once and hands the same text to scoring and to the model", async () => {
+  it("reads the resume once and hands the same text to scoring and to the model", async () => {
     await AtsAiController.analyze(
       requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted description" }),
       responseSpy().res,
       vi.fn(),
     );
 
-    const scoredText = check.mock.calls[0][0];
-    expect(analyze.mock.calls[0][2]).toBe(scoredText);
+    const prepared = check.mock.calls[0][0] as { text: string };
+    expect(analyze.mock.calls[0][2]).toBe(prepared.text);
   });
 
   it("passes uploaded page geometry through to the scoring pass", async () => {
@@ -172,7 +180,10 @@ describe("POST /ats/analyze — quota gates outbound egress", () => {
       vi.fn(),
     );
 
-    expect(check).toHaveBeenCalledWith(baseBody.resume, "pasted description", layout);
+    expect(check).toHaveBeenCalledWith(expect.objectContaining({ text: baseBody.resume }), {
+      jobDescription: "pasted description",
+      layout,
+    });
   });
 
   /**
@@ -258,6 +269,14 @@ describe("POST /ats/analyze — parse repair is offered, not imposed", () => {
         roles: [{ title: "Engineer", employer: "Acme", start: null, end: null, current: false }],
         education: [],
         skills: [],
+        provenance: {
+          name: "ai",
+          email: "none",
+          phone: "none",
+          roles: "ai",
+          education: "none",
+          skills: "none",
+        },
       },
       creditsSpent: 2,
       rejectedValues: 1,
@@ -276,5 +295,95 @@ describe("POST /ats/analyze — parse repair is offered, not imposed", () => {
     });
     // Only the fields the parser left empty and the model filled — provenance, not a blanket flag.
     expect(json.mock.calls[0][0].data.repair.fields).toEqual(["name", "roles"]);
+  });
+});
+
+/**
+ * Credit reservations are unique per request id, and the scan quota is spent before any model
+ * runs. These pin the accounting: repair and analysis never share an id, an optional repair
+ * that fails does not take the analysis down with it, and a failure after metering refunds.
+ */
+describe("POST /ats/analyze — credits and quota survive failures", () => {
+  const thinParse = () => {
+    needsRepairMock.mockReturnValue(true);
+    check.mockReturnValue({
+      version: "ats-v2",
+      failedChecks: [],
+      prioritizedFixes: [],
+      parsed: {
+        name: "",
+        email: "",
+        phone: "",
+        roles: [],
+        education: [],
+        skills: [],
+        provenance: {
+          name: "none",
+          email: "none",
+          phone: "none",
+          roles: "none",
+          education: "none",
+          skills: "none",
+        },
+      },
+    });
+  };
+
+  it("reserves repair credits under a different id from the analysis", async () => {
+    thinParse();
+    repairMock.mockResolvedValue({ repaired: null, creditsSpent: 2, rejectedValues: 0 });
+
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, repairParse: true }),
+      responseSpy().res,
+      vi.fn(),
+    );
+
+    const repairId = repairMock.mock.calls[0][1];
+    const analysisId = analyze.mock.calls[0][1];
+    expect(repairId).not.toBe(analysisId);
+    expect(analysisId).toBe(baseBody.requestId);
+  });
+
+  it("still runs the analysis when the optional repair fails", async () => {
+    thinParse();
+    repairMock.mockRejectedValue(new ApiError(502, "AI parse repair could not be completed."));
+    const { res, json } = responseSpy();
+    const next = vi.fn();
+
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, repairParse: true }),
+      res,
+      next,
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(json.mock.calls[0][0].data.repair).toMatchObject({ applied: false, creditsSpent: 0 });
+    expect(refund).not.toHaveBeenCalled();
+  });
+
+  it("refunds the scan when the analysis fails after metering", async () => {
+    analyze.mockRejectedValue(new ApiError(502, "AI ATS analysis could not be completed."));
+    const next = vi.fn();
+
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted description" }),
+      responseSpy().res,
+      next,
+    );
+
+    expect(refund).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 502 }));
+  });
+
+  it("does not refund a failed job-page fetch, so fetching is never free", async () => {
+    fetchJobPage.mockRejectedValue(new ApiError(400, "Could not read the job page."));
+    const next = vi.fn();
+
+    await AtsAiController.analyze(requestFor({ ...baseBody }), responseSpy().res, next);
+
+    expect(refund).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
   });
 });

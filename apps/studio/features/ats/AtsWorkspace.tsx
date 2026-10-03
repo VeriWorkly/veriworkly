@@ -16,6 +16,14 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
+import { renderResumeDocument, type AtsResumeDocument } from "@veriworkly/ats-engine/document";
+import {
+  categoryLabel,
+  formatRoleDates,
+  formatTenure,
+  scoreTone,
+  sortByCategoryOrder,
+} from "@veriworkly/ats-engine/format";
 import { toast } from "sonner";
 
 import { siteConfig } from "@/config/site";
@@ -30,12 +38,14 @@ import {
 } from "@/features/ats/ats-api";
 import type {
   AtsLayoutSignals,
-  AtsParsedDate,
   AtsParsedResume,
   AtsQuota,
+  AtsParsedField,
+  AtsRepairSummary,
   AtsResult,
   ConvertedResume,
 } from "@/features/ats/types";
+import { toAtsDocument } from "@/features/ats/resume-document";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import {
@@ -50,6 +60,10 @@ export function AtsWorkspace() {
   const router = useRouter();
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [resume, setResume] = useState("");
+  // Set only while the text above is the untouched rendering of a saved resume. The scan then
+  // sends the structure, so the ATS record is read from typed fields rather than re-parsed; any
+  // edit, paste or upload clears it and the scan falls back to the text.
+  const [resumeDocument, setResumeDocument] = useState<AtsResumeDocument | null>(null);
   const [sourceLabel, setSourceLabel] = useState("");
   // Page geometry from an uploaded file, kept beside its text so the format checks can read the
   // layout. Cleared whenever the resume comes from anywhere else, since it would then describe
@@ -58,6 +72,9 @@ export function AtsWorkspace() {
   const [jobDescription, setJobDescription] = useState("");
   const [jobUrl, setJobUrl] = useState("");
   const [useJobUrl, setUseJobUrl] = useState(false);
+  // Opt-in, never inferred: repair spends credits, so it runs only when the user asked for it
+  // and the server finds the parse thin enough to need it.
+  const [repairParse, setRepairParse] = useState(false);
   const [saved] = useState(() =>
     listSavedResumes().map((item) => ({ id: item.id, title: item.title })),
   );
@@ -88,17 +105,24 @@ export function AtsWorkspace() {
     if (!hasResume) return setError("Add a resume before starting the scan.");
     setBusy(withAi ? "ai" : "check");
     setError("");
+    setConverted(null);
+    const scanInput = resumeDocument ?? resume;
     try {
       const next = withAi
         ? await runAtsAnalysis({
-            resume,
+            resume: scanInput,
             jobDescription: jobDescription || undefined,
             jobUrl: useJobUrl ? jobUrl || undefined : undefined,
             fetchJobUrl: useJobUrl,
             requestId: crypto.randomUUID(),
             layout,
+            repairParse: repairParse && !resumeDocument,
           })
-        : await runAtsCheck({ resume, jobDescription: jobDescription || undefined, layout });
+        : await runAtsCheck({
+            resume: scanInput,
+            jobDescription: jobDescription || undefined,
+            layout,
+          });
       setResult(next);
       setQuota(next.quota);
     } catch (cause) {
@@ -197,6 +221,7 @@ export function AtsWorkspace() {
             <div className="grid gap-3 sm:grid-cols-2">
               <FileInput
                 busy={busy === "extract"}
+                disabled={Boolean(busy)}
                 onFile={async (file) => {
                   if (!isLoggedIn) {
                     toast.error("Please log in to analyze resumes.");
@@ -207,6 +232,7 @@ export function AtsWorkspace() {
                   try {
                     const extracted = await extractResumeFile(file);
                     setResume(extracted.text);
+                    setResumeDocument(null);
                     setLayout(extracted.layout);
                     setSourceLabel(file.name);
                     setResult(null);
@@ -225,6 +251,7 @@ export function AtsWorkspace() {
                   <FileText className="h-4 w-4" /> Saved Studio resume
                 </span>
                 <select
+                  disabled={Boolean(busy)}
                   className="mt-4 w-full bg-transparent text-sm outline-none"
                   value=""
                   onChange={(event) => {
@@ -232,7 +259,9 @@ export function AtsWorkspace() {
                     // pointer stays where the user's editor left it.
                     const selected = readResumeById(event.target.value);
                     if (!selected) return;
-                    setResume(JSON.stringify(selected));
+                    const document = toAtsDocument(selected);
+                    setResumeDocument(document);
+                    setResume(renderResumeDocument(document));
                     setLayout(undefined);
                     setSourceLabel(
                       saved.find((item) => item.id === event.target.value)?.title ??
@@ -255,8 +284,10 @@ export function AtsWorkspace() {
             </div>
             <textarea
               value={resume}
+              disabled={Boolean(busy)}
               onChange={(event) => {
                 setResume(event.target.value);
+                setResumeDocument(null);
                 setLayout(undefined);
                 setSourceLabel(event.target.value ? "Pasted resume" : "");
               }}
@@ -335,6 +366,22 @@ export function AtsWorkspace() {
                 onClick={() => void run(true)}
               />
             </div>
+            {typeof pricing?.parseRepairCredits === "number" && !resumeDocument ? (
+              <label className="text-muted mt-4 flex cursor-pointer items-start gap-2 text-xs leading-5">
+                <input
+                  type="checkbox"
+                  className="accent-accent mt-0.5 h-3.5 w-3.5 shrink-0"
+                  checked={repairParse}
+                  disabled={Boolean(busy)}
+                  onChange={(event) => setRepairParse(event.target.checked)}
+                />
+                <span>
+                  With AI interpretation: if the parser misses parts of your history, re-read it
+                  with AI (+{pricing.parseRepairCredits} credits, charged only when it runs). Values
+                  the AI returns are kept only if they appear word for word in your resume.
+                </span>
+              </label>
+            ) : null}
             {urlOnlyTarget ? (
               <p className="text-muted mt-4 flex items-start gap-2 text-xs leading-5">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> A job URL is only read
@@ -466,9 +513,22 @@ function StepSection({
   );
 }
 
-function FileInput({ busy, onFile }: { busy: boolean; onFile: (file: File) => void }) {
+function FileInput({
+  busy,
+  disabled,
+  onFile,
+}: {
+  busy: boolean;
+  disabled: boolean;
+  onFile: (file: File) => void;
+}) {
   return (
-    <label className="bg-background ring-border hover:ring-foreground/35 flex min-h-24 cursor-pointer flex-col justify-between rounded-xl p-4 ring-1 transition">
+    <label
+      className={cn(
+        "bg-background ring-border hover:ring-foreground/35 flex min-h-24 cursor-pointer flex-col justify-between rounded-xl p-4 ring-1 transition",
+        disabled && "pointer-events-none opacity-60",
+      )}
+    >
       <span className="flex items-center gap-2 text-sm font-semibold">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{" "}
         Upload resume
@@ -478,6 +538,7 @@ function FileInput({ busy, onFile }: { busy: boolean; onFile: (file: File) => vo
         type="file"
         accept=".pdf,.docx,.txt,.md,.json"
         className="sr-only"
+        disabled={disabled}
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) onFile(file);
@@ -610,43 +671,6 @@ function EmptyResults() {
   );
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  parse: "Parsing",
-  contact: "Contact & links",
-  structure: "Structure",
-  content: "Evidence",
-  format: "Format risk",
-};
-
-const CATEGORY_ORDER = ["parse", "contact", "structure", "content", "format"];
-
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-function formatParsedDate(date: AtsParsedDate | null) {
-  if (!date) return null;
-  return date.month ? `${MONTH_LABELS[date.month - 1]} ${date.year}` : String(date.year);
-}
-
-function formatMonths(months: number) {
-  const years = Math.floor(months / 12);
-  const rest = months % 12;
-  if (!years) return `${rest} mo`;
-  return rest ? `${years} yr ${rest} mo` : `${years} yr`;
-}
-
 /**
  * The record an applicant tracking system would build from this document.
  *
@@ -654,8 +678,18 @@ function formatMonths(months: number) {
  * a missing date range is not a presentation problem — it is a column their filter cannot match
  * on, and seeing the gap is more use than any score.
  */
-function ParsedRecord({ parsed }: { parsed: AtsParsedResume }) {
+/** Marks a value a model recovered, so it is never shown as though the parser read it. */
+function AiFilled() {
+  return (
+    <span className="bg-accent/10 text-accent ml-1.5 rounded px-1 py-px align-middle text-[10px] font-bold tracking-wide normal-case">
+      AI
+    </span>
+  );
+}
+
+function ParsedRecord({ parsed, repair }: { parsed: AtsParsedResume; repair?: AtsRepairSummary }) {
   const missing = <span className="text-amber-600 dark:text-amber-400">not found</span>;
+  const filled = new Set(repair?.applied ? repair.fields : []);
 
   return (
     <section className="bg-card ring-border rounded-xl p-5 ring-1">
@@ -663,18 +697,38 @@ function ParsedRecord({ parsed }: { parsed: AtsParsedResume }) {
         <FileSearch className="text-accent h-4 w-4" /> What the ATS sees
       </div>
       <p className="text-muted mt-1 text-xs leading-5">
-        Recovered by the same scan, at no extra cost to your quota.
+        {repair?.creditsSpent
+          ? `Recovered by the scan, with AI re-reading for ${repair.creditsSpent} credits.`
+          : "Recovered by the same scan, at no extra cost to your quota."}
       </p>
+      {/*
+        A repaired row and a parsed row are different claims: one is what a parser read, the
+        other is what a model read. A real ATS would still see the unrepaired version, so the
+        labelled fields are also the ones worth fixing in the document itself.
+      */}
+      {["name", "email", "phone", "roles"].some((field) => filled.has(field as AtsParsedField)) ? (
+        <p className="bg-accent/10 mt-3 rounded-lg px-3 py-2 text-xs leading-5">
+          Fields marked <AiFilled /> were missed by the parser and recovered by AI. An
+          employer&apos;s ATS would not see them — restructure those parts of the resume so a parser
+          can.
+          {repair && repair.rejectedValues > 0
+            ? ` ${repair.rejectedValues} AI value${repair.rejectedValues === 1 ? " was" : "s were"} discarded because ${repair.rejectedValues === 1 ? "it does" : "they do"} not appear in your resume.`
+            : ""}
+        </p>
+      ) : null}
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-        {[
-          ["Name", parsed.name],
-          ["Email", parsed.email],
-          ["Phone", parsed.phone],
-        ].map(([label, value]) => (
+        {(
+          [
+            ["Name", parsed.name, "name"],
+            ["Email", parsed.email, "email"],
+            ["Phone", parsed.phone, "phone"],
+          ] as const
+        ).map(([label, value, field]) => (
           <div key={label}>
             <dt className="text-muted text-[11px] font-semibold tracking-wide uppercase">
               {label}
+              {filled.has(field) ? <AiFilled /> : null}
             </dt>
             <dd className="mt-0.5 text-sm break-words">{value || missing}</dd>
           </div>
@@ -684,6 +738,7 @@ function ParsedRecord({ parsed }: { parsed: AtsParsedResume }) {
       <div className="mt-5">
         <p className="text-muted text-[11px] font-semibold tracking-wide uppercase">
           Work history — {parsed.roles.length} {parsed.roles.length === 1 ? "row" : "rows"}
+          {filled.has("roles") ? <AiFilled /> : null}
         </p>
         {parsed.roles.length ? (
           <div className="mt-2 overflow-x-auto">
@@ -703,11 +758,7 @@ function ParsedRecord({ parsed }: { parsed: AtsParsedResume }) {
                   >
                     <td className="py-2 pr-3">{role.title || missing}</td>
                     <td className="py-2 pr-3">{role.employer || missing}</td>
-                    <td className="py-2 tabular-nums">
-                      {role.start
-                        ? `${formatParsedDate(role.start)} – ${role.current ? "Present" : (formatParsedDate(role.end) ?? "?")}`
-                        : missing}
-                    </td>
+                    <td className="py-2 tabular-nums">{formatRoleDates(role) ?? missing}</td>
                   </tr>
                 ))}
               </tbody>
@@ -725,7 +776,7 @@ function ParsedRecord({ parsed }: { parsed: AtsParsedResume }) {
         <p className="text-muted border-border mt-4 border-t pt-3 text-sm">
           Total experience read from your dates:{" "}
           <span className="text-foreground font-semibold tabular-nums">
-            {formatMonths(parsed.monthsOfExperience)}
+            {formatTenure(parsed.monthsOfExperience)}
           </span>{" "}
           — overlapping roles counted once.
         </p>
@@ -734,14 +785,12 @@ function ParsedRecord({ parsed }: { parsed: AtsParsedResume }) {
   );
 }
 
+const TONE_FILL = { good: "bg-emerald-500", warn: "bg-amber-500", bad: "bg-red-500" } as const;
+
 function CategoryRollup({ categories }: { categories: AtsResult["report"]["categories"] }) {
   if (!categories?.length) return null;
 
-  const ordered = [...categories].sort(
-    (a, b) =>
-      (CATEGORY_ORDER.indexOf(a.category) + 1 || 99) -
-      (CATEGORY_ORDER.indexOf(b.category) + 1 || 99),
-  );
+  const ordered = sortByCategoryOrder(categories);
 
   return (
     <section className="bg-card ring-border rounded-xl p-5 ring-1">
@@ -750,9 +799,7 @@ function CategoryRollup({ categories }: { categories: AtsResult["report"]["categ
         {ordered.map((entry) => (
           <li key={entry.category}>
             <div className="flex items-baseline justify-between gap-3 text-xs">
-              <span className="font-semibold">
-                {CATEGORY_LABELS[entry.category] ?? entry.category}
-              </span>
+              <span className="font-semibold">{categoryLabel(entry.category)}</span>
               <span className="text-muted tabular-nums">
                 {entry.passed}/{entry.total} · {entry.score}%
               </span>
@@ -763,17 +810,10 @@ function CategoryRollup({ categories }: { categories: AtsResult["report"]["categ
               aria-valuenow={entry.score}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${CATEGORY_LABELS[entry.category] ?? entry.category}: ${entry.score} percent`}
+              aria-label={`${categoryLabel(entry.category)}: ${entry.score} percent`}
             >
               <div
-                className={cn(
-                  "h-full rounded-full",
-                  entry.score >= 80
-                    ? "bg-emerald-500"
-                    : entry.score >= 55
-                      ? "bg-amber-500"
-                      : "bg-red-500",
-                )}
+                className={cn("h-full rounded-full", TONE_FILL[scoreTone(entry.score)])}
                 style={{ width: `${Math.max(entry.score, 2)}%` }}
               />
             </div>
@@ -850,7 +890,19 @@ function ResultsPanel({ result }: { result: AtsResult }) {
           </p>
         ) : null}
       </div>
-      {result.report.parsed ? <ParsedRecord parsed={result.report.parsed} /> : null}
+      {result.report.parsed ? (
+        <ParsedRecord parsed={result.report.parsed} repair={result.repair} />
+      ) : null}
+      {result.repair?.available &&
+      !result.repair.applied &&
+      !result.repair.creditsSpent &&
+      typeof result.quota.pricing.parseRepairCredits === "number" ? (
+        <p className="text-muted flex items-start gap-2 px-1 text-xs leading-5">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+          The parser missed parts of this resume and nothing was recovered this time. AI re-reading,
+          under the scan options, can recover them on the next AI interpretation.
+        </p>
+      ) : null}
       <CategoryRollup categories={result.report.categories} />
       <RankedFixes failedChecks={result.report.failedChecks} />
       {result.report.jobMatchScore !== null ? (
@@ -966,8 +1018,8 @@ function ReportList({
       <h2 className="text-sm font-black">{title}</h2>
       <ul className="mt-4 space-y-3">
         {items.length ? (
-          items.map((item) => (
-            <li key={item} className="flex gap-2.5 text-sm leading-5">
+          items.map((item, index) => (
+            <li key={`${index}-${item}`} className="flex gap-2.5 text-sm leading-5">
               <Icon
                 className={cn(
                   "mt-0.5 h-4 w-4 shrink-0",

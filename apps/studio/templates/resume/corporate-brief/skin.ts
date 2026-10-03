@@ -6,7 +6,7 @@ export const corporateBriefScale = createTypeScale({
   role: 13.5,
   contact: 11,
   sectionTitle: 10.5,
-  sectionTitleTracking: 1.6,
+  sectionTitleTracking: 0.52,
   itemTitle: 14.5,
   meta: 11.5,
   body: 13,
