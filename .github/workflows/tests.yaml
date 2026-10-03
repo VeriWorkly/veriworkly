@@ -15,32 +15,9 @@ env:
   JWT_SECRET: "dummy-jwt-secret"
   DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
 
+# @veriworkly/ats-engine is tested in its own repository (VeriWorkly/ats-engine) and installed here
+# from npm, already built.
 jobs:
-  test-ats-engine:
-    name: Test ATS Engine
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-
-      - name: Install Dependencies
-        run: npm ci --legacy-peer-deps
-
-      # Type-checks the engine against ES2022 alone ("types": []), which is what proves it still
-      # runs outside Node. Suites that need the private policy skip themselves; the regression
-      # suite runs against the public default policy and always executes.
-      - name: Build
-        run: npm run build -w @veriworkly/ats-engine
-
-      - name: Run Tests
-        run: npm run test -w @veriworkly/ats-engine
-
   test-server:
     name: Test Server
     runs-on: ubuntu-latest
@@ -61,9 +38,7 @@ jobs:
         run: npm exec -w @veriworkly/server -- prisma generate --schema=prisma/schema.prisma
 
       - name: Build Shared Packages
-        run: |
-          npm run build -w @veriworkly/profile-core --if-present
-          npm run build -w @veriworkly/ats-engine --if-present
+        run: npm run build -w @veriworkly/profile-core --if-present
 
       - name: Run Backend Tests
         run: npm run test -w @veriworkly/server --if-present
@@ -83,9 +58,6 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
-
-      - name: Build Shared Packages
-        run: npm run build -w @veriworkly/ats-engine
 
       - name: Run Site Tests
         run: npm run test:contracts -w @veriworkly/site --if-present
@@ -107,9 +79,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Build Shared Packages
-        run: |
-          npm run build -w @veriworkly/profile-core --if-present
-          npm run build -w @veriworkly/ats-engine
+        run: npm run build -w @veriworkly/profile-core --if-present
 
       - name: Run Studio Tests
         run: npm run test:contracts -w @veriworkly/studio --if-present
