@@ -8,11 +8,10 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 COPY apps/server/package.json ./apps/server/package.json
-# The server depends on two workspace packages. npm links them into node_modules as symlinks to
-# packages/*, so their manifests must be present at install time and their built output at run
-# time — without them the server's `prebuild` has nothing to build and the image's imports of
-# @veriworkly/ats-engine and @veriworkly/profile-core resolve to nothing.
-COPY packages/ats-engine/package.json ./packages/ats-engine/package.json
+# The server depends on one workspace package. npm links it into node_modules as a symlink to
+# packages/profile-core, so its manifest must be present at install time and its built output at
+# run time — without them the server's `prebuild` has nothing to build and the image's imports of
+# @veriworkly/profile-core resolve to nothing. @veriworkly/ats-engine comes from npm, built.
 COPY packages/profile-core/package.json ./packages/profile-core/package.json
 # Before the install, not after: the root `postinstall` runs `prisma generate`, which fails the
 # whole `npm ci` when the schema is not there yet. It also makes `npm ci` the one place the
@@ -21,11 +20,8 @@ COPY apps/server/prisma ./apps/server/prisma
 
 # Build with repository root as context:
 # docker build -f apps/server/Dockerfile .
-RUN npm ci --workspace=@veriworkly/server --workspace=@veriworkly/ats-engine \
-    --workspace=@veriworkly/profile-core --include=dev
+RUN npm ci --workspace=@veriworkly/server --workspace=@veriworkly/profile-core --include=dev
 
-COPY packages/ats-engine/tsconfig.json packages/ats-engine/tsconfig.node.json ./packages/ats-engine/
-COPY packages/ats-engine/src ./packages/ats-engine/src
 COPY packages/profile-core/tsconfig.json ./packages/profile-core/tsconfig.json
 COPY packages/profile-core/src ./packages/profile-core/src
 COPY apps/server/tsconfig.json ./apps/server/tsconfig.json

@@ -1,6 +1,6 @@
 {
   "name": "@veriworkly/server",
-  "version": "3.24.4",
+  "version": "3.25.0",
   "description": "VeriWorkly Resume Backend API",
   "main": "dist/index.js",
   "type": "module",
@@ -11,9 +11,9 @@
     }
   },
   "scripts": {
-    "predev": "npm run build -w @veriworkly/profile-core && npm run build -w @veriworkly/ats-engine",
+    "predev": "npm run build -w @veriworkly/profile-core",
     "dev": "tsx watch src/index.ts",
-    "prebuild": "npm run build -w @veriworkly/profile-core --if-present && npm run build -w @veriworkly/ats-engine --if-present && prisma generate",
+    "prebuild": "npm run build -w @veriworkly/profile-core --if-present && prisma generate",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint src",
@@ -41,7 +41,7 @@
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@prisma/config": "^7.9.1",
-    "@veriworkly/ats-engine": "*",
+    "@veriworkly/ats-engine": "^0.1.0",
     "@veriworkly/profile-core": "*",
     "better-auth": "^1.6.25",
     "compression": "^1.8.1",

@@ -2,12 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { extractInChildProcess, stopExtractPool } from "#services/ats/extractPool";
 
-import {
-  buildPdf,
-  LEFT_COLUMN,
-  RIGHT_COLUMN,
-  text,
-} from "../../../../packages/ats-engine/tests/fixtures/buildPdf";
+import { buildPdf, LEFT_COLUMN, RIGHT_COLUMN, text } from "./fixtures/buildPdf";
 
 /**
  * The real pool forking the real child — the package's compiled `node/child.js` — with no

@@ -1,7 +1,0 @@
-dist/
-node_modules/
-coverage/
-*.tgz
-# Audit working notes and throwaway probes; not part of the package or its repo.
-AUDIT.md
-*.probe.ts
