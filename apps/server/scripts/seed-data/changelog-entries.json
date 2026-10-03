@@ -1,5 +1,48 @@
 [
   {
+    "id": "v3-25-0",
+    "version": "3.25.0",
+    "title": "ATS Engine on npm, Job Requirements Analysis & Resume Integrity Checks",
+    "summary": "This release moves VeriWorkly's ATS scoring and parsing into @veriworkly/ats-engine, an open-source package now published on npm, adds a requirements panel that judges every line of a job posting against the resume, and adds integrity checks for the tricks candidates are told to use on screeners. ATS scores change for the same resume compared with 3.24.x.",
+    "type": "minor",
+    "publishedAt": "2026-10-03T18:30:00Z",
+    "githubUrl": "https://github.com/VeriWorkly/veriworkly/releases/tag/Release-v3.25.0",
+    "added": [
+      "Published @veriworkly/ats-engine 0.1.0 to npm with build provenance, developed in the VeriWorkly/ats-engine repository and installed by the server, site and studio.",
+      "Requirements panel in the ATS checker marking each posting requirement met, partly met, missing or unverifiable, with the resume lines that support it.",
+      "Integrity checks for hidden text in PDF and DOCX files, invisible and look-alike characters, instructions aimed at AI screeners, pasted job postings and keyword stuffing.",
+      "German and Hindi language support and US, German and Indian regional conventions for phone numbers, date order and credentials.",
+      "Structured resume documents from the Studio ATS workspace, scored exactly as written."
+    ],
+    "improved": [
+      "Scoring follows a published rubric with readiness, job-match and per-category scores and a verdict; rules with no evidence are left out instead of passed.",
+      "Parsing reads dates with a day, sentence-case and letter-spaced headings, titles beginning with a section word, title and employer joined by @, and school names apart from their degree.",
+      "Requirement matching understands degree-or-experience alternatives, year ranges such as 3 to 5 years, and language lists, and no longer reads US state codes as degrees.",
+      "AI analysis and resume conversion redact personal details before sending and accept only values that appear in the resume.",
+      "Resume templates cap section-title letter spacing and stack the headline under the name so ATS text extraction keeps headings and names intact.",
+      "OpenAPI specification updated for the ATS endpoints."
+    ],
+    "fixed": [
+      "Phone numbers no longer absorb digits from the following line.",
+      "Lines beginning with .NET are no longer read as bullet points.",
+      "Honest content is no longer flagged as hidden text: white text on dark table cells, Arabic and Hebrew phone formatting, and Greek letters in scientific terms."
+    ],
+    "security": [
+      "DOCX uploads are measured exactly as the document reader opens them, so compressed zip bombs are refused before they are unpacked.",
+      "Resume, posting and AI-output processing runs in linear time on hostile input, closing slow-regex and slow-matching denial-of-service paths."
+    ],
+    "tags": [
+      "ats",
+      "ats-engine",
+      "npm",
+      "requirements",
+      "integrity",
+      "parsing",
+      "security",
+      "studio"
+    ]
+  },
+  {
     "id": "v3-24-4",
     "version": "3.24.4",
     "title": "Resend API Email Integration, Connection-Pooled SMTP & OAuth Cancellation Redirect Fix",
