@@ -1,9 +1,9 @@
+import { shapeReport } from "@veriworkly/ats-engine";
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
 import { AtsQuotaService } from "#services/ats/quota";
 import { AtsScoringService } from "#services/ats/scoring";
-import { shapeReport } from "#services/ats/reportShaping";
 import { createSuccessResponse, handleValidationError } from "#lib/errors";
 import { getRequestIpDetails } from "#utils/requestIp";
 import { atsCheckSchema } from "#validators/atsValidator";
@@ -30,11 +30,16 @@ export class AtsCheckController {
   static async check(req: Request, res: Response, next: NextFunction) {
     try {
       const input = atsCheckSchema.parse(req.body);
+      // Read before metering, so a malformed document is a 400 that costs the caller nothing.
+      const resume = AtsScoringService.prepare(input.resume);
       const quota = await AtsQuotaService.consume(req.authUser?.id, ip(req));
-      const report = AtsScoringService.check(input.resume, input.jobDescription, input.layout);
+      const report = AtsScoringService.check(resume, {
+        jobDescription: input.jobDescription,
+        layout: input.layout,
+      });
       res.json(
         createSuccessResponse({
-          report: shapeReport(report, Boolean(req.authUser)),
+          report: shapeReport(report, req.authUser ? "full" : "restricted"),
           ai: null,
           creditsSpent: 0,
           quota,

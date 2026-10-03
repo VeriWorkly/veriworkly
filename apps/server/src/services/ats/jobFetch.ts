@@ -2,6 +2,8 @@ import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import { isIP } from "node:net";
 
+import { jobTextFromHtml, normalizeJobText } from "@veriworkly/ats-engine/job";
+
 import { ApiError } from "#lib/errors";
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -53,18 +55,13 @@ async function validateUrl(value: string) {
   return { url, address: addresses[0].address, family: isIP(addresses[0].address) };
 }
 
-function visibleText(source: string) {
-  return source
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/gi, '"')
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 12_000);
+/**
+ * The job text in a fetched page: the page's schema.org `JobPosting` when it publishes one, its
+ * visible text otherwise (`@veriworkly/ats-engine/job`, which parses in linear time — the regexes
+ * this replaced were quadratic on a hostile page). Plain text is taken as written.
+ */
+function jobText(body: string, contentType: string) {
+  return contentType.includes("text/html") ? jobTextFromHtml(body) : normalizeJobText(body);
 }
 
 export class AtsJobFetchService {
@@ -84,7 +81,7 @@ export class AtsJobFetchService {
       const contentType = response.contentType.toLowerCase();
       if (!contentType.includes("text/html") && !contentType.includes("text/plain"))
         throw new ApiError(400, "Job page must be HTML or plain text.");
-      const text = visibleText(response.body);
+      const text = jobText(response.body, contentType);
       if (text.length < 100)
         throw new ApiError(400, "Job page did not contain enough readable text.");
       return text;

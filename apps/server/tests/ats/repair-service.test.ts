@@ -1,18 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { completionCreate, reserve, commitReservation, releaseReservation, requireEntitlement } =
-  vi.hoisted(() => ({
-    completionCreate: vi.fn(),
-    reserve: vi.fn(),
-    commitReservation: vi.fn(),
-    releaseReservation: vi.fn(),
-    requireEntitlement: vi.fn(),
-  }));
-
-vi.mock("openai", () => ({
-  default: class OpenAI {
-    chat = { completions: { create: completionCreate } };
-  },
+const { reserve, commitReservation, releaseReservation, requireEntitlement } = vi.hoisted(() => ({
+  reserve: vi.fn(),
+  commitReservation: vi.fn(),
+  releaseReservation: vi.fn(),
+  requireEntitlement: vi.fn(),
 }));
 
 vi.mock("#config", () => ({
@@ -52,6 +44,11 @@ vi.mock("#services/ats/aiPolicy", () => ({
   })),
 }));
 
+vi.mock("#services/ats/enginePolicy", async () => {
+  const { DEFAULT_POLICY } = await import("@veriworkly/ats-engine");
+  return { getAtsEnginePolicy: () => DEFAULT_POLICY };
+});
+
 vi.mock("#services/creditService", () => ({
   CreditService: { reserve, commitReservation, releaseReservation },
 }));
@@ -61,35 +58,26 @@ vi.mock("#services/entitlementService", () => ({
 }));
 
 import { AtsRepairService } from "#services/ats/repair";
-import type { AtsParsedResume, AtsReport } from "#services/ats/types";
+import type { AtsReport } from "#services/ats/types";
+import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs";
+import { chatResponse, stubChatApi } from "./helpers/chatApi";
 
 const SOURCE = "Jane Doe\nSenior Engineer, Acme Corporation\nJan 2020 - Present\n";
 
-const emptyParsed: AtsParsedResume = {
-  name: "",
-  email: "",
-  phone: "",
-  links: [],
-  roles: [],
-  education: [],
-  skills: [],
-  monthsOfExperience: null,
-  highestDegree: null,
-};
+const report = { parsed: EMPTY_PARSED, wordCount: 400 } as AtsReport;
 
-const report = { parsed: emptyParsed, wordCount: 400 } as AtsReport;
+let api: ReturnType<typeof stubChatApi>;
 
 function respondWith(payload: unknown) {
-  completionCreate.mockResolvedValue({
-    id: "cmpl-1",
-    choices: [{ message: { content: JSON.stringify(payload) } }],
-    usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
-  });
+  api.fetch.mockResolvedValue(
+    chatResponse(payload, { usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }),
+  );
 }
 
 describe("AtsRepairService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api = stubChatApi();
     requireEntitlement.mockResolvedValue(undefined);
     reserve.mockResolvedValue(undefined);
     commitReservation.mockResolvedValue(undefined);
@@ -101,7 +89,7 @@ describe("AtsRepairService", () => {
 
     await expect(AtsRepairService.repair("u1", "r1", SOURCE, report)).rejects.toThrow();
     expect(reserve).not.toHaveBeenCalled();
-    expect(completionCreate).not.toHaveBeenCalled();
+    expect(api.fetch).not.toHaveBeenCalled();
   });
 
   it("merges grounded values and commits the reservation", async () => {
@@ -145,7 +133,7 @@ describe("AtsRepairService", () => {
   });
 
   it("releases the reservation when the provider fails", async () => {
-    completionCreate.mockRejectedValue(new Error("provider down"));
+    api.fetch.mockRejectedValue(new TypeError("fetch failed"));
 
     await expect(AtsRepairService.repair("u1", "r1", SOURCE, report)).rejects.toThrow();
     expect(releaseReservation).toHaveBeenCalledWith("u1", "r1");
@@ -153,10 +141,7 @@ describe("AtsRepairService", () => {
   });
 
   it("releases the reservation when the response is not valid JSON", async () => {
-    completionCreate.mockResolvedValue({
-      id: "cmpl-1",
-      choices: [{ message: { content: "not json" } }],
-    });
+    api.fetch.mockResolvedValue(chatResponse("not json"));
 
     await expect(AtsRepairService.repair("u1", "r1", SOURCE, report)).rejects.toThrow();
     expect(releaseReservation).toHaveBeenCalledWith("u1", "r1");
@@ -166,12 +151,20 @@ describe("AtsRepairService", () => {
     respondWith({ name: "Jane Doe" });
     await AtsRepairService.repair("u1", "r1", SOURCE, report);
 
-    const sent = completionCreate.mock.calls[0]![0];
+    const sent = api.body();
     expect(sent.messages[0].role).toBe("system");
     expect(sent.messages[1].role).toBe("user");
     // The document travels inside a JSON envelope, so prose in the resume cannot be read as
     // a new instruction to the model.
     expect(() => JSON.parse(sent.messages[1].content)).not.toThrow();
     expect(sent.temperature).toBe(0);
+  });
+
+  it("uses the package's repair prompt when the private policy does not override it", async () => {
+    const { DEFAULT_REPAIR_PROMPT } = await import("@veriworkly/ats-engine/ai");
+    respondWith({ name: "Jane Doe" });
+    await AtsRepairService.repair("u1", "r1", SOURCE, report);
+
+    expect(api.body().messages[0].content).toBe(DEFAULT_REPAIR_PROMPT);
   });
 });

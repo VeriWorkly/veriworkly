@@ -1,17 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AtsReport } from "#services/ats/types";
+import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs";
+import { chatResponse, httpError, stubChatApi } from "./helpers/chatApi";
 
-const completionCreate = vi.fn();
 const reserve = vi.fn();
 const commitReservation = vi.fn();
 const releaseReservation = vi.fn();
-
-vi.mock("openai", () => ({
-  default: class OpenAI {
-    chat = { completions: { create: completionCreate } };
-  },
-}));
 
 vi.mock("#config", () => ({
   config: {
@@ -68,6 +63,11 @@ vi.mock("#services/ats/aiPolicy", () => ({
   })),
 }));
 
+vi.mock("#services/ats/enginePolicy", async () => {
+  const { DEFAULT_POLICY } = await import("@veriworkly/ats-engine");
+  return { getAtsEnginePolicy: () => DEFAULT_POLICY };
+});
+
 vi.mock("#services/creditService", () => ({
   CreditService: { reserve, commitReservation, releaseReservation },
 }));
@@ -92,6 +92,7 @@ function report(readinessScore: number): AtsReport {
     checksPassed: 0,
     checksTotal: 0,
     wordCount: 400,
+    parsed: EMPTY_PARSED,
   };
 }
 
@@ -103,16 +104,17 @@ const insights = JSON.stringify({
   priorityOrder: [],
 });
 
+let api: ReturnType<typeof stubChatApi>;
+const model = (index = 0) => api.body(index).model;
+
 describe("ATS AI routing", () => {
   beforeEach(() => {
+    api = stubChatApi();
     vi.clearAllMocks();
     reserve.mockResolvedValue({ cost: 5 });
     commitReservation.mockResolvedValue({ balanceAfter: 10 });
     releaseReservation.mockResolvedValue(true);
-    completionCreate.mockResolvedValue({
-      id: "completion_1",
-      choices: [{ message: { content: insights } }],
-    });
+    api.fetch.mockResolvedValue(chatResponse(insights, { id: "completion_1" }));
   });
 
   it("falls back to a cheaper tier rather than returning no analysis at all", async () => {
@@ -130,9 +132,7 @@ describe("ATS AI routing", () => {
 
     expect(result.routed).toBe(true);
     expect(result.ai).not.toBeNull();
-    expect(completionCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "cheap-model" }),
-    );
+    expect(model()).toBe("cheap-model");
   });
 
   it("reads temperature from policy instead of a hardcoded call-site value", async () => {
@@ -146,7 +146,7 @@ describe("ATS AI routing", () => {
       false,
     );
 
-    expect(completionCreate).toHaveBeenCalledWith(expect.objectContaining({ temperature: 0.35 }));
+    expect(api.body().temperature).toBe(0.35);
   });
 
   it("escalates on the share of points lost, not on a count of error rules", async () => {
@@ -169,9 +169,9 @@ describe("ATS AI routing", () => {
    * already reserved margin for exactly this.
    */
   it("retries a malformed response, on one reservation, and keeps the result", async () => {
-    completionCreate
-      .mockResolvedValueOnce({ id: "c1", choices: [{ message: { content: "{ truncated" } }] })
-      .mockResolvedValueOnce({ id: "c2", choices: [{ message: { content: insights } }] });
+    api.fetch
+      .mockResolvedValueOnce(chatResponse("{ truncated", { id: "c1" }))
+      .mockResolvedValueOnce(chatResponse(insights, { id: "c2" }));
 
     const { AtsAiService } = await import("#services/ats/ai");
     const result = await AtsAiService.analyze(
@@ -183,7 +183,7 @@ describe("ATS AI routing", () => {
       false,
     );
 
-    expect(completionCreate).toHaveBeenCalledTimes(2);
+    expect(api.fetch).toHaveBeenCalledTimes(2);
     expect(result.ai).not.toBeNull();
     // One reservation covers every attempt: the caller pays for the analysis, not for how many
     // tries it took to get valid JSON back.
@@ -193,18 +193,18 @@ describe("ATS AI routing", () => {
   });
 
   it("retries an empty completion", async () => {
-    completionCreate
-      .mockResolvedValueOnce({ id: "c1", choices: [{ message: { content: "" } }] })
-      .mockResolvedValueOnce({ id: "c2", choices: [{ message: { content: insights } }] });
+    api.fetch
+      .mockResolvedValueOnce(chatResponse("", { id: "c1" }))
+      .mockResolvedValueOnce(chatResponse(insights, { id: "c2" }));
 
     const { AtsAiService } = await import("#services/ats/ai");
     await AtsAiService.analyze("user_1", "req", "resume", undefined, report(90), false);
 
-    expect(completionCreate).toHaveBeenCalledTimes(2);
+    expect(api.fetch).toHaveBeenCalledTimes(2);
   });
 
   it("gives up once the retry budget is spent, and releases the reservation", async () => {
-    completionCreate.mockResolvedValue({ id: "c", choices: [{ message: { content: "{" } }] });
+    api.fetch.mockResolvedValue(chatResponse("{", { id: "c" }));
 
     const { AtsAiService } = await import("#services/ats/ai");
     await expect(
@@ -212,12 +212,12 @@ describe("ATS AI routing", () => {
     ).rejects.toThrow(/could not be completed/);
 
     // retries: 1 on the model this request routes to, so two attempts and no more.
-    expect(completionCreate).toHaveBeenCalledTimes(2);
+    expect(api.fetch).toHaveBeenCalledTimes(2);
     expect(releaseReservation).toHaveBeenCalledWith("user_1", "req");
   });
 
   it("does not retry a request the provider rejected on its merits", async () => {
-    completionCreate.mockRejectedValue(Object.assign(new Error("bad request"), { status: 400 }));
+    api.fetch.mockResolvedValue(httpError(400, "bad request"));
 
     const { AtsAiService } = await import("#services/ats/ai");
     await expect(
@@ -226,7 +226,27 @@ describe("ATS AI routing", () => {
 
     // A 4xx means the same request will be refused again; sending it twice spends the budget
     // for the same answer. A 429 is the exception and is retried.
-    expect(completionCreate).toHaveBeenCalledTimes(1);
+    expect(api.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a rate-limited request", async () => {
+    api.fetch
+      .mockResolvedValueOnce(httpError(429, "slow down"))
+      .mockResolvedValueOnce(chatResponse(insights));
+
+    const { AtsAiService } = await import("#services/ats/ai");
+    const result = await AtsAiService.analyze(
+      "user_1",
+      "req",
+      "resume",
+      undefined,
+      report(90),
+      false,
+    );
+
+    expect(api.fetch).toHaveBeenCalledTimes(2);
+    expect(result.ai).not.toBeNull();
+    expect(commitReservation.mock.calls[0]![2].metadata).toMatchObject({ attempts: 2 });
   });
 
   it("reports the failure instead of a silent success when nothing can be routed", async () => {
