@@ -50,7 +50,7 @@
   "devDependencies": {
     "@types/node": "^25",
     "eslint": "^9",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "^6"
   },

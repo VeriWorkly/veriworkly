@@ -9,7 +9,7 @@
     "./styles/*": "./src/styles/*"
   },
   "dependencies": {
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@types/react": "^19",

@@ -21,7 +21,7 @@
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\""
   },
   "dependencies": {
-    "libphonenumber-js": "^1.13.11",
+    "libphonenumber-js": "^1.13.14",
     "zod": "^3.25.76"
   },
   "devDependencies": {
