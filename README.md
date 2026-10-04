@@ -122,7 +122,7 @@ veriworkly/
 ### Prerequisites
 
 - **Node.js**: v20.19.0 or higher (Node.js 22 supported)
-- **npm**: Repository uses npm workspaces (`npm install` from root)
+- **npm**: v11 or higher (`npm@11.16.0`); repository uses npm workspaces (`npm install` from root)
 - **PostgreSQL**: Required for backend API functionality ([Neon](https://neon.tech) managed Postgres supported)
 - **Redis**: Required for backend sessions, rate limiting, quotas, and job locking
 
