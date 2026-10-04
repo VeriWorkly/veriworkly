@@ -1,6 +1,6 @@
 {
   "name": "@veriworkly/docs-platform",
-  "version": "3.25.0",
+  "version": "3.25.1",
   "private": true,
   "scripts": {
     "generate:api": "node scripts/generate-api-docs.mjs",

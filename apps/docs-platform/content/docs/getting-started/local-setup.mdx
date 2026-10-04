@@ -15,7 +15,8 @@ the platform.
 ## Prerequisites
 
 - **Node.js** — version 20.19.0 or higher (Node.js 22 supported).
-- **npm** — the repository uses npm workspaces; other package managers are not configured.
+- **npm** — version 11 or higher (the repository pins `npm@11.16.0`). The repository uses npm
+  workspaces; other package managers are not configured.
 - **PostgreSQL** — required for anything that touches the API.
   [Neon](https://neon.tech) works well as a managed option.
 - **Redis** — required by the backend. Sessions, rate limiting, ATS and import quotas, buffered view
