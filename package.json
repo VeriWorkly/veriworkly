@@ -56,34 +56,20 @@
   },
   "overrides": {
     "postcss": "8.5.28",
-    "prisma": {
-      "@prisma/dev": {
-        "@hono/node-server": "2.0.12",
-        "valibot": "1.4.2"
-      }
-    },
-    "@hono/node-server": "2.0.12",
-    "hono": "4.12.32",
     "fast-uri": "3.1.8",
     "body-parser": "1.20.8",
     "mysql2": "3.24.5",
     "deepmerge-ts": "8.0.2",
-    "better-sqlite3": "12.11.1",
     "fumadocs-core": "16.13.0",
+    "fumadocs-ui": "16.13.0",
     "fumadocs-mdx": {
-      "js-yaml": "4.3.2",
-      "fumadocs-core": "16.13.0"
+      "js-yaml": "4.3.2"
     },
     "fumadocs-openapi": {
       "js-yaml": "4.3.2"
     },
     "eslint": {
       "js-yaml": "4.3.2"
-    },
-    "fumadocs-ui": "16.13.0",
-    "@fumadocs/api-docs": {
-      "fumadocs-core": "16.13.0",
-      "fumadocs-ui": "16.13.0"
     }
   },
   "optionalDependencies": {
