@@ -6,6 +6,8 @@ export async function runAtsCheck(input: {
   resume: unknown;
   jobDescription?: string;
   layout?: AtsLayoutSignals;
+  /** The uploaded file's name and size, for the file advice (never scored). */
+  file?: { name: string; bytes: number };
 }) {
   return normalizeCheckResult(
     await fetchApiData<WireCheckResult>("/ats/check", {

@@ -36,6 +36,7 @@ export class AtsCheckController {
       const report = AtsScoringService.check(resume, {
         jobDescription: input.jobDescription,
         layout: input.layout,
+        file: input.file,
       });
       res.json(
         createSuccessResponse({

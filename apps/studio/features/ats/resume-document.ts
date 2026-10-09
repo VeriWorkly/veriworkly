@@ -5,7 +5,7 @@ import {
   type AtsResumeDocument,
 } from "@veriworkly/ats-engine/document";
 
-import type { ResumeData, ResumeSection } from "@/types/resume";
+import type { ResumeData, ResumeLanguage, ResumeSection } from "@/types/resume";
 
 /**
  * A saved Studio resume as the engine's structured input.
@@ -20,6 +20,18 @@ import type { ResumeData, ResumeSection } from "@/types/resume";
  */
 
 const clean = (value: string | undefined) => value?.trim() ?? "";
+
+/**
+ * Each fluency as the engine reads a level: LinkedIn's wording where the bare word is ambiguous
+ * ("limited" alone could be anything; "limited working proficiency" is B1).
+ */
+const FLUENCY_LEVEL: Record<ResumeLanguage["fluency"], string> = {
+  elementary: "elementary proficiency",
+  limited: "limited working proficiency",
+  professional: "professional working proficiency",
+  fluent: "fluent",
+  native: "native",
+};
 const joined = (parts: Array<string | undefined>, separator = ", ") =>
   parts.map(clean).filter(Boolean).join(separator);
 
@@ -89,12 +101,19 @@ function section(resume: ResumeData, placement: ResumeSection): AtsDocumentSecti
         items: resume.skills.map((group) => ({ name: group.name, keywords: group.keywords })),
       };
     case "certifications":
+      // As rows, so the engine files each as a certification (name, issuer, date) rather than
+      // reading the section as free text.
       return {
-        kind: "other",
+        kind: "certifications",
         title,
-        items: resume.certificates.map((item) =>
-          entry([item.title, item.issuer, item.date], [item.referenceId, item.description]),
-        ),
+        items: resume.certificates
+          .filter((item) => clean(item.title))
+          .map((item) => ({
+            name: item.title,
+            ...(clean(item.issuer) ? { issuer: item.issuer } : {}),
+            ...(clean(item.date) ? { date: item.date } : {}),
+            ...(clean(item.website) ? { url: item.website } : {}),
+          })),
       };
     case "awards":
       return {
@@ -113,10 +132,16 @@ function section(resume: ResumeData, placement: ResumeSection): AtsDocumentSecti
         ),
       };
     case "languages":
+      // As rows, so a requirement such as "Fluent German" is judged against the level given.
       return {
-        kind: "other",
+        kind: "languages",
         title,
-        items: resume.languages.map((item) => entry([item.language, item.fluency])),
+        items: resume.languages
+          .filter((item) => clean(item.language))
+          .map((item) => ({
+            language: item.language,
+            ...(item.fluency ? { level: FLUENCY_LEVEL[item.fluency] } : {}),
+          })),
       };
     case "interests":
       return {
@@ -194,6 +219,9 @@ function withoutEmptyRows(section: AtsDocumentSection): AtsDocumentSection {
       return { ...section, items: section.items.filter((i) => clean(i.name)) };
     case "skills":
       return { ...section, items: section.items.filter((i) => clean(i.name) || i.keywords.length) };
+    case "certifications":
+    case "languages":
+      return section;
     case "other":
       return { ...section, items: section.items.filter((i) => i.heading || i.lines?.length) };
   }

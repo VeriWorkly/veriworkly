@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
+  Info,
   ScanEye,
   Sparkles,
   SlidersHorizontal,
@@ -184,10 +185,19 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
             <KeywordCard
               title="Missing keywords"
               description="Weighted toward terms under Requirements. Only add what is genuinely true."
-              items={report.missingKeywords}
+              items={report.missingKeywordGroups.hard}
               tone="warn"
               emptyText="Nothing significant is missing from this description."
             />
+            {report.missingKeywordGroups.soft.length ? (
+              <p className="text-sm leading-relaxed text-zinc-500 sm:col-span-2 dark:text-zinc-400">
+                <span className="font-medium text-zinc-700 dark:text-zinc-200">
+                  Soft skills the description mentions:
+                </span>{" "}
+                {report.missingKeywordGroups.soft.join(", ")}. They weigh less in the match: a
+                resume shows them through what you did, not by naming them.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -213,6 +223,44 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
                     aria-hidden="true"
                   />
                   {strength}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {report.advice.length ? (
+          <section
+            aria-labelledby="ats-advice-heading"
+            className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-white/2"
+          >
+            <h2
+              id="ats-advice-heading"
+              className="text-sm font-semibold text-zinc-900 dark:text-white"
+            >
+              Worth knowing
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+              Not scored: none of this changes a number above.
+            </p>
+            <ul className="mt-4 space-y-3">
+              {report.advice.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-start gap-2.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300"
+                >
+                  <Info
+                    className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {item.message}
+                    {item.fix ? (
+                      <span className="mt-0.5 block text-zinc-500 dark:text-zinc-400">
+                        {item.fix}
+                      </span>
+                    ) : null}
+                  </span>
                 </li>
               ))}
             </ul>

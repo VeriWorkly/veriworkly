@@ -135,6 +135,8 @@ describe("ATS report normalisation - surviving a server one deploy behind", () =
       roles: "parser",
       education: "none",
       skills: "none",
+      certifications: "none",
+      spokenLanguages: "none",
     });
   });
 
