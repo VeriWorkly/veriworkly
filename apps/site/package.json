@@ -15,7 +15,7 @@
     "test:contracts": "vitest run"
   },
   "dependencies": {
-    "@veriworkly/ats-engine": "^0.2.0",
+    "@veriworkly/ats-engine": "^0.2.1",
     "@veriworkly/ui": "*",
     "clsx": "^2.1.1",
     "framer-motion": "^12.43.0",

@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
-    "@veriworkly/ats-engine": "^0.2.0",
+    "@veriworkly/ats-engine": "^0.2.1",
     "@veriworkly/profile-core": "*",
     "@veriworkly/ui": "*",
     "better-auth": "~1.6.25",

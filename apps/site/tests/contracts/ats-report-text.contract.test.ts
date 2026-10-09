@@ -150,9 +150,10 @@ describe("ATS category presentation helpers", () => {
   });
 
   it("bands scores on the same thresholds the gauge and the bars share", () => {
-    expect(scoreTone(80)).toBe("good");
-    expect(scoreTone(79)).toBe("warn");
-    expect(scoreTone(55)).toBe("warn");
-    expect(scoreTone(54)).toBe("bad");
+    // The engine's verdict bands since 0.2.0, so a "good" tone is always a "strong" verdict.
+    expect(scoreTone(75)).toBe("good");
+    expect(scoreTone(74)).toBe("warn");
+    expect(scoreTone(45)).toBe("warn");
+    expect(scoreTone(44)).toBe("bad");
   });
 });
