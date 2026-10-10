@@ -38,12 +38,6 @@ const publicRoutes = [
   },
 
   {
-    url: `${siteConfig.url}/ats-checker/scan`,
-    changeFrequency: "monthly" as const,
-    priority: 0.8,
-  },
-
-  {
     url: `${siteConfig.url}/roadmap`,
     changeFrequency: "daily" as const,
     priority: 0.8,

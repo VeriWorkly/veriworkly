@@ -90,7 +90,7 @@ veriworkly/
 │   ├── docs-platform/    # [Port 3002] Technical Documentation & OpenAPI Hub (Next.js 16 / Fumadocs)
 │   ├── blog-platform/    # [Port 3003] Official Product & Engineering Blog (Next.js 16 / Fumadocs)
 │   ├── portfolio/        # [Port 3004] Portfolio Builder, Gallery & Subdomain Publisher (Next.js 16)
-│   └── server/           # [Port 8080] Express 4 API, Sync Engine & Background Jobs (Node.js 20+)
+│   └── server/           # [Port 8080] Express 4 API, Sync Engine & Background Jobs (Node.js 22.12+)
 └── packages/
     └── ui/               # In-house Shared Design System & Components (@veriworkly/ui)
 ```
@@ -105,7 +105,7 @@ veriworkly/
 | **State & Storage**    | **Zustand**                 | Lightweight frontend state management, persisted to browser `localStorage`       |
 | **PDF Generation**     | **`@react-pdf/renderer`**   | Pure client-side high-fidelity PDF rendering engine                              |
 | **DOCX Generation**    | **`docx`**                  | Client-side Microsoft Word document generator                                    |
-| **Backend Runtime**    | **Node.js 20+**             | TypeScript Express 4 server, clustered with `throng` in production               |
+| **Backend Runtime**    | **Node.js 22.12+**          | TypeScript Express 4 server, clustered with `throng` in production               |
 | **Database & ORM**     | **PostgreSQL + Prisma 7**   | Type-safe relational database storage & migrations                               |
 | **Cache & Queues**     | **Redis**                   | Auth sessions, rate limiting, ATS quotas, view counts, and distributed job locks |
 | **Authentication**     | **Better-Auth**             | Passwordless Email OTP plus Google, GitHub, and LinkedIn OAuth providers         |
@@ -121,7 +121,7 @@ veriworkly/
 
 ### Prerequisites
 
-- **Node.js**: v20.19.0 or higher (Node.js 22 supported)
+- **Node.js**: v22.12.0 or higher
 - **npm**: v11 or higher (`npm@11.16.0`); repository uses npm workspaces (`npm install` from root)
 - **PostgreSQL**: Required for backend API functionality ([Neon](https://neon.tech) managed Postgres supported)
 - **Redis**: Required for backend sessions, rate limiting, quotas, and job locking
