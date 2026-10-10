@@ -16,8 +16,8 @@ const GaplessBento = () => {
           </h2>
 
           <p className="mt-5 max-w-[50ch] text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Everything you need to apply, built on a privacy-first engine that runs entirely locally
-            inside your browser.
+            Everything you need to apply, built on a privacy-first engine: your documents stay
+            local-first, and ATS scans run in memory and are never stored.
           </p>
         </div>
       </div>
