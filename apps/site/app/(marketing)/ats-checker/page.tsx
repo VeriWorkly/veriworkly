@@ -70,11 +70,13 @@ const pageFaqs = pageFaqIds
 export default function AtsCheckerPage() {
   const softwareSchema = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
+    "@type": ["WebApplication", "SoftwareApplication"],
+    "@id": `${pageUrl}#app`,
     name: "VeriWorkly Free ATS Resume Checker",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Any (web-based)",
-    url: scanUrl,
+    url: pageUrl,
+    publisher: { "@id": `${siteConfig.url}/#organization` },
     isAccessibleForFree: true,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     featureList: [
