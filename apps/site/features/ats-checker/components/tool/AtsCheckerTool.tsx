@@ -33,6 +33,8 @@ export function AtsCheckerTool() {
   // Page geometry from an uploaded file, held alongside its text and sent with the scan so the
   // format checks can see the layout. Pasted text has none, and the checks are skipped.
   const [layout, setLayout] = useState<AtsLayoutSignals | undefined>(undefined);
+  // The uploaded file's name and size, for the advice on them; none for pasted text.
+  const [upload, setUpload] = useState<{ name: string; bytes: number } | undefined>(undefined);
   const [jobDescription, setJobDescription] = useState("");
   const [quota, setQuota] = useState<AtsQuota | null>(null);
   const [result, setResult] = useState<AtsCheckResult | null>(null);
@@ -69,6 +71,7 @@ export function AtsCheckerTool() {
       }
       setResume(text);
       setLayout(extractedLayout);
+      setUpload({ name: file.name, bytes: file.size });
       setSourceLabel(file.name);
       setPhase("target");
     } catch (err) {
@@ -90,6 +93,7 @@ export function AtsCheckerTool() {
     // Pasted text carries no geometry, so any layout measured from a previous upload no longer
     // describes this resume and must not be scored against it.
     setLayout(undefined);
+    setUpload(undefined);
     setSourceLabel("Pasted resume text");
     setPhase("target");
   };
@@ -97,6 +101,7 @@ export function AtsCheckerTool() {
   const handleClearResume = () => {
     setResume("");
     setLayout(undefined);
+    setUpload(undefined);
     setSourceLabel("");
     setError("");
     setPhase("resume");
@@ -121,6 +126,7 @@ export function AtsCheckerTool() {
         resume,
         jobDescription: jobDescription.trim() || undefined,
         layout,
+        file: upload,
       });
 
       const [checkResult] = await Promise.all([

@@ -2,6 +2,7 @@ import {
   AtSign,
   FileSearch,
   LayoutList,
+  PenLine,
   ShieldAlert,
   Type,
   Gauge,
@@ -42,6 +43,11 @@ const CATEGORY_META: Record<string, { icon: LucideIcon; blurb: string }> = {
   format: {
     icon: ShieldAlert,
     blurb: "Tables, columns, and repeated headers that scramble content during extraction.",
+  },
+  writing: {
+    icon: PenLine,
+    blurb:
+      "How the bullets read once the ATS has filed them: first person, passive voice, duties instead of actions, tense. Weighs little.",
   },
   integrity: {
     icon: ShieldCheck,

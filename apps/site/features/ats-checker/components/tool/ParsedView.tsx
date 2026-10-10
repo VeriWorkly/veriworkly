@@ -1,9 +1,19 @@
-import { AlertCircle, Building2, GraduationCap, User, Wrench } from "lucide-react";
+import {
+  AlertCircle,
+  BadgeCheck,
+  Building2,
+  GraduationCap,
+  Languages,
+  User,
+  Wrench,
+} from "lucide-react";
 
 import {
   DEGREE_LABELS,
   ISCED_LABELS,
+  formatCertification,
   formatRoleDates,
+  formatSpokenLanguage,
   formatTenure,
   roleSpanMonths,
 } from "@veriworkly/ats-engine/format";
@@ -211,6 +221,56 @@ export function ParsedView({ parsed }: { parsed: AtsParsedResume }) {
           )}
         </Panel>
       </div>
+
+      {parsed.certifications.length || parsed.spokenLanguages.length ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Panel
+            icon={BadgeCheck}
+            title={`Certifications — ${parsed.certifications.length}`}
+            hint="Each filed with its issuer and dates, which is what a requirement such as “AWS certification” is checked against."
+          >
+            {parsed.certifications.length ? (
+              <ul className="space-y-2.5">
+                {parsed.certifications.map((row, index) => (
+                  <li
+                    key={`${row.name}-${index}`}
+                    className="text-sm text-zinc-900 dark:text-white"
+                  >
+                    {formatCertification(row)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                No certifications recovered.
+              </p>
+            )}
+          </Panel>
+
+          <Panel
+            icon={Languages}
+            title={`Languages — ${parsed.spokenLanguages.length}`}
+            hint="Each with its level on the European scale (A1–C2), which a requirement such as “fluent German” is checked against."
+          >
+            {parsed.spokenLanguages.length ? (
+              <ul className="flex flex-wrap gap-1.5">
+                {parsed.spokenLanguages.map((row) => (
+                  <li
+                    key={row.language}
+                    className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-white/5 dark:text-zinc-300"
+                  >
+                    {formatSpokenLanguage(row)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                No spoken languages recovered.
+              </p>
+            )}
+          </Panel>
+        </div>
+      ) : null}
     </div>
   );
 }

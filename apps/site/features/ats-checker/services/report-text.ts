@@ -70,8 +70,21 @@ export function reportToPlainText(
     const matched = report.matchedKeywords.length > 0 ? report.matchedKeywords.join(", ") : "none";
     lines.push(`Matched: ${matched}`);
 
-    const missing = report.missingKeywords.length > 0 ? report.missingKeywords.join(", ") : "none";
-    lines.push(`Missing: ${missing}`);
+    const hard = report.missingKeywordGroups.hard;
+    lines.push(`Missing: ${hard.length > 0 ? hard.join(", ") : "none"}`);
+    const soft = report.missingKeywordGroups.soft;
+    if (soft.length > 0) lines.push(`Soft skills mentioned (weigh less): ${soft.join(", ")}`);
+    lines.push("");
+  }
+
+  if (report.advice.length > 0) {
+    lines.push("----------------------------------------");
+    lines.push("WORTH KNOWING (NOT SCORED)");
+    lines.push("----------------------------------------");
+    for (const item of report.advice) {
+      lines.push(`* ${item.message}`);
+      if (item.fix) lines.push(`  ${item.fix}`);
+    }
     lines.push("");
   }
 

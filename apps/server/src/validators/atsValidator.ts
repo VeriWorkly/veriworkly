@@ -18,12 +18,29 @@ const layoutSchema = z.object({
   hiddenTextSample: z.string().max(200).optional(),
   imageOnlyPages: z.number().int().min(0).max(200).optional(),
   metadataText: z.string().max(2_000).optional(),
+  // Engine 0.3: a PDF opened without its password, and a Word file's tracked changes and
+  // comments. Only the advice reads them, never the score.
+  encrypted: z.boolean().optional(),
+  trackedChanges: z.number().int().min(0).max(100_000).optional(),
+  comments: z.number().int().min(0).max(100_000).optional(),
+});
+
+/** The uploaded file's name and size, sent by the client for the file advice. Never scored. */
+const fileSchema = z.object({
+  name: z.string().trim().min(1).max(255).optional(),
+  bytes: z
+    .number()
+    .int()
+    .min(0)
+    .max(100 * 1024 * 1024)
+    .optional(),
 });
 
 export const atsCheckSchema = z.object({
   resume: resumeSchema,
   jobDescription: z.string().trim().max(20_000).optional(),
   layout: layoutSchema.optional(),
+  file: fileSchema.optional(),
 });
 
 export const atsAnalyzeSchema = atsCheckSchema.extend({

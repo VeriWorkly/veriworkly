@@ -1,5 +1,10 @@
 import { AtsInputError, AtsScoringService as Engine, prepareResume } from "@veriworkly/ats-engine";
-import type { AtsLayoutSignals, AtsReport, PreparedResume } from "@veriworkly/ats-engine";
+import type {
+  AtsFileInfo,
+  AtsLayoutSignals,
+  AtsReport,
+  PreparedResume,
+} from "@veriworkly/ats-engine";
 
 import { getAtsEnginePolicy } from "#services/ats/enginePolicy";
 import { ApiError } from "#lib/errors";
@@ -35,7 +40,7 @@ export class AtsScoringService {
 
   static check(
     resume: unknown,
-    options: { jobDescription?: string; layout?: AtsLayoutSignals } = {},
+    options: { jobDescription?: string; layout?: AtsLayoutSignals; file?: AtsFileInfo } = {},
   ): AtsReport {
     return Engine.check(this.prepare(resume), getAtsEnginePolicy(), options);
   }
