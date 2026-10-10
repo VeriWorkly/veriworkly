@@ -78,6 +78,42 @@ export function AtsPipelineSection() {
             );
           })}
         </div>
+
+        <div className="border-border/60 bg-card/40 space-y-2 rounded-2xl border p-6 backdrop-blur-sm">
+          <h4 className="text-foreground text-sm font-bold tracking-tight">
+            Scored by our open-source engine
+          </h4>
+          <p className="text-muted text-xs leading-relaxed">
+            The checker runs{" "}
+            <a
+              href="https://github.com/VeriWorkly/ats-engine"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              @veriworkly/ats-engine
+            </a>
+            , published on{" "}
+            <a
+              href="https://www.npmjs.com/package/@veriworkly/ats-engine"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              npm
+            </a>
+            . You can{" "}
+            <a
+              href="https://github.com/VeriWorkly/ats-engine/blob/main/RUBRIC.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              read every rule and its weight
+            </a>
+            .
+          </p>
+        </div>
       </div>
     </section>
   );
