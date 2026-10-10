@@ -13,8 +13,7 @@ export function AtsCategoriesGrid() {
         </h2>
         <p className="text-muted max-w-2xl text-xs leading-relaxed sm:text-sm">
           Every check runs against the text you provide. There are no fake placeholder scores. The
-          exact weights stay private to prevent gaming, but the evaluation dimensions are 100%
-          transparent.
+          rubric is public, so every rule and its weight can be read and checked.
         </p>
       </div>
 
