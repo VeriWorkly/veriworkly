@@ -4,7 +4,7 @@ This guide covers setting up VeriWorkly for local development.
 
 ## Prerequisites
 
-- **Node.js >= 20.19.0** (Node.js 22 supported)
+- **Node.js >= 22.12.0**
 - **npm v11+** (`npm@11.16.0`)
 - **PostgreSQL** (We recommend [Neon](https://neon.tech))
 - **Redis** (Local or via Docker; required for sessions and locks)

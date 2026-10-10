@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Image for @veriworkly/site (Next.js, standalone output).
 
-ARG NODE_VERSION=20.19.0
+ARG NODE_VERSION=22.23.3
 
 FROM node:${NODE_VERSION}-alpine AS base
 WORKDIR /app
