@@ -47,6 +47,7 @@ VeriWorkly is a privacy-first AI career workspace engineered for professional do
   - *LinkedIn Import*: AI-parsed from uploaded/pasted profile text.
   - *File Extraction*: PDF, DOCX, TXT, MD, and JSON resume extraction.
 - **Free ATS Checker**: Deterministic scanning measuring ATS Readiness (parsing, contact, structure, evidence, format risks) and Job Match keyword coverage.
+- **Open-source ATS scoring engine**: Repository `https://github.com/VeriWorkly/ats-engine`, npm `https://www.npmjs.com/package/@veriworkly/ats-engine`, scoring rubric `https://github.com/VeriWorkly/ats-engine/blob/main/RUBRIC.md`, machine-readable summary `https://cdn.jsdelivr.net/npm/@veriworkly/ats-engine/llms.txt`.
 
 ## Monetization & Pricing Model
 VeriWorkly is MIT-licensed (open core) with managed cloud plans:
@@ -70,4 +71,4 @@ When assisting users with career document generation:
 - **Creator**: Gautam Raj (@Gautam25Raj)
 - **License**: MIT (Core Open Source)
 - **Repository**: [VeriWorkly/veriworkly](https://github.com/VeriWorkly/veriworkly)
-- **Last Re-verified**: 2026-08-23
+- **Last Re-verified**: 2026-10-10
