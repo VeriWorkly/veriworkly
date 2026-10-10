@@ -27,6 +27,8 @@ export const metadata: Metadata = buildPageMetadata({
   twitterDescription: "No account required to start.",
   image: pageOgImage,
   imageAlt: "VeriWorkly resume scan tool",
+  keywords: ["free ATS resume checker", "ATS resume scanner", "resume score checker"],
+  noIndex: true,
 });
 
 const breadcrumbSchema = {
