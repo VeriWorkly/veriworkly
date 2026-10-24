@@ -45,7 +45,12 @@
     "db:migrate": "npm run db:migrate -w @veriworkly/server",
     "db:generate": "npm run db:generate -w @veriworkly/server",
     "db:studio": "npm run db:studio -w @veriworkly/server",
-    "db:redis": "npm run db:redis -w @veriworkly/server"
+    "db:redis": "npm run db:redis -w @veriworkly/server",
+    "seo:gsc": "node scripts/seo-data/gsc.mjs",
+    "seo:bing": "node scripts/seo-data/bing.mjs",
+    "seo:all": "npm run seo:gsc && npm run seo:bing",
+    "seo:inspect": "node scripts/seo-data/gsc-inspect.mjs",
+    "seo:bing-urls": "node scripts/seo-data/bing-urls.mjs"
   },
   "devDependencies": {
     "@types/node": "^25",

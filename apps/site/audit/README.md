@@ -1,0 +1,119 @@
+# Site remediation plan (apps/site — veriworkly.com)
+
+> Living document, same conventions as [`apps/studio/audit/README.md`](../../studio/audit/README.md): executed phase by phase, status table is the source of truth, findings referenced by `W-nnn` from [FINDINGS.md](./FINDINGS.md), product/content ideas in [IMPROVEMENTS.md](./IMPROVEMENTS.md). Folder is deleted when the last phase closes.
+
+Audit date: 2026-10-24 · branch `feat/ui-package-hardening`; re-verified 2026-10-24 on `fix/openapi-spec-and-generator@d94efe14` with a Next 16.4.3 build (site code unchanged since `a072b931` except `package.json`/`openapi.json`). Focus requested: load performance, SEO, AEO/agent readability, current Next 16 / React 19 usage. The site is mostly static marketing pages, so correctness findings are fewer and the plan is weighted toward optimisation.
+
+## Status
+
+| Phase | Scope | Status | PRs |
+| --- | --- | --- | --- |
+| 0 | Baseline guardrails: build must not depend on the backend; CI/test gaps | not started | |
+| 1 | SEO/crawl correctness: soft-404s, sitemap, canonicals, structured data, false claims | not started | |
+| 2 | Performance: client/server boundaries, animation stack, images, caching | not started | |
+| 3 | AEO / agent readiness: llms.txt, agent.json, declarative answers, FAQ parity | not started | |
+| 4 | Hygiene: silent errors, dead code, duplication, docs, deps | not started | |
+
+## Baseline (verified this session)
+
+| Check | Result |
+| --- | --- |
+| `tsc --noEmit` | 0 errors |
+| `eslint .` | 0 problems |
+| `vitest run` (contracts) | 47 tests; 1 failed in the full run (`claims.contract.test.ts:384` "quotes the version of the engine" — a 5 s timeout on the cold `import("@veriworkly/ats-engine")`), **passes in isolation** → flake, raise that test's timeout |
+| `next build` (production, backend unreachable) | exit 0; 32 routes: 20 static, 4 SSG groups (changelog 41 ids, compare 6, templates 3+16), 8 dynamic (`/changelog`, `/roadmap/*`, `/stats`, `/ambassador/apply`, `/api/og`); **169 fetch failures logged during prerender** |
+| Prerender with backend down | all **41 `/changelog/[id]` pages prerendered as "Release Not Found" and served HTTP 404** (`.meta` status 404, Next 16.4.3) with ISR revalidate 1 week; `sitemap.xml` (ISR 1 week) contains 1 changelog URL instead of 42. The 41 ids came from a stale `.next/cache/fetch-cache`; `generateStaticParams` → `fetchChangelogIndex()` → `fetchAllChangelogEntries()` swallows the error (`changelog-backend.ts:306-309`) and the page's `notFound()` (`changelog/[id]/page.tsx:97`) prerenders without a 404 status. CI (`builds.yaml:10-11`) builds with `NEXT_PUBLIC_BACKEND_URL=http://localhost:8080`, i.e. exactly this condition |
+| Lighthouse desktop (local `next start`, 5 pages) | perf 96–100, SEO 100, a11y 91–100, best-practices 100; LCP 0.8–0.9 s, CLS 0, TBT 0–140 ms; total transfer 520–629 KiB |
+| Lighthouse mobile (simulated 4G/CPU slowdown, local `next start`) | perf 70–88, SEO 100, a11y 91–100. FCP 1.2–1.4 s but **LCP 3.6–4.0 s on every page**; CLS 0; TBT 110–780 ms (`/compare/rezi` worst). The LCP element is always hero *text* (a `<p>`/`<h1>`/`<span>`), with an element render delay of 0.5–1.0 s — the text is not painted from the HTML, it waits for hydration/animation. Two stylesheets are render-blocking (~300 + ~455 ms). Per-page table below |
+| knip (site workspace) | 2 unused files (`components/marketing/Reveal.tsx`, `features/changelog/components/index.ts`), `eslint-config-next` unused, `server-only` unlisted ×3, 91 unused exports (mostly default exports of components imported by name — verify per file) |
+
+### Lighthouse mobile per page
+
+| route | perf | FCP | LCP | TBT | CLS | LCP element | LCP breakdown | render-blocking | DOM |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| / | 82 | 1.4 s | 4.0 s | 250 ms | 0 | <p class="pointer-events-auto mt-8 max-w-2xl text-… | TTFB 15ms, render delay 996ms | 2c-1xb2a8o97l.css 307ms; 0f301ojjuvzxs.css 457ms |  |
+| /pricing | 80 | 1.4 s | 3.9 s | 330 ms | 0 | <h1 class="mt-8 max-w-5xl text-[clamp(3.6rem,8vw,7… | TTFB 15ms, render delay 571ms | 0f301ojjuvzxs.css 456ms; 2c-1xb2a8o97l.css 306ms |  |
+| /ats-checker | 88 | 1.2 s | 3.8 s | 110 ms | 0 | <span class="block">… | TTFB 13ms, render delay 488ms | 2c-1xb2a8o97l.css 305ms; 0f301ojjuvzxs.css 455ms |  |
+| /templates | 85 | 1.2 s | 4.0 s | 170 ms | 0 | <span class="block">… | TTFB 16ms, render delay 535ms | 2c-1xb2a8o97l.css 307ms; 0f301ojjuvzxs.css 457ms |  |
+| /changelog | 87 | 1.2 s | 3.6 s | 220 ms | 0 | <span class="text-accent block">… | TTFB 246ms, render delay 569ms | 0f301ojjuvzxs.css 460ms; 2c-1xb2a8o97l.css 310ms |  |
+| /compare/rezi | 70 | 1.4 s | 3.7 s | 780 ms | 0 | <span class="block">… | TTFB 89ms, render delay 772ms | 0f301ojjuvzxs.css 453ms; 2c-1xb2a8o97l.css 303ms |  |
+
+## Audit method
+
+Three read-only agents by concern (not by directory): SEO/AEO/structure (reads the repo's own `seo-aeo-best-practices` and `ai-seo` skill checklists + Next 16 metadata docs), performance/modern-Next (reads Next 16 shipped docs for `cacheComponents`, `use cache`, `next/image` `preload`, React Compiler, `optimizePackageImports`), and hygiene/forms/tests/docs (applies the studio audit's silent-error rule and pattern-repeat check). Main thread: tooling, production build with backend down, Lighthouse desktop + mobile, knip.
+
+## Findings
+
+Register with IDs: [FINDINGS.md](./FINDINGS.md) (58 findings, sections A crawl/structured data, B AEO/claims, C performance, D correctness/hygiene, E contracts). Every HIGH was re-verified against the code or the build output.
+
+## Operating rules
+
+Same as the studio plan: test first for anything HIGH, root-cause fixes in the shared place, one PR per numbered item, `tsc`/`eslint`/`test:contracts` green on every PR, and from Phase 0 on a production build **with the backend unreachable** must still produce a correct site. Measure before/after with the Lighthouse mobile command in Phase 0 and record the numbers in the status table's PR column.
+
+## Phase 0 — Guardrails (half a day)
+
+1. Build must not depend on the backend: `changelog-backend.ts` returns `null` only on 404 and throws otherwise; `generateStaticParams` returns `[]` when the index cannot be fetched (pages render on demand) instead of baking 41 "Release Not Found" pages; `sitemap.ts` keeps the last good list (cache the previous entries, or throw so ISR keeps the old sitemap). Test: mock 503 → fetcher throws; build with `NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:1` → no `Release Not Found` in `.next/server/app/changelog/*.html`. (W-001, W-012)
+2. Raise the timeout on `claims.contract.test.ts:384`; add `vitest.config.ts` to the tsconfig include; declare `server-only`; remove `clsx`; root declares `eslint-config-next`; `.gitattributes` at the repo root (shared with the studio Phase 0).
+3. Lighthouse script in `package.json` (`lighthouse:mobile` → the six pages, mobile preset, JSON to `.lighthouse/`) and a CI job that posts the numbers on PRs; budgets added in Phase 2.
+4. `instrumentation.ts` with `onRequestError` so boundary and fetch failures are reported, not console-only.
+
+Verify: suites green; build without backend contains no soft-404 pages; sitemap has 42+ changelog URLs when the backend is up.
+
+## Phase 1 — SEO and claim correctness (1–2 days)
+
+1. (W-003, W-004) Fix the dead links in `AmbassadorFooter.tsx` and `AffiliateFooter.tsx`; add `next.config.ts` redirects for `/support`→`/contact`, `/cookies`→`/privacy#cookies`, `/careers`, `/integrations`, `/partners`, `/tutorials`, `/Free`; 301 http→https at nginx. Test: a redirects contract test + a link-resolution test over every `href="/…"` in `features/**`.
+2. (W-002) `roadmap/[id]`: `generateStaticParams` returning `[]`; metadata and page share one fetch with `null` only on 404.
+3. (W-005) Home FAQ: `<details>`/ui `Accordion` so answers exist in the HTML the FAQPage markup describes; dedupe `/faq` vs `/ats-engine` Q&A.
+4. (W-006, W-019, W-021, W-022, W-025) Truth pass on every surface for: login/guest wording, document caps, portfolio publishing, ambassador rewards, credit expiry, auto-renewal, 300-scan eligibility, LinkedIn/GitHub import wording, "real export" previews, payouts cadence, ATS "ranks" contradiction, "unmetered" imports, "stateless"/"encrypted PostgreSQL" in `llms.txt`/`agent.json`. One source of truth per number: import server constants into the site data files where possible. Extend `claims.contract.test.ts` to scan `llms.txt`, `agent.json`, `pricing.md`, JSON-LD strings and FAQ data, and to import `productCatalog`/`ats/quota`/`affiliate/constants`.
+5. (W-007, W-008, W-009, W-010, W-011) Entity graph: `@id` references everywhere, one product name, Person `sameAs` = personal profiles, 512 px logo, Organization `foundingDate/address/contactPoint`; pricing offers as `UnitPriceSpecification` with `billingDuration`, real annual totals, unavailable while payments are blocked; og:image true dimensions + PNG cards for the 8 SVG templates.
+6. (W-015, W-016, W-017) Titles ≤ 60 with brand, descriptions ≤ 160 (`compare/[tool]` stops appending `positioning`), heading outline fixes (landing, roadmap, templates/[docType], affiliate, ambassador h4-before-h1), affiliate/ambassador H1 rendered visible without hydration, duplicate `id="message"`.
+7. (W-012, W-013, W-014) Sitemap `lastModified` for static routes, exclude `/affiliate`/`/ambassador` when the flags are off, clamp/noindex out-of-range `?page=`, `maxLength` on changelog search.
+
+Verify: metadata contract test green; Search Console 404 and "noindex" lists shrink on the next crawl; Rich Results test passes for FAQPage on `/`.
+
+## Phase 2 — Performance (2–3 days; the user's primary goal)
+
+Order chosen by measured KB and LCP impact. Re-run Lighthouse mobile after each item.
+
+1. (W-028, W-027, W-026) Navbar pills/icon/menu in CSS (`@starting-style`, `:hover`, `aria-current`), `next/dynamic` for `MobileMenu` — this is what removes the 43.5 KB gz framer core from every marketing route; where motion stays, `LazyMotion` + `m` + `domAnimation` with `MotionConfig reducedMotion="user"` inside each island (keep reduced-motion: the CSS kill-switch does not cover framer's JS transforms). Expected: −43.5 KB gz on every marketing route only once the navbar is CSS, −≤5.7 KB from the root provider, −25–30 KB on motion routes. Measure with `next analyze export` (16.4) instead of hand-gzipping.
+2. (W-029) Above-the-fold content never waits for hydration: `.hero-rise` CSS on landing badge/CTA/feature cards, `/ambassador` and `/affiliate` H1s. Expected: LCP element render delay 0.5–1.0 s → ~0 on mobile (the measured cause of LCP 3.6–4.0 s).
+3. (W-031) Barrel leaks: `/ats-checker` and `/compare/[tool]` import leaf modules (−23 KB and −10.8 KB gz).
+4. (W-032, W-033, W-039) Preloads: remove `priority` from `LogoPill`, one `preload` for the `/templates` LCP image, `loading="eager"` for the first row of explorer cards, migrate all 4 deprecated `priority` uses; delete `public/ambassador-hero.png`; `sizes` fix on template detail; pre-encode the three large PNGs.
+5. (W-030) Replace gsap with a CSS sticky stack in `AmbassadorPlaybook`; remove the dependency (−46.6 KB on `/ambassador`).
+6. (W-034) Narrow client boundaries: remove `"use client"` from the hook-free files (`HeroHeader`, `LandingButton`, `AffiliateNav/Footer`, `AmbassadorFooter`, `MetricsProofBar`); pricing page split into server sections + a price/currency island; legal pages render text on the server and pass ids/titles to the TOC/search island; `TemplateExplorer` receives only the fields it uses; `FaqInteractiveSection` keeps `faqItems` on the server and ships a search index only.
+7. (W-035) Kill continuous main-thread work: infinite `left` animations → transform keyframes; hidden floating tags gated by `display` → removed on mobile; parallax rAF loop + global mousemove listeners → delete or IntersectionObserver-gated; `text-rotate` layout re-measure → fixed-width CSS; scroll springs → `animation-timeline: view()/scroll()`; `BentoCard` mousemove `getBoundingClientRect` → cached rect.
+8. (W-037) Rendering: `/roadmap/*` static (sort on the client or by segment), `/roadmap/[id]` ISR, parallelise the paginated walks, then `cacheComponents` + `"use cache"` + `cacheTag` with PPR shells for `/changelog`, `/roadmap`, `/stats`.
+9. (W-036, W-038, W-040, W-041, W-042, W-043) `Cache-Control` on un-hashed public images → short max-age + stale-while-revalidate (or hashed names); engine demo loads on interaction/idle in a Worker; drop `Content-Type` on GET in `fetchApiData`; narrow `@source` and drop fumadocs tokens from the site CSS; reserve space for `QuotaNotice`; apply template deep-link filters on the server; drop `feTurbulence` footer noise and shrink the blurred blobs.
+
+Budgets to enforce in CI after this phase: initial JS ≤ 200 KB gz per route, mobile LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS 0.
+
+## Phase 3 — AEO and agent readiness (1 day)
+
+0. (W-060, W-063, W-061) `htmlLimitedBots` extended to GPTBot/ClaudeBot/PerplexityBot/OAI-SearchBot + a contract test that a GPTBot UA gets `<title>` in `<head>`; drop the no-op AI-bot robots group or state content-usage via the 16.3 `other` field; `useReportWebVitals` island → backend so the Phase 2 budgets are checked in the field.
+
+1. (W-018, W-019, W-022, W-023) `llms.txt` rewritten in llmstxt.org link format with every public page, blog and docs; `llms-full.txt` for the site; both linked from `<head>`; state the payments status in `pricing.md` and `llms.txt`; remove "stateless"/"encrypted" claims; one owner for `llms.txt`/`pricing.md`/`agent.json` (generate the satellite copies or stop shipping them from the other apps).
+2. (W-020) Definitional first paragraph under each H1 on `/`, `/features`, `/pricing`, `/templates`, `/how-it-works`, `/compare`, `/about`; keyword-bearing H1s.
+3. (W-024) E-E-A-T: founder photo/date on `/about`, Person `image` + personal `url`, "last updated" on marketing pages, security `dateModified` shown.
+4. `agent.json` either converted to the A2A AgentCard shape or documented as custom; `/contact` added to `openapi.json`.
+
+## Phase 4 — Correctness and hygiene (1–2 days)
+
+0. (W-059, W-064, W-066, W-065) Portfolio `?template=` honoured by the portfolio dashboard; `fetchApiData` throws on `success:false`; `server-api.ts` forwards only session cookies; bump `eslint-config-next` to 16.4.3 and rebase the openapi branch on master.
+
+1. (W-044, W-053) `export const dynamic = "force-dynamic"` (or a dynamic island) on `/affiliate` and `/ambassador`; pass the flags in the Dockerfile; `parseBoolean("")` = unset. Test: pages importing `@/lib/feature-flags` must be dynamic.
+2. (W-045) Stats date filters: implement `updatedFrom/updatedTo` on the server (+ OpenAPI) or remove them; add an endpoint-contract test that every query key the site sends exists in the server schema.
+3. (W-046, W-048, W-049, W-050, W-051, W-052, W-054, W-055) Forms: `AffiliateFAQ`/`AmbassadorFAQ`/`Leaderboard` → `<details>`; contact form validates on submit with per-field `aria-describedby`, 429 copy with limit + email, server 400 details shown, focus restored; ATS extract through `fetchApiData` (timeout, typed error, quota kept, 5 MB pre-check, input reset); 429 quota `details` preserved and applied; ambassador apply handles 401 with `pendingSubmit`; `AffiliateBento` shows the real referral format; calculator a11y + the `**` literal; `PAYMENTS_BLOCKED` wired to a flag or the dead bypass docs removed.
+4. (W-047, W-058) Roadmap: per-status failures logged and reported separately from "empty"; `/roadmap/todo` empty ≠ outage; error copy; `changelog/error.tsx`; `global-error` uses `retry`; loading skeletons per route (`/changelog`, `/roadmap/[id]`, `/ambassador/apply`).
+5. (W-056, W-057) Hygiene: delete `Reveal.tsx`, `changelog/components/index.ts`, dead branches; standardise accordions/theme toggles/navs/footers/clipboard helper/date formatter/`parseSort`/`parsePage`/pagination; shared ease + reveal variants; remove the 13 narration comments; README rewrite (edge/og, in-browser scoring, dev command, claims test scope, sitemap fallback), env docs (`PORTFOLIO_URL`, drop `ADMIN_EMAIL`/`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_URL` in Dockerfile/CI), `build:brand-kit --check` in CI, `check:design` scoped to the site, tsconfig phantom includes, `@types/node ^22`.
+
+## Verification (whole programme)
+
+| Gate | Command | Expect |
+| --- | --- | --- |
+| Types/lint | `npx tsc --noEmit -p apps/site/tsconfig.json`, `cd apps/site && npx eslint .` | clean |
+| Contracts | `npm run test:contracts -w @veriworkly/site` | all pass, +~10 tests (metadata, sitemap↔routes, redirects, links, endpoint keys, claims↔server constants, flags-dynamic) |
+| Build without backend | `NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:1 npx next build` then `grep -l "Release Not Found" .next/server/app/changelog/*.html` | build succeeds, grep empty |
+| Lighthouse mobile | `npx lighthouse http://localhost:3100/<page> --form-factor=mobile --throttling-method=simulate` on the six pages | LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS 0, perf ≥ 90 |
+| Bundle | gzip the chunks referenced by `.next/server/app/privacy.html` | ≤ 200 KB gz; no `projection`/`layoutId` strings on static routes |
+| Search Console | 404 report, "Excluded by noindex", "alternate page with proper canonical" | the listed URLs disappear on the next crawl |
+| Rich results | Google Rich Results Test on `/`, `/faq`, `/pricing` | no errors; FAQ answers present in HTML |
