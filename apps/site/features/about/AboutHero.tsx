@@ -103,9 +103,10 @@ const AboutHero = () => (
     highlight="is yours."
     lede={
       <>
-        We built {siteConfig.shortName} after one too many resume builders locked the download
-        button behind a monthly charge. Resumes, cover letters and portfolios are free to build and
-        free to export, and your files stay on your machine.
+        {siteConfig.shortName} is a free, open-source resume, cover letter and portfolio builder,
+        made by {siteConfig.creator} in India. It started after one too many resume builders locked
+        the download button behind a monthly charge. Everything is free to build and export, and
+        your files stay on your machine unless you choose to sync.
       </>
     }
     aside={

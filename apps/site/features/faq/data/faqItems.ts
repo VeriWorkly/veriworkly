@@ -83,6 +83,13 @@ export const faqs: FaqItem[] = [
 
   // 2. Resumes & Cover Letters
   {
+    id: "resume-length",
+    category: "documents",
+    question: "How long should a resume be?",
+    answer:
+      "One page for students and early-career candidates, two pages for most people with several years of relevant experience. The best available experiment found recruiters preferred two-page resumes 2.3 to 1, more so for senior roles. Cut anything that does not earn its space; the page count matters less. The evidence: blog.veriworkly.com/how-long-should-a-resume-be",
+  },
+  {
     id: "ats-friendly-templates",
     category: "documents",
     question: "Are your resume templates ATS-friendly?",

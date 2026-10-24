@@ -12,7 +12,7 @@ export const HowItWorksHero = () => (
   <PageHero
     title="From draft"
     highlight="to dream job."
-    lede="How the local-first studio, AI rewrites, the ATS scanner and web portfolios fit together, without paywalls or privacy trade-offs."
+    lede="VeriWorkly turns one career profile into resumes, cover letters and a portfolio website. The workflow: import your history, draft in the studio, tailor with AI, check against a job posting, then export or publish."
     aside={
       <div className="flex flex-wrap items-center gap-3">
         <LandingButton showArrow size="lg" variant="solid" href={siteConfig.links.app}>

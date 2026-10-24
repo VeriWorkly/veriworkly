@@ -103,7 +103,8 @@ const ComparePage = () => {
         highlight="side by side."
         lede={
           <>
-            Real prices, download limits, ATS checks and sign-up rules for{" "}
+            VeriWorkly is a free, open-source resume builder. This page compares it on real prices,
+            download limits, ATS checks and sign-up rules with{" "}
             {new Intl.ListFormat("en", { type: "conjunction" }).format(
               COMPETITORS.map((competitor) => competitor.name),
             )}

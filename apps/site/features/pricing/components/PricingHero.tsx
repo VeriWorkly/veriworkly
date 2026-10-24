@@ -59,8 +59,9 @@ const PricingHero = ({
 
           <div className="border-border border-t pt-6">
             <p className="text-muted max-w-md text-base leading-7">
-              Get Creator Pro hosting and AI writing tools together for a weekend, a week, a month
-              or a year. The passes expire on their own; the bundles renew until you cancel.
+              VeriWorkly is free to use: the editor, all six export formats and ATS checks cost
+              nothing. Paid passes and plans add AI writing credits and portfolio hosting. The
+              passes expire on their own; the bundles renew until you cancel.
             </p>
             <div className="text-accent mt-6 flex items-center gap-3 text-xs font-bold uppercase">
               <ShieldCheck className="size-4" aria-hidden="true" /> Secure checkout by Dodo Payments

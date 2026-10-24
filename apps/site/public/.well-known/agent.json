@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "format_note": "A VeriWorkly-specific discovery document, not an A2A AgentCard. Endpoints are described in the OpenAPI specification at openapi_url.",
+  "format_note": "A VeriWorkly-specific discovery document, not an A2A AgentCard. Endpoints are described in the OpenAPI specification at openapi_spec.",
   "name": "VeriWorkly Agent Card",
   "description": "VeriWorkly is a developer-focused, privacy-first career workspace ecosystem for ATS-friendly resumes, cover letters, and web portfolios. This agent card provides discovery details, API endpoints, capabilities, and machine-readable resources for AI agents.",
   "contact_email": "info@veriworkly.com",

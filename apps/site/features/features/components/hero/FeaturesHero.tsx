@@ -12,7 +12,7 @@ export const FeaturesHero = () => (
   <PageHero
     title="Every career tool."
     highlight="No paywall."
-    lede="AI-assisted resumes and cover letters, ATS scoring, GitHub and LinkedIn import, a web portfolio and six export formats, in one private workspace."
+    lede="VeriWorkly is a free resume, cover letter and portfolio builder. This page covers everything in it: AI-assisted writing, a rules-based ATS checker, GitHub and LinkedIn import, six export formats and a portfolio website, in one private workspace."
     aside={
       <div className="flex flex-wrap items-center gap-3">
         <LandingButton showArrow size="lg" variant="solid" href={siteConfig.links.app}>

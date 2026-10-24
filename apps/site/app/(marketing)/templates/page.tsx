@@ -51,6 +51,9 @@ const BAND_LIMIT = { documents: 4, portfolios: 2 } as const;
 const previewLinkClass =
   "group focus-visible:ring-accent/40 block rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:outline-none";
 
+const countOf = (documentType: string) =>
+  templateSummaries.filter((template) => template.documentType === documentType).length;
+
 const TemplatesPortalPage = () => {
   const availableDocTypes = documentTypeSummaries.filter(
     (docType) => docType.status === "available",
@@ -92,7 +95,7 @@ const TemplatesPortalPage = () => {
       <PageHero
         title="Templates,"
         highlight="seen first."
-        lede="Resumes, cover letters and portfolio websites do different jobs, so each has its own templates. Every one is shown as the real document it exports, before you open the editor."
+        lede={`VeriWorkly has ${templateSummaries.length} free templates: ${countOf("resume")} resumes, ${countOf("cover-letter")} cover letters and ${countOf("portfolio-website")} portfolio websites. Each preview shows the layout; the studio fills it from your profile and exports it free.`}
         aside={
           <>
             <dl className="mb-6 grid grid-cols-3 gap-4">

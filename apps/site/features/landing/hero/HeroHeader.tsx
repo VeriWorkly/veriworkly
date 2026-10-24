@@ -46,9 +46,9 @@ export const HeroHeader = () => {
           </h1>
 
           <p className="pointer-events-auto mt-8 max-w-2xl text-base leading-relaxed font-medium text-balance text-gray-500 lg:text-lg dark:text-gray-400">
-            Create tailored resumes, matching cover letters, and a live web portfolio from one
-            profile. Free to build, free to export, and nothing leaves your browser unless you ask
-            for something that needs it.
+            VeriWorkly is a free resume, cover letter and portfolio builder. Build all three from
+            one profile, export them in six formats with no watermark, and keep your data in your
+            browser unless you choose to sync.
           </p>
 
           <HeroActionButtons />
