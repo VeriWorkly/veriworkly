@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import dynamic from "next/dynamic";
 import { siteConfig } from "@/config/site";
 import { isAmbassadorProgramEnabled } from "@/lib/feature-flags";
@@ -43,7 +44,10 @@ export const metadata: Metadata = buildPageMetadata({
   imageAlt: "VeriWorkly Student Ambassador Program",
 });
 
-const AmbassadorPage = () => {
+const AmbassadorPage = async () => {
+  // Read the program flag at request time, not at build time.
+  await connection();
+
   // Mirrors /affiliate. Without this the pitch rendered in full while the Apply
   // button dead-ended on the flagged-off apply page (B-08).
   const programEnabled = isAmbassadorProgramEnabled();

@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { isAffiliateProgramEnabled, isAmbassadorProgramEnabled } from "@/lib/feature-flags";
-
 import { PageSection, TYPE } from "@/components/marketing/PageLayout";
 
 const PROGRAMS = [
@@ -12,7 +10,6 @@ const PROGRAMS = [
       "Share VeriWorkly with your network and earn recurring commissions on every upgrade, with clicks, referrals and payouts in one dashboard.",
     href: "/affiliate",
     cta: "Become an affiliate",
-    enabled: isAffiliateProgramEnabled,
   },
   {
     title: "Student ambassadors",
@@ -20,18 +17,15 @@ const PROGRAMS = [
       "Help students on your campus build strong resumes and portfolios. The first intake is open; rewards are being designed around free access to paid features and will be published before anyone is asked to earn them.",
     href: "/ambassador",
     cta: "Join the student program",
-    enabled: isAmbassadorProgramEnabled,
   },
 ];
 
 /**
- * Both programs sit behind feature flags. Linking to a disabled one sends the visitor to a page
- * whose backend answers 503, so a closed program is left out rather than shown.
+ * Both programs, always. Each program page shows its own "opens soon" state while its flag is
+ * off, so /about needs no flag and stays a static page.
  */
 const AboutPrograms = () => {
-  const open = PROGRAMS.filter((program) => program.enabled());
-
-  if (open.length === 0) return null;
+  const open = PROGRAMS;
 
   return (
     <PageSection

@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import { connection } from "next/server";
 
 import type { Metadata } from "next";
 
@@ -63,7 +64,10 @@ export const metadata: Metadata = {
   },
 };
 
-const AffiliatePage = () => {
+const AffiliatePage = async () => {
+  // Read the program flag at request time, not at build time.
+  await connection();
+
   const programEnabled = isAffiliateProgramEnabled();
 
   const affiliateSchema = {

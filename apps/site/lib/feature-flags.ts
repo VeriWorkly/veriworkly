@@ -1,7 +1,7 @@
 import "server-only";
 
-function parseBoolean(value: string | undefined, fallback: boolean): boolean {
-  if (value == null) return fallback;
+export function parseBoolean(value: string | undefined, fallback: boolean): boolean {
+  if (value == null || value.trim() === "") return fallback;
 
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
