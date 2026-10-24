@@ -8,6 +8,7 @@ import { SCHEMA_IDS } from "@/utils/schema";
 import { globalFontVariables } from "@veriworkly/ui";
 
 import { ThemeProvider } from "@/providers/theme-provider";
+import { WebVitals } from "@/components/WebVitals";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -219,6 +220,7 @@ const RootLayout = ({
           storageKey="veriworkly-theme"
         >
           {children}
+          {process.env.NEXT_PUBLIC_VITALS_URL ? <WebVitals /> : null}
         </ThemeProvider>
       </body>
     </html>

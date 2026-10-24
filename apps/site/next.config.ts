@@ -1,4 +1,16 @@
 import type { NextConfig } from "next";
+import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
+
+/**
+ * Crawlers that read <head> from the first bytes and do not wait for streamed metadata. Next's
+ * default list covers search and link-preview bots but no AI crawlers, so on the dynamic routes
+ * (/changelog, /roadmap/*, /stats) they got <title> streamed into <body> (W-060). Setting the
+ * option replaces the default, so the default is extended rather than restated.
+ */
+export const HTML_LIMITED_BOTS = new RegExp(
+  `${HTML_LIMITED_BOT_UA_RE.source}|GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Claude-SearchBot|PerplexityBot|Perplexity-User|CCBot|Amazonbot|Applebot-Extended|meta-externalagent`,
+  "i",
+);
 
 // The backend origin has to be reachable from the browser (contact form, checkout,
 // ambassador apply), so it is added to connect-src explicitly rather than opening the
@@ -13,7 +25,20 @@ const backendOrigin = (() => {
   }
 })();
 
-const connectSrc = ["'self'", backendOrigin, "https://*.veriworkly.com"].filter(Boolean).join(" ");
+// The field Web Vitals collector (components/WebVitals.tsx), when one is configured.
+const vitalsOrigin = (() => {
+  try {
+    const raw = process.env.NEXT_PUBLIC_VITALS_URL;
+
+    return raw ? new URL(raw).origin : "";
+  } catch {
+    return "";
+  }
+})();
+
+const connectSrc = ["'self'", backendOrigin, vitalsOrigin, "https://*.veriworkly.com"]
+  .filter(Boolean)
+  .join(" ");
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -79,6 +104,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@veriworkly/ui"],
   reactStrictMode: true,
   poweredByHeader: false,
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   images: {
     formats: ["image/avif", "image/webp"],
     /**

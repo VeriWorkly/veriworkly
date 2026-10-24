@@ -91,3 +91,21 @@ describe("data-driven titles", () => {
     expect(long).toMatch(/^v3\.24\.3: Next\.js 16\.3\.5 Security.*… \| VeriWorkly changelog$/);
   });
 });
+
+describe("crawlers that need <title> in <head>", () => {
+  it("include the AI crawlers as well as Next's default search and preview bots", async () => {
+    const { HTML_LIMITED_BOTS } = await import("@/next.config");
+
+    for (const ua of [
+      "Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)",
+      "Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)",
+      "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
+      "Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)",
+      "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) Google-InspectionTool",
+      "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    ])
+      expect(HTML_LIMITED_BOTS.test(ua), ua).toBe(true);
+
+    expect(HTML_LIMITED_BOTS.test("Mozilla/5.0 (Windows NT 10.0) Chrome/130.0")).toBe(false);
+  });
+});
