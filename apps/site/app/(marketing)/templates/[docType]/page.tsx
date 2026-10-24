@@ -121,7 +121,7 @@ const TemplatesByDocumentTypePage = async ({ params }: PageProps) => {
         // name alone ("Portfolio") says the same thing.
         title={sentenceCase(docTypeData.label.replace(/ website$/i, ""))}
         highlight="templates."
-        lede={`${docTypeData.description} Every preview is the real export.`}
+        lede={`${docTypeData.description} Previews show the layout; the studio renders the final file.`}
         aside={
           <dl className="grid grid-cols-3 gap-4">
             {[

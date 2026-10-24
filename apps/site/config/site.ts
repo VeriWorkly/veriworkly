@@ -51,7 +51,7 @@ export const siteConfig = {
   description:
     "Free-to-use, open-core, and privacy-first AI career workspace. Build and tailor professional resumes, cover letters, and web portfolios with local-first ownership, optional secure cloud sync, and frontier AI models accessed through a privacy-conscious gateway.",
 
-  tagline: "Free AI resumes, cover letters & web portfolios. No login required.",
+  tagline: "Free AI resumes, cover letters & web portfolios. Start as a guest, no card.",
 
   links,
 

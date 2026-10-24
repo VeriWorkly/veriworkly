@@ -47,8 +47,8 @@ export const IngestionSection = () => (
 
         <h3 className={`mt-8 ${TYPE.title}`}>For engineers and contributors</h3>
         <p className="text-muted mt-3 max-w-lg text-base leading-7 text-pretty">
-          Connect GitHub to import your most recently updated repositories with their languages,
-          descriptions, topics, star counts and demo links, plus a summary of your language mix.
+          Connect GitHub to import your most recently updated repositories with their primary
+          language, description, topics and star count.
         </p>
         <p className="mt-4 max-w-lg text-base leading-7 text-pretty">
           We request no write, commit or SSH access. GitHub shows you the exact scopes on its

@@ -17,7 +17,7 @@ const PROGRAMS = [
   {
     title: "Student ambassadors",
     description:
-      "Help students on your campus build strong resumes and portfolios. Ambassadors get free Pro access, perks and sponsorship for workshops.",
+      "Help students on your campus build strong resumes and portfolios. The first intake is open; rewards are being designed around free access to paid features and will be published before anyone is asked to earn them.",
     href: "/ambassador",
     cta: "Join the student program",
     enabled: isAmbassadorProgramEnabled,

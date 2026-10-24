@@ -116,8 +116,8 @@
     "privacy_policy": "https://veriworkly.com/privacy",
     "terms_of_service": "https://veriworkly.com/terms",
     "security": "https://veriworkly.com/security",
-    "data_storage": "Local-first by default (in-browser localStorage), optional cloud sync to encrypted PostgreSQL database.",
-    "ai_privacy": "Stateless AI processing. User data is processed strictly on demand and never used to train global AI models."
+    "data_storage": "Local-first by default (in-browser localStorage), optional cloud sync to a managed PostgreSQL database; encryption at rest is provided by the hosting provider.",
+    "ai_privacy": "AI requests are sent to OpenRouter on demand. User data is not used to train models to the extent the provider lets us configure it; provider retention is outside our direct control. See https://veriworkly.com/privacy."
   },
 
   "developer": {

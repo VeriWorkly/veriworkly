@@ -8,12 +8,12 @@ export const WORKFLOW_STEPS: WorkflowStepItem[] = [
     title: "Bring in your history.",
     subtitle: "GitHub and LinkedIn import, into one private Master Profile.",
     description:
-      "Your career record starts in your private Master Profile. Connect GitHub to import repositories, star counts and language breakdowns, or import your LinkedIn data archive in one step. No retyping.",
+      "Your career record starts in your private Master Profile. Connect GitHub to import repositories with their stars and primary language, or upload your LinkedIn profile PDF (or paste its text) and let the parser fill in titles, dates, degrees and skills. No retyping.",
     points: [
       {
         term: "GitHub",
         detail:
-          "Repositories, language percentages and demo links. No write, commit or SSH access.",
+          "Up to 30 recent repositories with stars and primary language, 15 mapped to projects. No write, commit or SSH access.",
       },
       {
         term: "LinkedIn",
@@ -25,11 +25,11 @@ export const WORKFLOW_STEPS: WorkflowStepItem[] = [
     id: "draft",
     label: "Draft in the studio",
     title: "Draft in the studio.",
-    subtitle: "No sign-up, and nothing you do here can damage your profile.",
+    subtitle: "Guest mode, and nothing you do here can damage your profile.",
     description:
-      "Continue as a guest and the studio opens without an account or a credit card. Choose a proven ATS template, switch between Geist, Manrope and Inter, and adjust page margins. Each document is a snapshot of your Master Profile, so editing it never overwrites the original.",
+      "Continue as a guest from the sign-in screen: no account, no card. Choose a proven ATS template, switch between Geist, Manrope and Inter, and adjust page margins. Each document is a snapshot of your Master Profile, so editing it never overwrites the original.",
     points: [
-      { term: "No account", detail: "Start typing straight away; no card, no email." },
+      { term: "Guest mode", detail: "Continue as a guest; no card, no email." },
       {
         term: "Snapshots, not copies",
         detail: "Tailor one resume per role while the profile stays as it was.",

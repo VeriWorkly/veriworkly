@@ -4,7 +4,7 @@ const ANSWERS = [
   {
     question: "What is an ATS?",
     answer:
-      "An applicant tracking system is recruitment software that mid-market and enterprise employers use to collect, parse, sort and rank applications before a person reviews them.",
+      "An applicant tracking system is recruitment software that mid-market and enterprise employers use to collect, parse, store and filter applications so recruiters can search them before a person reviews each one.",
   },
   {
     question: "How does it read a resume?",

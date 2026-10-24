@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: `Free AI Resumes, Cover Letters & Web Portfolios | ${siteConfig.shortName}`,
     description:
-      "Create professional resumes, cover letters, and web portfolios in minutes with VeriWorkly's privacy-first AI tools. Free, open-core, and no signup required. Customize professional templates, sync dynamic sections with AI tailoring, and publish instantly.",
+      "Create professional resumes, cover letters, and web portfolios in minutes with VeriWorkly's privacy-first AI tools. Free, open-core, with a guest mode. Customize professional templates, sync dynamic sections with AI tailoring, and export in six formats.",
     url: pageUrl,
     siteName: siteConfig.shortName,
     type: "website",
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `Free AI Resumes, Cover Letters & Web Portfolios | ${siteConfig.shortName}`,
     description:
-      "Build ATS-friendly resumes, cover letters, and custom web portfolios instantly with private AI assistance. No signup required. Open-core and privacy-first.",
+      "Build ATS-friendly resumes, cover letters, and custom web portfolios instantly with private AI assistance. Start as a guest. Open-core and privacy-first.",
     images: [pageOgImage],
   },
 
@@ -94,14 +94,14 @@ const howToSchema = {
   "@type": "HowTo",
   name: "How to Build an ATS Resume & Web Portfolio with VeriWorkly",
   description:
-    "Learn how to build a professional, ATS-friendly resume and web portfolio in 4 simple steps without signing up.",
+    "Learn how to build a professional, ATS-friendly resume and web portfolio in 4 simple steps, as a guest or signed in.",
 
   step: [
     {
       "@type": "HowToStep",
       position: 1,
       name: "Launch the Studio",
-      text: "Open the VeriWorkly Studio editor at app.veriworkly.com. No account is required to start.",
+      text: "Open the VeriWorkly Studio at app.veriworkly.com and continue as a guest. No account or card is needed to start.",
       url: siteConfig.links.app,
     },
     {

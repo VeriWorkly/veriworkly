@@ -16,7 +16,7 @@ export const comparisonRows = [
   ["Resume and cover letter editor", true, true, true, true],
   ["Document exports (PDF, DOCX, MD, HTML, TXT, JSON)", true, true, true, true],
   ["Private portfolio drafts", true, true, true, true],
-  ["Publish a portfolio on a veriworkly.com subdomain", true, true, true, true],
+  ["Publish a portfolio on a veriworkly.com subdomain (opens at launch)", true, true, true, true],
   ["Core portfolio templates (Signal, Atelier)", true, true, true, true],
   ["Premium portfolio templates (Nimbus, Cipher)", false, true, false, true],
   ["Remove the portfolio “Built with VeriWorkly” badge", false, true, false, true],

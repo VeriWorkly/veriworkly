@@ -117,7 +117,7 @@ const ContactPage = () => {
 
       <PageClosing
         title="Rather just try it?"
-        lede="The studio opens without an account, so you can see how it works while you wait for a reply."
+        lede="The studio has a guest mode, so you can see how it works while you wait for a reply."
       />
     </>
   );

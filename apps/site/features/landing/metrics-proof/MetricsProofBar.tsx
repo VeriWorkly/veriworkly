@@ -22,7 +22,7 @@ interface Stat {
  * chosen for the animation, with no meaning, rendered into the SSR markup.
  *
  * What is left is countable: six export formats, four portfolio templates, zero
- * cost to export, zero accounts needed to start.
+ * cost to export, zero emails needed to start (guest mode).
  */
 const stats: Stat[] = [
   {
@@ -30,8 +30,9 @@ const stats: Stat[] = [
     value: 0,
     decimals: 0,
     suffix: "",
-    label: "Accounts Needed to Start",
-    detail: "Open the editor and start writing. Sign up only when you want sync or publishing.",
+    label: "Emails Needed to Start",
+    detail:
+      "Continue as a guest from the sign-in screen. Sign up only when you want sync or publishing.",
   },
 
   {

@@ -59,8 +59,8 @@ const PricingHero = ({
 
           <div className="border-border border-t pt-6">
             <p className="text-muted max-w-md text-base leading-7">
-              Get Creator Pro hosting and AI writing tools together for a weekend, a week, or a full
-              year. Zero automatic renewal risk.
+              Get Creator Pro hosting and AI writing tools together for a weekend, a week, a month
+              or a year. The passes expire on their own; the bundles renew until you cancel.
             </p>
             <div className="text-accent mt-6 flex items-center gap-3 text-xs font-bold uppercase">
               <ShieldCheck className="size-4" aria-hidden="true" /> Secure checkout by Dodo Payments
@@ -102,7 +102,7 @@ const PricingHero = ({
             cadence="one-time purchase"
             description="A quick pass to publish your portfolio and tailor resumes for a specific application."
             features={[
-              "Creator Pro subdomain hosting",
+              "Creator Pro portfolio hosting (opens at launch)",
               "150 AI writing credits",
               "ATS document scanning",
               "Automatically expires",
@@ -119,7 +119,7 @@ const PricingHero = ({
             cadence="one-time purchase"
             description="Runway to update your story, apply broadly, and publish with full confidence."
             features={[
-              "Creator Pro subdomain hosting",
+              "Creator Pro portfolio hosting (opens at launch)",
               "400 AI writing credits",
               "ATS document scanning",
               "Automatically expires",
@@ -137,7 +137,7 @@ const PricingHero = ({
             cadence={bundlePrice.cadence}
             description="The complete workspace for active job searches, unlocking AI document tools."
             features={[
-              "Creator Pro subdomain hosting",
+              "Creator Pro portfolio hosting (opens at launch)",
               "1,000 monthly AI credits",
               "Full ATS Tailoring suite",
               "Cancel anytime",

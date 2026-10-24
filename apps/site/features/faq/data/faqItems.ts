@@ -50,7 +50,7 @@ export const faqs: FaqItem[] = [
     category: "general",
     question: "Do I need to create an account to use VeriWorkly?",
     answer:
-      "No. You can open the editor, create your resume and cover letter, and download your files right away without signing up. An account is only needed if you want cloud backups across devices, multiple documents, a public portfolio link, or paid AI writing credits.",
+      "No. Continue as a guest from the sign-in screen, then create your resume and cover letter and download your files with no account or card. Guests and free accounts both keep one active document per type. An account adds cloud backups across devices, share links, a public portfolio and paid AI writing credits; a paid plan lifts the document cap.",
   },
   {
     id: "master-profile-concept",
@@ -152,7 +152,7 @@ export const faqs: FaqItem[] = [
     category: "ats",
     question: "How many free ATS scans do I get?",
     answer:
-      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Paid plan and pass holders get 300 scans per billing period. Uploading a file to extract its text draws on a separate, more generous allowance (3 for visitors, 6 for free accounts), so uploading a document never costs you a scan.",
+      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Plans that include AI credits (the 3-day and 7-day passes, the Job Hunter Bundle and AI Standalone) get 300 scans per billing period; Creator Pro on its own keeps the free-account allowance. Uploading a file to extract its text draws on a separate, more generous allowance (3 for visitors, 6 for free accounts), so uploading a document never costs you a scan.",
   },
   {
     id: "ats-scan-privacy",
@@ -291,7 +291,7 @@ export const faqs: FaqItem[] = [
     category: "billing",
     question: "Do you have an affiliate or campus ambassador program?",
     answer:
-      "Yes. Our affiliate program offers 2% to 5% recurring monthly commissions on referred customers. We also run a Student Ambassador program with free pro access and career resources for campus organizers.",
+      "Yes. The affiliate program pays 2% to 5% recurring commission on referred customers, paid out once your balance reaches $25. The Student Ambassador program is in its first intake: applications are reviewed by hand, and the rewards (free access to paid features, not cash) will be published before anyone is asked to earn them.",
   },
 
   // 7. Imports, API & Open Source

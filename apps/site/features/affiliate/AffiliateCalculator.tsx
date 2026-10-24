@@ -207,8 +207,8 @@ const AffiliateCalculator = () => {
             <div className="text-muted/80 flex items-start gap-3 rounded-2xl border border-blue-500/10 bg-blue-500/5 p-4 text-xs leading-relaxed">
               <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               <p>
-                Calculates yield based on the active plan level select: **Creator Pro ($9.99/mo)**
-                or **Job Hunter Bundle ($14.99/mo)**. Commission payouts occur monthly.
+                Calculates yield from the selected plan: Creator Pro ($9.99/mo) or Job Hunter Bundle
+                ($14.99/mo). Payouts are reviewed manually once your balance reaches $25.
               </p>
             </div>
           </div>

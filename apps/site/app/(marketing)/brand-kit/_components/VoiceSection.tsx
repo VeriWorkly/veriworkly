@@ -9,7 +9,7 @@ const VOICE_PRINCIPLES = [
   {
     title: "Direct, not hypey",
     description:
-      'Lead with what the product does, not adjectives. "No login required to start" beats "revolutionary, game-changing career platform."',
+      'Lead with what the product does, not adjectives. "Start as a guest, no card" beats "revolutionary, game-changing career platform."',
   },
   {
     title: "Privacy-forward",

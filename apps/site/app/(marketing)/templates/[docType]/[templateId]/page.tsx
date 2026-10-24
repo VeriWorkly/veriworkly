@@ -190,7 +190,7 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
               <figcaption className="text-muted mt-3 text-center text-sm">
                 {isPortfolioTemplate
                   ? "Screenshot of the live template. Open the live preview for the whole page."
-                  : "The real export, rendered from the production template."}
+                  : "Preview of the template layout. The studio renders the final file."}
               </figcaption>
             </figure>
 

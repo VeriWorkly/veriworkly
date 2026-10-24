@@ -14,9 +14,9 @@ const RoadmapSEOContent = () => {
       </p>
 
       <p className="text-muted text-sm leading-6">
-        VeriWorkly is a free, privacy-first career workspace with no login required to start. We
-        ship based on user feedback and evolving hiring and ATS trends, and this roadmap page is
-        updated as items move between planned, in-progress, and shipped.
+        VeriWorkly is a free, privacy-first career workspace that opens in guest mode. We ship based
+        on user feedback and evolving hiring and ATS trends, and this roadmap page is updated as
+        items move between planned, in-progress, and shipped.
       </p>
     </SEOContentContainer>
   );

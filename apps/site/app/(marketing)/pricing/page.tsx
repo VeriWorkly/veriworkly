@@ -19,10 +19,10 @@ export const metadata: Metadata = buildPageMetadata({
   path: "/pricing",
   title: "Pricing: Free Resume Builder & AI Credit Packages | VeriWorkly",
   description:
-    "The resume and cover letter editor is free, no login required. Add portfolio hosting, AI credits, or a short-term job-hunt pass when you need them.",
+    "The resume and cover letter editor is free and opens in guest mode. Add portfolio hosting, AI credits, or a short-term job-hunt pass when you need them.",
   ogTitle: "Pay Only for What Your Job Search Actually Needs",
   ogDescription:
-    "Free resume and cover letter editor. Add AI credits, portfolio hosting, or a 3-day/7-day pass - no forced bundle, no auto-renewal traps.",
+    "Free resume and cover letter editor. Add AI credits, portfolio hosting, or a 3-day/7-day pass that expires instead of renewing.",
   twitterTitle: "Free resume builder. Pay only if you need more.",
   twitterDescription:
     "Creator Pro, standalone AI credits, or a time-boxed job-hunt pass - pick exactly what your search needs.",

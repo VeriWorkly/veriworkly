@@ -22,13 +22,14 @@ expire rather than renew. Nothing converts from free to paid on its own.
     Both limits are measured from your last import, not reset on a calendar boundary.
   - Portfolio publishing on a `username.veriworkly.com` subdomain using the free core
     templates (Signal, Atelier), which display a "Built with VeriWorkly" badge
-- **Document limit**: 1 active synced document per type (resume, cover letter, portfolio,
-  link-in-bio). The cap is per type, so one of each is fine. Guest and local-only drafts
-  are not capped.
+- **Document limit**: 1 active document per type (resume, cover letter, portfolio,
+  link-in-bio). The cap is per type, so one of each is fine. It applies to guests and
+  free accounts alike; paid plans lift it.
 - **AI Writing Credits**: 0 (requires pass or credit add-on)
 
-> **Status**: portfolio publishing is not yet enabled in production. The tiers below
-> describe the model at launch.
+> **Status**: payments are currently closed, so none of the paid plans below can be bought
+> today; the /pricing page shows the same notice. Portfolio publishing is not yet enabled in
+> production. The tiers below describe the model at launch.
 
 ### 2. 3-Day Sprint Pass
 
@@ -54,7 +55,8 @@ expire rather than renew. Nothing converts from free to paid on its own.
   - 1,000 Monthly AI Writing Credits (refreshed monthly)
   - 300 ATS Scans per billing period
   - Premium portfolio templates (Nimbus, Cipher), badge removal & full portfolio analytics
-  - Unmetered GitHub & LinkedIn profile imports (the free-tier daily/monthly caps are lifted)
+  - Higher import limits: up to 50 GitHub imports a day, and LinkedIn imports without the
+    free tier's 30-day gap
 
 ### 5. Annual Pro Bundle
 
