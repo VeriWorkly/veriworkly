@@ -1,7 +1,3 @@
-"use client";
-
-import { useState } from "react";
-import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, HelpCircle } from "lucide-react";
 
 const faqItems = [
@@ -38,12 +34,6 @@ const faqItems = [
 ];
 
 const AffiliateFAQ = () => {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  const toggleFAQ = (idx: number) => {
-    setOpenIndex(openIndex === idx ? null : idx);
-  };
-
   return (
     <section className="border-border/30 mx-auto max-w-7xl border-t px-6 py-24 md:py-32">
       <div className="grid items-start gap-12 lg:grid-cols-[1.2fr_2fr]">
@@ -60,51 +50,31 @@ const AffiliateFAQ = () => {
         </div>
 
         <div className="space-y-4">
-          {faqItems.map((faq, idx) => {
-            const isOpen = openIndex === idx;
+          {faqItems.map((faq) => (
+            <details
+              key={faq.question}
+              name="affiliate-faq"
+              className="reveal group border-border/60 bg-card/35 rounded-2xl border p-6 backdrop-blur-sm transition-colors duration-300 hover:border-blue-500/35 dark:border-zinc-800 dark:bg-zinc-900/25"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 select-none [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-3">
+                  <HelpCircle
+                    aria-hidden="true"
+                    className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400"
+                  />
+                  <span className="text-foreground text-base font-semibold">{faq.question}</span>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="text-muted/75 h-5 w-5 transition-transform duration-200 group-open:rotate-180"
+                />
+              </summary>
 
-            return (
-              <m.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: idx * 0.05 }}
-                onClick={() => toggleFAQ(idx)}
-                className="border-border/60 bg-card/35 cursor-pointer rounded-2xl border p-6 backdrop-blur-sm transition-all duration-300 select-none hover:border-blue-500/35 dark:border-zinc-800 dark:bg-zinc-900/25"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <HelpCircle className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
-                    <span className="text-foreground text-base font-semibold">{faq.question}</span>
-                  </div>
-                  <m.span
-                    animate={{ rotate: isOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-muted/75"
-                  >
-                    <ChevronDown className="h-5 w-5" />
-                  </m.span>
-                </div>
-
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <m.div
-                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                      animate={{ height: "auto", opacity: 1, marginTop: 16 }}
-                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                      transition={{ duration: 0.25, ease: "easeInOut" }}
-                      className="overflow-hidden"
-                    >
-                      <p className="text-muted/85 border-l-2 border-blue-500/30 pl-4 text-sm leading-relaxed">
-                        {faq.answer}
-                      </p>
-                    </m.div>
-                  )}
-                </AnimatePresence>
-              </m.div>
-            );
-          })}
+              <p className="text-muted/85 mt-4 border-l-2 border-blue-500/30 pl-4 text-sm leading-relaxed">
+                {faq.answer}
+              </p>
+            </details>
+          ))}
         </div>
       </div>
     </section>

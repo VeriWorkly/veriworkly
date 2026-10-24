@@ -1,4 +1,4 @@
-import { backendApiUrl, fetchApiData } from "@/utils/fetchApiData";
+import { fetchApiData } from "@/utils/fetchApiData";
 import type { AtsCheckResult, AtsLayoutSignals, AtsQuota } from "../types";
 
 export function runAtsCheck(input: {
@@ -18,16 +18,22 @@ export function getAtsQuota() {
   return fetchApiData<AtsQuota>("/ats/quota");
 }
 
+/** The server's upload limit (apps/server/src/routes/ats.ts, multer fileSize). */
+export const MAX_RESUME_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Through fetchApiData like every other call, so it gets the timeout, the typed error and the
+ * server's details (W-049). It used to be a bare fetch: no timeout, a raw "Failed to fetch",
+ * and the upload quota the server returns was thrown away.
+ */
 export async function extractResumeFile(file: File) {
   const body = new FormData();
   body.append("resume", file);
-  const response = await fetch(backendApiUrl("/ats/extract"), {
-    method: "POST",
-    credentials: "include",
-    body,
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.message || "Resume file could not be read.");
+
+  const data = await fetchApiData<{ text: string; layout?: AtsLayoutSignals; quota?: AtsQuota }>(
+    "/ats/extract",
+    { method: "POST", body, timeoutMs: 30_000 },
+  );
 
   /**
    * `layout` is the page geometry measured while parsing — column splitting and ruled tables.
@@ -36,5 +42,5 @@ export async function extractResumeFile(file: File) {
    * of it. Absent for formats with no geometry to read, in which case those checks are skipped
    * rather than assumed to pass.
    */
-  return payload.data as { text: string; layout?: AtsLayoutSignals };
+  return data;
 }

@@ -35,6 +35,16 @@ describe("fetchApiData headers", () => {
 
     expect(headersOf(fetchMock).get("content-type")).toBe("application/json");
   });
+
+  it("leaves a FormData upload to set its own multipart type", async () => {
+    const fetchMock = ok();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { fetchApiData } = await import("@/utils/fetchApiData");
+    await fetchApiData("/ats/extract", { method: "POST", body: new FormData() });
+
+    expect(headersOf(fetchMock).has("content-type")).toBe(false);
+  });
 });
 
 describe("fetchApiData envelopes", () => {

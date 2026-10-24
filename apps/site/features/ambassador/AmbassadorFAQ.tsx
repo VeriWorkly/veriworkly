@@ -1,7 +1,3 @@
-"use client";
-
-import { useState } from "react";
-import { m, AnimatePresence } from "framer-motion";
 import { Plus, Minus } from "lucide-react";
 import { siteConfig } from "@/config/site";
 
@@ -52,12 +48,6 @@ const faqItems: FAQItem[] = [
 ];
 
 const AmbassadorFAQ = () => {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  const toggleFAQ = (idx: number) => {
-    setOpenIndex(openIndex === idx ? null : idx);
-  };
-
   return (
     <section
       id="faq-section"
@@ -90,50 +80,31 @@ const AmbassadorFAQ = () => {
         </div>
 
         <div className="border-t border-zinc-950 dark:border-white/20">
-          {faqItems.map((faq, idx) => {
-            const isOpen = openIndex === idx;
+          {faqItems.map((faq) => (
+            <details
+              key={faq.question}
+              name="ambassador-faq"
+              className="group border-b border-zinc-200 dark:border-white/10"
+            >
+              <summary className="flex w-full cursor-pointer list-none items-center justify-between py-6 text-left transition-colors duration-300 hover:text-indigo-600 dark:hover:text-indigo-400 [&::-webkit-details-marker]:hidden">
+                <span className="text-sm leading-snug font-extrabold tracking-tight text-zinc-950 md:text-base dark:text-white">
+                  {faq.question}
+                </span>
 
-            return (
-              <div key={idx} className="border-b border-zinc-200 dark:border-white/10">
-                <button
-                  onClick={() => toggleFAQ(idx)}
-                  className="group flex w-full cursor-pointer items-center justify-between py-6 text-left transition-colors duration-300 hover:text-indigo-600 dark:hover:text-indigo-400"
+                <span
+                  aria-hidden="true"
+                  className="ml-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-400 transition-all duration-300 group-open:rotate-180 group-open:border-zinc-900 group-open:bg-zinc-950 group-open:text-white dark:border-white/10 dark:bg-white/5 dark:text-zinc-500 dark:group-open:border-white dark:group-open:bg-white dark:group-open:text-zinc-950"
                 >
-                  <span className="text-sm leading-snug font-extrabold tracking-tight text-zinc-950 md:text-base dark:text-white">
-                    {faq.question}
-                  </span>
+                  <Plus className="h-3 w-3 group-open:hidden" />
+                  <Minus className="hidden h-3 w-3 group-open:block" />
+                </span>
+              </summary>
 
-                  <m.span
-                    animate={{ rotate: isOpen ? 180 : 0 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                    className={`ml-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
-                      isOpen
-                        ? "border-zinc-900 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950"
-                        : "border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-white/10 dark:bg-white/5 dark:text-zinc-500"
-                    }`}
-                  >
-                    {isOpen ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                  </m.span>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <m.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pr-8 pb-6 text-xs leading-relaxed font-medium text-zinc-500 md:text-sm dark:text-zinc-400">
-                        {faq.answer}
-                      </div>
-                    </m.div>
-                  )}
-                </AnimatePresence>
+              <div className="pr-8 pb-6 text-xs leading-relaxed font-medium text-zinc-500 md:text-sm dark:text-zinc-400">
+                {faq.answer}
               </div>
-            );
-          })}
+            </details>
+          ))}
         </div>
       </div>
     </section>

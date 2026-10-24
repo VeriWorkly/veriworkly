@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
 
-import { fetchApiData } from "@/utils/fetchApiData";
+import { siteConfig } from "@/config/site";
+import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 import { ContactFloatingField } from "./ContactFloatingField";
 import type { ContactSuccessData } from "./ContactSuccessModal";
@@ -16,6 +17,24 @@ const FIELD_LIMITS = {
 } as const;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** apps/server/src/middleware/rateLimit.ts: the contact route allows 5 messages per hour. */
+const CONTACT_LIMIT_PER_HOUR = 5;
+
+type Field = "name" | "email" | "subject" | "message";
+
+export function validate(values: Record<Field, string>): Partial<Record<Field, string>> {
+  const errors: Partial<Record<Field, string>> = {};
+
+  if (!values.name.trim()) errors.name = "Please enter your name.";
+  if (!EMAIL_PATTERN.test(values.email.trim()))
+    errors.email = "Please enter a valid email address so we can reply to you.";
+  if (!values.subject.trim()) errors.subject = "Please enter a subject.";
+  if (values.message.trim().length < MESSAGE_MIN_LENGTH)
+    errors.message = `Your message needs at least ${MESSAGE_MIN_LENGTH} characters so we have enough detail to help.`;
+
+  return errors;
+}
 
 const TOPIC_SUGGESTIONS = [
   "Resumes and cover letters",
@@ -46,6 +65,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
 
   const handleSelectTopic = (topic: string) => {
     setSelectedTopic(topic);
@@ -54,45 +74,24 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
 
   const messageRemaining = Math.max(0, MESSAGE_MIN_LENGTH - message.trim().length);
 
-  const isValid = useMemo(
-    () =>
-      name.trim().length > 0 &&
-      EMAIL_PATTERN.test(email.trim()) &&
-      subject.trim().length > 0 &&
-      message.trim().length >= MESSAGE_MIN_LENGTH,
-    [name, email, subject, message],
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    const errors = validate({ name, email, subject, message });
+    setFieldErrors(errors);
+
+    const firstInvalid = (Object.keys(errors) as Field[])[0];
+    if (firstInvalid) {
+      e.currentTarget
+        .querySelector<HTMLElement>(
+          `#${firstInvalid === "message" ? "message-body" : firstInvalid}`,
+        )
+        ?.focus();
+      return;
+    }
+
     setLoading(true);
-
-    if (!name.trim()) {
-      setError("Please enter your name.");
-      setLoading(false);
-      return;
-    }
-
-    if (!EMAIL_PATTERN.test(email.trim())) {
-      setError("Please enter a valid email address so we can reply to you.");
-      setLoading(false);
-      return;
-    }
-
-    if (!subject.trim()) {
-      setError("Please enter a subject.");
-      setLoading(false);
-      return;
-    }
-
-    if (!message.trim() || message.trim().length < MESSAGE_MIN_LENGTH) {
-      setError(
-        `Your message must be at least ${MESSAGE_MIN_LENGTH} characters so we have enough detail to help.`,
-      );
-      setLoading(false);
-      return;
-    }
 
     try {
       const response = await fetchApiData<ContactSuccessData>("/contact", {
@@ -123,11 +122,30 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
 
       mountTimestamp.current = Date.now();
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Could not send message right now. Please email us directly at info@veriworkly.com.",
-      );
+      if (err instanceof ApiRequestError && err.status === 429) {
+        setError(
+          `You can send ${CONTACT_LIMIT_PER_HOUR} messages an hour from one connection, and that limit is used up. Try again later, or email ${siteConfig.email}.`,
+        );
+      } else if (
+        err instanceof ApiRequestError &&
+        err.status === 400 &&
+        Array.isArray(err.details)
+      ) {
+        const fromServer: Partial<Record<Field, string>> = {};
+        for (const detail of err.details as { path?: string; message?: string }[])
+          if (
+            detail.path &&
+            detail.message &&
+            ["name", "email", "subject", "message"].includes(detail.path)
+          )
+            fromServer[detail.path as Field] = detail.message;
+        setFieldErrors(fromServer);
+        setError("Some fields need another look.");
+      } else {
+        setError(
+          `Your message could not be sent just now. Please try again, or email ${siteConfig.email}.`,
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -198,6 +216,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
           <ContactFloatingField
             required
             id="name"
+            error={fieldErrors.name}
             value={name}
             label="Your name"
             onChange={setName}
@@ -208,6 +227,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
 
           <ContactFloatingField
             id="email"
+            error={fieldErrors.email}
             required
             type="email"
             value={email}
@@ -223,6 +243,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
         <ContactFloatingField
           required
           id="subject"
+          error={fieldErrors.subject}
           label="Subject"
           value={subject}
           disabled={loading}
@@ -238,6 +259,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
           required
           rows={5}
           id="message-body"
+          error={fieldErrors.message}
           as="textarea"
           value={message}
           disabled={loading}
@@ -254,7 +276,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
 
         <button
           type="submit"
-          disabled={loading || !isValid}
+          disabled={loading}
           className="bg-foreground text-background hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent/40 group flex h-13 w-full cursor-pointer items-center justify-center rounded-full text-base font-semibold transition-[background-color,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
         >
           {loading ? (

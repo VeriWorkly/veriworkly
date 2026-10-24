@@ -74,6 +74,7 @@ const DocumentPortfolioSwitcher = ({ previews }: DocumentPortfolioSwitcherProps)
                 <button
                   key={tab.id}
                   type="button"
+                  aria-pressed={isActive}
                   onClick={() => setActiveTab(tab.id)}
                   className={`group relative flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors duration-200 select-none sm:flex-initial sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
                     isActive

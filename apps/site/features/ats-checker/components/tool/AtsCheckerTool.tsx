@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ArrowRight, RotateCcw, ScanSearch, TriangleAlert } from "lucide-react";
 
-import { extractResumeFile, getAtsQuota, runAtsCheck } from "../../services/ats-checker-api";
+import {
+  MAX_RESUME_BYTES,
+  extractResumeFile,
+  getAtsQuota,
+  runAtsCheck,
+} from "../../services/ats-checker-api";
 import type { AtsCheckResult, AtsLayoutSignals, AtsQuota } from "../../types";
 import { ApiRequestError } from "@/utils/fetchApiData";
 import { Stepper } from "./Stepper";
@@ -60,9 +65,16 @@ export function AtsCheckerTool() {
 
   const handleFile = async (file: File) => {
     setError("");
+
+    if (file.size > MAX_RESUME_BYTES) {
+      setError("That file is over 5 MB. Export a smaller PDF, or paste the text instead.");
+      return;
+    }
+
     setExtracting(true);
     try {
-      const { text, layout: extractedLayout } = await extractResumeFile(file);
+      const { text, layout: extractedLayout, quota: latest } = await extractResumeFile(file);
+      if (latest) setQuota(latest);
       if (wordCountOf(text) < 30) {
         setError(
           "This file appears to contain very little readable text. Please try pasting the text.",
@@ -75,7 +87,12 @@ export function AtsCheckerTool() {
       setSourceLabel(file.name);
       setPhase("target");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read this resume file.");
+      if (err instanceof ApiRequestError && err.status === 429) {
+        if (isQuota(err.details)) setQuota(err.details);
+        setError("You have used your file uploads for now. Paste the text instead, or try later.");
+      } else {
+        setError(err instanceof Error ? err.message : "Could not read this resume file.");
+      }
     } finally {
       setExtracting(false);
     }
@@ -139,8 +156,11 @@ export function AtsCheckerTool() {
       setPhase("results");
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 429) {
-        setError("You have reached your scan limit for now.");
+      if (err instanceof ApiRequestError && err.status === 429 && isQuota(err.details)) {
+        setQuota(err.details);
+        setError("You have used your scans for now. The note above says when they reset.");
+      } else if (err instanceof ApiRequestError && err.status === 429) {
+        setError("Too many requests from this connection. Wait a minute and try again.");
       } else {
         setError(err instanceof Error ? err.message : "Scan failed. Please try again.");
       }
@@ -153,6 +173,8 @@ export function AtsCheckerTool() {
   const resetAll = () => {
     setPhase("resume");
     setResume("");
+    setLayout(undefined);
+    setUpload(undefined);
     setSourceLabel("");
     setJobDescription("");
     setResult(null);
@@ -332,3 +354,14 @@ export function AtsCheckerTool() {
 }
 
 export default AtsCheckerTool;
+
+/** The server's quota summary, as sent in a 429's details. */
+function isQuota(value: unknown): value is AtsQuota {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "remaining" in value &&
+    "limit" in value &&
+    "resetsAt" in value
+  );
+}

@@ -78,6 +78,9 @@ const AmbassadorLeaderboard = () => {
             return (
               <div key={leader.rank} className="border-b border-zinc-200 dark:border-white/10">
                 <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  aria-controls={`leader-${leader.rank}`}
                   onClick={() => setExpandedIndex(isExpanded ? null : leader.rank)}
                   className="group flex w-full cursor-pointer items-center justify-between rounded-lg px-4 py-6 text-left transition-colors duration-300 hover:bg-zinc-50 dark:hover:bg-white/2"
                 >
@@ -99,7 +102,7 @@ const AmbassadorLeaderboard = () => {
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <span className="block font-mono text-base font-black text-zinc-950 dark:text-white">
-                        {leader.points.toLocaleString()}
+                        {leader.points.toLocaleString("en-US")}
                       </span>
                       <span className="mt-0.5 block text-[8px] font-black tracking-widest text-zinc-400 uppercase dark:text-zinc-500">
                         Points
@@ -118,6 +121,7 @@ const AmbassadorLeaderboard = () => {
                 <AnimatePresence initial={false}>
                   {isExpanded && (
                     <m.div
+                      id={`leader-${leader.rank}`}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}

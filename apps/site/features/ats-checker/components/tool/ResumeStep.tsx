@@ -100,6 +100,8 @@ export function ResumeStep({
             disabled={busy}
             onChange={(e) => {
               const file = e.target.files?.[0];
+              // Cleared so picking the same file again after an error fires another change.
+              e.target.value = "";
               if (file) onFile(file);
             }}
             className="sr-only"
@@ -119,7 +121,8 @@ export function ResumeStep({
                 <span className="text-accent underline underline-offset-4">browse</span>
               </p>
               <p className="text-muted mt-1 text-sm">
-                PDF, DOCX, TXT, or MD &middot; processed in memory &middot; nothing stored
+                PDF, DOCX, TXT, MD or JSON, up to 5 MB &middot; processed in memory &middot; nothing
+                stored
               </p>
             </>
           )}
