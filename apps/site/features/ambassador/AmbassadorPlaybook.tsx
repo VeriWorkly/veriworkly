@@ -1,12 +1,4 @@
-"use client";
-
-import { useRef, useEffect } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useReducedMotion, m } from "framer-motion";
 import { UserCheck, Award, ClipboardList, Send } from "lucide-react";
-
-gsap.registerPlugin(ScrollTrigger);
 
 type PlaybookStep = {
   num: string;
@@ -54,54 +46,19 @@ const steps: PlaybookStep[] = [
   },
 ];
 
+/**
+ * A stack of full-height cards, each sticky at the top so the next one slides over it. This
+ * was gsap + ScrollTrigger pinning with a scrubbed scale, fade and blur (46.6 KB gz on this
+ * route alone, W-030); position: sticky does the stacking with no script, so the section
+ * renders on the server.
+ */
 const AmbassadorPlaybook = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    if (reduce || !containerRef.current) return;
-
-    const ctx = gsap.context(() => {
-      const cardEls = gsap.utils.toArray<HTMLElement>(".playbook-card");
-      cardEls.forEach((card, i) => {
-        if (i === cardEls.length - 1) return;
-
-        ScrollTrigger.create({
-          trigger: card,
-          start: "top top",
-          endTrigger: cardEls[cardEls.length - 1],
-          end: "top top",
-          pin: true,
-          pinSpacing: false,
-          invalidateOnRefresh: true,
-        });
-
-        gsap.to(card, {
-          scale: 0.96,
-          opacity: 0.5,
-          filter: "blur(1px)",
-          ease: "none",
-          scrollTrigger: {
-            trigger: cardEls[i + 1],
-            start: "top bottom",
-            end: "top top",
-            scrub: true,
-            invalidateOnRefresh: true,
-          },
-        });
-      });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, [reduce]);
-
   return (
     <div
       id="playbook"
-      ref={containerRef}
       className="bg-background relative z-25 border-b border-zinc-200/80 dark:border-white/10"
     >
-      <div className="playbook-card bg-background relative flex min-h-dvh items-center justify-center px-6">
+      <div className="playbook-card bg-background sticky top-0 flex min-h-dvh items-center justify-center px-6">
         <div className="max-w-xl space-y-6 text-center">
           <span className="flex items-center justify-center gap-2 text-[10px] font-black tracking-widest text-indigo-600 uppercase dark:text-indigo-400">
             <ClipboardList className="h-4 w-4" />
@@ -131,7 +88,7 @@ const AmbassadorPlaybook = () => {
         return (
           <div
             key={idx}
-            className="playbook-card bg-background relative flex min-h-dvh items-center justify-center border-t border-zinc-200/80 px-6 md:px-24 dark:border-white/10"
+            className="playbook-card bg-background sticky top-0 flex min-h-dvh items-center justify-center border-t border-zinc-200/80 px-6 md:px-24 dark:border-white/10"
           >
             <div className="grid w-full max-w-5xl grid-cols-1 items-center gap-12 py-16 lg:grid-cols-2 lg:gap-20">
               <div className="space-y-6 text-left">
@@ -155,10 +112,7 @@ const AmbassadorPlaybook = () => {
 
               <div className="relative flex min-h-80 items-center justify-center">
                 {idx === 0 && (
-                  <m.div
-                    whileHover={{ y: -4 }}
-                    className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
-                  >
+                  <div className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-zinc-900">
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
                         Application
@@ -191,14 +145,11 @@ const AmbassadorPlaybook = () => {
                         </div>
                       </div>
                     </div>
-                  </m.div>
+                  </div>
                 )}
 
                 {idx === 1 && (
-                  <m.div
-                    whileHover={{ y: -4 }}
-                    className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
-                  >
+                  <div className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-zinc-900">
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
                         Your status
@@ -227,14 +178,11 @@ const AmbassadorPlaybook = () => {
                         <span className="text-zinc-900 dark:text-white">By a human</span>
                       </div>
                     </div>
-                  </m.div>
+                  </div>
                 )}
 
                 {idx === 2 && (
-                  <m.div
-                    whileHover={{ y: -4 }}
-                    className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
-                  >
+                  <div className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-zinc-900">
                     <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-white/10">
                       <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
                         Founding cohort
@@ -281,7 +229,7 @@ const AmbassadorPlaybook = () => {
                         Rewards not yet live
                       </span>
                     </div>
-                  </m.div>
+                  </div>
                 )}
               </div>
             </div>
