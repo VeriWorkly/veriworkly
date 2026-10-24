@@ -1,13 +1,11 @@
 import { Metadata } from "next";
+import { connection } from "next/server";
 
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
-import {
-  type RoadmapSort,
-  fetchRoadmapFromBackend,
-} from "@/features/roadmap/services/roadmap-backend";
+import { fetchRoadmapFromBackend } from "@/features/roadmap/services/roadmap-backend";
 
 import RoadmapPageShell from "@/features/roadmap/components/RoadmapPageShell";
 import RoadmapSEOContent from "@/features/roadmap/components/RoadmapSEOContent";
@@ -36,24 +34,11 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
-function parseSort(raw: string | undefined): RoadmapSort | undefined {
-  if (raw === "newest" || raw === "oldest" || raw === "recently-completed") return raw;
+const RoadmapPage = async () => {
+  const data = await fetchRoadmapFromBackend({});
 
-  return undefined;
-}
-
-interface RoadmapPageProps {
-  searchParams: Promise<{
-    sort?: string;
-  }>;
-}
-
-const RoadmapPage = async ({ searchParams }: RoadmapPageProps) => {
-  const params = await searchParams;
-
-  const data = await fetchRoadmapFromBackend({
-    sort: parseSort(params.sort),
-  });
+  // A failed column is not cached as the page for a week; render per request instead.
+  if (data.failedStatuses.length > 0) await connection();
 
   const allItems = data?.sections.flatMap((section) => section.items) ?? [];
 

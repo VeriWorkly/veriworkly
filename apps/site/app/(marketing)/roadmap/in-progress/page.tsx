@@ -1,13 +1,11 @@
 import { Metadata } from "next";
+import { connection } from "next/server";
 
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
-import {
-  type RoadmapSort,
-  fetchRoadmapFromBackend,
-} from "@/features/roadmap/services/roadmap-backend";
+import { fetchRoadmapFromBackend } from "@/features/roadmap/services/roadmap-backend";
 
 import RoadmapPageShell from "@/features/roadmap/components/RoadmapPageShell";
 
@@ -26,27 +24,13 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["VeriWorkly in progress", "features in development", "AI resume builder updates"],
 });
 
-function parseSort(raw: string | undefined): RoadmapSort | undefined {
-  if (raw === "newest" || raw === "oldest" || raw === "recently-completed") {
-    return raw;
-  }
-
-  return undefined;
-}
-
-interface InProgressRoadmapPageProps {
-  searchParams: Promise<{
-    sort?: string;
-  }>;
-}
-
-const InProgressRoadmapPage = async ({ searchParams }: InProgressRoadmapPageProps) => {
-  const params = await searchParams;
-
+const InProgressRoadmapPage = async () => {
   const data = await fetchRoadmapFromBackend({
-    sort: parseSort(params.sort),
     status: "in-progress",
   });
+
+  // A failed column is not cached as the page for a week; render per request instead.
+  if (data.failedStatuses.length > 0) await connection();
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",

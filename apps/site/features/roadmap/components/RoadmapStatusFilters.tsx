@@ -1,16 +1,11 @@
 import Link from "next/link";
 
 import { cn } from "@veriworkly/ui";
-import { type RoadmapSort } from "@/features/roadmap/services/roadmap-backend";
-
-import { buildHref } from "./roadmap-utils";
 
 const RoadmapStatusFilters = ({
-  currentSort,
   activeStatus,
   rootPath = "/roadmap",
 }: {
-  currentSort: RoadmapSort;
   activeStatus: string;
   rootPath?: string;
 }) => {
@@ -31,7 +26,7 @@ const RoadmapStatusFilters = ({
         return (
           <Link
             key={value}
-            href={buildHref(path, currentSort, {})}
+            href={path}
             className={cn(
               "rounded-full px-3.5 py-1.5 font-sans text-xs font-bold whitespace-nowrap transition-all duration-200 select-none",
               isActive
