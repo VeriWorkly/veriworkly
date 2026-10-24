@@ -1,0 +1,83 @@
+name: Site Lighthouse
+
+# Mobile Lighthouse on the six pages the site audit measures, against a production build
+# made with the backend unreachable (the same condition as the Build Apps workflow). The
+# numbers are posted as one sticky comment on the pull request.
+
+on:
+  pull_request:
+    paths:
+      - "apps/site/**"
+      - "packages/ui/**"
+      - ".github/workflows/site-lighthouse.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NEXT_PUBLIC_BACKEND_URL: "http://127.0.0.1:1/api/v1"
+  BACKEND_INTERNAL_URL: "http://127.0.0.1:1/api/v1"
+  NEXT_PUBLIC_SITE_URL: "http://localhost:3100"
+  SITE_URL: "http://localhost:3100"
+  DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+
+jobs:
+  lighthouse:
+    name: Lighthouse (mobile)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Site
+        run: npm run build -w @veriworkly/site
+
+      - name: Start Site
+        working-directory: apps/site
+        run: |
+          npx next start -p 3100 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3100/ > /dev/null && exit 0
+            sleep 2
+          done
+          echo "next start did not come up" && exit 1
+
+      - name: Run Lighthouse
+        run: npm run lighthouse:mobile -w @veriworkly/site -- http://localhost:3100
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-mobile
+          path: apps/site/.lighthouse
+
+      - name: Comment on Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- site-lighthouse -->";
+            const body = `${marker}\n### Site Lighthouse (mobile)\n\n${fs.readFileSync("apps/site/.lighthouse/summary.md", "utf8")}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number, per_page: 100 });
+            const existing = comments.find((c) => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

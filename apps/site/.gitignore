@@ -57,3 +57,5 @@ next-env.d.ts
 # a clone of this repo built a *different* app than a local checkout: the route existed on
 # the author's disk, so it worked in dev, and 404'd in every git-based deploy. Route
 # handlers belong in version control like any other page.
+# lighthouse reports
+/.lighthouse/

@@ -389,7 +389,8 @@ describe("the ATS Engine page agrees with the engine and the docs it points to",
       ENGINE_VERSION_LABEL,
       "the site now runs another engine: re-measure the sizes and benchmarks in features/ats-engine/data/content.ts, then update the label",
     ).toBe(ENGINE_VERSION);
-  });
+    // The cold import of the engine takes longer than vitest's 5 s default under full-suite load.
+  }, 30_000);
 
   it("is listed in the sitemap and in llms.txt", () => {
     expect(sitemapSource).toContain("${siteConfig.url}/ats-engine`");

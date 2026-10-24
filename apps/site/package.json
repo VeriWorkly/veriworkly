@@ -12,6 +12,7 @@
     "format:write": "prettier --write .",
     "build:brand-kit": "tsx scripts/build-brand-kit.mts",
     "check:design": "tsx scripts/check-design-tokens.mts",
+    "lighthouse:mobile": "tsx scripts/lighthouse-mobile.mts",
     "test:contracts": "vitest run"
   },
   "dependencies": {
