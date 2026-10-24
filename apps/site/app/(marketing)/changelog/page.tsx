@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
 
@@ -95,6 +96,9 @@ const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
   const page = parsePage(params.page);
 
   const data = await fetchChangelogFromBackend({ type, search }, page);
+
+  // Only when the backend answered: an outage reports total 0 and must not become a 404.
+  if (data.pagination.total > 0 && page > data.pagination.totalPages) notFound();
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",

@@ -8,6 +8,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": rootDir,
+      // `server-only` throws outside the react-server condition; tests run plain Node.
+      "server-only": path.join(rootDir, "tests", "server-only-stub.ts"),
     },
   },
 

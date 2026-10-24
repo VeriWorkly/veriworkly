@@ -1,6 +1,10 @@
 import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/config/site";
+import { termsLastUpdated } from "@/features/legal/termsContent";
+import { privacyLastUpdated } from "@/features/legal/privacyContent";
+import { SECURITY_LAST_UPDATED } from "@/features/security/data/lastUpdated";
+import { isAffiliateProgramEnabled, isAmbassadorProgramEnabled } from "@/lib/feature-flags";
 import { COMPETITORS } from "@/features/compare";
 import { documentTypeSummaries, templateSummaries } from "@/config/templates";
 
@@ -143,20 +147,26 @@ const publicRoutes = [
     priority: 0.5,
   },
 
+  // Pages that state their own date carry it here. The rest get none: a lastmod that moves
+  // on every deploy teaches Google to ignore the field. ponytail: git-derived dates need the
+  // repository in the build context, which the Docker build excludes.
   {
     url: `${siteConfig.url}/privacy`,
+    lastModified: privacyLastUpdated,
     changeFrequency: "monthly" as const,
     priority: 0.5,
   },
 
   {
     url: `${siteConfig.url}/security`,
+    lastModified: SECURITY_LAST_UPDATED,
     changeFrequency: "monthly" as const,
     priority: 0.5,
   },
 
   {
     url: `${siteConfig.url}/terms`,
+    lastModified: termsLastUpdated,
     changeFrequency: "monthly" as const,
     priority: 0.5,
   },
@@ -238,8 +248,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(changelogLastModified ? { lastModified: changelogLastModified } : {}),
   };
 
+  // The program pages exist either way, but while a program is closed they only say so;
+  // they should not be submitted as pages worth indexing (W-012).
+  const closed = new Set([
+    ...(isAffiliateProgramEnabled() ? [] : [`${siteConfig.url}/affiliate`]),
+    ...(isAmbassadorProgramEnabled() ? [] : [`${siteConfig.url}/ambassador`]),
+  ]);
+
   return [
-    ...publicRoutes.filter((route) => route.url !== changelogIndexRoute.url),
+    ...publicRoutes.filter(
+      (route) => route.url !== changelogIndexRoute.url && !closed.has(route.url),
+    ),
     changelogIndexRoute,
     ...templateRoutes,
     ...templateDetailRoutes,

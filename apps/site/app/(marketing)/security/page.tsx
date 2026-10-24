@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
+import { SECURITY_LAST_UPDATED } from "@/features/security/data/lastUpdated";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { webSiteRef } from "@/utils/schema";
@@ -76,7 +77,7 @@ const SecurityPage = () => {
     isPartOf: webSiteRef,
     description:
       "Security architecture, sandbox boundaries, OAuth scope specifications, data retention matrix, and responsible disclosure procedures.",
-    dateModified: "2026-08-27",
+    dateModified: SECURITY_LAST_UPDATED,
   };
 
   return (

@@ -109,6 +109,23 @@ describe("sitemap with the backend unreachable", () => {
     expect(urls.some((url) => /\/roadmap\/(?!todo|in-progress|done).+/.test(url))).toBe(false);
   });
 
+  it("leaves out closed programs and dates the pages that carry a date (W-012)", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    vi.stubEnv("AFFILIATE_PROGRAM_ENABLED", "false");
+    vi.stubEnv("AMBASSADOR_PROGRAM_ENABLED", "true");
+    vi.stubGlobal("fetch", down());
+
+    const { default: sitemap } = await import("@/app/sitemap");
+    const entries = await sitemap();
+    const byPath = new Map(entries.map((entry) => [new URL(entry.url).pathname, entry]));
+
+    expect(byPath.has("/affiliate")).toBe(false);
+    expect(byPath.has("/ambassador")).toBe(true);
+
+    for (const path of ["/privacy", "/terms", "/security"])
+      expect(byPath.get(path)?.lastModified, path).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
   it("at runtime throws so ISR keeps the last good sitemap", async () => {
     vi.stubEnv("NEXT_PHASE", "phase-production-server");
     vi.stubGlobal("fetch", down());

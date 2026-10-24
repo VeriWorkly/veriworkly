@@ -61,6 +61,8 @@ const ChangelogSearch = () => {
 
       <input
         type="search"
+        // changelogValidator caps search at 120 characters.
+        maxLength={120}
         value={value}
         aria-label="Search changelog"
         placeholder="Search releases…"
