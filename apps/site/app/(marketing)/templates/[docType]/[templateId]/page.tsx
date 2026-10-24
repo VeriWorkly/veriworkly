@@ -14,7 +14,7 @@ import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { organizationRef, webSiteRef } from "@/utils/schema";
 import { shareImageFor } from "@/features/templates/data/previewSizes";
-import { buildPageMetadata } from "@/utils/metadata";
+import { buildPageMetadata, fitTitle } from "@/utils/metadata";
 
 import { FRAME, PageSection, TYPE } from "@/components/marketing/PageLayout";
 
@@ -56,9 +56,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return buildPageMetadata({
     path: `/templates/${docType}/${templateId}`,
-    title: template.seo.title,
+    title: fitTitle(
+      `${template.name} ${template.documentTypeLabel} Template`,
+      siteConfig.shortName,
+    ),
     description: template.seo.description,
-    ogTitle: `${template.name}: A ${templateTypeLabel} Template Built for ${template.audience[0] ?? "Job Seekers"}`,
+    ogTitle: template.seo.title,
     ogDescription: template.shortDescription,
     twitterTitle: `${template.name} - ${template.documentTypeLabel} Template`,
     twitterDescription: template.shortDescription,
@@ -327,7 +330,7 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
           <ul className={templateGridClass(isPortfolioTemplate)}>
             {moreTemplates.map((other) => (
               <li key={other.id}>
-                <TemplateCard template={other} />
+                <TemplateCard template={other} heading="h3" />
               </li>
             ))}
           </ul>

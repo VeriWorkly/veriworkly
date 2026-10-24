@@ -72,9 +72,9 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
               <span className="block text-[8px] font-black tracking-widest text-indigo-600 uppercase dark:text-indigo-400">
                 VeriWorkly Campus ID
               </span>
-              <h4 className="mt-0.5 text-xs font-extrabold tracking-tight text-zinc-900 dark:text-white">
+              <p className="mt-0.5 text-xs font-extrabold tracking-tight text-zinc-900 dark:text-white">
                 Student Node Leader
-              </h4>
+              </p>
             </div>
             <div className="mt-4 flex items-center justify-between border-t border-zinc-200/50 pt-2 font-mono text-[8px] text-zinc-500 dark:border-white/5">
               <span>M26//27</span>
@@ -145,12 +145,9 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
           aria-label gives assistive tech (and anything reading the accessibility tree)
           the real sentence, and the animated subtree is hidden from it entirely.
         */}
-        <motion.h1
+        <h1
           aria-label="Represent VeriWorkly. Make it fun."
           className="text-3xl leading-[1.05] font-extrabold tracking-tight text-zinc-950 sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl dark:text-white"
-          animate={{ opacity: 1, y: 0 }}
-          initial={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.2, ease: "easeOut", delay: 0.1 }}
         >
           <span aria-hidden="true">
             Represent VeriWorkly. <br />
@@ -187,7 +184,7 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
               />
             </motion.span>
           </LayoutGroup>
-        </motion.h1>
+        </h1>
 
         <motion.p
           className="mx-auto max-w-xl pt-6 text-sm font-semibold text-zinc-500 sm:pt-8 sm:text-base md:pt-10 md:text-lg lg:text-xl dark:text-zinc-400"

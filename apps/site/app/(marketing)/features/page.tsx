@@ -33,7 +33,7 @@ export const metadata: Metadata = buildPageMetadata({
 
   title: `Platform Features: AI Resumes, ATS & Portfolios | ${siteConfig.shortName}`,
   description:
-    "AI resume tailoring, an AI cover letter writer, a free ATS checker, GitHub and LinkedIn imports, multi-format exports, and web portfolio publishing, all private and local-first.",
+    "AI resume tailoring, an AI cover letter writer, a free ATS checker, GitHub and LinkedIn imports, six export formats and web portfolios, all local-first.",
 
   ogTitle: "Everything Inside the VeriWorkly Career Workspace",
   ogDescription:

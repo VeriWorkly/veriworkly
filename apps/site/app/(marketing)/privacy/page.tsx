@@ -27,7 +27,7 @@ const pageUrl = `${siteConfig.url}/privacy`;
 export const metadata: Metadata = buildPageMetadata({
   path: "/privacy",
 
-  title: `Privacy Policy: Privacy-First AI Career Workspace | ${siteConfig.shortName}`,
+  title: `Privacy Policy: How Your Career Data Is Handled | ${siteConfig.shortName}`,
   description:
     "How VeriWorkly protects resumes, cover letters, and portfolios: local-first storage, encrypted sync, a named AI subprocessor, and zero ad tracking.",
 

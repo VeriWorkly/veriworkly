@@ -20,6 +20,7 @@ import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { appRef, webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
+import { compareDescription, compareTitle } from "@/features/compare/data/metadata";
 
 import { LandingButton } from "@/components/marketing/LandingButton";
 import { PageHero, PageSection } from "@/components/marketing/PageLayout";
@@ -64,8 +65,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return buildPageMetadata({
     path: `/compare/${competitor.id}`,
 
-    title: `VeriWorkly vs ${competitor.name}: Features, Pricing & ATS Compared | ${siteConfig.shortName}`,
-    description: `Honest side-by-side comparison of VeriWorkly vs ${competitor.name}. Compare ATS keyword scoring, download limits, pricing models, and account requirements. ${competitor.positioning}`,
+    title: compareTitle(competitor.name),
+    description: compareDescription(competitor.name),
 
     ogTitle: `VeriWorkly vs ${competitor.name}: Features & Pricing Compared`,
     ogDescription: competitor.verdict,

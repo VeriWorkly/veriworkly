@@ -10,6 +10,8 @@ import { getTemplateHref } from "./utils";
 type TemplateCardProps = {
   template: TemplateSummary;
   priority?: boolean;
+  /** h2 directly under the page H1 (gallery), h3 inside a titled section. */
+  heading?: "h2" | "h3";
 };
 
 /**
@@ -17,7 +19,7 @@ type TemplateCardProps = {
  * Small enough that a row holds three or four, so a long catalogue stays browsable; the detail
  * page carries everything else.
  */
-const TemplateCard = ({ template, priority }: TemplateCardProps) => {
+const TemplateCard = ({ template, priority, heading: Heading = "h2" }: TemplateCardProps) => {
   const isPortfolio = template.documentType === "portfolio-website";
 
   return (
@@ -44,9 +46,9 @@ const TemplateCard = ({ template, priority }: TemplateCardProps) => {
       </div>
 
       <div className="mt-4 px-1">
-        <h3 className="group-hover:text-accent text-lg leading-snug font-semibold tracking-tight transition-colors duration-200">
+        <Heading className="group-hover:text-accent text-lg leading-snug font-semibold tracking-tight transition-colors duration-200">
           {template.name}
-        </h3>
+        </Heading>
         <p className="text-muted mt-1 flex items-start gap-2 text-sm leading-5">
           <span
             aria-hidden="true"

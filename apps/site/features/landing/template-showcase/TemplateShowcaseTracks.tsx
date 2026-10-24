@@ -30,7 +30,7 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
             {tag}
           </span>
 
-          <h4 className="text-sm font-bold text-zinc-900 dark:text-white">{name}</h4>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">{name}</h3>
         </div>
 
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">

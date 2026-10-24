@@ -8,7 +8,7 @@ import { notFound } from "next/navigation";
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { organizationRef, webSiteRef } from "@/utils/schema";
-import { buildPageMetadata } from "@/utils/metadata";
+import { buildPageMetadata, fitDescription, fitTitle } from "@/utils/metadata";
 import { Container, Badge } from "@veriworkly/ui";
 
 import {
@@ -62,13 +62,14 @@ export async function generateMetadata({ params }: RoadmapDetailPageProps): Prom
     ogUrl.searchParams.set("showDesc", "false");
   }
 
-  const metadataDescription =
+  const metadataDescription = fitDescription(
     item.description ||
-    `Track progress, updates, and release details for ${item.title} in the VeriWorkly platform roadmap.`;
+      `Track progress, updates, and release details for ${item.title} in the VeriWorkly platform roadmap.`,
+  );
 
   return buildPageMetadata({
     path: `/roadmap/${id}`,
-    title: `${item.title} | Platform Roadmap`,
+    title: fitTitle(item.title, "VeriWorkly Roadmap"),
     description: metadataDescription,
     ogTitle: `${item.title} | VeriWorkly Roadmap`,
     ogDescription: metadataDescription,

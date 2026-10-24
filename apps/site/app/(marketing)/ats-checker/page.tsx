@@ -33,7 +33,7 @@ export const metadata: Metadata = buildPageMetadata({
   path: "/ats-checker",
   title: `Free ATS Resume Checker: Score & Keyword Match | ${siteConfig.shortName}`,
   description:
-    "Scan your resume for parsing risks, missing evidence, and job-description keyword match: free, 0 account required. Full breakdown with a free account; AI analysis on paid plans.",
+    "Scan your resume for parsing risks, missing evidence and job-description keyword match. Free, no account required; the full breakdown with a free account.",
   ogTitle: "Free ATS Resume Checker: Score & Keyword Match",
   ogDescription:
     "The same rules-based scoring engine used inside VeriWorkly: check parsing, structure, evidence, and job match for free, with no account needed.",

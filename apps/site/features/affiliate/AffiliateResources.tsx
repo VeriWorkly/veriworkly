@@ -51,7 +51,7 @@ const AffiliateResources = () => {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200/30 bg-zinc-100 text-blue-600 dark:border-zinc-700/30 dark:bg-zinc-800/50 dark:text-blue-400">
                 <FolderOpen className="h-5 w-5" />
               </span>
-              <h4 className="text-foreground text-lg font-bold">Official Media Kit</h4>
+              <h3 className="text-foreground text-lg font-bold">Official Media Kit</h3>
             </div>
 
             <p className="text-muted max-w-md text-xs leading-relaxed">

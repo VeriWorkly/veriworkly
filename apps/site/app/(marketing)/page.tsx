@@ -42,9 +42,9 @@ export const revalidate = false;
 export const dynamic = "force-static";
 
 export const metadata: Metadata = {
-  title: `Free AI Resume Builder, Cover Letters & Web Portfolios | ${siteConfig.shortName}`,
+  title: `Free AI Resume, Cover Letter & Portfolio Maker | ${siteConfig.shortName}`,
   description:
-    "Build ATS-friendly resumes, targeted cover letters, and live web portfolios in minutes. Privacy-first, local-first data storage, open-core, and zero login required.",
+    "Build ATS-friendly resumes, cover letters and live web portfolios in minutes. Privacy-first, local-first storage, open-core, and no login required.",
 
   openGraph: {
     title: `Free AI Resumes, Cover Letters & Web Portfolios | ${siteConfig.shortName}`,

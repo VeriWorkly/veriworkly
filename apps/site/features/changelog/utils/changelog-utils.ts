@@ -57,6 +57,21 @@ export function categoryCountsFor(entry: ChangelogEntry) {
   }));
 }
 
+/**
+ * The backend's release title often repeats the version ("v3.21.0 - AI Experience Refresh"),
+ * which doubled it in the <title>. Strip a leading version so the page can place it once.
+ */
+export function releaseHeadline(title: string) {
+  return title.replace(/^v?\d+(?:\.\d+)+(?:-[\w.]+)?\s*[-\u2013\u2014:]\s*/i, "").trim() || title;
+}
+
+/** A summary that is only a markdown rule, or empty, is not a description. */
+export function releaseSummary(summary: string | null) {
+  const clean = (summary ?? "").trim();
+
+  return /^[-*_\s]*$/.test(clean) ? null : clean;
+}
+
 export function changelogEntryHref(id: string) {
   return `/changelog/${id}`;
 }

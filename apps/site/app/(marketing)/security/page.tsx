@@ -30,7 +30,7 @@ export const metadata: Metadata = buildPageMetadata({
 
   title: `Security & Responsible Disclosure Policy | ${siteConfig.shortName}`,
   description:
-    "How we secure your career data: local-first browser storage, encrypted cloud sync, Better Auth OTP authentication, and a 24 to 48 hour acknowledgement on every security report.",
+    "How we secure your career data: local-first browser storage, encrypted cloud sync, OTP authentication, and a 24 to 48 hour reply on every security report.",
 
   ogTitle: "Private Security for Your Career Records",
   ogDescription:

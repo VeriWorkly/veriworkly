@@ -64,15 +64,12 @@ const AffiliateHero = ({ programEnabled }: { programEnabled: boolean }) => {
             </span>
           </motion.div>
 
-          <motion.h1
-            variants={itemVariants}
-            className="text-foreground max-w-3xl text-4xl leading-[1.1] font-extrabold tracking-tight sm:text-5xl md:text-7xl"
-          >
+          <h1 className="text-foreground max-w-3xl text-4xl leading-[1.1] font-extrabold tracking-tight sm:text-5xl md:text-7xl">
             Share the workspace.{" "}
             <span className="mt-2 block font-serif font-medium text-blue-600 italic dark:text-blue-400">
               Earn lifetime rewards.
             </span>
-          </motion.h1>
+          </h1>
 
           <motion.p
             variants={itemVariants}

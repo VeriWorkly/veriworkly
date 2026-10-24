@@ -28,7 +28,7 @@ export const metadata: Metadata = buildPageMetadata({
   title: `Student Ambassador Program | ${siteConfig.shortName}`,
 
   description:
-    "A campus program for college students, in its founding phase. Apply to represent VeriWorkly, shape what ambassadors get, and help build privacy-first career tools for students.",
+    "A campus program for college students in its founding phase. Apply to represent VeriWorkly, shape what ambassadors get, and build career tools for students.",
 
   ogTitle: "Represent VeriWorkly on Campus",
   ogDescription:

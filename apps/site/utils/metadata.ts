@@ -72,6 +72,31 @@ interface BuildPageMetadataOptions {
  * the same string echoed three times.
  */
 
+export const TITLE_MAX = 60;
+export const DESCRIPTION_MAX = 160;
+
+/** Cuts `text` at a word boundary so it fits `max`, with an ellipsis when something was cut. */
+export function clampText(text: string, max: number) {
+  const clean = text.replace(/\s+/g, " ").trim();
+
+  if (clean.length <= max) return clean;
+
+  const cut = clean.slice(0, max - 1);
+  const atWord = cut.lastIndexOf(" ");
+
+  return `${(atWord > max / 2 ? cut.slice(0, atWord) : cut).replace(/[\s,:;.-]+$/, "")}…`;
+}
+
+/**
+ * `<main> | <suffix>`, with `main` cut so the whole title stays within the SERP limit. Used by
+ * routes whose titles come from data (releases, roadmap items, templates, comparisons).
+ */
+export function fitTitle(main: string, suffix: string, max = TITLE_MAX) {
+  return `${clampText(main, max - suffix.length - 3)} | ${suffix}`;
+}
+
+export const fitDescription = (text: string, max = DESCRIPTION_MAX) => clampText(text, max);
+
 export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
   const canonicalQuery = new URLSearchParams();
 

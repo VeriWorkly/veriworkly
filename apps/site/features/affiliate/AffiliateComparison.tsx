@@ -119,9 +119,9 @@ const AffiliateComparison = () => {
                 className="grid grid-cols-1 p-6 transition-colors duration-200 hover:bg-zinc-50/30 md:grid-cols-3 md:p-8 dark:hover:bg-zinc-900/5"
               >
                 <div className="flex flex-col justify-center space-y-1 pr-4">
-                  <h4 className="text-foreground text-sm font-bold tracking-tight">
+                  <h3 className="text-foreground text-sm font-bold tracking-tight">
                     {row.feature}
-                  </h4>
+                  </h3>
                   <p className="text-muted max-w-70 text-xs leading-relaxed">{row.description}</p>
                 </div>
 

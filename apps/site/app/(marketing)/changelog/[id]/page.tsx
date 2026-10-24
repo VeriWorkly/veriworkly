@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { organizationRef, webSiteRef } from "@/utils/schema";
-import { buildPageMetadata } from "@/utils/metadata";
+import { buildPageMetadata, fitDescription, fitTitle } from "@/utils/metadata";
 
 import {
   fetchChangelogIndex,
@@ -13,7 +13,11 @@ import {
 } from "@/features/changelog/services/changelog-backend";
 import ChangelogEntryNav from "@/features/changelog/components/detail/ChangelogEntryNav";
 import ChangelogEntryDetail from "@/features/changelog/components/detail/ChangelogEntryDetail";
-import { categoriesFor } from "@/features/changelog/utils/changelog-utils";
+import {
+  categoriesFor,
+  releaseHeadline,
+  releaseSummary,
+} from "@/features/changelog/utils/changelog-utils";
 
 interface ChangelogDetailPageProps {
   params: Promise<{ id: string }>;
@@ -34,9 +38,9 @@ export async function generateStaticParams() {
 }
 
 function describe(title: string, version: string, summary: string | null) {
-  return (
-    summary ||
-    `Everything that shipped in VeriWorkly v${version} - ${title}: new features, improvements, fixes, and the pull requests behind them.`
+  return fitDescription(
+    releaseSummary(summary) ??
+      `Everything that shipped in VeriWorkly v${version} - ${releaseHeadline(title)}: new features, improvements, fixes, and the pull requests behind them.`,
   );
 }
 
@@ -76,7 +80,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
   return buildPageMetadata({
     path: `/changelog/${entry.id}`,
 
-    title: `VeriWorkly v${entry.version}: ${entry.title} | Release Notes`,
+    title: fitTitle(`v${entry.version}: ${releaseHeadline(entry.title)}`, "VeriWorkly changelog"),
     description,
 
     ogTitle: `What shipped in VeriWorkly v${entry.version}`,

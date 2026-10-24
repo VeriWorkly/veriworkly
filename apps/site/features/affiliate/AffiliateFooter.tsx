@@ -46,9 +46,9 @@ const AffiliateFooter = () => {
 
         <div className="grid grid-cols-2 gap-10 pt-12 md:grid-cols-4">
           <div className="space-y-4">
-            <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
+            <h3 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Platform
-            </h5>
+            </h3>
             <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link
@@ -80,9 +80,9 @@ const AffiliateFooter = () => {
           </div>
 
           <div className="space-y-4">
-            <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
+            <h3 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Resources
-            </h5>
+            </h3>
             <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link href="/templates" className="hover:text-foreground transition-colors">
@@ -108,9 +108,9 @@ const AffiliateFooter = () => {
           </div>
 
           <div className="space-y-4">
-            <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
+            <h3 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Company
-            </h5>
+            </h3>
             <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link href="/about" className="hover:text-foreground transition-colors">
@@ -136,9 +136,9 @@ const AffiliateFooter = () => {
           </div>
 
           <div className="space-y-4">
-            <h5 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
+            <h3 className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Socials
-            </h5>
+            </h3>
             <ul className="text-muted space-y-2.5 text-xs">
               <li>
                 <Link

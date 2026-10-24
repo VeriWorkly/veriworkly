@@ -19,7 +19,7 @@ const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/pricing",
-  title: "Pricing: Free Resume Builder & AI Credit Packages | VeriWorkly",
+  title: "Pricing: Free Resume Builder & AI Credits | VeriWorkly",
   description:
     "The resume and cover letter editor is free, no login required. Add portfolio hosting, AI credits, or a short-term job-hunt pass when you need them.",
   ogTitle: "Pay Only for What Your Job Search Actually Needs",

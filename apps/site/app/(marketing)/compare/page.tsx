@@ -29,9 +29,9 @@ const ogImage = `/api/og?title=${encodeURIComponent(
 export const metadata: Metadata = buildPageMetadata({
   path: "/compare",
 
-  title: `Compare Resume Builders: Real Pricing & Features | ${siteConfig.shortName}`,
+  title: `Compare Resume Builders: Pricing & Features | ${siteConfig.shortName}`,
   description:
-    "An honest, straightforward comparison of VeriWorkly against Rezi, Teal, Kickresume, Novoresume, Zety, and Enhancv. See real pricing, ATS accuracy, download limits, and account requirements.",
+    "VeriWorkly against Rezi, Teal, Kickresume, Novoresume, Zety and Enhancv: real pricing, ATS accuracy, download limits and account requirements.",
 
   ogTitle: "Compare VeriWorkly to Other Resume Builders",
   ogDescription:

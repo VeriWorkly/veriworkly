@@ -237,7 +237,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
         <ContactFloatingField
           required
           rows={5}
-          id="message"
+          id="message-body"
           as="textarea"
           value={message}
           disabled={loading}

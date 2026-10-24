@@ -113,9 +113,9 @@ const AmbassadorFooter = () => {
           <div className="grid grid-cols-3 gap-8">
             {columns.map((col) => (
               <div key={col.title} className="space-y-4">
-                <h4 className="text-[10px] font-black tracking-wider text-zinc-950 uppercase dark:text-white">
+                <h3 className="text-[10px] font-black tracking-wider text-zinc-950 uppercase dark:text-white">
                   {col.title}
-                </h4>
+                </h3>
                 <ul className="space-y-2.5 font-medium text-zinc-500 dark:text-zinc-400">
                   {col.links.map((link) => (
                     <li key={link.label}>

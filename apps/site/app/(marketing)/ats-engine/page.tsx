@@ -35,9 +35,9 @@ const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/ats-engine",
-  title: `Open-Source ATS Resume Parser & Scorer for JavaScript | ${siteConfig.shortName}`,
+  title: `Open-Source ATS Resume Parser & Scorer | ${siteConfig.shortName}`,
   description:
-    "The VeriWorkly ATS Engine reads, scores and matches resumes the way an applicant tracking system does. MIT licensed, a published rubric, runs in the browser, edge or Node.",
+    "The VeriWorkly ATS Engine reads, scores and matches resumes the way an applicant tracking system does. MIT licensed, published rubric, runs in browser or Node.",
   ogTitle: "The open-source ATS engine for your product",
   ogDescription:
     "Parse a resume like an ATS, score it with 35 published rules and match it to a job posting requirement by requirement. One npm install, no AI in the score.",

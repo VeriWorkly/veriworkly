@@ -30,12 +30,12 @@ export const HeroFeatureCards = () => {
       <div className="group flex flex-col justify-between rounded-3xl border border-black/5 bg-white p-4.5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(59,130,246,0.12)] sm:p-5 lg:translate-y-4 lg:p-6 lg:hover:translate-y-2 dark:border-white/10 dark:bg-[#111]">
         <div>
           <div className="mb-3.5 flex items-center justify-between sm:mb-4">
-            <h3 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
+            <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 sm:h-8 sm:w-8 dark:bg-blue-500/10">
                 <FileText className="h-3.5 w-3.5 text-blue-500 sm:h-4 sm:w-4" aria-hidden="true" />
               </div>
               Resume Strength
-            </h3>
+            </h2>
 
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-blue-50 sm:h-8 sm:w-8 dark:bg-white/5 dark:group-hover:bg-blue-900/30">
               <MoreHorizontal
@@ -135,12 +135,12 @@ export const HeroFeatureCards = () => {
       <div className="group flex flex-col justify-between rounded-3xl border border-black/5 bg-white p-4.5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(59,130,246,0.12)] sm:p-5 lg:translate-y-6 lg:p-6 lg:hover:translate-y-4 dark:border-white/10 dark:bg-[#111]">
         <div>
           <div className="mb-3.5 flex items-center justify-between sm:mb-4">
-            <h3 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
+            <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 sm:h-8 sm:w-8 dark:bg-blue-500/10">
                 <Globe className="h-3.5 w-3.5 text-blue-500 sm:h-4 sm:w-4" aria-hidden="true" />
               </div>
               Live Portfolio
-            </h3>
+            </h2>
 
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-blue-50 sm:h-8 sm:w-8 dark:bg-white/5 dark:group-hover:bg-blue-900/30">
               <MoreHorizontal
@@ -204,12 +204,12 @@ export const HeroFeatureCards = () => {
       <div className="group flex flex-col justify-between rounded-3xl border border-black/5 bg-white p-4.5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(59,130,246,0.12)] sm:p-5 lg:translate-y-4 lg:p-6 lg:hover:translate-y-2 dark:border-white/10 dark:bg-[#111]">
         <div>
           <div className="mb-3.5 flex items-center justify-between sm:mb-4">
-            <h3 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
+            <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 sm:h-8 sm:w-8 dark:bg-blue-500/10">
                 <Sparkles className="h-3.5 w-3.5 text-blue-500 sm:h-4 sm:w-4" aria-hidden="true" />
               </div>
               AI Smart Writer
-            </h3>
+            </h2>
 
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-blue-50 sm:h-8 sm:w-8 dark:bg-white/5 dark:group-hover:bg-blue-900/30">
               <MoreHorizontal
@@ -250,7 +250,7 @@ export const HeroFeatureCards = () => {
       <div className="group flex flex-col justify-between rounded-3xl border border-black/5 bg-white p-4.5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(59,130,246,0.12)] sm:p-5 lg:-translate-y-2 lg:p-6 lg:hover:-translate-y-4 dark:border-white/10 dark:bg-[#111]">
         <div>
           <div className="mb-4 flex items-center justify-between sm:mb-5">
-            <h3 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
+            <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 sm:h-8 sm:w-8 dark:bg-blue-500/10">
                 <Fingerprint
                   className="h-3.5 w-3.5 text-blue-500 sm:h-4 sm:w-4"
@@ -258,7 +258,7 @@ export const HeroFeatureCards = () => {
                 />
               </div>
               ATS Friendly
-            </h3>
+            </h2>
           </div>
 
           <div className="space-y-2.5">
@@ -288,12 +288,12 @@ export const HeroFeatureCards = () => {
       <div className="group flex flex-col justify-between rounded-3xl border border-black/5 bg-white p-4.5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(59,130,246,0.12)] sm:p-5 lg:translate-y-6 lg:p-6 lg:hover:translate-y-4 dark:border-white/10 dark:bg-[#111]">
         <div>
           <div className="mb-3.5 flex items-center justify-between sm:mb-4">
-            <h3 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
+            <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 sm:h-8 sm:w-8 dark:bg-blue-500/10">
                 <Layout className="h-3.5 w-3.5 text-blue-500 sm:h-4 sm:w-4" aria-hidden="true" />
               </div>
               Premium Templates
-            </h3>
+            </h2>
           </div>
 
           <div className="my-2.5 flex justify-center sm:my-3">
