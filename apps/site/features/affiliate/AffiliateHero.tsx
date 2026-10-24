@@ -12,9 +12,9 @@ const AffiliateHero = ({ programEnabled }: { programEnabled: boolean }) => {
   return (
     <section className="relative flex flex-col items-center justify-center overflow-hidden py-24 text-center lg:py-32">
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none">
-        <div className="animate-float-1 absolute top-1/4 left-1/4 h-87.5 w-87.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/20 blur-[80px] md:h-150 md:w-150 md:blur-[120px] dark:bg-blue-600/10" />
-        <div className="animate-float-2 absolute right-1/4 bottom-1/4 h-75 w-75 translate-x-1/2 translate-y-1/2 rounded-full bg-amber-400/15 blur-[80px] md:h-125 md:w-125 md:blur-[100px] dark:bg-amber-500/5" />
-        <div className="animate-float-3 absolute top-1/3 right-1/3 h-62.5 w-62.5 rounded-full bg-violet-400/10 blur-[70px] md:h-100 md:w-100 md:blur-[100px] dark:bg-violet-600/5" />
+        <div className="animate-float-1 absolute top-1/4 left-1/4 h-87.5 w-87.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-radial from-blue-400/20 to-transparent to-70% md:h-150 md:w-150 dark:from-blue-600/10" />
+        <div className="animate-float-2 absolute right-1/4 bottom-1/4 h-75 w-75 translate-x-1/2 translate-y-1/2 rounded-full bg-radial from-amber-400/15 to-transparent to-70% md:h-125 md:w-125 dark:from-amber-500/5" />
+        <div className="animate-float-3 absolute top-1/3 right-1/3 h-62.5 w-62.5 rounded-full bg-radial from-violet-400/10 to-transparent to-70% md:h-100 md:w-100 dark:from-violet-600/5" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-4xl px-6">

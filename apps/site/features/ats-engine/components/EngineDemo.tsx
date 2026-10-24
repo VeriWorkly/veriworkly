@@ -54,21 +54,27 @@ export function EngineDemo() {
     setResult({ report, ms: performance.now() - started });
   };
 
-  // Load the engine once the demo is near the viewport, then score the selected sample.
+  // Load the engine (115 KB gz) once the demo is near the viewport and the browser is idle,
+  // then score the selected sample. The demo sits in the hero, so "near the viewport" alone
+  // meant at page load, competing with the first paint (W-038).
   useEffect(() => {
     const node = sectionRef.current;
     if (!node || check) return;
+
+    const load = () =>
+      import("@veriworkly/ats-engine")
+        .then((engine) => {
+          setCheck(() => engine.check);
+          score(engine.check);
+        })
+        .catch(() => setLoadFailed(true));
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
-        import("@veriworkly/ats-engine")
-          .then((engine) => {
-            setCheck(() => engine.check);
-            score(engine.check);
-          })
-          .catch(() => setLoadFailed(true));
+        if ("requestIdleCallback" in window) requestIdleCallback(load, { timeout: 3000 });
+        else setTimeout(load, 1500);
       },
       { rootMargin: "300px" },
     );

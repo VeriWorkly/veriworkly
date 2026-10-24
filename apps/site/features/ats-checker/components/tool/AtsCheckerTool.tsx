@@ -167,7 +167,15 @@ export function AtsCheckerTool() {
         <Stepper steps={STEP_LABELS} current={currentStep} />
       </div>
 
-      {quota && phase !== "results" ? <QuotaNotice quota={quota} /> : null}
+      {/* One line is held for the notice while the quota loads, so the tool does not jump
+          down when it arrives (W-042). */}
+      {phase !== "results" ? (
+        quota ? (
+          <QuotaNotice quota={quota} />
+        ) : (
+          <p aria-hidden="true" className="mb-6 h-6" />
+        )
+      ) : null}
 
       <div className="relative">
         <AnimatePresence mode="wait">

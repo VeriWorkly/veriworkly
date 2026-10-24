@@ -11,7 +11,7 @@ export const HeroHeader = () => {
       <div className="relative flex w-full flex-col items-center justify-center overflow-hidden rounded-4xl border border-black/5 bg-white pt-32 pb-24 shadow-sm lg:rounded-[2.5rem] lg:pt-40 lg:pb-32 dark:border-white/5 dark:bg-[#080808]">
         <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] mask-[radial-gradient(ellipse_100%_100%_at_50%_0%,#000_50%,transparent_100%)] bg-size-[64px_64px] bg-center opacity-70 mix-blend-multiply dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] dark:opacity-40 dark:mix-blend-screen" />
 
-        <div className="pointer-events-none absolute top-0 left-1/2 h-150 w-full max-w-250 -translate-x-1/2 rounded-full bg-blue-500/10 blur-[120px] dark:bg-blue-500/15" />
+        <div className="pointer-events-none absolute top-0 left-1/2 h-150 w-full max-w-250 -translate-x-1/2 rounded-full bg-radial from-blue-500/10 to-transparent to-70% dark:from-blue-500/15" />
         <div className="pointer-events-none absolute bottom-0 left-0 z-10 h-[40%] w-full bg-linear-to-t from-white via-white/80 to-transparent dark:from-[#080808] dark:via-[#080808]/80" />
 
         <div className="relative z-20 container mx-auto flex max-w-6xl flex-col items-center px-4 text-center">

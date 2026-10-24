@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
-@source "../../../packages/ui/src";
+/* Only the UI components the site renders; scanning the whole package put the studio's
+   components' classes into every marketing page's render-blocking stylesheet (W-041). */
+@source "../../../packages/ui/src/components/layout/AppShell.tsx";
+@source "../../../packages/ui/src/components/layout/Container.tsx";
+@source "../../../packages/ui/src/components/layout/social/SocialIcons.tsx";
+@source "../../../packages/ui/src/components/ui/Accordion.tsx";
+@source "../../../packages/ui/src/components/ui/Badge.tsx";
+@source "../../../packages/ui/src/components/ui/Button.tsx";
+@source "../../../packages/ui/src/components/ui/Card.tsx";
 
 @import "@veriworkly/ui/styles/themes.css";
 @import "@veriworkly/ui/styles/globals.css";
@@ -76,9 +84,9 @@
   box-sizing: border-box;
 }
 
+/* The font comes from the font-sans class on <body> (app/layout.tsx). */
 body {
   margin: 0;
-  font-family: var(--font-geist-sans), sans-serif;
 }
 
 /*

@@ -9,8 +9,8 @@ const TemplateShowcaseTracks = dynamic(
 const TemplateShowcase = () => {
   return (
     <section className="relative w-full overflow-hidden bg-white py-32 md:py-48 dark:bg-[#000000]">
-      <div className="pointer-events-none absolute top-1/2 left-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-blue-500/5 blur-[100px] dark:bg-blue-500/10" />
-      <div className="pointer-events-none absolute top-1/2 right-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-cyan-500/5 blur-[100px] dark:bg-cyan-500/10" />
+      <div className="pointer-events-none absolute top-1/2 left-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-radial from-blue-500/5 to-transparent to-70% dark:from-blue-500/10" />
+      <div className="pointer-events-none absolute top-1/2 right-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-radial from-cyan-500/5 to-transparent to-70% dark:from-cyan-500/10" />
 
       <div className="mx-auto max-w-350 px-6 md:px-8">
         <div className="mb-20 text-center">

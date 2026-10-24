@@ -150,8 +150,14 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // These files keep their names when their content changes (template previews, og
+        // cards, the logo), so they cannot be immutable: a year-long immutable copy would
+        // outlive every replacement. A day fresh, then a week served stale while it
+        // revalidates (W-036). Hashed build assets under /_next/static keep Next's own header.
         source: "/:all*(svg|jpg|jpeg|png|webp|avif|ico)",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" },
+        ],
       },
     ];
   },

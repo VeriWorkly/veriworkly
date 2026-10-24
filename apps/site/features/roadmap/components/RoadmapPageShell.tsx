@@ -85,7 +85,7 @@ const RoadmapPageShell = ({
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       <div className="surface-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.25]" />
 
-      <div className="bg-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full blur-[130px]" />
+      <div className="from-accent/5 pointer-events-none absolute top-0 left-1/4 -z-10 h-150 w-150 rounded-full bg-radial to-transparent to-70%" />
 
       <Container className="pt-28 pb-20 lg:pt-36">
         <RoadmapHeader title={title} description={description} />

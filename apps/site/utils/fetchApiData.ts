@@ -93,8 +93,10 @@ export async function fetchApiData<T>(
       ...fetchOptions,
       signal: fetchOptions.signal ?? AbortSignal.timeout(timeoutMs ?? DEFAULT_API_TIMEOUT_MS),
       credentials: fetchOptions.credentials ?? "include",
+      // Content-Type only when there is a body: on a GET it made every browser request a
+      // non-simple one, so each read paid a CORS preflight first (W-040).
       headers: {
-        "Content-Type": "application/json",
+        ...(fetchOptions.body != null ? { "Content-Type": "application/json" } : {}),
         ...firstPartyServerHeaders(fetchOptions.headers),
       },
     });
