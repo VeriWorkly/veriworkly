@@ -36,3 +36,38 @@ describe("fetchApiData headers", () => {
     expect(headersOf(fetchMock).get("content-type")).toBe("application/json");
   });
 });
+
+describe("fetchApiData envelopes", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("throws on a 2xx that says success:false or carries no data (W-064)", async () => {
+    const { fetchApiData, ApiRequestError } = await import("@/utils/fetchApiData");
+
+    for (const body of [
+      { success: false, message: "nope" },
+      { success: true, message: "ok" },
+    ]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json(body, { status: 200 })),
+      );
+      await expect(fetchApiData("/changelog")).rejects.toBeInstanceOf(ApiRequestError);
+    }
+  });
+});
+
+describe("server-side calls forward only the auth cookies (W-066)", () => {
+  it("keeps veriworkly-auth.* and __Secure-veriworkly-auth.*, drops the rest", async () => {
+    const { sessionCookieHeader } = await import("@/lib/server-api");
+
+    expect(
+      sessionCookieHeader([
+        { name: "veriworkly-theme", value: "dark" },
+        { name: "veriworkly-guest-mode", value: "true" },
+        { name: "_ga", value: "GA1.1" },
+        { name: "veriworkly-auth.session_token", value: "abc.def" },
+        { name: "__Secure-veriworkly-auth.session_data", value: "x y" },
+      ]),
+    ).toBe("veriworkly-auth.session_token=abc.def; __Secure-veriworkly-auth.session_data=x%20y");
+  });
+});

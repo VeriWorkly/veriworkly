@@ -14,8 +14,11 @@ export const getTemplateHref = (template: Pick<TemplateSummary, "documentType" |
 export const buildEditorUrl = (
   template: Pick<TemplateSummary, "editorTemplateId" | "documentType">,
 ) => {
+  // The portfolio dashboard ignores ?template= (W-059), so the visitor's choice used to be
+  // dropped silently. The portfolio app's own page for the template keeps it in view and
+  // carries that app's start button.
   if (template.documentType === "portfolio-website") {
-    return `${portfolioBaseUrl}/dashboard?template=${encodeURIComponent(template.editorTemplateId)}`;
+    return `${portfolioBaseUrl}/templates/${encodeURIComponent(template.editorTemplateId)}`;
   }
 
   const base = siteConfig.links.app;

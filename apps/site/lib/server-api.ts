@@ -29,13 +29,25 @@ export type ServerApiResult<T> =
 // own is see the browser's cookies, since Node's fetch has no ambient cookie jar - so we read
 // them explicitly from the incoming request via next/headers and forward them along.
 
+/**
+ * Only the auth cookies go to the backend. Forwarding the whole jar sent the theme, guest and
+ * any third-party cookies on every server-side call (W-066). Better Auth names them with the
+ * "veriworkly-auth." prefix (apps/server/src/auth/index.ts), plus "__Secure-" over HTTPS.
+ */
+export function sessionCookieHeader(all: { name: string; value: string }[]) {
+  return all
+    .filter(({ name }) => /^(__Secure-)?veriworkly-auth./.test(name))
+    .map(({ name, value }) => `${name}=${encodeURIComponent(value)}`)
+    .join("; ");
+}
+
 export const fetchServerApiResult = cache(async function fetchServerApiResult<T>(
   path: string,
 ): Promise<ServerApiResult<T>> {
   let cookieHeader = "";
 
   try {
-    cookieHeader = (await cookies()).toString();
+    cookieHeader = sessionCookieHeader((await cookies()).getAll());
   } catch {
     return { ok: false, reason: "unavailable" };
   }

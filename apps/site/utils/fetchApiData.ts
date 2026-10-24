@@ -122,8 +122,19 @@ export async function fetchApiData<T>(
 
   const payload = await response.json().catch(() => null);
 
-  if (!payload || typeof payload !== "object")
-    throw new ApiRequestError(errorMessage || "Backend returned a malformed response.", 502);
+  // A 2xx with success:false or no data used to reach callers typed T as undefined (W-064).
+  const envelope = payload as Partial<ApiSuccessResponse<T>> | null;
 
-  return (payload as ApiSuccessResponse<T>).data;
+  if (
+    !envelope ||
+    typeof envelope !== "object" ||
+    envelope.success !== true ||
+    envelope.data === undefined
+  )
+    throw new ApiRequestError(
+      errorMessage || envelope?.message || "Backend returned a malformed response.",
+      502,
+    );
+
+  return envelope.data;
 }
