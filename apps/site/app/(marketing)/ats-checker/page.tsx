@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { appRef, organizationRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import {
@@ -76,7 +77,8 @@ export default function AtsCheckerPage() {
     applicationCategory: "BusinessApplication",
     operatingSystem: "Any (web-based)",
     url: pageUrl,
-    publisher: { "@id": `${siteConfig.url}/#organization` },
+    publisher: organizationRef,
+    isPartOf: appRef,
     isAccessibleForFree: true,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     featureList: [

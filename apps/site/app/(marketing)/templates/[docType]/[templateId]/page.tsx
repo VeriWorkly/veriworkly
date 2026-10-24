@@ -12,6 +12,8 @@ import {
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { organizationRef, webSiteRef } from "@/utils/schema";
+import { shareImageFor } from "@/features/templates/data/previewSizes";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { FRAME, PageSection, TYPE } from "@/components/marketing/PageLayout";
@@ -50,6 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const templateTypeLabel = template.documentTypeLabel.toLowerCase();
+  const shareImage = shareImageFor(template.previewImage);
 
   return buildPageMetadata({
     path: `/templates/${docType}/${templateId}`,
@@ -59,10 +62,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ogDescription: template.shortDescription,
     twitterTitle: `${template.name} - ${template.documentTypeLabel} Template`,
     twitterDescription: template.shortDescription,
-    image: template.previewImage,
+    image: shareImage.url,
     imageAlt: `${template.name} ${templateTypeLabel} template preview`,
-    imageWidth: 1200,
-    imageHeight: 1600,
+    imageWidth: shareImage.width,
+    imageHeight: shareImage.height,
     keywords: [template.name, ...template.tags, `${template.documentTypeLabel} template`],
   });
 }
@@ -144,8 +147,10 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
     name: `${template.name} ${template.documentTypeLabel} Template`,
     description: template.seo.description,
     url: `${siteConfig.url}/templates/${docType}/${templateId}`,
-    creator: { "@type": "Organization", name: siteConfig.name, url: siteConfig.url },
-    audience: template.audience.join(", "),
+    creator: organizationRef,
+    isPartOf: webSiteRef,
+    image: `${siteConfig.url}${template.previewImage}`,
+    audience: { "@type": "Audience", audienceType: template.audience.join(", ") },
   };
 
   return (

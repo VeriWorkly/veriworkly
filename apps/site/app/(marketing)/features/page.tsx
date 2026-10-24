@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { appRef, webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import {
@@ -72,6 +73,8 @@ const FeaturesPage = () => {
     "@type": "WebPage",
     name: "VeriWorkly Platform Features",
     url: pageUrl,
+    isPartOf: webSiteRef,
+    about: appRef,
     description:
       "Comprehensive feature breakdown including document studio, AI tailoring, ATS checker, GitHub/LinkedIn import, web portfolios, and local-first privacy.",
   };

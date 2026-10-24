@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import {
@@ -72,6 +73,7 @@ const SecurityPage = () => {
     },
     name: "Security Policy | VeriWorkly",
     url: pageUrl,
+    isPartOf: webSiteRef,
     description:
       "Security architecture, sandbox boundaries, OAuth scope specifications, data retention matrix, and responsible disclosure procedures.",
     dateModified: "2026-08-27",

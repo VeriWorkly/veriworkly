@@ -204,3 +204,45 @@ describe("the machine-readable files state that payments are closed (W-022)", ()
     expect(llmsTxt).not.toMatch(/payments are currently closed/i);
   });
 });
+
+describe("structured-data inputs match their sources", () => {
+  const catalog = readFileSync(
+    join(siteRoot, "..", "server", "src", "services", "productCatalog.ts"),
+    "utf8",
+  );
+
+  it("the pricing page lists exactly the catalog prices", async () => {
+    const { PRICING_OFFERS } = await import("@/features/pricing/data/offers");
+
+    const onPage = new Set(PRICING_OFFERS.map((offer) => Math.round(offer.price * 100)));
+    const inCatalog = new Set(
+      [...catalog.matchAll(/prices: \{([^}]*)\}/g)].flatMap((match) =>
+        [...match[1]!.matchAll(/: ([\d_]+)/g)].map((m) => Number(m[1]!.replace(/_/g, ""))),
+      ),
+    );
+
+    expect(inCatalog.size).toBeGreaterThan(5);
+
+    for (const cents of inCatalog)
+      expect(onPage, `${cents} cents missing on the page`).toContain(cents);
+    for (const cents of onPage)
+      if (cents !== 0) expect(inCatalog, `${cents} cents is not in the catalog`).toContain(cents);
+  });
+
+  it("the template share-image sizes match the files on disk", async () => {
+    const sharp = (await import("sharp")).default;
+    const { PREVIEW_SIZES } = await import("@/features/templates/data/previewSizes");
+    const { templateSummaries } = await import("@/config/templates");
+
+    for (const template of templateSummaries) {
+      if (!template.previewImage.endsWith(".png")) continue;
+
+      const { width, height } = await sharp(join(publicDir, template.previewImage)).metadata();
+
+      expect(PREVIEW_SIZES[template.previewImage], template.previewImage).toEqual({
+        width,
+        height,
+      });
+    }
+  });
+});

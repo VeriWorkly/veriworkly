@@ -4,6 +4,7 @@ import { siteConfig } from "@/config/site";
 import { isAmbassadorProgramEnabled } from "@/lib/feature-flags";
 import { buildPageMetadata } from "@/utils/metadata";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { webSiteRef } from "@/utils/schema";
 import AmbassadorNav from "@/features/ambassador/AmbassadorNav";
 import AmbassadorHero from "@/features/ambassador/AmbassadorHero";
 import AmbassadorPerks from "@/features/ambassador/AmbassadorPerks";
@@ -51,6 +52,7 @@ const AmbassadorPage = () => {
     "@type": "WebPage",
     name: "VeriWorkly Student Ambassador Program",
     url: pageUrl,
+    isPartOf: webSiteRef,
     description:
       "A founding-phase campus program. Apply to represent VeriWorkly at your college and help shape how the program rewards its ambassadors.",
   };

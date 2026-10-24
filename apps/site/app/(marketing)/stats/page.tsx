@@ -5,6 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import {
@@ -151,7 +152,7 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
     url: pageUrl,
     description:
       "Live GitHub development statistics for VeriWorkly, including issue counts, pull requests, and completion rate.",
-    isPartOf: { "@type": "WebSite", name: siteConfig.name, url: siteConfig.url },
+    isPartOf: webSiteRef,
   };
 
   return (

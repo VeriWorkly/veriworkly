@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { SCHEMA_IDS } from "@/utils/schema";
 import { globalFontVariables } from "@veriworkly/ui";
 
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -81,9 +82,7 @@ export const metadata: Metadata = {
   },
 };
 
-const WEBSITE_ID = `${siteConfig.url}/#website`;
-const PERSON_ID = `${siteConfig.url}/#gautam-raj`;
-const ORGANIZATION_ID = `${siteConfig.url}/#organization`;
+const { website: WEBSITE_ID, person: PERSON_ID, organization: ORGANIZATION_ID } = SCHEMA_IDS;
 
 const personSchema = {
   "@context": "https://schema.org",
@@ -103,13 +102,14 @@ const personSchema = {
     "Portfolio website publishing",
     "Privacy-first and local-first data storage",
   ],
-  sameAs: [siteConfig.links.github, siteConfig.links.linkedin, siteConfig.links.twitter],
+  // The founder's own profiles. The company's live on the Organization node.
+  sameAs: [siteConfig.creatorLinks.github, siteConfig.creatorLinks.twitter],
 };
 
 const webApplicationSchema = {
   "@context": "https://schema.org",
   "@type": ["WebApplication", "SoftwareApplication"],
-  "@id": `${siteConfig.url}/#app`,
+  "@id": SCHEMA_IDS.app,
 
   name: "VeriWorkly",
   url: siteConfig.url,
@@ -142,12 +142,29 @@ const organizationSchema = {
   url: siteConfig.url,
   logo: {
     "@type": "ImageObject",
-    url: `${siteConfig.url}/veriworkly-logo.png`,
+    url: `${siteConfig.url}/brand/logo/veriworkly-icon-512.png`,
     width: 512,
     height: 512,
   },
   description: siteConfig.description,
   email: siteConfig.email,
+  // First commit of the repository, 2026-03-17.
+  foundingDate: "2026-03",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Phase-3, DLF Cyber City",
+    addressLocality: "Gurugram",
+    addressRegion: "Haryana",
+    postalCode: "122010",
+    addressCountry: "IN",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer support",
+    email: siteConfig.email,
+    url: `${siteConfig.url}/contact`,
+    availableLanguage: "en",
+  },
   founder: { "@id": PERSON_ID },
   sameAs: [siteConfig.links.github, siteConfig.links.twitter, siteConfig.links.linkedin],
 };

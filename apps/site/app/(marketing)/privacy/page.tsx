@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { PageHero, PageClosing } from "@/components/marketing/PageLayout";
@@ -92,7 +93,7 @@ const PrivacyPage = () => {
       "Learn how VeriWorkly secures career data through local-first and encrypted workflows.",
     dateModified: privacyLastUpdated,
     inLanguage: "en",
-    isPartOf: { "@type": "WebSite", name: siteConfig.name, url: siteConfig.url },
+    isPartOf: webSiteRef,
     about: {
       "@type": "Thing",
       name: "Privacy Policy",

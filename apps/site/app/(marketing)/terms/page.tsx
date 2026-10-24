@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { PageHero, PageClosing } from "@/components/marketing/PageLayout";
@@ -101,7 +102,7 @@ const TermsPage = () => {
     description: "Terms of Service and guidelines for VeriWorkly career workspace.",
     dateModified: termsLastUpdated,
     inLanguage: "en",
-    isPartOf: { "@type": "WebSite", name: siteConfig.name, url: siteConfig.url },
+    isPartOf: webSiteRef,
     about: {
       "@type": "Thing",
       name: "Terms of Service",

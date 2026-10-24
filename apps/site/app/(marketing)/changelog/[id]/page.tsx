@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { organizationRef, webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import {
@@ -128,8 +129,9 @@ const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
     url: entryUrl,
     datePublished: entry.publishedAt,
     dateModified: entry.publishedAt,
-    author: { "@type": "Organization", name: "VeriWorkly", url: siteConfig.url },
-    publisher: { "@type": "Organization", name: "VeriWorkly", url: siteConfig.url },
+    author: organizationRef,
+    publisher: organizationRef,
+    isPartOf: webSiteRef,
     keywords: entry.tags.join(", "),
     mainEntityOfPage: { "@type": "WebPage", "@id": entryUrl },
     articleSection: categoriesFor(entry).map(({ label }) => label),

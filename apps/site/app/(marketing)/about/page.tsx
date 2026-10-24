@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { organizationRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import AboutHero from "@/features/about/AboutHero";
@@ -62,16 +63,7 @@ const AboutPage = () => {
     description:
       "VeriWorkly is a local-first, privacy-focused AI career workspace: resumes, cover letters, ATS scoring, and web portfolios built around one Master Profile.",
     url: pageUrl,
-    mainEntity: {
-      "@type": "Organization",
-      name: siteConfig.name,
-      url: siteConfig.url,
-      founder: {
-        "@type": "Person",
-        name: "Gautam Raj",
-      },
-      sameAs: [siteConfig.links.github, siteConfig.links.twitter, siteConfig.links.linkedin],
-    },
+    mainEntity: organizationRef,
   };
 
   return (

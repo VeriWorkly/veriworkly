@@ -18,6 +18,7 @@ import {
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { appRef, webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { LandingButton } from "@/components/marketing/LandingButton";
@@ -118,17 +119,8 @@ const CompareToolPage = async ({ params }: PageProps) => {
     name: `VeriWorkly vs ${competitor.name} Comparison`,
     description: competitor.verdict,
     url: pageUrl,
-    mainEntity: {
-      "@type": "SoftwareApplication",
-      name: "VeriWorkly Career Workspace",
-      applicationCategory: "BusinessApplication",
-      operatingSystem: "Web Browser",
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-      },
-    },
+    isPartOf: webSiteRef,
+    mainEntity: appRef,
   };
 
   const faqSchema =

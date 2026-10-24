@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { organizationRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { LandingButton } from "@/components/marketing/LandingButton";
@@ -62,20 +63,7 @@ const ContactPage = () => {
     url: pageUrl,
     description:
       "Contact the VeriWorkly support and engineering team for help, questions, feedback, or billing.",
-    mainEntity: {
-      "@type": "Organization",
-      name: siteConfig.name,
-      url: siteConfig.url,
-      sameAs: [siteConfig.links.github, siteConfig.links.twitter, siteConfig.links.linkedin],
-      contactPoint: [
-        {
-          "@type": "ContactPoint",
-          contactType: "customer support",
-          email: supportEmail,
-          url: siteConfig.links.github,
-        },
-      ],
-    },
+    mainEntity: organizationRef,
   };
 
   return (

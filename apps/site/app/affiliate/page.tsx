@@ -6,6 +6,7 @@ import "./affiliate.css";
 
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { webSiteRef } from "@/utils/schema";
 import { isAffiliateProgramEnabled } from "@/lib/feature-flags";
 
 import AffiliateNav from "@/features/affiliate/AffiliateNav";
@@ -69,6 +70,7 @@ const AffiliatePage = () => {
     "@type": "WebPage",
     name: "VeriWorkly Affiliate Program",
     url: pageUrl,
+    isPartOf: webSiteRef,
     description:
       "Earn recurring partner commissions by sharing VeriWorkly with your professional network.",
   };

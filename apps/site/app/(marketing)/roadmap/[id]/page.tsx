@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
+import { organizationRef, webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 import { Container, Badge } from "@veriworkly/ui";
 
@@ -139,8 +140,9 @@ const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
     url: itemUrl,
     datePublished: feature.createdAt,
     dateModified: feature.completedAt || feature.updatedAt,
-    author: { "@type": "Organization", name: "VeriWorkly", url: siteConfig.url },
-    publisher: { "@type": "Organization", name: "VeriWorkly", url: siteConfig.url },
+    author: organizationRef,
+    publisher: organizationRef,
+    isPartOf: webSiteRef,
     keywords: (feature.tags ?? []).join(", "),
     mainEntityOfPage: { "@type": "WebPage", "@id": itemUrl },
   };
