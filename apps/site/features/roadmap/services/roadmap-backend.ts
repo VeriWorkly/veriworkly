@@ -380,31 +380,27 @@ export async function fetchRoadmapSitemapEntries(): Promise<RoadmapSitemapEntry[
       const entries: RoadmapSitemapEntry[] = [];
       let offset = 0;
 
-      try {
-        for (let page = 0; page < SITEMAP_MAX_PAGES; page++) {
-          const query = new URLSearchParams({
-            status,
-            sort: "newest",
-            limit: SITEMAP_PAGE_SIZE.toString(),
-            offset: offset.toString(),
-          });
+      // A failed page throws. Returning the partial list looked safer, but it handed the
+      // sitemap a shorter list that it then cached for a week; throwing lets the sitemap
+      // keep its last complete copy instead.
+      for (let page = 0; page < SITEMAP_MAX_PAGES; page++) {
+        const query = new URLSearchParams({
+          status,
+          sort: "newest",
+          limit: SITEMAP_PAGE_SIZE.toString(),
+          offset: offset.toString(),
+        });
 
-          const listData = await fetchApiData<RoadmapListPayload>(`/roadmap?${query.toString()}`, {
-            next: { revalidate: SITEMAP_REVALIDATE_SECONDS },
-          });
+        const listData = await fetchApiData<RoadmapListPayload>(`/roadmap?${query.toString()}`, {
+          next: { revalidate: SITEMAP_REVALIDATE_SECONDS },
+        });
 
-          entries.push(
-            ...listData.items.map((item) => ({ id: item.id, updatedAt: item.updatedAt })),
-          );
+        entries.push(...listData.items.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
 
-          const nextOffset = listData.pagination.nextOffset;
-          if (!listData.hasMore || nextOffset === null || nextOffset <= offset) break;
+        const nextOffset = listData.pagination.nextOffset;
+        if (!listData.hasMore || nextOffset === null || nextOffset <= offset) break;
 
-          offset = nextOffset;
-        }
-      } catch {
-        // Degrade to whatever this status already yielded rather than losing every
-        // roadmap URL because one page failed.
+        offset = nextOffset;
       }
 
       return entries;

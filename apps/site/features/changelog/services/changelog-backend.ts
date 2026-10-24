@@ -291,21 +291,22 @@ const MAX_INDEX_PAGES = 8;
  * URLs the listing page already fetches. Reusing those exact URLs matters: they are Data Cache
  * hits, so the detail pages and `generateStaticParams` cost no extra backend round trips beyond
  * the listing's own - page 1, which covers almost every lookup, is already warm.
+ *
+ * Throws when the backend cannot be reached. Swallowing the error here used to turn an
+ * outage into an empty index, which `generateStaticParams` and the detail page read as
+ * "no such release": with the backend down at build time every release page was baked
+ * as a 404 for the ISR week. Callers decide what an outage means for them.
  */
 
 async function fetchAllChangelogEntries(): Promise<ChangelogEntry[]> {
   const collected: ChangelogEntry[] = [];
 
-  try {
-    for (let page = 1; page <= MAX_INDEX_PAGES; page++) {
-      const { entries, total } = await fetchChangelogPage({}, page);
+  for (let page = 1; page <= MAX_INDEX_PAGES; page++) {
+    const { entries, total } = await fetchChangelogPage({}, page);
 
-      collected.push(...entries);
+    collected.push(...entries);
 
-      if (entries.length === 0 || collected.length >= total) break;
-    }
-  } catch (err) {
-    console.error("Failed to build changelog index:", err);
+    if (entries.length === 0 || collected.length >= total) break;
   }
 
   return collected;
@@ -321,7 +322,7 @@ function toIndexItem({
   return { id, version, title, type, publishedAt };
 }
 
-/** Compact newest-first list, for `generateStaticParams` and the sitemap. */
+/** Compact newest-first list, for `generateStaticParams` and the sitemap. Throws on outage. */
 export async function fetchChangelogIndex(): Promise<ChangelogIndexItem[]> {
   return (await fetchAllChangelogEntries()).map(toIndexItem);
 }
@@ -340,6 +341,9 @@ export interface ChangelogDetail {
  * Everything a detail page needs in one shot. The entry itself comes out of the cached index
  * rather than a second `/changelog/:id` call - the listing already carries the full record, so
  * the by-id endpoint is only touched for entries older than the index window.
+ *
+ * `null` means the release does not exist (404). Any other failure throws, so the page
+ * reaches its error boundary and ISR keeps serving the last good copy.
  */
 
 export async function fetchChangelogDetail(id: string): Promise<ChangelogDetail | null> {
@@ -369,7 +373,7 @@ export async function fetchChangelogEntryById(id: string): Promise<ChangelogEntr
 
     return normalizeEntry(entry);
   } catch (err) {
-    if (err instanceof ApiRequestError) return null;
+    if (err instanceof ApiRequestError && err.status === 404) return null;
 
     throw err;
   }

@@ -19,8 +19,17 @@ interface ChangelogDetailPageProps {
 }
 
 export async function generateStaticParams() {
-  const index = await fetchChangelogIndex();
-  return index.map((entry) => ({ id: entry.id }));
+  try {
+    const index = await fetchChangelogIndex();
+
+    return index.map((entry) => ({ id: entry.id }));
+  } catch (err) {
+    // No index means no prerendered release pages; they render on first request instead.
+    // Prerendering from an empty index would bake every release as a 404 for the ISR week.
+    console.error("Changelog index unavailable at build; release pages render on demand:", err);
+
+    return [];
+  }
 }
 
 function describe(title: string, version: string, summary: string | null) {
@@ -33,7 +42,7 @@ function describe(title: string, version: string, summary: string | null) {
 export async function generateMetadata({ params }: ChangelogDetailPageProps): Promise<Metadata> {
   const { id } = await params;
 
-  const detail = await fetchChangelogDetail(id).catch(() => null);
+  const detail = await fetchChangelogDetail(id);
 
   if (!detail) {
     return buildPageMetadata({
@@ -92,7 +101,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
 const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
   const { id } = await params;
 
-  const detail = await fetchChangelogDetail(id).catch(() => null);
+  const detail = await fetchChangelogDetail(id);
 
   if (!detail) notFound();
 

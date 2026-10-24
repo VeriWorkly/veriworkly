@@ -5,10 +5,14 @@ import { COMPETITORS } from "@/features/compare";
 import { documentTypeSummaries, templateSummaries } from "@/config/templates";
 
 import {
+  type ChangelogIndexItem,
   fetchChangelogIndex,
   fetchLatestChangelogPublishedAt,
 } from "@/features/changelog/services/changelog-backend";
-import { fetchRoadmapSitemapEntries } from "@/features/roadmap/services/roadmap-backend";
+import {
+  type RoadmapSitemapEntry,
+  fetchRoadmapSitemapEntries,
+} from "@/features/roadmap/services/roadmap-backend";
 
 export const revalidate = 604800;
 
@@ -158,6 +162,30 @@ const publicRoutes = [
   },
 ] satisfies MetadataRoute.Sitemap;
 
+/**
+ * The backend-driven rows. At build time an unreachable backend yields the static routes
+ * only, and the first ISR revalidation fills the rest in. At runtime the error is rethrown
+ * on purpose: a revalidation that throws keeps the last successfully generated sitemap, which
+ * is better than publishing one that silently lost every roadmap and changelog URL for a week.
+ */
+async function fetchDynamicEntries(): Promise<
+  [RoadmapSitemapEntry[], Date | null, ChangelogIndexItem[]]
+> {
+  try {
+    return await Promise.all([
+      fetchRoadmapSitemapEntries(),
+      fetchLatestChangelogPublishedAt(),
+      fetchChangelogIndex(),
+    ]);
+  } catch (err) {
+    if (process.env.NEXT_PHASE !== "phase-production-build") throw err;
+
+    console.error("Sitemap: backend unreachable at build, listing static routes only:", err);
+
+    return [[], null, []];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const templateRoutes = documentTypeSummaries
     .filter((docType) => docType.status === "available")
@@ -173,11 +201,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }));
 
-  const [roadmapEntries, changelogLastModified, changelogEntries] = await Promise.all([
-    fetchRoadmapSitemapEntries(),
-    fetchLatestChangelogPublishedAt(),
-    fetchChangelogIndex(),
-  ]);
+  const [roadmapEntries, changelogLastModified, changelogEntries] = await fetchDynamicEntries();
 
   const roadmapItemRoutes = roadmapEntries.map((entry) => {
     const updatedAt = new Date(entry.updatedAt);
