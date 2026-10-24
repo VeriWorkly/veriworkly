@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUp } from "lucide-react";
@@ -7,10 +5,6 @@ import { siteConfig } from "@/config/site";
 
 const AmbassadorFooter = () => {
   const currentYear = new Date().getFullYear();
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   const columns = [
     {
@@ -165,13 +159,13 @@ const AmbassadorFooter = () => {
           </div>
 
           <div>
-            <button
-              onClick={scrollToTop}
+            <a
+              href="#top"
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-950 shadow-xs transition-all hover:border-zinc-900 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-white"
               aria-label="Scroll to top"
             >
-              <ArrowUp className="h-4 w-4" />
-            </button>
+              <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            </a>
           </div>
         </div>
       </div>

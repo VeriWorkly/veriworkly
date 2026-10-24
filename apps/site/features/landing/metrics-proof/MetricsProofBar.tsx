@@ -1,12 +1,7 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import { animate, m, useInView, useReducedMotion } from "framer-motion";
 import { EyeOff, KeyRound, ShieldCheck, Target, type LucideIcon } from "lucide-react";
 
 interface Stat {
   icon: LucideIcon;
-  from?: number;
   value: number;
   decimals: number;
   suffix: string;
@@ -62,47 +57,6 @@ const stats: Stat[] = [
   },
 ];
 
-const AnimatedValue = ({
-  from = 0,
-  value,
-  decimals,
-  suffix,
-}: {
-  from?: number;
-  value: number;
-  decimals: number;
-  suffix: string;
-}) => {
-  const ref = useRef<HTMLSpanElement>(null);
-
-  const prefersReducedMotion = useReducedMotion();
-
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
-
-  const [display, setDisplay] = useState(from.toFixed(decimals));
-
-  useEffect(() => {
-    if (!isInView) return;
-
-    const controls = animate(from, value, {
-      duration: prefersReducedMotion ? 0 : 1.4,
-      ease: [0.23, 1, 0.32, 1],
-      onUpdate(latest) {
-        setDisplay(latest.toFixed(decimals));
-      },
-    });
-
-    return () => controls.stop();
-  }, [isInView, from, value, decimals, prefersReducedMotion]);
-
-  return (
-    <span ref={ref} className="tabular-nums">
-      {display}
-      {suffix}
-    </span>
-  );
-};
-
 const MetricsProofBar = () => {
   return (
     <section className="relative w-full overflow-hidden border-y border-zinc-800/60 bg-zinc-950 py-16 md:py-20">
@@ -112,31 +66,25 @@ const MetricsProofBar = () => {
 
       <div className="relative z-10 mx-auto max-w-350 px-6 md:px-8">
         <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:gap-x-8 md:divide-x md:divide-zinc-800/60 lg:grid-cols-4">
-          {stats.map((stat, index) => (
-            <m.div
+          {stats.map((stat) => (
+            <div
               key={stat.label}
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              className="flex flex-col gap-3 md:px-8 md:first:pl-0 md:last:pr-0"
-              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1], delay: index * 0.06 }}
+              className="reveal flex flex-col gap-3 md:px-8 md:first:pl-0 md:last:pr-0"
             >
               <stat.icon className="h-5 w-5 text-blue-400" strokeWidth={1.5} />
 
               <div className="font-sans text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-                <AnimatedValue
-                  from={stat.from}
-                  value={stat.value}
-                  suffix={stat.suffix}
-                  decimals={stat.decimals}
-                />
+                <span className="tabular-nums">
+                  {stat.value.toFixed(stat.decimals)}
+                  {stat.suffix}
+                </span>
               </div>
 
               <div>
                 <p className="text-sm font-semibold text-zinc-200">{stat.label}</p>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-500">{stat.detail}</p>
               </div>
-            </m.div>
+            </div>
           ))}
         </div>
       </div>
