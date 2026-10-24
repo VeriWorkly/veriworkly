@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { TemplateSummary } from "@/config/templates";
+import type { TemplateCardData } from "./cardFields";
 
 import EmptyState from "./EmptyState";
 import TemplateFilters, { ALL, type TemplateFilterState } from "./TemplateFilters";
 import TemplateCard, { templateGridClass } from "./TemplateCard";
 
 type Props = {
-  templates: TemplateSummary[];
+  templates: TemplateCardData[];
   /** "resume templates", for the result count. */
   noun: string;
 };
@@ -17,7 +17,7 @@ type Props = {
 const NO_FILTERS: TemplateFilterState = { query: "", family: ALL, layout: ALL };
 
 /** Everything a visitor might type to find a template, lowercased once. */
-const searchText = (template: TemplateSummary) =>
+const searchText = (template: TemplateCardData) =>
   [
     template.name,
     template.family,

@@ -2,13 +2,13 @@ import Link from "next/link";
 
 import { cn } from "@veriworkly/ui";
 
-import type { TemplateSummary } from "@/config/templates";
+import type { TemplateCardData } from "./cardFields";
 
 import TemplatePreview from "./TemplatePreview";
 import { getTemplateHref } from "./utils";
 
 type TemplateCardProps = {
-  template: TemplateSummary;
+  template: TemplateCardData;
   loading?: "eager";
   /** h2 directly under the page H1 (gallery), h3 inside a titled section. */
   heading?: "h2" | "h3";

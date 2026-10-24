@@ -15,6 +15,7 @@ import { buildPageMetadata } from "@/utils/metadata";
 import { FRAME, PageHero, TYPE } from "@/components/marketing/PageLayout";
 
 import TemplateExplorer from "@/features/templates/TemplateExplorer";
+import { toCardData } from "@/features/templates/cardFields";
 import { templatesHeading } from "@/features/templates/utils";
 
 type PageProps = {
@@ -150,7 +151,7 @@ const TemplatesByDocumentTypePage = async ({ params }: PageProps) => {
       <section aria-label={`${docTypeData.pluralLabel}`} className="py-14 lg:py-20">
         <div className={FRAME}>
           <TemplateExplorer
-            templates={templates}
+            templates={templates.map(toCardData)}
             noun={templatesHeading(docTypeData.label).toLowerCase()}
           />
         </div>
