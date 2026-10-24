@@ -60,7 +60,7 @@ const AffiliateFooter = () => {
               </li>
               <li>
                 <Link
-                  href={`${siteConfig.links.app}/portfolio`}
+                  href={siteConfig.links.portfolio}
                   className="hover:text-foreground transition-colors"
                 >
                   Portfolio Builder

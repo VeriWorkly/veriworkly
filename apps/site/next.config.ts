@@ -113,6 +113,16 @@ const nextConfig: NextConfig = {
       { source: "/docs", destination: "https://docs.veriworkly.com/docs", permanent: true },
       { source: "/dashboard", destination: "https://app.veriworkly.com", permanent: true },
 
+      // The ambassador footer linked these for months; they never existed and sit in the
+      // Search Console 404 report. Each goes to the page that holds what the label promised.
+      { source: "/support", destination: "/contact", permanent: true },
+      { source: "/cookies", destination: "/privacy#cookies", permanent: true },
+      { source: "/careers", destination: "/about", permanent: true },
+      { source: "/integrations", destination: "/features", permanent: true },
+      { source: "/partners", destination: "/affiliate", permanent: true },
+      { source: "/tutorials", destination: "https://docs.veriworkly.com/docs", permanent: true },
+      { source: "/Free", destination: "/", permanent: true },
+
       // Older template URLs used unprefixed slugs. Send the known legacy paths to the
       // current, canonical template detail pages instead of serving soft 404s.
       {

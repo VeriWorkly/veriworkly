@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -56,6 +58,29 @@ describe("changelog fetchers with the backend unreachable", () => {
     vi.stubGlobal("fetch", down());
 
     await expect(fetchRoadmapSitemapEntries()).rejects.toBeInstanceOf(ApiRequestError);
+  });
+
+  it("fetchRoadmapFeatureById returns null only for a 404", async () => {
+    const { fetchRoadmapFeatureById, ApiRequestError } = await load();
+
+    vi.stubGlobal("fetch", missing());
+    await expect(fetchRoadmapFeatureById("nope")).resolves.toBeNull();
+
+    vi.stubGlobal("fetch", down());
+    await expect(fetchRoadmapFeatureById("dark-mode")).rejects.toBeInstanceOf(ApiRequestError);
+  });
+
+  it("the detail pages do not turn a thrown fetch into a noindex 'not found' head", () => {
+    for (const page of ["changelog", "roadmap"]) {
+      const source = readFileSync(
+        join(__dirname, "..", "..", "app", "(marketing)", page, "[id]", "page.tsx"),
+        "utf8",
+      );
+
+      expect(source, `${page}/[id]/page.tsx swallows fetch errors`).not.toMatch(
+        /\.catch\(\(\) => null\)/,
+      );
+    }
   });
 });
 

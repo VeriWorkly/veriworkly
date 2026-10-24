@@ -1,146 +1,63 @@
-"use client";
-
-import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 import { faqs } from "@/features/landing/faq/data/faqItems";
 
-interface FAQCardProps {
-  question: string;
-  answer: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  index: number;
-}
+/**
+ * Native `<details>` so every answer is in the HTML the page's FAQPage markup describes.
+ * The previous version mounted an answer only while open, which left the structured data
+ * pointing at text that was not on the page (W-005). `name` makes the group exclusive, so
+ * opening one card closes the others without any script.
+ */
 
-const FAQCard = ({ question, answer, isOpen, onToggle, index }: FAQCardProps) => {
+const FAQCard = ({ index }: { index: number }) => {
+  const faq = faqs[index];
   const number = String(index + 1).padStart(2, "0");
 
-  const panelId = `faq-panel-${index}`;
-  const buttonId = `faq-trigger-${index}`;
-
   return (
-    <motion.div
-      layout="position"
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{
-        type: "spring",
-        stiffness: 80,
-        damping: 18,
-        delay: (index % 2) * 0.05,
-      }}
-      className={`group relative overflow-hidden rounded-[1.75rem] border transition-all duration-300 ${
-        isOpen
-          ? "border-blue-500/25 bg-blue-50/40 shadow-md dark:border-blue-500/20 dark:bg-blue-500/4"
-          : "border-zinc-200 bg-white shadow-xs hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md dark:border-zinc-800/80 dark:bg-[#080808] dark:hover:border-zinc-700"
-      }`}
+    <details
+      name="landing-faq"
+      className="group relative overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white shadow-xs transition-all duration-300 open:border-blue-500/25 open:bg-blue-50/40 open:shadow-md hover:border-zinc-300 hover:shadow-md dark:border-zinc-800/80 dark:bg-[#080808] dark:open:border-blue-500/20 dark:open:bg-blue-500/4 dark:hover:border-zinc-700"
     >
-      <button
-        type="button"
-        id={buttonId}
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        aria-controls={panelId}
-        className="flex w-full items-center gap-4 p-6 text-left transition-transform duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 active:scale-[0.99]"
-      >
+      <summary className="flex w-full cursor-pointer list-none items-center gap-4 p-6 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 [&::-webkit-details-marker]:hidden">
         <span
           aria-hidden="true"
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold transition-colors duration-300 ${
-            isOpen
-              ? "bg-blue-600 text-white"
-              : "bg-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600"
-          }`}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 font-mono text-xs font-bold text-zinc-400 transition-colors duration-300 group-open:bg-blue-600 group-open:text-white dark:bg-zinc-900 dark:text-zinc-600"
         >
           {number}
         </span>
 
-        <span className="flex-1 text-base font-bold text-zinc-900 transition-colors dark:text-white">
-          {question}
+        <span className="flex-1 text-base font-bold text-zinc-900 dark:text-white">
+          {faq.question}
         </span>
 
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors duration-300 ${
-            isOpen
-              ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-              : "border-zinc-100 bg-zinc-50 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900"
-          }`}
-        >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-100 bg-zinc-50 text-zinc-400 transition-all duration-300 group-open:rotate-180 group-open:border-blue-500/30 group-open:bg-blue-500/10 group-open:text-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:group-open:text-blue-400">
           <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-        </motion.div>
-      </button>
+        </span>
+      </summary>
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            id={panelId}
-            role="region"
-            aria-labelledby={buttonId}
-            className="overflow-hidden"
-            exit={{ height: 0, opacity: 0 }}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-          >
-            <div className="w-full px-6 pb-6 text-left">
-              <p className="pl-13 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-400">
-                {answer}
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      <div className="px-6 pb-6">
+        <p className="pl-13 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+          {faq.answer}
+        </p>
+      </div>
+    </details>
   );
 };
 
 const FAQList = () => {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  const leftColFaqs = faqs.filter((_, idx) => idx % 2 === 0);
-  const rightColFaqs = faqs.filter((_, idx) => idx % 2 !== 0);
+  const columns = [0, 1].map((column) =>
+    faqs.map((_, index) => index).filter((index) => index % 2 === column),
+  );
 
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <div className="flex flex-col gap-5">
-        {leftColFaqs.map((faq) => {
-          const globalIdx = faqs.indexOf(faq);
-          const isOpen = openIndex === globalIdx;
-
-          return (
-            <FAQCard
-              key={globalIdx}
-              isOpen={isOpen}
-              index={globalIdx}
-              answer={faq.answer}
-              question={faq.question}
-              onToggle={() => setOpenIndex(isOpen ? null : globalIdx)}
-            />
-          );
-        })}
-      </div>
-
-      <div className="flex flex-col gap-5">
-        {rightColFaqs.map((faq) => {
-          const globalIdx = faqs.indexOf(faq);
-          const isOpen = openIndex === globalIdx;
-
-          return (
-            <FAQCard
-              key={globalIdx}
-              isOpen={isOpen}
-              index={globalIdx}
-              answer={faq.answer}
-              question={faq.question}
-              onToggle={() => setOpenIndex(isOpen ? null : globalIdx)}
-            />
-          );
-        })}
-      </div>
+      {columns.map((indexes, column) => (
+        <div key={column} className="flex flex-col gap-5">
+          {indexes.map((index) => (
+            <FAQCard key={faqs[index].id} index={index} />
+          ))}
+        </div>
+      ))}
     </div>
   );
 };

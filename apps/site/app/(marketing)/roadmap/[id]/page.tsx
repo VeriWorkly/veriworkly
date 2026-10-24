@@ -23,9 +23,20 @@ interface RoadmapDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * No prebuilt ids: items render on first request and are then cached per the fetch's
+ * revalidate window, instead of a fresh backend call on every visit.
+ */
+export function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: RoadmapDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const item = await fetchRoadmapFeatureById(id).catch(() => null);
+
+  // `null` is a real 404. Anything else throws: swallowing it here emitted a noindex
+  // "not found" head for live items whenever the backend hiccupped (W-002).
+  const item = await fetchRoadmapFeatureById(id);
 
   if (!item) {
     return buildPageMetadata({

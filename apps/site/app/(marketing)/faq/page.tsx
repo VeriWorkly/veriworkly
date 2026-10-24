@@ -9,6 +9,7 @@ import { PageHero, PageClosing, PageSection } from "@/components/marketing/PageL
 import { LandingButton } from "@/components/marketing/LandingButton";
 
 import { faqs, categories } from "@/features/faq/data/faqItems";
+import { FAQ_IDS } from "@/features/ats-engine/data/content";
 import FaqInteractiveSection from "@/features/faq/FaqInteractiveSection";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -46,17 +47,21 @@ const FAQPage = () => {
     ],
   };
 
+  // The ATS Engine questions are answered on /ats-engine, which carries their FAQPage
+  // markup. They stay visible here, but only one page should mark up a given question.
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: faq.answer,
-      },
-    })),
+    mainEntity: faqs
+      .filter((faq) => !FAQ_IDS.includes(faq.id))
+      .map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
   };
 
   return (

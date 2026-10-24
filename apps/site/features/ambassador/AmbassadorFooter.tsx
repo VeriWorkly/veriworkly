@@ -18,26 +18,26 @@ const AmbassadorFooter = () => {
       links: [
         { label: "Features", href: "/features" },
         { label: "Pricing", href: "/pricing" },
-        { label: "Integrations", href: "/integrations" },
+        { label: "Templates", href: "/templates" },
         { label: "Changelog", href: "/changelog" },
       ],
     },
     {
       title: "Resources",
       links: [
-        { label: "Documentation", href: "/docs" },
-        { label: "Tutorials", href: "/tutorials" },
-        { label: "Blog", href: "/blog" },
-        { label: "Support", href: "/support" },
+        { label: "Documentation", href: siteConfig.links.docs },
+        { label: "FAQ", href: "/faq" },
+        { label: "Blog", href: siteConfig.links.blog },
+        { label: "Support", href: "/contact" },
       ],
     },
     {
       title: "Company",
       links: [
         { label: "About", href: "/about" },
-        { label: "Careers", href: "/careers" },
+        { label: "Roadmap", href: "/roadmap" },
         { label: "Contact", href: "/contact" },
-        { label: "Partners", href: "/partners" },
+        { label: "Affiliate program", href: "/affiliate" },
       ],
     },
   ];

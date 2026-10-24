@@ -15,10 +15,11 @@ import path from "node:path";
 const LIGHTHOUSE = "lighthouse@13.5.0";
 const PAGES = ["/", "/pricing", "/ats-checker", "/templates", "/changelog", "/compare/rezi"];
 
-const baseUrl = (process.argv[2] ?? process.env.LIGHTHOUSE_BASE_URL ?? "http://localhost:3100").replace(
-  /\/+$/,
-  "",
-);
+const baseUrl = (
+  process.argv[2] ??
+  process.env.LIGHTHOUSE_BASE_URL ??
+  "http://localhost:3100"
+).replace(/\/+$/, "");
 
 const outDir = path.resolve(".lighthouse");
 mkdirSync(outDir, { recursive: true });
@@ -49,11 +50,28 @@ const score = (report: LighthouseReport, id: string) =>
 const metric = (report: LighthouseReport, id: string) => report.audits[id]?.numericValue ?? NaN;
 
 function lcpElement(report: LighthouseReport) {
-  const first = report.audits["largest-contentful-paint-element"]?.details?.items?.[0];
-  const inner = (first?.items as Array<Record<string, unknown>> | undefined)?.[0];
-  const node = (inner?.node ?? first?.node) as { snippet?: string } | undefined;
+  // Lighthouse 13 reports the element inside the LCP breakdown insight; older versions
+  // had a dedicated audit. Walk whatever is there for the first node snippet.
+  const details =
+    report.audits["lcp-breakdown-insight"]?.details ??
+    report.audits["largest-contentful-paint-element"]?.details;
 
-  return (node?.snippet ?? "").replace(/\s+/g, " ").slice(0, 60);
+  const queue: unknown[] = [details];
+
+  while (queue.length) {
+    const current = queue.shift();
+
+    if (!current || typeof current !== "object") continue;
+
+    const record = current as Record<string, unknown>;
+    const node = record.node as { snippet?: string } | undefined;
+
+    if (node?.snippet) return node.snippet.replace(/\s+/g, " ").slice(0, 60);
+
+    queue.push(...Object.values(record));
+  }
+
+  return "";
 }
 
 const rows: Row[] = [];
@@ -63,22 +81,22 @@ for (const page of PAGES) {
   const name = page === "/" ? "home" : page.slice(1).replace(/\//g, "-");
   const jsonPath = path.join(outDir, `${name}.json`);
 
-  const result = spawnSync(
+  // One command string: npx is a .cmd shim on Windows, which Node only runs through a shell.
+  const command = [
     "npx",
-    [
-      "--yes",
-      LIGHTHOUSE,
-      `${baseUrl}${page}`,
-      "--form-factor=mobile",
-      "--throttling-method=simulate",
-      "--only-categories=performance,seo,accessibility",
-      "--output=json",
-      `--output-path=${jsonPath}`,
-      '--chrome-flags="--headless=new --no-sandbox"',
-      "--quiet",
-    ],
-    { stdio: "inherit", shell: true },
-  );
+    "--yes",
+    LIGHTHOUSE,
+    `"${baseUrl}${page}"`,
+    "--form-factor=mobile",
+    "--throttling-method=simulate",
+    "--only-categories=performance,seo,accessibility",
+    "--output=json",
+    `"--output-path=${jsonPath}"`,
+    '--chrome-flags="--headless=new --no-sandbox"',
+    "--quiet",
+  ].join(" ");
+
+  const result = spawnSync(command, { stdio: "inherit", shell: true });
 
   if (result.status !== 0) {
     failures.push(page);
