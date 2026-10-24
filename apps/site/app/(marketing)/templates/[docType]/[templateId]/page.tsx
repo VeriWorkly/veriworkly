@@ -189,9 +189,13 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
                 }`}
               >
                 <TemplatePreview
-                  priority
+                  loading="lcp"
                   template={template}
-                  sizes="(min-width: 1180px) 560px, (min-width: 1024px) 46vw, 92vw"
+                  sizes={
+                    isPortfolioTemplate
+                      ? "(min-width: 1180px) 560px, (min-width: 1024px) 46vw, 92vw"
+                      : "(min-width: 640px) 448px, 208px"
+                  }
                   className={isPortfolioTemplate ? "w-full" : "w-full max-w-[13rem] sm:max-w-md"}
                 />
               </div>

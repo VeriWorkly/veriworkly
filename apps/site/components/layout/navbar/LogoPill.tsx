@@ -11,7 +11,6 @@ export const LogoPill = () => {
       className="group pointer-events-auto relative flex items-center gap-2.5 rounded-full border border-black/5 bg-white/75 px-4.5 py-2 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] dark:border-white/10 dark:bg-[#111]/80 dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)]"
     >
       <Image
-        priority
         width={22}
         height={22}
         alt="VeriWorkly"

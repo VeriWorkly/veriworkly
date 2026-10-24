@@ -7,7 +7,8 @@ import type { TemplateSummary } from "@/config/templates";
 type Props = {
   template: Pick<TemplateSummary, "name" | "documentType" | "documentTypeLabel" | "previewImage">;
   sizes: string;
-  priority?: boolean;
+  /** "lcp": the page's largest image (eager, high fetch priority); "eager": above the fold. */
+  loading?: "lcp" | "eager";
   className?: string;
 };
 
@@ -16,7 +17,7 @@ type Props = {
  * portfolio websites are a wide browser screenshot (1900x937). Cropping either into the
  * other's frame throws away most of the picture, so the shape follows the document type.
  */
-const TemplatePreview = ({ template, sizes, priority, className }: Props) => {
+const TemplatePreview = ({ template, sizes, loading, className }: Props) => {
   const isPortfolio = template.documentType === "portfolio-website";
 
   return (
@@ -30,8 +31,9 @@ const TemplatePreview = ({ template, sizes, priority, className }: Props) => {
     >
       <Image
         fill
-        priority={priority}
         sizes={sizes}
+        loading={loading ? "eager" : undefined}
+        fetchPriority={loading === "lcp" ? "high" : undefined}
         src={template.previewImage}
         alt={`${template.name} ${template.documentTypeLabel.toLowerCase()} template preview`}
         className={isPortfolio ? "object-cover object-top" : "object-contain object-top"}

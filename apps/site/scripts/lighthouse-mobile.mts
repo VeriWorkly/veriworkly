@@ -64,7 +64,8 @@ function lcpElement(report: LighthouseReport) {
     if (!current || typeof current !== "object") continue;
 
     const record = current as Record<string, unknown>;
-    const node = record.node as { snippet?: string } | undefined;
+    const node = (record.type === "node" ? record : record.node) as
+      { snippet?: string } | undefined;
 
     if (node?.snippet) return node.snippet.replace(/\s+/g, " ").slice(0, 60);
 

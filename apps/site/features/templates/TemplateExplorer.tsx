@@ -120,7 +120,7 @@ const TemplateExplorer = ({ templates, noun }: Props) => {
         <ul className={templateGridClass(isPortfolio)}>
           {visible.map((template, position) => (
             <li key={template.id}>
-              <TemplateCard template={template} priority={position < 4} />
+              <TemplateCard template={template} loading={position < 4 ? "eager" : undefined} />
             </li>
           ))}
         </ul>

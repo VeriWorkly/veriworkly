@@ -5,16 +5,16 @@ import { jsonLdScriptProps } from "@/utils/json-ld";
 import { appRef, organizationRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
+import { AtsHero } from "@/features/ats-checker/components/hero/AtsHero";
+import { AtsCheckerFaq } from "@/features/ats-checker/components/faq/AtsCheckerFaq";
+import { TierComparison } from "@/features/ats-checker/components/pricing/TierComparison";
+import { AtsDirectAnswer } from "@/features/ats-checker/components/guide/AtsDirectAnswer";
+import { AtsFailureTraps } from "@/features/ats-checker/components/traps/AtsFailureTraps";
+import { AtsCategoriesGrid } from "@/features/ats-checker/components/dimensions/AtsCategoriesGrid";
 import {
-  AtsHero,
-  AtsScoreFacts,
-  AtsCheckerFaq,
-  TierComparison,
-  AtsDirectAnswer,
-  AtsFailureTraps,
-  AtsCategoriesGrid,
   AtsPipelineSection,
-} from "@/features/ats-checker";
+  AtsScoreFacts,
+} from "@/features/ats-checker/components/pipeline/AtsPipelineSection";
 import { faqs } from "@/features/faq/data/faqItems";
 import { PageClosing } from "@/components/marketing/PageLayout";
 import { MotionIsland } from "@/providers/motion-island";

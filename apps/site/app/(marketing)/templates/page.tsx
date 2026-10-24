@@ -121,14 +121,14 @@ const TemplatesPortalPage = () => {
       >
         {/* The page's picture: one real export of each kind, large enough to read. */}
         <ul className="grid grid-cols-2 items-end gap-x-4 gap-y-10 sm:gap-x-6 lg:grid-cols-[0.77fr_0.77fr_2.03fr]">
-          {heroWall.map((template) => {
+          {heroWall.map((template, index) => {
             const isPortfolio = template.documentType === "portfolio-website";
 
             return (
               <li key={template.id} className={isPortfolio ? "col-span-2 lg:col-span-1" : ""}>
                 <Link href={getTemplateHref(template)} className={previewLinkClass}>
                   <TemplatePreview
-                    priority
+                    loading={index === 0 ? "lcp" : "eager"}
                     template={template}
                     sizes={
                       isPortfolio

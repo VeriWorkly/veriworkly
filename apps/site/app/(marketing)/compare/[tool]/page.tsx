@@ -3,17 +3,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
-import {
-  COMPETITORS,
-  getCompetitor,
-  CompareClosing,
-  CompareHighlights,
-  CompareScoreboard,
-  CompareFAQSection,
-  FeatureMatrixTable,
-  ComparePricingSection,
-  CompareDeepDiveSection,
-} from "@/features/compare";
+import { COMPETITORS, getCompetitor } from "@/features/compare/data/competitors";
+import CompareClosing from "@/features/compare/components/shared/CompareClosing";
+import CompareHighlights from "@/features/compare/components/detail/CompareHighlights";
+import CompareScoreboard from "@/features/compare/components/shared/CompareScoreboard";
+import CompareFAQSection from "@/features/compare/components/shared/CompareFAQSection";
+import FeatureMatrixTable from "@/features/compare/components/shared/FeatureMatrixTable";
+import ComparePricingSection from "@/features/compare/components/detail/ComparePricingSection";
+import CompareDeepDiveSection from "@/features/compare/components/detail/CompareDeepDiveSection";
 
 import { siteConfig } from "@/config/site";
 

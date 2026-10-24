@@ -5,7 +5,7 @@ import { termsLastUpdated } from "@/features/legal/termsContent";
 import { privacyLastUpdated } from "@/features/legal/privacyContent";
 import { SECURITY_LAST_UPDATED } from "@/features/security/data/lastUpdated";
 import { isAffiliateProgramEnabled, isAmbassadorProgramEnabled } from "@/lib/feature-flags";
-import { COMPETITORS } from "@/features/compare";
+import { COMPETITORS } from "@/features/compare/data/competitors";
 import { documentTypeSummaries, templateSummaries } from "@/config/templates";
 
 import {

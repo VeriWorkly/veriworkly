@@ -9,7 +9,7 @@ import { getTemplateHref } from "./utils";
 
 type TemplateCardProps = {
   template: TemplateSummary;
-  priority?: boolean;
+  loading?: "eager";
   /** h2 directly under the page H1 (gallery), h3 inside a titled section. */
   heading?: "h2" | "h3";
 };
@@ -19,7 +19,7 @@ type TemplateCardProps = {
  * Small enough that a row holds three or four, so a long catalogue stays browsable; the detail
  * page carries everything else.
  */
-const TemplateCard = ({ template, priority, heading: Heading = "h2" }: TemplateCardProps) => {
+const TemplateCard = ({ template, loading, heading: Heading = "h2" }: TemplateCardProps) => {
   const isPortfolio = template.documentType === "portfolio-website";
 
   return (
@@ -34,7 +34,7 @@ const TemplateCard = ({ template, priority, heading: Heading = "h2" }: TemplateC
         )}
       >
         <TemplatePreview
-          priority={priority}
+          loading={loading}
           template={template}
           sizes={
             isPortfolio

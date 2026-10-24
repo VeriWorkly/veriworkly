@@ -10,7 +10,7 @@ import { FRAME, TYPE } from "@/components/marketing/PageLayout";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
-import { AtsCheckerTool } from "@/features/ats-checker";
+import { AtsCheckerTool } from "@/features/ats-checker/components/tool/AtsCheckerTool";
 import { MotionIsland } from "@/providers/motion-island";
 
 const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
