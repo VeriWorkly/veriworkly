@@ -12,8 +12,6 @@ import { statusOptions, kindOptions, buildSearchHref } from "./stats-utils";
 interface StatsFiltersProps {
   status: GitHubFilterStatus;
   kind: GitHubFilterKind;
-  updatedFrom?: string;
-  updatedTo?: string;
 }
 
 const pillClass = (isActive: boolean) =>
@@ -28,7 +26,7 @@ const groupClass = "bg-card flex w-fit max-w-full flex-wrap gap-1 rounded-3xl p-
  * Both filters are links: each view is a real server query, so it can be shared and works
  * without script. The page previously parsed `kind` without rendering a control for it.
  */
-const StatsFilters = ({ status, kind, updatedFrom, updatedTo }: StatsFiltersProps) => (
+const StatsFilters = ({ status, kind }: StatsFiltersProps) => (
   <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
     <nav aria-label="Filter by status" className={groupClass}>
       {statusOptions.map((option) => {
@@ -38,7 +36,7 @@ const StatsFilters = ({ status, kind, updatedFrom, updatedTo }: StatsFiltersProp
           <Link
             key={option.value}
             aria-current={isActive ? "page" : undefined}
-            href={buildSearchHref({ status: option.value, kind, page: 1, updatedFrom, updatedTo })}
+            href={buildSearchHref({ status: option.value, kind, page: 1 })}
             className={pillClass(isActive)}
           >
             {option.label}
@@ -55,7 +53,7 @@ const StatsFilters = ({ status, kind, updatedFrom, updatedTo }: StatsFiltersProp
           <Link
             key={option.value}
             aria-current={isActive ? "page" : undefined}
-            href={buildSearchHref({ status, kind: option.value, page: 1, updatedFrom, updatedTo })}
+            href={buildSearchHref({ status, kind: option.value, page: 1 })}
             className={pillClass(isActive)}
           >
             {option.label}

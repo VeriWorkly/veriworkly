@@ -55,34 +55,6 @@ export function parsePage(raw: string | undefined) {
   return parsed;
 }
 
-export function parseDateInput(raw: string | undefined) {
-  if (!raw) {
-    return undefined;
-  }
-
-  const trimmed = raw.trim();
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return undefined;
-  }
-
-  return trimmed;
-}
-
-export function dateFromToIso(date: string | undefined): string | undefined {
-  if (!date) return undefined;
-  const d = new Date(`${date}T00:00:00.000Z`);
-
-  return isNaN(d.getTime()) ? undefined : d.toISOString();
-}
-
-export function dateToToIso(date: string | undefined): string | undefined {
-  if (!date) return undefined;
-  const d = new Date(`${date}T23:59:59.999Z`);
-
-  return isNaN(d.getTime()) ? undefined : d.toISOString();
-}
-
 export function formatRelativeTime(input: string | null | undefined): string {
   if (!input) return "not synced yet";
 
@@ -136,8 +108,6 @@ export function buildSearchHref(input: {
   status: GitHubFilterStatus;
   kind: GitHubFilterKind;
   page: number;
-  updatedFrom?: string;
-  updatedTo?: string;
 }) {
   const searchParams = new URLSearchParams();
 
@@ -147,14 +117,6 @@ export function buildSearchHref(input: {
 
   if (input.kind !== "all") {
     searchParams.set("kind", input.kind);
-  }
-
-  if (input.updatedFrom) {
-    searchParams.set("updatedFrom", input.updatedFrom);
-  }
-
-  if (input.updatedTo) {
-    searchParams.set("updatedTo", input.updatedTo);
   }
 
   if (input.page > 1) {

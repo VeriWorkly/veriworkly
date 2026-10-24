@@ -15,8 +15,6 @@ interface StatsPaginationProps {
   kind: GitHubFilterKind;
   currentPage: number;
   hasMore: boolean;
-  updatedFrom?: string;
-  updatedTo?: string;
 }
 
 const navLinkClass = (disabled: boolean) =>
@@ -27,19 +25,12 @@ const navLinkClass = (disabled: boolean) =>
       : "hover:bg-foreground hover:text-background focus-visible:ring-accent/40 focus-visible:ring-2 focus-visible:outline-none active:scale-[0.97]",
   );
 
-const StatsPagination = ({
-  status,
-  kind,
-  currentPage,
-  hasMore,
-  updatedFrom,
-  updatedTo,
-}: StatsPaginationProps) => {
+const StatsPagination = ({ status, kind, currentPage, hasMore }: StatsPaginationProps) => {
   const hasPrev = currentPage > 1;
 
   if (!hasPrev && !hasMore) return null;
 
-  const hrefFor = (page: number) => buildSearchHref({ status, kind, page, updatedFrom, updatedTo });
+  const hrefFor = (page: number) => buildSearchHref({ status, kind, page });
 
   return (
     <nav aria-label="Pagination" className="mt-12 flex items-center justify-between gap-4">

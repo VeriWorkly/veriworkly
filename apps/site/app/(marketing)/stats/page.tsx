@@ -12,10 +12,7 @@ import {
   PAGE_SIZE,
   parseKind,
   parsePage,
-  dateToToIso,
   parseStatus,
-  dateFromToIso,
-  parseDateInput,
   formatAbsoluteTime,
   formatRelativeTime,
 } from "@/features/stats/components/stats-utils";
@@ -70,19 +67,13 @@ interface StatsPageProps {
     status?: string;
     kind?: string;
     page?: string;
-    updatedFrom?: string;
-    updatedTo?: string;
   }>;
 }
 
 export async function generateMetadata({ searchParams }: StatsPageProps): Promise<Metadata> {
   const params = await searchParams;
   const page = parsePage(params.page);
-  const isFiltered =
-    parseKind(params.kind) !== "all" ||
-    parseStatus(params.status) !== "all" ||
-    Boolean(parseDateInput(params.updatedFrom)) ||
-    Boolean(parseDateInput(params.updatedTo));
+  const isFiltered = parseKind(params.kind) !== "all" || parseStatus(params.status) !== "all";
 
   return buildPageMetadata({
     ...statsMetadata,
@@ -106,8 +97,6 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
   const kind = parseKind(params.kind);
   const page = parsePage(params.page);
   const status = parseStatus(params.status);
-  const updatedTo = parseDateInput(params.updatedTo);
-  const updatedFrom = parseDateInput(params.updatedFrom);
 
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -118,15 +107,12 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
       kind,
       limit: PAGE_SIZE,
       offset,
-      updatedFrom: dateFromToIso(updatedFrom),
-      updatedTo: dateToToIso(updatedTo),
     }).catch(() => null),
   ]);
 
   const projectUrl = stats?.projectUrl ?? siteConfig.links.github;
 
-  const isFiltered =
-    kind !== "all" || status !== "all" || Boolean(updatedFrom) || Boolean(updatedTo);
+  const isFiltered = kind !== "all" || status !== "all";
 
   const syncedAt = stats?.syncedAt ?? issuePage?.syncedAt ?? null;
   const nextSyncAt = stats?.nextSyncAt ?? null;
@@ -204,12 +190,7 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
           <div className={FRAME}>
             <SectionHeading title="The board." className="mb-10" />
 
-            <StatsFilters
-              kind={kind}
-              status={status}
-              updatedTo={updatedTo}
-              updatedFrom={updatedFrom}
-            />
+            <StatsFilters kind={kind} status={status} />
 
             <StatsBoard
               offset={offset}
@@ -222,9 +203,7 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
               kind={kind}
               status={status}
               hasMore={hasMore}
-              updatedTo={updatedTo}
               currentPage={currentPage}
-              updatedFrom={updatedFrom}
             />
           </div>
         </section>
