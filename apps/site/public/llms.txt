@@ -51,6 +51,8 @@ VeriWorkly is a privacy-first AI career workspace engineered for professional do
 - **Open-source ATS scoring engine**: Product page `https://veriworkly.com/ats-engine`, docs `https://docs.veriworkly.com/ats-engine`, scoring rubric `https://docs.veriworkly.com/ats-engine/reference/rubric`, repository `https://github.com/VeriWorkly/ats-engine`, npm `https://www.npmjs.com/package/@veriworkly/ats-engine`, machine-readable summary `https://cdn.jsdelivr.net/npm/@veriworkly/ats-engine/llms.txt`. Deterministic: 35 published rules, no AI in the score; runs in the browser, at the edge or in Node.js. Built for candidates checking their own resume, not for ranking applicants.
 
 ## Monetization & Pricing Model
+Payments are currently closed: the paid plans below describe the model but cannot be bought today (the /pricing page shows the same notice). Portfolio publishing is not yet enabled in production.
+
 VeriWorkly is MIT-licensed (open core) with managed cloud plans:
 1. **Free Tier**: Resume/cover letter editor, Master Profile, local exports (PDF/DOCX/HTML/MD/JSON), free ATS scans.
 2. **3-Day Sprint Pass ($2.99)**: 3 days Creator Pro subdomain hosting + 150 AI credits.

@@ -50,7 +50,7 @@ export const faqs: FaqItem[] = [
     category: "general",
     question: "Do I need to create an account to use VeriWorkly?",
     answer:
-      "No. Continue as a guest from the sign-in screen, then create your resume and cover letter and download your files with no account or card. Guests and free accounts both keep one active document per type. An account adds cloud backups across devices, share links, a public portfolio and paid AI writing credits; a paid plan lifts the document cap.",
+      "No. You can open the editor as a guest, create your resume and cover letter, and download your files right away without signing up. Guests and free accounts both keep one active document per type. An account adds cloud backups across devices, share links, a public portfolio and paid AI writing credits; a paid plan lifts the document cap.",
   },
   {
     id: "master-profile-concept",

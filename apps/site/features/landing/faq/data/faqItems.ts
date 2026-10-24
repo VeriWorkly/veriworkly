@@ -24,7 +24,7 @@ export const faqs: FAQItem[] = [
     id: "landing-no-signup",
     question: "Do I need to sign up or log in to create a resume?",
     answer:
-      "No. Continue as a guest from the sign-in screen and build your resume or cover letter with no account or card. Guests and free accounts both keep one active document per type; signing in adds cloud sync across devices, share links and portfolio publishing, and a paid plan lifts the document cap.",
+      "No. Click through as a guest and the editor opens with no login or account: choose a template and build your resume or cover letter right away. Guests and free accounts both keep one active document per type; signing in adds cloud sync across devices, share links and portfolio publishing, and a paid plan lifts the document cap.",
     category: "Getting Started",
   },
   {

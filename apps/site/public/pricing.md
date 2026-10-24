@@ -27,9 +27,9 @@ expire rather than renew. Nothing converts from free to paid on its own.
   free accounts alike; paid plans lift it.
 - **AI Writing Credits**: 0 (requires pass or credit add-on)
 
-> **Status**: payments are currently closed, so none of the paid plans below can be bought
-> today; the /pricing page shows the same notice. Portfolio publishing is not yet enabled in
-> production. The tiers below describe the model at launch.
+> **Status**: payments are currently closed, so none of the paid plans below can be
+> bought today; the /pricing page shows the same notice. Portfolio publishing is
+> not yet enabled in production. The tiers below describe the model at launch.
 
 ### 2. 3-Day Sprint Pass
 

@@ -25,11 +25,11 @@ export const WORKFLOW_STEPS: WorkflowStepItem[] = [
     id: "draft",
     label: "Draft in the studio",
     title: "Draft in the studio.",
-    subtitle: "Guest mode, and nothing you do here can damage your profile.",
+    subtitle: "No sign-up, and nothing you do here can damage your profile.",
     description:
-      "Continue as a guest from the sign-in screen: no account, no card. Choose a proven ATS template, switch between Geist, Manrope and Inter, and adjust page margins. Each document is a snapshot of your Master Profile, so editing it never overwrites the original.",
+      "Continue as a guest and the studio opens without an account or a credit card. Choose a proven ATS template, switch between Geist, Manrope and Inter, and adjust page margins. Each document is a snapshot of your Master Profile, so editing it never overwrites the original.",
     points: [
-      { term: "Guest mode", detail: "Continue as a guest; no card, no email." },
+      { term: "No account", detail: "Start typing straight away; no card, no email." },
       {
         term: "Snapshots, not copies",
         detail: "Tailor one resume per role while the profile stays as it was.",

@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     url: siteConfig.url,
     title: "Free AI Resumes, Cover Letters & Web Portfolios | VeriWorkly",
     description:
-      "Build and tailor professional resumes, cover letters, and web portfolios instantly using frontier AI models, accessed through a privacy-conscious gateway. Free, open-core, with a guest mode.",
+      "Build and tailor professional resumes, cover letters, and web portfolios instantly using frontier AI models, accessed through a privacy-conscious gateway. Free, open-core, and no signup required.",
     siteName: "VeriWorkly",
     images: [
       {
@@ -114,7 +114,7 @@ const webApplicationSchema = {
   name: "VeriWorkly",
   url: siteConfig.url,
   description:
-    "Free privacy-first career workspace with AI resume builder, cover letter writer, and portfolio builder. Start as a guest; sign in only to sync. Create, tailor, and export professional resumes, cover letters, and web portfolios privately.",
+    "Free privacy-first career workspace with AI resume builder, cover letter writer, and portfolio builder. No signup required. Create, tailor, and export professional resumes, cover letters, and web portfolios privately.",
 
   applicationCategory: "BusinessApplication",
   operatingSystem: "All",
@@ -124,7 +124,7 @@ const webApplicationSchema = {
   publisher: { "@id": ORGANIZATION_ID },
 
   featureList: [
-    "Guest mode & local-first storage",
+    "No login required & local-first",
     "Privacy-first AI resume builder & tailoring",
     "AI cover letter generator",
     "Portfolio publishing on a veriworkly.com subdomain (opens at launch)",

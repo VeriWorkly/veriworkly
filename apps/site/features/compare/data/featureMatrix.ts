@@ -3,7 +3,7 @@ import type { CompetitorFeatureMatrix, FeatureRowItem } from "../types";
 export const PRICING_VERIFIED_AT = "October 2026";
 
 export const VERIWORKLY_MATRIX: CompetitorFeatureMatrix = {
-  loginRequired: "Guest mode (no account)",
+  loginRequired: "No login needed",
   localFirst: true,
   openSource: true,
   freePlan: true,

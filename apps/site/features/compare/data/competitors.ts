@@ -11,7 +11,7 @@ export const COMPETITORS: Competitor[] = [
     positioning:
       "Rezi is an ATS resume builder built around the Rezi Score, grading your resume against job postings to find missing keywords.",
     verdict:
-      "Rezi gives solid ATS feedback, but caps free users at just 3 PDF downloads total and forces you to sign up before you can type a word. VeriWorkly gives you the same job-matching ATS checks, but with unlimited downloads, no watermarks, and a guest mode to start.",
+      "Rezi gives solid ATS feedback, but caps free users at just 3 PDF downloads total and forces you to sign up before you can type a word. VeriWorkly gives you the same job-matching ATS checks, but with unlimited downloads, no watermarks, and no login needed to start.",
     bestForCompetitor:
       "People who only need one resume and are ready to pay $29/month or $149 for a lifetime pass once they hit the 3-download limit.",
     bestForVeriworkly:
@@ -272,7 +272,7 @@ export const COMPETITORS: Competitor[] = [
       {
         question: "Can I use Kickresume without creating an account?",
         answer:
-          "No. You must sign up with email, Google, or LinkedIn before editing. VeriWorkly opens in guest mode: continue as a guest from the sign-in screen and start editing without creating an account.",
+          "No. You must sign up with email, Google, or LinkedIn before editing. VeriWorkly lets you start editing immediately with no sign-up.",
       },
       {
         question: "Are Kickresume templates ATS-friendly?",

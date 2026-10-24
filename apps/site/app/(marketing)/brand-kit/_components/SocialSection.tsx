@@ -7,7 +7,7 @@ import BrandSectionHeader from "./BrandSectionHeader";
 
 const PREVIEW_TITLE = "One profile. Every document.";
 const PREVIEW_DESC =
-  "Free AI resumes, cover letters and web portfolios. Start as a guest, no card.";
+  "Free AI resumes, cover letters and web portfolios. No login required to start.";
 
 const preview = (theme: "light" | "dark") =>
   `/api/og?title=${encodeURIComponent(PREVIEW_TITLE)}&description=${encodeURIComponent(

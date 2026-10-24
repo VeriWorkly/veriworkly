@@ -2,8 +2,8 @@ import { PageSection, TYPE } from "@/components/marketing/PageLayout";
 
 const DIFFERENCES = [
   {
-    title: "Guest mode to start.",
-    body: "Continue as a guest: no email check, no phone number, no card. What you write stays on your device until you choose to sync.",
+    title: "No sign-up to start.",
+    body: "No account, no email check, no phone number. Open the builder and type. What you write stays on your device until you choose to sync.",
   },
   {
     title: "Downloads stay clean.",

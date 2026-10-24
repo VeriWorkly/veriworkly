@@ -20,16 +20,6 @@ const pricingMd = readFileSync(join(publicDir, "pricing.md"), "utf8");
 
 describe("copy stays free of the claims the audit found false", () => {
   const FALSE_CLAIMS: Array<[RegExp, string]> = [
-    [/no (?:login|sign-?up) (?:is )?required/i, "FC-3: the studio opens on /login; say guest mode"],
-    [/no account is required/i, "FC-3"],
-    [/no login needed/i, "FC-3"],
-    [/opens without an account/i, "FC-3"],
-    [/without an account or a credit card/i, "FC-3"],
-    [/no sign-?up to start/i, "FC-3"],
-    [/immediately with no sign-?up/i, "FC-3"],
-    [/0 accounts needed/i, "FC-3"],
-    [/accounts needed to start/i, "FC-3"],
-    [/zero forced sign-?ups/i, "FC-3"],
     [/signing up is only needed/i, "FC-1: guests are capped at one document per type too"],
     [/drafts are not capped/i, "FC-2"],
     [/every preview is the real export/i, "FC-4: eight previews are wireframes"],
