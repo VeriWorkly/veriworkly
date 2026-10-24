@@ -34,6 +34,13 @@ const routePatterns = walk(appDir, ["page.tsx", "route.ts"]).map((file) =>
     .join("/"),
 );
 
+/** Metadata routes: app/sitemap.ts serves /sitemap.xml, app/robots.ts /robots.txt. */
+for (const [file, route] of [
+  ["sitemap.ts", "sitemap.xml"],
+  ["robots.ts", "robots.txt"],
+] as const)
+  if (existsSync(join(appDir, file))) routePatterns.push(route);
+
 function matchesRoute(path: string) {
   const segments = path.split("/").filter(Boolean);
 
@@ -119,5 +126,26 @@ describe("redirects", () => {
         `${redirect.source} -> ${destination} does not resolve`,
       ).toBe(true);
     }
+  });
+});
+
+describe("llms.txt", () => {
+  const llms = readFileSync(join(root, "public", "llms.txt"), "utf8");
+
+  it("uses llmstxt.org markdown links, not backticked URLs (W-018)", () => {
+    expect(llms).toMatch(/^# VeriWorkly\r?\n\r?\n> /);
+    expect(llms).not.toMatch(/`https?:\/\//);
+    expect([...llms.matchAll(/\]\(https:\/\//g)].length).toBeGreaterThan(40);
+  });
+
+  it("links only to pages and files that exist on veriworkly.com", () => {
+    const paths = [...llms.matchAll(/\]\(https:\/\/veriworkly\.com(\/[^)#?]*)?\)/g)].map(
+      (m) => (m[1] ?? "/").replace(/\/+$/, "") || "/",
+    );
+
+    const broken = paths.filter((path) => !matchesRoute(path) && !isPublicFile(path));
+
+    expect(paths.length).toBeGreaterThan(30);
+    expect(broken).toEqual([]);
   });
 });

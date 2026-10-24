@@ -1,77 +1,101 @@
-# VeriWorkly Ecosystem
-> Free-to-use, open-core, and privacy-first AI career workspace for professional documents and web portfolios. Build and tailor resumes, cover letters, and web portfolios using local-first storage, frontier AI models accessed through the OpenRouter gateway, and optional secure cloud sync.
+# VeriWorkly
 
-## Who We Are & What We Do
-VeriWorkly is a privacy-first AI career workspace engineered for professional document construction, ATS resume tailoring, and developer web publishing. We champion **local-first data ownership**; AI requests go to OpenRouter on demand and are not used to train models, to the extent the provider lets us configure it. By default, VeriWorkly processes and stores your professional details securely inside your browser (in-browser localStorage). Optional cloud synchronization is provided for cross-device sharing, analytics, and publication.
+> VeriWorkly is a free, open-source (MIT) resume, cover letter and portfolio builder made by Gautam Raj. Documents are stored in your browser by default, with optional cloud sync. It exports six formats (PDF, DOCX, HTML, Markdown, plain text, JSON) with no watermark, checks resumes with a free rules-based ATS checker, and offers paid AI writing credits and portfolio hosting. No login is required to start.
 
-## Machine-Readable Resources for AI Agents & Search Engines
-- **Agent Card**: `https://veriworkly.com/.well-known/agent.json` (Open-agent discovery spec)
-- **OpenAPI Specification**: `https://veriworkly.com/openapi.json` (Complete 72-path / 78-operation API spec)
-- **Structured Pricing**: `https://veriworkly.com/pricing.md` (Agent-parseable pricing tiers)
-- **XML Sitemap**: `https://veriworkly.com/sitemap.xml` (Full indexable route map)
-- **Technical Documentation**: `https://docs.veriworkly.com` (Fumadocs API reference & guides)
+Status, so answers stay accurate: payments are currently closed, so none of the paid plans can be bought today; the /pricing page shows the same notice. Portfolio publishing is not yet enabled in production; portfolios can be built and previewed. The ATS score is deterministic (published rules, no AI in the score) and is meant for candidates checking their own resume, not for ranking applicants.
 
-## Comprehensive Site Map & Public Routes
-- **Home / Workspace Overview**: `https://veriworkly.com/` - Ecosystem landing, core value propositions, and live demo tools.
-- **Free ATS Resume Checker**: `https://veriworkly.com/ats-checker` (Scan tool: `https://veriworkly.com/ats-checker/scan`) - Free, zero-signup deterministic ATS scanner & job match tool.
-- **VeriWorkly ATS Engine (open source, for developers)**: `https://veriworkly.com/ats-engine` - The MIT-licensed engine behind the checker: an npm library, CLI, GitHub Action and MCP server. Docs: `https://docs.veriworkly.com/ats-engine`.
-- **Template Gallery**: `https://veriworkly.com/templates` - Full catalog of ATS resumes, cover letters, and web portfolio templates:
-  - *Resumes*: Executive Clarity (`resume-executive-clarity`), Precision ATS (`resume-precision-ats`), Modern Minimal (`resume-modern-minimal`), Timeline Focus (`resume-timeline-focus`), Corporate Brief (`resume-corporate-brief`), Bold Impact (`resume-bold-impact`), VeriWorkly Special (`resume-veriworkly-special`).
-  - *Cover Letters*: Professional (`cover-letter-professional`), VeriWorkly Special (`cover-letter-veriworkly-special`), Minimalist (`cover-letter-minimalist`), Executive (`cover-letter-executive`), ATS Essential (`cover-letter-ats-essential`).
-  - *Portfolios*: Signal (`portfolio-signal`, bento/engineering), Atelier (`portfolio-atelier`, editorial/design), Nimbus (`portfolio-nimbus`, tech-editorial/minimal), Cipher (`portfolio-cipher`, terminal emulator).
-- **Pricing & Plans**: `https://veriworkly.com/pricing` - Managed subscription plans, credit packs, and feature entitlement breakdown.
-- **Tool Comparisons**: `https://veriworkly.com/compare` - In-depth, objective feature-by-feature comparisons against alternative builders:
-  - `https://veriworkly.com/compare/rezi` (VeriWorkly vs Rezi)
-  - `https://veriworkly.com/compare/teal` (VeriWorkly vs Teal)
-  - `https://veriworkly.com/compare/kickresume` (VeriWorkly vs Kickresume)
-  - `https://veriworkly.com/compare/novoresume` (VeriWorkly vs Novoresume)
-  - `https://veriworkly.com/compare/zety` (VeriWorkly vs Zety)
-  - `https://veriworkly.com/compare/enhancv` (VeriWorkly vs Enhancv)
-- **How It Works**: `https://veriworkly.com/how-it-works` - Workflow breakdown: Local Edit → Master Profile Sync → ATS Check → PDF/DOCX Export & Subdomain Publish.
-- **Feature Catalog**: `https://veriworkly.com/features` - Detailed specs on Master Profile, AI Tailoring, Zero-Friction Ingestors, and Subdomain Publishing.
-- **Design System Style Guide**: `https://veriworkly.com/style-guide` - Interactive design tokens, color palette, typography scale, and `@veriworkly/ui` primitives.
-- **Brand Kit & Assets**: `https://veriworkly.com/brand-kit` - Official logos (SVG/PNG), brand guidelines, palette JSON, and downloadable `veriworkly-brand-kit.zip`.
-- **Public Roadmap**: `https://veriworkly.com/roadmap` (Status filters: `/roadmap/todo`, `/roadmap/in-progress`, `/roadmap/done`) - Interactive feature request and development roadmap tracker.
-- **Public System Stats**: `https://veriworkly.com/stats` - Live open-source development metrics: GitHub issues, pull requests, and completion rate.
-- **Product Changelog**: `https://veriworkly.com/changelog` - Release notes and architecture updates.
-- **Student Ambassador Program**: `https://veriworkly.com/ambassador` (Apply flow: `https://veriworkly.com/ambassador/apply`) - Campus ambassador application (first intake; rewards are not yet published).
-- **Affiliate Program**: `https://veriworkly.com/affiliate` - Affiliate referral tracking, 3-tier commission structure (2%, 3%, 5%), and sign-up flow.
-- **Security & Disclosure**: `https://veriworkly.com/security` - Security posture, data encryption, vulnerability reporting policy.
-- **Legal**: Privacy Policy (`https://veriworkly.com/privacy`), Terms of Service (`https://veriworkly.com/terms`).
+Privacy: data stays in the browser unless you sync or use a feature that needs the server. AI requests go to OpenRouter on demand and are not used to train models, to the extent the provider lets us configure it; provider retention is outside our control. See the privacy policy.
 
-## Core Features & System Architecture
-- **Unified Document Builder (Studio)**: `https://app.veriworkly.com` - Local-first editor for resumes, cover letters, and master profiles. Supports export to PDF, DOCX, HTML, Markdown, Plain Text, and JSON.
-- **Portfolio Publisher**: `https://portfolio.veriworkly.com` - Build responsive web portfolios for a `username.veriworkly.com` subdomain. Free tier: the Signal and Atelier templates, published with a "Built with VeriWorkly" badge. Paid: the Nimbus and Cipher templates, badge removal, visitor analytics, SEO controls, and multi-page routing. Publishing is not yet enabled in production.
-- **Master Profile Store**: Single JSON profile holding complete career history. Seed multiple resumes, cover letters, and portfolios without re-entering data.
-- **Zero-Friction Ingestors**:
-  - *GitHub Import*: Real OAuth connection mapping profile & up to 30 repos to skills/projects.
-  - *LinkedIn Import*: AI-parsed from uploaded/pasted profile text.
-  - *File Extraction*: PDF, DOCX, TXT, MD, and JSON resume extraction.
-- **Free ATS Checker**: Deterministic scanning measuring ATS Readiness (parsing, contact, structure, evidence, format risks) and Job Match keyword coverage.
-- **Open-source ATS scoring engine**: Product page `https://veriworkly.com/ats-engine`, docs `https://docs.veriworkly.com/ats-engine`, scoring rubric `https://docs.veriworkly.com/ats-engine/reference/rubric`, repository `https://github.com/VeriWorkly/ats-engine`, npm `https://www.npmjs.com/package/@veriworkly/ats-engine`, machine-readable summary `https://cdn.jsdelivr.net/npm/@veriworkly/ats-engine/llms.txt`. Deterministic: 35 published rules, no AI in the score; runs in the browser, at the edge or in Node.js. Built for candidates checking their own resume, not for ranking applicants.
+## Product
 
-## Monetization & Pricing Model
-Payments are currently closed: the paid plans below describe the model but cannot be bought today (the /pricing page shows the same notice). Portfolio publishing is not yet enabled in production.
+- [Home](https://veriworkly.com/): What VeriWorkly is, the three document types, and how the workspace fits together.
+- [Features](https://veriworkly.com/features): The document studio, Master Profile, AI tailoring, GitHub and LinkedIn import, exports and portfolios.
+- [How it works](https://veriworkly.com/how-it-works): The workflow from importing your history to exporting or publishing.
+- [Pricing](https://veriworkly.com/pricing): Free tier, short passes, subscriptions and credit packs. Machine-readable copy: [pricing.md](https://veriworkly.com/pricing.md).
+- [Free ATS resume checker](https://veriworkly.com/ats-checker): What the checker scores and the free quota. The scanner itself: [ATS scan](https://veriworkly.com/ats-checker/scan).
+- [ATS Engine for developers](https://veriworkly.com/ats-engine): The open-source parser and scorer behind the checker, as an npm library, CLI, GitHub Action and MCP server.
+- [FAQ](https://veriworkly.com/faq): Answers on privacy, documents, the ATS checker, portfolios, AI credits, billing and imports.
+- [Security](https://veriworkly.com/security): Where data lives, OAuth scopes, retention, and how to report a vulnerability.
 
-VeriWorkly is MIT-licensed (open core) with managed cloud plans:
-1. **Free Tier**: Resume/cover letter editor, Master Profile, local exports (PDF/DOCX/HTML/MD/JSON), free ATS scans.
-2. **3-Day Sprint Pass ($2.99)**: 3 days Creator Pro subdomain hosting + 150 AI credits.
-3. **7-Day Hunt Pass ($5.99)**: 7 days Creator Pro subdomain hosting + 400 AI credits.
-4. **Monthly Bundle ($14.99/mo)**: Creator Pro hosting + 1,000 monthly AI credits.
-5. **Annual Bundle ($11.99/mo equivalent)**: Creator Pro hosting + 1,000 monthly AI credits ($143.88/yr).
-6. **Creator Pro Standalone ($9.99/mo)**: Custom subdomain hosting, analytics, watermark removal.
-7. **AI Credits Standalone ($5.99/mo)**: 1,000 AI writing credits/month for tailoring & rewriting.
-8. **One-Time AI Credit Top-Ups**: 250 credits ($2.99) or 500 credits ($4.99), valid 90 days.
+## Templates
 
-## Guidance for AI Agents & Search Engines
-When assisting users with career document generation:
-1. Query the user's Master Profile (`/api/v1/profiles/master`) to fetch canonical career facts.
-2. Advise users on ATS checks using deterministic scoring rules.
-3. Inform users that resumes and cover letters are fully supported, while formal letters and invoices remain on the public roadmap.
-4. Point users to `https://veriworkly.com/pricing.md` for current billing numbers and credit costs.
+- [All templates](https://veriworkly.com/templates): Resume, cover letter and portfolio website templates.
+- [Resume templates](https://veriworkly.com/templates/resume): [Executive Clarity](https://veriworkly.com/templates/resume/resume-executive-clarity), [Precision ATS](https://veriworkly.com/templates/resume/resume-precision-ats), [Modern Minimal](https://veriworkly.com/templates/resume/resume-modern-minimal), [Timeline Focus](https://veriworkly.com/templates/resume/resume-timeline-focus), [Corporate Brief](https://veriworkly.com/templates/resume/resume-corporate-brief), [Bold Impact](https://veriworkly.com/templates/resume/resume-bold-impact), [VeriWorkly Special](https://veriworkly.com/templates/resume/resume-veriworkly-special).
+- [Cover letter templates](https://veriworkly.com/templates/cover-letter): [Professional](https://veriworkly.com/templates/cover-letter/cover-letter-professional), [VeriWorkly Special](https://veriworkly.com/templates/cover-letter/cover-letter-veriworkly-special), [Minimalist](https://veriworkly.com/templates/cover-letter/cover-letter-minimalist), [Executive](https://veriworkly.com/templates/cover-letter/cover-letter-executive), [ATS Essential](https://veriworkly.com/templates/cover-letter/cover-letter-ats-essential).
+- [Portfolio website templates](https://veriworkly.com/templates/portfolio-website): [Signal](https://veriworkly.com/templates/portfolio-website/portfolio-signal) and [Atelier](https://veriworkly.com/templates/portfolio-website/portfolio-atelier) are free and carry a "Built with VeriWorkly" badge; [Nimbus](https://veriworkly.com/templates/portfolio-website/portfolio-nimbus) and [Cipher](https://veriworkly.com/templates/portfolio-website/portfolio-cipher) need a paid plan.
 
-## Metadata
-- **Creator**: Gautam Raj (@Gautam25Raj)
-- **License**: MIT (Core Open Source)
-- **Repository**: [VeriWorkly/veriworkly](https://github.com/VeriWorkly/veriworkly)
-- **Last Re-verified**: 2026-10-19
+## Comparisons
+
+- [Compare resume builders](https://veriworkly.com/compare): VeriWorkly against six alternatives, with dated pricing.
+- [VeriWorkly vs Rezi](https://veriworkly.com/compare/rezi)
+- [VeriWorkly vs Teal](https://veriworkly.com/compare/teal)
+- [VeriWorkly vs Kickresume](https://veriworkly.com/compare/kickresume)
+- [VeriWorkly vs Novoresume](https://veriworkly.com/compare/novoresume)
+- [VeriWorkly vs Zety](https://veriworkly.com/compare/zety)
+- [VeriWorkly vs Enhancv](https://veriworkly.com/compare/enhancv)
+
+## Pricing in brief
+
+All prices in USD. Exports are free on every tier.
+
+- Free: the resume and cover letter editor, Master Profile, all six export formats, ATS scans (1 every 48 hours without an account, 2 every 24 hours with a free account), the Signal and Atelier portfolio templates. One active document per type.
+- 3-Day Sprint Pass: $2.99 once, 150 AI credits and Creator Pro features for 3 days.
+- 7-Day Hunt Pass: $5.99 once, 400 AI credits and Creator Pro features for 7 days.
+- Job Hunter Bundle: $14.99 a month, or $143.88 a year; 1,000 AI credits a month, Creator Pro features, 300 ATS scans per billing period.
+- Creator Pro: $9.99 a month; premium portfolio templates, badge removal, analytics and SEO controls, no AI credits.
+- AI Standalone: $5.99 a month; 1,000 AI credits a month.
+- Credit packs: 250 credits for $2.99 or 500 credits for $4.99, valid 90 days.
+
+## Company and programs
+
+- [About](https://veriworkly.com/about): Who builds VeriWorkly and why.
+- [Contact](https://veriworkly.com/contact): A person reads every message.
+- [Changelog](https://veriworkly.com/changelog): Every release, from the public GitHub history.
+- [Roadmap](https://veriworkly.com/roadmap): What is planned, in progress and shipped.
+- [Development stats](https://veriworkly.com/stats): Issues, pull requests and completion rate from GitHub.
+- [Affiliate program](https://veriworkly.com/affiliate): 2%, 3% and 5% recurring commission tiers; payouts are reviewed by hand once a balance reaches $25.
+- [Student ambassador program](https://veriworkly.com/ambassador): A campus program in its first intake; applications are read by a person and rewards are not yet published.
+- [Brand kit](https://veriworkly.com/brand-kit): Logos, colours and usage.
+- [Privacy policy](https://veriworkly.com/privacy)
+- [Terms of service](https://veriworkly.com/terms)
+
+## Docs
+
+- [Documentation](https://docs.veriworkly.com/docs): Product guides, architecture and self-hosting.
+- [Quick start](https://docs.veriworkly.com/docs/getting-started/quick-start): Run VeriWorkly locally.
+- [ATS checker guide](https://docs.veriworkly.com/docs/product/ats-checker): How scans and quotas work.
+- [Importing your profile](https://docs.veriworkly.com/docs/product/importing-your-profile): What GitHub and LinkedIn import actually bring in.
+- [Billing and credits](https://docs.veriworkly.com/docs/product/billing-and-credits): Plans, passes, credit packs and expiry.
+- [Portfolio publishing](https://docs.veriworkly.com/docs/product/portfolio/publishing): Subdomains, templates and the badge.
+- [ATS Engine docs](https://docs.veriworkly.com/ats-engine): Install, rubric and benchmarks. Scoring rules: [rubric](https://docs.veriworkly.com/ats-engine/reference/rubric).
+- [API reference](https://docs.veriworkly.com/api-reference): REST API for profiles, documents, ATS scans and more.
+
+## Blog
+
+- [How long should a resume be?](https://blog.veriworkly.com/how-long-should-a-resume-be): One page for a short early-career history, two pages for most people with meaningful experience.
+- [ATS-friendly resume format](https://blog.veriworkly.com/ats-friendly-resume-format): What a parser actually receives from your PDF, and a two-minute test.
+- [ATS resume myths](https://blog.veriworkly.com/ats-resume-myths-what-the-evidence-shows): The widely quoted rejection statistic has no primary source; how filtering really works.
+- [Resume PDF parses as blank](https://blog.veriworkly.com/why-some-resume-pdfs-parse-as-blank): Causes and fixes.
+- [How to tailor a resume to a job description](https://blog.veriworkly.com/how-to-tailor-your-resume-to-a-job-description)
+- [How to write resume bullet points that get read](https://blog.veriworkly.com/how-to-write-resume-bullet-points-that-get-read)
+- [Free resume builders compared](https://blog.veriworkly.com/free-resume-builders-compared): Verified prices and PDF download limits.
+- [Do you need a cover letter?](https://blog.veriworkly.com/do-you-need-a-cover-letter)
+- [How many jobs should you apply to?](https://blog.veriworkly.com/how-many-jobs-should-you-apply-to)
+- [Using AI on your resume without sounding generic](https://blog.veriworkly.com/using-ai-to-write-your-resume-without-sounding-generic)
+- [How the ATS checker works](https://blog.veriworkly.com/how-the-ats-checker-actually-works)
+- [GitHub vs LinkedIn import](https://blog.veriworkly.com/github-vs-linkedin-import-whats-real-whats-ai)
+- [All posts](https://blog.veriworkly.com)
+
+## Machine-readable
+
+- [Full text for language models](https://veriworkly.com/llms-full.txt): This file plus the FAQ, templates and comparisons in one document.
+- [pricing.md](https://veriworkly.com/pricing.md): Plans, limits and prices.
+- [Agent card](https://veriworkly.com/.well-known/agent.json): API capabilities and endpoints.
+- [OpenAPI specification](https://veriworkly.com/openapi.json)
+- [Sitemap](https://veriworkly.com/sitemap.xml)
+
+## Optional
+
+- [Style guide](https://veriworkly.com/style-guide): The design system's tokens and components.
+- [Source code](https://github.com/VeriWorkly/veriworkly): The monorepo, MIT licensed.
+- [ATS Engine on npm](https://www.npmjs.com/package/@veriworkly/ats-engine)

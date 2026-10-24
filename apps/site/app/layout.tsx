@@ -188,6 +188,10 @@ const RootLayout = ({
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
+        {/* Plain-text guides for language models (llmstxt.org). */}
+        <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
+        <link rel="alternate" type="text/plain" href="/llms-full.txt" title="llms-full.txt" />
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={jsonLdScriptProps(webSiteSchema)}
