@@ -6,13 +6,13 @@ Audit date: 2026-10-24 · branch `feat/ui-package-hardening`; re-verified 2026-1
 
 ## Status
 
-| Phase | Scope                                                                                | Status                                                                  | PRs                                                                                                                                                                           |
-| ----- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0     | Baseline guardrails: build must not depend on the backend; CI/test gaps              | **done** 2026-10-24                                                     | `79438bd4` W-001 + W-012 (resilience), `637051d3` lighthouse script + CI job, `instrumentation.ts`, W-056, `.gitattributes`; `90e1dbcf` deps (W-065 eslint part)              |
-| 1     | SEO/crawl correctness: soft-404s, sitemap, canonicals, structured data, false claims | **done** 2026-10-24; W-004 and W-013 are host or Search Console actions | `0de41020` W-002, W-003, W-005; `dfef091a` + `e67f08c9` W-006, W-019, W-021, W-022, W-025; `e3d2f97d` W-007 to W-011; `b5af2f8d` W-015, W-016, W-017; `a7e2fbaf` W-012, W-014 |
-| 2     | Performance: client/server boundaries, animation stack, images, caching              | not started                                                             |                                                                                                                                                                               |
-| 3     | AEO / agent readiness: llms.txt, agent.json, declarative answers, FAQ parity         | not started                                                             |                                                                                                                                                                               |
-| 4     | Hygiene: silent errors, dead code, duplication, docs, deps                           | not started                                                             |                                                                                                                                                                               |
+| Phase | Scope                                                                                | Status                                                                   | PRs                                                                                                                                                                                                                                                   |
+| ----- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | Baseline guardrails: build must not depend on the backend; CI/test gaps              | **done** 2026-10-24                                                      | `79438bd4` W-001 + W-012 (resilience), `637051d3` lighthouse script + CI job, `instrumentation.ts`, W-056, `.gitattributes`; `90e1dbcf` deps (W-065 eslint part)                                                                                      |
+| 1     | SEO/crawl correctness: soft-404s, sitemap, canonicals, structured data, false claims | **done** 2026-10-24; W-004 and W-013 are host or Search Console actions  | `0de41020` W-002, W-003, W-005; `dfef091a` + `e67f08c9` W-006, W-019, W-021, W-022, W-025; `e3d2f97d` W-007 to W-011; `b5af2f8d` W-015, W-016, W-017; `a7e2fbaf` W-012, W-014                                                                         |
+| 2     | Performance: client/server boundaries, animation stack, images, caching              | **done** 2026-10-24; LCP budget not met in the lab (see Phase 2 results) | `8a1c587e` navbar W-028; `4dafb46b` islands + hero W-026, W-027, W-029; `9d4d7877` W-031, W-032, W-033, W-039; `bfb8172c` W-030; `9a8f64d2` boundaries W-034 part; `ba3abe3e` W-035; `5af1f384` W-036, W-038, W-040 to W-043; `35c54dda` W-037, W-047 |
+| 3     | AEO / agent readiness: llms.txt, agent.json, declarative answers, FAQ parity         | not started                                                              |                                                                                                                                                                                                                                                       |
+| 4     | Hygiene: silent errors, dead code, duplication, docs, deps                           | not started                                                              |                                                                                                                                                                                                                                                       |
 
 ## Baseline (verified this session)
 
@@ -38,6 +38,37 @@ Audit date: 2026-10-24 · branch `feat/ui-package-hardening`; re-verified 2026-1
 | /templates    | 85   | 1.2 s | 4.0 s | 170 ms | 0   | <span class="block">…                               | TTFB 16ms, render delay 535ms  | 2c-1xb2a8o97l.css 307ms; 0f301ojjuvzxs.css 457ms |     |
 | /changelog    | 87   | 1.2 s | 3.6 s | 220 ms | 0   | <span class="text-accent block">…                   | TTFB 246ms, render delay 569ms | 0f301ojjuvzxs.css 460ms; 2c-1xb2a8o97l.css 310ms |     |
 | /compare/rezi | 70   | 1.4 s | 3.7 s | 780 ms | 0   | <span class="block">…                               | TTFB 89ms, render delay 772ms  | 0f301ojjuvzxs.css 453ms; 2c-1xb2a8o97l.css 303ms |     |
+
+## Phase 2 results (2026-10-24, build with the backend unreachable, `next start` on this machine)
+
+Initial JS is every module script a prerendered route loads, gzip -9 (`npx tsx scripts/measure-js.mts`). The audit's figures included the `noModule` polyfill (38.6 KB gz), which modern browsers never fetch; the "before" column here excludes it.
+
+| route         |   before |    after | budget 200 KB  |
+| ------------- | -------: | -------: | -------------- |
+| /             | 244.5 KB | 226.9 KB | over           |
+| /privacy      | 223.4 KB | 177.5 KB | met            |
+| /about        | 219.9 KB | 173.6 KB | met            |
+| /pricing      | 226.0 KB | 181.1 KB | met            |
+| /templates    | 219.9 KB | 173.6 KB | met            |
+| /compare/rezi | 229.1 KB | 173.6 KB | met            |
+| /ats-checker  | 240.7 KB | 201.3 KB | over by 1.3 KB |
+| /affiliate    | 241.8 KB | 223.7 KB | over           |
+| /ambassador   | 287.0 KB | 214.9 KB | over           |
+
+Lighthouse mobile (simulated throttling, `npm run lighthouse:mobile`):
+
+| route         | perf before | perf after | LCP before | LCP after | TBT before | TBT after | CLS |
+| ------------- | ----------: | ---------: | ---------: | --------: | ---------: | --------: | --: |
+| /             |          73 |         85 |      4.3 s |     4.0 s |     424 ms |    163 ms |   0 |
+| /pricing      |          88 |         89 |      3.8 s |     3.6 s |     100 ms |    130 ms |   0 |
+| /ats-checker  |          87 |         90 |      3.8 s |     3.6 s |     141 ms |     52 ms |   0 |
+| /templates    |          58 |         89 |      4.0 s |     3.7 s |   1,870 ms |     68 ms |   0 |
+| /changelog    |          90 |         91 |      3.6 s |     3.4 s |      95 ms |     59 ms |   0 |
+| /compare/rezi |          89 |         92 |      3.7 s |     3.4 s |      76 ms |     70 ms |   0 |
+
+TBT and CLS meet the budget on all six pages. LCP does not. The LCP element is hero text that paints at 0.4 to 0.6 s in the trace; the simulated figure lands at the time-to-interactive (3.37 s vs 3.44 s on /compare/rezi) because the lab model charges every request started before that paint, and React DOM plus the Next router are 117 of the 175 KB on a static page. Further lab gains need less framework JavaScript on the page (PPR/`cacheComponents`, IMPROVEMENTS #8) or `inlineCss`; the real check is field LCP from W-061 (Phase 3).
+
+Not done in Phase 2, with the reason: `cacheComponents`/`"use cache"` (changes every route's rendering model; own change); rendering the legal and FAQ text on the server (measured: the RSC payload grew 109 KB -> 147 KB, reverted); the pricing page split into server sections (181.1 KB vs 177.5 KB for a static page, no measurable gain); template deep-link filters on the server (would make /templates/[docType] dynamic for a rare entry path); fumadocs tokens (live in packages/ui).
 
 ## Audit method
 

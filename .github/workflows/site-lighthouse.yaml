@@ -57,6 +57,17 @@ jobs:
       - name: Run Lighthouse
         run: npm run lighthouse:mobile -w @veriworkly/site -- http://localhost:3100
 
+      - name: Initial JS per Route
+        if: always()
+        working-directory: apps/site
+        run: |
+          {
+            echo ""
+            echo "Initial JS per route (module scripts, gzip -9). Budget: 200 KB."
+            echo ""
+            npx tsx scripts/measure-js.mts
+          } >> .lighthouse/summary.md
+
       - name: Upload Reports
         if: always()
         uses: actions/upload-artifact@v4
