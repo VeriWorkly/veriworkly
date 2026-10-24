@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { Check } from "lucide-react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { m, useScroll, useTransform, useSpring } from "framer-motion";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
 
@@ -16,7 +16,7 @@ interface TemplateCardProps {
 
 const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: TemplateCardProps) => {
   return (
-    <motion.div
+    <m.div
       whileHover={canHover ? { y: -10, scale: 1.03 } : {}}
       transition={{ type: "spring", stiffness: 380, damping: 28 }}
       style={{ "--glow-color": themeColor } as React.CSSProperties}
@@ -142,7 +142,7 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
 
         <span className="text-sm font-black text-zinc-900 dark:text-white">99%</span>
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 
@@ -172,7 +172,7 @@ const TemplateShowcaseTracks = () => {
         WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
       }}
     >
-      <motion.div style={{ x: xLeft }} className="flex gap-6 pl-[10%] whitespace-nowrap">
+      <m.div style={{ x: xLeft }} className="flex gap-6 pl-[10%] whitespace-nowrap">
         <TemplateCard
           name="The Modernist"
           tag="ATS Standard"
@@ -220,9 +220,9 @@ const TemplateShowcaseTracks = () => {
           layout="executive"
           canHover={canHover}
         />
-      </motion.div>
+      </m.div>
 
-      <motion.div style={{ x: xRight }} className="flex gap-6 pl-[5%] whitespace-nowrap">
+      <m.div style={{ x: xRight }} className="flex gap-6 pl-[5%] whitespace-nowrap">
         <TemplateCard
           name="The Creative"
           tag="Bold Spotlight"
@@ -270,7 +270,7 @@ const TemplateShowcaseTracks = () => {
           layout="minimalist"
           canHover={canHover}
         />
-      </motion.div>
+      </m.div>
     </div>
   );
 };

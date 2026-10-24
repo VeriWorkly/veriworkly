@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { animate, motion, useInView, useReducedMotion } from "framer-motion";
+import { animate, m, useInView, useReducedMotion } from "framer-motion";
 import { EyeOff, KeyRound, ShieldCheck, Target, type LucideIcon } from "lucide-react";
 
 interface Stat {
@@ -113,7 +113,7 @@ const MetricsProofBar = () => {
       <div className="relative z-10 mx-auto max-w-350 px-6 md:px-8">
         <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:gap-x-8 md:divide-x md:divide-zinc-800/60 lg:grid-cols-4">
           {stats.map((stat, index) => (
-            <motion.div
+            <m.div
               key={stat.label}
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -136,7 +136,7 @@ const MetricsProofBar = () => {
                 <p className="text-sm font-semibold text-zinc-200">{stat.label}</p>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-500">{stat.detail}</p>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       </div>

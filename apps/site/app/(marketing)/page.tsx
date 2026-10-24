@@ -24,6 +24,7 @@ import ResumePreview from "@/features/landing/document-switcher/ResumePreview";
 import TemplateShowcase from "@/features/landing/template-showcase/TemplateShowcase";
 import PortfolioPreview from "@/features/landing/document-switcher/PortfolioPreview";
 import CoverLetterPreview from "@/features/landing/document-switcher/CoverLetterPreview";
+import { MotionIsland } from "@/providers/motion-island";
 
 const InteractiveProcess = nextDynamic(
   () => import("@/features/landing/process/InteractiveProcess"),
@@ -137,7 +138,7 @@ const howToSchema = {
 
 const Home = () => {
   return (
-    <>
+    <MotionIsland>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(faqPageSchema)}
@@ -156,7 +157,7 @@ const Home = () => {
       <ComparisonMatrix />
       <PremiumFAQ />
       <InteractiveCTA />
-    </>
+    </MotionIsland>
   );
 };
 

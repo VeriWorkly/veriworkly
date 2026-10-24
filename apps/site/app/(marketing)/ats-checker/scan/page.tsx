@@ -11,6 +11,7 @@ import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import { AtsCheckerTool } from "@/features/ats-checker";
+import { MotionIsland } from "@/providers/motion-island";
 
 const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
   "Scan Your Resume",
@@ -63,7 +64,7 @@ const SCAN_FACTS = [
 
 export default function AtsCheckerScanPage() {
   return (
-    <>
+    <MotionIsland>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(breadcrumbSchema)}
@@ -108,6 +109,6 @@ export default function AtsCheckerScanPage() {
           </div>
         </div>
       </section>
-    </>
+    </MotionIsland>
   );
 }

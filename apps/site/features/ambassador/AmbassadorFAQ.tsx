@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { Plus, Minus } from "lucide-react";
 import { siteConfig } from "@/config/site";
 
@@ -103,7 +103,7 @@ const AmbassadorFAQ = () => {
                     {faq.question}
                   </span>
 
-                  <motion.span
+                  <m.span
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ type: "spring", stiffness: 200, damping: 20 }}
                     className={`ml-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
@@ -113,12 +113,12 @@ const AmbassadorFAQ = () => {
                     }`}
                   >
                     {isOpen ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                  </motion.span>
+                  </m.span>
                 </button>
 
                 <AnimatePresence initial={false}>
                   {isOpen && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -128,7 +128,7 @@ const AmbassadorFAQ = () => {
                       <div className="pr-8 pb-6 text-xs leading-relaxed font-medium text-zinc-500 md:text-sm dark:text-zinc-400">
                         {faq.answer}
                       </div>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>

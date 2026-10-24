@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Database, Zap, FileText, Check } from "lucide-react";
-import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { m, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
 
 import Step1Visual from "./Step1Visual";
 import Step2Visual from "./Step2Visual";
@@ -124,7 +124,7 @@ const InteractiveProcess = () => {
 
               <div className="relative flex flex-col gap-3 pl-8">
                 <div className="absolute top-0 left-3.5 h-full w-0.5 bg-zinc-200 dark:bg-zinc-800">
-                  <motion.div
+                  <m.div
                     className="h-full w-full origin-top bg-blue-500"
                     style={{ scaleY: progress }}
                   />
@@ -134,10 +134,8 @@ const InteractiveProcess = () => {
                   const isActive = currentStep === index;
 
                   return (
-                    <motion.div
+                    <m.div
                       key={step.id}
-                      layout
-                      transition={{ type: "spring", stiffness: 300, damping: 32 }}
                       className={`group relative flex cursor-pointer items-start gap-5 rounded-2xl border px-5 py-4 text-left transition-all duration-300 ${
                         isActive
                           ? "border-zinc-200/90 bg-white shadow-xs dark:border-zinc-800 dark:bg-[#0c0c0c]"
@@ -172,7 +170,7 @@ const InteractiveProcess = () => {
 
                         <AnimatePresence initial={false}>
                           {isActive && (
-                            <motion.div
+                            <m.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: "auto", opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
@@ -182,11 +180,11 @@ const InteractiveProcess = () => {
                               <p className="pt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                                 {step.description}
                               </p>
-                            </motion.div>
+                            </m.div>
                           )}
                         </AnimatePresence>
                       </div>
-                    </motion.div>
+                    </m.div>
                   );
                 })}
               </div>
@@ -194,7 +192,7 @@ const InteractiveProcess = () => {
 
             <div className="flex items-center justify-center lg:col-span-5">
               <div className="relative flex aspect-square w-full max-w-md flex-col overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-linear-to-br from-white to-zinc-50 shadow-lg dark:border-zinc-800 dark:from-[#0a0a0a] dark:to-[#050505]">
-                <motion.div
+                <m.div
                   className="pointer-events-none absolute inset-0"
                   animate={{ backgroundColor: STEP_ACCENTS[currentStep] }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
@@ -219,7 +217,7 @@ const InteractiveProcess = () => {
 
                 <div className="relative z-10 flex flex-1 items-center justify-center p-8 pt-4">
                   <AnimatePresence mode="wait">
-                    <motion.div
+                    <m.div
                       key={currentStep}
                       initial={{ opacity: 0, scale: 0.95, y: 15 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -228,7 +226,7 @@ const InteractiveProcess = () => {
                       className="w-full"
                     >
                       {steps[currentStep].visual}
-                    </motion.div>
+                    </m.div>
                   </AnimatePresence>
                 </div>
 

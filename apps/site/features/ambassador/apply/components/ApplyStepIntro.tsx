@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ArrowRight, Lock, Rocket } from "lucide-react";
 import { APPLY_REACTIONS } from "@/features/ambassador/apply-reactions";
 import { ReactionMedia } from "@/features/ambassador/ReactionMedia";
@@ -13,13 +13,13 @@ interface ApplyStepIntroProps {
 export const ApplyStepIntro = ({ viewer, onStart }: ApplyStepIntroProps) => {
   return (
     <div className="flex flex-col items-center py-6 text-center">
-      <motion.div
+      <m.div
         animate={{ rotate: [0, -8, 8, -8, 0] }}
         transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1.5 }}
         className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
       >
         <Rocket className="h-8 w-8" />
-      </motion.div>
+      </m.div>
       <h1 className="mt-6 text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl dark:text-white">
         {viewer.name
           ? `${viewer.name.split(" ")[0]}, let's see that main-character energy 🎓`

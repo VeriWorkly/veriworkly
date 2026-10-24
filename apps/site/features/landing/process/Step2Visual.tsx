@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 const Step2Visual = () => {
   return (
@@ -20,7 +20,7 @@ const Step2Visual = () => {
           Managed front-end tasks and built interfaces.
         </p>
 
-        <motion.div
+        <m.div
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           initial={{ opacity: 0, y: 10, filter: "blur(2px)" }}
           transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
@@ -30,7 +30,7 @@ const Step2Visual = () => {
           <span className="font-semibold text-blue-700 dark:text-blue-400">AI Optimized: </span>
           Led development of scalable React micro-frontends, accelerating platform load speed by
           35%.
-        </motion.div>
+        </m.div>
       </div>
     </div>
   );

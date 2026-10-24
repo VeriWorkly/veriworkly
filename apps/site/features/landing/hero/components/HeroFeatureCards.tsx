@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Type,
   Check,
@@ -11,7 +13,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 /**
  * The scores, match percentages and view counts in these cards are illustrative - they
@@ -21,12 +23,7 @@ import { motion } from "framer-motion";
  */
 export const HeroFeatureCards = () => {
   return (
-    <motion.figure
-      animate={{ opacity: 1, y: 0 }}
-      initial={{ opacity: 0, y: 30 }}
-      transition={{ duration: 0.7, delay: 0.45, ease: [0.23, 1, 0.32, 1] }}
-      className="pointer-events-auto relative z-20 mt-10 -mb-16 grid w-full max-w-5xl grid-cols-1 gap-3.5 sm:mt-14 sm:-mb-24 sm:grid-cols-2 sm:gap-4 md:-mb-28 lg:mt-20 lg:-mb-36 lg:grid-cols-3 lg:gap-5.5"
-    >
+    <figure className="hero-rise pointer-events-auto relative z-20 mt-10 -mb-16 grid w-full max-w-5xl grid-cols-1 gap-3.5 sm:mt-14 sm:-mb-24 sm:grid-cols-2 sm:gap-4 md:-mb-28 lg:mt-20 lg:-mb-36 lg:grid-cols-3 lg:gap-5.5">
       <div className="group flex flex-col justify-between rounded-3xl border border-black/5 bg-white p-4.5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(59,130,246,0.12)] sm:p-5 lg:translate-y-4 lg:p-6 lg:hover:translate-y-2 dark:border-white/10 dark:bg-[#111]">
         <div>
           <div className="mb-3.5 flex items-center justify-between sm:mb-4">
@@ -46,7 +43,7 @@ export const HeroFeatureCards = () => {
           </div>
 
           <div className="mb-2.5 flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner sm:h-3 dark:bg-white/5">
-            <motion.div
+            <m.div
               initial={{ width: 0 }}
               animate={{ width: "85%" }}
               transition={{ duration: 1, delay: 0.8, ease: [0.23, 1, 0.32, 1] }}
@@ -67,7 +64,7 @@ export const HeroFeatureCards = () => {
 
           <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-900 sm:text-sm dark:text-white">
             ATS Optimized
-            <motion.div
+            <m.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", delay: 1.2, bounce: 0.5 }}
@@ -78,7 +75,7 @@ export const HeroFeatureCards = () => {
                 aria-hidden="true"
                 className="h-2.5 w-2.5 text-green-600 sm:h-3 sm:w-3 dark:text-green-400"
               />
-            </motion.div>
+            </m.div>
           </div>
         </div>
       </div>
@@ -97,12 +94,12 @@ export const HeroFeatureCards = () => {
               Generated
             </div>
 
-            <motion.div
+            <m.div
               whileHover={{ rotate: 15, scale: 1.1 }}
               className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-blue-50 text-blue-600 shadow-xs transition-all group-hover:bg-blue-500 group-hover:text-white group-hover:shadow-blue-500/25 sm:h-10 sm:w-10 dark:bg-blue-500/10 dark:text-blue-400"
             >
               <Check className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
-            </motion.div>
+            </m.div>
           </div>
         </div>
 
@@ -116,7 +113,7 @@ export const HeroFeatureCards = () => {
           <div className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400">
             <span className="flex" aria-label="5 out of 5 stars">
               {[1, 2, 3, 4, 5].map((i) => (
-                <motion.span
+                <m.span
                   key={i}
                   initial={{ opacity: 0, scale: 0 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -124,7 +121,7 @@ export const HeroFeatureCards = () => {
                   aria-hidden="true"
                 >
                   ★
-                </motion.span>
+                </m.span>
               ))}
             </span>
             <span className="ml-1 font-medium">98% Match</span>
@@ -190,7 +187,7 @@ export const HeroFeatureCards = () => {
               strokeLinejoin="round"
               className="h-full w-full stroke-blue-500 drop-shadow-[0_2px_4px_rgba(59,130,246,0.3)]"
             >
-              <motion.path
+              <m.path
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
                 d="M0 25 Q 15 25, 25 20 T 50 15 T 75 10 T 100 5"
@@ -318,7 +315,7 @@ export const HeroFeatureCards = () => {
       <figcaption className="text-muted/70 col-span-full mt-4 text-center font-mono text-[11px] lg:mt-8">
         Interface preview. Scores, match percentages and view counts shown here are illustrative.
       </figcaption>
-    </motion.figure>
+    </figure>
   );
 };
 

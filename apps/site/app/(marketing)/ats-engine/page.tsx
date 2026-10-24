@@ -22,6 +22,7 @@ import {
   FAQ_IDS,
 } from "@/features/ats-engine";
 import { faqs } from "@/features/faq/data/faqItems";
+import { MotionIsland } from "@/providers/motion-island";
 
 export const revalidate = false;
 export const dynamic = "force-static";
@@ -113,7 +114,7 @@ export default function AtsEnginePage() {
   };
 
   return (
-    <>
+    <MotionIsland>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(softwareSchema)}
@@ -135,6 +136,6 @@ export default function AtsEnginePage() {
       <EngineComparison />
       <EngineFaq faqs={pageFaqs} />
       <EngineCTA />
-    </>
+    </MotionIsland>
   );
 }

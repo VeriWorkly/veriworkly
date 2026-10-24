@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ScanSearch } from "lucide-react";
 
 const STEPS_WITH_TARGET = [
@@ -51,7 +51,7 @@ export function ScanLoader({ hasTarget }: ScanLoaderProps) {
       </span>
       <div className="mt-6 h-6 overflow-hidden">
         <AnimatePresence mode="wait">
-          <motion.p
+          <m.p
             key={index}
             initial={shouldReduceMotion ? undefined : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -60,14 +60,14 @@ export function ScanLoader({ hasTarget }: ScanLoaderProps) {
             className="text-base font-semibold"
           >
             {steps[index]}
-          </motion.p>
+          </m.p>
         </AnimatePresence>
       </div>
       <div
         className="bg-foreground/8 mt-5 h-1.5 w-full max-w-56 overflow-hidden rounded-full"
         aria-hidden="true"
       >
-        <motion.div
+        <m.div
           className="bg-accent h-full rounded-full"
           animate={{ width: `${progress}%` }}
           transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: "easeOut" }}

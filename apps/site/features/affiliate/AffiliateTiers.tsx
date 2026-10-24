@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 
 const TiersList = [
@@ -69,7 +69,7 @@ const AffiliateTiers = () => {
           </p>
         </div>
 
-        <motion.div
+        <m.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -77,7 +77,7 @@ const AffiliateTiers = () => {
           className="grid gap-6 md:grid-cols-3"
         >
           {TiersList.map((tier) => (
-            <motion.div
+            <m.div
               key={tier.name}
               variants={cardVariants}
               whileHover={{
@@ -117,9 +117,9 @@ const AffiliateTiers = () => {
                 </span>
                 <ArrowUpRight className="text-muted h-4 w-4 opacity-50 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
               </div>
-            </motion.div>
+            </m.div>
           ))}
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

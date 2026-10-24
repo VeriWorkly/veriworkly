@@ -17,6 +17,7 @@ import {
 } from "@/features/ats-checker";
 import { faqs } from "@/features/faq/data/faqItems";
 import { PageClosing } from "@/components/marketing/PageLayout";
+import { MotionIsland } from "@/providers/motion-island";
 
 export const revalidate = false;
 export const dynamic = "force-static";
@@ -136,7 +137,7 @@ export default function AtsCheckerPage() {
   };
 
   return (
-    <>
+    <MotionIsland>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(softwareSchema)}
@@ -160,6 +161,6 @@ export default function AtsCheckerPage() {
         lede="Open the resume in the studio, apply the fixes the report ranked first, then scan it again."
         secondary={{ label: "Scan a resume", href: "/ats-checker/scan" }}
       />
-    </>
+    </MotionIsland>
   );
 }

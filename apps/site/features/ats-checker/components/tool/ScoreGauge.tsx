@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   animate,
-  motion,
+  m,
   useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
@@ -67,7 +67,7 @@ export function ScoreGauge({ score, label, caption, size = "lg" }: ScoreGaugePro
             className="text-foreground/8"
             strokeWidth="7"
           />
-          <motion.circle
+          <m.circle
             cx="50"
             cy="50"
             r={RADIUS}

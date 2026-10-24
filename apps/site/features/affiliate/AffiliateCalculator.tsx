@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Users, Sparkles, TrendingUp } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 const AffiliateCalculator = () => {
   const [referrals, setReferrals] = useState(50);
@@ -85,14 +85,14 @@ const AffiliateCalculator = () => {
               </div>
               <div className="text-foreground flex items-baseline font-mono text-6xl font-black tracking-tighter select-none md:text-7xl">
                 <span className="text-muted mr-1 text-3xl font-semibold">$</span>
-                <motion.span
+                <m.span
                   key={`${monthlyEarnings}-${selectedPlan}`}
                   initial={{ scale: 0.92, opacity: 0.8, filter: "blur(2px)" }}
                   animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
                 >
                   {monthlyEarnings.toFixed(2)}
-                </motion.span>
+                </m.span>
               </div>
             </div>
 
@@ -102,14 +102,14 @@ const AffiliateCalculator = () => {
               </div>
               <div className="text-foreground/80 flex items-baseline font-mono text-3xl font-extrabold tracking-tight select-none">
                 <span className="text-muted mr-1 text-base font-medium">$</span>
-                <motion.span
+                <m.span
                   key={`${annualEarnings}-${selectedPlan}`}
                   initial={{ opacity: 0.8 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}
                 >
                   {annualEarnings.toFixed(2)}
-                </motion.span>
+                </m.span>
               </div>
             </div>
           </div>
@@ -194,7 +194,7 @@ const AffiliateCalculator = () => {
                     <span>{needed} members needed</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
-                    <motion.div
+                    <m.div
                       className="h-full rounded-full bg-linear-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500"
                       animate={{ width: `${progressPercent}%` }}
                       transition={{ duration: 0.3, ease: "easeOut" }}

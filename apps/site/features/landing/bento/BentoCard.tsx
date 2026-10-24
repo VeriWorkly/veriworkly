@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { motion, MotionValue } from "framer-motion";
+import { m, MotionValue } from "framer-motion";
 
 import { cn } from "@veriworkly/ui";
 
@@ -35,7 +35,7 @@ const BentoCard = ({
   };
 
   return (
-    <motion.div
+    <m.div
       ref={cardRef}
       style={{ y: yOffset }}
       onMouseMove={handleMouseMove}
@@ -62,7 +62,7 @@ const BentoCard = ({
         }}
       />
       {children}
-    </motion.div>
+    </m.div>
   );
 };
 

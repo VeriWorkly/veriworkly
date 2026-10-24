@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Users, Video, FileText } from "lucide-react";
 
 type Ambassador = {
@@ -105,19 +105,19 @@ const AmbassadorLeaderboard = () => {
                         Points
                       </span>
                     </div>
-                    <motion.div
+                    <m.div
                       animate={{ rotate: isExpanded ? 180 : 0 }}
                       transition={{ duration: 0.2 }}
                       className="text-zinc-400 dark:text-zinc-500"
                     >
                       <ChevronDown className="h-4.5 w-4.5" />
-                    </motion.div>
+                    </m.div>
                   </div>
                 </button>
 
                 <AnimatePresence initial={false}>
                   {isExpanded && (
-                    <motion.div
+                    <m.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -150,7 +150,7 @@ const AmbassadorLeaderboard = () => {
                           </span>
                         </div>
                       </div>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>

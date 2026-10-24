@@ -17,6 +17,7 @@ import AffiliateBento from "@/features/affiliate/AffiliateBento";
 import AffiliateFooter from "@/features/affiliate/AffiliateFooter";
 import AffiliateResources from "@/features/affiliate/AffiliateResources";
 import AffiliateComparison from "@/features/affiliate/AffiliateComparison";
+import { MotionIsland } from "@/providers/motion-island";
 
 const AffiliateCalculator = dynamic(() => import("@/features/affiliate/AffiliateCalculator"));
 
@@ -76,7 +77,7 @@ const AffiliatePage = () => {
   };
 
   return (
-    <>
+    <MotionIsland>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScriptProps(affiliateSchema)}
@@ -99,7 +100,7 @@ const AffiliatePage = () => {
 
         <AffiliateFooter />
       </div>
-    </>
+    </MotionIsland>
   );
 };
 

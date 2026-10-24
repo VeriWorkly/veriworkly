@@ -1,7 +1,7 @@
 "use client";
 
 import { Globe } from "lucide-react";
-import { motion, MotionValue } from "framer-motion";
+import { m, MotionValue } from "framer-motion";
 
 import BentoCard from "./BentoCard";
 
@@ -19,7 +19,7 @@ const BentoPortfolioCard = ({ yOffset, portfolioTilt, canHover }: BentoPortfolio
       yOffset={yOffset}
       canHover={canHover}
     >
-      <motion.div
+      <m.div
         style={{ rotateX: portfolioTilt, rotateY: portfolioTilt }}
         className="absolute top-4 right-4 h-28 w-44 rounded-xl border border-zinc-200/90 bg-white p-2.5 shadow-2xs transition-transform duration-700 group-hover:-translate-x-1 sm:-top-2 sm:-right-4 sm:h-32 sm:w-48 dark:border-zinc-800 dark:bg-zinc-950"
       >
@@ -43,7 +43,7 @@ const BentoPortfolioCard = ({ yOffset, portfolioTilt, canHover }: BentoPortfolio
             <div className="h-1.5 w-2/3 rounded bg-zinc-100 dark:bg-zinc-800" />
           </div>
         </div>
-      </motion.div>
+      </m.div>
 
       <div className="relative z-10 mt-28 sm:mt-auto">
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">

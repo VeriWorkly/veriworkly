@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 const AmbassadorPerks = () => {
   /**
@@ -64,7 +64,7 @@ const AmbassadorPerks = () => {
 
         <div className="border-t border-zinc-950 dark:border-white/20">
           {perks.map((perk, idx) => (
-            <motion.div
+            <m.div
               key={perk.num}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -99,7 +99,7 @@ const AmbassadorPerks = () => {
                   ))}
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       </div>

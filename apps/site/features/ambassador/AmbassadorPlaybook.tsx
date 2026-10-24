@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useReducedMotion, motion } from "framer-motion";
+import { useReducedMotion, m } from "framer-motion";
 import { UserCheck, Award, ClipboardList, Send } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -155,7 +155,7 @@ const AmbassadorPlaybook = () => {
 
               <div className="relative flex min-h-80 items-center justify-center">
                 {idx === 0 && (
-                  <motion.div
+                  <m.div
                     whileHover={{ y: -4 }}
                     className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
                   >
@@ -191,11 +191,11 @@ const AmbassadorPlaybook = () => {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </m.div>
                 )}
 
                 {idx === 1 && (
-                  <motion.div
+                  <m.div
                     whileHover={{ y: -4 }}
                     className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
                   >
@@ -227,11 +227,11 @@ const AmbassadorPlaybook = () => {
                         <span className="text-zinc-900 dark:text-white">By a human</span>
                       </div>
                     </div>
-                  </motion.div>
+                  </m.div>
                 )}
 
                 {idx === 2 && (
-                  <motion.div
+                  <m.div
                     whileHover={{ y: -4 }}
                     className="w-full max-w-90 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-zinc-900"
                   >
@@ -281,7 +281,7 @@ const AmbassadorPlaybook = () => {
                         Rewards not yet live
                       </span>
                     </div>
-                  </motion.div>
+                  </m.div>
                 )}
               </div>
             </div>

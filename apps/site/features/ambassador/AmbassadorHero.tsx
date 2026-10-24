@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, LayoutGroup } from "framer-motion";
+import { m, LayoutGroup } from "framer-motion";
 import { ArrowRight, Sparkles, Award, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
@@ -20,7 +20,7 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
     <section className="ambassador-bg-noise relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden pt-24 pb-20 md:overflow-visible">
       <Floating sensitivity={-0.5} className="pointer-events-none h-full select-none">
         <FloatingElement depth={0.6} className="top-[15%] left-[3%] z-10 md:top-[22%] md:left-[8%]">
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
@@ -31,14 +31,14 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
             <span className="block h-1.5 w-full rounded-full bg-zinc-400/30" />
             <span className="block h-1.5 w-5/6 rounded-full bg-zinc-400/30" />
             <span className="block h-1.5 w-2/3 rounded-full bg-zinc-400/20" />
-          </motion.div>
+          </m.div>
         </FloatingElement>
 
         <FloatingElement
           depth={1.2}
           className="top-[5%] left-[83%] z-15 md:top-[12%] md:left-[78%]"
         >
-          <motion.div
+          <m.div
             className="glass-card flex w-36 rotate-[8deg] flex-col justify-between rounded-2xl border border-zinc-200/60 p-4 shadow-2xl md:w-48 dark:border-white/15"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -58,11 +58,11 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
               <span>Illustrative</span>
             </div>
-          </motion.div>
+          </m.div>
         </FloatingElement>
 
         <FloatingElement depth={0.4} className="top-[78%] left-[2%] z-10 md:top-[68%] md:left-[6%]">
-          <motion.div
+          <m.div
             className="glass-card flex w-40 rotate-[-10deg] flex-col justify-between rounded-[22px] border border-zinc-200/60 p-4 shadow-2xl md:w-52 dark:border-white/10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -82,14 +82,14 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
                 ACTIVE
               </span>
             </div>
-          </motion.div>
+          </m.div>
         </FloatingElement>
 
         <FloatingElement
           depth={1.5}
           className="top-[82%] left-[78%] z-15 md:top-[74%] md:left-[80%]"
         >
-          <motion.div
+          <m.div
             className="glass-card flex w-32 rotate-12 items-center gap-3 rounded-xl border border-zinc-200/50 p-3.5 shadow-xl md:w-40 dark:border-white/10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -106,14 +106,14 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
                 Your cohort
               </span>
             </div>
-          </motion.div>
+          </m.div>
         </FloatingElement>
 
         <FloatingElement
           depth={0.8}
           className="top-[2%] left-[45%] z-10 -translate-x-1/2 md:top-[4%] md:left-[50%]"
         >
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.3 }}
@@ -124,12 +124,12 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
             <span className="block h-1.5 w-full rounded-full bg-zinc-400/30" />
             <span className="block h-1.5 w-4/5 rounded-full bg-zinc-400/30" />
             <span className="block h-1.5 w-1/2 rounded-full bg-zinc-400/20" />
-          </motion.div>
+          </m.div>
         </FloatingElement>
       </Floating>
 
       <div className="pointer-events-auto z-20 mt-6 flex w-full max-w-70 flex-col items-center justify-center px-6 text-center select-none sm:max-w-112.5 md:mt-0 md:max-w-175 lg:max-w-225">
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -137,7 +137,7 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
         >
           <Sparkles className="h-3.5 w-3.5 animate-pulse text-indigo-500 dark:text-indigo-400" />
           <span>Campus Network Program</span>
-        </motion.div>
+        </m.div>
 
         {/*
           TextRotate splits its text into one element per grapheme to animate them, so
@@ -153,18 +153,18 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
             Represent VeriWorkly. <br />
           </span>
           <LayoutGroup>
-            <motion.span
+            <m.span
               layout
               aria-hidden="true"
               className="flex flex-wrap items-center justify-center text-center whitespace-pre"
             >
-              <motion.span
+              <m.span
                 layout
                 className="inline-block"
                 transition={{ type: "spring", damping: 30, stiffness: 400 }}
               >
                 Make it{" "}
-              </motion.span>
+              </m.span>
               <TextRotate
                 texts={[
                   "fun 🚀",
@@ -182,27 +182,17 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
                 rotationInterval={2500}
                 transition={{ type: "spring", damping: 30, stiffness: 400 }}
               />
-            </motion.span>
+            </m.span>
           </LayoutGroup>
         </h1>
 
-        <motion.p
-          className="mx-auto max-w-xl pt-6 text-sm font-semibold text-zinc-500 sm:pt-8 sm:text-base md:pt-10 md:text-lg lg:text-xl dark:text-zinc-400"
-          animate={{ opacity: 1, y: 0 }}
-          initial={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.2, ease: "easeOut", delay: 0.3 }}
-        >
+        <p className="hero-rise mx-auto max-w-xl pt-6 text-sm font-semibold text-zinc-500 sm:pt-8 sm:text-base md:pt-10 md:text-lg lg:text-xl dark:text-zinc-400">
           Share local-first career editors with classmates on campus. We are building the campus
           crew now — apply to be one of the first ambassadors, and help shape how the program
           rewards its leaders.
-        </motion.p>
+        </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: "easeOut", delay: 0.5 }}
-          className="mt-8 flex w-full flex-col items-center justify-center gap-4 sm:mt-12 sm:w-auto sm:flex-row"
-        >
+        <div className="hero-rise mt-8 flex w-full flex-col items-center justify-center gap-4 sm:mt-12 sm:w-auto sm:flex-row">
           {programEnabled ? (
             <Link
               href="/ambassador/apply"
@@ -228,9 +218,9 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
           >
             See the plan
           </button>
-        </motion.div>
+        </div>
 
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.6 }}
@@ -244,7 +234,7 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
             <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span>Applications reviewed by hand</span>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

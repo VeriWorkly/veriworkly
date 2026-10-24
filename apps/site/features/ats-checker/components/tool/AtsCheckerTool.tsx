@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ArrowRight, RotateCcw, ScanSearch, TriangleAlert } from "lucide-react";
 
 import { extractResumeFile, getAtsQuota, runAtsCheck } from "../../services/ats-checker-api";
@@ -172,7 +172,7 @@ export function AtsCheckerTool() {
       <div className="relative">
         <AnimatePresence mode="wait">
           {phase === "resume" && (
-            <motion.div
+            <m.div
               key="resume"
               initial={shouldReduceMotion ? undefined : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -197,11 +197,11 @@ export function AtsCheckerTool() {
                   />
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
 
           {phase === "target" && (
-            <motion.div
+            <m.div
               key="target"
               initial={shouldReduceMotion ? undefined : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -271,11 +271,11 @@ export function AtsCheckerTool() {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
 
           {phase === "scanning" && (
-            <motion.div
+            <m.div
               key="scanning"
               initial={shouldReduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -283,11 +283,11 @@ export function AtsCheckerTool() {
               transition={{ duration: 0.2 }}
             >
               <ScanLoader hasTarget={Boolean(jobDescription.trim())} />
-            </motion.div>
+            </m.div>
           )}
 
           {phase === "results" && result && (
-            <motion.div
+            <m.div
               key="results"
               ref={resultsRef}
               initial={shouldReduceMotion ? undefined : { opacity: 0, y: 8 }}
@@ -315,7 +315,7 @@ export function AtsCheckerTool() {
               ) : (
                 <FullResults report={result.report} quota={result.quota} />
               )}
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { ArrowLeft, Sun, Moon } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 
 import { useMounted } from "@/hooks/use-mounted";
 
@@ -51,7 +51,7 @@ const AmbassadorApplyNav = () => {
             >
               <AnimatePresence mode="wait">
                 {resolvedTheme === "dark" ? (
-                  <motion.div
+                  <m.div
                     key="sun"
                     exit={{ scale: 0, rotate: 90 }}
                     transition={{ duration: 0.15 }}
@@ -59,9 +59,9 @@ const AmbassadorApplyNav = () => {
                     initial={{ scale: 0, rotate: -90 }}
                   >
                     <Sun className="h-3.5 w-3.5" />
-                  </motion.div>
+                  </m.div>
                 ) : (
-                  <motion.div
+                  <m.div
                     key="moon"
                     transition={{ duration: 0.15 }}
                     exit={{ scale: 0, rotate: -90 }}
@@ -69,7 +69,7 @@ const AmbassadorApplyNav = () => {
                     initial={{ scale: 0, rotate: 90 }}
                   >
                     <Moon className="h-3.5 w-3.5" />
-                  </motion.div>
+                  </m.div>
                 )}
               </AnimatePresence>
             </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { ArrowLeft, CornerDownLeft } from "lucide-react";
 
 import { submitAmbassadorApplication } from "@/features/ambassador/ambassador-api";
@@ -190,7 +190,7 @@ export const AmbassadorApplyExperience = ({
             aria-valuetext={`Question ${questionNumber} of ${QUESTION_STEPS.length}`}
             className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-white/10"
           >
-            <motion.div
+            <m.div
               className="h-full rounded-full bg-indigo-500"
               animate={{ width: `${progress}%` }}
               transition={{ type: "spring", stiffness: 200, damping: 30 }}
@@ -209,7 +209,7 @@ export const AmbassadorApplyExperience = ({
         className="glass-card relative min-h-100 overflow-hidden rounded-3xl border border-zinc-200/60 p-8 shadow-2xl sm:p-12 dark:border-white/10"
       >
         <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
+          <m.div
             key={step}
             custom={direction}
             variants={stepVariants}
@@ -384,18 +384,18 @@ export const AmbassadorApplyExperience = ({
             {step === "review" && (
               <ApplyStepReview form={form} viewer={viewer} submitting={submitting} />
             )}
-          </motion.div>
+          </m.div>
         </AnimatePresence>
 
         <div id={FORM_ERROR_ID} role="alert" aria-live="assertive">
           {error && (
-            <motion.p
+            <m.p
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               className="mt-5 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-600 dark:text-red-400"
             >
               {error}
-            </motion.p>
+            </m.p>
           )}
         </div>
 

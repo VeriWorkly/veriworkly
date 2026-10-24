@@ -1,5 +1,3 @@
-"use client";
-
 import { Fingerprint, Sparkles } from "lucide-react";
 
 import { HeroBadge } from "./components/HeroBadge";

@@ -12,6 +12,7 @@ import {
   AmbassadorUnavailableCard,
 } from "@/features/ambassador/AmbassadorStatusCard";
 import "../ambassador.css";
+import { MotionIsland } from "@/providers/motion-island";
 
 const pageUrl = `${siteConfig.url}/ambassador/apply`;
 
@@ -43,10 +44,12 @@ const GUEST_VIEWER: ApplyViewer = {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="ambassador-bg-noise relative min-h-screen pb-24">
-      <AmbassadorApplyNav />
-      <main className="px-6 pt-16 sm:pt-20">{children}</main>
-    </div>
+    <MotionIsland>
+      <div className="ambassador-bg-noise relative min-h-screen pb-24">
+        <AmbassadorApplyNav />
+        <main className="px-6 pt-16 sm:pt-20">{children}</main>
+      </div>
+    </MotionIsland>
   );
 }
 

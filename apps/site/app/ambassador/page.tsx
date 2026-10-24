@@ -12,6 +12,7 @@ import AmbassadorLeaderboard from "@/features/ambassador/AmbassadorLeaderboard";
 import AmbassadorFAQ from "@/features/ambassador/AmbassadorFAQ";
 import AmbassadorFooter from "@/features/ambassador/AmbassadorFooter";
 import "./ambassador.css";
+import { LayoutMotionIsland } from "@/providers/layout-motion-island";
 
 const AmbassadorPlaybook = dynamic(() => import("@/features/ambassador/AmbassadorPlaybook"));
 
@@ -58,7 +59,7 @@ const AmbassadorPage = () => {
   };
 
   return (
-    <>
+    <LayoutMotionIsland>
       {/* Uses the shared helper rather than a hand-rolled copy of the same escaping. */}
       <script
         type="application/ld+json"
@@ -78,7 +79,7 @@ const AmbassadorPage = () => {
 
         <AmbassadorFooter />
       </div>
-    </>
+    </LayoutMotionIsland>
   );
 };
 

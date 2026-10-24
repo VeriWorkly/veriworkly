@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { PartyPopper } from "lucide-react";
 import { APPLY_REACTIONS } from "@/features/ambassador/apply-reactions";
 import { ReactionMedia } from "@/features/ambassador/ReactionMedia";
@@ -14,14 +14,14 @@ export const ApplySubmittedView = () => {
       className="glass-card relative mx-auto flex max-w-xl flex-col items-center overflow-hidden rounded-3xl border border-zinc-200/60 px-8 py-16 text-center shadow-2xl dark:border-white/10"
     >
       <ConfettiBurst />
-      <motion.div
+      <m.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 18 }}
         className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
       >
         <PartyPopper className="h-8 w-8" />
-      </motion.div>
+      </m.div>
       <h2 className="mt-6 text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl dark:text-white">
         You&apos;re officially in the running!
       </h2>

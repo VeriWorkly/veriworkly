@@ -8,7 +8,6 @@ import { SCHEMA_IDS } from "@/utils/schema";
 import { globalFontVariables } from "@veriworkly/ui";
 
 import { ThemeProvider } from "@/providers/theme-provider";
-import { MotionProvider } from "@/providers/motion-provider";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -219,7 +218,7 @@ const RootLayout = ({
           disableTransitionOnChange
           storageKey="veriworkly-theme"
         >
-          <MotionProvider>{children}</MotionProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

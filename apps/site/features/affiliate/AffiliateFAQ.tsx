@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, HelpCircle } from "lucide-react";
 
 const faqItems = [
@@ -64,7 +64,7 @@ const AffiliateFAQ = () => {
             const isOpen = openIndex === idx;
 
             return (
-              <motion.div
+              <m.div
                 key={idx}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -78,18 +78,18 @@ const AffiliateFAQ = () => {
                     <HelpCircle className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
                     <span className="text-foreground text-base font-semibold">{faq.question}</span>
                   </div>
-                  <motion.span
+                  <m.span
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                     className="text-muted/75"
                   >
                     <ChevronDown className="h-5 w-5" />
-                  </motion.span>
+                  </m.span>
                 </div>
 
                 <AnimatePresence initial={false}>
                   {isOpen && (
-                    <motion.div
+                    <m.div
                       initial={{ height: 0, opacity: 0, marginTop: 0 }}
                       animate={{ height: "auto", opacity: 1, marginTop: 16 }}
                       exit={{ height: 0, opacity: 0, marginTop: 0 }}
@@ -99,10 +99,10 @@ const AffiliateFAQ = () => {
                       <p className="text-muted/85 border-l-2 border-blue-500/30 pl-4 text-sm leading-relaxed">
                         {faq.answer}
                       </p>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
+              </m.div>
             );
           })}
         </div>

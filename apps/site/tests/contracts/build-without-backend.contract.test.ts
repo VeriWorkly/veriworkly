@@ -107,7 +107,8 @@ describe("sitemap with the backend unreachable", () => {
     expect(urls.some((url) => url.endsWith("/changelog"))).toBe(true);
     expect(urls.some((url) => /\/changelog\/.+/.test(url))).toBe(false);
     expect(urls.some((url) => /\/roadmap\/(?!todo|in-progress|done).+/.test(url))).toBe(false);
-  });
+    // The first import of the sitemap's module graph is cold and passes 5 s under suite load.
+  }, 30_000);
 
   it("leaves out closed programs and dates the pages that carry a date (W-012)", async () => {
     vi.stubEnv("NEXT_PHASE", "phase-production-build");

@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Wand2 } from "lucide-react";
 import { FORM_ERROR_ID } from "../apply-constants";
 
@@ -97,7 +97,7 @@ export function Chip({
   onClick: () => void;
 }) {
   return (
-    <motion.button
+    <m.button
       type="button"
       onClick={onClick}
       aria-pressed={active}
@@ -109,6 +109,6 @@ export function Chip({
       }`}
     >
       {label}
-    </motion.button>
+    </m.button>
   );
 }

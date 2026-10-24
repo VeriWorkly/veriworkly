@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 export type ConfettiPiece = {
   id: number;
@@ -32,7 +32,7 @@ export const ConfettiBurst = () => {
   return (
     <div className="pointer-events-none absolute inset-0 flex items-start justify-center overflow-hidden">
       {pieces.map((piece) => (
-        <motion.span
+        <m.span
           key={piece.id}
           initial={{ opacity: 1, x: 0, y: 0, rotate: 0, scale: 0.6 }}
           animate={{ opacity: 0, x: piece.x, y: piece.y, rotate: piece.rotate, scale: 1.1 }}
@@ -40,7 +40,7 @@ export const ConfettiBurst = () => {
           className="absolute top-1/3 text-2xl"
         >
           {piece.emoji}
-        </motion.span>
+        </m.span>
       ))}
     </div>
   );

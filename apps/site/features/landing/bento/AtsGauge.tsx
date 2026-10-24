@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  motion,
+  m,
   animate,
   useInView,
   useTransform,
@@ -51,7 +51,7 @@ const AtsGauge = () => {
             className="text-white/5"
             strokeWidth="5"
           />
-          <motion.circle
+          <m.circle
             cx="50"
             cy="50"
             r="44"

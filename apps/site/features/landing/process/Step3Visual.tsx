@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { FileText } from "lucide-react";
 
 const Step3Visual = () => {
@@ -22,13 +22,13 @@ const Step3Visual = () => {
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <motion.div
+          <m.div
             whileTap={{ scale: 0.97 }}
             whileHover={{ scale: 1.05 }}
             className="mb-2.5 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-zinc-950 text-xs font-bold text-white shadow-md transition-transform dark:bg-white dark:text-zinc-950"
           >
             W
-          </motion.div>
+          </m.div>
 
           <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100">
             Live Portfolio

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 const Step1Visual = () => {
   return (
@@ -34,7 +34,7 @@ const Step1Visual = () => {
 
       <div className="space-y-2">
         <div className="relative h-1.5 overflow-hidden rounded-full bg-blue-500/20">
-          <motion.div
+          <m.div
             initial={{ left: "-100%" }}
             animate={{ left: "100%" }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}

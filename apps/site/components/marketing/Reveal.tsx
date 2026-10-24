@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { m, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 
 interface RevealProps extends HTMLMotionProps<"div"> {
   delay?: number;
@@ -12,7 +12,7 @@ export function Reveal({ children, delay = 0, priority = false, ...props }: Reve
   const skipEntrance = priority || shouldReduceMotion;
 
   return (
-    <motion.div
+    <m.div
       initial={skipEntrance ? false : { opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
@@ -20,6 +20,6 @@ export function Reveal({ children, delay = 0, priority = false, ...props }: Reve
       {...props}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

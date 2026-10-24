@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { FolderOpen, ArrowRight, FileType, Check } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -60,7 +60,7 @@ const AffiliateResources = () => {
             </p>
 
             <div className="pt-2">
-              <motion.a
+              <m.a
                 whileTap={{ scale: 0.97 }}
                 href="/veriworkly-logo.png"
                 download
@@ -78,7 +78,7 @@ const AffiliateResources = () => {
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </>
                 )}
-              </motion.a>
+              </m.a>
             </div>
           </div>
 
