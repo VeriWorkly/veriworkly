@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef } from "react";
 import { Check } from "lucide-react";
-import { m, useScroll, useTransform, useSpring } from "framer-motion";
+import { m } from "framer-motion";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
 
@@ -147,32 +146,17 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
 };
 
 const TemplateShowcaseTracks = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const canHover = useMediaQuery("(hover: hover) and (pointer: fine)");
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"],
-  });
-
-  const xLeftRaw = useTransform(scrollYProgress, [0, 1], isDesktop ? [100, -700] : [20, -60]);
-  const xRightRaw = useTransform(scrollYProgress, [0, 1], isDesktop ? [-700, 100] : [-60, 20]);
-
-  const xLeft = useSpring(xLeftRaw, { stiffness: 55, damping: 26, restDelta: 0.01 });
-  const xRight = useSpring(xRightRaw, { stiffness: 55, damping: 26, restDelta: 0.01 });
 
   return (
     <div
-      ref={containerRef}
       className="relative flex w-full flex-col gap-6 overflow-x-hidden py-4 pb-16"
       style={{
         maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
         WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
       }}
     >
-      <m.div style={{ x: xLeft }} className="flex gap-6 pl-[10%] whitespace-nowrap">
+      <div className="scroll-shift flex gap-6 pl-[10%] whitespace-nowrap [--sx0:20px] [--sx1:-60px] lg:[--sx0:100px] lg:[--sx1:-700px]">
         <TemplateCard
           name="The Modernist"
           tag="ATS Standard"
@@ -220,9 +204,9 @@ const TemplateShowcaseTracks = () => {
           layout="executive"
           canHover={canHover}
         />
-      </m.div>
+      </div>
 
-      <m.div style={{ x: xRight }} className="flex gap-6 pl-[5%] whitespace-nowrap">
+      <div className="scroll-shift flex gap-6 pl-[5%] whitespace-nowrap [--sx0:-60px] [--sx1:20px] lg:[--sx0:-700px] lg:[--sx1:100px]">
         <TemplateCard
           name="The Creative"
           tag="Bold Spotlight"
@@ -270,7 +254,7 @@ const TemplateShowcaseTracks = () => {
           layout="minimalist"
           canHover={canHover}
         />
-      </m.div>
+      </div>
     </div>
   );
 };

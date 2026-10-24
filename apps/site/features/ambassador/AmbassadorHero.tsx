@@ -1,10 +1,21 @@
 "use client";
 
-import { m, LayoutGroup } from "framer-motion";
+import { m } from "framer-motion";
 import { ArrowRight, Sparkles, Award, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
 import { TextRotate } from "@/components/ui/text-rotate";
+
+const ROTATING_WORDS = [
+  "fun 🚀",
+  "funky 🪩",
+  "cool 🕶️",
+  "rewarding 💎",
+  "premium ✨",
+  "active ⚡",
+  "fancy 💅",
+  "yours 🔥",
+];
 
 /**
  * `programEnabled` mirrors AMBASSADOR_PROGRAM_ENABLED, the same flag the apply page
@@ -152,38 +163,27 @@ const AmbassadorHero = ({ programEnabled }: { programEnabled: boolean }) => {
           <span aria-hidden="true">
             Represent VeriWorkly. <br />
           </span>
-          <LayoutGroup>
-            <m.span
-              layout
-              aria-hidden="true"
-              className="flex flex-wrap items-center justify-center text-center whitespace-pre"
-            >
-              <m.span
-                layout
-                className="inline-block"
-                transition={{ type: "spring", damping: 30, stiffness: 400 }}
-              >
-                Make it{" "}
-              </m.span>
+          <span
+            aria-hidden="true"
+            className="flex flex-wrap items-center justify-center text-center whitespace-pre"
+          >
+            <span className="inline-block">Make it </span>
+            <span className="inline-grid justify-items-start">
+              {ROTATING_WORDS.map((word) => (
+                <span key={word} className="invisible col-start-1 row-start-1 pr-3 pb-1 md:pb-2">
+                  {word}
+                </span>
+              ))}
               <TextRotate
-                texts={[
-                  "fun 🚀",
-                  "funky 🪩",
-                  "cool 🕶️",
-                  "rewarding 💎",
-                  "premium ✨",
-                  "active ⚡",
-                  "fancy 💅",
-                  "yours 🔥",
-                ]}
-                mainClassName="overflow-hidden pr-3 text-indigo-600 dark:text-indigo-400 py-0 pb-1 md:pb-2 rounded-xl"
+                texts={ROTATING_WORDS}
+                mainClassName="col-start-1 row-start-1 overflow-hidden pr-3 text-indigo-600 dark:text-indigo-400 py-0 pb-1 md:pb-2 rounded-xl"
                 staggerDuration={0.03}
                 staggerFrom="last"
                 rotationInterval={2500}
                 transition={{ type: "spring", damping: 30, stiffness: 400 }}
               />
-            </m.span>
-          </LayoutGroup>
+            </span>
+          </span>
         </h1>
 
         <p className="hero-rise mx-auto max-w-xl pt-6 text-sm font-semibold text-zinc-500 sm:pt-8 sm:text-base md:pt-10 md:text-lg lg:text-xl dark:text-zinc-400">

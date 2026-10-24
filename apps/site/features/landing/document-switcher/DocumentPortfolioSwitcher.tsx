@@ -86,7 +86,7 @@ const DocumentPortfolioSwitcher = ({ previews }: DocumentPortfolioSwitcherProps)
                   {isActive && (
                     <span
                       aria-hidden="true"
-                      className="absolute inset-0 rounded-full border border-black/5 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-[opacity,transform] duration-200 starting:scale-95 starting:opacity-0 dark:border-white/10 dark:bg-zinc-800 dark:shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
+                      className="absolute inset-0 rounded-full border border-black/5 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-[opacity,transform] duration-200 dark:border-white/10 dark:bg-zinc-800 dark:shadow-[0_2px_12px_rgba(0,0,0,0.5)] starting:scale-95 starting:opacity-0"
                     />
                   )}
 

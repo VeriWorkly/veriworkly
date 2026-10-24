@@ -101,7 +101,98 @@ body {
   }
 }
 
+/* A full-width carrier slides across its track; the dot sits at the carrier's left edge. */
+@keyframes track-bounce {
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes track-run {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shimmer-run {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+/*
+ * Scroll-linked drift for the landing page, driven by the element's own view timeline and
+ * set per element with the --sx/--sy/--sr custom properties. These replaced framer
+ * useScroll + useSpring chains that ran JavaScript on every scroll frame (W-035). Browsers
+ * without scroll timelines show the elements at rest.
+ */
+@keyframes scroll-shift {
+  from {
+    transform: translate(var(--sx0, 0), var(--sy0, 0)) rotateX(var(--sr0, 0deg))
+      rotateY(var(--sr0, 0deg));
+  }
+  to {
+    transform: translate(var(--sx1, 0), var(--sy1, 0)) rotateX(var(--sr1, 0deg))
+      rotateY(var(--sr1, 0deg));
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    scale: 0.85;
+    opacity: 0.12;
+  }
+  50% {
+    scale: 1.3;
+    opacity: 0.4;
+  }
+}
+
+@keyframes glow-turn {
+  from {
+    rotate: -8deg;
+  }
+  to {
+    rotate: 8deg;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .scroll-shift {
+      animation: scroll-shift linear both;
+      animation-timeline: view();
+    }
+
+    .glow-scroll {
+      animation:
+        glow-pulse linear both,
+        glow-turn linear both;
+      animation-timeline: view(), view();
+    }
+
+    .glow-scroll-still {
+      animation: glow-pulse linear both;
+      animation-timeline: view();
+    }
+  }
+
+  .track-bounce {
+    animation: track-bounce 2.5s ease-in-out infinite;
+  }
+
+  .track-run {
+    animation: track-run 0.8s linear infinite;
+  }
+
+  .shimmer-run {
+    animation: shimmer-run 1.5s linear infinite;
+  }
+
   .hero-float {
     animation: float-drift 4s ease-in-out infinite;
   }

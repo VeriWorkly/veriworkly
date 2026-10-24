@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
 import { useTheme } from "next-themes";
 import { ArrowLeft, Sun, Moon } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
@@ -13,8 +12,6 @@ const AmbassadorNav = () => {
   const mounted = useMounted();
 
   const { resolvedTheme, setTheme } = useTheme();
-
-  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
   const navItems = [
     { label: "Home", target: "hero" },
@@ -54,8 +51,6 @@ const AmbassadorNav = () => {
           {navItems.map((item) => (
             <button
               key={item.label}
-              onMouseEnter={() => setHoveredLink(item.label)}
-              onMouseLeave={() => setHoveredLink(null)}
               onClick={() => {
                 if (item.target === "hero") {
                   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -63,17 +58,9 @@ const AmbassadorNav = () => {
                   document.getElementById(item.target)?.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="relative cursor-pointer px-4 py-2 text-[11px] font-black tracking-widest text-zinc-600 uppercase transition-colors duration-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              className="relative cursor-pointer px-4 py-2 text-[11px] font-black tracking-widest text-zinc-600 uppercase transition-colors duration-200 before:absolute before:inset-0 before:scale-95 before:rounded-full before:bg-zinc-100/85 before:opacity-0 before:transition-[opacity,transform] before:duration-200 hover:text-zinc-900 hover:before:scale-100 hover:before:opacity-100 dark:text-zinc-400 dark:before:bg-white/5 dark:hover:text-white"
             >
               <span className="relative z-10">{item.label}</span>
-
-              {hoveredLink === item.label && (
-                <m.span
-                  layoutId="nav-hover-pill"
-                  className="absolute inset-0 z-0 rounded-full bg-zinc-100/85 dark:bg-white/5"
-                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                />
-              )}
             </button>
           ))}
         </nav>

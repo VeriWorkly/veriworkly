@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Database, Zap, FileText, Check } from "lucide-react";
-import { m, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { m, useScroll, useTransform, AnimatePresence } from "framer-motion";
 
 import Step1Visual from "./Step1Visual";
 import Step2Visual from "./Step2Visual";
@@ -19,8 +19,6 @@ const InteractiveProcess = () => {
     target: scrollRef,
     offset: ["start start", "end end"],
   });
-
-  const progress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
 
   const activeStep = useTransform(
     scrollYProgress,
@@ -126,7 +124,7 @@ const InteractiveProcess = () => {
                 <div className="absolute top-0 left-3.5 h-full w-0.5 bg-zinc-200 dark:bg-zinc-800">
                   <m.div
                     className="h-full w-full origin-top bg-blue-500"
-                    style={{ scaleY: progress }}
+                    style={{ scaleY: scrollYProgress }}
                   />
                 </div>
 

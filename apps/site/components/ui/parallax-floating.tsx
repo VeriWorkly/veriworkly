@@ -1,10 +1,8 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useId, useRef } from "react";
-import { useAnimationFrame } from "framer-motion";
 
 import { cn } from "@veriworkly/ui";
-import { useMousePositionRef } from "@/hooks/use-mouse-position-ref";
 
 interface FloatingContextType {
   registerElement: (id: string, element: HTMLDivElement, depth: number) => void;
@@ -20,6 +18,13 @@ interface FloatingProps {
   easingFactor?: number;
 }
 
+/**
+ * Elements drift toward the pointer. The frame loop runs only while something is still
+ * moving: a mousemove starts it, and it stops once every element has settled. It used to be
+ * a framer useAnimationFrame that ran every frame for the life of the page, plus window
+ * mousemove/touchmove listeners that read layout on each event (W-035). Touch input never
+ * drove anything useful here, so it no longer registers a listener.
+ */
 const Floating = ({
   children,
   className,
@@ -29,50 +34,61 @@ const Floating = ({
 }: FloatingProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const elementsMap = useRef(
-    new Map<
-      string,
-      {
-        element: HTMLDivElement;
-        depth: number;
-        currentPosition: { x: number; y: number };
-      }
-    >(),
+    new Map<string, { element: HTMLDivElement; depth: number; x: number; y: number }>(),
   );
-  const mousePositionRef = useMousePositionRef(containerRef);
 
   const registerElement = useCallback((id: string, element: HTMLDivElement, depth: number) => {
-    elementsMap.current.set(id, {
-      element,
-      depth,
-      currentPosition: { x: 0, y: 0 },
-    });
+    elementsMap.current.set(id, { element, depth, x: 0, y: 0 });
   }, []);
 
   const unregisterElement = useCallback((id: string) => {
     elementsMap.current.delete(id);
   }, []);
 
-  useAnimationFrame(() => {
-    if (!containerRef.current) return;
+  useEffect(() => {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
-    elementsMap.current.forEach((data) => {
-      const strength = (data.depth * sensitivity) / 20;
+    const pointer = { x: 0, y: 0 };
+    let frame = 0;
 
-      // Calculate new target position
-      const newTargetX = mousePositionRef.current.x * strength;
-      const newTargetY = mousePositionRef.current.y * strength;
+    const step = () => {
+      const container = containerRef.current;
+      frame = 0;
+      if (!container) return;
 
-      // Check if we need to update
-      const dx = newTargetX - data.currentPosition.x;
-      const dy = newTargetY - data.currentPosition.y;
+      const rect = container.getBoundingClientRect();
+      const targetX = pointer.x - rect.left - rect.width / 2;
+      const targetY = pointer.y - rect.top - rect.height / 2;
+      let moving = false;
 
-      // Update position only if we're still moving
-      data.currentPosition.x += dx * easingFactor;
-      data.currentPosition.y += dy * easingFactor;
+      elementsMap.current.forEach((data) => {
+        const strength = (data.depth * sensitivity) / 20;
+        const dx = targetX * strength - data.x;
+        const dy = targetY * strength - data.y;
 
-      data.element.style.transform = `translate3d(${data.currentPosition.x}px, ${data.currentPosition.y}px, 0)`;
-    });
-  });
+        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) moving = true;
+
+        data.x += dx * easingFactor;
+        data.y += dy * easingFactor;
+        data.element.style.transform = `translate3d(${data.x}px, ${data.y}px, 0)`;
+      });
+
+      if (moving) frame = requestAnimationFrame(step);
+    };
+
+    const onMove = (event: MouseEvent) => {
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      if (!frame) frame = requestAnimationFrame(step);
+    };
+
+    window.addEventListener("mousemove", onMove, { passive: true });
+
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(frame);
+    };
+  }, [sensitivity, easingFactor]);
 
   return (
     <FloatingContext.Provider value={{ registerElement, unregisterElement }}>
@@ -103,9 +119,7 @@ export const FloatingElement = ({ children, className, depth = 1 }: FloatingElem
   useEffect(() => {
     if (!elementRef.current || !context) return;
 
-    const nonNullDepth = depth ?? 0.01;
-
-    context.registerElement(id, elementRef.current, nonNullDepth);
+    context.registerElement(id, elementRef.current, depth ?? 0.01);
     return () => context.unregisterElement(id);
   }, [depth, context, id]);
 

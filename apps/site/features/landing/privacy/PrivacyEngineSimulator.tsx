@@ -71,25 +71,13 @@ const PrivacyEngineSimulator = () => {
               <div className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full bg-zinc-200 dark:bg-zinc-800" />
 
               {activeEngine === "local" ? (
-                <m.div
-                  className="absolute top-1/2 left-0 h-2 w-2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"
-                  animate={{ left: ["0%", "100%", "0%"] }}
-                  transition={{
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
+                <div className="track-bounce absolute inset-0">
+                  <div className="absolute top-1/2 left-0 h-2 w-2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]" />
+                </div>
               ) : (
-                <m.div
-                  className="absolute top-1/2 left-0 h-2 w-2 -translate-y-1/2 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]"
-                  animate={{ left: "100%" }}
-                  transition={{
-                    duration: 0.8,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                />
+                <div className="track-run absolute inset-0">
+                  <div className="absolute top-1/2 left-0 h-2 w-2 -translate-y-1/2 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]" />
+                </div>
               )}
             </div>
 

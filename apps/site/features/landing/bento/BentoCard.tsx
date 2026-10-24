@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef } from "react";
-import { m, MotionValue } from "framer-motion";
 
 import { cn } from "@veriworkly/ui";
 
@@ -9,7 +8,8 @@ interface BentoCardProps {
   children: React.ReactNode;
   className?: string;
   glowColor?: string;
-  yOffset?: MotionValue<number> | number;
+  /** Scroll drift on desktop: "up" for the first column, "down" for the second. */
+  drift?: "up" | "down";
   canHover?: boolean;
 }
 
@@ -17,15 +17,17 @@ const BentoCard = ({
   children,
   className = "",
   glowColor = "rgba(59,130,246,0.15)",
-  yOffset,
+  drift,
   canHover = true,
 }: BentoCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
+  const rectRef = useRef<DOMRect | null>(null);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
 
-    const { left, top } = cardRef.current.getBoundingClientRect();
+    rectRef.current ??= cardRef.current.getBoundingClientRect();
+    const { left, top } = rectRef.current;
 
     const x = e.clientX - left;
     const y = e.clientY - top;
@@ -35,12 +37,14 @@ const BentoCard = ({
   };
 
   return (
-    <m.div
+    <div
       ref={cardRef}
-      style={{ y: yOffset }}
       onMouseMove={handleMouseMove}
+      onMouseLeave={() => (rectRef.current = null)}
       className={cn(
         "group relative overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 transition-all duration-300 active:scale-[0.98] sm:rounded-[2.5rem] sm:p-8 lg:p-10 dark:border-zinc-800/80 dark:bg-[#080808]",
+        drift === "up" && "scroll-shift lg:[--sy0:40px] lg:[--sy1:-40px]",
+        drift === "down" && "scroll-shift lg:[--sy0:-20px] lg:[--sy1:20px]",
         className,
       )}
     >
@@ -62,7 +66,7 @@ const BentoCard = ({
         }}
       />
       {children}
-    </m.div>
+    </div>
   );
 };
 
