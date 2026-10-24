@@ -2,18 +2,20 @@
 
 import { useTheme } from "next-themes";
 import { Menu, X } from "lucide-react";
-import React, { useState, useRef, useCallback } from "react";
+import nextDynamic from "next/dynamic";
+import { useState, useCallback } from "react";
 
 import { cn } from "@veriworkly/ui";
 
 import { useMounted } from "@/hooks/use-mounted";
 import { useScrolled } from "@/hooks/use-scrolled";
-import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 import { LogoPill } from "./navbar/LogoPill";
 import { DesktopNav } from "./navbar/DesktopNav";
 import { ActionsPill } from "./navbar/ActionsPill";
-import { MobileMenu, MOBILE_MENU_ID } from "./navbar/MobileMenu";
+import { MOBILE_MENU_ID } from "./navbar/constants";
+
+const MobileMenu = nextDynamic(() => import("./navbar/MobileMenu"), { ssr: false });
 
 const Navbar = () => {
   const mounted = useMounted();
@@ -23,17 +25,11 @@ const Navbar = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
-
   const isDark = resolvedTheme === "dark";
 
   const toggleTheme = useCallback(() => {
     setTheme(isDark ? "light" : "dark");
   }, [isDark, setTheme]);
-
-  useFocusTrap(mobileMenuOpen, mobileMenuRef, {
-    onEscape: () => setMobileMenuOpen(false),
-  });
 
   return (
     <>
@@ -66,16 +62,16 @@ const Navbar = () => {
         </div>
       </header>
 
-      <MobileMenu
-        isDark={isDark}
-        mounted={mounted}
-        isOpen={mobileMenuOpen}
-        menuRef={mobileMenuRef}
-        onToggleTheme={toggleTheme}
-        onClose={() => setMobileMenuOpen(false)}
-      />
+      {mobileMenuOpen && (
+        <MobileMenu
+          isDark={isDark}
+          mounted={mounted}
+          onToggleTheme={toggleTheme}
+          onClose={() => setMobileMenuOpen(false)}
+        />
+      )}
     </>
   );
 };
 
-export default React.memo(Navbar);
+export default Navbar;

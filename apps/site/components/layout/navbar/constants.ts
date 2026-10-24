@@ -42,3 +42,5 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     icon: Globe,
   },
 ];
+
+export const MOBILE_MENU_ID = "site-mobile-menu";
