@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { cn } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
@@ -36,15 +38,19 @@ const AboutLetter = () => (
       </blockquote>
 
       <figcaption className="flex items-center gap-4 lg:self-end">
-        <span
-          aria-hidden="true"
-          className="bg-accent-foreground text-accent flex size-12 items-center justify-center rounded-full text-base font-bold"
-        >
-          GR
-        </span>
+        <Image
+          src={siteConfig.creatorLinks.avatar}
+          alt={siteConfig.creator}
+          width={48}
+          height={48}
+          className="size-12 rounded-full"
+        />
         <span>
-          <span className="block text-base font-semibold">Gautam Raj</span>
-          <span className="block text-sm opacity-80">Founder, {siteConfig.shortName}</span>
+          <span className="block text-base font-semibold">{siteConfig.creator}</span>
+          <span className="block text-sm opacity-80">
+            Founder and sole maintainer, {siteConfig.shortName} · India · building it since{" "}
+            <time dateTime="2026-03">March 2026</time>
+          </span>
         </span>
       </figcaption>
     </figure>

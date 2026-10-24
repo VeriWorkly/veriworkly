@@ -4,6 +4,7 @@ import { PageHero } from "@/components/marketing/PageLayout";
 import { LandingButton } from "@/components/marketing/LandingButton";
 
 import { SECURITY_COMMITMENTS } from "../../data";
+import { SECURITY_LAST_UPDATED } from "@/features/security/data/lastUpdated";
 
 export const SECURITY_POLICY_URL =
   "https://github.com/VeriWorkly/veriworkly/blob/master/SECURITY.md";
@@ -12,7 +13,23 @@ export const SecurityHero = () => (
   <PageHero
     title="Local-first."
     highlight="No surprises."
-    lede="Your drafts live in your browser. Sync, publishing and AI only run when you ask for them, and this page says exactly what leaves your machine when they do."
+    lede={
+      <>
+        Your drafts live in your browser. Sync, publishing and AI only run when you ask for them,
+        and this page says exactly what leaves your machine when they do.
+        <span className="text-muted mt-3 block text-sm">
+          Last updated{" "}
+          <time dateTime={SECURITY_LAST_UPDATED}>
+            {new Date(SECURITY_LAST_UPDATED).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              timeZone: "UTC",
+            })}
+          </time>
+        </span>
+      </>
+    }
     aside={
       <div className="flex flex-wrap gap-3">
         <LandingButton showArrow size="lg" variant="solid" href={`mailto:${siteConfig.email}`}>

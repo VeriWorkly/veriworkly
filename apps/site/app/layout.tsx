@@ -89,7 +89,9 @@ const personSchema = {
   "@type": "Person",
   "@id": PERSON_ID,
   name: siteConfig.creator,
-  url: `${siteConfig.url}/about`,
+  url: siteConfig.creatorLinks.github,
+  image: siteConfig.creatorLinks.avatar,
+  mainEntityOfPage: `${siteConfig.url}/about`,
   jobTitle: "Founder and sole maintainer",
   description:
     "Builds and maintains VeriWorkly single-handedly: the document studio, the ATS scoring engine, the portfolio publisher, and the API. Works in the open — the codebase, the roadmap, and the development metrics are all public.",

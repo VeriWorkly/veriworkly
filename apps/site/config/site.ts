@@ -23,6 +23,8 @@ export const siteConfig = {
   creatorLinks: {
     github: "https://github.com/Gautam25Raj",
     twitter: "https://x.com/noober_boy",
+    /** GitHub serves the profile picture; github.com/*.png is an allowed image host. */
+    avatar: "https://github.com/Gautam25Raj.png",
   },
 
   /**

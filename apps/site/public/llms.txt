@@ -99,3 +99,5 @@ All prices in USD. Exports are free on every tier.
 - [Style guide](https://veriworkly.com/style-guide): The design system's tokens and components.
 - [Source code](https://github.com/VeriWorkly/veriworkly): The monorepo, MIT licensed.
 - [ATS Engine on npm](https://www.npmjs.com/package/@veriworkly/ats-engine)
+
+Last checked against the code: 2026-10-24.
