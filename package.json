@@ -53,7 +53,7 @@
     "db:migrate:deploy": "npm run db:migrate:deploy -w @veriworkly/server"
   },
   "devDependencies": {
-    "@types/node": "^25",
+    "@types/node": "^26",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "prettier": "^3.9.9",
