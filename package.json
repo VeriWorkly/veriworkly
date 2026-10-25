@@ -58,7 +58,7 @@
     "eslint-config-next": "16.4.3",
     "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.1",
-    "typescript": "^6"
+    "typescript": "^7"
   },
   "optionalDependencies": {
     "@esbuild/linux-x64": "^0.28.1",
