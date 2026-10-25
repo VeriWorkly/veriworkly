@@ -51,7 +51,7 @@
     "compression": "^1.8.2",
     "cors": "^2.8.6",
     "dodopayments": "^2.52.0",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.9",
     "express": "^4.22.3",
     "helmet": "^7.2.0",
     "mammoth": "^1.13.0",
