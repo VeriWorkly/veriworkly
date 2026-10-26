@@ -66,14 +66,14 @@ describe("credit ledger", () => {
   });
 
   it("uses deterministic action prices", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
 
     expect(CreditService.costFor("rewrite_short_text")).toBe(7);
     expect(CreditService.costFor("generate_document")).toBe(11);
   });
 
   it("grants credits and records the resulting balance", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
     txMock.creditWallet.upsert.mockResolvedValue({
       id: "wallet_1",
       balance: 100,
@@ -106,7 +106,7 @@ describe("credit ledger", () => {
   });
 
   it("returns an existing debit for the same request id", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
     const existing = { id: "credit_1", userId: "user_1", amount: -5, balanceAfter: 25 };
     txMock.creditTransaction.findUnique.mockResolvedValue(existing);
 
@@ -117,7 +117,7 @@ describe("credit ledger", () => {
   });
 
   it("rejects a debit when the wallet has insufficient credits", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
     txMock.creditWallet.upsert.mockResolvedValue({ id: "wallet_1", balance: 2 });
 
     await expect(

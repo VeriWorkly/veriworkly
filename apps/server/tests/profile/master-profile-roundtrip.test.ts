@@ -6,7 +6,7 @@ import {
   sanitizeMasterProfileForSave,
 } from "@veriworkly/profile-core";
 
-import { masterProfilePayloadSchema } from "../../src/validators/masterProfileValidator";
+import { masterProfilePayloadSchema } from "../../src/validators/masterProfileValidator.js";
 
 /**
  * The studio -> server round trip for the master profile.

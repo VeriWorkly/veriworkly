@@ -54,8 +54,8 @@ vi.mock("#services/creditService", () => ({
 
 import { AtsRepairService } from "#services/ats/repair";
 import type { AtsReport } from "#services/ats/types";
-import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs";
-import { chatResponse, stubChatApi } from "./helpers/chatApi";
+import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs.js";
+import { chatResponse, stubChatApi } from "./helpers/chatApi.js";
 
 const SOURCE = "Jane Doe\nSenior Engineer, Acme Corporation\nJan 2020 - Present\n";
 

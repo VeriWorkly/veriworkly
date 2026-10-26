@@ -59,7 +59,7 @@ const MINIMAL = {
 
 async function load() {
   vi.resetModules();
-  return import("../../src/services/ats/enginePolicy");
+  return import("../../src/services/ats/enginePolicy.js");
 }
 
 describe("ATS engine policy — failing at boot rather than per request", () => {

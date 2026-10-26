@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Request, Response, NextFunction } from "express";
 import router from "../../src/routes/contact.js";
-import { sendContactEmail } from "#services/mail";
+import { sendContactEmail } from "#services/mail/index";
 
-vi.mock("#services/mail", () => ({
+vi.mock("#services/mail/index", () => ({
   sendContactEmail: vi.fn().mockResolvedValue(undefined),
 }));
 

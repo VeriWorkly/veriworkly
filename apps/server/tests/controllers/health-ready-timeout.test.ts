@@ -20,6 +20,17 @@ vi.mock("#lib/prisma", () => {
 });
 vi.mock("#lib/redis", () => ({ getRedis: mocks.getRedis }));
 vi.mock("#lib/logger", () => ({ logger: mocks.logger }));
+// `ready` never touches these; the controller imports them for `/metrics` and `/jobs`. Left real,
+// they pull in every scheduled job and service, and re-importing that graph per test (below)
+// overran the 10 s hook timeout on a loaded machine.
+vi.mock("#lib/metrics", () => ({
+  getJobLastSuccess: vi.fn(),
+  getJobsBaseline: vi.fn(),
+  jobStatuses: vi.fn(),
+  renderMetrics: vi.fn(),
+}));
+vi.mock("#services/ats/extractPool", () => ({ getExtractQueueStats: vi.fn() }));
+vi.mock("#jobs/scheduledJobs", () => ({ enabledJobs: vi.fn(() => new Set()) }));
 
 // Re-imported per test: the controller keeps the in-flight database probe in module state.
 let HealthController: typeof import("#controllers/healthController").HealthController;

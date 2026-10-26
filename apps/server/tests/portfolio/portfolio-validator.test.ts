@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   portfolioContentSchema,
   portfolioDraftContentSchema,
-} from "../../src/validators/portfolioValidator";
-import { resolveWatermarkFlag } from "../../src/services/portfolioService";
+} from "../../src/validators/portfolioValidator.js";
+import { resolveWatermarkFlag } from "../../src/services/portfolioService.js";
 
 const validPortfolio = {
   schemaVersion: 1,

@@ -3,7 +3,7 @@ import { renderOtpEmail } from "../../src/mail/auth/otp.js";
 
 describe("OTP mail rendering", () => {
   it("renders sign-in OTP template properly", () => {
-    const html = renderOtpEmail("123456", "sign-in");
+    const html = renderOtpEmail("123456", "sign-in", 10);
     expect(html).toContain("Sign in to VeriWorkly");
     expect(html).toContain("Verification Code");
     expect(html).toContain("Confirm your request using the secure verification code below.");
@@ -11,7 +11,7 @@ describe("OTP mail rendering", () => {
   });
 
   it("renders email-verification OTP template properly", () => {
-    const html = renderOtpEmail("654321", "email-verification");
+    const html = renderOtpEmail("654321", "email-verification", 10);
     expect(html).toContain("Verify your email");
     expect(html).toContain("Verify email address");
     expect(html).toContain(
@@ -21,7 +21,7 @@ describe("OTP mail rendering", () => {
   });
 
   it("renders forget-password OTP template properly", () => {
-    const html = renderOtpEmail("111222", "forget-password");
+    const html = renderOtpEmail("111222", "forget-password", 10);
     expect(html).toContain("Reset your password");
     expect(html).toContain("Reset password code");
     expect(html).toContain(
@@ -31,7 +31,7 @@ describe("OTP mail rendering", () => {
   });
 
   it("renders change-email OTP template properly", () => {
-    const html = renderOtpEmail("333444", "change-email");
+    const html = renderOtpEmail("333444", "change-email", 10);
     expect(html).toContain("Confirm your email change");
     expect(html).toContain("Confirm email change");
     expect(html).toContain(

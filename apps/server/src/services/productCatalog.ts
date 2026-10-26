@@ -23,21 +23,26 @@ export function isCatalogInterval(value: string): value is CatalogInterval {
 
 /**
  * `price` is what the pack sells for, in USD cents, for display (the studio's buy button, the
- * public pricing page). The amount charged is the Dodo product's: keep the two in step.
+ * public pricing page). It comes from `CREDIT_PACK_250_PRICE_CENTS` / `CREDIT_PACK_500_PRICE_CENTS`
+ * (defaults 299 / 499); the amount charged is the Dodo product's, so keep the two in step.
  */
 export const creditPackCatalog = {
   credit_pack_250: {
     name: CREDIT_PACK_NAMES.credit_pack_250,
     credits: 250,
     expiresInDays: 90,
-    price: 299,
+    get price() {
+      return config.dodo.creditPack250PriceCents;
+    },
     providerProductId: () => config.dodo.creditPack250ProductId,
   },
   credit_pack_500: {
     name: CREDIT_PACK_NAMES.credit_pack_500,
     credits: 500,
     expiresInDays: 90,
-    price: 499,
+    get price() {
+      return config.dodo.creditPack500PriceCents;
+    },
     providerProductId: () => config.dodo.creditPack500ProductId,
   },
 } as const;

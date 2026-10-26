@@ -10,7 +10,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
  * (self-service and admin) are covered.
  */
 
-const { s3Send } = vi.hoisted(() => ({ s3Send: vi.fn(async () => ({})) }));
+const { s3Send } = vi.hoisted(() => ({
+  s3Send: vi.fn<(command: unknown) => Promise<object>>(async () => ({})),
+}));
 
 vi.mock("@aws-sdk/client-s3", () => ({
   S3Client: class {

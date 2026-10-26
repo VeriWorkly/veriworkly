@@ -297,15 +297,19 @@ describe("GET /documents?updatedSince (V-132)", () => {
     const idA: string = a.body.data.id;
     const idB: string = b.body.data.id;
 
+    // The app runs in this process, so both ends of the request bracket the moment the service
+    // read its clock. How long auth and routing take before that moment varies with machine load,
+    // so the cursor is pinned between the two ends rather than to a fixed distance from the start.
     const requestedAt = Date.now();
     const full = await api.get("/api/v1/documents");
+    const respondedAt = Date.now();
     expect(full.status).toBe(200);
     expect(typeof full.body.serverTime).toBe("string");
     expect(Number.isNaN(Date.parse(full.body.serverTime))).toBe(false);
-    // The cursor sits behind the query start by the slack, never ahead of it.
-    const behindBy = requestedAt - Date.parse(full.body.serverTime);
-    expect(behindBy).toBeGreaterThanOrEqual(CURSOR_SLACK_MS - 10);
-    expect(behindBy).toBeLessThan(CURSOR_SLACK_MS + 5_000);
+    // The cursor sits behind the query start by exactly the slack, never ahead of it.
+    const cursorAt = Date.parse(full.body.serverTime);
+    expect(cursorAt).toBeGreaterThanOrEqual(requestedAt - CURSOR_SLACK_MS);
+    expect(cursorAt).toBeLessThanOrEqual(respondedAt - CURSOR_SLACK_MS);
     expect(full.body.data.map((d: { id: string }) => d.id).sort()).toEqual([idA, idB].sort());
 
     const cursor: string = full.body.serverTime;

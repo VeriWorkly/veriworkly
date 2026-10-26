@@ -51,7 +51,8 @@ import {
 } from "#middleware/rateLimit";
 
 describe("rateLimitMiddleware", () => {
-  let req: Partial<Request> & { headers: Record<string, string> };
+  // `path` is a read-only getter on Request; the mock is a plain object the tests point elsewhere.
+  let req: Partial<Omit<Request, "path">> & { headers: Record<string, string>; path: string };
   let res: Partial<Response>;
   let next: NextFunction;
   beforeEach(() => {

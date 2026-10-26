@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { masterProfilePayloadSchema } from "../../src/validators/masterProfileValidator";
+import { masterProfilePayloadSchema } from "../../src/validators/masterProfileValidator.js";
 
 const validPayload = {
   expectedUpdatedAt: "2026-04-10T10:00:00.000Z",

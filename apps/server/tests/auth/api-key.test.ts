@@ -67,7 +67,7 @@ describe("API Key Service Validation", () => {
       },
     });
 
-    const { ApiKeyService } = await import("../../src/services/apiKeyService");
+    const { ApiKeyService } = await import("../../src/services/apiKeyService.js");
     const result = await ApiKeyService.validateKey("vw_1234567890");
 
     expect(result).not.toBeNull();
@@ -100,7 +100,7 @@ describe("API Key Service Validation", () => {
       },
     });
 
-    const { ApiKeyService } = await import("../../src/services/apiKeyService");
+    const { ApiKeyService } = await import("../../src/services/apiKeyService.js");
     const result = await ApiKeyService.validateKey("vw_2234567890");
 
     expect(result).not.toBeNull();
@@ -114,7 +114,7 @@ describe("API Key Service Validation", () => {
     // Markers (revoked, known-invalid) read first in one MGET; the auth cache is never reached.
     mGetMock.mockResolvedValueOnce(["1", null]);
 
-    const { ApiKeyService } = await import("../../src/services/apiKeyService");
+    const { ApiKeyService } = await import("../../src/services/apiKeyService.js");
     const result = await ApiKeyService.validateKey("vw_3234567890");
 
     expect(result).toBeNull();
@@ -128,7 +128,7 @@ describe("API Key Service Validation", () => {
     cacheGetMock.mockResolvedValue(null);
     prismaFindMock.mockResolvedValue(null);
 
-    const { ApiKeyService } = await import("../../src/services/apiKeyService");
+    const { ApiKeyService } = await import("../../src/services/apiKeyService.js");
     expect(await ApiKeyService.validateKey("vw_4234567890")).toBeNull();
 
     const negative = cacheSetMock.mock.calls.find(([key]) =>

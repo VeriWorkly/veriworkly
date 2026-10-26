@@ -1,5 +1,5 @@
 import request from "supertest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, type MockInstance } from "vitest";
 
 import { app } from "#app";
 import { logger } from "#lib/logger";
@@ -13,7 +13,7 @@ import { STUDIO_ORIGIN } from "./env.js";
  * recovery transition is the real one too.
  */
 
-function redisTransitionWarnings(warn: ReturnType<typeof vi.spyOn>) {
+function redisTransitionWarnings(warn: MockInstance<typeof logger.warn>) {
   return warn.mock.calls
     .map(([message]) => String(message))
     .filter((message) => /rate limiter/i.test(message));
