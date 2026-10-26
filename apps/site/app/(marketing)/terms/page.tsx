@@ -75,7 +75,7 @@ const termsTopics: LegalTopic[] = [
   {
     title: "Transparent pay-as-you-go",
     description:
-      "We do not lock document downloads behind trials or recurring traps. AI credits are pay-as-you-go: subscription credits refresh each billing period, and one-time packs expire 90 days after purchase.",
+      "We do not lock document downloads behind trials or recurring traps. AI credits are pay-as-you-go: subscription credits refresh every month on monthly and annual plans alike, with no rollover, and one-time packs expire 90 days after purchase.",
   },
   {
     title: "Fair use on free tiers",
