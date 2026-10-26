@@ -19,12 +19,12 @@ export const ATS_TIERS = [
     highlight: true,
   },
   {
-    name: "AI plan",
-    price: "$5.99",
-    period: "/ month",
-    note: "300 scans per billing cycle",
+    name: "With AI credits",
+    price: "From $2.99",
+    period: "a credit pack, pass or plan",
+    note: "300 scans a month",
     badge: "Power User",
-    cta: { label: "See AI plans", href: "/pricing" },
+    cta: { label: "See AI credit options", href: "/pricing" },
     features: [
       "Everything in the free account",
       "An AI explanation of how your resume scored",

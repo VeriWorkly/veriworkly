@@ -4,7 +4,7 @@
 
 **No free trials.** VeriWorkly does not offer a trial on any plan. The free tier is how
 you try the product, for as long as you like. Subscriptions charge at checkout for the
-period you chose, and the 3-Day Sprint and 7-Day Hunt passes are one-time purchases that
+period you chose, and the 3-Day Sprint Pass and 7-Day Hunt Pass are one-time purchases that
 expire rather than renew. Nothing converts from free to paid on its own.
 
 ## Subscription Tiers & Passes
@@ -47,31 +47,31 @@ expire rather than renew. Nothing converts from free to paid on its own.
   - 400 AI Writing Credits (valid during pass)
   - Premium portfolio templates (Nimbus, Cipher), badge removal & portfolio analytics
 
-### 4. Monthly Pro Bundle
+### 4. Job Hunter Bundle, monthly
 
 - **Price**: $14.99 / month
 - **Includes**:
   - Creator Pro portfolio features on `username.veriworkly.com`
   - 1,000 AI Writing Credits a month; unused credits expire at the end of the month (no rollover)
-  - 300 ATS Scans per billing period
+  - 300 ATS Scans a month (any account with AI credits gets these, credit packs included)
   - Premium portfolio templates (Nimbus, Cipher), badge removal & full portfolio analytics
   - Higher import limits: up to 50 GitHub imports a day, and LinkedIn imports without the
     free tier's 30-day gap
 
-### 5. Annual Pro Bundle
+### 5. Job Hunter Bundle, annual
 
 - **Price**: $11.99 / month ($143.88 billed annually)
 - **Includes**:
-  - All features in Monthly Pro Bundle with a 20% annual discount.
+  - Everything in the monthly Job Hunter Bundle, with a 20% annual discount.
   - Credits are granted 1,000 a month for 12 months, not all at once; unused credits do not
     roll over, the same as the monthly plan.
 
-### 6. Creator Pro Standalone (Portfolio Only)
+### 6. Creator Pro (portfolio only)
 
 - **Price**: $9.99 / month or $7.99 / month ($95.88 billed annually)
 - **Includes**: Premium portfolio templates (Nimbus, Cipher), multi-page portfolios, portfolio badge removal, visitor analytics, and SEO controls on your `username.veriworkly.com` subdomain (no AI credits). The subdomain itself is free on every plan.
 
-### 7. AI Credits Standalone (Writing Only)
+### 7. AI Credits (writing only)
 
 - **Price**: $5.99 / month or $4.99 / month ($59.90 billed annually)
 - **Includes**: 1,000 AI writing credits/month for resume tailoring and rewriting (no Creator Pro portfolio features).

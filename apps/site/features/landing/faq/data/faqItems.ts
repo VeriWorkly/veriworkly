@@ -64,9 +64,9 @@ export const faqs: FAQItem[] = [
   },
   {
     id: "landing-flexible-passes",
-    question: "What are Flexible Passes (3-Day and 7-Day Sprint Passes)?",
+    question: "What are the 3-Day Sprint Pass and the 7-Day Hunt Pass?",
     answer:
-      "Flexible Passes are one-time payments (3-Day or 7-Day Sprint Passes) that unlock the premium portfolio templates, portfolio badge removal, analytics, and AI writing credits for an active job hunt, without a recurring subscription. They do not gate exports — every file format is free on every tier.",
+      "The 3-Day Sprint Pass and the 7-Day Hunt Pass are one-time payments that unlock the premium portfolio templates, portfolio badge removal, analytics, and AI writing credits for an active job hunt, without a recurring subscription. They do not gate exports — every file format is free on every tier.",
     category: "Pricing & Plans",
   },
   {

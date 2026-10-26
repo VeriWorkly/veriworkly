@@ -33,8 +33,9 @@ const COMPARISON_DATA: ComparisonRow[] = [
     feature: "Referral Attribution",
     description: "How long a referral link stays credited to you.",
     veriworkly: {
-      value: "No Expiry Window",
-      description: "Credited the first time your invitee signs in - it doesn't expire.",
+      value: "Linked for Good",
+      description:
+        "Linked when your invitee signs up through your link, within 30 days of sign-up and before their first purchase. Every payment after that counts.",
       icon: Clock,
     },
     industry: {

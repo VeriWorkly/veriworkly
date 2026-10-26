@@ -9,7 +9,7 @@ export function TierComparison() {
   return (
     <PageSection
       title="Free to score. Paid for AI."
-      lede="A free account gets the full report: every rule, every keyword, every fix. Paid plans add AI explanations and more scans."
+      lede="A free account gets the full report: every rule, every keyword, every fix. AI credits, from a pack, a pass or a plan, add AI explanations and more scans."
     >
       <div className="grid gap-6 md:grid-cols-2">
         {ATS_TIERS.map((tier) => (

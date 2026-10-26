@@ -50,10 +50,10 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
                 Creator Pro
               </span>
               <span className="text-center" role="columnheader">
-                AI Standalone
+                AI Credits
               </span>
               <span className="text-accent text-center" role="columnheader">
-                Bundle
+                Job Hunter Bundle
               </span>
             </div>
 

@@ -276,7 +276,7 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
       {quota.tier === "subscriber" ? (
         <section className="bg-accent/10 rounded-3xl p-6 sm:p-8">
           <h2 className="text-accent flex items-center gap-2 text-xl font-bold tracking-tight">
-            <Sparkles className="h-4 w-4" aria-hidden="true" /> Your plan includes AI analysis
+            <Sparkles className="h-4 w-4" aria-hidden="true" /> Your AI credits cover AI analysis
           </h2>
           <p className="text-muted mt-2 text-base leading-7">
             Run this resume through the AI layer in Studio for missing-evidence detection and an
@@ -296,14 +296,14 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
           </h2>
           <p className="mt-2 max-w-2xl text-base leading-7 opacity-80">
             AI analysis reads the resume itself: it names the evidence a hiring manager expects to
-            see and cannot find, and ranks edits by hiring impact rather than score impact. Part of
-            the AI plan, from $5.99/mo.
+            see and cannot find, and ranks edits by hiring impact rather than score impact. It runs
+            on AI credits: a pack from $2.99, a pass or a plan.
           </p>
           <Link
             href={`${siteConfig.links.main}/pricing`}
             className="bg-background text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent mt-5 inline-flex h-12 items-center justify-center rounded-full px-6 text-base font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-[0.97]"
           >
-            See AI plans
+            See AI credit options
           </Link>
         </section>
       )}

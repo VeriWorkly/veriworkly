@@ -156,7 +156,7 @@ export const faqs: FaqItem[] = [
     category: "ats",
     question: "How many free ATS scans do I get?",
     answer:
-      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Plans that include AI credits (the 3-day and 7-day passes, the Job Hunter Bundle and AI Standalone) get 300 scans per billing period; Creator Pro on its own keeps the free-account allowance. Uploading a file to extract its text draws on a separate, more generous allowance (3 for visitors, 6 for free accounts), so uploading a document never costs you a scan.",
+      "Free registered accounts get 2 full ATS scans every 24 hours. Visitors without an account get 1 scan every 48 hours. Accounts with AI credits (a credit pack, the 3-Day Sprint Pass or 7-Day Hunt Pass, the Job Hunter Bundle or AI Credits) get 300 scans a month; Creator Pro on its own keeps the free-account allowance. Uploading a file to extract its text draws on a separate, more generous allowance (3 for visitors, 6 for free accounts), so uploading a document never costs you a scan.",
   },
   {
     id: "ats-scan-privacy",
@@ -255,16 +255,16 @@ export const faqs: FaqItem[] = [
   {
     id: "flexible-passes-vs-subscriptions",
     category: "billing",
-    question: "What are Flexible Sprint Passes and how do they work?",
+    question: "What are the 3-Day Sprint Pass and the 7-Day Hunt Pass?",
     answer:
-      "Flexible Sprint Passes are one-time purchases for active job searches. You pay once for 3 days ($2.99) or 7 days ($5.99) to get Creator Pro portfolio features and AI writing credits. They expire automatically with zero recurring charges, so you never have to worry about forgetting to cancel a subscription.",
+      "The 3-Day Sprint Pass and the 7-Day Hunt Pass are one-time purchases for active job searches. You pay once for 3 days ($2.99) or 7 days ($5.99) to get Creator Pro portfolio features and AI writing credits. They expire automatically with zero recurring charges, so you never have to worry about forgetting to cancel a subscription.",
   },
   {
     id: "paid-plans-summary",
     category: "billing",
     question: "What paid plans and passes are available?",
     answer:
-      "We offer the 3-Day Sprint Pass ($2.99 one-time) and 7-Day Hunt Pass ($5.99 one-time). For ongoing searches, we offer the Job Hunter Bundle ($14.99/month, or $11.99/month billed annually with 1,000 monthly AI credits), Creator Pro hosting ($9.99/month, or $7.99/month billed annually), and AI Standalone ($5.99/month).",
+      "We offer the 3-Day Sprint Pass ($2.99 one-time) and 7-Day Hunt Pass ($5.99 one-time). For ongoing searches, we offer the Job Hunter Bundle ($14.99/month, or $11.99/month billed annually with 1,000 monthly AI credits), Creator Pro ($9.99/month, or $7.99/month billed annually), and AI Credits ($5.99/month).",
   },
   {
     id: "payment-security",

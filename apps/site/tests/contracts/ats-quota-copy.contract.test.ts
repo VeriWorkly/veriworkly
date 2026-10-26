@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("ATS quota reset copy", () => {
-  /** The window differs per tier (48h anonymous, 24h free, billing period on paid), so the copy must derive from `resetsAt`. */
+  /** The window differs per tier (48h anonymous, 24h free, a month on paid), so the copy must derive from `resetsAt`. */
 
   it("scales the unit with the distance to the reset", () => {
     expect(resetCopy(inHours(0.25))).toBe("in 15 minutes");
@@ -60,6 +60,6 @@ describe("ATS allowance copy", () => {
   it("names the real window for each tier", () => {
     expect(allowanceCopy(quotaFor("anonymous", 1))).toBe("1 scan every 48 hours");
     expect(allowanceCopy(quotaFor("free", 2))).toBe("2 scans a day");
-    expect(allowanceCopy(quotaFor("subscriber", 300))).toBe("300 scans this billing period");
+    expect(allowanceCopy(quotaFor("subscriber", 300))).toBe("300 scans this month");
   });
 });

@@ -35,6 +35,21 @@ describe("copy stays free of the claims the audit found false", () => {
     [/unused monthly subscription credits/i, "W-070: annual plans reset monthly too"],
     [/monthly subscription (?:ai )?credits do not roll over/i, "W-070"],
     [/refresh each billing period/i, "W-070"],
+    [/always upgrade or scale up/i, "W-071: only an upgrade to the Job Hunter Bundle exists"],
+    [/active referrals/i, "W-072: tiers count paid conversions"],
+    [/applied by us on review rather than automatically/i, "W-072: promotion is automatic"],
+    [/it doesn't expire|no expiry window|short attribution window/i, "W-072: 30 days from sign-up"],
+    [/we just read your application/i, "W-073: nobody has read it at submit time"],
+    [/for a trial — the date it converts|hold delivery until/i, "W-074: no trials or delays"],
+    [/invalidated if the owning account's subscription lapses/i, "W-074: keys outlive a lapse"],
+    [/we tell the person who published it/i, "W-074: no moderation notice is sent"],
+    [/scans? (?:per|this) billing (?:period|cycle)/i, "W-075: the scan window is a month"],
+    [/part of the ai plan/i, "W-075: any AI credits run AI analysis"],
+    [
+      /flexible (?:sprint )?passes|ai standalone|(?:monthly|annual) pro bundle|(?:creator pro|ai credits) standalone/i,
+      "W-076: one naming table (server productNames.ts)",
+    ],
+    [/use in portfolio builder/i, "W-077: the link opens the portfolio app's template page"],
   ];
 
   const SHIPPED_DIRS = ["app", "components", "config", "features", "public"];
@@ -116,10 +131,10 @@ describe("the numbers on the site match the server's constants", () => {
     const expected: [string, number[]][] = [
       ["3-Day Sprint Pass", [oneDay!]],
       ["7-Day Hunt Pass", [sevenDay!]],
-      ["Monthly Pro Bundle", [monthly!]],
-      ["Annual Pro Bundle", [annual!]],
-      ["Creator Pro Standalone", pro],
-      ["AI Credits Standalone", ai],
+      ["Job Hunter Bundle, monthly", [monthly!]],
+      ["Job Hunter Bundle, annual", [annual!]],
+      ["Creator Pro (portfolio only)", pro],
+      ["AI Credits (writing only)", ai],
     ];
     for (const [title, prices] of expected)
       for (const cents of prices) expect(section(title)).toContain(dollars(cents));
@@ -167,7 +182,7 @@ describe("the numbers on the site match the server's constants", () => {
     );
 
     const { ATS_TIERS } = await import("@/features/ats-checker/data/pricingTiers");
-    const paidTier = ATS_TIERS.find((tier) => tier.name === "AI plan")!;
+    const paidTier = ATS_TIERS.find((tier) => tier.name === "With AI credits")!;
 
     expect(paidTier.note).toContain(`${paidLimit} scans`);
   });

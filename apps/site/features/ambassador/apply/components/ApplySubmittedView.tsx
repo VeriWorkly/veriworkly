@@ -26,9 +26,8 @@ export const ApplySubmittedView = () => {
         You&apos;re officially in the running!
       </h2>
       <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-        We just read your application and we&apos;re already vibing with it. Give us a few days to
-        review - your status lives in your dashboard, and we&apos;ll email you the moment it
-        changes.
+        A person reads every application, usually within a few days. We&apos;ll email you when
+        it&apos;s decided, and your dashboard shows the status meanwhile.
       </p>
       <ReactionMedia reaction={APPLY_REACTIONS.success} className="mt-8" />
       <Link
