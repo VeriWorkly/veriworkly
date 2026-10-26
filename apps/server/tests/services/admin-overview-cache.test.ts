@@ -61,15 +61,15 @@ vi.mock("#lib/prisma", () => ({
  * it out of the first test's 5s budget, where it intermittently blew the timeout under full-suite
  * load while passing comfortably in isolation.
  */
-import { invalidateAdminCacheOnWrite } from "../../src/middleware/adminCacheInvalidation";
-import { getActionQueue } from "../../src/services/admin/adminOverviewService";
+import { invalidateAdminCacheOnWrite } from "../../src/middleware/adminCacheInvalidation.js";
+import { getActionQueue } from "../../src/services/admin/adminOverviewService.js";
 import {
   ADMIN_CACHE_NAMESPACE,
   adminActionQueueCacheKey,
   adminOverviewCacheKey,
   adminTimeSeriesCacheKey,
   invalidateAdminCaches,
-} from "../../src/services/admin/cache";
+} from "../../src/services/admin/cache.js";
 
 beforeEach(() => {
   store.clear();

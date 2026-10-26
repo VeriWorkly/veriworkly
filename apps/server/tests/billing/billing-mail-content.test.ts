@@ -6,7 +6,7 @@ import {
   purchaseConfirmationTerms,
   renderPurchaseConfirmationEmail,
 } from "#mail/index";
-import { formatMoney } from "../../src/mail/billing/billingFormat";
+import { formatMoney } from "../../src/mail/billing/billingFormat.js";
 import { addMonthsUtc } from "#services/annualCreditService";
 import { purchaseName, UNLOCK_PHRASES } from "#services/productNames";
 

@@ -9,7 +9,7 @@ vi.mock("#lib/redis", () => ({
   getRedis: vi.fn(),
 }));
 
-import { parseGithubUsername } from "../../src/services/profileImportService";
+import { parseGithubUsername } from "../../src/services/profileImportService.js";
 
 /**
  * V-144: the username is interpolated into a GitHub API URL, with the server's token for paid

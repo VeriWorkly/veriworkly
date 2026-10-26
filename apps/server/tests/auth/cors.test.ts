@@ -2,9 +2,9 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
-import { config } from "../../src/config";
+import { config } from "../../src/config.js";
 
-import { corsMiddleware, isWildcardPortfolioOrigin } from "../../src/middleware/cors";
+import { corsMiddleware, isWildcardPortfolioOrigin } from "../../src/middleware/cors.js";
 
 describe("CORS wildcard portfolio origin detection", () => {
   const allowedOrigins = [

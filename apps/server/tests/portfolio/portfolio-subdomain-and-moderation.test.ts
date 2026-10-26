@@ -11,15 +11,15 @@ import {
   normalizePortfolioSubdomain,
   portfolioSubdomainLookupKey,
   RESERVED_SUBDOMAINS,
-} from "../../src/utils/slugs";
+} from "../../src/utils/slugs.js";
 import {
   publicPortfolioCacheKey,
   publicPortfolioListCacheKey,
-} from "../../src/utils/portfolioPublicationCache";
+} from "../../src/utils/portfolioPublicationCache.js";
 import {
   isModerationLocked,
   MODERATION_SUSPENSION_PREFIX,
-} from "../../src/services/portfolioService";
+} from "../../src/services/portfolioService.js";
 
 describe("normalizePortfolioSubdomain", () => {
   it("normalises the usual way", () => {

@@ -51,7 +51,12 @@ vi.mock("#services/creditService", () => ({
 const input = {
   action: "rewrite_section" as const,
   mode: "standard" as const,
-  input: { text: "Original text", context: "Verified context", instructions: "" },
+  input: {
+    text: "Original text",
+    context: "Verified context",
+    jobDescription: "",
+    instructions: "",
+  },
   requestId: "request_1",
 };
 
@@ -70,7 +75,7 @@ describe("AI service", () => {
   });
 
   it("uses server-owned prompts and commits reserved credits after success", async () => {
-    const { AiService } = await import("../../src/services/aiService");
+    const { AiService } = await import("../../src/services/aiService.js");
 
     const result = await AiService.generate("user_1", input);
 
@@ -97,7 +102,7 @@ describe("AI service", () => {
   });
 
   it("does not call the provider when reservation fails", async () => {
-    const { AiService } = await import("../../src/services/aiService");
+    const { AiService } = await import("../../src/services/aiService.js");
     reserveAction.mockRejectedValue(new Error("Not enough AI credits."));
 
     await expect(AiService.generate("user_1", input)).rejects.toThrow("Not enough AI credits");
@@ -105,7 +110,7 @@ describe("AI service", () => {
   });
 
   it("releases reserved credits for an empty provider response", async () => {
-    const { AiService } = await import("../../src/services/aiService");
+    const { AiService } = await import("../../src/services/aiService.js");
     completionCreate.mockResolvedValue({
       id: "generation_2",
       model: "private-model",
@@ -118,7 +123,7 @@ describe("AI service", () => {
   });
 
   it("releases reserved credits when the provider fails", async () => {
-    const { AiService } = await import("../../src/services/aiService");
+    const { AiService } = await import("../../src/services/aiService.js");
     completionCreate.mockRejectedValue(new Error("provider unavailable"));
 
     await expect(AiService.generate("user_1", input)).rejects.toThrow(
@@ -129,7 +134,7 @@ describe("AI service", () => {
 
   /** V-034: the request's signal reaches the SDK call, so a client leaving ends the call. */
   it("passes the request signal to the provider call", async () => {
-    const { AiService } = await import("../../src/services/aiService");
+    const { AiService } = await import("../../src/services/aiService.js");
     const controller = new AbortController();
 
     await AiService.generate("user_1", input, controller.signal);
@@ -138,7 +143,7 @@ describe("AI service", () => {
   });
 
   it("releases the reservation and answers 504 when the call is aborted", async () => {
-    const { AiService } = await import("../../src/services/aiService");
+    const { AiService } = await import("../../src/services/aiService.js");
     const controller = new AbortController();
     // The SDK rejects with its own abort error once the signal fires; the shape does not matter.
     completionCreate.mockImplementation(
@@ -160,7 +165,7 @@ describe("AI service", () => {
 
   /** A release that fails (database down) must not replace the provider error being reported. */
   it("still reports the provider failure when releasing the reservation fails", async () => {
-    const { AiService } = await import("../../src/services/aiService");
+    const { AiService } = await import("../../src/services/aiService.js");
     completionCreate.mockRejectedValue(new Error("provider unavailable"));
     releaseReservation.mockRejectedValue(new Error("connection refused"));
 

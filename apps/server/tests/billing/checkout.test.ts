@@ -111,7 +111,7 @@ vi.mock("#config", () => ({
   },
 }));
 
-const { BillingService } = await import("../../src/services/billingService");
+const { BillingService } = await import("../../src/services/billingService.js");
 
 const USER = "user_123";
 const key = (product: string) => `billing:checkout:${USER}:${product}`;

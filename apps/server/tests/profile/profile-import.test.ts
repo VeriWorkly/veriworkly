@@ -14,14 +14,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { prismaMock, entitlementHas } = vi.hoisted(() => {
   const prismaMock = {
     masterProfile: {
-      findUnique: vi.fn(async () => null),
-      create: vi.fn(async () => ({ id: "profile-1", updatedAt: new Date() })),
+      findUnique: vi.fn<(args: unknown) => Promise<unknown>>(async () => null),
+      create: vi.fn<(args: unknown) => Promise<{ id: string; updatedAt: Date }>>(async () => ({
+        id: "profile-1",
+        updatedAt: new Date(),
+      })),
       updateManyAndReturn: vi.fn(async () => []),
       upsert: vi.fn(async () => ({ id: "profile-1", updatedAt: new Date() })),
     },
     document: {
       count: vi.fn(async () => 0),
-      create: vi.fn(async () => ({ id: "doc-1" })),
+      create: vi.fn<(args: unknown) => Promise<{ id: string }>>(async () => ({ id: "doc-1" })),
       findUnique: vi.fn(async () => null),
       findFirst: vi.fn(async () => null),
     },
@@ -54,10 +57,13 @@ vi.mock("#utils/slugs", () => ({
 
 import { sanitizeImportedPhone } from "@veriworkly/profile-core";
 
-import { ProfileService } from "../../src/services/profileService";
-import { DocumentService } from "../../src/services/documentService";
-import { masterProfileContentSchema } from "../../src/validators/masterProfileValidator";
-import { buildResumeShell, mapGithubToResumeData } from "../../src/services/profileImportService";
+import { ProfileService } from "../../src/services/profileService.js";
+import { DocumentService } from "../../src/services/documentService.js";
+import { masterProfileContentSchema } from "../../src/validators/masterProfileValidator.js";
+import {
+  buildResumeShell,
+  mapGithubToResumeData,
+} from "../../src/services/profileImportService.js";
 
 function githubProfile(overrides: Record<string, unknown> = {}) {
   return {

@@ -97,7 +97,11 @@ describe("affiliate enrollment (V-003)", () => {
       Array.from({ length: 8 }, () => asUser(fresh).post(`${BASE}/enroll`).send({})),
     );
     const codes = new Set(burst.map((r) => r.body.data?.affiliateCode));
-    expect(burst.map((r) => r.status)).toEqual(Array(8).fill(200));
+    // Every request answers 200; a failure names each other status with its body, so a rare
+    // failure under load shows its cause (it did once, and did not reproduce in 30 + 1,200 runs).
+    expect(
+      burst.filter((r) => r.status !== 200).map((r) => ({ status: r.status, body: r.body })),
+    ).toEqual([]);
     expect(codes.size).toBe(1);
 
     const stored = await prisma.user.findUniqueOrThrow({

@@ -237,7 +237,7 @@ describe("Views tracking buffering and flushing", () => {
 
   describe("Portfolio Views", () => {
     it("buffers portfolio view count in Redis on recordView", async () => {
-      const { PortfolioService } = await import("../../src/services/portfolioService");
+      const { PortfolioService } = await import("../../src/services/portfolioService.js");
 
       prismaMock.portfolioPublication.findFirst.mockResolvedValue({
         id: "pub_123",
@@ -260,7 +260,7 @@ describe("Views tracking buffering and flushing", () => {
     });
 
     it("flushes portfolio views from Redis to database", async () => {
-      const { PortfolioService } = await import("../../src/services/portfolioService");
+      const { PortfolioService } = await import("../../src/services/portfolioService.js");
 
       // Populate Redis buffer
       const dateKey = "2026-05-31";
@@ -292,7 +292,7 @@ describe("Views tracking buffering and flushing", () => {
 
   describe("Share Link Views", () => {
     it("buffers share view count, last viewed timestamp, and raw view records in Redis", async () => {
-      const { ShareService } = await import("../../src/services/shareService");
+      const { ShareService } = await import("../../src/services/shareService.js");
 
       await ShareService.recordShareView("link_456", "1.2.3.4", "Mozilla/5.0");
 
@@ -316,7 +316,7 @@ describe("Views tracking buffering and flushing", () => {
     });
 
     it("flushes buffered share views and increments database counts with 30-day retention cleanup", async () => {
-      const { ShareService } = await import("../../src/services/shareService");
+      const { ShareService } = await import("../../src/services/shareService.js");
 
       const timestamp = Date.now();
 

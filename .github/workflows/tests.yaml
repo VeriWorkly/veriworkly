@@ -42,6 +42,11 @@ jobs:
       - name: Build Shared Packages
         run: npm run build -w @veriworkly/profile-core --if-present
 
+      - name: Type-check server tests and scripts
+        run: |
+          npx tsc --noEmit -p apps/server/tests/tsconfig.json
+          npx tsc --noEmit -p apps/server/scripts/tsconfig.json
+
       - name: Run Backend Tests
         run: npm run test -w @veriworkly/server --if-present
 
