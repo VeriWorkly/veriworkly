@@ -23,8 +23,8 @@ export type AtsPricing = {
   analysisCredits: { min: number; max: number };
   jobUrlAnalysisCredits: { min: number; max: number };
   resumeConversionCredits: number;
-  /** `null` when repair is not offered; optional so a server one deploy behind still type-checks. */
-  parseRepairCredits?: number | null;
+  /** `null` when this deployment does not offer parse repair. */
+  parseRepairCredits: number | null;
 };
 
 export type AtsQuota = {
@@ -34,7 +34,9 @@ export type AtsQuota = {
   remaining: number;
   resetsAt: string;
   canConvertResume: boolean;
-  pricing: AtsPricing;
+  canRepair: boolean;
+  /** `null` when the server's ATS AI policy did not load; AI actions are then off. */
+  pricing: AtsPricing | null;
   extract: { limit: number; used: number; remaining: number };
 };
 

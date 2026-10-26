@@ -47,5 +47,3 @@ export function CopyCommand({ command, className }: { command: string; className
     </div>
   );
 }
-
-export default CopyCommand;

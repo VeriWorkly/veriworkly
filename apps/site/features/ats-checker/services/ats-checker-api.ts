@@ -20,15 +20,20 @@ export function getAtsQuota() {
 /** The server's upload limit (apps/server/src/routes/ats.ts, multer fileSize). */
 export const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
+/** `/ats/check` refuses longer text with a bare 400 (apps/server/src/validators/atsValidator.ts). */
+export const MAX_RESUME_CHARS = 50_000;
+export const MAX_JOB_DESCRIPTION_CHARS = 20_000;
+
+/** `/ats/check` parses at most 256 KB of JSON (apps/server/src/app.ts); this leaves room for the posting. */
+export const MAX_JSON_RESUME_BYTES = 200 * 1024;
+
 export async function extractResumeFile(file: File) {
   const body = new FormData();
   body.append("resume", file);
 
-  const data = await fetchApiData<{ text: string; layout?: AtsLayoutSignals; quota?: AtsQuota }>(
+  // `layout` goes back with the scan so format checks see the real layout; without it those checks are skipped, not passed.
+  return fetchApiData<{ text: string; layout?: AtsLayoutSignals; quota?: AtsQuota }>(
     "/ats/extract",
     { method: "POST", body, timeoutMs: 30_000 },
   );
-
-  /** `layout` goes back with the scan so format checks see the real layout; without it those checks are skipped, not passed. */
-  return data;
 }

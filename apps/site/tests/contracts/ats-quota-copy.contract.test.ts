@@ -12,11 +12,13 @@ function quotaFor(tier: AtsQuota["tier"], limit: number): AtsQuota {
 
     resetsAt: new Date().toISOString(),
     canConvertResume: tier === "subscriber",
+    canRepair: false,
 
     pricing: {
       analysisCredits: { min: 5, max: 25 },
       jobUrlAnalysisCredits: { min: 10, max: 50 },
       resumeConversionCredits: 20,
+      parseRepairCredits: null,
     },
 
     extract: { limit: 6, used: 0, remaining: 6 },

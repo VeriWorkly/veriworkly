@@ -1,3 +1,4 @@
+import { ENGINE_VERSION } from "@veriworkly/ats-engine";
 import { describe, expect, it } from "vitest";
 
 import { reportToPlainText } from "@/features/ats-checker/services";
@@ -44,16 +45,8 @@ function report(overrides: Partial<AtsFullReport> = {}): AtsFullReport {
     parsingWarnings: [],
     strengths: ["Contact details sit in the top 30%"],
 
+    // Run order, smaller fix first: the copied report has to sort them itself.
     failedChecks: [
-      {
-        id: "ats-v2.content.metrics",
-        category: "content",
-        severity: "warning",
-        passed: false,
-        evidence: "2 of 14 bullets carry a number",
-        scoreImpact: 10,
-        fix: "Quantify more bullets.",
-      },
       {
         id: "ats-v2.structure.skills",
         category: "structure",
@@ -63,9 +56,18 @@ function report(overrides: Partial<AtsFullReport> = {}): AtsFullReport {
         scoreImpact: 6,
         fix: "Add a labelled Skills section.",
       },
+      {
+        id: "ats-v2.content.metrics",
+        category: "content",
+        severity: "warning",
+        passed: false,
+        evidence: "2 of 14 bullets carry a number",
+        scoreImpact: 10,
+        fix: "Quantify more bullets.",
+      },
     ],
 
-    prioritizedFixes: ["Quantify more bullets.", "Add a labelled Skills section."],
+    prioritizedFixes: ["Add a labelled Skills section.", "Quantify more bullets."],
 
     rules: [],
 
@@ -78,7 +80,7 @@ function report(overrides: Partial<AtsFullReport> = {}): AtsFullReport {
     checksTotal: 11,
     wordCount: 612,
     locale: { languages: [], region: null, unsupported: null },
-    engine: { version: "0.1.0", policy: "ats-v2+00000000" },
+    engine: { version: ENGINE_VERSION, policy: "ats-v2+00000000" },
     requirements: [],
     ...overrides,
   };
@@ -161,7 +163,7 @@ describe("ATS category presentation helpers", () => {
   });
 
   it("bands scores on the same thresholds the gauge and the bars share", () => {
-    // The engine's verdict bands since 0.2.0, so a "good" tone is always a "strong" verdict.
+    // The engine's verdict bands, so a "good" tone is always a "strong" verdict.
     expect(scoreTone(75)).toBe("good");
     expect(scoreTone(74)).toBe("warn");
     expect(scoreTone(45)).toBe("warn");
@@ -169,7 +171,47 @@ describe("ATS category presentation helpers", () => {
   });
 });
 
-describe("0.3 report fields in the copied report", () => {
+describe("the rest of the report in the copied text", () => {
+  it("carries the parsing warnings, each requirement and what the ATS recovered", () => {
+    const text = reportToPlainText(
+      report({
+        parsingWarnings: ["The resume reads as two columns."],
+        requirements: [
+          {
+            text: "5+ years of TypeScript",
+            status: "missing",
+            importance: "required",
+            kind: "experience",
+            terms: [{ term: "typescript", found: false }],
+            evidence: [],
+            detail: "3 years shown",
+          },
+          {
+            text: "React",
+            status: "met",
+            importance: "required",
+            kind: "skills",
+            terms: [{ term: "react", found: true }],
+            evidence: ["Built the React checkout"],
+            detail: null,
+          },
+        ] as AtsFullReport["requirements"],
+      }),
+      "https://veriworkly.com",
+    );
+
+    expect(text).toContain("PARSING WARNINGS");
+    expect(text).toContain("! The resume reads as two columns.");
+    expect(text).toContain("[Not shown] 5+ years of TypeScript");
+    expect(text).toContain("   3 years shown");
+    expect(text).toContain("   Evidence: Built the React checkout");
+    expect(text.indexOf("[Not shown]")).toBeLessThan(text.indexOf("[Met]"));
+    expect(text).toContain("WHAT THE ATS SEES");
+    expect(text).toContain("Name: Jane Doe");
+    expect(text).toContain("Phone: not found");
+    expect(text).toContain("Work history (0 rows):");
+  });
+
   it("lists soft skills apart and the advice, marked as not scored", () => {
     const text = reportToPlainText(
       report({

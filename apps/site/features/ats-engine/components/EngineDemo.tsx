@@ -174,7 +174,13 @@ export function EngineDemo() {
           </div>
         </div>
 
-        <div aria-live="polite" className="bg-card min-w-0 rounded-3xl p-6 sm:p-8">
+        <div className="bg-card min-w-0 rounded-3xl p-6 sm:p-8">
+          {/* Only the scores are announced, not the whole report on every keystroke. */}
+          <p className="sr-only" role="status">
+            {report
+              ? `Readiness ${report.readinessScore}, job match ${report.jobMatchScore ?? "not scored"}`
+              : ""}
+          </p>
           {!report ? (
             <div className="text-muted flex min-h-72 items-center justify-center gap-2 text-base">
               {loadFailed ? (
@@ -278,5 +284,3 @@ export function EngineDemo() {
     </div>
   );
 }
-
-export default EngineDemo;
