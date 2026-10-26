@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { cn } from "@veriworkly/ui";
 
-import { formatNumber } from "@/features/admin/utils/admin-format";
+import { formatCompactNumber, formatNumber } from "@/features/admin/utils/admin-format";
 
 import { chartColor, chartFillId, type ChartSeries } from "./ChartDefs";
 import { buildAreaPath, buildLinePath, niceMax, toPoints } from "./geometry";
@@ -22,9 +22,12 @@ interface TrendChartProps {
   buckets: string[];
   datasets: TrendDataset[];
   height?: number;
-  formatValue?: (value: number) => string;
+  /** A name, not a function: Server Components render this chart, and props must serialise. */
+  format?: "number" | "compact";
   className?: string;
 }
+
+const FORMATTERS = { number: formatNumber, compact: formatCompactNumber } as const;
 
 const GRID_STEPS = 4;
 
@@ -51,9 +54,10 @@ const TrendChart = ({
   buckets,
   datasets,
   height = 200,
-  formatValue = formatNumber,
+  format = "number",
   className,
 }: TrendChartProps) => {
+  const formatValue = FORMATTERS[format];
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const scale = useMemo(() => {

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -48,9 +49,9 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
     }
   }
 
-  // Read while open only: the modal mounts closed, and the list must reflect the moment
-  // the user is about to delete.
-  const deviceDocuments = open ? listDocuments() : [];
+  // Read once per opening, not on every keystroke of the confirmation: the modal mounts closed,
+  // and the list must reflect the moment the user is about to delete.
+  const deviceDocuments = React.useMemo(() => (open ? listDocuments() : []), [open]);
   const localOnlyCount = deviceDocuments.filter((item) => !item.sync.cloudDocumentId).length;
 
   const handleDownload = () => {
@@ -77,7 +78,9 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
 
       await deleteAccount();
 
-      toast.success("Your account and all associated data have been permanently deleted.");
+      toast.success(
+        "Your account has been deleted. Billing records are kept only as long as tax law requires.",
+      );
 
       // The account is gone, so this device must not keep its documents, outbox or
       // guest flag for the next person to inherit.
@@ -153,9 +156,14 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
               <div className="flex items-start gap-2.5">
                 <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                 <span>
-                  <strong className="text-foreground">Subscriptions &amp; Billing:</strong> Cancel
-                  any active subscription <em>first</em> — we cannot cancel it for you, because it
-                  lives with our payment provider, so deletion is blocked until you have. Billing
+                  <strong className="text-foreground">Subscriptions &amp; Billing:</strong> A
+                  subscription blocks deletion until it has ended, including one you have already
+                  cancelled: cancel it from{" "}
+                  <Link href="/billing" className="text-foreground underline">
+                    Billing
+                  </Link>{" "}
+                  (Manage subscription) and delete your account once the paid period is over. We
+                  cannot cancel it for you, because it lives with our payment provider. Billing
                   records are kept as long as tax law requires.
                 </span>
               </div>

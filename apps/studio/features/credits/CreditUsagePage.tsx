@@ -25,22 +25,42 @@ const ACTION_LABELS: Record<string, string> = {
   ats_analysis: "ATS AI analysis",
   ats_parse_repair: "AI parse repair",
   ats_resume_conversion: "Resume conversion",
+  linkedin_import: "LinkedIn import",
   admin_adjustment: "Adjustment",
 };
 
 /**
- * What a ledger row is, in product language. Action keys map to names; a grant's reason is
- * server-written (a pack or plan allowance name) and safe to show. Free text an admin typed
- * is never shown: it is internal, so every unlabelled row reads as a plain adjustment.
+ * A grant, named by its server-minted request id, whose prefix says where the credits came from.
+ * A plan allowance's reason names the product; passes are sold under the bundle, so a bundle
+ * allowance is named for both. A support grant's reason is typed by an admin and never shown.
+ */
+function grantLabel(item: CreditTransaction) {
+  const requestId = item.requestId ?? "";
+  const reason = item.reason ?? "";
+
+  if (requestId.startsWith("admin-credit:")) return "Credits added by support";
+  if (requestId.startsWith("payment-credit:") && reason) return reason;
+  if (requestId.startsWith("annual-credit:")) {
+    const [, product, month] = reason.match(/^(.+) monthly credits \((month \d+ of \d+)\)$/) ?? [];
+    return product ? `${product} annual plan credits, ${month}` : "Annual plan credits";
+  }
+  if (requestId.startsWith("subscription-credit:")) {
+    const product = reason.endsWith(" credit allowance") ? reason.slice(0, -17) : "";
+    if (product === "Job Hunter Bundle") return "Job Hunter Bundle or pass credits";
+    return product ? `${product} plan credits` : "Plan credits";
+  }
+  return "Credits added";
+}
+
+/**
+ * What a ledger row is, in product language. Free text an admin typed is never shown: it is
+ * internal, so every unlabelled row reads as a plain adjustment.
  */
 function entryLabel(item: CreditTransaction) {
   if (item.action && ACTION_LABELS[item.action]) return ACTION_LABELS[item.action];
   if (item.type === "EXPIRATION") return "Credits expired";
   if (item.type === "REFUND") return "Credits returned";
-  if (item.type === "GRANT" && item.reason && /credits$|credit allowance$/.test(item.reason)) {
-    return item.reason;
-  }
-  return item.type === "GRANT" ? "Credits added" : "Adjustment";
+  return item.type === "GRANT" ? grantLabel(item) : "Adjustment";
 }
 
 function range({ min, max }: { min: number; max: number }) {
@@ -95,6 +115,12 @@ export function CreditUsagePage({
           label: "Resume conversion",
           cost: `${atsPricing.resumeConversionCredits} credits`,
           note: "Old resume to an editable draft",
+        },
+        // The server bills the import as the resume conversion it is (`profileImportService`).
+        {
+          label: "LinkedIn profile import",
+          cost: `${atsPricing.resumeConversionCredits} credits`,
+          note: "Profile to an editable resume",
         },
       ]
     : [];

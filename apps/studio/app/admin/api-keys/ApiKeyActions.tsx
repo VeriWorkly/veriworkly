@@ -25,7 +25,7 @@ const ApiKeyActions = ({ id, name, isActive, revoked }: ApiKeyActionsProps) => {
         description={
           isActive
             ? `"${name}" stops authenticating immediately. It can be re-enabled from this page.`
-            : `"${name}" starts authenticating again, but not until the disable has been in force for a few minutes (about 5½ by default): the API keeps refusing a just-disabled key until its block expires.`
+            : `"${name}" starts authenticating again immediately.`
         }
         confirmLabel={isActive ? "Disable key" : "Enable key"}
         onConfirm={async (reason) => {

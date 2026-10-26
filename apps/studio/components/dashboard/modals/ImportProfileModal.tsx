@@ -8,7 +8,8 @@ import { toast } from "sonner";
 
 import { useUserStore } from "@/store/useUserStore";
 import { fetchApiData } from "@/utils/fetchApiData";
-import { extractResumeFile } from "@/features/ats/ats-api";
+import { extractResumeFile, getAtsQuota } from "@/features/ats/ats-api";
+import { describePaidActionError } from "@/features/credits/credit-errors";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { listDocuments } from "@/features/documents/services/document-workspace-service";
 import {
@@ -67,6 +68,21 @@ interface ImportedDocument {
   type: "RESUME" | "COVER_LETTER";
 }
 
+/**
+ * The LinkedIn import is an AI conversion billed at the resume-conversion price
+ * (`profileImportService`), so the form says what it costs and what the user has. `short` when
+ * the balance cannot cover it: the server would answer 402 before running anything.
+ */
+export function linkedinImportCostNote(cost: number | null, available: number | null) {
+  if (cost === null) return { text: "Uses AI credits", short: false };
+
+  return {
+    text:
+      available === null ? `Uses ${cost} credits` : `Uses ${cost} credits · you have ${available}`,
+    short: available !== null && available < cost,
+  };
+}
+
 export function ImportProfileModal({
   open,
   onClose,
@@ -96,9 +112,12 @@ export function ImportProfileModal({
   const [quota, setQuota] = useState<QuotaResponse | null>(null);
   // Only to name a credit-pack buyer as a paying customer; limits come from `quota`.
   const [accessTier, setAccessTier] = useState<BillingSummary["access"]["tier"] | null>(null);
+  const [creditsAvailable, setCreditsAvailable] = useState<number | null>(null);
+  const [importCost, setImportCost] = useState<number | null>(null);
   // An import makes a new resume, so a free account that already has one is told before it
-  // pastes or uploads anything, not by the server's 402 after.
-  const [resumeCount, setResumeCount] = useState(0);
+  // pastes or uploads anything, not by the server's 402 after. Counted on mount too: the hosts
+  // mount this modal already open.
+  const [resumeCount, setResumeCount] = useState(() => (open ? listDocuments("RESUME").length : 0));
 
   // Sync state during rendering instead of useEffect to avoid synchronous setState inside effects.
   // Resets *all* per-session state on every reopen (not just activeTab) so a previous
@@ -113,6 +132,8 @@ export function ImportProfileModal({
       setReplaceMaster(false);
       setQuota(null);
       setAccessTier(null);
+      setCreditsAvailable(null);
+      setImportCost(null);
       setResumeCount(listDocuments("RESUME").length);
     }
   }
@@ -145,7 +166,15 @@ export function ImportProfileModal({
     // A failed read leaves the badge out rather than guessing "Free" for a paying customer.
     void fetchApiData<BillingSummary>("/billing/me")
       .then((billing) => {
-        if (active) setAccessTier(billing.access.tier);
+        if (!active) return;
+        setAccessTier(billing.access.tier);
+        setCreditsAvailable(billing.credits.available);
+      })
+      .catch(() => undefined);
+    // The price is said only once known; without it the note still says credits are spent.
+    void getAtsQuota()
+      .then((ats) => {
+        if (active) setImportCost(ats.pricing?.resumeConversionCredits ?? null);
       })
       .catch(() => undefined);
     return () => {
@@ -159,6 +188,7 @@ export function ImportProfileModal({
   const isPaidUser = currentTabQuota?.isPaid ?? false;
   const isTabBlocked = !isPaidUser && currentTabQuota !== null && currentTabQuota.remaining <= 0;
   const atDocumentLimit = quota !== null && !isPaidUser && resumeCount >= FREE_DOCUMENTS_PER_TYPE;
+  const linkedinCost = linkedinImportCostNote(importCost, creditsAvailable);
   const accessBadge = isPaidUser
     ? "Subscription or pass"
     : accessTier === "credits"
@@ -249,7 +279,13 @@ export function ImportProfileModal({
       window.dispatchEvent(new Event("storage"));
       router.push(getDocumentEditorPath(doc.type, doc.id));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "LinkedIn import failed.");
+      const failure = describePaidActionError(error, "LinkedIn import failed.");
+      toast.error(
+        failure.message,
+        failure.buyCredits
+          ? { action: { label: "Open billing", onClick: () => router.push("/billing") } }
+          : undefined,
+      );
     } finally {
       setLoading(false);
       setLoadingStep("");
@@ -509,6 +545,25 @@ export function ImportProfileModal({
                         />
                       </div>
 
+                      <p
+                        className={`text-xs font-semibold ${linkedinCost.short ? "text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {linkedinCost.text}
+                        {linkedinCost.short ? (
+                          <>
+                            {" "}
+                            · not enough credits.{" "}
+                            <button
+                              type="button"
+                              className="text-accent underline"
+                              onClick={() => router.push("/billing")}
+                            >
+                              Buy credits
+                            </button>
+                          </>
+                        ) : null}
+                      </p>
+
                       <div className="border-border/60 flex items-center justify-between gap-4 border-t pt-2">
                         <Checkbox
                           id="replace-master-linkedin"
@@ -522,7 +577,9 @@ export function ImportProfileModal({
                           type="submit"
                           size="sm"
                           variant="primary"
-                          disabled={loading || uploadingPdf || !linkedinText.trim()}
+                          disabled={
+                            loading || uploadingPdf || !linkedinText.trim() || linkedinCost.short
+                          }
                           className="gap-2"
                         >
                           {loading ? (

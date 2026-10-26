@@ -1,7 +1,38 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/font/google", () => ({
+  Geist: () => ({ variable: "" }),
+  Geist_Mono: () => ({ variable: "" }),
+}));
+
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+}));
+
+// The confirmation dialog renders nothing until opened; this stand-in prints all its copy.
+vi.mock("@/components/admin/AdminActionDialog", () => ({
+  default: (props: {
+    trigger: ReactNode;
+    title: string;
+    description?: ReactNode;
+    children?: ReactNode;
+    confirmLabel: string;
+  }) =>
+    createElement(
+      "div",
+      null,
+      createElement("button", null, props.trigger),
+      createElement("h2", null, props.title),
+      createElement("p", null, props.description),
+      props.children,
+      createElement("span", null, props.confirmLabel),
+    ),
+}));
 
 // `admin-server.ts` is a server module: the `server-only` guard and request cookies are stubbed so
 // it runs in a plain node environment, and the session lookup is replaced so each test decides
@@ -398,5 +429,351 @@ describe("admin route boundaries", () => {
     }
 
     expect(resolveAdminRoute("/admin/roadmap").skeleton.kind).toBe("kanban");
+  });
+});
+
+/** The text an admin control and its confirmation dialog show, dialog copy included. */
+async function renderAdminText(element: ReactElement) {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+
+  return renderToStaticMarkup(element)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&#x27;|&quot;/g, "'")
+    .replace(/\s+/g, " ");
+}
+
+const adminBillingServiceSource = () =>
+  readFile(path.join(process.cwd(), "../server/src/services/admin/adminBillingService.ts"), "utf8");
+
+async function serverUpdateSubscription() {
+  const source = await adminBillingServiceSource();
+  return source.slice(source.indexOf("export async function updateSubscription"));
+}
+
+describe("admin copy says what the server does", () => {
+  it("S-274: cancel at period end is described as the Dodo cancellation it is", async () => {
+    // If the server stops calling the provider here, this copy is wrong again.
+    expect(await serverUpdateSubscription()).toMatch(
+      /BillingService\.setProviderCancelAtPeriodEnd\(/,
+    );
+
+    const { SubscriptionActions } = await import("@/app/admin/billing/BillingActions");
+
+    for (const cancelAtPeriodEnd of [false, true]) {
+      const page = await renderAdminText(
+        createElement(SubscriptionActions, {
+          id: "sub_1",
+          status: "ACTIVE",
+          email: "jane@example.com",
+          cancelAtPeriodEnd,
+          deleted: false,
+        }),
+      );
+
+      expect(page).not.toMatch(
+        /local flag|Nothing changes at Dodo|does not cancel|next webhook overwrites/i,
+      );
+      expect(page).toMatch(/at Dodo/);
+      expect(page).toMatch(cancelAtPeriodEnd ? /charged again at renewal/ : /not charged again/);
+    }
+  });
+
+  it("S-295: a status override says it moves access and that Dodo must agree to end a subscription", async () => {
+    const updateSubscription = await serverUpdateSubscription();
+
+    expect(updateSubscription).toMatch(/syncSubscriptionGrants\(/);
+    expect(updateSubscription).toMatch(/BillingService\.getProviderSubscriptionState\(/);
+
+    const { SubscriptionActions } = await import("@/app/admin/billing/BillingActions");
+    const page = await renderAdminText(
+      createElement(SubscriptionActions, {
+        id: "sub_1",
+        status: "PAST_DUE",
+        email: "jane@example.com",
+        cancelAtPeriodEnd: false,
+        deleted: false,
+      }),
+    );
+
+    expect(page).not.toMatch(/nothing else|does not grant or revoke access|Change label/i);
+    expect(page).toMatch(/Active grants the plan/);
+    expect(page).toMatch(/refused unless Dodo/);
+  });
+
+  it("S-336 S-337: rows of a deleted account link nowhere and offer no actions", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { default: AdminUserLink } = await import("@/components/admin/AdminUserLink");
+    const placeholder = {
+      id: "deleted",
+      name: null,
+      email: "Deleted account",
+      image: null,
+      deleted: true as const,
+    };
+
+    for (const user of [placeholder, null]) {
+      const html = renderToStaticMarkup(createElement(AdminUserLink, { user }));
+
+      expect(html).toContain("Deleted account");
+      expect(html).not.toContain("href");
+    }
+
+    const { SubscriptionActions, EntitlementRevokeAction } =
+      await import("@/app/admin/billing/BillingActions");
+    const subscription = await renderAdminText(
+      createElement(SubscriptionActions, {
+        id: "sub_1",
+        status: "ACTIVE",
+        email: "Deleted account",
+        cancelAtPeriodEnd: false,
+        deleted: true,
+      }),
+    );
+    expect(subscription).not.toMatch(/Apply|Cancel at period end/);
+
+    const grant = { id: "g1", entitlementKey: "portfolio_publish", revoked: false };
+    expect(
+      await renderAdminText(
+        createElement(EntitlementRevokeAction, { ...grant, source: "MANUAL", expired: false }),
+      ),
+    ).toContain("Revoke this entitlement");
+    for (const props of [
+      { source: "SUBSCRIPTION", expired: false },
+      { source: "MANUAL", expired: true },
+      { source: "MANUAL", expired: false, deleted: true },
+    ]) {
+      expect(
+        await renderAdminText(createElement(EntitlementRevokeAction, { ...grant, ...props })),
+        JSON.stringify(props),
+      ).not.toMatch(/Revoke this entitlement/);
+    }
+
+    for (const page of [
+      "billing/page.tsx",
+      "billing/credits/page.tsx",
+      "billing/entitlements/page.tsx",
+      "billing/webhooks/page.tsx",
+      "affiliates/commissions/page.tsx",
+      "affiliates/withdrawals/page.tsx",
+    ]) {
+      const source = await readFile(path.join(process.cwd(), "app/admin", page), "utf8");
+      expect(source, page).toContain("<AdminUserLink");
+      expect(source, page).not.toMatch(
+        /href=\{`\/admin\/(users|affiliates)\/\$\{row\.(user|affiliate)\.id\}`\}/,
+      );
+    }
+  });
+
+  it("S-294 S-252: moderation dialogs say a takedown locks the owner out and how to lift it", async () => {
+    const { default: DocumentModerationActions } =
+      await import("@/app/admin/documents/DocumentModerationActions");
+    const { default: PortfolioModerationActions } =
+      await import("@/app/admin/portfolios/PortfolioModerationActions");
+
+    const publicDoc = await renderAdminText(
+      createElement(DocumentModerationActions, {
+        documentId: "d1",
+        title: "CV",
+        type: "RESUME",
+        visibility: "PUBLIC",
+        deleted: false,
+      }),
+    );
+    expect(publicDoc).not.toMatch(/share links keep working/i);
+    expect(publicDoc).toMatch(/share links stop working/i);
+    expect(publicDoc).toMatch(/owner cannot/i);
+
+    const privateDoc = await renderAdminText(
+      createElement(DocumentModerationActions, {
+        documentId: "d1",
+        title: "CV",
+        type: "RESUME",
+        visibility: "PRIVATE",
+        deleted: false,
+      }),
+    );
+    expect(privateDoc).toMatch(/Lift takedown/);
+
+    // A visibility change on a portfolio also suspends its publication under a moderation lock
+    // (`takeDownPortfolioPublication`), so "unlisted" cannot let the owner publish again.
+    const source = await readFile(
+      path.join(process.cwd(), "../server/src/services/admin/adminDocumentService.ts"),
+      "utf8",
+    );
+    expect(source.replace(/\s+/g, " ")).toContain(
+      'if (document.type === "PORTFOLIO") await takeDownPortfolioPublication(documentId, "document_hidden")',
+    );
+
+    for (const visibility of ["PUBLIC", "UNLISTED", "PRIVATE"] as const) {
+      const page = await renderAdminText(
+        createElement(DocumentModerationActions, {
+          documentId: "d2",
+          title: "Site",
+          type: "PORTFOLIO",
+          visibility,
+          deleted: false,
+        }),
+      );
+      expect(page, visibility).not.toMatch(/Lift takedown|can publish/);
+      if (visibility !== "PRIVATE") expect(page, visibility).toMatch(/publication is suspended/);
+    }
+
+    const portfolio = await renderAdminText(
+      createElement(PortfolioModerationActions, {
+        publicationId: "p1",
+        subdomain: "jane",
+        status: "LIVE",
+      }),
+    );
+    expect(portfolio).not.toMatch(/can publish again from their editor/);
+    expect(portfolio).not.toMatch(/Lift takedown/);
+    expect(portfolio).toMatch(/cannot publish it again/);
+  });
+
+  it("S-335: an enabled API key works at once", async () => {
+    const { default: ApiKeyActions } = await import("@/app/admin/api-keys/ApiKeyActions");
+    const page = await renderAdminText(
+      createElement(ApiKeyActions, { id: "k1", name: "CI", isActive: false, revoked: false }),
+    );
+
+    expect(page).not.toMatch(/5½|few minutes/);
+    expect(page).toMatch(/immediately/);
+  });
+
+  it("S-334: account deletion is blocked by the same chargeable-subscription rule as the server", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "../server/src/services/userService.ts"),
+      "utf8",
+    );
+    const serverRaw = [
+      ...(source.match(/CHARGEABLE_RAW_STATUSES = \[([^\]]+)\]/)?.[1] ?? "").matchAll(/"([^"]+)"/g),
+    ].map((match) => match[1]);
+    expect(serverRaw.length).toBeGreaterThan(0);
+
+    const { hasChargeableSubscription } = await import("@/app/admin/users/[id]/UserAdminActions");
+    const now = Date.parse("2026-10-26T12:00:00Z");
+    const row = (overrides: Record<string, unknown>) => ({
+      status: "CANCELED" as const,
+      rawStatus: "cancelled" as string | null,
+      createdAt: "2026-01-01T00:00:00Z",
+      lastWebhookAt: null as string | null,
+      ...overrides,
+    });
+
+    for (const rawStatus of serverRaw) {
+      expect(hasChargeableSubscription([row({ rawStatus })], now), rawStatus).toBe(true);
+    }
+    expect(hasChargeableSubscription([row({ status: "ACTIVE", rawStatus: null })], now)).toBe(true);
+    expect(
+      hasChargeableSubscription(
+        [row({ rawStatus: "pending", lastWebhookAt: "2026-10-26T08:00:00Z" })],
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      hasChargeableSubscription(
+        [row({ rawStatus: "pending", lastWebhookAt: "2026-10-20T08:00:00Z" })],
+        now,
+      ),
+    ).toBe(false);
+    expect(hasChargeableSubscription([row({})], now)).toBe(false);
+  });
+});
+
+describe("admin dashboard page", () => {
+  /** Every export of the "use client" modules a page imports: React serialises their props. */
+  async function clientComponentsImportedBy(page: string) {
+    const { existsSync } = await import("node:fs");
+    const source = await readFile(path.join(process.cwd(), page), "utf8");
+    const refs = new Set<unknown>();
+
+    for (const [, specifier] of source.matchAll(/from "(@\/[^"]+)"/g)) {
+      const base = path.join(process.cwd(), specifier.slice(2));
+      const file = [".tsx", ".ts"].map((ext) => base + ext).find((item) => existsSync(item));
+      if (!file || !(await readFile(file, "utf8")).trimStart().startsWith('"use client"')) continue;
+
+      for (const value of Object.values(await import(/* @vite-ignore */ specifier))) {
+        refs.add(value);
+      }
+    }
+
+    return refs;
+  }
+
+  function containsFunction(value: unknown): boolean {
+    if (typeof value === "function") return true;
+    if (isValidElement(value) || value === null || typeof value !== "object") return false;
+    return Object.values(value).some(containsFunction);
+  }
+
+  /** `Component.prop` for every function a server render hands to a client component. */
+  function functionProps(node: unknown, clientRefs: Set<unknown>, found: string[]) {
+    if (Array.isArray(node)) {
+      for (const child of node) functionProps(child, clientRefs, found);
+      return;
+    }
+    if (!isValidElement(node)) return;
+
+    const name = typeof node.type === "string" ? node.type : (node.type as { name?: string }).name;
+
+    for (const [key, value] of Object.entries(node.props as Record<string, unknown>)) {
+      if (clientRefs.has(node.type) && containsFunction(value)) found.push(`${name}.${key}`);
+      functionProps(value, clientRefs, found);
+    }
+  }
+
+  it("S-293: hands its client charts only serialisable props", async () => {
+    vi.resetModules();
+    vi.doMock("@/features/admin/services/admin-server", () => ({
+      fetchAdminOverview: async () => ({
+        generatedAt: "2026-10-26T00:00:00Z",
+        windowDays: 30,
+        ...Object.fromEntries(
+          [
+            "users",
+            "billing",
+            "portfolios",
+            "documents",
+            "affiliates",
+            "ambassadors",
+            "apiKeys",
+            "jobs",
+            "health",
+            "recentActivity",
+          ].map((section) => [section, { error: true }]),
+        ),
+        actionQueue: {
+          failedWebhooks: 0,
+          pendingWithdrawals: 0,
+          pendingAmbassadorApplications: 0,
+          pendingCommissions: 0,
+          suspendedPortfolios: 0,
+          pendingPortfolioAssets: 0,
+        },
+      }),
+      fetchAdminRecentActivity: async () => ({
+        signups: [],
+        publications: [],
+        subscriptions: [],
+        applications: [],
+      }),
+      fetchAdminTimeSeries: async () => ({
+        buckets: ["2026-10-25", "2026-10-26"],
+        series: new Proxy({}, { get: () => [1, 2] }),
+      }),
+    }));
+
+    try {
+      const { default: AdminPage } = await import("@/app/admin/page");
+      const tree = await AdminPage({ searchParams: Promise.resolve({}) });
+      const clientRefs = await clientComponentsImportedBy("app/admin/page.tsx");
+      const found: string[] = [];
+
+      expect(clientRefs.size).toBeGreaterThan(0);
+      functionProps(tree, clientRefs, found);
+      expect(found).toEqual([]);
+    } finally {
+      vi.doUnmock("@/features/admin/services/admin-server");
+    }
   });
 });

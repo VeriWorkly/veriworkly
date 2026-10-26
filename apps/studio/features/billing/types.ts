@@ -54,6 +54,8 @@ export type CatalogProduct = {
   configuredIntervals: Array<"one_day" | "seven_day" | BillingCycle>;
   currency: "USD";
   recommended?: boolean;
+  /** How a plan delivers its credits, per interval, worded by the server for display. */
+  creditNotes?: Partial<Record<"one_day" | "seven_day" | BillingCycle, string>>;
 };
 export type BillingActivity = {
   id: string;

@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +37,60 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn() }),
   usePathname: () => "/billing",
 }));
+
+/** The resumes on this device, as the document-limit checks read them. */
+const workspace = vi.hoisted(() => ({ resumes: [] as Array<{ id: string }> }));
+
+vi.mock("@/features/documents/services/document-workspace-service", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/features/documents/services/document-workspace-service")
+  >()),
+  listDocuments: vi.fn((type?: string) => (type === "RESUME" ? workspace.resumes : [])),
+}));
+
+const programData = vi.hoisted(() => ({ affiliate: null as unknown }));
+
+vi.mock("@/features/billing/billing-server", () => ({
+  PROGRAM_UNAVAILABLE: Symbol("program-unavailable"),
+  getProgramServerData: async () => programData.affiliate,
+}));
+
+const studioRoot = join(__dirname, "..", "..");
+
+/** The plan credit notes exactly as the server's catalog sends them (`productCatalog.ts`). */
+function serverCreditNotes() {
+  const source = readFileSync(
+    join(studioRoot, "..", "server", "src", "services", "productCatalog.ts"),
+    "utf8",
+  );
+  const note = (name: string) => {
+    const match = source.match(new RegExp(`const ${name} =\\s*"([^"]+)"`));
+    if (!match) throw new Error(`${name} not found in productCatalog.ts`);
+    return match[1];
+  };
+
+  return { monthly: note("MONTHLY_CREDIT_NOTE"), annual: note("ANNUAL_CREDIT_NOTE") };
+}
+
+/** "roll over" may appear only as a denial: owner decision 4, nothing rolls over. */
+function promisedRollovers(text: string) {
+  return [...text.matchAll(/roll(?:s|ed|ing)?[\s-]?over/gi)].filter(
+    (match) =>
+      !/\b(not|never|no|don't|doesn't|won't|cannot)\b[^.]{0,40}$/i.test(
+        text.slice(Math.max(0, match.index - 60), match.index),
+      ),
+  );
+}
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory()
+      ? sourceFiles(join(dir, entry.name))
+      : /\.tsx?$/.test(entry.name)
+        ? [join(dir, entry.name)]
+        : [],
+  );
+}
 
 const DAY = 24 * 60 * 60 * 1000;
 const inDays = (days: number) => new Date(Date.now() + days * DAY).toISOString();
@@ -80,6 +137,7 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
         prices: { monthly: 599, annual: 5990 },
         configuredIntervals: ["monthly", "annual"],
         currency: "USD",
+        creditNotes: serverCreditNotes(),
       },
     ],
     addOns: [],
@@ -289,7 +347,8 @@ describe("billing page describes what the customer actually bought", () => {
     );
 
     expect(page).toContain("View upgrade options");
-    expect(page).toContain("Manage subscription");
+    expect(page).toContain("Receipts and invoices");
+    expect(page).not.toContain("Manage subscription");
   });
 
   it("S-182 S-271 S-266: AI Credits is sold monthly and annually, annual credits arrive monthly, packs say how long they last", () => {
@@ -297,9 +356,93 @@ describe("billing page describes what the customer actually bought", () => {
 
     expect(page).toContain("$5.99 / month");
     expect(page).toContain("$59.90 / year");
-    expect(page).toContain("1,000 credits every month");
+    expect(page).toContain(serverCreditNotes().monthly);
+    expect(page).toContain(serverCreditNotes().annual);
     expect(page).toContain("Buy 250 credits");
     expect(page).toMatch(/valid 90 days/);
+  });
+
+  it("S-273: the AI Credits offer shows the server's credit notes and never promises a rollover", () => {
+    const page = renderBilling(summary());
+
+    expect(page).toMatch(/do not roll over/);
+    expect(promisedRollovers(page)).toEqual([]);
+
+    const copyDirs = ["features/billing", "features/credits", "app/(main)/checkout"];
+    for (const file of copyDirs.flatMap((dir) => sourceFiles(join(studioRoot, dir)))) {
+      expect(promisedRollovers(readFileSync(file, "utf8")), file).toEqual([]);
+    }
+  });
+
+  it("S-276: a Creator Pro subscriber is not sold AI Credits, which the server refuses, and is told how to get both", () => {
+    const page = renderBilling(
+      summary({
+        plan: "PORTFOLIO_PRO",
+        productKey: "portfolio_pro",
+        status: "ACTIVE",
+        access: { ...summary().access, tier: "portfolio_pro", isPaying: true },
+      }),
+    );
+
+    expect(page).not.toContain("$5.99 / month");
+    expect(page).not.toContain("AI Credits subscription");
+    expect(page).toContain("Job Hunter Bundle");
+    expect(page).toContain("Buy 250 credits");
+
+    for (const tier of ["ai_credits", "bundle"] as const) {
+      expect(
+        renderBilling(summary({ access: { ...summary().access, tier, isPaying: true } })),
+      ).not.toContain("$5.99 / month");
+    }
+  });
+
+  it("S-330 S-235: pass and pack buyers reach their receipts; only a live plan is called a subscription", () => {
+    const pass = renderBilling(
+      summary({ access: { ...summary().access, tier: "pass", isPaying: true } }),
+    );
+    const pack = renderBilling(
+      summary({ access: { ...summary().access, tier: "credits", isPaying: true } }),
+    );
+    const subscriber = renderBilling(
+      summary({
+        productKey: "ai_credits",
+        status: "ACTIVE",
+        access: { ...summary().access, tier: "ai_credits", isPaying: true },
+      }),
+    );
+
+    expect(pass).toContain("Receipts and invoices");
+    expect(pack).toContain("Receipts and invoices");
+    expect(subscriber).toContain("Manage subscription");
+    expect(renderBilling(summary())).not.toMatch(/Receipts and invoices|Manage subscription/);
+  });
+
+  it("LOW: an admin-comped plan says when access ends, not that it was paid", () => {
+    const end = inDays(20);
+    const page = renderBilling(
+      summary({
+        plan: "PORTFOLIO_PRO",
+        entitlements: ["portfolio_publish"],
+        access: {
+          ...summary().access,
+          tier: "portfolio_pro",
+          isPaying: false,
+          portfolioAccessEndsAt: end,
+        },
+      }),
+    );
+
+    expect(page).toContain(`Access until ${serverDate(end)}`);
+    expect(page).not.toContain("Paid through");
+  });
+
+  it("LOW: the payment notices use a background colour the theme defines", () => {
+    for (const file of [
+      "features/billing/BillingPage.tsx",
+      "app/(main)/checkout/checkout-redirect.tsx",
+    ]) {
+      expect(readFileSync(join(studioRoot, file), "utf8"), file).not.toContain("bg-accent-soft");
+    }
   });
 
   it("S-223: entitlements and history read as product language, and no lock jargon is shown", () => {
@@ -432,6 +575,150 @@ describe("credits page", () => {
 
   it("S-204: ATS prices that could not be loaded are said to be unavailable", () => {
     expect(renderCredits([], null)).toMatch(/ATS prices could not be loaded/);
+  });
+
+  it("S-279: the LinkedIn import is priced in the grid and named in history", () => {
+    const page = renderCredits([row({ action: "linkedin_import", reason: "AI LinkedIn import" })]);
+
+    expect(page).toMatch(/LinkedIn profile import 25 credits/);
+    expect(page).toContain("LinkedIn import");
+    expect(page).not.toMatch(/\bAdjustment\b/);
+  });
+
+  it("S-333: plan grants say which plan and month they are; support grants never show the typed reason", () => {
+    const page = renderCredits([
+      row({
+        type: "GRANT",
+        amount: 1000,
+        requestId: "annual-credit:sub_1:3",
+        reason: "AI Credits monthly credits (month 3 of 12)",
+      }),
+      row({
+        type: "GRANT",
+        amount: 150,
+        requestId: "subscription-credit:pay_1",
+        reason: "Job Hunter Bundle credit allowance",
+      }),
+      row({
+        type: "GRANT",
+        amount: 1000,
+        requestId: "subscription-credit:pay_2",
+        reason: "AI Credits credit allowance",
+      }),
+      row({
+        type: "GRANT",
+        amount: 250,
+        requestId: "payment-credit:pay_3",
+        reason: "250 extra credits",
+      }),
+      row({
+        type: "GRANT",
+        amount: 40,
+        requestId: "admin-credit:auto:abc:1",
+        reason: "sorry about the outage, 40 credits",
+      }),
+    ]);
+
+    expect(page).toContain("AI Credits annual plan credits, month 3 of 12");
+    expect(page).toContain("Job Hunter Bundle or pass credits");
+    expect(page).toContain("AI Credits plan credits");
+    expect(page).toContain("250 extra credits");
+    expect(page).toContain("Credits added by support");
+    expect(page).not.toMatch(/outage|credit allowance|Credits added(?! by)/);
+  });
+
+  it("S-346: actions no screen offers are not priced", () => {
+    const page = renderCredits([]);
+
+    expect(page).not.toMatch(/job tailoring|document draft/i);
+  });
+});
+
+describe("before a paid AI action runs", () => {
+  afterEach(() => {
+    workspace.resumes = [];
+  });
+
+  function stubBilling(plan: BillingSummary["plan"]) {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ data: summary({ plan }) }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("S-278: a free account that already has a resume is stopped before the conversion is charged", async () => {
+    const { conversionLimitMessage } = await import("@/features/ats/AtsWorkspace");
+
+    workspace.resumes = [];
+    const unused = stubBilling("FREE");
+    await expect(conversionLimitMessage()).resolves.toBeNull();
+    expect(unused).not.toHaveBeenCalled();
+
+    workspace.resumes = [{ id: "r1" }];
+    stubBilling("FREE");
+    await expect(conversionLimitMessage()).resolves.toBe(freeLimitMessage("RESUME"));
+
+    stubBilling("BUNDLE");
+    await expect(conversionLimitMessage()).resolves.toBeNull();
+  });
+
+  it("S-279: the LinkedIn import says what it costs and what the user has", async () => {
+    const { linkedinImportCostNote } =
+      await import("@/components/dashboard/modals/ImportProfileModal");
+
+    expect(linkedinImportCostNote(25, 100)).toEqual({
+      text: "Uses 25 credits · you have 100",
+      short: false,
+    });
+    expect(linkedinImportCostNote(25, 10)).toEqual({
+      text: "Uses 25 credits · you have 10",
+      short: true,
+    });
+    expect(linkedinImportCostNote(null, 10)).toEqual({ text: "Uses AI credits", short: false });
+  });
+
+  it("S-280: the import modal counts this device's resumes when it mounts open", async () => {
+    const { ImportProfileModal } = await import("@/components/dashboard/modals/ImportProfileModal");
+    const { listDocuments } =
+      await import("@/features/documents/services/document-workspace-service");
+    vi.mocked(listDocuments).mockClear();
+
+    renderToStaticMarkup(<ImportProfileModal open onClose={() => undefined} />);
+
+    expect(listDocuments).toHaveBeenCalledWith("RESUME");
+  });
+});
+
+describe("affiliate payouts", () => {
+  afterEach(() => {
+    programData.affiliate = null;
+  });
+
+  async function renderPayouts(status: string | null) {
+    programData.affiliate =
+      status === null
+        ? null
+        : {
+            affiliateStatus: status,
+            wallet: { pendingCents: 0, availableCents: 5000, paidCents: 0 },
+            minimumWithdrawalCents: 2500,
+            withdrawals: [],
+          };
+    const { default: AffiliatePayoutsPage } =
+      await import("@/app/(main)/(dashboard)/affiliate/payouts/page");
+    return text(renderToStaticMarkup(await AffiliatePayoutsPage()));
+  }
+
+  it("S-282: only an active affiliate is offered the payout form", async () => {
+    expect(await renderPayouts("ACTIVE")).toContain("Request payout");
+
+    for (const status of ["PENDING", "SUSPENDED", "NOT_ENROLLED", null]) {
+      const page = await renderPayouts(status);
+
+      expect(page, String(status)).not.toContain("Request payout");
+      expect(page, String(status)).not.toContain("$25.00");
+    }
   });
 });
 

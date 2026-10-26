@@ -23,12 +23,15 @@ import {
   recordPurchaseBaseline,
   takePurchaseBaseline,
 } from "@/features/billing/purchase-baseline";
-import { isPaymentsClosedError, PAYMENTS_OPEN_SOON } from "@/features/billing/checkout-rules";
+import {
+  isPaymentsClosedError,
+  PAYMENTS_OPEN_SOON,
+  PLAN_NAMES,
+} from "@/features/billing/checkout-rules";
 import { LocalDate } from "@/components/LocalDate";
-import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
+import { fetchApiData } from "@/utils/fetchApiData";
 import { formatCents } from "@/features/admin/utils/admin-format";
 
-const CHECKOUT_LOCK_CONFLICT_STATUS = 409;
 // The plan changes only when the payment webhook lands, which can trail the redirect back
 // here by several seconds; past the last delay the user is told to refresh later instead.
 const PURCHASE_POLL_DELAYS_MS = [0, 1500, 2500, 4000, 6000];
@@ -45,25 +48,18 @@ async function waitForPurchaseToApply(before: string): Promise<boolean> {
   return false;
 }
 
-type BillingError = { message: string; isCheckoutLockConflict: boolean; isNotice?: boolean };
+/**
+ * Nothing on this page starts a subscription checkout, so none of its 409s is the checkout lock:
+ * a cancelled checkout whose payment is still processing, or a portal with no billing account
+ * yet, is said as the server says it, with nothing offered that would 409 again.
+ */
+type BillingError = { message: string; isNotice?: boolean };
 
 function toBillingError(cause: unknown, fallbackMessage: string): BillingError {
-  if (isPaymentsClosedError(cause)) {
-    return { message: PAYMENTS_OPEN_SOON, isCheckoutLockConflict: false, isNotice: true };
-  }
+  if (isPaymentsClosedError(cause)) return { message: PAYMENTS_OPEN_SOON, isNotice: true };
 
-  return {
-    message: cause instanceof Error ? cause.message : fallbackMessage,
-    isCheckoutLockConflict:
-      cause instanceof ApiRequestError && cause.status === CHECKOUT_LOCK_CONFLICT_STATUS,
-  };
+  return { message: cause instanceof Error ? cause.message : fallbackMessage };
 }
-
-const PLAN_NAMES = {
-  ai_credits: "AI Credits",
-  portfolio_pro: "Creator Pro",
-  bundle: "Job Hunter Bundle",
-} as const;
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",
@@ -122,7 +118,6 @@ export function BillingPage({
 }) {
   const [loading, setLoading] = useState("");
   const [error, setError] = useState<BillingError | null>(null);
-  const [clearingLock, setClearingLock] = useState(false);
   const [finalizingPurchase, setFinalizingPurchase] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -140,10 +135,16 @@ export function BillingPage({
   // A lapsed subscriber is "free" or "credits" again and must be able to buy again. During a
   // failed renewal the card is fixed instead: no second subscription is offered.
   const canBuy = !dunning && (!billing || tier === "free" || tier === "credits");
+  const recurringTier = tier === "ai_credits" || tier === "portfolio_pro" || tier === "bundle";
+  // The server refuses AI Credits beside any live subscription (`checkoutOverlap`), so it is
+  // offered only to an account without one.
   const aiCreditsProduct =
-    dunning || tier === "ai_credits" || tier === "bundle"
+    dunning || recurringTier
       ? undefined
       : billing?.catalog.find((product) => product.key === "ai_credits");
+  // The portal holds receipts for every purchase, and manages a subscription only while one runs.
+  const canOpenPortal = Boolean(billing?.productKey || billing?.access.isPaying);
+  const managesSubscription = Boolean(dunning) || (recurringTier && billing?.access.isPaying);
 
   // `router.replace` below changes `searchParams`; the ref keeps that re-run from starting
   // the return flow twice, and nothing here is cancelled by it.
@@ -191,7 +192,6 @@ export function BillingPage({
           setError({
             message:
               "Your payment is still being confirmed. Refresh this page in a minute to see your plan and credits.",
-            isCheckoutLockConflict: false,
           });
         })
         .catch((cause) => {
@@ -200,18 +200,6 @@ export function BillingPage({
         .finally(() => setFinalizingPurchase(false));
     }
   }, [searchParams, router]);
-
-  const handleClearLock = async () => {
-    setClearingLock(true);
-    try {
-      await cancelCheckout();
-      setError(null);
-    } catch (cause) {
-      setError(toBillingError(cause, "Could not cancel the earlier checkout."));
-    } finally {
-      setClearingLock(false);
-    }
-  };
 
   const openPortal = async () => {
     setLoading("portal");
@@ -251,13 +239,14 @@ export function BillingPage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {billing?.productKey ? (
+              {canOpenPortal ? (
                 <Button
                   variant="secondary"
                   loading={loading === "portal"}
                   onClick={() => void openPortal()}
                 >
-                  Manage subscription <ExternalLink className="mr-2 h-4 w-4" />
+                  {managesSubscription ? "Manage subscription" : "Receipts and invoices"}{" "}
+                  <ExternalLink className="mr-2 h-4 w-4" />
                 </Button>
               ) : null}
               {canBuy ? (
@@ -301,7 +290,7 @@ export function BillingPage({
         ) : null}
 
         {finalizingPurchase ? (
-          <div className="border-accent/30 bg-accent-soft text-accent flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm font-semibold">
+          <div className="border-accent/30 bg-accent/10 text-accent flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm font-semibold">
             <span className="border-accent/40 border-t-accent h-4 w-4 animate-spin rounded-full border-2" />
             Finalizing your purchase — this can take a few seconds while we confirm payment.
           </div>
@@ -313,21 +302,11 @@ export function BillingPage({
             className={cn(
               "flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 text-sm",
               error.isNotice
-                ? "border-accent/30 bg-accent-soft text-accent"
+                ? "border-accent/30 bg-accent/10 text-accent"
                 : "border-destructive/30 bg-destructive/5 text-destructive",
             )}
           >
             <p className="flex-1">{error.message}</p>
-            {error.isCheckoutLockConflict && (
-              <Button
-                size="sm"
-                variant="secondary"
-                loading={clearingLock}
-                onClick={() => void handleClearLock()}
-              >
-                Cancel the earlier checkout
-              </Button>
-            )}
           </div>
         ) : null}
 
@@ -373,10 +352,16 @@ export function BillingPage({
             {aiCreditsProduct ? (
               <div className="border-border mt-5 border-t pt-4">
                 <p className="text-sm font-black">AI Credits subscription</p>
-                <p className="text-muted mt-1 text-xs leading-5">
-                  1,000 credits every month, monthly or annual. Unused credits roll over while the
-                  plan lasts.
-                </p>
+                {(["monthly", "annual"] as const).map((interval) =>
+                  aiCreditsProduct.creditNotes?.[interval] ? (
+                    <p key={interval} className="text-muted mt-1 text-xs leading-5">
+                      <span className="text-foreground font-bold">
+                        {interval === "monthly" ? "Monthly" : "Annual"}:
+                      </span>{" "}
+                      {aiCreditsProduct.creditNotes[interval]}
+                    </p>
+                  ) : null,
+                )}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {(["monthly", "annual"] as const).map((interval) => {
                     const cents = aiCreditsProduct.prices[interval];
@@ -400,6 +385,18 @@ export function BillingPage({
                     );
                   })}
                 </div>
+              </div>
+            ) : null}
+
+            {tier === "portfolio_pro" && !dunning ? (
+              <div className="border-border mt-5 border-t pt-4">
+                <p className="text-sm font-black">AI credits every month</p>
+                <p className="text-muted mt-1 text-xs leading-5">
+                  The {PLAN_NAMES.bundle} includes {PLAN_NAMES.portfolio_pro} and AI credits every
+                  month. To switch, cancel {PLAN_NAMES.portfolio_pro} from Manage subscription and
+                  subscribe to the bundle when it ends, or contact support to switch now. Credit
+                  packs work alongside your plan today.
+                </p>
               </div>
             ) : null}
 
@@ -458,7 +455,7 @@ export function BillingPage({
 
       {!user ? (
         <div className="border-border bg-card/45 absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border p-6 text-center backdrop-blur-sm">
-          <div className="bg-accent-soft text-accent flex h-12 w-12 items-center justify-center rounded-full">
+          <div className="bg-accent/10 text-accent flex h-12 w-12 items-center justify-center rounded-full">
             <LockKeyhole size={20} />
           </div>
           <h2 className="text-foreground mt-4 text-base font-extrabold">
@@ -530,7 +527,9 @@ function PlanDetails({ billing, inDunning }: { billing: BillingSummary; inDunnin
               label="Billing period"
               value={
                 <>
-                  Paid through <LocalDate value={paidThrough} />
+                  {/* A plan support granted (an admin comp) was never paid for. */}
+                  {access.isPaying ? "Paid through" : "Access until"}{" "}
+                  <LocalDate value={paidThrough} />
                 </>
               }
             />

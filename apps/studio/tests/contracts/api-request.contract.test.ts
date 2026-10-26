@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.hoisted(() => {
@@ -7,12 +10,83 @@ vi.hoisted(() => {
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 import { finishSignIn, readReferralCode, rememberReferralCode } from "@/lib/sign-in";
 import {
-  isAlreadySubscribedError,
+  describeCheckoutError,
   isPaymentsClosedError,
+  PAYMENTS_OPEN_SOON,
   resolveCheckoutRequest,
 } from "@/features/billing/checkout-rules";
 import type { CatalogProduct } from "@/features/billing/types";
 import { createLocalStorageMock } from "@/tests/utils/local-storage";
+
+/**
+ * The checkout 409s as the server builds them. `billingService.ts` opens Prisma, Redis and the
+ * payment provider on import, so its builders are read from source (as `server-contract` reads
+ * `ALLOWED_SCOPES`): a new code, a reworded lock message or a new placeholder fails here.
+ */
+const billingServiceSource = readFileSync(
+  join(__dirname, "..", "..", "..", "server", "src", "services", "billingService.ts"),
+  "utf8",
+).replace(/\r\n/g, "\n");
+
+const SERVER_TEMPLATE_VALUES: Record<string, string> = {
+  activeName: "Creator Pro",
+  requestedName: "AI Credits",
+  "PRODUCT_NAMES.ai_credits": "AI Credits",
+  "PRODUCT_NAMES.portfolio_pro": "Creator Pro",
+  "PRODUCT_NAMES.bundle": "Job Hunter Bundle",
+  'paying.map((key) => productCatalog[key].name).join(", ")': "AI Credits",
+};
+
+function fillServerTemplate(literal: string) {
+  return literal.slice(1, -1).replace(/\$\{([^}]+)\}/g, (_, name: string) => {
+    if (!(name in SERVER_TEMPLATE_VALUES)) throw new Error(`Unknown placeholder ${name}`);
+    return SERVER_TEMPLATE_VALUES[name];
+  });
+}
+
+function serverOverlapConflicts() {
+  const body = billingServiceSource.match(/\nfunction checkoutOverlap\([\s\S]*?\n}\n/)?.[0];
+  if (!body) throw new Error("checkoutOverlap not found in billingService.ts");
+
+  return [
+    ...body.matchAll(
+      /new ApiError\(\s*409,\s*(`[^`]*`),\s*details\("([A-Z_]+)", (null|"[a-z_]+")\)/g,
+    ),
+  ].map(([, literal, code, suggested]) => {
+    const suggestedProductKey = suggested === "null" ? null : suggested.slice(1, -1);
+
+    return {
+      code,
+      suggestedProductKey,
+      error: new ApiRequestError(fillServerTemplate(literal), 409, {
+        code,
+        activeProductKey: "portfolio_pro",
+        suggestedProductKey,
+      }),
+    };
+  });
+}
+
+function serverCheckoutLockMessage() {
+  const match = billingServiceSource.match(/const CHECKOUT_ACTIVE_MESSAGE =\s*"([^"]+)"/);
+  if (!match) throw new Error("CHECKOUT_ACTIVE_MESSAGE not found in billingService.ts");
+
+  return match[1];
+}
+
+/** The other checkout 409s, which carry no code: a session still in flight, not a lock to clear. */
+function serverOtherCheckoutConflicts() {
+  const messages = [
+    ...billingServiceSource.matchAll(/new ApiError\(\s*409,\s*("[^"]*"|`[^`]*`),?\s*\)/g),
+  ]
+    .map(([, literal]) =>
+      literal.startsWith("`") ? fillServerTemplate(literal) : literal.slice(1, -1),
+    )
+    .filter((message) => /checkout|payment for/i.test(message));
+
+  expect(messages.length).toBeGreaterThanOrEqual(3);
+  return messages;
+}
 
 const ORIGINAL_FETCH = globalThis.fetch;
 
@@ -154,21 +228,59 @@ describe("api request contract", () => {
     expect(readReferralCode()).toBeNull();
   });
 
-  it("launch cut: the payments-closed 403 and the already-subscribed 409 are told apart from other failures", () => {
+  it("launch cut: the payments-closed 403 is told apart from every other failure", () => {
     const closed = new ApiRequestError(
       "Payments are disabled in production during this phase.",
       403,
     );
-    const subscribed = new ApiRequestError("You already have an active subscription.", 409);
-    const locked = new ApiRequestError(
-      "A billing checkout is already active. Complete it or try again soon.",
-      409,
-    );
 
     expect(isPaymentsClosedError(closed)).toBe(true);
-    expect(isPaymentsClosedError(locked)).toBe(false);
-    expect(isAlreadySubscribedError(subscribed)).toBe(true);
-    expect(isAlreadySubscribedError(locked)).toBe(false);
+    expect(describeCheckoutError(closed, "x")).toEqual({
+      kind: "payments-closed",
+      message: PAYMENTS_OPEN_SOON,
+    });
+    expect(isPaymentsClosedError(new ApiRequestError(serverCheckoutLockMessage(), 409))).toBe(
+      false,
+    );
+  });
+
+  it("S-230 S-275: every overlap 409 the server builds is branched on its code, never offered as a checkout to cancel", () => {
+    const conflicts = serverOverlapConflicts();
+    const kinds: Record<string, string> = {
+      ALREADY_SUBSCRIBED: "already-have",
+      ALREADY_INCLUDED: "already-have",
+      SUBSCRIPTION_OVERLAP: "overlap",
+      PAYMENT_OUTSTANDING: "manage-billing",
+      SUBSCRIPTION_PAUSED: "manage-billing",
+    };
+
+    expect(new Set(conflicts.map((conflict) => conflict.code))).toEqual(
+      new Set(Object.keys(kinds)),
+    );
+
+    for (const conflict of conflicts) {
+      const failure = describeCheckoutError(conflict.error, "Could not start checkout.");
+
+      expect(failure.kind, conflict.code).toBe(kinds[conflict.code]);
+      expect(failure.message).toBe(conflict.error.message);
+      if (failure.kind === "overlap") {
+        expect(failure.suggestedProductKey).toBe(conflict.suggestedProductKey);
+      }
+    }
+    expect(conflicts.some((conflict) => conflict.suggestedProductKey === "bundle")).toBe(true);
+  });
+
+  it("S-275: only the server's checkout-lock message offers to cancel the earlier checkout", () => {
+    expect(
+      describeCheckoutError(new ApiRequestError(serverCheckoutLockMessage(), 409), "x").kind,
+    ).toBe("checkout-locked");
+
+    for (const message of serverOtherCheckoutConflicts()) {
+      expect(describeCheckoutError(new ApiRequestError(message, 409), "x"), message).toEqual({
+        kind: "other",
+        message,
+      });
+    }
   });
 
   it("S-232 S-270: /checkout refuses a missing or unknown product or interval and names what it sells", () => {

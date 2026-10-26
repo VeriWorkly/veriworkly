@@ -67,13 +67,32 @@ import {
   subscribeToDocumentLibrary,
 } from "@/features/documents/services/document-library";
 import {
-  createDocument,
   deleteDocument,
+  listDocuments,
 } from "@/features/documents/services/document-workspace-service";
+import {
+  createDocumentWithinLimit,
+  FREE_DOCUMENTS_PER_TYPE,
+  freeLimitMessage,
+  hasUnlimitedDocuments,
+} from "@/features/documents/services/document-limit";
+import type { BillingSummary } from "@/features/billing/types";
 import { saveResume, readResumeById } from "@/features/resume/services/resume-service";
 import { describeSaveResult } from "@/features/documents/services/save-failure-message";
 import { createRequestId } from "@/features/ai/ai-api";
 import { cn } from "@veriworkly/ui";
+
+/**
+ * The conversion is charged before it makes a resume, so the document limit is checked first:
+ * otherwise a free account that already has one pays, then cannot keep the result. `null` when
+ * the new resume fits.
+ */
+export async function conversionLimitMessage(): Promise<string | null> {
+  if (listDocuments("RESUME").length < FREE_DOCUMENTS_PER_TYPE) return null;
+
+  const billing = await fetchApiData<BillingSummary>("/billing/me");
+  return hasUnlimitedDocuments(billing) ? null : freeLimitMessage("RESUME");
+}
 
 export function AtsWorkspace() {
   const router = useRouter();
@@ -206,6 +225,9 @@ export function AtsWorkspace() {
     setBusy("convert");
     setError(null);
     try {
+      const limit = await conversionLimitMessage();
+      if (limit) return setError({ message: limit, buyCredits: false });
+
       const response = await convertResumeWithAi({ resume, requestId: createRequestId() });
       setConverted(response.resume);
       toast.success(`Resume draft prepared. ${response.creditsSpent} credits used.`);
@@ -217,20 +239,25 @@ export function AtsWorkspace() {
     }
   }
 
-  function createConvertedResume() {
+  async function createConvertedResume() {
     if (!converted) return;
 
-    // Through createDocument so the new resume gets the workspace's sync setting and
-    // becomes the active one, like any other new document.
-    const created = createDocument("RESUME");
-    const createFailure = describeSaveResult(created.saveResult);
+    // Through the same gate as every new document: the limit, the workspace's sync setting,
+    // and the new resume becoming the active one.
+    const result = await createDocumentWithinLimit("RESUME", "blank");
 
-    if (createFailure) {
+    if (!result.ok) {
+      if (result.reason === "busy") return;
       return setError({
-        message: `The converted resume could not be saved. ${createFailure}`,
+        message:
+          result.reason === "save"
+            ? `The converted resume could not be saved. ${result.message}`
+            : result.message,
         buyCredits: false,
       });
     }
+
+    const created = result.document;
 
     const draft = buildResumeFromConversion(converted, created.id);
     const failure = describeSaveResult(
@@ -545,7 +572,10 @@ export function AtsWorkspace() {
           )}
         >
           {converted ? (
-            <ConvertedResumeReview resume={converted} onCreate={createConvertedResume} />
+            <ConvertedResumeReview
+              resume={converted}
+              onCreate={() => void createConvertedResume()}
+            />
           ) : result ? (
             <ResultsPanel result={result} />
           ) : (

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
 import AdminListPage from "@/components/admin/AdminListPage";
+import AdminUserLink, { isDeletedAccount } from "@/components/admin/AdminUserLink";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
 import { EntitlementGrantForm, EntitlementRevokeAction } from "@/app/admin/billing/BillingActions";
 
@@ -55,17 +56,7 @@ const columns: Array<AdminTableColumn<AdminEntitlementRow>> = [
   {
     key: "user",
     header: "Account",
-    render: (row) => (
-      <div className="min-w-0">
-        <Link
-          href={`/admin/users/${row.user.id}`}
-          className="text-foreground font-medium hover:underline"
-        >
-          {row.user.name || row.user.email}
-        </Link>
-        <p className="text-muted truncate text-xs">{row.user.email}</p>
-      </div>
-    ),
+    render: (row) => <AdminUserLink user={row.user} />,
   },
   {
     key: "key",
@@ -113,6 +104,9 @@ const columns: Array<AdminTableColumn<AdminEntitlementRow>> = [
         id={row.id}
         entitlementKey={row.key}
         revoked={Boolean(row.revokedAt)}
+        source={row.source}
+        expired={Boolean(row.endsAt && new Date(row.endsAt).getTime() <= Date.now())}
+        deleted={isDeletedAccount(row.user)}
       />
     ),
   },

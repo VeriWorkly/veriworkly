@@ -4,6 +4,7 @@ import Link from "next/link";
 import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
 import AdminListPage from "@/components/admin/AdminListPage";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
+import AdminUserLink, { isDeletedAccount } from "@/components/admin/AdminUserLink";
 import { WithdrawalActions } from "@/app/admin/affiliates/AffiliateActions";
 
 import { fetchAdminWithdrawals } from "@/features/admin/services/admin-server";
@@ -38,22 +39,13 @@ const columns: Array<AdminTableColumn<AdminWithdrawalRow>> = [
   {
     key: "affiliate",
     header: "Affiliate",
-    render: (row) =>
-      row.user ? (
-        <div className="min-w-0">
-          <Link
-            href={`/admin/affiliates/${row.user.id}`}
-            className="text-foreground font-medium hover:underline"
-          >
-            {row.user.name || row.user.email}
-          </Link>
-          <p className="text-muted truncate text-xs">
-            {row.user.email} · {row.user.affiliateCode || "no code"}
-          </p>
-        </div>
-      ) : (
-        <span className="text-muted text-xs">Deleted account</span>
-      ),
+    render: (row) => (
+      <AdminUserLink
+        user={row.user}
+        href={row.user ? `/admin/affiliates/${encodeURIComponent(row.user.id)}` : undefined}
+        detail={`${row.user?.email} · ${row.user?.affiliateCode || "no code"}`}
+      />
+    ),
   },
   {
     key: "amount",
@@ -61,7 +53,7 @@ const columns: Array<AdminTableColumn<AdminWithdrawalRow>> = [
     render: (row) => (
       <div>
         <p className="text-foreground font-medium">{formatCents(row.amountCents, row.currency)}</p>
-        {row.user ? (
+        {row.user && !isDeletedAccount(row.user) ? (
           <p className="text-muted text-xs">
             {formatCents(row.user.affiliateWallet?.availableCents ?? 0)} still available
           </p>
@@ -89,14 +81,18 @@ const columns: Array<AdminTableColumn<AdminWithdrawalRow>> = [
     key: "actions",
     header: "",
     className: "text-right",
-    render: (row) => (
-      <WithdrawalActions
-        id={row.id}
-        status={row.status}
-        amountCents={row.amountCents}
-        email={row.user?.email ?? "the deleted account"}
-      />
-    ),
+    render: (row) =>
+      // The server refuses every change to a deleted account's withdrawal.
+      !row.user || isDeletedAccount(row.user) ? (
+        <span className="text-muted text-xs">Read-only</span>
+      ) : (
+        <WithdrawalActions
+          id={row.id}
+          status={row.status}
+          amountCents={row.amountCents}
+          email={row.user.email}
+        />
+      ),
   },
 ];
 

@@ -2,6 +2,13 @@ import type { CatalogProduct, ProductKey } from "@/features/billing/types";
 import { ApiRequestError } from "@/utils/fetchApiData";
 import { formatCents } from "@/features/admin/utils/admin-format";
 
+/** The server's product names (`productNames.ts`), for products named by key. */
+export const PLAN_NAMES: Record<ProductKey, string> = {
+  ai_credits: "AI Credits",
+  portfolio_pro: "Creator Pro",
+  bundle: "Job Hunter Bundle",
+};
+
 export const PAYMENTS_OPEN_SOON =
   "Payments open soon. Purchases are not available yet; nothing has been charged.";
 
@@ -13,13 +20,60 @@ export function isPaymentsClosedError(error: unknown) {
   return error instanceof ApiRequestError && error.status === 403;
 }
 
-/** The second 409 a checkout can answer, next to the checkout-lock one. */
-export function isAlreadySubscribedError(error: unknown) {
-  return (
-    error instanceof ApiRequestError &&
-    error.status === 409 &&
-    error.message.includes("already have an active subscription")
-  );
+/**
+ * The checkout lock: an earlier session for an overlapping product is still open. The server
+ * sends it without a code and keeps this phrase stable for the studio (`CHECKOUT_ACTIVE_MESSAGE`).
+ */
+const CHECKOUT_LOCK_PHRASE = "A billing checkout is already active";
+
+export type CheckoutFailure =
+  | { kind: "payments-closed"; message: string }
+  /** The customer already has what they asked for: nothing to buy. */
+  | { kind: "already-have"; message: string }
+  /** A paused or unpaid subscription: fixed in the billing portal, never by a second purchase. */
+  | { kind: "manage-billing"; message: string }
+  /** A live subscription overlaps the request; the message says how to switch. */
+  | { kind: "overlap"; message: string; suggestedProductKey: ProductKey | null }
+  | { kind: "checkout-locked"; message: string }
+  | { kind: "other"; message: string };
+
+/**
+ * What a failed checkout means. The server names each overlap 409 by `details.code`
+ * (`checkoutOverlap` in billingService); only the lock may be cancelled and retried, because
+ * every other 409 answers the retry the same way.
+ */
+export function describeCheckoutError(error: unknown, fallbackMessage: string): CheckoutFailure {
+  if (isPaymentsClosedError(error)) return { kind: "payments-closed", message: PAYMENTS_OPEN_SOON };
+
+  const message = error instanceof Error ? error.message : fallbackMessage;
+  if (!(error instanceof ApiRequestError) || error.status !== 409)
+    return { kind: "other", message };
+
+  switch (error.code) {
+    case "ALREADY_SUBSCRIBED":
+    case "ALREADY_INCLUDED":
+      return { kind: "already-have", message };
+    case "PAYMENT_OUTSTANDING":
+    case "SUBSCRIPTION_PAUSED":
+      return { kind: "manage-billing", message };
+    case "SUBSCRIPTION_OVERLAP": {
+      const suggested = (error.details as { suggestedProductKey?: unknown }).suggestedProductKey;
+
+      return {
+        kind: "overlap",
+        message,
+        suggestedProductKey:
+          suggested === "ai_credits" || suggested === "portfolio_pro" || suggested === "bundle"
+            ? suggested
+            : null,
+      };
+    }
+  }
+
+  return {
+    kind: !error.code && message.startsWith(CHECKOUT_LOCK_PHRASE) ? "checkout-locked" : "other",
+    message,
+  };
 }
 
 export type CheckoutInterval = keyof CatalogProduct["prices"];

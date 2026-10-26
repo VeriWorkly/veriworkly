@@ -5,9 +5,7 @@ export type AiAction =
   | "rewrite_section"
   | "generate_section"
   | "generate_portfolio_copy"
-  | "generate_cover_letter"
-  | "tailor_resume_to_job"
-  | "generate_document";
+  | "generate_cover_letter";
 
 export type AiMode = "standard" | "expert";
 

@@ -5,6 +5,7 @@ import AdminStatCard from "@/components/admin/AdminStatCard";
 import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
 import AdminListPage from "@/components/admin/AdminListPage";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
+import AdminUserLink from "@/components/admin/AdminUserLink";
 import { WebhookReplayAction } from "@/app/admin/billing/BillingActions";
 
 import {
@@ -53,12 +54,7 @@ const columns: Array<AdminTableColumn<AdminWebhookRow>> = [
     hideOnMobile: true,
     render: (row) =>
       row.user ? (
-        <Link
-          href={`/admin/users/${row.user.id}`}
-          className="text-foreground text-xs hover:underline"
-        >
-          {row.user.email}
-        </Link>
+        <AdminUserLink user={row.user} />
       ) : (
         <span className="text-muted text-xs">Unmatched</span>
       ),

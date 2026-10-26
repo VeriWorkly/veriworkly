@@ -18,6 +18,8 @@ export type CreditTransaction = {
   amount: number;
   balanceAfter: number;
   action: string | null;
+  /** Server-minted for grants, with a prefix naming the source (`annual-credit:`, `admin-credit:`). */
+  requestId?: string | null;
   documentId: string | null;
   reason: string | null;
   createdAt: string;

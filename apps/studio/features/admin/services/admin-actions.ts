@@ -41,6 +41,15 @@ export interface AdminUserUpdatePayload {
   reason: string;
 }
 
+/** The email of the account a pasted user id names, for a confirmation to show. */
+export async function fetchAdminAccountEmail(id: string) {
+  const detail = await adminRequest<{ user: { email: string } }>(
+    `/users/${encodeURIComponent(id)}`,
+    "GET",
+  );
+  return detail.user.email;
+}
+
 export function updateAdminUser(id: string, payload: AdminUserUpdatePayload) {
   return adminRequest<AdminUserRow>(`/users/${id}`, "PATCH", payload);
 }

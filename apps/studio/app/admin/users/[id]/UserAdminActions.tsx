@@ -22,6 +22,36 @@ import type { AdminUserDetail, Role } from "@/features/admin/types/admin-types";
 import { parseCreditAmount } from "@/app/admin/billing/credit-amount";
 import { pluralize } from "@/lib/pluralize";
 
+/** The provider statuses that can still charge the card (server `CHARGEABLE_RAW_STATUSES`). */
+const CHARGEABLE_RAW_STATUSES = new Set(["active", "on_hold", "past_due", "paused"]);
+/** An unpaid checkout's subscription can still turn into a charge for the session's 24 hours. */
+const PENDING_CHECKOUT_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The server's deletion guard (`findChargeableSubscription`): a subscription the provider can
+ * still charge blocks deleting the account, including one already cancelled at period end.
+ */
+export function hasChargeableSubscription(
+  subscriptions: Array<
+    Pick<
+      AdminUserDetail["subscriptions"][number],
+      "status" | "rawStatus" | "lastWebhookAt" | "createdAt"
+    >
+  >,
+  now = Date.now(),
+) {
+  return subscriptions.some((subscription) => {
+    if (subscription.rawStatus === null) {
+      return subscription.status === "ACTIVE" || subscription.status === "PAST_DUE";
+    }
+    if (subscription.rawStatus === "pending") {
+      const since = Date.parse(subscription.lastWebhookAt ?? subscription.createdAt);
+      return since >= now - PENDING_CHECKOUT_LIFETIME_MS;
+    }
+    return CHARGEABLE_RAW_STATUSES.has(subscription.rawStatus);
+  });
+}
+
 /**
  * Every control on this panel writes to the admin audit log, so each one is wrapped in the
  * shared confirmation dialog rather than firing on a bare click. The role select is the one
@@ -41,10 +71,8 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
   const credits = parseCreditAmount(creditAmount);
 
   const isProtectedAdmin = user.role === "ADMIN";
-  // Deleting the account here cancels nothing at the payment provider.
-  const hasLiveSubscription = detail.subscriptions.some(
-    (subscription) => subscription.status === "ACTIVE" || subscription.status === "PAST_DUE",
-  );
+  // The server refuses the delete (409) while this holds; deleting cancels nothing at Dodo.
+  const hasLiveSubscription = hasChargeableSubscription(detail.subscriptions);
 
   return (
     <Panel className="space-y-5 rounded-xl p-4">
@@ -190,7 +218,7 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
           trigger="Delete account"
           triggerVariant="secondary"
           triggerClassName="text-destructive"
-          disabled={isProtectedAdmin}
+          disabled={isProtectedAdmin || hasLiveSubscription}
           title="Permanently delete this account"
           description="This cannot be undone. Documents, portfolios, share links, wallets, and API keys are all deleted with the account."
           confirmLabel="Delete permanently"
@@ -206,15 +234,14 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
               ? "Admin accounts cannot be deleted from this panel."
               : "There is no restore path for a deleted account."}
           </p>
-
-          {hasLiveSubscription ? (
-            <p className="text-warning text-xs">
-              This account has a live subscription. Deleting it here does not cancel anything at
-              Dodo, so the card keeps being charged: cancel the subscription in the Dodo dashboard
-              first.
-            </p>
-          ) : null}
         </AdminActionDialog>
+
+        {hasLiveSubscription ? (
+          <p className="text-warning basis-full text-xs">
+            Delete is unavailable: this account has a subscription Dodo can still charge. Cancel it
+            at Dodo (Cancel at period end on Billing) and delete the account once it has ended.
+          </p>
+        ) : null}
 
         <Button size="sm" variant="ghost" onClick={() => router.refresh()}>
           Refresh
