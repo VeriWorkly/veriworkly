@@ -19,7 +19,9 @@ import type {
   adminShareLinkListQuerySchema,
 } from "#validators/admin/adminDocumentValidator";
 import { listPage } from "#utils/pagination";
+import { USER_UNPUBLISHED_REASON } from "#services/portfolioAssetService";
 import {
+  ADMIN_AUDIT_ACTIONS,
   getAuditHistory,
   writeAdminAudit,
   type AdminAuditInput,
@@ -190,7 +192,7 @@ async function invalidateOwnerDocumentCaches(
 /**
  * A PORTFOLIO document is the source of a public site, which `getPublicPortfolio` serves from
  * `portfolioPublication` alone — hiding or deleting the document does nothing to the subdomain
- * by itself. Moderating the document therefore also takes the publication down, as a sticky
+ * by itself. Deleting the document therefore also takes the publication down, as a sticky
  * moderation suspension (same rules as `adminPortfolioService.updatePublicationStatus`). A row
  * already under a moderation lock keeps its original reason.
  */
@@ -240,7 +242,14 @@ async function loadDocumentForMutation(documentId: string) {
 /**
  * A moderator's visibility decision. The audit entry is written in the same transaction as the
  * change: it is the record that makes "Make private" a takedown the owner cannot undo
- * (`madePrivateByModerator`), so a change without it must not happen.
+ * (`madePrivateByModerator`), and the record that a later "Make unlisted" lifted it, so a change
+ * without it must not happen.
+ *
+ * For a PORTFOLIO, only PRIVATE takes the publication down (a sticky moderation suspension).
+ * UNLISTED never suspends a site (V-203): on a live portfolio it changes nothing public, and on
+ * a moderation-locked one it lifts the lock. The lifted row becomes the owner's own unpublish
+ * (`user_unpublished`), not LIVE: the moderation reason does not record what the site was before,
+ * and putting it back online is the owner's call, which their Publish now makes.
  */
 export async function updateDocumentVisibility(
   documentId: string,
@@ -248,6 +257,16 @@ export async function updateDocumentVisibility(
   audit: AdminAuditInput,
 ) {
   const document = await loadDocumentForMutation(documentId);
+  const publication =
+    document.type === "PORTFOLIO"
+      ? await prisma.portfolioPublication.findUnique({
+          where: { documentId },
+          select: { id: true, subdomain: true, status: true, suspensionReason: true },
+        })
+      : null;
+  const locked = publication !== null && isModerationLocked(publication);
+  const takeDown = publication !== null && visibility === "PRIVATE" && !locked;
+  const lift = publication !== null && visibility !== "PRIVATE" && locked;
 
   const updated = await prisma.$transaction(async (tx) => {
     const row = await tx.document.update({
@@ -264,11 +283,64 @@ export async function updateDocumentVisibility(
         ownerId: document.userId,
       },
     });
+
+    // Both writes are conditional on the state read above: if the owner or another admin moved
+    // the publication in between, the decision was made on a stale row, so nothing commits.
+    const unchanged = publication && {
+      id: publication.id,
+      status: publication.status,
+      suspensionReason: publication.suspensionReason,
+    };
+    const assertApplied = ({ count }: { count: number }) => {
+      if (count === 0)
+        throw new ApiError(409, "The portfolio changed while this was being saved. Try again.");
+    };
+
+    if (unchanged && takeDown)
+      assertApplied(
+        await tx.portfolioPublication.updateMany({
+          where: unchanged,
+          data: {
+            status: "SUSPENDED",
+            suspensionReason: `${MODERATION_SUSPENSION_PREFIX}document_hidden`,
+            suspendedAt: new Date(),
+          },
+        }),
+      );
+
+    if (publication && unchanged && lift) {
+      // Still offline, so `suspendedAt` keeps the date it went down; only the lock goes.
+      assertApplied(
+        await tx.portfolioPublication.updateMany({
+          where: unchanged,
+          data: { suspensionReason: USER_UNPUBLISHED_REASON },
+        }),
+      );
+      await writeAdminAudit(tx, {
+        actorId: audit.actorId,
+        action: ADMIN_AUDIT_ACTIONS.portfolioStatusChange,
+        targetType: "PortfolioPublication",
+        targetId: publication.id,
+        reason: audit.reason,
+        metadata: {
+          previousStatus: publication.status,
+          status: "SUSPENDED",
+          previousSuspensionReason: publication.suspensionReason,
+          suspensionReason: USER_UNPUBLISHED_REASON,
+          subdomain: publication.subdomain,
+          documentId,
+          ownerId: document.userId,
+        },
+      });
+    }
+
     return row;
   });
 
-  if (document.type === "PORTFOLIO")
-    await takeDownPortfolioPublication(documentId, "document_hidden");
+  if (publication && (takeDown || lift)) {
+    await invalidatePublicPortfolioCaches([publication.subdomain]);
+    void revalidatePublicPortfolios([publication.subdomain]);
+  }
 
   await invalidateOwnerDocumentCaches(
     document.userId,

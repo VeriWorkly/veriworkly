@@ -653,6 +653,184 @@ describe("V-076 admin document moderation unpublishes a portfolio", () => {
   });
 });
 
+describe("V-203 an admin unlisting a portfolio lifts a takedown and never suspends a live site", () => {
+  function setDocumentVisibility(documentId: string, visibility: "PRIVATE" | "UNLISTED") {
+    return admin().then((moderator) =>
+      asUser(moderator, request(app).patch(`/api/v1/admin/documents/${documentId}`)).send({
+        visibility,
+        reason: "Reviewed the report",
+      }),
+    );
+  }
+
+  async function moderatorPrivate(documentId: string) {
+    const detail = await asUser(
+      await admin(),
+      request(app).get(`/api/v1/admin/documents/${documentId}`),
+    );
+    expect(detail.status).toBe(200);
+    return detail.body.data.document.moderatorPrivate as boolean;
+  }
+
+  it("takedown, then UNLISTED: the lock is lifted, the site stays offline, and the owner can republish", async () => {
+    const user = await createUserWithSession();
+    const { document, publication } = await seedPublication(user.id, "signal");
+
+    expect((await setDocumentVisibility(document.id, "PRIVATE")).status).toBe(200);
+    expect(await moderatorPrivate(document.id)).toBe(true);
+
+    const blocked = await asUser(user, request(app).post("/api/v1/portfolios/publish")).send({
+      documentId: document.id,
+      subdomain: publication.subdomain,
+      revision: document.revision,
+    });
+    expect(blocked.status).toBe(403);
+
+    const lift = await setDocumentVisibility(document.id, "UNLISTED");
+    expect(lift.status, JSON.stringify(lift.body)).toBe(200);
+    expect(await moderatorPrivate(document.id)).toBe(false);
+
+    // Lifted to the owner's own unpublished state: offline until they choose to publish.
+    const lifted = await publicationOf(user.id);
+    expect(lifted.status).toBe("SUSPENDED");
+    expect(lifted.suspensionReason).toBe("user_unpublished");
+    expect((await publicGet(`/api/v1/portfolios/public/${publication.subdomain}`)).status).toBe(
+      404,
+    );
+
+    const republish = await asUser(user, request(app).post("/api/v1/portfolios/publish")).send({
+      documentId: document.id,
+      subdomain: publication.subdomain,
+      revision: document.revision,
+    });
+    expect(republish.status, JSON.stringify(republish.body)).toBe(201);
+    expect((await publicationOf(user.id)).status).toBe("LIVE");
+
+    const entries = await prisma.adminAuditEntry.findMany({
+      where: { targetType: "PortfolioPublication", targetId: publication.id },
+    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].metadata).toMatchObject({
+      previousSuspensionReason: "moderation:document_hidden",
+      suspensionReason: "user_unpublished",
+      documentId: document.id,
+    });
+  });
+
+  it("a force-unpublish is lifted by unlisting the document, and the owner can publish again", async () => {
+    const user = await createUserWithSession();
+    const { document, publication } = await seedPublication(user.id, "signal");
+
+    const takedown = await asUser(
+      await admin(),
+      request(app).delete(`/api/v1/admin/portfolios/${publication.id}`),
+    ).send({ reason: "Phishing page" });
+    expect(takedown.status).toBe(200);
+
+    expect((await setDocumentVisibility(document.id, "UNLISTED")).status).toBe(200);
+    expect(await moderatorPrivate(document.id)).toBe(false);
+
+    const republish = await asUser(user, request(app).post("/api/v1/portfolios/publish")).send({
+      documentId: document.id,
+      subdomain: publication.subdomain,
+      revision: document.revision,
+    });
+    expect(republish.status, JSON.stringify(republish.body)).toBe(201);
+  });
+
+  it("unlisting a live, unmoderated portfolio keeps it live", async () => {
+    const user = await createUserWithSession();
+    const { document, publication } = await seedPublication(user.id, "signal");
+
+    expect((await setDocumentVisibility(document.id, "UNLISTED")).status).toBe(200);
+
+    const row = await publicationOf(user.id);
+    expect(row.status).toBe("LIVE");
+    expect(row.suspensionReason).toBeNull();
+    expect((await publicGet(`/api/v1/portfolios/public/${publication.subdomain}`)).status).toBe(
+      200,
+    );
+    expect(await moderatorPrivate(document.id)).toBe(false);
+  });
+
+  it("unlisting leaves the owner's own unpublish as it was", async () => {
+    const user = await createUserWithSession();
+    const { document } = await seedPublication(user.id, "signal", {
+      status: "SUSPENDED",
+      suspensionReason: "user_unpublished",
+    });
+
+    expect((await setDocumentVisibility(document.id, "UNLISTED")).status).toBe(200);
+
+    const row = await publicationOf(user.id);
+    expect(row.status).toBe("SUSPENDED");
+    expect(row.suspensionReason).toBe("user_unpublished");
+  });
+
+  it("a publication that changed after it was read is 409 and nothing commits", async () => {
+    const user = await createUserWithSession();
+    const { document, publication } = await seedPublication(user.id, "signal");
+
+    // The admin's read sees a takedown; the row is LIVE by the time the lift writes.
+    const stale = vi.spyOn(prisma.portfolioPublication, "findUnique").mockResolvedValueOnce({
+      id: publication.id,
+      subdomain: publication.subdomain,
+      status: "SUSPENDED",
+      suspensionReason: "moderation:document_hidden",
+    } as never);
+    try {
+      const response = await setDocumentVisibility(document.id, "UNLISTED");
+      expect(response.status, JSON.stringify(response.body)).toBe(409);
+    } finally {
+      stale.mockRestore();
+    }
+
+    const row = await publicationOf(user.id);
+    expect(row.status).toBe("LIVE");
+    expect(row.suspensionReason).toBeNull();
+    expect(
+      (await prisma.document.findUniqueOrThrow({ where: { id: document.id } })).visibility,
+    ).toBe("PUBLIC");
+    expect(await prisma.adminAuditEntry.count({ where: { targetId: document.id } })).toBe(0);
+  });
+
+  it("résumé moderation is unchanged: PRIVATE locks the owner out, UNLISTED lifts it", async () => {
+    const user = await createUserWithSession();
+    const resume = await prisma.document.create({
+      data: {
+        userId: user.id,
+        title: "Resume",
+        slug: `resume-${randomUUID().slice(0, 8)}`,
+        content: { basics: { name: "Owner" } },
+        visibility: "UNLISTED",
+      },
+    });
+
+    expect((await setDocumentVisibility(resume.id, "PRIVATE")).status).toBe(200);
+    expect(await moderatorPrivate(resume.id)).toBe(true);
+    const share = () =>
+      asUser(user, request(app).post("/api/v1/shares")).send({
+        documentId: resume.id,
+        snapshot: { basics: { name: "Owner" } },
+        noExpiry: true,
+      });
+    expect((await share()).status).toBe(403);
+
+    expect((await setDocumentVisibility(resume.id, "UNLISTED")).status).toBe(200);
+    expect(await moderatorPrivate(resume.id)).toBe(false);
+    const shared = await share();
+    expect(shared.status, JSON.stringify(shared.body)).toBeLessThan(300);
+    expect(
+      await prisma.adminAuditEntry.count({
+        where: {
+          targetType: "PortfolioPublication",
+          metadata: { path: ["documentId"], equals: resume.id },
+        },
+      }),
+    ).toBe(0);
+  });
+});
+
 describe("V-043 / V-050 public cache namespace and reserved subdomains", () => {
   it("the subdomain 'list' never returns the sitemap list, and the list is never a publication", async () => {
     const user = await createUserWithSession();

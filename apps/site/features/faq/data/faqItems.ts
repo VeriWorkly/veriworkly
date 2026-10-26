@@ -233,9 +233,9 @@ export const faqs: FaqItem[] = [
   {
     id: "ai-credits-rollover",
     category: "ai",
-    question: "Do monthly AI credits roll over?",
+    question: "Do subscription AI credits roll over?",
     answer:
-      "Monthly subscription plans reset to 1,000 fresh AI credits at the start of each billing cycle; unused subscription credits do not carry over. One-time top-up packs are valid for 90 days from purchase, which is also what our Terms state.",
+      "Subscription plans, monthly and annual alike, grant 1,000 fresh AI credits every month; unused subscription credits expire at the end of the month and do not carry over. Annual plans grant them month by month, not 12,000 up front. One-time top-up packs are valid for 90 days from purchase, which is also what our Terms state.",
   },
   {
     id: "ai-models-used",
@@ -257,7 +257,7 @@ export const faqs: FaqItem[] = [
     category: "billing",
     question: "What are Flexible Sprint Passes and how do they work?",
     answer:
-      "Flexible Sprint Passes are one-time purchases for active job searches. You pay once for 3 days ($2.99) or 7 days ($5.99) to get portfolio hosting and AI writing credits. They expire automatically with zero recurring charges, so you never have to worry about forgetting to cancel a subscription.",
+      "Flexible Sprint Passes are one-time purchases for active job searches. You pay once for 3 days ($2.99) or 7 days ($5.99) to get Creator Pro portfolio features and AI writing credits. They expire automatically with zero recurring charges, so you never have to worry about forgetting to cancel a subscription.",
   },
   {
     id: "paid-plans-summary",

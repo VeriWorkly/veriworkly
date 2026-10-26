@@ -3,7 +3,7 @@ import type { LegalSection } from "./types";
 import { siteConfig } from "@/config/site";
 
 export const termsEffectiveDate = "July 23, 2026";
-export const termsLastUpdated = "2026-07-23";
+export const termsLastUpdated = "2026-10-26";
 
 export const termsSections: LegalSection[] = [
   {
@@ -120,7 +120,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "Credits, cost, and consent",
         paragraphs: [
-          "AI actions consume credits from your account's AI credit wallet at a cost shown to you before generation (Standard or Expert mode). Credits are reserved when an action starts and only committed (deducted) on success; a failed generation releases the reservation rather than charging you. Unused monthly subscription credits do not roll over to the next billing cycle. Purchased credit packs and time-boxed pass credits expire as described on the Pricing page.",
+          "AI actions consume credits from your account's AI credit wallet at a cost shown to you before generation (Standard or Expert mode). Credits are reserved when an action starts and only committed (deducted) on success; a failed generation releases the reservation rather than charging you. Subscription credits, on monthly and annual plans alike, are granted each month; unused subscription credits do not roll over to the next month. Purchased credit packs and time-boxed pass credits expire as described on the Pricing page.",
           "By triggering an AI action, you consent to your submitted content being transmitted to the relevant third-party AI model provider as described in our Privacy Policy.",
         ],
       },
@@ -277,7 +277,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "Credit expiration",
         paragraphs: [
-          "Monthly subscription AI credits do not roll over between billing cycles. One-time credit-pack purchases expire 90 days after purchase, or immediately upon cancellation of an associated subscription where stated. Pass-granted credits expire when the pass's time window ends.",
+          "Subscription AI credits, on monthly and annual plans alike, are granted each month and do not roll over to the next month. One-time credit-pack purchases expire 90 days after purchase, or immediately upon cancellation of an associated subscription where stated. Pass-granted credits expire when the pass's time window ends.",
         ],
       },
       {

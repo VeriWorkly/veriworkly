@@ -90,8 +90,9 @@ const PUBLIC_LIST_MAX = 1000;
  * `moderation:<free text>`; `user_unpublished` is the user's own takedown and billing's own
  * reasons are listed in `BILLING_SUSPENSION_REASONS`. Anything else on a SUSPENDED row is
  * treated as moderation too, so an unknown reason fails closed. A locked row is left alone by
- * the user's Publish/Unpublish and by billing; only an admin setting the status back to LIVE
- * (`adminPortfolioService.updatePublicationStatus`) lifts it.
+ * the user's Publish/Unpublish and by billing; only an admin lifts it, by setting the status back
+ * to LIVE (`adminPortfolioService.updatePublicationStatus`) or by unlisting the document
+ * (`adminDocumentService.updateDocumentVisibility`, which leaves it as the owner's own unpublish).
  */
 export const MODERATION_SUSPENSION_PREFIX = "moderation:";
 
