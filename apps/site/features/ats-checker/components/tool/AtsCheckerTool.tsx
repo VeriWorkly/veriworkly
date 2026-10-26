@@ -5,11 +5,13 @@ import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ArrowRight, RotateCcw, ScanSearch, TriangleAlert } from "lucide-react";
 
 import {
+  MAX_JOB_DESCRIPTION_CHARS,
   MAX_RESUME_BYTES,
   extractResumeFile,
   getAtsQuota,
   runAtsCheck,
 } from "../../services/ats-checker-api";
+import { readJsonResume } from "../../services/json-resume";
 import type { AtsCheckResult, AtsLayoutSignals, AtsQuota } from "../../types";
 import { ApiRequestError } from "@/utils/fetchApiData";
 import { Stepper } from "./Stepper";
@@ -23,6 +25,9 @@ const STEP_LABELS = ["Resume", "Target role", "Results"];
 
 type Phase = "resume" | "target" | "scanning" | "results";
 
+/** Text, or a JSON Resume / ats-resume document the engine reads field by field. */
+type ResumeInput = string | Record<string, unknown>;
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -33,7 +38,8 @@ function wordCountOf(text: string) {
 
 export function AtsCheckerTool() {
   const [phase, setPhase] = useState<Phase>("resume");
-  const [resume, setResume] = useState("");
+  const [resume, setResume] = useState<ResumeInput>("");
+  const [resumeWords, setResumeWords] = useState(0);
   const [sourceLabel, setSourceLabel] = useState("");
   // Page geometry from an uploaded file, sent with the scan so format checks see the layout; pasted text has none.
   const [layout, setLayout] = useState<AtsLayoutSignals | undefined>(undefined);
@@ -45,6 +51,7 @@ export function AtsCheckerTool() {
   const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState("");
   const resultsRef = useRef<HTMLDivElement>(null);
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -61,8 +68,46 @@ export function AtsCheckerTool() {
     };
   }, []);
 
+  const acceptResume = (input: ResumeInput, words: number, label: string) => {
+    setResume(input);
+    setResumeWords(words);
+    setSourceLabel(label);
+    setPhase("target");
+  };
+
+  const handleJsonFile = async (file: File) => {
+    setExtracting(true);
+    try {
+      const read = await readJsonResume(file);
+      if (!read.ok) {
+        setError(read.error);
+        return;
+      }
+      const { input, text } = read;
+      if (wordCountOf(text) < 30) {
+        setError(
+          "This file appears to contain very little readable text. Please try pasting the text.",
+        );
+        return;
+      }
+
+      setLayout(undefined);
+      setUpload({ name: file.name, bytes: file.size });
+      acceptResume(input, wordCountOf(text), file.name);
+    } catch {
+      setError("Could not read this resume file.");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const handleFile = async (file: File) => {
     setError("");
+
+    if (file.name.toLowerCase().endsWith(".json")) {
+      await handleJsonFile(file);
+      return;
+    }
 
     if (file.size > MAX_RESUME_BYTES) {
       setError("That file is over 5 MB. Export a smaller PDF, or paste the text instead.");
@@ -79,11 +124,9 @@ export function AtsCheckerTool() {
         );
         return;
       }
-      setResume(text);
       setLayout(extractedLayout);
       setUpload({ name: file.name, bytes: file.size });
-      setSourceLabel(file.name);
-      setPhase("target");
+      acceptResume(text, wordCountOf(text), file.name);
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 429) {
         // The upload quota sends its summary; the per-IP rate limiter sends none.
@@ -111,16 +154,15 @@ export function AtsCheckerTool() {
       );
       return;
     }
-    setResume(text);
     // Pasted text has no geometry; a layout from a previous upload must not be scored against it.
     setLayout(undefined);
     setUpload(undefined);
-    setSourceLabel("Pasted resume text");
-    setPhase("target");
+    acceptResume(text, wordCountOf(text), "Pasted resume text");
   };
 
   const handleClearResume = () => {
     setResume("");
+    setResumeWords(0);
     setLayout(undefined);
     setUpload(undefined);
     setSourceLabel("");
@@ -129,9 +171,14 @@ export function AtsCheckerTool() {
   };
 
   const runScan = async () => {
-    if (!resume.trim()) {
+    if (!resumeWords) {
       setError("Add a resume first.");
       setPhase("resume");
+      return;
+    }
+
+    if (jobDescription.trim().length > MAX_JOB_DESCRIPTION_CHARS) {
+      setError(jobDescriptionTooLong);
       return;
     }
 
@@ -158,7 +205,10 @@ export function AtsCheckerTool() {
       setResult(checkResult);
       setQuota(checkResult.quota);
       setPhase("results");
-      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth" });
+        resultsHeadingRef.current?.focus({ preventScroll: true });
+      }, 100);
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 429 && isQuota(err.details)) {
         setQuota(err.details);
@@ -177,6 +227,7 @@ export function AtsCheckerTool() {
   const resetAll = () => {
     setPhase("resume");
     setResume("");
+    setResumeWords(0);
     setLayout(undefined);
     setUpload(undefined);
     setSourceLabel("");
@@ -184,6 +235,9 @@ export function AtsCheckerTool() {
     setResult(null);
     setError("");
   };
+
+  const jobDescriptionLength = jobDescription.trim().length;
+  const jobDescriptionTooLong = `The job description is ${jobDescriptionLength.toLocaleString()} characters; the checker reads up to ${MAX_JOB_DESCRIPTION_CHARS.toLocaleString()}. Keep the requirements and responsibilities, and cut the rest.`;
 
   const currentStep = phase === "resume" ? 0 : phase === "target" || phase === "scanning" ? 1 : 2;
 
@@ -219,9 +273,9 @@ export function AtsCheckerTool() {
                 </p>
                 <div className="mt-6">
                   <ResumeStep
-                    hasResume={Boolean(resume)}
+                    hasResume={resumeWords > 0}
                     sourceLabel={sourceLabel}
-                    wordCount={wordCountOf(resume)}
+                    wordCount={resumeWords}
                     busy={extracting}
                     error={error}
                     onFile={handleFile}
@@ -246,7 +300,7 @@ export function AtsCheckerTool() {
                 <ResumeStep
                   hasResume={true}
                   sourceLabel={sourceLabel}
-                  wordCount={wordCountOf(resume)}
+                  wordCount={resumeWords}
                   busy={false}
                   error=""
                   onFile={handleFile}
@@ -267,10 +321,20 @@ export function AtsCheckerTool() {
                     id="target-jd"
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
+                    aria-describedby="target-jd-count"
+                    aria-invalid={jobDescriptionLength > MAX_JOB_DESCRIPTION_CHARS || undefined}
                     rows={7}
                     placeholder="Paste the job description here to check keyword match…"
                     className="border-border bg-background focus:border-accent focus:ring-accent/20 mt-3 w-full rounded-2xl border p-4 text-base leading-relaxed focus:ring-2 focus:outline-none"
                   />
+                  <p
+                    id="target-jd-count"
+                    className={`mt-2 text-sm tabular-nums ${jobDescriptionLength > MAX_JOB_DESCRIPTION_CHARS ? "text-destructive font-medium" : "text-muted"}`}
+                  >
+                    {jobDescriptionLength > MAX_JOB_DESCRIPTION_CHARS
+                      ? jobDescriptionTooLong
+                      : `${jobDescriptionLength.toLocaleString()} / ${MAX_JOB_DESCRIPTION_CHARS.toLocaleString()} characters`}
+                  </p>
                 </div>
 
                 {error ? (
@@ -293,7 +357,9 @@ export function AtsCheckerTool() {
                   </button>
                   <button
                     type="button"
-                    disabled={busy || !resume.trim()}
+                    disabled={
+                      busy || !resumeWords || jobDescriptionLength > MAX_JOB_DESCRIPTION_CHARS
+                    }
                     onClick={runScan}
                     className="bg-foreground text-background hover:bg-accent hover:text-accent-foreground inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-semibold transition-[transform,background-color,color] duration-200 active:scale-[0.97] disabled:opacity-50"
                   >
@@ -329,10 +395,14 @@ export function AtsCheckerTool() {
               className="space-y-6"
             >
               <div className="flex items-center justify-between gap-4">
-                <span className="text-muted inline-flex items-center gap-2 text-sm font-semibold">
+                <h2
+                  ref={resultsHeadingRef}
+                  tabIndex={-1}
+                  className="text-muted inline-flex items-center gap-2 text-sm font-semibold focus:outline-none"
+                >
                   <ScanSearch aria-hidden="true" className="text-success h-4 w-4" />
                   Scan complete
-                </span>
+                </h2>
                 <button
                   type="button"
                   onClick={resetAll}

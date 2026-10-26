@@ -7,7 +7,7 @@ export function allowanceCopy(quota: AtsQuota): string {
     case "free":
       return `${quota.limit} scan${quota.limit === 1 ? "" : "s"} a day`;
     case "subscriber":
-      return `${quota.limit} scan${quota.limit === 1 ? "" : "s"} this billing period`;
+      return `${quota.limit} scan${quota.limit === 1 ? "" : "s"} this month`;
     default:
       return `${quota.limit} scans`;
   }

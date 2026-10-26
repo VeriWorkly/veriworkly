@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { FileText, Loader2, TriangleAlert, Upload, X } from "lucide-react";
 
+import { MAX_RESUME_CHARS } from "../../services/ats-checker-api";
+
 interface ResumeStepProps {
   hasResume: boolean;
   sourceLabel: string;
@@ -27,6 +29,8 @@ export function ResumeStep({
   const [mode, setMode] = useState<"upload" | "paste">("upload");
   const [pasteValue, setPasteValue] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const pasteLength = pasteValue.trim().length;
+  const pasteTooLong = pasteLength > MAX_RESUME_CHARS;
 
   if (hasResume) {
     return (
@@ -132,13 +136,24 @@ export function ResumeStep({
           <textarea
             value={pasteValue}
             onChange={(e) => setPasteValue(e.target.value)}
+            aria-label="Resume text"
+            aria-describedby="resume-paste-count"
+            aria-invalid={pasteTooLong || undefined}
             rows={9}
             placeholder="Paste your resume text here…"
             className="border-border bg-card placeholder:text-muted focus:border-accent/40 focus:ring-accent/20 w-full rounded-2xl border p-4 text-base leading-7 focus:ring-4 focus:outline-none"
           />
+          <p
+            id="resume-paste-count"
+            className={`text-sm tabular-nums ${pasteTooLong ? "text-destructive font-medium" : "text-muted"}`}
+          >
+            {pasteTooLong
+              ? `This is ${pasteLength.toLocaleString()} characters; the checker reads up to ${MAX_RESUME_CHARS.toLocaleString()}. Remove anything that is not part of the resume.`
+              : `${pasteLength.toLocaleString()} / ${MAX_RESUME_CHARS.toLocaleString()} characters`}
+          </p>
           <button
             type="button"
-            disabled={!pasteValue.trim()}
+            disabled={!pasteValue.trim() || pasteTooLong}
             onClick={() => onPaste(pasteValue)}
             className="bg-foreground text-background hover:bg-accent hover:text-accent-foreground inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold transition-colors duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
           >

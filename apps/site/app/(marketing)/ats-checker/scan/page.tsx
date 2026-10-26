@@ -87,8 +87,8 @@ export default function AtsCheckerScanPage() {
             <div className="min-w-0">
               <h1 className={TYPE.section}>Scan your resume</h1>
               <p className={`text-muted mt-4 max-w-xl ${TYPE.lede}`}>
-                Two steps and a score. Add a job description in step two for keyword match against a
-                specific role.
+                Three steps: add your resume, add a job description if you want a keyword match
+                against a specific role, then read the score.
               </p>
 
               <div className="mt-10">

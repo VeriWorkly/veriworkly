@@ -3,7 +3,7 @@ import type { LegalSection } from "./types";
 import { siteConfig } from "@/config/site";
 
 export const termsEffectiveDate = "July 23, 2026";
-export const termsLastUpdated = "2026-10-26";
+export const termsLastUpdated = "2026-10-27";
 
 export const termsSections: LegalSection[] = [
   {
@@ -186,7 +186,7 @@ export const termsSections: LegalSection[] = [
         paragraphs: [
           "We acknowledge receipt within 3 business days, and aim to reach a decision within 10 business days of a complete notice. Where a notice is urgent and clearly well-founded - for example, non-consensual intimate imagery, content that endangers someone, or an obvious impersonation - we act as fast as we practically can, ahead of the general timeline.",
           "These are targets we can actually hold, not a marketing promise. VeriWorkly is run by a very small team, and we would rather publish a timeline we meet than a shorter one we miss. If a notice is incomplete we will tell you what is missing, and the clock starts again when you send it.",
-          "If we act, we may unpublish the portfolio, revoke the share link, suspend the publication, or restrict the account, and we purge our caches so the content stops being served. We tell the person who published it what we did and why, unless the law stops us.",
+          "If we act, we may unpublish the portfolio, revoke the share link, suspend the publication, or restrict the account, and we purge our caches so the content stops being served. The person who published it can ask us what we did and why, and we will answer unless the law stops us.",
         ],
       },
       {
@@ -263,7 +263,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "Subscriptions & auto-renewal",
         paragraphs: [
-          "Subscription plans (Creator Pro, AI Credits Standalone, and the Job Hunter Bundle) automatically renew at the end of each billing period at the then-current price, until you cancel.",
+          "Subscription plans (Creator Pro, AI Credits, and the Job Hunter Bundle) automatically renew at the end of each billing period at the then-current price, until you cancel.",
           "We do not offer free trials on any plan. There is no trial period to forget about and no automatic conversion from free to paid: when you subscribe, you are charged at checkout for the period you chose, and the price and billing period are shown before you pay. The 3-Day Sprint and 7-Day Hunt passes are one-time purchases that simply expire — they do not renew.",
           "You can cancel a subscription at any time from the Billing page, which opens our payment provider's portal; cancellation takes effect at the end of the current billing period, and you retain access to paid features until then.",
         ],
@@ -271,7 +271,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "Time-boxed passes & one-time purchases",
         paragraphs: [
-          "Passes (such as the 3-Day Sprint or 7-Day Hunt pass) and one-time AI credit top-ups are single, non-recurring purchases that grant time-boxed or expiring access as described on the Pricing page at the time of purchase. They do not auto-renew.",
+          "Passes (such as the 3-Day Sprint Pass or the 7-Day Hunt Pass) and one-time AI credit top-ups are single, non-recurring purchases that grant time-boxed or expiring access as described on the Pricing page at the time of purchase. They do not auto-renew.",
         ],
       },
       {
@@ -290,7 +290,7 @@ export const termsSections: LegalSection[] = [
         heading: "Your right to cancel a purchase (EEA & UK consumers)",
         paragraphs: [
           "If you are a consumer in the European Economic Area or the United Kingdom, you normally have 14 days from purchase to withdraw from a contract for digital services and get your money back, without giving a reason.",
-          "Because our paid features work the moment you buy them, we ask you at checkout to consent to us starting straight away, and to acknowledge that once we have fully performed you lose that 14-day right. You do not have to agree: if you would rather keep the full withdrawal period, say so at checkout and we will hold delivery until it expires.",
+          "Because our paid features work the moment you buy them, we ask you at checkout to consent to us starting straight away, and to acknowledge that once we have fully performed you lose that 14-day right.",
           "If you withdraw after performance has begun with your consent but before it is complete, you pay only for what you actually used, in proportion to the whole contract. To withdraw, write to our Grievance Officer (Section 25) — a clear statement is enough, no particular form is needed.",
           "Nothing here limits any statutory cancellation or refund right you have under the consumer law of your own country. Where the two differ, whichever gives you more wins.",
         ],
@@ -305,7 +305,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "What we tell you before and after you buy",
         paragraphs: [
-          "Before you pay, checkout shows the price, the billing period, whether the plan auto-renews, and — for a trial — the date it converts and the amount you will then be charged. After you pay, we email you a confirmation repeating those terms.",
+          "Before you pay, checkout shows the price, the billing period and whether the plan auto-renews. After you pay, we email you a confirmation repeating those terms.",
           "Cancelling is self-service and never harder than signing up was: open the Billing page and use the Manage Subscription link, which takes you to our payment provider's portal where you can cancel immediately. We will not make you call us, or sit through a retention flow to leave. Cancellation takes effect at the end of the current billing period, and you keep paid features until then.",
         ],
       },
@@ -345,7 +345,7 @@ export const termsSections: LegalSection[] = [
     id: "developer-api",
     title: "Developer API",
     intro: [
-      "Registered users may generate API keys to access account and resume data programmatically, subject to the scopes granted to that key. API keys are stored by us as irreversible hashes, are rate-limited per key, expire automatically (365 days by default unless configured otherwise), and are immediately invalidated if the owning Account's subscription lapses to canceled or inactive where the API access itself is a paid entitlement.",
+      "Registered users may generate API keys to access account and resume data programmatically, subject to the scopes granted to that key. API keys are stored by us as irreversible hashes, are rate-limited per key, and expire automatically (365 days by default unless configured otherwise).",
       'The developer API is provided on an "as available" basis without an uptime service-level agreement, particularly for free-tier or beta-designated endpoints. We may change API scopes, rate limits, or endpoints, including in breaking ways, with reasonable notice where feasible.',
     ],
   },

@@ -33,7 +33,7 @@ export const customPlans = {
   },
   ai_credits: {
     eyebrow: "Write with momentum",
-    title: "AI Standalone",
+    title: "AI Credits",
     price: "$5.99",
     description: "For focused writing help across resumes, cover letters, and portfolio content.",
     icon: WandSparkles,

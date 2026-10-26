@@ -240,5 +240,3 @@ export function ParsedView({ parsed }: { parsed: AtsParsedResume }) {
     </div>
   );
 }
-
-export default ParsedView;

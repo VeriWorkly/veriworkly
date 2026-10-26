@@ -31,7 +31,7 @@ const pageUrl = `${siteConfig.url}/ats-engine`;
 const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
   "VeriWorkly ATS Engine",
 )}&description=${encodeURIComponent(
-  "The open-source ATS resume parser and scorer for TypeScript: a published rubric, no AI in the score, runs in the browser.",
+  "The open-source ATS resume parser and scorer for TypeScript: a published rubric, a rule-based score, runs in the browser.",
 )}`;
 
 export const metadata: Metadata = buildPageMetadata({
@@ -41,7 +41,7 @@ export const metadata: Metadata = buildPageMetadata({
     "The VeriWorkly ATS Engine reads, scores and matches resumes the way an applicant tracking system does. MIT licensed, published rubric, runs in browser or Node.",
   ogTitle: "The open-source ATS engine for your product",
   ogDescription:
-    "Parse a resume like an ATS, score it with 35 published rules and match it to a job posting requirement by requirement. One npm install, no AI in the score.",
+    "Parse a resume like an ATS, score it with 35 published rules and match it to a job posting requirement by requirement. One npm install, a rule-based score.",
   twitterTitle: "An open-source ATS engine, in one npm install",
   twitterDescription: `Deterministic resume parsing, scoring and job matching for TypeScript. MIT, about ${engineSize(".", true)} gzipped.`,
   image: pageOgImage,

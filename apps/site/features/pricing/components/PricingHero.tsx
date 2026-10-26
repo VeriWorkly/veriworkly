@@ -95,7 +95,7 @@ const PricingHero = ({
         <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           <PriceCard
             marker="03"
-            title="3-Day Sprint"
+            title="3-Day Sprint Pass"
             price={formatPrice(2.99)}
             cadence="one-time purchase"
             description="A quick pass to publish your portfolio and tailor resumes for a specific application."
@@ -112,7 +112,7 @@ const PricingHero = ({
 
           <PriceCard
             marker="07"
-            title="7-Day Hunt"
+            title="7-Day Hunt Pass"
             price={formatPrice(5.99)}
             cadence="one-time purchase"
             description="Runway to update your story, apply broadly, and publish with full confidence."

@@ -24,13 +24,13 @@ const AUDITS = [
   {
     title: "Weak verbs",
     detail:
-      "Passive phrases such as “assisted with” or “worked on” are flagged, with stronger, measurable alternatives suggested.",
+      "Duty openers such as “Responsible for” or “Worked on” are flagged, with a fix that leads with what you did.",
   },
 ];
 
 const QUOTAS = [
   { count: "2", unit: "scans every 24 hours", who: "With a free account" },
-  { count: "300", unit: "scans per billing period", who: "On a paid plan" },
+  { count: "300", unit: "scans a month", who: "With any AI credits" },
 ];
 
 const ScoreFigure = () => (

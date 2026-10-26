@@ -40,8 +40,9 @@ const PricingAlaCarte = ({
             Only need one superpower?
           </h2>
           <p className="text-muted mt-6 max-w-lg text-sm leading-7">
-            Skip the bundle and choose the specific capability that unblocks you today. You can
-            always upgrade or scale up later.
+            Skip the bundle and choose the specific capability that unblocks you today. If you need
+            both later, upgrade to the Job Hunter Bundle at any time and pay only the difference for
+            the rest of the period.
           </p>
         </div>
 
