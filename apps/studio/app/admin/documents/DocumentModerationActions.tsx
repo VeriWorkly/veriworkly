@@ -29,9 +29,10 @@ interface DocumentModerationActionsProps {
  * (`madePrivateByModerator` on the server). That is the lift, so it is offered only on rows the
  * server marks `moderatorPrivate`: on a document its owner kept private it would expose it.
  *
- * Not for a portfolio: any visibility change on one, unlisting included, also suspends its
- * publication under a moderation lock (`takeDownPortfolioPublication`), so "unlisted" would
- * keep it offline, or take a live one down, rather than let the owner publish again.
+ * For a portfolio (server V-203): "Make private" also suspends its publication under the
+ * moderation lock; lifting it unlists the document and turns the suspension into the owner's
+ * own unpublish, so the site stays offline until the owner publishes again. Unlisting a live
+ * portfolio changes nothing public.
  */
 const DocumentModerationActions = ({
   documentId,
@@ -66,7 +67,7 @@ const DocumentModerationActions = ({
           title="Force this document private"
           description={
             isPortfolio
-              ? `"${title}" is made private and its publication is suspended. The owner cannot publish it again, and this console cannot lift that yet.`
+              ? `"${title}" is made private and its publication is suspended. The owner cannot publish it again until a moderator lifts the takedown here (Lift takedown).`
               : `"${title}" is made private. Its share links stop working, since a private document is never served. The owner cannot make it visible or share it again until a moderator lifts the takedown here (Lift takedown).`
           }
           confirmLabel="Make private"
@@ -82,7 +83,7 @@ const DocumentModerationActions = ({
           title="Unlist this document"
           description={
             isPortfolio
-              ? `"${title}" is removed from public listings and its publication is suspended: the portfolio goes offline, and the owner cannot publish it again.`
+              ? `"${title}" is removed from public listings. Its live site is not affected.`
               : `"${title}" stays reachable by direct link but is removed from public listings.`
           }
           confirmLabel="Unlist"
@@ -92,11 +93,15 @@ const DocumentModerationActions = ({
         />
       ) : null}
 
-      {visibility === "PRIVATE" && moderatorPrivate && !isPortfolio ? (
+      {visibility === "PRIVATE" && moderatorPrivate ? (
         <AdminActionDialog
           trigger="Lift takedown"
           title="Lift the takedown (make unlisted)"
-          description={`"${title}" becomes unlisted: reachable by its direct link and share links again, and the owner can change its visibility and share it again.`}
+          description={
+            isPortfolio
+              ? `"${title}" becomes unlisted and the takedown is lifted. The site stays offline until the owner publishes it again.`
+              : `"${title}" becomes unlisted: reachable by its direct link and share links again, and the owner can change its visibility and share it again.`
+          }
           confirmLabel="Make unlisted"
           onConfirm={async (reason) => {
             await updateAdminDocumentVisibility(documentId, "UNLISTED", reason);
