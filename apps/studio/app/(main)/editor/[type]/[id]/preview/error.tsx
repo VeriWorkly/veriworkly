@@ -1,16 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@veriworkly/ui";
 
 export default function EditorPreviewError({
-  reset,
+  error,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   const router = useRouter();
+
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
 
   return (
     <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -30,7 +36,7 @@ export default function EditorPreviewError({
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <Button onClick={() => reset()}>Try again</Button>
+          <Button onClick={() => retry()}>Try again</Button>
           {/* `/documents`, matching every other surface — `/` is the overview, not the
               document list this button claims to return to. */}
           <Button variant="secondary" onClick={() => router.push("/documents")}>

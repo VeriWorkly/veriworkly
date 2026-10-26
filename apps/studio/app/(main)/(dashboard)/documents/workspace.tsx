@@ -47,7 +47,7 @@ export default function DocumentsWorkspace() {
     setSyncDetailsTargetId,
     sortMode,
     viewMode,
-    syncingDocumentId,
+    syncingDocumentIds,
     syncTelemetryById,
     syncTargetTelemetry,
     totalCount,
@@ -158,7 +158,7 @@ export default function DocumentsWorkspace() {
                   onDeleteAction={setDeleteTarget}
                   onShareAction={setShareTarget}
                   onRenameAction={setRenameTarget}
-                  syncing={syncingDocumentId === doc.id}
+                  syncing={syncingDocumentIds.has(doc.id)}
                   onSyncDetailsAction={setSyncDetailsTargetId}
                   telemetry={syncTelemetryById[doc.id] ?? null}
                 />
@@ -174,7 +174,7 @@ export default function DocumentsWorkspace() {
                   onDeleteAction={setDeleteTarget}
                   onShareAction={setShareTarget}
                   onRenameAction={setRenameTarget}
-                  syncing={syncingDocumentId === doc.id}
+                  syncing={syncingDocumentIds.has(doc.id)}
                   onSyncDetailsAction={setSyncDetailsTargetId}
                   telemetry={syncTelemetryById[doc.id] ?? null}
                 />
@@ -208,7 +208,7 @@ export default function DocumentsWorkspace() {
           document={syncDetailsTarget}
           onSyncNow={handleSyncNow}
           telemetry={syncTargetTelemetry}
-          syncingDocumentId={syncingDocumentId}
+          syncingDocumentIds={syncingDocumentIds}
           onKeepLocalOnly={handleKeepLocalOnly}
           onResolveUseCloud={handleResolveUseCloud}
           onResolveUseLocal={handleResolveUseLocal}

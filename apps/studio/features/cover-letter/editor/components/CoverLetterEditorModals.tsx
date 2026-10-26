@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import {
-  createDocumentFromMasterProfile,
   deleteDocumentEverywhere,
   listDocumentIndexEntries,
 } from "@/features/documents/services/document-workspace-service";
@@ -56,10 +55,9 @@ const CoverLetterEditorModals = ({
       if (next) {
         router.push(getDocumentEditorPath("COVER_LETTER", next.id));
       } else {
-        // Same behaviour as the resume editor: never leave the user on a dead editor.
-        const fallback = await createDocumentFromMasterProfile("COVER_LETTER");
+        // The last one: back to the library, not into a new document nobody asked for.
         setDocument(null);
-        router.push(getDocumentEditorPath("COVER_LETTER", fallback.id));
+        router.push("/documents");
       }
 
       toast.success("Cover letter deleted successfully");

@@ -7,6 +7,8 @@ import type {
   ResumeCustomization,
 } from "@/types/resume";
 
+import { formatPhoneForDisplay } from "@veriworkly/profile-core";
+
 import { formatDateRange, safeText } from "@/features/resume/services/resume-formatters";
 import { stripEmoji } from "@/features/documents/utils/strip-emoji";
 import { isSectionVisible } from "@/features/documents/utils/section-helpers";
@@ -146,7 +148,8 @@ export function getContactItems(basics: ResumeBasics): RenderContactItem[] {
     phone
       ? {
           key: "phone" as const,
-          label: phone,
+          // Stored as E.164; printed with the spacing people read.
+          label: formatPhoneForDisplay(phone),
           href: basics.linkPhone ? `tel:${phone.replace(/[^\d+]/g, "")}` : undefined,
         }
       : null,

@@ -59,6 +59,7 @@ export default function TypedSectionEditor<K extends ResumeTypedSectionKey>({
   const items = useResumeStore((state) => state.resume[sectionKey]) as ResumeTypedSectionItem<K>[];
   const addTypedItem = useResumeStore((state) => state.addTypedItem);
   const removeTypedItem = useResumeStore((state) => state.removeTypedItem);
+  const reorderTypedItem = useResumeStore((state) => state.reorderTypedItem);
   const updateTypedItem = useResumeStore((state) => state.updateTypedItem);
 
   const list = useIndexedListEditor(items, () => addTypedItem(sectionKey));
@@ -75,6 +76,7 @@ export default function TypedSectionEditor<K extends ResumeTypedSectionKey>({
       fullWidthWhenEmpty
       emptyMessage={emptyMessage}
       onRemove={(index) => removeTypedItem(sectionKey, index)}
+      onMove={(fromIndex, toIndex) => reorderTypedItem(sectionKey, fromIndex, toIndex)}
       labelFor={(item, index) => labelFor(item) || `${fallbackItemLabel} ${index + 1}`}
     >
       {(item) =>

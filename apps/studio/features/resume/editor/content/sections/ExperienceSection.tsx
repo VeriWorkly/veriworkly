@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-
 import { useResumeStore } from "@/features/resume/store/resume-store";
-import { validateExperience } from "@/features/resume/utils/validation";
+import { isMonthDate } from "@/features/documents/validation/rules";
+import { normalizeMonthDate } from "@/features/resume/utils/normalize-data";
 import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
 
 import {
@@ -18,19 +17,26 @@ import type { BaseSectionProps } from "./section-types";
 
 import ListSection from "./ListSection";
 
+/**
+ * A date `normalizeMonthDate` cannot read is kept as typed. Chrome's month picker cannot
+ * show such a value, so the message repeats it. Shown as the field's error, so it waits
+ * until the field has been left, like every other one.
+ */
+function monthDateError(value: string) {
+  return isMonthDate(normalizeMonthDate(value))
+    ? undefined
+    : `Kept as typed: "${value}". Pick a month so every template can format it.`;
+}
+
 const ExperienceSection = ({ isOpen, onToggle }: BaseSectionProps) => {
   const experience = useResumeStore((state) => state.resume.experience);
   const resumeId = useResumeStore((state) => state.resume.id);
   const addExperience = useResumeStore((state) => state.addExperience);
   const removeExperience = useResumeStore((state) => state.removeExperience);
+  const reorderExperience = useResumeStore((state) => state.reorderExperience);
   const updateExperience = useResumeStore((state) => state.updateExperience);
 
   const list = useIndexedListEditor(experience, addExperience);
-
-  const experienceErrors = useMemo(
-    () => (list.activeItem ? validateExperience(list.activeItem) : {}),
-    [list.activeItem],
-  );
 
   return (
     <ListSection
@@ -41,6 +47,7 @@ const ExperienceSection = ({ isOpen, onToggle }: BaseSectionProps) => {
       list={list}
       items={experience}
       onRemove={removeExperience}
+      onMove={reorderExperience}
       labelFor={(item, index) => item.role || item.company || `Experience ${index + 1}`}
       emptyMessage="No experience entries yet. Click Add to create one."
     >
@@ -50,21 +57,18 @@ const ExperienceSection = ({ isOpen, onToggle }: BaseSectionProps) => {
             <TextInputField
               label="Role"
               value={activeExperience.role}
-              error={experienceErrors.role}
               onValueChange={(role) => updateExperience(list.index, { role })}
             />
 
             <TextInputField
               label="Company"
               value={activeExperience.company}
-              error={experienceErrors.company}
               onValueChange={(company) => updateExperience(list.index, { company })}
             />
 
             <TextInputField
               label="Location"
               value={activeExperience.location}
-              error={experienceErrors.location}
               onValueChange={(location) => updateExperience(list.index, { location })}
             />
 
@@ -73,7 +77,7 @@ const ExperienceSection = ({ isOpen, onToggle }: BaseSectionProps) => {
               label="Start (YYYY-MM)"
               placeholder="2024-01"
               value={activeExperience.startDate}
-              error={experienceErrors.startDate}
+              error={monthDateError(activeExperience.startDate)}
               onValueChange={(startDate) => updateExperience(list.index, { startDate })}
             />
 
@@ -83,7 +87,9 @@ const ExperienceSection = ({ isOpen, onToggle }: BaseSectionProps) => {
               placeholder="2025-06"
               disabled={activeExperience.current}
               value={activeExperience.endDate}
-              error={experienceErrors.endDate}
+              error={
+                activeExperience.current ? undefined : monthDateError(activeExperience.endDate)
+              }
               onValueChange={(endDate) => updateExperience(list.index, { endDate })}
             />
 
@@ -104,7 +110,6 @@ const ExperienceSection = ({ isOpen, onToggle }: BaseSectionProps) => {
             <TextAreaField
               label="Summary"
               value={activeExperience.summary}
-              error={experienceErrors.summary}
               onValueChange={(summary) => updateExperience(list.index, { summary })}
             />
 

@@ -9,6 +9,7 @@ import { Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  AI_JOB_DESCRIPTION_MAX_CHARS,
   requestIdFor,
   settleRequestId,
   type PendingAiRequest,
@@ -32,6 +33,7 @@ export function AiFieldAssist({
   action,
   text,
   getContext,
+  getJobDescription,
   documentId,
   onApply,
 }: {
@@ -42,6 +44,8 @@ export function AiFieldAssist({
    * it on every keystroke elsewhere in the editor would cost far more than the request.
    */
   getContext?: () => string;
+  /** A pasted job post. Sent on its own, so the server trims it instead of refusing it. */
+  getJobDescription?: () => string;
   documentId?: string;
   onApply: (content: string) => void;
 }) {
@@ -98,7 +102,12 @@ export function AiFieldAssist({
   const cost = costFor(mode);
 
   async function generate() {
-    const input = { text, context: getContext?.() ?? "", instructions };
+    const input = {
+      text,
+      context: getContext?.() ?? "",
+      jobDescription: (getJobDescription?.() ?? "").slice(0, AI_JOB_DESCRIPTION_MAX_CHARS),
+      instructions,
+    };
     const fingerprint = JSON.stringify([action, mode, input]);
 
     const requestId = requestIdFor(pendingRequestRef, fingerprint);

@@ -22,7 +22,7 @@ import { useSyncNowAction } from "@/features/documents/editor/toolbar/useSyncNow
 import ToolbarSaveButton from "@/features/documents/editor/toolbar/ToolbarSaveButton";
 
 import { useResumeStore } from "@/features/resume/store/resume-store";
-import { getMasterProfileForNewDocument } from "@/features/resume/services/master-profile";
+import { getMasterProfileForReset } from "@/features/resume/services/master-profile";
 
 import { getDocumentPreviewPath } from "@/features/documents/core/routes";
 
@@ -56,7 +56,10 @@ const ResumeToolbar = memo(function ResumeToolbar({
 }: ToolbarProps) {
   const router = useRouter();
 
-  const resume = useResumeStore((state) => state.resume);
+  // Only what the toolbar shows: subscribing to the whole resume re-rendered it on every
+  // keystroke and defeated `memo`. Export and import read the resume when they run.
+  const title = useResumeStore((state) => state.resume.title);
+  const templateId = useResumeStore((state) => state.resume.templateId);
   const resetResume = useResumeStore((state) => state.resetResume);
   const emptyResume = useResumeStore((state) => state.emptyResume);
   const updateTitle = useResumeStore((state) => state.updateTitle);
@@ -74,7 +77,7 @@ const ResumeToolbar = memo(function ResumeToolbar({
     onDownloadMarkdown,
   } = useDocumentDownloads({
     // The store holds bare `ResumeData`; the shared export path takes the envelope.
-    getDocument: () => toResumeDocument(resume),
+    getDocument: () => toResumeDocument(useResumeStore.getState().resume),
     onMessage: onSetMessage,
     // Keeps "Export → HTML" on the WYSIWYG branch, which is what this button has always
     // produced — see export-html.ts.
@@ -90,7 +93,9 @@ const ResumeToolbar = memo(function ResumeToolbar({
     let imported;
 
     try {
-      imported = toResumeDocument(await importResumeFromMarkdownFile(file, resume));
+      imported = toResumeDocument(
+        await importResumeFromMarkdownFile(file, useResumeStore.getState().resume),
+      );
     } catch {
       onSetMessage("Import failed. Please use a valid Markdown file");
       return;
@@ -110,7 +115,7 @@ const ResumeToolbar = memo(function ResumeToolbar({
     <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
       <ToolbarHeader
         message={message}
-        title={resume.title ?? "Untitled Resume"}
+        title={title ?? "Untitled Resume"}
         onBack={() => router.push("/documents")}
         onTitleChange={updateTitle}
       />
@@ -160,7 +165,16 @@ const ResumeToolbar = memo(function ResumeToolbar({
           onImportMarkdown={markdownInput.open}
           onReset={async () => {
             // Same as a new resume: seeded from the profile, never the sample.
-            const result = resetResume(await getMasterProfileForNewDocument());
+            let master;
+
+            try {
+              master = await getMasterProfileForReset();
+            } catch (error) {
+              onSetMessage(`Not reset. ${(error as Error).message}`);
+              return;
+            }
+
+            const result = resetResume(master);
             onSetMessage(
               result.ok ? "Resume reset to defaults" : getSaveFailureMessage(result.reason),
             );
@@ -173,8 +187,7 @@ const ResumeToolbar = memo(function ResumeToolbar({
           onFullPreview={() => router.push(getDocumentPreviewPath("RESUME", resumeId))}
           onPdfDebug={
             process.env.NODE_ENV === "development"
-              ? () =>
-                  window.open(`/pdf-debug/resume/${resume.templateId}?id=${resume.id}`, "_blank")
+              ? () => window.open(`/pdf-debug/resume/${templateId}?id=${resumeId}`, "_blank")
               : undefined
           }
         />

@@ -19,7 +19,8 @@ export default defineConfig({
     restoreMocks: true,
     unstubGlobals: true,
     unstubEnvs: true,
-    // Several contracts render real PDFs; under a full parallel run they pass the 5 s default.
-    testTimeout: 20_000,
+    // Several contracts render real PDFs, and the first test in a file imports a large module
+    // graph cold; under a full parallel run both can pass the 5 s default and even 20 s.
+    testTimeout: 60_000,
   },
 });

@@ -14,6 +14,7 @@ import {
 } from "@/features/documents/export/export-dom-markers";
 import {
   HEADING_PRESENCE_LINES,
+  screenScale,
   SPLIT_ATTRIBUTE,
   paginateIncremental,
   type IncrementalPageProbe,
@@ -368,16 +369,21 @@ function createDomPageProbe(
 
       if (!record || !(target instanceof HTMLElement)) return null;
 
+      // The page foot in screen pixels, like every rect it is compared with.
+      const scale = screenScale(probe);
       const limit =
         probe.getBoundingClientRect().top +
-        RESUME_PAGE_HEIGHT_PX -
-        Number.parseFloat(window.getComputedStyle(probe).paddingBottom || "0");
+        (RESUME_PAGE_HEIGHT_PX -
+          Number.parseFloat(window.getComputedStyle(probe).paddingBottom || "0")) *
+          scale;
 
       // A section's opening keeps a few lines under its heading, or moves with it — the
       // `minPresenceAhead` the PDF puts on the heading.
       const heading = sectionHeadingOf(record.unit, target, record);
       const presence =
-        HEADING_PRESENCE_LINES * Number.parseFloat(window.getComputedStyle(probe).lineHeight);
+        HEADING_PRESENCE_LINES *
+        Number.parseFloat(window.getComputedStyle(probe).lineHeight) *
+        scale;
 
       if (heading && limit - heading.getBoundingClientRect().bottom < presence) return null;
 
@@ -411,6 +417,8 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
   const [pages, setPages] = useState<ResumePreviewPage[]>([]);
   const [pageStyle, setPageStyle] = useState<CSSProperties>({});
   const [fontsReady, setFontsReady] = useState(() => typeof document === "undefined");
+  // Bumped whenever a font finishes loading after the first measure.
+  const [fontLoads, setFontLoads] = useState(0);
 
   // Measuring before the document font has loaded fills the probe with fallback
   // metrics, which produces page breaks the PDF export will not reproduce.
@@ -419,14 +427,28 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
-    document.fonts.ready.then(() => {
-      if (!cancelled) setFontsReady(true);
-    });
+    document.fonts.ready
+      .catch((error: unknown) => {
+        // A font that failed to load still leaves a page to show; measure with the fallback.
+        console.error("Resume preview fonts failed to load", error);
+      })
+      .then(() => {
+        if (!cancelled) setFontsReady(true);
+      });
 
     return () => {
       cancelled = true;
     };
   }, [fontsReady]);
+
+  // Only the default font is preloaded. Switching to another loads it after the first
+  // measure, so the breaks are measured again once it has arrived.
+  useEffect(() => {
+    const remeasure = () => setFontLoads((count) => count + 1);
+
+    document.fonts.addEventListener("loadingdone", remeasure);
+    return () => document.fonts.removeEventListener("loadingdone", remeasure);
+  }, []);
 
   useLayoutEffect(() => {
     // `children` is a fresh element on every editor render, so without this the
@@ -512,7 +534,7 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
     }, MEASURE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [children, fontsReady]);
+  }, [children, fontsReady, fontLoads]);
 
   return (
     <div className="relative">
@@ -524,6 +546,8 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
       <div
         ref={measureRef}
         aria-hidden="true"
+        // Out of the tab order too: its links are copies the user cannot see.
+        inert
         className="pointer-events-none absolute opacity-0"
         style={{ left: -10000, top: 0, width: RESUME_PAGE_WIDTH_PX }}
         {...{ [EXPORT_EXCLUDE_ATTRIBUTE]: "true" }}

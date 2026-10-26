@@ -8,6 +8,9 @@ import type { MasterProfileData } from "@/types/resume";
 import { createEmptyMasterProfile } from "@veriworkly/profile-core";
 
 import { canRetryWithSameRequestId, createRequestId, getAiActions } from "@/features/ai/ai-api";
+import { coverLetterAiContext, resumeAiContext } from "@/features/ai/ai-context";
+import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
+import { defaultResume } from "@/features/resume/constants/default-resume";
 import { ApiRequestError } from "@/utils/fetchApiData";
 import { joinDelimited, parseDelimited } from "@/features/documents/editor/form";
 import {
@@ -208,5 +211,47 @@ describe("AI assist state belongs to one list entry (S-060)", () => {
     const usage = source.slice(source.indexOf("<AiFieldAssist"));
 
     expect(usage.slice(0, usage.indexOf(">"))).toContain(`key={${active}.id}`);
+  });
+});
+
+describe("AI context sends what the text is about, not who wrote it (S-313)", () => {
+  const resume = structuredClone(defaultResume);
+  resume.basics = {
+    ...resume.basics,
+    fullName: "Ada Lovelace",
+    email: "ada@example.com",
+    phone: "+442079460958",
+    location: "London",
+  };
+
+  const letter = {
+    ...createDefaultCoverLetter("ai-context").content,
+    senderName: "Ada Lovelace",
+    senderEmail: "ada@example.com",
+    senderPhone: "+442079460958",
+    senderLocation: "London",
+    jobTitle: "Analytical Engineer",
+    body: "The body is sent as the request text.",
+    jobPost: "The job post is also context.",
+  };
+
+  it("leaves contact details, the body and layout out of the context", () => {
+    for (const context of [
+      JSON.stringify(resumeAiContext(resume)),
+      coverLetterAiContext(letter, resume),
+    ]) {
+      expect(context).not.toMatch(/Ada Lovelace|ada@example\.com|442079460958|London/);
+      expect(context).not.toMatch(/sent as the|fontFamily|accentColor/);
+    }
+  });
+
+  it("grounds a letter in the role it targets and the chosen resume", () => {
+    const context = JSON.parse(coverLetterAiContext(letter, resume));
+
+    expect(context.targetRole).toBe("Analytical Engineer");
+    // Also in the context: the server's prompt template may not read `jobDescription`.
+    expect(context.jobPost).toBe("The job post is also context.");
+    expect(context.resume.experience[0].role).toBe(resume.experience[0].role);
+    expect(JSON.parse(coverLetterAiContext(letter, null)).resume).toBeUndefined();
   });
 });

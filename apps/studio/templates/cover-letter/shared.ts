@@ -2,7 +2,7 @@ import type { ResumeLinkDisplayMode, ResumeLinkItem } from "@/types/resume";
 import type { CoverLetterContent, CoverLetterSectionId } from "@/features/cover-letter/types";
 import type { FlowSplitKind } from "./measure";
 
-import { DEFAULT_COVER_LETTER_APPEARANCE } from "@veriworkly/profile-core";
+import { DEFAULT_COVER_LETTER_APPEARANCE, formatPhoneForDisplay } from "@veriworkly/profile-core";
 
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 import { createCoverLetterTokens } from "./tokens";
@@ -454,7 +454,12 @@ export function getCoverLetterState(content: CoverLetterContent) {
   const senderTitle = cleanText(content.senderTitle);
 
   const contact = isCoverLetterSectionVisible(content, "profile")
-    ? [content.senderEmail, content.senderPhone, content.senderLocation, content.senderWebsite]
+    ? [
+        content.senderEmail,
+        formatPhoneForDisplay(content.senderPhone),
+        content.senderLocation,
+        content.senderWebsite,
+      ]
         .map(cleanText)
         .filter(Boolean)
     : [];
@@ -548,7 +553,7 @@ export function buildCoverLetterMarkdown(content: CoverLetterContent): string {
     ...(showProfile
       ? [
           field(L.senderEmail, cleanText(content.senderEmail)),
-          field(L.senderPhone, cleanText(content.senderPhone)),
+          field(L.senderPhone, cleanText(formatPhoneForDisplay(content.senderPhone))),
           field(L.senderLocation, cleanText(content.senderLocation)),
           field(L.senderWebsite, cleanText(content.senderWebsite)),
         ]

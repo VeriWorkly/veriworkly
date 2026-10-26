@@ -12,7 +12,6 @@ import {
   CreditCard,
 } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -27,7 +26,7 @@ import { Modal, Button, cn } from "@veriworkly/ui";
 interface SyncDetailsModalProps {
   document: DocumentLibraryItem;
   telemetry: SyncTelemetry | null;
-  syncingDocumentId: string | null;
+  syncingDocumentIds: ReadonlySet<string>;
   onClose: () => void;
   onResolveUseLocal: (id: string) => void;
   onResolveUseCloud: (id: string) => void;
@@ -38,7 +37,7 @@ interface SyncDetailsModalProps {
 const SyncDetailsModal = ({
   document,
   telemetry,
-  syncingDocumentId,
+  syncingDocumentIds,
   onClose,
   onResolveUseLocal,
   onResolveUseCloud,
@@ -52,7 +51,7 @@ const SyncDetailsModal = ({
 
   if (!document) return null;
 
-  const isSyncing = syncingDocumentId === document.id;
+  const isSyncing = syncingDocumentIds.has(document.id);
   const isConflicted = document.sync.status === "conflicted";
   const failureReason = telemetry?.lastErrorReason ?? null;
   const isPendingFailure = document.sync.enabled && document.sync.status === "pending";
@@ -64,11 +63,13 @@ const SyncDetailsModal = ({
   const canSyncNow = !isConflicted && !isDeletedElsewhere;
   const editorHref = getDocumentEditorPath(document.type, document.id);
 
+  // Literal class names: Tailwind only generates the classes it can read in the source.
   const statusConfig = {
     synced: {
       label: "Backed up",
       description: "A copy is saved to your account.",
       color: "text-emerald-500",
+      ring: "ring-emerald-500/10",
       bg: "md:bg-emerald-500/10",
       icon: Cloud,
     },
@@ -77,6 +78,7 @@ const SyncDetailsModal = ({
       label: "Backing up",
       description: "Transferring data to our servers...",
       color: "text-accent",
+      ring: "ring-accent/10",
       bg: "md:bg-accent/10",
       icon: RefreshCw,
     },
@@ -85,6 +87,7 @@ const SyncDetailsModal = ({
       label: "Conflict",
       description: "Multiple versions detected.",
       color: "text-orange-500",
+      ring: "ring-orange-500/10",
       bg: "md:bg-orange-500/10",
       icon: AlertTriangle,
     },
@@ -93,6 +96,7 @@ const SyncDetailsModal = ({
       label: "Pending",
       description: "Waiting for a network connection.",
       color: "text-zinc-400",
+      ring: "ring-zinc-400/10",
       bg: "md:bg-zinc-500/10",
       icon: History,
     },
@@ -101,6 +105,7 @@ const SyncDetailsModal = ({
       label: "Local only",
       description: "Saved on this device only. Backup is off for this document.",
       color: "text-zinc-500",
+      ring: "ring-zinc-500/10",
       bg: "md:bg-zinc-500/10",
       icon: CloudOff,
     },
@@ -109,6 +114,7 @@ const SyncDetailsModal = ({
       label: "Deleted elsewhere",
       description: "Kept on this device with your unsynced changes.",
       color: "text-orange-500",
+      ring: "ring-orange-500/10",
       bg: "md:bg-orange-500/10",
       icon: CloudOff,
     },
@@ -117,6 +123,7 @@ const SyncDetailsModal = ({
       label: "Upgrade needed",
       description: "Over the document limit.",
       color: "text-orange-500",
+      ring: "ring-orange-500/10",
       bg: "md:bg-orange-500/10",
       icon: CreditCard,
     },
@@ -125,6 +132,7 @@ const SyncDetailsModal = ({
       label: "Backup failed",
       description: "The server rejected this document.",
       color: "text-destructive",
+      ring: "ring-destructive/10",
       bg: "md:bg-destructive/10",
       icon: AlertTriangle,
     },
@@ -156,7 +164,7 @@ const SyncDetailsModal = ({
             <div
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-lg ring-2 ring-inset",
-                currentStatus.color.replace("text", "ring") + "/10",
+                currentStatus.ring,
               )}
             >
               <StatusIcon
@@ -206,7 +214,7 @@ const SyncDetailsModal = ({
                 onClick={() => router.push(editorHref)}
                 aria-label="Open in editor"
                 title="Open in editor"
-                className="h-8 w-8 rounded-full p-0 opacity-0 transition-all group-hover:opacity-100 focus-visible:opacity-100"
+                className="h-8 w-8 rounded-full p-0"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
               </Button>
@@ -399,12 +407,11 @@ const SyncDetailsModal = ({
                       variant="secondary"
                       className="text-[10px] font-black tracking-widest uppercase"
                       onClick={() => {
-                        toast.info("Opening editor for manual merge...");
                         router.push(editorHref);
                         onClose();
                       }}
                     >
-                      Merge Manually
+                      Resolve in editor
                     </Button>
 
                     <Button

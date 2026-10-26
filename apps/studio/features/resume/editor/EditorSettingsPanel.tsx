@@ -203,7 +203,7 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
               variant="secondary"
             >
               <RotateCcw className="mr-2 h-4 w-4" />
-              Reset Theme Defaults
+              Reset colors, font and spacing
             </Button>
           </div>
         </SectionAccordion>

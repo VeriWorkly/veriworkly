@@ -544,6 +544,8 @@ describe("master profile for a new account and a failed load (S-115, S-158, S-18
     const state = await loadMasterProfileForEditor();
 
     expect(state.status === "ready" && state.updatedAt).toBe("2026-01-02T00:00:00.000Z");
+    // Said out loud, so the user knows a save replaces what could not be read.
+    expect(state.status === "ready" && state.recovered).toBe(true);
   });
 
   it("S-184: a save on an existing profile sends its cursor", async () => {

@@ -14,6 +14,7 @@ import ProfileMaster from "./ProfileMaster";
 import { MasterSkeleton } from "./MasterProfileLoading";
 import { MASTER_SECTION_NAV } from "./master-section-nav";
 import { MasterMobileSectionNav, MasterProfileNavigator } from "./MasterProfileNavigator";
+import { RecoveredProfileNotice } from "../RecoveredProfileNotice";
 
 import {
   resolveConflictUpdatedAt,
@@ -34,7 +35,8 @@ export default function MasterProfileClient() {
     profile: MasterProfileData | null;
     source: keyof typeof SOURCE_LABELS | null;
     updatedAt: string | null;
-  }>({ profile: null, source: null, updatedAt: null });
+    recovered: boolean;
+  }>({ profile: null, source: null, updatedAt: null, recovered: false });
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,7 +62,12 @@ export default function MasterProfileClient() {
 
   const applyLoadResult = useCallback((result: MasterProfileEditorState) => {
     if (result.status === "ready") {
-      setState({ profile: result.profile, source: result.source, updatedAt: result.updatedAt });
+      setState({
+        profile: result.profile,
+        source: result.source,
+        updatedAt: result.updatedAt,
+        recovered: Boolean(result.recovered),
+      });
       setLoadError(null);
     } else {
       console.error("Failed to load master profile from the database", result.error);
@@ -155,6 +162,7 @@ export default function MasterProfileClient() {
         profile: savedBundle.profile,
         source: "database",
         updatedAt: savedBundle.updatedAt,
+        recovered: false,
       });
     } catch (error) {
       await reportSaveFailure(error, profile);
@@ -241,6 +249,12 @@ export default function MasterProfileClient() {
           sections={MASTER_SECTION_NAV}
           activeSectionId={activeSectionId}
         />
+
+        {state.recovered ? (
+          <div className="mb-6">
+            <RecoveredProfileNotice />
+          </div>
+        ) : null}
 
         <ProfileMaster profile={state.profile} onSave={handleSave} isSaving={saving} />
       </main>

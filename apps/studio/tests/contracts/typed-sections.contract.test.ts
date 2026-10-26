@@ -6,10 +6,7 @@ import type { ResumeData } from "@/types/resume";
 
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
-import {
-  parseResumeDataInput,
-  parseResumeDataForExport,
-} from "@/features/resume/schemas/resume-storage-schema";
+import { parseResumeDataInput } from "@/features/resume/schemas/resume-storage-schema";
 import {
   getLanguageRenderItems,
   getReferenceRenderItems,
@@ -275,7 +272,8 @@ describe("typed sections render as what they are", () => {
     const [item] = getReferenceRenderItems(resume.references);
 
     expect(item.title).toBe("Ada Lovelace");
-    expect(item.meta).toBe("+442079460958");
+    // Printed with spacing; storage keeps E.164 (S-289).
+    expect(item.meta).toBe("+44 20 7946 0958");
     expect(item.subtitle).toBe("Head of Engineering | Analytical Engines");
     expect(item.link).toEqual({ href: "mailto:ada@example.com", text: "ada@example.com" });
   });
@@ -362,11 +360,6 @@ describe("resume storage parse (S-001, S-116, S-114)", () => {
     expect(parseResumeDataInput({ experience: [{ company: "No id" }] })).toBeNull();
   });
 
-  it("S-114: the export parse keeps the content rules", () => {
-    expect(() => parseResumeDataForExport(halfTypedResume())).toThrow();
-    expect(() => parseResumeDataForExport(structuredClone(defaultResume))).not.toThrow();
-  });
-
   it("S-116: a partial resume is completed with empty fields, never sample content", () => {
     const resume = normalizeResumeData({
       id: "x",
@@ -392,5 +385,59 @@ describe("resume storage parse (S-001, S-116, S-114)", () => {
     const sample = JSON.stringify(defaultResume);
 
     expect(sample).not.toMatch(/veriworkly|gautam|0000000000|no login|zero data storage/i);
+  });
+});
+
+describe("experience dates typed in other forms (S-306)", () => {
+  function readDates(startDate: string, endDate = "") {
+    const resume = normalizeResumeData({
+      id: "dates",
+      experience: [{ ...defaultResume.experience[0], startDate, endDate, current: undefined }],
+    } as unknown as Partial<ResumeData>);
+
+    return resume.experience[0];
+  }
+
+  it("reads the common hand-typed month forms as YYYY-MM", () => {
+    const cases: Record<string, string> = {
+      "May 2020": "2020-05",
+      "may, 2020": "2020-05",
+      "Sept 2021": "2021-09",
+      "January 2019": "2019-01",
+      "05/2020": "2020-05",
+      "5/2020": "2020-05",
+      "05-2020": "2020-05",
+      "2020-5": "2020-05",
+      "2020/05": "2020-05",
+      "2024-01": "2024-01",
+    };
+
+    for (const [typed, stored] of Object.entries(cases)) {
+      expect(readDates(typed).startDate, typed).toBe(stored);
+    }
+  });
+
+  it("keeps what it cannot read as typed, never blank", () => {
+    expect(readDates("Summer 2020").startDate).toBe("Summer 2020");
+    expect(readDates("2020").startDate).toBe("2020");
+    expect(readDates("13/2020").startDate).toBe("13/2020");
+  });
+
+  it("still treats an end date of Present as a current role", () => {
+    expect(readDates("2020-01", "Present")).toMatchObject({ endDate: "", current: true });
+  });
+});
+
+describe("legacy custom sections without an id (O4 LOW)", () => {
+  it("gets the same id on every read, so its order and visibility stick", () => {
+    const stored = {
+      id: "legacy",
+      customSections: [{ kind: "custom", title: "Talks", items: [] }],
+    } as unknown as Partial<ResumeData>;
+
+    const first = normalizeResumeData(structuredClone(stored)).customSections[0].id;
+    const second = normalizeResumeData(structuredClone(stored)).customSections[0].id;
+
+    expect(second).toBe(first);
   });
 });

@@ -324,7 +324,9 @@ export function ImportProfileModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
+    // Escape and the backdrop wait for an import in flight, like the close button: closing
+    // mid-import would still open the imported document when the request lands.
+    <Modal open={open} onClose={loading || uploadingPdf ? () => undefined : onClose}>
       <Modal.Content
         titleId="import-profile-title"
         className="w-full max-w-xl overflow-hidden rounded-2xl p-0"

@@ -55,23 +55,53 @@ afterAll(async () => {
   await server?.stop();
 });
 
-/** Creates a resume through the app itself, so the stored shape is never hand-written. */
-async function seedResume(): Promise<string> {
-  await page.goto(`${server.origin}/editor/resume/new?template=executive-clarity`, {
-    waitUntil: "networkidle",
-  });
-  await page.waitForFunction(() => !location.pathname.endsWith("/new"));
-  await page.waitForTimeout(1_000);
-
-  return page.url().split("/").pop()!.split("?")[0];
+/** Waits until `tab` shows a loaded editor: its first field is on screen. */
+async function editorReady(tab: Page = page) {
+  await tab
+    .getByLabel(/full name/i)
+    .first()
+    .waitFor({ state: "visible", timeout: 30_000 });
 }
 
-async function seedCoverLetter(): Promise<string> {
-  await page.goto(`${server.origin}/editor/cover-letter/new`, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => !location.pathname.endsWith("/new"));
-  await page.waitForTimeout(1_000);
+/** Waits until the document with `id` is in this browser's storage. */
+async function storedDocumentExists(id: string) {
+  await page.waitForFunction(
+    (documentId) => {
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index)!;
+        if (key.includes(documentId) && (localStorage.getItem(key) ?? "").includes('"content"')) {
+          return true;
+        }
+      }
 
-  return page.url().split("/").pop()!.split("?")[0];
+      return false;
+    },
+    id,
+    { timeout: 30_000 },
+  );
+}
+
+/** Creates a document through the app itself, so the stored shape is never hand-written. */
+async function seedDocument(path: string): Promise<string> {
+  await page.goto(`${server.origin}${path}`, { waitUntil: "networkidle" });
+  await page.waitForFunction(() => !location.pathname.endsWith("/new"), undefined, {
+    timeout: 30_000,
+  });
+
+  const id = page.url().split("/").pop()!.split("?")[0];
+
+  await storedDocumentExists(id);
+  await editorReady();
+
+  return id;
+}
+
+function seedResume(): Promise<string> {
+  return seedDocument("/editor/resume/new?template=executive-clarity");
+}
+
+function seedCoverLetter(): Promise<string> {
+  return seedDocument("/editor/cover-letter/new");
 }
 
 /**
@@ -838,7 +868,8 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
 
     await page.goto(editorUrl, { waitUntil: "networkidle" });
     await otherTab.goto(editorUrl, { waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
+    await editorReady(page);
+    await editorReady(otherTab);
 
     await otherTab
       .getByLabel(/full name/i)
@@ -853,7 +884,7 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
             .getByLabel(/full name/i)
             .first()
             .inputValue(),
-        { timeout: 5_000 },
+        { timeout: 15_000 },
       )
       .toBe("Edited In Another Tab");
   });
@@ -871,7 +902,8 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
       await editingTab.setViewportSize(DESKTOP);
       await editingTab.goto(editorUrl, { waitUntil: "networkidle" });
       await otherTab.goto(editorUrl, { waitUntil: "networkidle" });
-      await page.waitForTimeout(1_000);
+      await editorReady(editingTab);
+      await editorReady(otherTab);
 
       // This tab's 300 ms autosave is stretched to 8 s, so it is still queued when the other
       // tab saves (the clock API would hold the other tab's timers too).
@@ -883,10 +915,12 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
       await fullName(editingTab).fill("Mine From Tab A");
 
       await fullName(otherTab).fill("Theirs From Tab B");
-      await expect.poll(storedName, { timeout: 5_000 }).toBe("Theirs From Tab B");
+      await expect.poll(storedName, { timeout: 15_000 }).toBe("Theirs From Tab B");
 
       await expect
-        .poll(() => editingTab.getByText("This document changed elsewhere").count())
+        .poll(() => editingTab.getByText("This document changed elsewhere").count(), {
+          timeout: 15_000,
+        })
         .toBe(1);
 
       // The queued autosave's time comes and goes: it must not land on the other version.
@@ -894,7 +928,9 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
       expect(await storedName()).toBe("Theirs From Tab B");
 
       await editingTab.getByRole("button", { name: "Use the other version" }).click();
-      await expect.poll(() => fullName(editingTab).inputValue()).toBe("Theirs From Tab B");
+      await expect
+        .poll(() => fullName(editingTab).inputValue(), { timeout: 15_000 })
+        .toBe("Theirs From Tab B");
       expect(await storedName()).toBe("Theirs From Tab B");
     } finally {
       await editingTab.close();
@@ -928,7 +964,8 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
       await editingTab.setViewportSize(DESKTOP);
       await editingTab.goto(editorUrl, { waitUntil: "networkidle" });
       await otherTab.goto(editorUrl, { waitUntil: "networkidle" });
-      await page.waitForTimeout(1_000);
+      await editorReady(editingTab);
+      await editorReady(otherTab);
 
       await editingTab.evaluate(() => {
         const setTimeoutNative = window.setTimeout.bind(window);
@@ -939,14 +976,22 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
       await fullName(otherTab).fill("Saved In Tab B");
 
       await expect
-        .poll(() => editingTab.getByText("This document changed elsewhere").count())
+        .poll(() => editingTab.getByText("This document changed elsewhere").count(), {
+          timeout: 15_000,
+        })
         .toBe(1);
 
       // The stored copy turning conflicted must not end the hold (S-315 re-review).
+      // A "nothing happens" check: the notice must hold steady over the next second and a
+      // half, so it is sampled throughout rather than read once after a fixed sleep.
       await setStoredStatus("conflicted");
-      await page.waitForTimeout(1_000);
-      expect(await editingTab.getByText("This document changed elsewhere").count()).toBe(1);
-      expect(await editingTab.getByText("This document changed on another device").count()).toBe(0);
+      for (let sample = 0; sample < 10; sample += 1) {
+        expect(await editingTab.getByText("This document changed elsewhere").count()).toBe(1);
+        expect(await editingTab.getByText("This document changed on another device").count()).toBe(
+          0,
+        );
+        await editingTab.waitForTimeout(150);
+      }
       await setStoredStatus("pending");
 
       // Leaving in-app: no beforeunload, and nothing queued to flush.
@@ -956,12 +1001,15 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
       await editingTab.goto(editorUrl, { waitUntil: "networkidle" });
       await editingTab.getByRole("button", { name: /restore my unsaved edits/i }).click();
 
-      await expect.poll(() => fullName(editingTab).inputValue()).toBe("Held In Tab A");
+      await expect
+        .poll(() => fullName(editingTab).inputValue(), { timeout: 15_000 })
+        .toBe("Held In Tab A");
       await expect
         .poll(
           async () =>
             ((await readStoredDocument(resumeId))?.content.basics as { fullName?: string })
               .fullName,
+          { timeout: 15_000 },
         )
         .toBe("Held In Tab A");
     } finally {
@@ -973,7 +1021,7 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
     const resumeId = await seedResume();
 
     await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
+    await editorReady();
 
     // As a cloud pull leaves it when the cloud moved past this device's unsynced edits.
     await page.evaluate((id) => {
@@ -991,18 +1039,287 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
     }, resumeId);
 
     await page.reload({ waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
-    expect(await page.getByText("This document changed on another device").count()).toBe(1);
+    await editorReady();
+    await expect
+      .poll(() => page.getByText("This document changed on another device").count(), {
+        timeout: 15_000,
+      })
+      .toBe(1);
 
     await page
       .getByLabel(/full name/i)
       .first()
       .fill("Typed During Conflict");
-    await page.waitForTimeout(1_500);
 
-    const stored = await readStoredDocument(resumeId);
-    expect((stored?.content.basics as { fullName?: string }).fullName).toBe(
-      "Typed During Conflict",
+    await expect
+      .poll(
+        async () =>
+          ((await readStoredDocument(resumeId))?.content.basics as { fullName?: string }).fullName,
+        { timeout: 15_000 },
+      )
+      .toBe("Typed During Conflict");
+  });
+});
+
+describe("editors (Phase 9)", () => {
+  const experiencePanel = () => page.locator('[id="section-accordion-panel-experience"]');
+  let resumeId = "";
+
+  beforeAll(async () => {
+    await page.setViewportSize(DESKTOP);
+    resumeId = await seedResume();
+    await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1_000);
+  });
+
+  it("S-292: moves an experience entry with the keyboard, and says where it went", async () => {
+    await ensureExperienceEntries(2);
+
+    const picker = experiencePanel().getByRole("combobox", { name: /experience entry to edit/i });
+
+    for (const [index, role] of ["First role", "Second role"].entries()) {
+      await picker.selectOption({ index });
+      await experiencePanel().getByLabel("Role", { exact: true }).fill(role);
+    }
+
+    await picker.selectOption({ index: 0 });
+    await experiencePanel().getByRole("button", { name: 'Move "First role" down' }).focus();
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(1_000);
+
+    const roles = (await readStoredDocument(resumeId))?.content.experience.map(
+      (item) => (item as unknown as { role: string }).role,
     );
+
+    expect(roles?.slice(0, 2)).toEqual(["Second role", "First role"]);
+    // The selection follows the entry, and a screen reader hears the new position.
+    expect(await picker.inputValue()).toBe("1");
+    expect(
+      await experiencePanel()
+        .getByText(/"First role" moved to position 2 of/)
+        .count(),
+    ).toBe(1);
+  });
+
+  it("S-310: says nothing about a field until it has been left, and never asks for a blank one", async () => {
+    await openSection("basics");
+
+    const email = page.getByLabel("Email", { exact: true });
+    const fullName = page.getByLabel(/full name/i).first();
+
+    await fullName.fill("");
+    await email.fill("not-an-email");
+
+    expect(await page.getByText("Enter a valid email address.").count()).toBe(0);
+
+    await email.blur();
+
+    expect(await page.getByText("Enter a valid email address.").count()).toBe(1);
+    expect(await email.getAttribute("aria-describedby")).toBeTruthy();
+    expect(await page.getByText(/is required/i).count()).toBe(0);
+
+    await email.fill("ada@example.com");
+  });
+
+  it("S-305: an emptied link text stays empty instead of turning back into 'Link'", async () => {
+    await openSection("projects");
+
+    const panel = page.locator('[id="section-accordion-panel-projects"]');
+
+    if ((await panel.getByRole("combobox").count()) === 0) {
+      await panel.getByRole("button", { name: /^add$/i }).click();
+    }
+
+    const linkText = panel.getByLabel("Link text");
+
+    await linkText.fill("");
+    await linkText.pressSequentially("R");
+
+    expect(await linkText.inputValue()).toBe("R");
+  });
+
+  it("S-290: Full Preview shows whole pages that fit a phone, one page for a short resume", async () => {
+    await page.setViewportSize(MOBILE);
+    await page.goto(`${server.origin}/editor/resume/${resumeId}/preview`, {
+      waitUntil: "networkidle",
+    });
+    await page.waitForTimeout(2_000);
+
+    const layout = await page.evaluate(() => ({
+      pages: [...document.querySelectorAll("article.resume-page-preview")].map((article) =>
+        Math.round(article.getBoundingClientRect().right),
+      ),
+      scrollWidth: document.scrollingElement!.scrollWidth,
+      innerWidth: window.innerWidth,
+    }));
+
+    expect(layout.pages.length).toBeGreaterThan(0);
+    for (const right of layout.pages) expect(right).toBeLessThanOrEqual(layout.innerWidth);
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.innerWidth);
+
+    await page.setViewportSize(DESKTOP);
+  });
+
+  it("S-308: Full Preview opens a document that exists only in the cloud", async () => {
+    const stored = await readStoredDocument(resumeId);
+    const cloudId = "resume-cloud-only-preview";
+    const now = new Date().toISOString();
+
+    await page.route("**/documents/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          message: "Document fetched successfully",
+          data: {
+            id: cloudId,
+            type: "RESUME",
+            title: "Cloud Only Preview",
+            templateId: stored!.content.templateId,
+            content: { ...stored!.content, id: cloudId, title: "Cloud Only Preview" },
+            visibility: "PRIVATE",
+            revision: 1,
+            lastSyncedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        }),
+      });
+    });
+
+    try {
+      await page.goto(`${server.origin}/editor/resume/${cloudId}/preview`, {
+        waitUntil: "networkidle",
+      });
+      await page.waitForTimeout(2_000);
+
+      expect(await page.getByText(/not found/i).count()).toBe(0);
+      expect(await page.locator("article.resume-page-preview").count()).toBeGreaterThan(0);
+      expect(await page.title()).toMatch(/^Cloud Only Preview preview/);
+    } finally {
+      await page.unroute("**/documents/*");
+    }
+  });
+
+  it("S-309: deleting the last cover letter goes back to the library, not into a new one", async () => {
+    // Every cover letter the earlier blocks made, so the last delete is the last letter.
+    await seedCoverLetter();
+
+    const ids = await page.evaluate(() => {
+      const index = JSON.parse(localStorage.getItem("veriworkly:docs:v3:index") ?? "{}");
+
+      return Object.values(index.items ?? {})
+        .filter((entry) => (entry as { type: string }).type === "COVER_LETTER")
+        .map((entry) => (entry as { id: string }).id);
+    });
+
+    for (const id of ids) {
+      await page.goto(`${server.origin}/editor/cover-letter/${id}`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(1_000);
+
+      await page.getByRole("button", { name: /^actions$/i }).click();
+      await page.getByRole("menuitem", { name: /^delete$/i }).click();
+      await page.getByPlaceholder("Type DELETE to proceed").fill("DELETE");
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: /^confirm$/i })
+        .click();
+      await page.waitForTimeout(1_500);
+    }
+
+    // The first visit to the library compiles it in dev, so wait for the navigation.
+    await page.waitForURL((url) => url.pathname === "/documents", { timeout: 30_000 });
+
+    expect(new URL(page.url()).pathname).toBe("/documents");
+  });
+});
+
+describe("a scaled preview still shows every line on exactly one page (S-287)", () => {
+  const TOKENS = Array.from({ length: 1500 }, (_, index) => `zq${String(index).padStart(4, "0")}`);
+  const LONG_TEXT = TOKENS.join(" ");
+
+  /** How often each token is drawn inside its page's box, on the visible pages only. */
+  function visibleTokenCounts(): Promise<Record<string, number>> {
+    return page.evaluate(() => {
+      const counts: Record<string, number> = {};
+      const range = document.createRange();
+
+      for (const article of document.querySelectorAll("article")) {
+        // The off-screen measuring copies sit under an aria-hidden container.
+        if (article.closest('[aria-hidden="true"]')) continue;
+
+        const box = article.getBoundingClientRect();
+        const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          for (const match of (node.textContent ?? "").matchAll(/\bzq\d{4}\b/g)) {
+            range.setStart(node, match.index!);
+            range.setEnd(node, match.index! + match[0].length);
+
+            const rect = range.getBoundingClientRect();
+
+            if (rect.height > 0 && rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1) {
+              counts[match[0]] = (counts[match[0]] ?? 0) + 1;
+            }
+          }
+        }
+      }
+
+      return counts;
+    });
+  }
+
+  async function expectEveryTokenOnce(where: string) {
+    await page.waitForTimeout(2_500);
+
+    const counts = await visibleTokenCounts();
+    const wrong = TOKENS.filter((token) => counts[token] !== 1);
+
+    expect(wrong, `${where}: tokens not drawn exactly once`).toEqual([]);
+  }
+
+  it("resume: Full Preview on a phone and the editor at its default zoom", async () => {
+    await page.setViewportSize(DESKTOP);
+
+    const resumeId = await seedResume();
+
+    await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1_000);
+    await openSection("summary");
+    await page.getByLabel("Professional summary").fill(LONG_TEXT);
+
+    await expectEveryTokenOnce("resume editor");
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(`${server.origin}/editor/resume/${resumeId}/preview`, {
+      waitUntil: "networkidle",
+    });
+
+    await expectEveryTokenOnce("resume Full Preview at 375px");
+    await page.setViewportSize(DESKTOP);
+  });
+
+  it("cover letter: Full Preview on a phone and the editor at its default zoom", async () => {
+    await page.setViewportSize(DESKTOP);
+
+    const letterId = await seedCoverLetter();
+
+    await page.goto(`${server.origin}/editor/cover-letter/${letterId}`, {
+      waitUntil: "networkidle",
+    });
+    await page.waitForTimeout(1_000);
+    await page.locator('[id="section-accordion-button-letter"]').click();
+    await page.getByLabel("Main body").fill(LONG_TEXT);
+
+    await expectEveryTokenOnce("cover letter editor");
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(`${server.origin}/editor/cover-letter/${letterId}/preview`, {
+      waitUntil: "networkidle",
+    });
+
+    await expectEveryTokenOnce("cover letter Full Preview at 375px");
+    await page.setViewportSize(DESKTOP);
   });
 });

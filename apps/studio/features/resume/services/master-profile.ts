@@ -305,6 +305,8 @@ export type MasterProfileEditorState =
       /** The row's cursor for the next save; `null` only when no row exists yet. */
       updatedAt: string | null;
       source: "database" | "local" | "new";
+      /** Part of the stored row could not be read; a save replaces it with what is shown. */
+      recovered?: true;
     }
   | { status: "error"; error: unknown };
 
@@ -314,7 +316,8 @@ export type MasterProfileEditorState =
  * Only a confirmed "no profile yet" falls back to this device's cache, and then to an empty
  * profile. A failed load is an error the editor must show with a retry: editing a stand-in
  * and saving it would overwrite a profile that exists but did not load. A row that exists
- * but does not validate opens with whatever is salvageable and the row's real cursor.
+ * but does not validate opens with whatever is salvageable, the row's real cursor, and
+ * `recovered` so the editor can say a save replaces what could not be read.
  */
 export async function loadMasterProfileForEditor(): Promise<MasterProfileEditorState> {
   const result = await loadMasterProfileFromDatabase();
@@ -334,6 +337,7 @@ export async function loadMasterProfileForEditor(): Promise<MasterProfileEditorS
         profile: salvageMasterProfile(result.raw),
         updatedAt: result.updatedAt,
         source: "database",
+        recovered: true,
       };
 
     case "error":
@@ -401,6 +405,34 @@ export async function getMasterProfileForNewDocument(): Promise<MasterProfileDat
     console.warn("Could not read the master profile; creating the document without it.", error);
     return undefined;
   }
+}
+
+/**
+ * The profile a reset starts from. A new document may fall back to the device's copy or to
+ * blank, but a reset throws away what is there, so a profile that cannot be read stops it
+ * with the reason instead of resetting to something else.
+ */
+export async function getMasterProfileForReset(): Promise<MasterProfileData | undefined> {
+  if (!useUserStore.getState().isLoggedIn) {
+    const local = loadMasterProfileFromLocalStorage();
+
+    if (local.status === "corrupt") {
+      throw new Error("The Master Profile on this device could not be read.");
+    }
+
+    return local.status === "ok" ? local.profile : undefined;
+  }
+
+  const result = await loadMasterProfileFromDatabase();
+
+  if (result.status === "ok") return result.bundle.profile;
+  if (result.status === "empty") return undefined;
+
+  throw new Error(
+    result.status === "error" && result.error instanceof Error
+      ? `Your Master Profile could not be loaded: ${result.error.message}`
+      : "Your Master Profile could not be read.",
+  );
 }
 
 /**

@@ -128,6 +128,17 @@ describe("a paragraph is one paragraph in every renderer (S-026)", () => {
   });
 });
 
+describe("phone numbers print the way people write them (S-289)", () => {
+  it("spaces a stored E.164 sender phone in every output", async () => {
+    const content = letter({ senderPhone: "+442079460958" });
+
+    for (const [name, output] of await allOutputs(content)) {
+      expect(output, name).toContain("+44 20 7946 0958");
+      expect(output, name).not.toContain("+442079460958");
+    }
+  });
+});
+
 describe("hidden sections stay hidden in every export (S-029, S-101, S-107)", () => {
   it("prints no profile, target, link or letter text when all four are hidden", async () => {
     const content = letter(
@@ -347,6 +358,74 @@ describe("the Markdown export reads back as the same letter (S-128)", () => {
     expect(
       parseCoverLetterMarkdown("# Your Name\n\nDear team,\n\nHello.\n\nAda", other).senderName,
     ).toBe("");
+  });
+
+  it("S-128: keeps the last paragraph in the body when the letter has no sign-off", () => {
+    const unsigned = letter({ senderName: "", closing: "", signature: "", postscript: "" });
+
+    expect(parseCoverLetterMarkdown(buildCoverLetterMarkdown(unsigned), other)).toMatchObject({
+      body: unsigned.body,
+      highlights: unsigned.highlights,
+      closing: "",
+      signature: "",
+    });
+
+    // With a name, the export prints it where the signature goes; the body still stays whole.
+    const named = letter({ closing: "", signature: "", postscript: "" });
+
+    expect(parseCoverLetterMarkdown(buildCoverLetterMarkdown(named), other)).toMatchObject({
+      body: named.body,
+      highlights: named.highlights,
+      closing: "",
+      signature: named.senderName,
+    });
+  });
+
+  it("keeps the sender phone in its stored E.164 form through a round trip", () => {
+    const original = letter({ senderPhone: "+442079460958" });
+
+    expect(parseCoverLetterMarkdown(buildCoverLetterMarkdown(original), other).senderPhone).toBe(
+      "+442079460958",
+    );
+  });
+
+  it("knows a sign-off by its words, not its punctuation", () => {
+    const signed = letter({ closing: "Kind regards", signature: "A. Morgan", postscript: "" });
+
+    expect(parseCoverLetterMarkdown(buildCoverLetterMarkdown(signed), other)).toMatchObject({
+      body: signed.body,
+      closing: "Kind regards",
+      signature: "A. Morgan",
+    });
+
+    const unsigned = letter({
+      senderName: "",
+      body: "First paragraph.\n\nWhat I would bring:",
+      highlights: "",
+      closing: "",
+      signature: "",
+      postscript: "",
+    });
+
+    expect(parseCoverLetterMarkdown(buildCoverLetterMarkdown(unsigned), other)).toMatchObject({
+      body: unsigned.body,
+      closing: "",
+      signature: "",
+    });
+  });
+
+  it("takes a greeting only when the letter goes on after it", () => {
+    expect(parseCoverLetterMarkdown("Hello, I am applying for the role.", other)).toMatchObject({
+      greeting: "",
+      opening: "Hello, I am applying for the role.",
+    });
+  });
+
+  it("reads a greeting written without a comma as the greeting (O4 LOW)", () => {
+    const original = letter({ greeting: "Hi team" });
+    const parsed = parseCoverLetterMarkdown(buildCoverLetterMarkdown(original), other);
+
+    expect(parsed).toMatchObject({ greeting: "Hi team", opening: original.opening });
   });
 
   it("imports an empty letter as empty, never as the open letter or a placeholder", () => {

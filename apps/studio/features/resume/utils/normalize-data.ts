@@ -134,9 +134,73 @@ function normalizeNumericDate(value: string | undefined, maxLength: number) {
   return (value ?? "").replace(/\D/g, "").slice(0, maxLength);
 }
 
-function normalizeMonthDate(value: string | undefined) {
+const MONTH_NAMES = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+];
+
+function toMonthDate(year: string, month: number): string | null {
+  return month >= 1 && month <= 12 ? `${year}-${String(month).padStart(2, "0")}` : null;
+}
+
+/** 1-12 for a month name or its abbreviation ("May", "Sept", "January"), else 0. */
+function monthFromName(name: string): number {
+  const lower = name.toLowerCase();
+
+  return lower.length < 3 ? 0 : MONTH_NAMES.findIndex((month) => month.startsWith(lower)) + 1;
+}
+
+/**
+ * An experience date as stored, `YYYY-MM`. Safari and Firefox show the month field as a
+ * plain text box, so the common hand-typed forms ("May 2020", "05/2020", "2020-5") are read
+ * into it, and anything else is kept as typed: blanking it dropped the date from the saved
+ * copy and every export. "Present" is not a date; `current` carries it.
+ */
+export function normalizeMonthDate(value: string | undefined) {
   const trimmed = value?.trim() ?? "";
-  return /^\d{4}-(0[1-9]|1[0-2])$/.test(trimmed) ? trimmed : "";
+
+  if (!trimmed || /^(present|current|now)$/i.test(trimmed)) return "";
+
+  const yearFirst = /^(\d{4})[-/.](\d{1,2})$/.exec(trimmed);
+  if (yearFirst) return toMonthDate(yearFirst[1], Number(yearFirst[2])) ?? trimmed;
+
+  const monthFirst = /^(\d{1,2})[-/.](\d{4})$/.exec(trimmed);
+  if (monthFirst) return toMonthDate(monthFirst[2], Number(monthFirst[1])) ?? trimmed;
+
+  const named = /^([a-z]+)\.?,?\s+(\d{4})$/i.exec(trimmed);
+  if (named) return toMonthDate(named[2], monthFromName(named[1])) ?? trimmed;
+
+  return trimmed;
+}
+
+/**
+ * A custom section stored without an id gets one from its position before the shared
+ * migration runs, which would mint a random one on every read. Order and visibility are
+ * keyed by that id, so a new one on each read lost both.
+ */
+function withStableCustomSectionIds(value: Partial<ResumeData> | null | undefined) {
+  const sections: unknown = value?.customSections;
+
+  if (!value || !Array.isArray(sections)) return value;
+
+  return {
+    ...value,
+    customSections: sections.map((section, index) =>
+      section && typeof section === "object" && !(section as { id?: unknown }).id
+        ? { ...section, id: `custom-${index + 1}` }
+        : section,
+    ),
+  };
 }
 
 export function normalizeResumeData(value: Partial<ResumeData> | null | undefined): ResumeData {
@@ -155,7 +219,7 @@ export function normalizeResumeData(value: Partial<ResumeData> | null | undefine
    * array wins and the pass is a no-op — and the migrated shape is written back by the next
    * save, since every save normalises first.
    */
-  const typed = unflattenLegacySections(value);
+  const typed = unflattenLegacySections(withStableCustomSectionIds(value));
   const customSections = normalizeCustomSections(typed.customSections);
 
   return {

@@ -35,6 +35,7 @@ const CustomSection = ({ customSectionId, isOpen, onToggle }: CustomSectionProps
   const removeCustomSection = useResumeStore((state) => state.removeCustomSection);
   const addCustomSectionItem = useResumeStore((state) => state.addCustomSectionItem);
   const removeCustomSectionItem = useResumeStore((state) => state.removeCustomSectionItem);
+  const reorderCustomSectionItem = useResumeStore((state) => state.reorderCustomSectionItem);
   const updateCustomSection = useResumeStore((state) => state.updateCustomSection);
   const updateCustomSectionItem = useResumeStore((state) => state.updateCustomSectionItem);
 
@@ -60,12 +61,14 @@ const CustomSection = ({ customSectionId, isOpen, onToggle }: CustomSectionProps
       addLabel="Add item"
       removeLabel="Remove item"
       onRemove={(index) => removeCustomSectionItem(customSectionId, index)}
+      onMove={(fromIndex, toIndex) => reorderCustomSectionItem(customSectionId, fromIndex, toIndex)}
       labelFor={(item, index) => item.name || `Item ${index + 1}`}
       emptyMessage="No custom items yet. Click Add item."
       header={
         customSection.editableTitle ? (
           <TextInputField
             label="Section header"
+            placeholder="e.g. Speaking"
             value={customSection.title}
             onValueChange={(title) => updateCustomSection(customSectionId, { title })}
           />

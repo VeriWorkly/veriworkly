@@ -1,5 +1,7 @@
 import type { ResumeData, ResumeCustomSection, ResumeLanguage } from "@/types/resume";
 
+import { formatPhoneForDisplay } from "@veriworkly/profile-core";
+
 import { formatDateRange } from "@/features/resume/services/resume-formatters";
 import {
   cleanResumeText,
@@ -235,7 +237,7 @@ export function getReferenceRenderItems(items: ResumeData["references"]): Resume
     return {
       id: item.id,
       title: cleanResumeText(item.name),
-      meta: phone,
+      meta: formatPhoneForDisplay(phone),
       subtitle: joinMeta([item.title, item.organization]),
       link: email ? { href: `mailto:${email}`, text: email } : null,
       summary: cleanResumeText(item.relationship),

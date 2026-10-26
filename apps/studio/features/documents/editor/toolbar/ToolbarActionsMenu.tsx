@@ -102,7 +102,7 @@ const ToolbarActionsMenu = ({
         description={
           pendingWipe === "empty"
             ? `This clears every field in this ${documentLabel}. There is no undo.`
-            : `This replaces this ${documentLabel}'s content with the starter template. There is no undo.`
+            : `This replaces this ${documentLabel}'s content with your Master Profile, or empties it if you have none. The template and style stay. There is no undo.`
         }
         confirmLabel={pendingWipe === "empty" ? "Empty fields" : "Reset"}
         cancelLabel="Keep my changes"

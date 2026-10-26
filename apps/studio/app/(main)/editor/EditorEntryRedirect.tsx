@@ -83,7 +83,13 @@ export function EditorEntryRedirect({ type, templateId }: EditorEntryRedirectPro
           return;
         }
 
-        if (result.reason === "busy") return;
+        // Another create of this type is running and navigates on its own; this page would
+        // otherwise wait on it forever.
+        if (result.reason === "busy") {
+          toast.info("A new document is already being created.");
+          router.replace("/documents");
+          return;
+        }
 
         reportCreateFailure(result, router);
         router.replace("/documents");

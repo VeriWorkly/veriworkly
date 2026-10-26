@@ -25,21 +25,18 @@ const BasicsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
     <SectionAccordion id="basics" label="Basics" isOpen={isOpen} onToggle={onToggle}>
       <div className="grid gap-4 md:grid-cols-2">
         <TextInputField
-          error={basicErrors.fullName}
           label="Full name"
           onValueChange={(fullName) => updateBasics({ fullName })}
           value={basics.fullName}
         />
 
         <TextInputField
-          error={basicErrors.role}
           label="Role"
           onValueChange={(role) => updateBasics({ role })}
           value={basics.role}
         />
 
         <TextInputField
-          error={basicErrors.headline}
           label="Headline"
           onValueChange={(headline) => updateBasics({ headline })}
           value={basics.headline}
@@ -69,7 +66,6 @@ const BasicsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
         />
 
         <TextInputField
-          error={basicErrors.location}
           label="Location"
           onValueChange={(location) => updateBasics({ location })}
           value={basics.location}

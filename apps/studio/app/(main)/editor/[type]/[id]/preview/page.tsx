@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PreviewClient } from "./PreviewClient";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { parseDocumentRouteSegment } from "@/features/documents/core/routes";
 
 function isValidRouteId(id: string) {
@@ -14,10 +15,13 @@ export async function generateMetadata({
 }: {
   params: Promise<{ type: string; id: string }>;
 }): Promise<Metadata> {
-  const { type, id } = await params;
+  const { type } = await params;
+  const documentType = parseDocumentRouteSegment(type);
 
+  // Generic, like the editor's: the title is the document's, which only the device knows.
+  // The preview puts it in the tab once it has loaded.
   return {
-    title: `Preview - ${type} - ${id}`,
+    title: documentType ? `${getDocumentDefinition(documentType).label} preview` : "Preview",
     description: "Preview your document before export or sharing.",
     robots: { index: false, follow: false },
   };

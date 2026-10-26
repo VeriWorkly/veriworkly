@@ -73,7 +73,7 @@ export function createLinkItem(type: ResumeLinkType = "portfolio"): ResumeLinkIt
 export function createSkillGroup(): ResumeSkillGroup {
   return {
     id: createId("skills"),
-    name: "New Skills",
+    name: "",
     keywords: [],
   };
 }
@@ -81,7 +81,7 @@ export function createSkillGroup(): ResumeSkillGroup {
 export function createCustomItem(): ResumeAdditionalItem {
   return {
     id: createId("custom"),
-    name: "Custom Item",
+    name: "",
     issuer: "",
     date: "",
     link: "",
@@ -175,7 +175,7 @@ export function createCustomSection(): ResumeCustomSection {
   return {
     id: createId("custom"),
     kind: "custom",
-    title: "Custom Section",
+    title: "",
     editableTitle: true,
     items: [],
   };
