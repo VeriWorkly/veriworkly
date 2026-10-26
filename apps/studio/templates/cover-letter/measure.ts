@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 
 import { useEffect, useState } from "react";
 
+import { screenScale } from "@/templates/shared/pagination";
+
 /**
  * Cover-letter pagination, mirroring react-pdf.
  *
@@ -122,14 +124,14 @@ function getLineBreak(lines: number, linesThatFit: number) {
  * Lines are found from where each word lands; text tokens pin an absolute line height,
  * so line `n` starts `n` line boxes below the content top in both engines.
  */
-function findTextBreak(box: HTMLElement, limit: number): number | null {
+function findTextBreak(box: HTMLElement, limit: number, scale: number): number | null {
   const style = window.getComputedStyle(box);
-  const lineHeight = px(style.lineHeight);
+  const lineHeight = px(style.lineHeight) * scale;
   const rect = box.getBoundingClientRect();
 
   if (!lineHeight) return null;
 
-  const contentTop = rect.top + px(style.borderTopWidth) + px(style.paddingTop);
+  const contentTop = rect.top + (px(style.borderTopWidth) + px(style.paddingTop)) * scale;
   const lineStarts: number[] = [];
   const range = document.createRange();
   const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
@@ -156,7 +158,7 @@ function findTextBreak(box: HTMLElement, limit: number): number | null {
   // react-pdf measures from the box top and ignores the box's own top padding here.
   const linesThatFit = Math.min(
     lines,
-    Math.max(0, Math.floor((limit - rect.top + TOLERANCE) / lineHeight)),
+    Math.max(0, Math.floor((limit - rect.top + TOLERANCE * scale) / lineHeight)),
   );
   const kept = getLineBreak(lines, linesThatFit);
 
@@ -166,9 +168,9 @@ function findTextBreak(box: HTMLElement, limit: number): number | null {
 }
 
 /** Index of the first row that does not fit, or null when every row does. */
-function findRowBreak(box: HTMLElement, limit: number): number | null {
+function findRowBreak(box: HTMLElement, limit: number, tolerance: number): number | null {
   const rows = Array.from(box.querySelectorAll(`[${FLOW_ROW_ATTRIBUTE}]`));
-  const index = rows.findIndex((row) => row.getBoundingClientRect().bottom > limit + TOLERANCE);
+  const index = rows.findIndex((row) => row.getBoundingClientRect().bottom > limit + tolerance);
 
   return index === -1 ? rows.length : index;
 }
@@ -187,10 +189,15 @@ export function paginateCoverLetterFlow<T>(
   let page: FlowFragment<T>[] = [];
   let body = config.contentRoot;
 
+  // Rects are in screen pixels and the probe may sit under the editor's zoom or Full
+  // Preview's fit-to-width transform, so CSS lengths are scaled to match (`screenScale`).
+  const scale = screenScale(config.measureRoot);
+  const tolerance = TOLERANCE * scale;
   const rootStyle = window.getComputedStyle(config.measureRoot);
   const rootRect = config.measureRoot.getBoundingClientRect();
-  const limit = rootRect.bottom - px(rootStyle.paddingBottom);
-  const contentArea = rootRect.height - px(rootStyle.paddingTop) - px(rootStyle.paddingBottom);
+  const limit = rootRect.bottom - px(rootStyle.paddingBottom) * scale;
+  const contentArea =
+    rootRect.height - (px(rootStyle.paddingTop) + px(rootStyle.paddingBottom)) * scale;
 
   function startPage() {
     config.contentRoot.innerHTML = "";
@@ -232,10 +239,10 @@ export function paginateCoverLetterFlow<T>(
     // Moving to a fresh page cannot help an item that already starts one.
     const canMove = hasPrevious || pages.length === 0;
 
-    if (rect.bottom <= limit + TOLERANCE) {
-      const marginBottom = px(window.getComputedStyle(box).marginBottom);
+    if (rect.bottom <= limit + tolerance) {
+      const marginBottom = px(window.getComputedStyle(box).marginBottom) * scale;
 
-      if (hasPrevious && rect.bottom + marginBottom > limit + TOLERANCE) {
+      if (hasPrevious && rect.bottom + marginBottom > limit + tolerance) {
         node.remove();
         closePage();
         pending = fragment;
@@ -247,7 +254,7 @@ export function paginateCoverLetterFlow<T>(
     }
 
     if (kind === "whole") {
-      if (rect.height > contentArea + TOLERANCE || !canMove) {
+      if (rect.height > contentArea + tolerance || !canMove) {
         page.push(fragment);
         closePage();
         continue;
@@ -259,7 +266,8 @@ export function paginateCoverLetterFlow<T>(
       continue;
     }
 
-    const at = kind === "text" ? findTextBreak(box, limit) : findRowBreak(box, limit);
+    const at =
+      kind === "text" ? findTextBreak(box, limit, scale) : findRowBreak(box, limit, tolerance);
 
     // A text item that cannot start on a page holding nothing else is kept there, as it
     // would be on any other page.

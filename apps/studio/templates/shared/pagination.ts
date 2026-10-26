@@ -11,6 +11,19 @@ export const SPLIT_ATTRIBUTE = "data-split";
 export const HEADING_PRESENCE_LINES = 2;
 
 /**
+ * How much a CSS transform on an ancestor scales `element` on screen: 1 when nothing does,
+ * 0.78 inside the editor's 78% zoom, under 0.5 in Full Preview on a phone. Measuring probes
+ * live inside those transforms, and `getBoundingClientRect()` answers in screen pixels while
+ * the page height, padding and line height are CSS pixels, so every CSS length compared with
+ * a rect is multiplied by this first. Breaks then land on the same words at any zoom.
+ */
+export function screenScale(element: HTMLElement): number {
+  const height = element.offsetHeight;
+
+  return height > 0 ? element.getBoundingClientRect().height / height : 1;
+}
+
+/**
  * A page under construction that can be measured after each addition.
  *
  * Implementations own the measuring surface (an off-screen DOM probe for web
