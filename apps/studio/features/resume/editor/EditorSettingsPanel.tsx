@@ -23,6 +23,7 @@ import {
 import { fontOptions } from "@/features/documents/constants/fonts";
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { defaultResume } from "@/features/resume/constants/default-resume";
+import { RESUME_SPACING_LIMITS } from "@/features/resume/constants/resume-layout";
 
 type SettingsSectionId = "typography" | "colors" | "visibility";
 
@@ -88,10 +89,10 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
             </SettingsSelect>
 
             <SettingsRange
-              min={0}
-              max={44}
+              min={RESUME_SPACING_LIMITS.sectionSpacing.min}
+              max={RESUME_SPACING_LIMITS.sectionSpacing.max}
               value={customization.sectionSpacing}
-              label={`Section gap (${customization.sectionSpacing}px)`}
+              label={`Section gap (${Math.max(RESUME_SPACING_LIMITS.sectionSpacing.min, customization.sectionSpacing)}px)`}
               onChange={(event) =>
                 updateCustomization({
                   sectionSpacing: Number(event.target.value),
@@ -100,10 +101,10 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
             />
 
             <SettingsRange
-              max={52}
-              min={16}
+              min={RESUME_SPACING_LIMITS.pagePadding.min}
+              max={RESUME_SPACING_LIMITS.pagePadding.max}
               value={customization.pagePadding}
-              label={`Page margin (${customization.pagePadding}px)`}
+              label={`Page margin (${Math.max(RESUME_SPACING_LIMITS.pagePadding.min, customization.pagePadding)}px)`}
               onChange={(event) =>
                 updateCustomization({
                   pagePadding: Number(event.target.value),

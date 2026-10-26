@@ -5,9 +5,10 @@
  * floor the height to 1122 while cover letters ceiled it to 1123 — the same
  * physical page described by two different numbers, which meant a preview page
  * break could land differently between document types for no reason. One constant
- * now, floored, so the preview box can never be taller than the PDF page it
- * represents (a preview that is 1px too tall hides a sliver of content; one that is
- * 1px too short only breaks marginally early).
+ * now. The height is floored, so the preview box can never be taller than the PDF
+ * page it represents (a preview that is 1px too tall hides a sliver of content; one
+ * that is 1px too short only breaks marginally early). The width is rounded up: the
+ * page is 595.5 x 841.5 pt, 0.22 pt wider and 0.39 pt shorter than A4.
  *
  * PDF templates state the size in points via {@link pxToPt} rather than `size="A4"`,
  * so both sides derive from these same numbers.

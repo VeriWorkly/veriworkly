@@ -32,3 +32,14 @@ export const RESUME_LAYOUT = {
   sectionTitleSpacing: 12,
   itemGap: 16,
 } as const;
+
+/**
+ * What the Section gap and Page margin sliders offer, in px. The low ends are also the
+ * floors the shared template code draws at, so no setting below them can be chosen. The
+ * labels show the setting: Precision ATS and Modern Minimal deliberately scale it, so
+ * they draw a different value from the one shown.
+ */
+export const RESUME_SPACING_LIMITS = {
+  sectionSpacing: { min: 8, max: 44 },
+  pagePadding: { min: 20, max: 52 },
+} as const;

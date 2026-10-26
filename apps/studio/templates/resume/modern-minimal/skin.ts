@@ -21,8 +21,6 @@ export const modernMinimalScale = createTypeScale({
  */
 export const modernMinimalGeometry = {
   headerGap: 28,
-  nameGapX: 0,
-  nameGapY: 2,
   roleTop: 4,
   contactTop: 12,
   linksTop: 4,

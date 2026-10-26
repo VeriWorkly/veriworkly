@@ -63,14 +63,13 @@ export async function exportCoverLetterDocument(
       return;
     }
     case "pdf": {
-      const [{ pdf }, { createCoverLetterPdfElement }, { registerPdfFontById }] = await Promise.all(
-        [
+      const [{ pdf }, { createCoverLetterPdfElement }, { registerCoverLetterPdfFont }] =
+        await Promise.all([
           import("@react-pdf/renderer"),
           import("@/templates/cover-letter/pdf"),
           import("@/templates/pdf/fonts"),
-        ],
-      );
-      registerPdfFontById(content.appearance?.fontFamily);
+        ]);
+      registerCoverLetterPdfFont(content);
       const renderer = await createCoverLetterPdfElement({
         content,
         templateId: document.templateId,

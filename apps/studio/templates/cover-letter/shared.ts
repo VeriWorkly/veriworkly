@@ -5,7 +5,8 @@ import type { FlowSplitKind } from "./measure";
 import { DEFAULT_COVER_LETTER_APPEARANCE, formatPhoneForDisplay } from "@veriworkly/profile-core";
 
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
-import { createCoverLetterTokens } from "./tokens";
+import { isHexColor, toSafeHexColor } from "@/features/documents/utils/hex-color";
+import { COVER_LETTER_SCALE, createCoverLetterTokens } from "./tokens";
 
 import {
   cleanResumeText,
@@ -81,20 +82,7 @@ export interface CoverLetterPalette {
 
 type Rgb = [number, number, number];
 
-const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
-
-/**
- * Appearance colours are interpolated into the exported HTML's `<style>` and into PDF
- * styles, so anything but a plain hex colour — a value from an imported or hand-edited
- * file — is refused rather than escaped.
- */
-export function isHexColor(value: unknown): value is string {
-  return typeof value === "string" && HEX_COLOR.test(value.trim());
-}
-
-function toSafeHexColor(value: unknown, fallback: string): string {
-  return isHexColor(value) ? value.trim() : fallback;
-}
+export { isHexColor };
 
 function parseHexColor(value: string): Rgb | null {
   if (!isHexColor(value)) return null;
@@ -501,6 +489,66 @@ export function getCoverLetterState(content: CoverLetterContent) {
 }
 
 export type CoverLetterState = ReturnType<typeof getCoverLetterState>;
+
+/** Average glyph advance assumed by the rail estimate, in em: wider than real text on purpose. */
+const RAIL_EM_PER_CHARACTER = 0.6;
+
+/**
+ * Whether the VeriWorkly rail's text is likely taller than the page. The rail is one page
+ * tall in every renderer and clips what does not fit, so the editor warns instead. An
+ * estimate rather than a measurement, so the editor needs no layout: it assumes wide glyphs,
+ * so it warns a little early rather than late.
+ */
+export function veriworklyRailOverflows(content: CoverLetterContent): boolean {
+  const state = getCoverLetterState(content);
+  const { tokens: t, linkDisplayMode } = state;
+  const S = COVER_LETTER_SCALE;
+  const inner = S.railWidth - S.railPadX * 2;
+
+  const block = (text: string, token: { fontSize: number; lineHeight: number }) =>
+    text
+      ? Math.max(1, Math.ceil((text.length * token.fontSize * RAIL_EM_PER_CHARACTER) / inner)) *
+        token.lineHeight
+      : 0;
+  const stack = (heights: number[], gap: number) =>
+    heights.reduce((sum, height) => sum + height, 0) + Math.max(0, heights.length - 1) * gap;
+
+  const rows = [
+    ...state.contact.map((item) => block(item, t.railText)),
+    ...(state.renderedLinks.length > 0 ? [S.hairline + 32] : []),
+    ...state.renderedLinks.map((link) =>
+      linkDisplayMode === "icon"
+        ? Math.max(14, t.railText.lineHeight)
+        : block(getLinkDisplayText(link, linkDisplayMode), t.railText),
+    ),
+  ];
+
+  const target =
+    state.targetTitle || state.targetCompany
+      ? S.hairline +
+        S.railTargetTop +
+        stack(
+          [
+            t.railLabel.lineHeight,
+            block(state.targetTitle, t.railText),
+            block(state.targetCompany, t.railText),
+          ].filter(Boolean),
+          8,
+        )
+      : 0;
+
+  const height =
+    t.railLabel.lineHeight +
+    (state.senderName ? 16 + block(state.senderName, t.railName) : 0) +
+    (state.senderTitle ? 8 + block(state.senderTitle, t.railTitle) : 0) +
+    S.railBlockTop * 2 +
+    S.hairline +
+    S.railBlockTop +
+    stack(rows, 8) +
+    target;
+
+  return height > S.pageHeight - S.railPadY * 2;
+}
 
 export function getCoverLetterDocumentTitle(state: CoverLetterState) {
   return state.senderName ? `${state.senderName} - Cover Letter` : "Cover Letter";

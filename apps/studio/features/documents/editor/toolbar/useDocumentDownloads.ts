@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { BaseDocument, ExportFormat } from "@/features/documents/core/types";
+import type { PdfCharacterWarningProps } from "./PdfCharacterWarning";
 
 import { trackUsageEvent } from "@/features/analytics/services/usage-metrics";
 import { getDocumentExportEventName } from "@/features/analytics/services/document-events";
@@ -46,14 +47,65 @@ export function useDocumentDownloads({
   previewElementId,
 }: UseDocumentDownloadsOptions) {
   const [activeDownload, setActiveDownload] = useState<ExportFormat | null>(null);
+  const [pdfWarning, setPdfWarning] = useState<string | null>(null);
+  // State lags a render behind a double click; the ref stops a second export starting.
+  const busy = useRef(false);
+
+  /**
+   * S-288: the embedded fonts have no CJK, Korean, Devanagari, Arabic, Hebrew or Thai
+   * glyphs, so the PDF would print those characters as nothing. Ask first; DOCX and HTML
+   * keep them. The check only advises: if it fails, the PDF is generated anyway.
+   */
+  async function downloadPdf(): Promise<void> {
+    if (busy.current) return;
+
+    const document = getDocument();
+
+    if (!document) return;
+
+    busy.current = true;
+    setActiveDownload("pdf");
+
+    let warning: string | null = null;
+
+    try {
+      const { describeUndrawablePdfText, findTextPdfCannotDraw } =
+        await import("@/features/documents/export/pdf-unsupported-text");
+      const blanks = findTextPdfCannotDraw(document);
+
+      if (blanks.length > 0) warning = describeUndrawablePdfText(blanks);
+    } catch (error) {
+      console.error("PDF character check failed; exporting without it", error);
+    } finally {
+      busy.current = false;
+      setActiveDownload(null);
+    }
+
+    if (warning) {
+      setPdfWarning(warning);
+      return;
+    }
+
+    await download("pdf");
+  }
+
+  function fromPdfWarning(format: ExportFormat) {
+    return () => {
+      setPdfWarning(null);
+      void download(format);
+    };
+  }
 
   async function download(format: ExportFormat): Promise<void> {
+    if (busy.current) return;
+
     const document = getDocument();
 
     if (!document) return;
 
     const label = FORMAT_LABELS[format];
 
+    busy.current = true;
     setActiveDownload(format);
 
     try {
@@ -73,13 +125,21 @@ export function useDocumentDownloads({
       console.error(`${label} export failed`, error);
       onMessage(`Could not generate ${label}.${reason} Try again.`);
     } finally {
+      busy.current = false;
       setActiveDownload(null);
     }
   }
 
   return {
     activeDownload,
-    onDownloadPdf: () => download("pdf"),
+    pdfWarning: {
+      message: pdfWarning,
+      onClose: () => setPdfWarning(null),
+      onDownloadPdf: fromPdfWarning("pdf"),
+      onDownloadDocx: fromPdfWarning("docx"),
+      onDownloadHtml: fromPdfWarning("html"),
+    } satisfies PdfCharacterWarningProps,
+    onDownloadPdf: downloadPdf,
     onDownloadDocx: () => download("docx"),
     onDownloadHtml: () => void download("html"),
     onDownloadText: () => void download("txt"),

@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
-
 import { useMemo } from "react";
 
 import type { CSSProperties } from "react";
@@ -16,7 +14,6 @@ import {
 
 import {
   buildProfessionalFlowItems,
-  getCoverLetterDocumentTitle,
   getCoverLetterState,
   type CoverLetterPalette,
   type ProfessionalFlowItem,
@@ -26,14 +23,15 @@ import {
   normalizeLinkHref,
   getLinkDisplayText,
 } from "@/features/documents/rendering/resume-rendering";
-import { FONT_FAMILY_MAP, getFontStylesheetHref } from "@/features/documents/constants/fonts";
+import { FONT_FAMILY_MAP } from "@/features/documents/constants/fonts";
 import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { webFixedWidth, webFlexible } from "@/templates/shared/box";
 import { webText } from "@/templates/shared/text-tokens";
 import { COVER_LETTER_SCALE as S } from "../tokens";
 import { useFlowPages } from "../use-flow-pages";
+import { coverLetterHtmlDocument, htmlFont, htmlLink } from "../html";
 
-import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
+import { WebSocialIcon } from "@/templates/shared/web-social-icon";
 
 const px = (value: number) => `${value}px`;
 
@@ -156,7 +154,10 @@ function LetterHead({
         paddingBottom: px(S.headerPadBottom),
       }}
     >
-      <p style={{ ...webText(tokens.label), marginBottom: px(6) }}>Cover Letter</p>
+      {/* Untracked, as in `./pdf.tsx`: tracked capitals extract as spaced letters. */}
+      <p style={{ ...webText(tokens.label), letterSpacing: 0, marginBottom: px(6) }}>
+        Cover Letter
+      </p>
       {senderName ? (
         <h1 style={{ ...webText(tokens.senderName), fontWeight: 600 }}>{senderName}</h1>
       ) : null}
@@ -211,16 +212,7 @@ function LetterHead({
               }}
             >
               {linkDisplayMode !== "url" && (
-                <img
-                  alt=""
-                  aria-hidden="true"
-                  src={SOCIAL_ICON_SRC_BY_TYPE[link.type] || SOCIAL_ICON_SRC_BY_TYPE.custom}
-                  style={{
-                    display: "block",
-                    ...webFixedWidth(S.contact),
-                    height: px(S.contact),
-                  }}
-                />
+                <WebSocialIcon color={palette.strong} size={S.contact} type={link.type} />
               )}
 
               {linkDisplayMode !== "icon" && (
@@ -288,7 +280,7 @@ function SubjectBlock({
         paddingTop: px(S.subjectPadY),
       }}
     >
-      <p style={webText(tokens.label)}>Re</p>
+      <p style={{ ...webText(tokens.label), letterSpacing: 0 }}>Re</p>
       <h2 style={{ ...webText(tokens.subject), fontWeight: 600, marginTop: px(S.subjectLabelGap) }}>
         {subject}
       </h2>
@@ -350,6 +342,8 @@ export function MinimalistCoverLetterPreview({ content }: { content: CoverLetter
     backgroundColor: appearance.pageColor,
     color: palette.text,
     fontFamily,
+    // A long email or URL wraps, as the PDF breaks it, instead of running out of its column.
+    overflowWrap: "anywhere",
     padding: px(appearance.pageMargin),
   };
 
@@ -427,7 +421,7 @@ export function buildMinimalistCoverLetterHtml(content: CoverLetterContent): str
   const {
     appearance,
     palette,
-    tokens,
+    tokens: t,
     senderName,
     senderTitle,
     contact,
@@ -437,13 +431,8 @@ export function buildMinimalistCoverLetterHtml(content: CoverLetterContent): str
     recipient,
     subject,
   } = state;
-  const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const fontHref = getFontStylesheetHref(appearance.fontFamily);
   const flowItems = buildProfessionalFlowItems(state.flow);
-
-  const t = tokens;
-  const font = (token: (typeof t)["body"]) =>
-    `font-size:${token.fontSize}px;line-height:${token.lineHeight}px;font-weight:${token.fontWeight};color:${token.color};`;
+  const font = htmlFont;
 
   const contactRow =
     contact.length > 0
@@ -459,10 +448,7 @@ export function buildMinimalistCoverLetterHtml(content: CoverLetterContent): str
   const linksRow =
     renderedLinks.length > 0
       ? `<div class="links-row">${renderedLinks
-          .map(
-            (link) =>
-              `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`,
-          )
+          .map((link) => htmlLink(link, linkDisplayMode, palette.strong, S.contact))
           .join("")}</div>`
       : "";
   const metaBlock = `<section class="meta">${date ? `<p class="date">${escapeHtml(date)}</p>` : ""}${
@@ -471,10 +457,15 @@ export function buildMinimalistCoverLetterHtml(content: CoverLetterContent): str
       : ""
   }</section>`;
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(getCoverLetterDocumentTitle(state))}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
-*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:${palette.surface};color:${palette.text};font-family:${fontFamily}}.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{border-bottom:${S.headerRule}px solid transparent;padding-bottom:${S.headerPadBottom}px}header h1{${font(t.senderName)}font-weight:600}header .title{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact-row{display:flex;flex-wrap:wrap;column-gap:10px;row-gap:4px;margin-top:${S.headerRowGap * 2}px}.contact-row .item{display:flex;align-items:center;column-gap:10px}.contact-row .item span{${font(t.contact)}}.contact-row .sep{color:${palette.soft}}.links-row{display:flex;flex-wrap:wrap;column-gap:16px;row-gap:4px;margin-top:6px}.links-row a{${font({ ...t.contact, color: palette.strong })}text-decoration:none;display:flex;align-items:center;column-gap:4px}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 2}px}.meta .to p{${font(t.contact)}}.subject{margin-top:${S.subjectTop}px;padding:${S.subjectPadY}px 0}.label{${font(t.label)}letter-spacing:${t.label.letterSpacing}px;text-transform:uppercase}header .label{margin-bottom:6px}.subject h2{${font(t.subject)}font-weight:600;margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-left:2px solid ${palette.accent};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.soft}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid transparent;margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}</style></head><body><article class="page"><header><p class="label">Cover Letter</p>${senderName ? `<h1>${escapeHtml(senderName)}</h1>` : ""}${senderTitle ? `<p class="title">${escapeHtml(senderTitle)}</p>` : ""}${contactRow}${linksRow}</header>${metaBlock}${
-    subject
-      ? `<section class="subject"><p class="label">Re</p><h2>${escapeHtml(subject)}</h2></section>`
-      : ""
-  }<main class="body">${flowItems.map(renderMinimalistHtmlItem).join("")}</main></article></body></html>`;
+  const css = `.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{border-bottom:${S.headerRule}px solid transparent;padding-bottom:${S.headerPadBottom}px}header h1{${font(t.senderName)}font-weight:600}header .title{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact-row{display:flex;flex-wrap:wrap;column-gap:10px;row-gap:4px;margin-top:${S.headerRowGap * 2}px}.contact-row .item{display:flex;align-items:center;column-gap:10px}.contact-row .item span{${font(t.contact)}}.contact-row .item .sep{color:${palette.soft}}.links-row{display:flex;flex-wrap:wrap;column-gap:16px;row-gap:4px;margin-top:6px}.links-row a{${font({ ...t.contact, color: palette.strong })}text-decoration:none;display:flex;align-items:center;column-gap:4px}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 2}px}.meta .to p{${font(t.contact)}}.subject{margin-top:${S.subjectTop}px;padding:${S.subjectPadY}px 0}.label{${font(t.label)}letter-spacing:0;text-transform:uppercase}header .label{margin-bottom:6px}.subject h2{${font(t.subject)}font-weight:600;margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-left:2px solid ${palette.accent};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.soft}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid transparent;margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
+
+  return coverLetterHtmlDocument(
+    state,
+    css,
+    `<article class="page"><header><p class="label">Cover Letter</p>${senderName ? `<h1>${escapeHtml(senderName)}</h1>` : ""}${senderTitle ? `<p class="title">${escapeHtml(senderTitle)}</p>` : ""}${contactRow}${linksRow}</header>${metaBlock}${
+      subject
+        ? `<section class="subject"><p class="label">Re</p><h2>${escapeHtml(subject)}</h2></section>`
+        : ""
+    }<main class="body">${flowItems.map(renderMinimalistHtmlItem).join("")}</main></article>`,
+  );
 }

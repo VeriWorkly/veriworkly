@@ -55,6 +55,7 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
 
   const {
     activeDownload,
+    pdfWarning,
     onDownloadPdf,
     onDownloadDocx,
     onDownloadHtml,
@@ -103,6 +104,7 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
 
         <ToolbarDownloadMenu
           activeDownload={activeDownload}
+          pdfWarning={pdfWarning}
           onDownloadPdf={onDownloadPdf}
           onDownloadDocx={onDownloadDocx}
           onDownloadHtml={onDownloadHtml}

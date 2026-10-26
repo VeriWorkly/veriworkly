@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
-
 import { useMemo } from "react";
 
 import type { CSSProperties } from "react";
@@ -15,7 +13,6 @@ import {
 
 import {
   buildVeriworklyFlowItems,
-  getCoverLetterDocumentTitle,
   getCoverLetterState,
   type CoverLetterPalette,
   type VeriworklyFlowItem,
@@ -25,15 +22,16 @@ import {
   normalizeLinkHref,
   getLinkDisplayText,
 } from "@/features/documents/rendering/resume-rendering";
-import { FONT_FAMILY_MAP, getFontStylesheetHref } from "@/features/documents/constants/fonts";
+import { FONT_FAMILY_MAP } from "@/features/documents/constants/fonts";
 import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { webFixedWidth, webFlexible } from "@/templates/shared/box";
 import { webText } from "@/templates/shared/text-tokens";
 import { BULLET_MARKER } from "@/templates/resume/shared/typography";
 import { COVER_LETTER_SCALE as S } from "../tokens";
 import { useFlowPages } from "../use-flow-pages";
+import { coverLetterHtmlDocument, htmlFont, htmlLink } from "../html";
 
-import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
+import { WebSocialIcon } from "@/templates/shared/web-social-icon";
 
 const px = (value: number) => `${value}px`;
 
@@ -327,6 +325,8 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
     color: palette.text,
     display: "flex",
     fontFamily,
+    // A long email or URL wraps, as the PDF breaks it, instead of running out of the rail.
+    overflowWrap: "anywhere",
   };
 
   // The page box matches the PDF page exactly; see COVER_LETTER_SCALE.
@@ -409,12 +409,7 @@ export function VeriworklyCoverLetterPreview({ content }: { content: CoverLetter
               }}
             >
               {linkDisplayMode !== "url" && (
-                <img
-                  alt=""
-                  aria-hidden="true"
-                  src={SOCIAL_ICON_SRC_BY_TYPE[link.type] || SOCIAL_ICON_SRC_BY_TYPE.custom}
-                  style={{ ...webFixedWidth(14), display: "block", height: "14px" }}
-                />
+                <WebSocialIcon color={palette.accent} size={14} type={link.type} />
               )}
               {linkDisplayMode !== "icon" && (
                 <span>{getLinkDisplayText(link, linkDisplayMode)}</span>
@@ -537,22 +532,15 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
     targetTitle,
     targetCompany,
   } = state;
-  const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const fontHref = getFontStylesheetHref(appearance.fontFamily);
   const flowItems = buildVeriworklyFlowItems(state.flow);
-
-  const font = (token: (typeof t)["body"]) =>
-    `font-size:${token.fontSize}px;line-height:${token.lineHeight}px;font-weight:${token.fontWeight};color:${token.color};`;
+  const font = htmlFont;
 
   const rail = `<aside><p class="label">Candidate</p>${senderName ? `<h1>${escapeHtml(senderName)}</h1>` : ""}${
     senderTitle ? `<p class="rail-title">${escapeHtml(senderTitle)}</p>` : ""
   }<div class="rule"></div><div class="rail">${contact
     .map((item) => `<p>${escapeHtml(item)}</p>`)
     .join("")}${renderedLinks.length > 0 ? `<div class="divider"></div>` : ""}${renderedLinks
-    .map(
-      (link) =>
-        `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`,
-    )
+    .map((link) => htmlLink(link, linkDisplayMode, palette.accent, 14))
     .join("")}</div>${
     targetTitle || targetCompany
       ? `<div class="target"><p class="label">Target</p>${
@@ -570,7 +558,14 @@ export function buildVeriworklyCoverLetterHtml(content: CoverLetterContent): str
   }`;
 
   // One flowing page whose rail runs its full height: the browser's print engine breaks the
-  // letter with the same rules react-pdf uses, and the screen copy never clips.
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(getCoverLetterDocumentTitle(state))}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
-*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:${palette.surface};color:${palette.text};font-family:${fontFamily}}p,h1,h2{margin:0;white-space:pre-line}.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};display:flex}aside{background:${appearance.sidebarColor};border-right:${S.hairline}px solid ${palette.sidebarBorder};padding:${S.railPadY}px ${S.railPadX}px;display:flex;flex-direction:column;flex:0 0 ${S.railWidth}px;width:${S.railWidth}px}aside h1{${font(t.railName)}margin-top:16px}aside .rail-title{${font(t.railTitle)}margin-top:8px}.rule{background:${palette.accent};height:${S.hairline}px;width:${S.railRuleWidth}px;margin:${S.railBlockTop}px 0}.divider{background:${palette.accent};height:${S.hairline}px;width:${S.railRuleWidth}px;margin:16px 0}.rail{display:flex;flex-direction:column;margin-top:${S.railBlockTop}px;row-gap:8px}.rail p{${font(t.railText)}}.rail a{${font({ ...t.railText, color: palette.accent })}text-decoration:none;display:block}.target{border-top:${S.hairline}px solid ${palette.sidebarBorder};margin-top:auto;padding-top:${S.railTargetTop}px;display:flex;flex-direction:column;row-gap:8px}.target p{${font(t.railText)}}.target .title{${font({ ...t.railText, color: palette.sidebarText, fontWeight: 700 })}}main{flex:1 1 auto;min-width:0;background:${appearance.pageColor};padding:${appearance.pageMargin}px}.label{${font(t.railLabel)}letter-spacing:${t.railLabel.letterSpacing}px;text-transform:uppercase}.meta{display:flex;justify-content:space-between;column-gap:${S.metaColumnGap}px;border-bottom:${S.hairline}px solid ${palette.border};padding-bottom:${S.headerPadBottom}px}.meta .to{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;row-gap:${S.metaRowGap}px}.meta .to p{${font(t.contact)}}.meta .date{${font(t.metaDate)}text-align:right;flex:0 0 ${S.metaDateWidth}px;width:${S.metaDateWidth}px}.subject{border-left:${S.subjectBarWidth}px solid ${palette.accent};margin-top:${S.subjectTop}px;padding-left:${S.subjectPadLeft}px}.subject h2{${font(t.railSubject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.subjectTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting{${font(t.strong)}}.greeting,.signoff,.proof,.bullet{break-inside:avoid}.list{background:${palette.surface};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right}.bullet span{${font(t.body)}}.body .proof-label{${font(t.continued)}letter-spacing:${t.continued.letterSpacing}px;text-transform:uppercase;border-top:${S.hairline}px solid ${palette.border};margin:${S.subjectTop}px 0 0;padding-top:${S.railTargetTop}px}.proof-item{display:flex;column-gap:12px;border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.proofRowGap}px;padding-bottom:${S.proofPadBottom}px}.proof-item.last{border-bottom:0}.proof-index{${font(t.proofIndex)}flex:0 0 ${S.proofIndexWidth}px;width:${S.proofIndexWidth}px}.proof-text{${font(t.proofText)}flex:1 1 auto;min-width:0}.signoff{display:flex;flex-direction:column;margin-top:${S.subjectTop}px;row-gap:8px}.body .signoff p{margin-bottom:0}.body .signature{${font({ ...t.strong, fontSize: 16, lineHeight: 19.2 })}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0}}</style></head><body><article class="page">${rail}<main>${head}<section class="body">${flowItems.map(renderVeriworklyHtmlItem).join("")}</section></main></article></body></html>`;
+  // letter with the same rules react-pdf uses, and the screen copy never clips. In print the
+  // rail is fixed, so it repeats on every sheet as it does in the PDF, and the letter's
+  // padding is cloned at each break, so page 2 onwards keeps its margins.
+  const css = `p,h1,h2{margin:0;white-space:pre-line}.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};display:flex}aside{background:${appearance.sidebarColor};border-right:${S.hairline}px solid ${palette.sidebarBorder};padding:${S.railPadY}px ${S.railPadX}px;display:flex;flex-direction:column;flex:0 0 ${S.railWidth}px;width:${S.railWidth}px}aside h1{${font(t.railName)}margin-top:16px}aside .rail-title{${font(t.railTitle)}margin-top:8px}.rule{background:${palette.accent};height:${S.hairline}px;width:${S.railRuleWidth}px;margin:${S.railBlockTop}px 0}.divider{background:${palette.accent};height:${S.hairline}px;width:${S.railRuleWidth}px;margin:16px 0}.rail{display:flex;flex-direction:column;margin-top:${S.railBlockTop}px;row-gap:8px}.rail p{${font(t.railText)}}.rail a{${font({ ...t.railText, color: palette.accent })}text-decoration:none;display:flex;align-items:center;column-gap:4px}.target{border-top:${S.hairline}px solid ${palette.sidebarBorder};margin-top:auto;padding-top:${S.railTargetTop}px;display:flex;flex-direction:column;row-gap:8px}.target p{${font(t.railText)}}.target .title{${font({ ...t.railText, color: palette.sidebarText, fontWeight: 700 })}}main{flex:1 1 auto;min-width:0;background:${appearance.pageColor};padding:${appearance.pageMargin}px}.label{${font(t.railLabel)}letter-spacing:${t.railLabel.letterSpacing}px;text-transform:uppercase}.meta{display:flex;justify-content:space-between;column-gap:${S.metaColumnGap}px;border-bottom:${S.hairline}px solid ${palette.border};padding-bottom:${S.headerPadBottom}px}.meta .to{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;row-gap:${S.metaRowGap}px}.meta .to p{${font(t.contact)}}.meta .date{${font(t.metaDate)}text-align:right;flex:0 0 ${S.metaDateWidth}px;width:${S.metaDateWidth}px}.subject{border-left:${S.subjectBarWidth}px solid ${palette.accent};margin-top:${S.subjectTop}px;padding-left:${S.subjectPadLeft}px}.subject h2{${font(t.railSubject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.subjectTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting{${font(t.strong)}}.greeting,.signoff,.proof,.bullet{break-inside:avoid}.list{background:${palette.surface};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right}.bullet span{${font(t.body)}}.body .proof-label{${font(t.continued)}letter-spacing:${t.continued.letterSpacing}px;text-transform:uppercase;border-top:${S.hairline}px solid ${palette.border};margin:${S.subjectTop}px 0 0;padding-top:${S.railTargetTop}px}.proof-item{display:flex;column-gap:12px;border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.proofRowGap}px;padding-bottom:${S.proofPadBottom}px}.proof-item.last{border-bottom:0}.proof-index{${font(t.proofIndex)}flex:0 0 ${S.proofIndexWidth}px;width:${S.proofIndexWidth}px}.proof-text{${font(t.proofText)}flex:1 1 auto;min-width:0}.signoff{display:flex;flex-direction:column;margin-top:${S.subjectTop}px;row-gap:8px}.body .signoff p{margin-bottom:0}.body .signature{${font({ ...t.strong, fontSize: 16, lineHeight: 19.2 })}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;display:block}aside{position:fixed;top:0;bottom:0;left:0}main{margin-left:${S.railWidth}px;-webkit-box-decoration-break:clone;box-decoration-break:clone}}`;
+
+  return coverLetterHtmlDocument(
+    state,
+    css,
+    `<article class="page">${rail}<main>${head}<section class="body">${flowItems.map(renderVeriworklyHtmlItem).join("")}</section></main></article>`,
+  );
 }

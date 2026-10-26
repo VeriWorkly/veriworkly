@@ -13,6 +13,7 @@ import { formatDateRange, safeText } from "@/features/resume/services/resume-for
 import { stripEmoji } from "@/features/documents/utils/strip-emoji";
 import { isSectionVisible } from "@/features/documents/utils/section-helpers";
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
+import { toSafeHexColor } from "@/features/documents/utils/hex-color";
 import { RESUME_LAYOUT } from "@/features/resume/constants/resume-layout";
 
 export type ResumeRenderStyle = Required<
@@ -95,15 +96,18 @@ export function cleanResumeText(value: string | null | undefined): string {
 export function getResumeRenderStyle(resume: ResumeData): ResumeRenderStyle {
   const customization = resume.customization;
 
+  // A half-typed "#12" from a colour field draws differently in each renderer, or not at
+  // all; only a complete hex colour reaches a template.
+  const accentColor = toSafeHexColor(customization?.accentColor, "#2563eb");
+
   return {
-    accentColor: customization?.accentColor || "#2563eb",
-    textColor: customization?.textColor || "#0f172a",
-    mutedTextColor: customization?.mutedTextColor || "#475569",
-    borderColor: customization?.borderColor || "#cbd5e1",
-    pageBackgroundColor: customization?.pageBackgroundColor || "#ffffff",
-    sectionBackgroundColor: customization?.sectionBackgroundColor || "#ffffff",
-    sectionHeadingColor:
-      customization?.sectionHeadingColor || customization?.accentColor || "#2563eb",
+    accentColor,
+    textColor: toSafeHexColor(customization?.textColor, "#0f172a"),
+    mutedTextColor: toSafeHexColor(customization?.mutedTextColor, "#475569"),
+    borderColor: toSafeHexColor(customization?.borderColor, "#cbd5e1"),
+    pageBackgroundColor: toSafeHexColor(customization?.pageBackgroundColor, "#ffffff"),
+    sectionBackgroundColor: toSafeHexColor(customization?.sectionBackgroundColor, "#ffffff"),
+    sectionHeadingColor: toSafeHexColor(customization?.sectionHeadingColor, accentColor),
     fontFamily: normalizeFontFamilyId(customization?.fontFamily),
     // `??`, not `||`: zero is a spacing the user can choose.
     sectionSpacing: customization?.sectionSpacing ?? RESUME_LAYOUT.sectionSpacing,

@@ -1323,3 +1323,198 @@ describe("a scaled preview still shows every line on exactly one page (S-287)", 
     await page.setViewportSize(DESKTOP);
   });
 });
+
+describe("exports (Phase 9: S-285, S-288)", () => {
+  /** Records the next Blob handed to `downloadBlob`, the last point an export exists. */
+  async function captureNextBlob() {
+    await page.evaluate(() => {
+      const w = window as unknown as { __exportedBlob: Blob | null; __realCreate?: unknown };
+      const real = (w.__realCreate ??= URL.createObjectURL.bind(URL)) as typeof URL.createObjectURL;
+
+      w.__exportedBlob = null;
+      URL.createObjectURL = (object: Blob | MediaSource) => {
+        if (object instanceof Blob) w.__exportedBlob = object;
+        return real(object);
+      };
+    });
+  }
+
+  function exportedText(): Promise<string> {
+    return page.evaluate(async () => {
+      const blob = (window as unknown as { __exportedBlob: Blob | null }).__exportedBlob;
+      return blob ? await blob.text() : "";
+    });
+  }
+
+  async function exportAs(format: RegExp) {
+    await page.getByRole("button", { name: /^export$/i }).click();
+    await page.getByRole("menuitem", { name: format }).click();
+  }
+
+  it("S-285: the WYSIWYG HTML page is as wide as the page, whatever the editor zoom", async () => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
+      waitUntil: "networkidle",
+    });
+    await page.waitForTimeout(1_500);
+
+    const layoutWidth = await page.evaluate(
+      () => (document.querySelector("[data-resume-pages]") as HTMLElement).offsetWidth,
+    );
+    const zoomedWidth = await page.evaluate(
+      () => document.querySelector("[data-resume-pages]")!.getBoundingClientRect().width,
+    );
+
+    await captureNextBlob();
+    await exportAs(/^html$/i);
+    await page.waitForTimeout(1_500);
+
+    const html = await exportedText();
+
+    expect(zoomedWidth, "the editor opens zoomed, or this test proves nothing").not.toBe(
+      layoutWidth,
+    );
+    expect(html).toContain(`width: ${layoutWidth}px`);
+
+    // S-304: printed, each preview page is one sheet, not split over two.
+    const previewPages = await page.evaluate(
+      () => document.querySelectorAll("[data-resume-pages] > *").length,
+    );
+    const printTab = await context.newPage();
+
+    try {
+      await printTab.setContent(html, { waitUntil: "load" });
+      const pdf = (await printTab.pdf({ preferCSSPageSize: true })).toString("latin1");
+
+      expect(pdf.match(/\/Type\s*\/Page[^s]/g)?.length).toBe(previewPages);
+
+      // The sheet count alone could match by accident; the break rule itself must win over
+      // the styles the export inlines, and backgrounds must print.
+      await printTab.emulateMedia({ media: "print" });
+      const printed = await printTab.evaluate(() =>
+        [...document.querySelectorAll("[data-resume-pages] > *")].map((node) => {
+          const style = getComputedStyle(node);
+          return `${style.breakAfter}/${style.printColorAdjust}`;
+        }),
+      );
+
+      expect(printed).toEqual(
+        printed.map((_, index) => (index === printed.length - 1 ? "auto/exact" : "page/exact")),
+      );
+    } finally {
+      await printTab.close();
+    }
+  });
+
+  it("S-285: exports the generated document from a phone's Content tab", async () => {
+    await page.setViewportSize(MOBILE);
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForTimeout(800);
+    await openTab("Content");
+
+    await captureNextBlob();
+    await exportAs(/^html$/i);
+    await page.waitForTimeout(1_500);
+
+    const html = await exportedText();
+
+    expect(html).toContain("<main>");
+    expect(html).not.toContain("data-resume-pages");
+    await page.setViewportSize(DESKTOP);
+  });
+
+  it("S-288: warns before a PDF that would print a name blank, and offers DOCX and HTML", async () => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
+      waitUntil: "networkidle",
+    });
+    await page.waitForTimeout(1_000);
+    await page
+      .getByLabel(/full name/i)
+      .first()
+      .fill("山田太郎");
+    await page.waitForTimeout(800);
+
+    await captureNextBlob();
+    await exportAs(/^pdf$/i);
+
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: 10_000 });
+
+    expect(await dialog.textContent()).toContain(
+      "These characters will be blank in the PDF: Name (山 田 太 郎)",
+    );
+    expect(await dialog.getByRole("button", { name: /download docx/i }).isVisible()).toBe(true);
+    expect(await dialog.getByRole("button", { name: /download html/i }).isVisible()).toBe(true);
+
+    await dialog.getByRole("button", { name: /^cancel$/i }).click();
+    await dialog.waitFor({ state: "hidden" });
+
+    expect(await exportedText(), "cancelling must not download anything").toBe("");
+  });
+
+  async function downloadFromWarning(button: RegExp): Promise<{ type: string; head: string }> {
+    await captureNextBlob();
+    await exportAs(/^pdf$/i);
+
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: 10_000 });
+    await dialog.getByRole("button", { name: button }).click();
+    await dialog.waitFor({ state: "hidden" });
+    await page.waitForFunction(
+      () => Boolean((window as unknown as { __exportedBlob: Blob | null }).__exportedBlob),
+      undefined,
+      { timeout: 60_000 },
+    );
+
+    return page.evaluate(async () => {
+      const blob = (window as unknown as { __exportedBlob: Blob }).__exportedBlob;
+      const bytes = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      return { type: blob.type, head: String.fromCharCode(...bytes) };
+    });
+  }
+
+  it("S-288: 'Download PDF anyway' still downloads the PDF", async () => {
+    const file = await downloadFromWarning(/download pdf anyway/i);
+
+    expect(file.head).toBe("%PDF");
+  });
+
+  it("S-288: DOCX downloads from the warning", async () => {
+    const file = await downloadFromWarning(/download docx/i);
+
+    // A .docx is a zip.
+    expect(file.head).toBe("PK\u0003\u0004");
+  });
+
+  it("warns in the editor when the VeriWorkly rail cannot hold the contact list", async () => {
+    await page.setViewportSize(DESKTOP);
+    const letterId = await seedDocument("/editor/cover-letter/new?template=veriworkly-special");
+    await page.goto(`${server.origin}/editor/cover-letter/${letterId}`, {
+      waitUntil: "networkidle",
+    });
+    await page.waitForTimeout(1_000);
+
+    const notice = page.getByRole("note").filter({ hasText: /too long for the VeriWorkly rail/ });
+    const railOverflows = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll("article aside")].some(
+          (rail) => rail.getBoundingClientRect().width > 0 && rail.scrollHeight > rail.clientHeight,
+        ),
+      );
+
+    expect(await notice.count()).toBe(0);
+    expect(await railOverflows()).toBe(false);
+
+    const long = "Building 7, Unit 12, A Very Long Street Name That Goes On ".repeat(10);
+    await page.getByLabel("Location", { exact: true }).fill(long);
+    await page
+      .getByLabel("Website", { exact: true })
+      .fill(`https://example.com/${"a-long-path-segment/".repeat(25)}`);
+    await page.waitForTimeout(1_500);
+
+    expect(await notice.first().isVisible()).toBe(true);
+    // The estimate is not crying wolf: the rendered rail really is taller than the page.
+    expect(await railOverflows()).toBe(true);
+  });
+});

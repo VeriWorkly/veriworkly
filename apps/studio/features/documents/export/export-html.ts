@@ -4,10 +4,20 @@ import type { ResumeExportContent, ResumeExportLink } from "./resume-export-docu
 import { escapeHtml, getResumeFileBaseName } from "@/features/resume/services/resume-formatters";
 import { getResumeRenderStyle } from "@/features/documents/rendering/resume-rendering";
 import { getPdfFontEntries } from "@/features/documents/constants/fonts";
+import {
+  RESUME_PAGE_HEIGHT_PX,
+  RESUME_PAGE_WIDTH_PX,
+} from "@/features/resume/constants/resume-layout";
 
 import { downloadBlob } from "./download";
 import { EXPORT_EXCLUDE_ATTRIBUTE, EXPORT_ROOT_ATTRIBUTE } from "./export-dom-markers";
 import { getResumeExportDocument } from "./resume-export-document";
+
+/**
+ * Print behaviour the exported page's own stylesheet decides. Inlined, the screen's
+ * computed values (`break-after: auto`, `print-color-adjust: economy`) would outrank it.
+ */
+const PRINT_PROPERTY = /^(-webkit-)?(print-color-adjust|break-|page-break-)/;
 
 function getComputedStyleText(style: CSSStyleDeclaration): string {
   const declarations: string[] = [];
@@ -16,7 +26,7 @@ function getComputedStyleText(style: CSSStyleDeclaration): string {
     const propertyName = style.item(index);
     const propertyValue = style.getPropertyValue(propertyName);
 
-    if (!propertyValue) {
+    if (!propertyValue || PRINT_PROPERTY.test(propertyName)) {
       continue;
     }
 
@@ -256,20 +266,20 @@ async function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): 
   }
 
   const sourceNode = findExportSourceNode(printableNode);
+  // The layout width, which the editor's zoom (a CSS transform) does not change;
+  // `getBoundingClientRect` would hand a 78% zoom a page box 78% as wide as its content.
+  const width = sourceNode.offsetWidth;
+
+  // A phone's Content tab hides the preview (`display: none`), leaving nothing laid out to
+  // copy; the generated document is the same resume without the template's styling.
+  if (width === 0) return buildHtml(resume);
+
   const clonedResume = sourceNode.cloneNode(true) as HTMLElement;
-  const sourceRect = sourceNode.getBoundingClientRect();
 
   inlineComputedStyles(sourceNode, clonedResume);
 
-  // `img.src` reads back resolved: root-relative icon paths would not load from disk.
-  const sourceImages = Array.from(sourceNode.querySelectorAll("img"));
-  clonedResume.querySelectorAll("img").forEach((image, index) => {
-    const source = sourceImages[index];
-    if (source) image.setAttribute("src", source.src);
-  });
-
   clonedResume.style.margin = "0 auto";
-  clonedResume.style.width = `${Math.ceil(sourceRect.width)}px`;
+  clonedResume.style.width = `${width}px`;
   clonedResume.style.maxWidth = "100%";
   clonedResume.style.boxSizing = "border-box";
 
@@ -294,6 +304,34 @@ async function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): 
       background: #f6f7fb;
       display: flex;
       justify-content: center;
+      print-color-adjust: exact;
+    }
+    /* One preview page per sheet. The clone carries its computed size and gaps inline, hence
+       !important: the screen height includes the gaps and would print a blank sheet. */
+    @page {
+      size: ${RESUME_PAGE_WIDTH_PX}px ${RESUME_PAGE_HEIGHT_PX}px;
+      margin: 0;
+    }
+    @media print {
+      body {
+        padding: 0;
+        background: none;
+        display: block;
+      }
+      [${EXPORT_ROOT_ATTRIBUTE}] {
+        row-gap: 0 !important;
+        margin: 0 !important;
+        width: auto !important;
+        height: auto !important;
+      }
+      [${EXPORT_ROOT_ATTRIBUTE}] > * {
+        box-shadow: none !important;
+        margin: 0 !important;
+        break-after: page;
+      }
+      [${EXPORT_ROOT_ATTRIBUTE}] > :last-child {
+        break-after: auto;
+      }
     }
   </style>
 </head>

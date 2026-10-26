@@ -5,6 +5,8 @@ import type { CoverLetterPalette } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
+import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
+import { needsLastResortPdfFont } from "@/features/documents/export/pdf-unsupported-text";
 import { pxToPt } from "@/features/resume/constants/resume-layout";
 import { pdfFixedWidth } from "@/templates/shared/box";
 import { pdfText } from "@/templates/shared/text-tokens";
@@ -12,7 +14,6 @@ import { COVER_LETTER_SCALE as S } from "../tokens";
 
 import {
   buildProfessionalFlowItems,
-  getCoverLetterDocumentTitle,
   getCoverLetterState,
   type ProfessionalFlowItem,
 } from "../shared";
@@ -198,14 +199,17 @@ export function AtsEssentialCoverLetterPdf({ content }: { content: CoverLetterCo
   }
 
   return (
-    <Document title={getCoverLetterDocumentTitle(state)} language="en">
+    <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
         size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
         style={[
           styles.page,
           {
             backgroundColor: appearance.pageColor,
-            fontFamily: getPdfFontStack(appearance.fontFamily),
+            fontFamily: getPdfFontStack(
+              appearance.fontFamily,
+              needsLastResortPdfFont({ type: "COVER_LETTER", content }),
+            ),
             padding: pxToPt(appearance.pageMargin),
           },
         ]}

@@ -13,7 +13,7 @@ const PDFViewer = dynamic(() => import("@react-pdf/renderer").then((mod) => mod.
 import type { ResumeData } from "@/types/resume";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 
-import { registerPdfFont, registerPdfFontById } from "@/templates/pdf/fonts";
+import { registerCoverLetterPdfFont, registerPdfFont } from "@/templates/pdf/fonts";
 
 import { createCoverLetterPdfElement } from "@/templates/cover-letter/pdf";
 import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
@@ -90,7 +90,7 @@ export function PdfDebugClient({ documentId, templateId, type }: PdfDebugClientP
 
       if (coverLetter) {
         const content = coverLetter.content as CoverLetterContent;
-        registerPdfFontById(content.appearance?.fontFamily);
+        registerCoverLetterPdfFont(content);
 
         const element = await createCoverLetterPdfElement({ content, templateId });
 

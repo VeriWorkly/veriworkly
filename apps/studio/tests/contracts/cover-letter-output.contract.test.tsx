@@ -1,7 +1,10 @@
 import { inflateRawSync } from "node:zlib";
 
 import { renderToStaticMarkup } from "react-dom/server";
+import { renderToBuffer } from "@react-pdf/renderer";
 import { describe, expect, it } from "vitest";
+
+import { extractResume } from "@veriworkly/ats-engine/node";
 
 import type { CoverLetterContent, CoverLetterSectionId } from "@/features/cover-letter/types";
 
@@ -19,6 +22,9 @@ import {
   getCoverLetterState,
 } from "@/templates/cover-letter/shared";
 import { buildCoverLetterHtml } from "@/templates/cover-letter/web";
+import { veriworklyRailOverflows } from "@/templates/cover-letter/shared";
+import { createCoverLetterPdfElement } from "@/templates/cover-letter/pdf";
+import { registerPdfTestFonts } from "@/tests/utils/pdf";
 import { DOCUMENT_PAGE_HEIGHT_PX, DOCUMENT_PAGE_WIDTH_PX } from "@/templates/shared/page-geometry";
 
 import { layoutPages, type LayoutNode } from "../parity/pdf-layout";
@@ -121,9 +127,8 @@ describe("a paragraph is one paragraph in every renderer (S-026)", () => {
   it("prints the paragraph whole and a single P.S. in every output", async () => {
     for (const [name, output] of await allOutputs(content)) {
       expect(output, `${name} prints the paragraph unbroken`).toContain(WORDS_80);
-      // The preview markup holds the letter twice: the measuring probe and the page.
-      const copies = name.endsWith("preview") ? 2 : 1;
-      expect(output.match(/P\.S\./g), `${name} prints one "P.S."`).toHaveLength(copies);
+      // A preview renders only its measuring probe until the first measure lays out pages.
+      expect(output.match(/P\.S\./g), `${name} prints one "P.S."`).toHaveLength(1);
     }
   });
 });
@@ -544,5 +549,88 @@ describe("cover-letter text is drawn, never blank (S-033, S-034)", () => {
 
     expect(spacings).toContain(pxToPt(0.4));
     expect(spacings).not.toContain(0.4);
+  });
+});
+
+describe("the HTML export draws what the preview draws (S-298, S-302)", () => {
+  const withLink = (displayMode: "icon" | "url" | "icon-username") => {
+    const content = structuredClone(createDefaultCoverLetter("html").content) as CoverLetterContent;
+    content.links = {
+      displayMode,
+      items: [{ id: "l1", type: "github", label: "GitHub", url: "https://github.com/someone" }],
+    };
+    return content;
+  };
+
+  for (const templateId of coverLetterTemplateRegistry.ids) {
+    it(`S-298: ${templateId} wraps long emails and URLs instead of overflowing`, async () => {
+      const html = await buildCoverLetterHtml(withLink("url"), templateId);
+
+      expect(html).toMatch(/body\{[^}]*overflow-wrap:anywhere/);
+    });
+
+    it(`${templateId} prints an icon-only link as an icon, with its text as the name`, async () => {
+      const icon = await buildCoverLetterHtml(withLink("icon"), templateId);
+      const both = await buildCoverLetterHtml(withLink("icon-username"), templateId);
+      const url = await buildCoverLetterHtml(withLink("url"), templateId);
+
+      expect(icon).toMatch(
+        /<a class="icon-link" href="[^"]+" aria-label="GitHub"><svg[^>]*>.*?<\/svg><\/a>/,
+      );
+      expect(both).toMatch(/<svg[^>]*>.*?<\/svg><span>[^<]+<\/span><\/a>/);
+      expect(url).not.toContain("<svg");
+    });
+  }
+
+  it("S-302: VeriWorkly prints its rail and the letter's margins on every sheet", async () => {
+    const html = await buildCoverLetterHtml(withLink("url"), "veriworkly-special");
+    const print = html.match(/@media print\{(.*)\}<\/style>/)?.[1] ?? "";
+
+    expect(print).toContain("aside{position:fixed;top:0;bottom:0;left:0}");
+    expect(print).toMatch(/main\{[^}]*box-decoration-break:clone/);
+  });
+});
+
+describe("Minimalist is ATS-friendly, so its labels extract as words", () => {
+  it("prints 'COVER LETTER' and 'RE' unspaced in the PDF text layer", async () => {
+    registerPdfTestFonts();
+
+    const content = structuredClone(createDefaultCoverLetter("ats").content) as CoverLetterContent;
+    content.subject = "Product Engineer";
+
+    const element = await createCoverLetterPdfElement({ content, templateId: "minimalist" });
+    const { text } = await extractResume(await renderToBuffer(element), "pdf");
+
+    expect(text).toContain("COVER LETTER");
+    expect(text).not.toMatch(/C O V E R/);
+    expect(text).toMatch(/(^|\n)RE(\n|$)/);
+  }, 60_000);
+});
+
+describe("the editor warns when the VeriWorkly rail cannot hold the contact list", () => {
+  const manyLinks = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `l${index}`,
+      type: "portfolio" as const,
+      label: `Portfolio ${index}`,
+      url: `https://example.com/people/someone-with-a-long-handle/project-${index}`,
+    }));
+
+  it("stays quiet for the sample letter", () => {
+    expect(veriworklyRailOverflows(createDefaultCoverLetter("rail").content)).toBe(false);
+  });
+
+  it("warns for a contact list taller than the page", () => {
+    const content = structuredClone(createDefaultCoverLetter("rail").content);
+    content.links = { displayMode: "url", items: manyLinks(14) };
+
+    expect(veriworklyRailOverflows(content)).toBe(true);
+  });
+
+  it("counts an icon-only link as one icon row, not its address", () => {
+    const content = structuredClone(createDefaultCoverLetter("rail").content);
+    content.links = { displayMode: "icon", items: manyLinks(14) };
+
+    expect(veriworklyRailOverflows(content)).toBe(false);
   });
 });

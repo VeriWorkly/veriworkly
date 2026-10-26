@@ -37,9 +37,9 @@ export function useFlowPages<T extends ProfessionalFlowItem | VeriworklyFlowItem
   flowItems: T[],
   { fontFamily, pageColor, textColor, pageMargin, bodyStyle, railWidth }: FlowPagesOptions,
 ) {
-  const [pages, setPages] = useState<FlowFragment<T>[][]>(() => [
-    flowItems.map((item) => ({ item })),
-  ]);
+  // No pages until the first measure, one frame later: guessing "everything on page one"
+  // showed a long letter clipped at the page foot first.
+  const [pages, setPages] = useState<FlowFragment<T>[][]>([]);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const firstPrefixRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
@@ -52,6 +52,8 @@ export function useFlowPages<T extends ProfessionalFlowItem | VeriworklyFlowItem
       probe.className = "mx-auto max-w-full overflow-hidden";
       probe.style.height = px(S.pageHeight);
       probe.style.width = px(S.pageWidth);
+      // Inherited by every item measured in it, as on the page the template renders.
+      probe.style.overflowWrap = "anywhere";
 
       let root: HTMLElement = probe;
 

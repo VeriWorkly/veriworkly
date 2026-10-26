@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
-
 import { useMemo } from "react";
 
 import type { CSSProperties } from "react";
@@ -16,7 +14,6 @@ import {
 
 import {
   buildProfessionalFlowItems,
-  getCoverLetterDocumentTitle,
   getCoverLetterState,
   type CoverLetterPalette,
   type ProfessionalFlowItem,
@@ -26,14 +23,15 @@ import {
   normalizeLinkHref,
   getLinkDisplayText,
 } from "@/features/documents/rendering/resume-rendering";
-import { FONT_FAMILY_MAP, getFontStylesheetHref } from "@/features/documents/constants/fonts";
+import { FONT_FAMILY_MAP } from "@/features/documents/constants/fonts";
 import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { webFixedWidth, webFlexible } from "@/templates/shared/box";
 import { webText } from "@/templates/shared/text-tokens";
 import { COVER_LETTER_SCALE as S } from "../tokens";
 import { useFlowPages } from "../use-flow-pages";
+import { coverLetterHtmlDocument, htmlFont, htmlLink } from "../html";
 
-import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
+import { WebSocialIcon } from "@/templates/shared/web-social-icon";
 
 const px = (value: number) => `${value}px`;
 
@@ -184,7 +182,7 @@ function LetterHead({
           }}
         >
           {contact.map((item, index) => (
-            <p key={index} style={webText(tokens.contact)}>
+            <p key={index} style={{ ...webText(tokens.contact), textAlign: "right" }}>
               {item}
             </p>
           ))}
@@ -203,16 +201,7 @@ function LetterHead({
               }}
             >
               {linkDisplayMode !== "url" && (
-                <img
-                  alt=""
-                  aria-hidden="true"
-                  src={SOCIAL_ICON_SRC_BY_TYPE[link.type] || SOCIAL_ICON_SRC_BY_TYPE.custom}
-                  style={{
-                    display: "block",
-                    ...webFixedWidth(S.contact),
-                    height: px(S.contact),
-                  }}
-                />
+                <WebSocialIcon color={palette.strong} size={S.contact} type={link.type} />
               )}
 
               {linkDisplayMode !== "icon" && (
@@ -343,6 +332,8 @@ export function ExecutiveCoverLetterPreview({ content }: { content: CoverLetterC
     backgroundColor: appearance.pageColor,
     color: palette.text,
     fontFamily,
+    // A long email or URL wraps, as the PDF breaks it, instead of running out of its column.
+    overflowWrap: "anywhere",
     padding: px(appearance.pageMargin),
   };
 
@@ -420,7 +411,7 @@ export function buildExecutiveCoverLetterHtml(content: CoverLetterContent): stri
   const {
     appearance,
     palette,
-    tokens,
+    tokens: t,
     senderName,
     senderTitle,
     contact,
@@ -430,36 +421,33 @@ export function buildExecutiveCoverLetterHtml(content: CoverLetterContent): stri
     recipient,
     subject,
   } = state;
-  const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const fontHref = getFontStylesheetHref(appearance.fontFamily);
   const flowItems = buildProfessionalFlowItems(state.flow);
-
-  const t = tokens;
-  const font = (token: (typeof t)["body"]) =>
-    `font-size:${token.fontSize}px;line-height:${token.lineHeight}px;font-weight:${token.fontWeight};color:${token.color};`;
+  const font = htmlFont;
 
   const contactColumn =
     contact.length > 0 || renderedLinks.length > 0
       ? `<div class="contact">${contact
           .map((item) => `<p>${escapeHtml(item)}</p>`)
           .join("")}${renderedLinks
-          .map(
-            (link) =>
-              `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`,
-          )
+          .map((link) => htmlLink(link, linkDisplayMode, palette.strong, S.contact))
           .join("")}</div>`
       : "";
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(getCoverLetterDocumentTitle(state))}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
-*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:${palette.surface};color:${palette.text};font-family:${fontFamily}}.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{display:flex;border-top:${S.hairline}px solid ${palette.strong};border-bottom:${S.hairline}px solid ${palette.strong};padding-top:${S.subjectLabelGap}px;padding-bottom:${S.headerPadBottom}px}header .identity{flex:1 1 auto;min-width:0;text-align:center}header h1{${font(t.senderName)}letter-spacing:0.4px}header .identity p{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px;text-transform:uppercase}.contact{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 ${S.headerContactWidth}px;width:${S.headerContactWidth}px;margin-left:${S.headerColumnGap}px;row-gap:${S.headerRowGap}px}.contact p{${font(t.contact)}}.contact a{${font({ ...t.contact, color: palette.strong })}text-decoration:none}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}text-align:center}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 3}px}.meta .to p{${font(t.contact)}}.subject{border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.subjectTop}px;padding-bottom:${S.subjectPadY}px}.label{${font(t.label)}letter-spacing:${(t.label.letterSpacing ?? 0) + 1}px;text-transform:uppercase}.subject h2{${font(t.subject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-top:${S.hairline}px solid ${palette.border};border-bottom:${S.hairline}px solid ${palette.border};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.accent}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}</style></head><body><article class="page"><header><div class="identity">${senderName ? `<h1>${escapeHtml(senderName)}</h1>` : ""}${senderTitle ? `<p>${escapeHtml(senderTitle)}</p>` : ""}</div>${contactColumn}</header><section class="meta">${
-    date ? `<p class="date">${escapeHtml(date)}</p>` : ""
-  }${
-    recipient.length > 0
-      ? `<div class="to">${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>`
-      : ""
-  }</section>${
-    subject
-      ? `<section class="subject"><p class="label">Re</p><h2>${escapeHtml(subject)}</h2></section>`
-      : ""
-  }<main class="body">${flowItems.map(renderExecutiveHtmlItem).join("")}</main></article></body></html>`;
+  const css = `.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{display:flex;border-top:${S.hairline}px solid ${palette.strong};border-bottom:${S.hairline}px solid ${palette.strong};padding-top:${S.subjectLabelGap}px;padding-bottom:${S.headerPadBottom}px}header .identity{flex:1 1 auto;min-width:0;text-align:center}header h1{${font(t.senderName)}letter-spacing:0.4px}header .identity p{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px;text-transform:uppercase}.contact{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 ${S.headerContactWidth}px;width:${S.headerContactWidth}px;margin-left:${S.headerColumnGap}px;row-gap:${S.headerRowGap}px}.contact p{${font(t.contact)}text-align:right}.contact a{${font({ ...t.contact, color: palette.strong })}text-decoration:none}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}text-align:center}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 3}px}.meta .to p{${font(t.contact)}}.subject{border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.subjectTop}px;padding-bottom:${S.subjectPadY}px}.label{${font(t.label)}letter-spacing:${(t.label.letterSpacing ?? 0) + 1}px;text-transform:uppercase}.subject h2{${font(t.subject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-top:${S.hairline}px solid ${palette.border};border-bottom:${S.hairline}px solid ${palette.border};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.accent}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
+
+  return coverLetterHtmlDocument(
+    state,
+    css,
+    `<article class="page"><header><div class="identity">${senderName ? `<h1>${escapeHtml(senderName)}</h1>` : ""}${senderTitle ? `<p>${escapeHtml(senderTitle)}</p>` : ""}</div>${contactColumn}</header><section class="meta">${
+      date ? `<p class="date">${escapeHtml(date)}</p>` : ""
+    }${
+      recipient.length > 0
+        ? `<div class="to">${recipient.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>`
+        : ""
+    }</section>${
+      subject
+        ? `<section class="subject"><p class="label">Re</p><h2>${escapeHtml(subject)}</h2></section>`
+        : ""
+    }<main class="body">${flowItems.map(renderExecutiveHtmlItem).join("")}</main></article>`,
+  );
 }

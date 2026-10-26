@@ -5,6 +5,8 @@ import type { CoverLetterPalette } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
+import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
+import { needsLastResortPdfFont } from "@/features/documents/export/pdf-unsupported-text";
 import { pxToPt } from "@/features/resume/constants/resume-layout";
 import { pdfFixedWidth, pdfFlexible } from "@/templates/shared/box";
 import { pdfText } from "@/templates/shared/text-tokens";
@@ -12,7 +14,6 @@ import { COVER_LETTER_SCALE as S } from "../tokens";
 
 import {
   buildProfessionalFlowItems,
-  getCoverLetterDocumentTitle,
   getCoverLetterState,
   type ProfessionalFlowItem,
 } from "../shared";
@@ -28,9 +29,17 @@ const PAGE_HEIGHT_PT = pxToPt(S.pageHeight);
 
 const EXECUTIVE_MARKER = "—";
 
-function createStyles(palette: CoverLetterPalette, tokens: CoverLetterTokens, pageMargin: number) {
+function createStyles(
+  palette: CoverLetterPalette,
+  tokens: CoverLetterTokens,
+  pageMargin: number,
+  hasContactColumn: boolean,
+) {
   const contentWidth = S.pageWidth - pageMargin * 2;
-  const identityWidth = contentWidth - S.headerContactWidth - S.headerColumnGap;
+  // Without a contact column the identity takes the whole row, as it does in the preview.
+  const identityWidth = hasContactColumn
+    ? contentWidth - S.headerContactWidth - S.headerColumnGap
+    : contentWidth;
   const listWidth = contentWidth - S.listPadX * 2;
 
   const column = (width: number) => ({ width: pxToPt(width), maxWidth: pxToPt(width) });
@@ -69,7 +78,7 @@ function createStyles(palette: CoverLetterPalette, tokens: CoverLetterTokens, pa
       textAlign: "center",
       textTransform: "uppercase",
     },
-    contact: { ...pdfText(tokens.contact), ...column(S.headerContactWidth) },
+    contact: { ...pdfText(tokens.contact), ...column(S.headerContactWidth), textAlign: "right" },
     contactLink: { ...pdfText(tokens.contact), color: palette.strong, textDecoration: "none" },
     linkRow: { alignItems: "center", columnGap: pxToPt(4), flexDirection: "row" },
     linkIcon: { ...pdfFixedWidth(S.contact), height: pxToPt(S.contact) },
@@ -141,7 +150,12 @@ export function ExecutiveCoverLetterPdf({ content }: { content: CoverLetterConte
     recipient,
     subject,
   } = state;
-  const styles = createStyles(palette, tokens, appearance.pageMargin);
+  const styles = createStyles(
+    palette,
+    tokens,
+    appearance.pageMargin,
+    contact.length > 0 || state.renderedLinks.length > 0,
+  );
 
   const paragraphSpacing = { marginBottom: pxToPt(appearance.paragraphSpacing) };
   const links = state.renderedLinks;
@@ -217,14 +231,17 @@ export function ExecutiveCoverLetterPdf({ content }: { content: CoverLetterConte
   }
 
   return (
-    <Document title={getCoverLetterDocumentTitle(state)} language="en">
+    <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
         size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
         style={[
           styles.page,
           {
             backgroundColor: appearance.pageColor,
-            fontFamily: getPdfFontStack(appearance.fontFamily),
+            fontFamily: getPdfFontStack(
+              appearance.fontFamily,
+              needsLastResortPdfFont({ type: "COVER_LETTER", content }),
+            ),
             padding: pxToPt(appearance.pageMargin),
           },
         ]}

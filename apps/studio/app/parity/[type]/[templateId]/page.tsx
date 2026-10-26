@@ -16,8 +16,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * Test-only surface: `tests/parity/preview-parity.test.ts` drives a headless
- * Chromium at this route and asserts the boxes it measures against the ones
+ * Test-only surface: `tests/parity/resume-parity.test.ts` and
+ * `tests/parity/cover-letter-parity.test.ts` drive a headless
+ * Chromium at this route and assert the boxes it measures against the ones
  * react-pdf lays out for the same document.
  *
  * It renders sample data with no auth, no store and no chrome, so it must never

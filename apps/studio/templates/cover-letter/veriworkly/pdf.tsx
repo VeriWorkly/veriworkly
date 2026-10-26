@@ -5,18 +5,15 @@ import type { CoverLetterPalette, CoverLetterState } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
+import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
+import { needsLastResortPdfFont } from "@/features/documents/export/pdf-unsupported-text";
 import { pxToPt } from "@/features/resume/constants/resume-layout";
 import { pdfFixedWidth, pdfFlexible } from "@/templates/shared/box";
 import { pdfText } from "@/templates/shared/text-tokens";
 import { BULLET_MARKER } from "@/templates/resume/shared/typography";
 import { COVER_LETTER_SCALE as S } from "../tokens";
 
-import {
-  buildVeriworklyFlowItems,
-  getCoverLetterDocumentTitle,
-  getCoverLetterState,
-  type VeriworklyFlowItem,
-} from "../shared";
+import { buildVeriworklyFlowItems, getCoverLetterState, type VeriworklyFlowItem } from "../shared";
 
 import {
   normalizeLinkHref,
@@ -344,10 +341,18 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
   }
 
   return (
-    <Document title={getCoverLetterDocumentTitle(state)} language="en">
+    <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
         size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
-        style={[styles.page, { fontFamily: getPdfFontStack(appearance.fontFamily) }]}
+        style={[
+          styles.page,
+          {
+            fontFamily: getPdfFontStack(
+              appearance.fontFamily,
+              needsLastResortPdfFont({ type: "COVER_LETTER", content }),
+            ),
+          },
+        ]}
       >
         {renderSidebar()}
 

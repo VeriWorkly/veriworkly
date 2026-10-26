@@ -5,6 +5,8 @@ import type { CoverLetterPalette } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
+import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
+import { needsLastResortPdfFont } from "@/features/documents/export/pdf-unsupported-text";
 import { pxToPt } from "@/features/resume/constants/resume-layout";
 import { pdfFixedWidth } from "@/templates/shared/box";
 import { pdfText } from "@/templates/shared/text-tokens";
@@ -12,7 +14,6 @@ import { COVER_LETTER_SCALE as S } from "../tokens";
 
 import {
   buildProfessionalFlowItems,
-  getCoverLetterDocumentTitle,
   getCoverLetterState,
   type ProfessionalFlowItem,
 } from "../shared";
@@ -50,7 +51,14 @@ function createStyles(palette: CoverLetterPalette, tokens: CoverLetterTokens, pa
       borderBottomWidth: pxToPt(S.headerRule),
       paddingBottom: pxToPt(S.headerPadBottom),
     },
-    label: { ...pdfText(tokens.label), ...column(contentWidth), marginBottom: pxToPt(6) },
+    // Untracked: Minimalist is sold as ATS-friendly, and tracked capitals extract as
+    // "C O V E R  L E T T E R". The preview and the HTML match.
+    label: {
+      ...pdfText(tokens.label),
+      ...column(contentWidth),
+      letterSpacing: 0,
+      marginBottom: pxToPt(6),
+    },
     name: { ...pdfText(tokens.senderName), ...column(contentWidth), fontWeight: 600 },
     title: {
       ...pdfText(tokens.senderTitle),
@@ -94,7 +102,7 @@ function createStyles(palette: CoverLetterPalette, tokens: CoverLetterTokens, pa
       paddingBottom: pxToPt(S.subjectPadY),
       paddingTop: pxToPt(S.subjectPadY),
     },
-    subjectLabel: { ...pdfText(tokens.label), ...column(contentWidth) },
+    subjectLabel: { ...pdfText(tokens.label), ...column(contentWidth), letterSpacing: 0 },
     subjectText: {
       ...pdfText(tokens.subject),
       ...column(contentWidth),
@@ -219,14 +227,17 @@ export function MinimalistCoverLetterPdf({ content }: { content: CoverLetterCont
   }
 
   return (
-    <Document title={getCoverLetterDocumentTitle(state)} language="en">
+    <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
         size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
         style={[
           styles.page,
           {
             backgroundColor: appearance.pageColor,
-            fontFamily: getPdfFontStack(appearance.fontFamily),
+            fontFamily: getPdfFontStack(
+              appearance.fontFamily,
+              needsLastResortPdfFont({ type: "COVER_LETTER", content }),
+            ),
             padding: pxToPt(appearance.pageMargin),
           },
         ]}

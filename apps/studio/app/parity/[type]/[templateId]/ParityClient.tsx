@@ -51,10 +51,17 @@ export function ParityClient({
 
   // Template renderers are fetched on demand, so readiness has to include them —
   // otherwise the harness can latch `data-parity-ready` while the page is still empty
-  // and measure nothing. Both loads are memoized by the registry, so resolving the
-  // cover letter component here costs no extra fetch beyond what CoverLetterPreview does.
-  const ResumeTemplate = useTemplateComponent(loadTemplateComponentById, templateId);
-  const coverLetterTemplate = useTemplateComponent(coverLetterTemplateRegistry.loadWeb, templateId);
+  // and measure nothing. Only this type's registry loads (`null` skips the other); the
+  // registry memoizes, so resolving the cover letter component here costs no extra fetch
+  // beyond what CoverLetterPreview does.
+  const ResumeTemplate = useTemplateComponent(
+    loadTemplateComponentById,
+    type === "resume" ? templateId : null,
+  );
+  const coverLetterTemplate = useTemplateComponent(
+    coverLetterTemplateRegistry.loadWeb,
+    type === "cover-letter" ? templateId : null,
+  );
 
   const templateReady = type === "resume" ? Boolean(ResumeTemplate) : Boolean(coverLetterTemplate);
   const ready = fontsReady && templateReady;

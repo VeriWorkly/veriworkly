@@ -69,6 +69,7 @@ const ResumeToolbar = memo(function ResumeToolbar({
 
   const {
     activeDownload,
+    pdfWarning,
     onDownloadPdf,
     onDownloadDocx,
     onDownloadHtml,
@@ -154,6 +155,7 @@ const ResumeToolbar = memo(function ResumeToolbar({
           onDownloadText={onDownloadText}
           onDownloadJson={onDownloadJson}
           activeDownload={activeDownload}
+          pdfWarning={pdfWarning}
           onDownloadMarkdown={onDownloadMarkdown}
         />
 
