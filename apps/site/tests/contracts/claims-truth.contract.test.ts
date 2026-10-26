@@ -29,6 +29,12 @@ describe("copy stays free of the claims the audit found false", () => {
     [/stateless (?:ai|prompt)/i, "FC-13 / W-019"],
     [/encrypted postgresql/i, "W-019: storage encryption is the provider's, not ours"],
     [/sort and rank applications/i, "FC-15: /ats-engine says an ATS does not rank"],
+    [/(?:add|paid|get)[^."]{0,40}\bportfolio hosting/i, "W-069: subdomain hosting is free"],
+    [/creator pro portfolio hosting/i, "W-069"],
+    [/(?:need active|no custom)\s+subdomain hosting/i, "W-069"],
+    [/unused monthly subscription credits/i, "W-070: annual plans reset monthly too"],
+    [/monthly subscription (?:ai )?credits do not roll over/i, "W-070"],
+    [/refresh each billing period/i, "W-070"],
   ];
 
   const SHIPPED_DIRS = ["app", "components", "config", "features", "public"];

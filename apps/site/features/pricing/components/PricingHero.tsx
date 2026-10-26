@@ -59,9 +59,10 @@ const PricingHero = ({
 
           <div className="border-border border-t pt-6">
             <p className="text-muted max-w-md text-base leading-7">
-              VeriWorkly is free to use: the editor, all six export formats and ATS checks cost
-              nothing. Paid passes and plans add AI writing credits and portfolio hosting. The
-              passes expire on their own; the bundles renew until you cancel.
+              VeriWorkly is free to use: the editor, all six export formats, ATS checks and a
+              portfolio on a veriworkly.com subdomain cost nothing. Paid passes and plans add AI
+              writing credits and premium portfolio features. The passes expire on their own; the
+              bundles renew until you cancel.
             </p>
             <div className="text-accent mt-6 flex items-center gap-3 text-xs font-bold uppercase">
               <ShieldCheck className="size-4" aria-hidden="true" /> Secure checkout by Dodo Payments
@@ -99,7 +100,7 @@ const PricingHero = ({
             cadence="one-time purchase"
             description="A quick pass to publish your portfolio and tailor resumes for a specific application."
             features={[
-              "Creator Pro portfolio hosting (opens at launch)",
+              "Creator Pro portfolio features (opens at launch)",
               "150 AI writing credits",
               "ATS document scanning",
               "Automatically expires",
@@ -116,7 +117,7 @@ const PricingHero = ({
             cadence="one-time purchase"
             description="Runway to update your story, apply broadly, and publish with full confidence."
             features={[
-              "Creator Pro portfolio hosting (opens at launch)",
+              "Creator Pro portfolio features (opens at launch)",
               "400 AI writing credits",
               "ATS document scanning",
               "Automatically expires",
@@ -134,7 +135,7 @@ const PricingHero = ({
             cadence={bundlePrice.cadence}
             description="The complete workspace for active job searches, unlocking AI document tools."
             features={[
-              "Creator Pro portfolio hosting (opens at launch)",
+              "Creator Pro portfolio features (opens at launch)",
               "1,000 monthly AI credits",
               "Full ATS Tailoring suite",
               "Cancel anytime",

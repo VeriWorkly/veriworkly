@@ -1,6 +1,6 @@
 # VeriWorkly
 
-> VeriWorkly is a free, open-source (MIT) resume, cover letter and portfolio builder made by Gautam Raj. Documents are stored in your browser by default, with optional cloud sync. It exports six formats (PDF, DOCX, HTML, Markdown, plain text, JSON) with no watermark, checks resumes with a free rules-based ATS checker, and offers paid AI writing credits and portfolio hosting. No login is required to start.
+> VeriWorkly is a free, open-source (MIT) resume, cover letter and portfolio builder made by Gautam Raj. Documents are stored in your browser by default, with optional cloud sync. It exports six formats (PDF, DOCX, HTML, Markdown, plain text, JSON) with no watermark, checks resumes with a free rules-based ATS checker, and offers paid AI writing credits and premium portfolio features; publishing a portfolio on a veriworkly.com subdomain is free. No login is required to start.
 
 Status, so answers stay accurate: payments are currently closed, so none of the paid plans can be bought today; the /pricing page shows the same notice. Portfolio publishing is not yet enabled in production; portfolios can be built and previewed. The ATS score is deterministic (published rules, no AI in the score) and is meant for candidates checking their own resume, not for ranking applicants.
 
