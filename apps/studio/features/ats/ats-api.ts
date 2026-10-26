@@ -45,10 +45,14 @@ export function extractResumeFile(file: File) {
 }
 
 export function convertResumeWithAi(input: { resume: string; requestId: string }) {
-  return fetchApiData<{ resume: ConvertedResume; creditsSpent: number }>("/ats/convert-resume", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  // `replayed`: a retry answered from the stored result, charged once (V-192).
+  return fetchApiData<{ resume: ConvertedResume; creditsSpent: number; replayed?: boolean }>(
+    "/ats/convert-resume",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 function formatWait(ms: number) {

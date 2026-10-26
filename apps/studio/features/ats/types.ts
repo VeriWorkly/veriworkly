@@ -39,6 +39,8 @@ export type AtsResult = {
     priorityOrder: string[];
   } | null;
   creditsSpent: number;
+  /** A retry answered from the stored analysis: `creditsSpent` was charged once, earlier (V-192). */
+  replayed?: boolean;
   quota: {
     tier: "anonymous" | "free" | "subscriber";
     limit: number;
@@ -46,8 +48,8 @@ export type AtsResult = {
     remaining: number;
     resetsAt: string;
     canConvertResume: boolean;
-    /** `false` when this account cannot use AI parse repair; absent on servers that predate it. */
-    canRepair?: boolean;
+    /** `false` when this account cannot use AI parse repair. */
+    canRepair: boolean;
     /** `null` while the server's AI pricing is unavailable. */
     pricing: AtsPricing | null;
     extract: { limit: number; used: number; remaining: number };

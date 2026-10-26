@@ -589,10 +589,24 @@ describe("admin copy says what the server does", () => {
         title: "CV",
         type: "RESUME",
         visibility: "PRIVATE",
+        moderatorPrivate: true,
         deleted: false,
       }),
     );
     expect(privateDoc).toMatch(/Lift takedown/);
+
+    // V-199: a document its owner kept private has no takedown to lift.
+    const ownerPrivate = await renderAdminText(
+      createElement(DocumentModerationActions, {
+        documentId: "d1",
+        title: "CV",
+        type: "RESUME",
+        visibility: "PRIVATE",
+        moderatorPrivate: false,
+        deleted: false,
+      }),
+    );
+    expect(ownerPrivate).not.toMatch(/Lift takedown/);
 
     // A visibility change on a portfolio also suspends its publication under a moderation lock
     // (`takeDownPortfolioPublication`), so "unlisted" cannot let the owner publish again.
@@ -650,7 +664,9 @@ describe("admin copy says what the server does", () => {
     ].map((match) => match[1]);
     expect(serverRaw.length).toBeGreaterThan(0);
 
-    const { hasChargeableSubscription } = await import("@/app/admin/users/[id]/UserAdminActions");
+    const { chargeableSubscription } = await import("@/app/admin/users/[id]/UserAdminActions");
+    const hasChargeableSubscription = (...args: Parameters<typeof chargeableSubscription>) =>
+      Boolean(chargeableSubscription(...args));
     const now = Date.parse("2026-10-26T12:00:00Z");
     const row = (overrides: Record<string, unknown>) => ({
       status: "CANCELED" as const,
@@ -677,6 +693,121 @@ describe("admin copy says what the server does", () => {
       ),
     ).toBe(false);
     expect(hasChargeableSubscription([row({})], now)).toBe(false);
+  });
+});
+
+describe("SV verification follow-ups", () => {
+  it("SV S-336: a webhook with no account reads 'Deleted or unmatched account' and links nowhere", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { default: AdminUserLink } = await import("@/components/admin/AdminUserLink");
+    const html = renderToStaticMarkup(
+      createElement(AdminUserLink, { user: null, emptyLabel: "Deleted or unmatched account" }),
+    );
+
+    expect(html).toContain("Deleted or unmatched account");
+    expect(html).not.toContain("href");
+
+    const source = await readFile(
+      path.join(process.cwd(), "app/admin/billing/webhooks/page.tsx"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/row\.user \?/);
+    expect(source).toContain('emptyLabel="Deleted or unmatched account"');
+  });
+
+  it("SV S-334: the disabled delete says why, from the chargeable subscription", async () => {
+    const { default: UserAdminActions } = await import("@/app/admin/users/[id]/UserAdminActions");
+    const end = "2026-12-01T00:00:00.000Z";
+    const detail = (cancelAtPeriodEnd: boolean) =>
+      ({
+        user: {
+          id: "u1",
+          email: "jane@example.com",
+          name: null,
+          username: null,
+          role: "USER",
+          emailVerified: true,
+          autoSyncEnabled: false,
+          _count: { sessions: 1 },
+        },
+        subscriptions: [
+          {
+            id: "s1",
+            productKey: "portfolio_pro",
+            status: "ACTIVE",
+            rawStatus: "active",
+            cancelAtPeriodEnd,
+            currentPeriodEnd: end,
+            lastWebhookAt: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      }) as never;
+
+    const cancelled = await renderAdminText(
+      createElement(UserAdminActions, { detail: detail(true) }),
+    );
+    expect(cancelled).toMatch(/Renewal is already cancelled; delete is available after/);
+    expect(cancelled).toContain("Dec 1, 2026");
+
+    const renewing = await renderAdminText(
+      createElement(UserAdminActions, { detail: detail(false) }),
+    );
+    expect(renewing).toMatch(/Cancel it at Dodo first/);
+    expect(renewing).toContain("Dec 1, 2026");
+  });
+
+  it("SV S-336: a commission whose referred account is gone says so", async () => {
+    vi.resetModules();
+    vi.doMock("@/features/admin/services/admin-server", () => ({
+      fetchAdminCommissions: async () => ({
+        items: [
+          {
+            id: "c1",
+            amountCents: 500,
+            currency: "USD",
+            rateBps: 2000,
+            status: "PENDING",
+            reason: null,
+            createdAt: "2026-10-01T00:00:00.000Z",
+            affiliate: { id: "a1", name: "Ann", email: "ann@example.com", affiliateCode: "ANN" },
+            referral: null,
+          },
+        ],
+        total: 1,
+        limit: 25,
+        offset: 0,
+        totalAmountCents: 500,
+      }),
+    }));
+
+    try {
+      const { default: Page } = await import("@/app/admin/affiliates/commissions/page");
+      const tree = await Page({ searchParams: Promise.resolve({}) });
+      const props = (
+        tree as {
+          props: Parameters<typeof import("@/components/admin/AdminListPage").default>[0];
+        }
+      ).props;
+      const column = props.columns.find((item) => item.key === "referred");
+      const { renderToStaticMarkup } = await import("react-dom/server");
+
+      expect(renderToStaticMarkup(column!.render(props.page.items[0]) as never)).toContain(
+        "Deleted account",
+      );
+    } finally {
+      vi.doUnmock("@/features/admin/services/admin-server");
+    }
+  });
+
+  it("SV: a credit adjustment sends its idempotency key in the header too", async () => {
+    const calls = mockFetch(() => ({ status: 200, body: { data: {} } }));
+    const { adjustAdminCredits } = await import("@/features/admin/services/admin-actions");
+
+    await adjustAdminCredits("u1", 10, "goodwill", "key-9");
+
+    expect(new Headers(calls[0].init.headers).get("Idempotency-Key")).toBe("key-9");
+    expect(JSON.parse(calls[0].init.body as string).idempotencyKey).toBe("key-9");
   });
 });
 
@@ -775,5 +906,5 @@ describe("admin dashboard page", () => {
     } finally {
       vi.doUnmock("@/features/admin/services/admin-server");
     }
-  });
+  }, 60_000); // imports the whole admin page fresh, slow on a cold, loaded run
 });

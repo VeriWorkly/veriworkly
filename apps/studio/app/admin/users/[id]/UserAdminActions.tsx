@@ -21,6 +21,7 @@ import type { AdminUserDetail, Role } from "@/features/admin/types/admin-types";
 
 import { parseCreditAmount } from "@/app/admin/billing/credit-amount";
 import { pluralize } from "@/lib/pluralize";
+import { LocalDate } from "@/components/LocalDate";
 
 /** The provider statuses that can still charge the card (server `CHARGEABLE_RAW_STATUSES`). */
 const CHARGEABLE_RAW_STATUSES = new Set(["active", "on_hold", "past_due", "paused"]);
@@ -31,16 +32,13 @@ const PENDING_CHECKOUT_LIFETIME_MS = 24 * 60 * 60 * 1000;
  * The server's deletion guard (`findChargeableSubscription`): a subscription the provider can
  * still charge blocks deleting the account, including one already cancelled at period end.
  */
-export function hasChargeableSubscription(
-  subscriptions: Array<
-    Pick<
-      AdminUserDetail["subscriptions"][number],
-      "status" | "rawStatus" | "lastWebhookAt" | "createdAt"
-    >
-  >,
-  now = Date.now(),
-) {
-  return subscriptions.some((subscription) => {
+export function chargeableSubscription<
+  T extends Pick<
+    AdminUserDetail["subscriptions"][number],
+    "status" | "rawStatus" | "lastWebhookAt" | "createdAt"
+  > & { currentPeriodEnd?: string | null },
+>(subscriptions: T[], now = Date.now()) {
+  const chargeable = subscriptions.filter((subscription) => {
     if (subscription.rawStatus === null) {
       return subscription.status === "ACTIVE" || subscription.status === "PAST_DUE";
     }
@@ -50,6 +48,11 @@ export function hasChargeableSubscription(
     }
     return CHARGEABLE_RAW_STATUSES.has(subscription.rawStatus);
   });
+
+  // The server names the one whose period ends last.
+  return chargeable.sort(
+    (a, b) => Date.parse(b.currentPeriodEnd ?? "") - Date.parse(a.currentPeriodEnd ?? "") || 0,
+  )[0];
 }
 
 /**
@@ -72,7 +75,8 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
 
   const isProtectedAdmin = user.role === "ADMIN";
   // The server refuses the delete (409) while this holds; deleting cancels nothing at Dodo.
-  const hasLiveSubscription = hasChargeableSubscription(detail.subscriptions);
+  const liveSubscription = chargeableSubscription(detail.subscriptions);
+  const hasLiveSubscription = Boolean(liveSubscription);
 
   return (
     <Panel className="space-y-5 rounded-xl p-4">
@@ -236,10 +240,32 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
           </p>
         </AdminActionDialog>
 
-        {hasLiveSubscription ? (
+        {liveSubscription ? (
           <p className="text-warning basis-full text-xs">
-            Delete is unavailable: this account has a subscription Dodo can still charge. Cancel it
-            at Dodo (Cancel at period end on Billing) and delete the account once it has ended.
+            Delete is unavailable: this account has a subscription Dodo can still charge.{" "}
+            {liveSubscription.cancelAtPeriodEnd ? (
+              <>
+                Renewal is already cancelled; delete is available after{" "}
+                {liveSubscription.currentPeriodEnd ? (
+                  <LocalDate value={liveSubscription.currentPeriodEnd} />
+                ) : (
+                  "the paid period ends"
+                )}
+                .
+              </>
+            ) : (
+              <>
+                Cancel it at Dodo first (Cancel at period end on Billing), then delete the account
+                once the paid period ends
+                {liveSubscription.currentPeriodEnd ? (
+                  <>
+                    {" "}
+                    on <LocalDate value={liveSubscription.currentPeriodEnd} />
+                  </>
+                ) : null}
+                .
+              </>
+            )}
           </p>
         ) : null}
 

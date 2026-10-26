@@ -20,11 +20,8 @@ export function isPaymentsClosedError(error: unknown) {
   return error instanceof ApiRequestError && error.status === 403;
 }
 
-/**
- * The checkout lock: an earlier session for an overlapping product is still open. The server
- * sends it without a code and keeps this phrase stable for the studio (`CHECKOUT_ACTIVE_MESSAGE`).
- */
-const CHECKOUT_LOCK_PHRASE = "A billing checkout is already active";
+/** A recurring plan change the server offers instead of a second subscription (V-202). */
+export type PlanUpgrade = { productKey: ProductKey; interval: "monthly" | "annual" };
 
 export type CheckoutFailure =
   | { kind: "payments-closed"; message: string }
@@ -34,13 +31,16 @@ export type CheckoutFailure =
   | { kind: "manage-billing"; message: string }
   /** A live subscription overlaps the request; the message says how to switch. */
   | { kind: "overlap"; message: string; suggestedProductKey: ProductKey | null }
+  /** The live plan can be upgraded in place: offer that change, not a new checkout. */
+  | { kind: "upgrade"; message: string; upgrade: PlanUpgrade }
   | { kind: "checkout-locked"; message: string }
   | { kind: "other"; message: string };
 
 /**
- * What a failed checkout means. The server names each overlap 409 by `details.code`
- * (`checkoutOverlap` in billingService); only the lock may be cancelled and retried, because
- * every other 409 answers the retry the same way.
+ * What a failed checkout or plan change means. The server names each 409 by `details.code`
+ * (`checkoutOverlap` and `planChangeError` in billingService); only the checkout lock
+ * (`CHECKOUT_IN_PROGRESS`) may be cancelled and retried, because every other 409 answers the
+ * retry the same way.
  */
 export function describeCheckoutError(error: unknown, fallbackMessage: string): CheckoutFailure {
   if (isPaymentsClosedError(error)) return { kind: "payments-closed", message: PAYMENTS_OPEN_SOON };
@@ -54,26 +54,43 @@ export function describeCheckoutError(error: unknown, fallbackMessage: string): 
     case "ALREADY_INCLUDED":
       return { kind: "already-have", message };
     case "PAYMENT_OUTSTANDING":
+    case "SUBSCRIPTION_ENDING":
     case "SUBSCRIPTION_PAUSED":
       return { kind: "manage-billing", message };
+    case "CHECKOUT_IN_PROGRESS":
+      return { kind: "checkout-locked", message };
+    case "UPGRADE_AVAILABLE": {
+      const upgrade = (error.details as { upgrade?: Partial<PlanUpgrade> }).upgrade;
+
+      if (
+        upgrade &&
+        isProductKey(upgrade.productKey) &&
+        (upgrade.interval === "monthly" || upgrade.interval === "annual")
+      ) {
+        return {
+          kind: "upgrade",
+          message,
+          upgrade: { productKey: upgrade.productKey, interval: upgrade.interval },
+        };
+      }
+      return { kind: "overlap", message, suggestedProductKey: "bundle" };
+    }
     case "SUBSCRIPTION_OVERLAP": {
       const suggested = (error.details as { suggestedProductKey?: unknown }).suggestedProductKey;
 
       return {
         kind: "overlap",
         message,
-        suggestedProductKey:
-          suggested === "ai_credits" || suggested === "portfolio_pro" || suggested === "bundle"
-            ? suggested
-            : null,
+        suggestedProductKey: isProductKey(suggested) ? suggested : null,
       };
     }
   }
 
-  return {
-    kind: !error.code && message.startsWith(CHECKOUT_LOCK_PHRASE) ? "checkout-locked" : "other",
-    message,
-  };
+  return { kind: "other", message };
+}
+
+function isProductKey(value: unknown): value is ProductKey {
+  return value === "ai_credits" || value === "portfolio_pro" || value === "bundle";
 }
 
 export type CheckoutInterval = keyof CatalogProduct["prices"];

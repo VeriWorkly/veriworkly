@@ -50,9 +50,9 @@ function serverOverlapConflicts() {
 
   return [
     ...body.matchAll(
-      /new ApiError\(\s*409,\s*(`[^`]*`),\s*details\("([A-Z_]+)", (null|"[a-z_]+")\)/g,
+      /new ApiError\(\s*409,\s*(`[^`]*`),\s*(\{\s*\.\.\.)?details\("([A-Z_]+)", (null|"[a-z_]+")\)(,\s*upgrade: \{ productKey: "bundle" as const)?/g,
     ),
-  ].map(([, literal, code, suggested]) => {
+  ].map(([, literal, , code, suggested, upgrade]) => {
     const suggestedProductKey = suggested === "null" ? null : suggested.slice(1, -1);
 
     return {
@@ -62,19 +62,24 @@ function serverOverlapConflicts() {
         code,
         activeProductKey: "portfolio_pro",
         suggestedProductKey,
+        ...(upgrade ? { upgrade: { productKey: "bundle", interval: "annual" } } : {}),
       }),
     };
   });
 }
 
-function serverCheckoutLockMessage() {
-  const match = billingServiceSource.match(/const CHECKOUT_ACTIVE_MESSAGE =\s*"([^"]+)"/);
-  if (!match) throw new Error("CHECKOUT_ACTIVE_MESSAGE not found in billingService.ts");
+/** The checkout lock as the server sends it: its message and `details` (V-198). */
+function serverCheckoutLock() {
+  const message = billingServiceSource.match(/const CHECKOUT_ACTIVE_MESSAGE =\s*"([^"]+)"/)?.[1];
+  const code = billingServiceSource.match(
+    /const CHECKOUT_IN_PROGRESS = \{ code: "([A-Z_]+)" \}/,
+  )?.[1];
+  if (!message || !code) throw new Error("the checkout lock was not found in billingService.ts");
 
-  return match[1];
+  return new ApiRequestError(message, 409, { code });
 }
 
-/** The other checkout 409s, which carry no code: a session still in flight, not a lock to clear. */
+/** The other checkout 409s, which carry no code: a payment in flight, not a lock to clear. */
 function serverOtherCheckoutConflicts() {
   const messages = [
     ...billingServiceSource.matchAll(/new ApiError\(\s*409,\s*("[^"]*"|`[^`]*`),?\s*\)/g),
@@ -84,7 +89,7 @@ function serverOtherCheckoutConflicts() {
     )
     .filter((message) => /checkout|payment for/i.test(message));
 
-  expect(messages.length).toBeGreaterThanOrEqual(3);
+  expect(messages.length).toBeGreaterThanOrEqual(2);
   return messages;
 }
 
@@ -239,9 +244,7 @@ describe("api request contract", () => {
       kind: "payments-closed",
       message: PAYMENTS_OPEN_SOON,
     });
-    expect(isPaymentsClosedError(new ApiRequestError(serverCheckoutLockMessage(), 409))).toBe(
-      false,
-    );
+    expect(isPaymentsClosedError(serverCheckoutLock())).toBe(false);
   });
 
   it("S-230 S-275: every overlap 409 the server builds is branched on its code, never offered as a checkout to cancel", () => {
@@ -250,6 +253,7 @@ describe("api request contract", () => {
       ALREADY_SUBSCRIBED: "already-have",
       ALREADY_INCLUDED: "already-have",
       SUBSCRIPTION_OVERLAP: "overlap",
+      UPGRADE_AVAILABLE: "upgrade",
       PAYMENT_OUTSTANDING: "manage-billing",
       SUBSCRIPTION_PAUSED: "manage-billing",
     };
@@ -266,14 +270,21 @@ describe("api request contract", () => {
       if (failure.kind === "overlap") {
         expect(failure.suggestedProductKey).toBe(conflict.suggestedProductKey);
       }
+      if (failure.kind === "upgrade") {
+        expect(failure.upgrade).toEqual({ productKey: "bundle", interval: "annual" });
+      }
     }
     expect(conflicts.some((conflict) => conflict.suggestedProductKey === "bundle")).toBe(true);
   });
 
-  it("S-275: only the server's checkout-lock message offers to cancel the earlier checkout", () => {
+  it("S-275 V-198: the checkout lock is recognised by its code, not its wording", () => {
+    const lock = serverCheckoutLock();
+
+    expect(describeCheckoutError(lock, "x").kind).toBe("checkout-locked");
     expect(
-      describeCheckoutError(new ApiRequestError(serverCheckoutLockMessage(), 409), "x").kind,
-    ).toBe("checkout-locked");
+      describeCheckoutError(new ApiRequestError(lock.message, 409, { code: "OTHER" }), "x").kind,
+    ).toBe("other");
+    expect(describeCheckoutError(new ApiRequestError(lock.message, 409), "x").kind).toBe("other");
 
     for (const message of serverOtherCheckoutConflicts()) {
       expect(describeCheckoutError(new ApiRequestError(message, 409), "x"), message).toEqual({

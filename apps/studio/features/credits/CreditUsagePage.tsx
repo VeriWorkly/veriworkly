@@ -5,6 +5,7 @@ import type { CreditTransaction, CreditWallet } from "@/features/credits/types";
 import type { BillingSummary } from "@/features/billing/types";
 import type { AtsPricing } from "@/features/ats/types";
 import { LocalDate } from "@/components/LocalDate";
+import { PLAN_NAMES } from "@/features/billing/checkout-rules";
 
 /** The server keeps the newest entries only (`CREDIT_HISTORY_LIMIT`); there is no paging. */
 const HISTORY_LIMIT = 50;
@@ -29,38 +30,36 @@ const ACTION_LABELS: Record<string, string> = {
   admin_adjustment: "Adjustment",
 };
 
-/**
- * A grant, named by its server-minted request id, whose prefix says where the credits came from.
- * A plan allowance's reason names the product; passes are sold under the bundle, so a bundle
- * allowance is named for both. A support grant's reason is typed by an admin and never shown.
- */
-function grantLabel(item: CreditTransaction) {
-  const requestId = item.requestId ?? "";
-  const reason = item.reason ?? "";
+const PRODUCT_NAMES = new Set(Object.values(PLAN_NAMES));
 
-  if (requestId.startsWith("admin-credit:")) return "Credits added by support";
-  if (requestId.startsWith("payment-credit:") && reason) return reason;
-  if (requestId.startsWith("annual-credit:")) {
-    const [, product, month] = reason.match(/^(.+) monthly credits \((month \d+ of \d+)\)$/) ?? [];
-    return product ? `${product} annual plan credits, ${month}` : "Annual plan credits";
-  }
-  if (requestId.startsWith("subscription-credit:")) {
-    const product = reason.endsWith(" credit allowance") ? reason.slice(0, -17) : "";
-    if (product === "Job Hunter Bundle") return "Job Hunter Bundle or pass credits";
-    return product ? `${product} plan credits` : "Plan credits";
-  }
+/**
+ * A grant, named from the reason the server wrote for it: a pack's name, a plan allowance or an
+ * annual plan's month. Only those shapes, naming a product the server sells, are read; any other
+ * reason is free text and never shown. Passes are sold under the bundle, so a bundle allowance is
+ * named for both.
+ */
+function grantLabel(reason: string) {
+  const annual = reason.match(/^(.+) monthly credits \((month \d+ of \d+)\)$/);
+  const allowance = reason.match(/^(.+) credit allowance$/);
+
+  if (/^\d+ extra credits$/.test(reason)) return reason;
+  if (annual && PRODUCT_NAMES.has(annual[1]))
+    return `${annual[1]} annual plan credits, ${annual[2]}`;
+  if (allowance?.[1] === PLAN_NAMES.bundle) return "Job Hunter Bundle or pass credits";
+  if (allowance && PRODUCT_NAMES.has(allowance[1])) return `${allowance[1]} plan credits`;
   return "Credits added";
 }
 
 /**
  * What a ledger row is, in product language. Free text an admin typed is never shown: it is
- * internal, so every unlabelled row reads as a plain adjustment.
+ * internal, so a support grant reads as such and every unlabelled row as a plain adjustment.
  */
 function entryLabel(item: CreditTransaction) {
+  if (item.action === "admin_adjustment" && item.amount > 0) return "Credits added by support";
   if (item.action && ACTION_LABELS[item.action]) return ACTION_LABELS[item.action];
   if (item.type === "EXPIRATION") return "Credits expired";
   if (item.type === "REFUND") return "Credits returned";
-  return item.type === "GRANT" ? grantLabel(item) : "Adjustment";
+  return item.type === "GRANT" ? grantLabel(item.reason ?? "") : "Adjustment";
 }
 
 function range({ min, max }: { min: number; max: number }) {

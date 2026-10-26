@@ -20,9 +20,9 @@ export async function getBillingServerData<T>(path: string): Promise<T | null> {
 export const PROGRAM_UNAVAILABLE = Symbol("program-unavailable");
 
 /**
- * A growth-program read (affiliate, ambassador). The server answers 503 for the whole program
- * while its flag is off; that is "the program is closed", not "you have not joined". The
- * feature-flag middleware sends no error code, so its message is the only marker.
+ * A growth-program read (affiliate, ambassador). The server answers 503 `PROGRAM_DISABLED` for the
+ * whole program while its flag is off (V-193); that is "the program is closed", not "you have not
+ * joined". Any other 503 is an outage.
  */
 export async function getProgramServerData<T>(
   path: string,
@@ -33,8 +33,7 @@ export async function getProgramServerData<T>(
     if (
       error instanceof ApiRequestError &&
       error.status === 503 &&
-      !error.code &&
-      error.message.includes("is not available yet")
+      error.code === "PROGRAM_DISABLED"
     ) {
       return PROGRAM_UNAVAILABLE;
     }

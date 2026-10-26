@@ -134,9 +134,24 @@ describe("server fetch contract", () => {
     await expect(getBillingServerData("/billing/me")).rejects.toMatchObject({ status: 500 });
   });
 
-  it("S-087: a program switched off on the server is 'unavailable', not an empty dashboard", async () => {
-    respondWith(503, { message: "The affiliate program is not available yet. Check back soon." });
+  it("S-087 V-193: a program switched off on the server is 'unavailable', not an empty dashboard", async () => {
+    const { readFileSync } = await import("node:fs");
+    const flagSource = readFileSync(
+      `${process.cwd()}/../server/src/middleware/featureFlag.ts`,
+      "utf8",
+    );
+    const code = flagSource.match(/code: "([A-Z_]+)"/)?.[1];
+    expect(code).toBe("PROGRAM_DISABLED");
+
+    respondWith(503, {
+      message: "The affiliate program is not available yet. Check back soon.",
+      details: { code },
+    });
     await expect(getProgramServerData("/affiliates/me")).resolves.toBe(PROGRAM_UNAVAILABLE);
+
+    // Switched off is known by its code, not by the wording: the same text without it is an outage.
+    respondWith(503, { message: "The affiliate program is not available yet. Check back soon." });
+    await expect(getProgramServerData("/affiliates/me")).rejects.toMatchObject({ status: 503 });
 
     respondWith(503, {
       message: "Authentication is temporarily unavailable",

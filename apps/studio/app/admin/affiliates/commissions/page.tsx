@@ -54,7 +54,9 @@ const columns: Array<AdminTableColumn<AdminCommissionRow>> = [
     header: "Referred user",
     hideOnMobile: true,
     render: (row) => (
-      <span className="text-muted text-xs">{row.referral?.referredUser.email ?? "—"}</span>
+      <span className="text-muted text-xs">
+        {row.referral?.referredUser.email ?? "Deleted account"}
+      </span>
     ),
   },
   {

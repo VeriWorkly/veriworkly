@@ -5,9 +5,9 @@ export interface ApiKeyRecord {
   isActive: boolean;
   createdAt: string;
   lastUsed: string | null;
-  /** Optional until `GET /api-keys` selects them; without them the list can only tell active from not. */
-  expiresAt?: string | null;
-  revokedAt?: string | null;
+  /** Sent by `GET /api-keys` (V-195), so a revoked or expired key is never read as admin-disabled. */
+  expiresAt: string | null;
+  revokedAt: string | null;
 }
 
 export interface ApiKeyDetailRecord {

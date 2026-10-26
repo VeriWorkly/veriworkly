@@ -79,7 +79,7 @@ import {
 import type { BillingSummary } from "@/features/billing/types";
 import { saveResume, readResumeById } from "@/features/resume/services/resume-service";
 import { describeSaveResult } from "@/features/documents/services/save-failure-message";
-import { createRequestId } from "@/features/ai/ai-api";
+import { requestIdFor, settleRequestId, type PendingAiRequest } from "@/features/ai/ai-api";
 import { cn } from "@veriworkly/ui";
 
 /**
@@ -130,6 +130,11 @@ export function AtsWorkspace() {
   // instead of looking like a balance that is still loading.
   const [wallet, setWallet] = useState<CreditWallet | "error" | null>(null);
   const reportRef = useRef<HTMLElement>(null);
+  // One request id per paid attempt (V-192): a retry after a lost response is answered from the
+  // stored result instead of being charged again. A success, an answered error or a changed
+  // input starts a new one.
+  const pendingAnalysisRef = useRef<PendingAiRequest["current"]>(null);
+  const pendingConversionRef = useRef<PendingAiRequest["current"]>(null);
   const fieldIds = useId();
 
   const refreshWallet = useCallback(() => {
@@ -184,17 +189,20 @@ export function AtsWorkspace() {
     setConverted(null);
     const scanInput = resumeDocument ?? resume;
     const targetDescription = useJobUrl ? undefined : jobDescription || undefined;
+    const analysis = {
+      resume: scanInput,
+      jobDescription: targetDescription,
+      jobUrl: useJobUrl ? jobUrl || undefined : undefined,
+      fetchJobUrl: useJobUrl,
+      layout,
+      file: fileInfo,
+      repairParse: repairParse && canRepair && !resumeDocument,
+    };
     try {
       const next = withAi
         ? await runAtsAnalysis({
-            resume: scanInput,
-            jobDescription: targetDescription,
-            jobUrl: useJobUrl ? jobUrl || undefined : undefined,
-            fetchJobUrl: useJobUrl,
-            requestId: createRequestId(),
-            layout,
-            file: fileInfo,
-            repairParse: repairParse && canRepair && !resumeDocument,
+            ...analysis,
+            requestId: requestIdFor(pendingAnalysisRef, JSON.stringify(analysis)),
           })
         : await runAtsCheck({
             resume: scanInput,
@@ -202,9 +210,11 @@ export function AtsWorkspace() {
             layout,
             file: fileInfo,
           });
+      if (withAi) settleRequestId(pendingAnalysisRef);
       setResult(next);
       setQuota(next.quota);
     } catch (cause) {
+      if (withAi) settleRequestId(pendingAnalysisRef, cause);
       const failure = describeAtsError(cause, "ATS scan failed.");
       setError(failure);
       if (failure.quota) setQuota(failure.quota);
@@ -228,10 +238,19 @@ export function AtsWorkspace() {
       const limit = await conversionLimitMessage();
       if (limit) return setError({ message: limit, buyCredits: false });
 
-      const response = await convertResumeWithAi({ resume, requestId: createRequestId() });
+      const response = await convertResumeWithAi({
+        resume,
+        requestId: requestIdFor(pendingConversionRef, resume),
+      });
+      settleRequestId(pendingConversionRef);
       setConverted(response.resume);
-      toast.success(`Resume draft prepared. ${response.creditsSpent} credits used.`);
+      toast.success(
+        response.replayed
+          ? "Resume draft recovered from your last request. No extra credits used."
+          : `Resume draft prepared. ${response.creditsSpent} credits used.`,
+      );
     } catch (cause) {
+      settleRequestId(pendingConversionRef, cause);
       setError(describeAtsError(cause, "Resume conversion failed."));
     } finally {
       setBusy(null);

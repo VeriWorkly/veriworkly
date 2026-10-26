@@ -52,10 +52,30 @@ const GithubIcon = ({ className }: { className?: string }) => (
 interface QuotaDetails {
   /** A subscription or pass (the server's paid predicate); credit packs alone are not. */
   isPaid: boolean;
-  remaining: number;
-  limit: number;
+  /** No limit at all (a paid LinkedIn import); `limit` and `remaining` are then null. */
+  unlimited: boolean;
+  remaining: number | null;
+  limit: number | null;
   resetsInSeconds: number;
   connectedUsername: string | null;
+  /** GitHub only: whether a GitHub login is linked, whatever GitHub answers about its token. */
+  hasGithubAccount?: boolean;
+}
+
+/**
+ * Whether a free account can import its own GitHub profile: no GitHub login linked, one linked
+ * but unreadable (its token no longer works), or ready.
+ */
+export function githubImportState(quota: QuotaDetails) {
+  if (quota.connectedUsername) return "ready";
+  return quota.hasGithubAccount === false ? "needs-sign-in" : "unreadable";
+}
+
+/** The allowance line, from the server's own figures (V-197): paid GitHub has a real daily cap. */
+export function importAllowanceLabel(tab: "linkedin" | "github", quota: QuotaDetails) {
+  if (quota.unlimited) return "No import limit";
+  if (quota.isPaid) return `${quota.remaining} / ${quota.limit} left today`;
+  return `${quota.remaining} / ${quota.limit} left · rolling ${tab === "linkedin" ? "30 days" : "24 hours"}`;
 }
 
 interface QuotaResponse {
@@ -186,7 +206,9 @@ export function ImportProfileModal({
 
   const currentTabQuota = quota ? quota[activeTab] : null;
   const isPaidUser = currentTabQuota?.isPaid ?? false;
-  const isTabBlocked = !isPaidUser && currentTabQuota !== null && currentTabQuota.remaining <= 0;
+  // Paid GitHub has a real daily cap too, so the block follows the quota, not the plan.
+  const isTabBlocked =
+    currentTabQuota !== null && !currentTabQuota.unlimited && (currentTabQuota.remaining ?? 1) <= 0;
   const atDocumentLimit = quota !== null && !isPaidUser && resumeCount >= FREE_DOCUMENTS_PER_TYPE;
   const linkedinCost = linkedinImportCostNote(importCost, creditsAvailable);
   const accessBadge = isPaidUser
@@ -411,16 +433,11 @@ export function ImportProfileModal({
                   ) : null}
                 </div>
 
-                {isPaidUser ? (
-                  <span className="text-accent font-semibold">
-                    {activeTab === "linkedin" ? "No import limit" : "Up to 50 a day"}
-                  </span>
-                ) : currentTabQuota ? (
+                {currentTabQuota ? (
                   <span
-                    className={`font-semibold ${currentTabQuota.remaining > 0 ? "text-accent" : "text-destructive"}`}
+                    className={`font-semibold ${(currentTabQuota.remaining ?? 1) > 0 ? "text-accent" : "text-destructive"}`}
                   >
-                    {currentTabQuota.remaining} / {currentTabQuota.limit} left · rolling{" "}
-                    {activeTab === "linkedin" ? "30 days" : "24 hours"}
+                    {importAllowanceLabel(activeTab, currentTabQuota)}
                   </span>
                 ) : null}
               </div>
@@ -623,17 +640,33 @@ export function ImportProfileModal({
                           )}
                         </div>
 
-                        {!isPaidUser && currentTabQuota && !currentTabQuota.connectedUsername ? (
+                        {!isPaidUser &&
+                        currentTabQuota &&
+                        githubImportState(currentTabQuota) !== "ready" ? (
                           <div className="flex gap-2 rounded-xl border border-amber-500/10 bg-amber-500/5 p-3 text-xs leading-5 text-amber-500">
                             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                             <div>
-                              <p className="font-bold">GitHub import needs a GitHub sign-in</p>
-                              <p className="text-muted-foreground mt-0.5 text-[11px]">
-                                You didn&apos;t sign in with GitHub, so there is no GitHub profile
-                                of yours to read. Sign in with GitHub to import your own profile,
-                                use LinkedIn import, or get a subscription or pass to import any
-                                public GitHub profile.
-                              </p>
+                              {githubImportState(currentTabQuota) === "needs-sign-in" ? (
+                                <>
+                                  <p className="font-bold">GitHub import needs a GitHub sign-in</p>
+                                  <p className="text-muted-foreground mt-0.5 text-[11px]">
+                                    You didn&apos;t sign in with GitHub, so there is no GitHub
+                                    profile of yours to read. Sign in with GitHub to import your own
+                                    profile, use LinkedIn import, or get a subscription or pass to
+                                    import any public GitHub profile.
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="font-bold">Your GitHub account could not be read</p>
+                                  <p className="text-muted-foreground mt-0.5 text-[11px]">
+                                    Your account is linked to GitHub, but GitHub did not let us read
+                                    your profile. Sign out and sign in with GitHub again, use
+                                    LinkedIn import, or get a subscription or pass to import any
+                                    public GitHub profile.
+                                  </p>
+                                </>
+                              )}
                               <div className="mt-2 flex flex-wrap gap-2">
                                 <Button
                                   size="sm"

@@ -464,6 +464,8 @@ export interface AdminDocumentRow {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  /** A moderator made it private, a takedown the owner cannot undo (V-199). */
+  moderatorPrivate: boolean;
   user: AdminUserRef;
   _count: { shareLinks: number };
 }

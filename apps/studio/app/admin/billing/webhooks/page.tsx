@@ -52,12 +52,9 @@ const columns: Array<AdminTableColumn<AdminWebhookRow>> = [
     key: "user",
     header: "Account",
     hideOnMobile: true,
-    render: (row) =>
-      row.user ? (
-        <AdminUserLink user={row.user} />
-      ) : (
-        <span className="text-muted text-xs">Unmatched</span>
-      ),
+    // A null user is an event for a deleted account or one no account matched; the server cannot
+    // tell the two apart.
+    render: (row) => <AdminUserLink user={row.user} emptyLabel="Deleted or unmatched account" />,
   },
   {
     key: "status",

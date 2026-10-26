@@ -16,16 +16,18 @@ const AdminUserLink = ({
   user,
   href,
   detail,
+  emptyLabel = "Deleted account",
 }: {
   user: AdminUserRef | null;
   /** Defaults to the user's admin page. */
   href?: string;
   /** The second line; defaults to the email. */
   detail?: ReactNode;
+  /** Said for a row with no account at all; a deleted account's placeholder is always "Deleted account". */
+  emptyLabel?: string;
 }) => {
-  if (!user || isDeletedAccount(user)) {
-    return <span className="text-muted text-xs">Deleted account</span>;
-  }
+  if (!user) return <span className="text-muted text-xs">{emptyLabel}</span>;
+  if (isDeletedAccount(user)) return <span className="text-muted text-xs">Deleted account</span>;
 
   return (
     <div className="min-w-0">

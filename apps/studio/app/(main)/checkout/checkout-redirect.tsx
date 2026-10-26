@@ -15,6 +15,7 @@ import {
   PLAN_NAMES,
 } from "@/features/billing/checkout-rules";
 import { recordPurchaseBaseline } from "@/features/billing/purchase-baseline";
+import { UpgradeToBundle } from "@/features/billing/UpgradeToBundle";
 
 export function CheckoutRedirect({
   productKey,
@@ -84,6 +85,17 @@ export function CheckoutRedirect({
             <h1 className="text-2xl font-black tracking-tight">You already have this</h1>
             <p className="text-muted mt-3 text-sm leading-6">{error.message}</p>
             <Button asChild className="mt-7 w-full">
+              <Link href="/billing">Open billing</Link>
+            </Button>
+          </>
+        ) : error?.kind === "upgrade" ? (
+          <>
+            <h1 className="text-2xl font-black tracking-tight">
+              Upgrade to the {PLAN_NAMES[error.upgrade.productKey]}
+            </h1>
+            <p className="text-muted mt-3 text-sm leading-6">{error.message}</p>
+            <UpgradeToBundle upgrade={error.upgrade} className="mt-7 w-full" />
+            <Button asChild variant="secondary" className="mt-2 w-full">
               <Link href="/billing">Open billing</Link>
             </Button>
           </>
