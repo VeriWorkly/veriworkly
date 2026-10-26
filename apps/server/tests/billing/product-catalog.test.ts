@@ -11,7 +11,7 @@ vi.mock("#config", () => ({
 
 vi.mock("#services/aiPolicy", () => ({ publicAiActionPolicy: () => ({}) }));
 
-const { isCreditPackKey } = await import("../../src/services/productCatalog");
+const { isCreditPackKey } = await import("../../src/services/productCatalog.js");
 
 describe("isCreditPackKey (V-152)", () => {
   it("accepts the catalog keys only", () => {

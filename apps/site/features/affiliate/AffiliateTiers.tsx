@@ -7,7 +7,7 @@ const TiersList = [
   {
     name: "Tier 1: Starter",
     commission: "2% Payout",
-    requirement: "0–9 Active Referrals",
+    requirement: "0–9 Paid Conversions",
     description:
       "Perfect for sharing with friends and peers. Earn recurring commission from day one.",
     style: "bg-card/40 border-border/80 text-foreground",
@@ -16,7 +16,7 @@ const TiersList = [
   {
     name: "Tier 2: Growth",
     commission: "3% Payout",
-    requirement: "10–49 Active Referrals",
+    requirement: "10–49 Paid Conversions",
     description: "Accelerate your earnings. Unlock higher payout rates as your network grows.",
     style: "bg-blue-500/5 border-blue-500/30 dark:border-blue-400/20 text-foreground",
     accent: "text-blue-600 dark:text-blue-400",
@@ -25,7 +25,7 @@ const TiersList = [
   {
     name: "Tier 3: Partner",
     commission: "5% Payout",
-    requirement: "50+ Active Referrals",
+    requirement: "50+ Paid Conversions",
     description:
       "Designed for content creators, bootcamps, and coaches. Premium payouts & support.",
     style: "bg-zinc-950 border-zinc-800 text-white dark:bg-zinc-900/60 dark:border-zinc-800/80",
@@ -64,8 +64,8 @@ const AffiliateTiers = () => {
           </h2>
           <p className="text-muted max-w-[30ch] text-base leading-relaxed">
             Our three-tier partner program pays a higher commission rate as you refer more users.
-            Tier upgrades are applied by us on review rather than automatically, so reach out once
-            you have hit a threshold.
+            You move up automatically at 10 and 50 paid conversions; a refunded purchase does not
+            count.
           </p>
         </div>
 

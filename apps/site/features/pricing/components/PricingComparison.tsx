@@ -24,8 +24,9 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
             </h2>
           </div>
           <p className="border-border text-muted border-t pt-5 text-base leading-7">
-            Core resume and portfolio editors stay free forever. Upgrade when you need active
-            subdomain hosting, custom SEO configurations, or advanced AI content tailoring.
+            Core resume and portfolio editors stay free forever, and so does publishing on a
+            veriworkly.com subdomain. Upgrade when you need premium portfolio templates, badge
+            removal, custom SEO configurations, or advanced AI content tailoring.
           </p>
         </div>
 
@@ -49,10 +50,10 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
                 Creator Pro
               </span>
               <span className="text-center" role="columnheader">
-                AI Standalone
+                AI Credits
               </span>
               <span className="text-accent text-center" role="columnheader">
-                Bundle
+                Job Hunter Bundle
               </span>
             </div>
 

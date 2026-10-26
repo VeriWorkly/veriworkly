@@ -14,7 +14,9 @@ export function RestrictedResults({ report }: { report: AtsRestrictedReport }) {
   const locked = [
     report.missingKeywordCount > 0
       ? `Which ${report.missingKeywordCount} job-description ${report.missingKeywordCount === 1 ? "term is" : "terms are"} missing, and which ${report.matchedKeywordCount} you already cover`
-      : "Full matched and missing keyword lists once you add a job description",
+      : report.jobMatchScore === null
+        ? "Full matched and missing keyword lists once you add a job description"
+        : `The ${report.matchedKeywordCount} job-description ${report.matchedKeywordCount === 1 ? "term" : "terms"} your resume already covers`,
     report.parsedRoleCount > 0
       ? `“What the ATS sees”: the ${report.parsedRoleCount} work-history ${report.parsedRoleCount === 1 ? "row" : "rows"} recovered, with employer, title, dates and tenure`
       : "“What the ATS sees”: the work history a parser can recover from your document",

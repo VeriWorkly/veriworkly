@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { chatResponse, stubChatApi } from "./helpers/chatApi";
-import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs";
+import { chatResponse, stubChatApi } from "./helpers/chatApi.js";
+import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs.js";
 
 const reserve = vi.fn();
 const commitReservation = vi.fn();
@@ -82,6 +82,8 @@ const report = {
   jobMatchScore: 70,
   matchedKeywords: ["typescript"],
   missingKeywords: ["kubernetes"],
+  matchedKeywordGroups: { hard: ["typescript"], soft: [] },
+  missingKeywordGroups: { hard: ["kubernetes"], soft: [] },
   parsingWarnings: [],
   strengths: ["Clear structure"],
   failedChecks: [],
@@ -92,6 +94,10 @@ const report = {
   checksTotal: 0,
   wordCount: 300,
   parsed: { ...EMPTY_PARSED, name: "Avery Shah", email: "avery@example.com" },
+  locale: { languages: [], region: null, unsupported: null },
+  engine: { version: "test", policy: "test" },
+  requirements: [],
+  advice: [],
 };
 
 const insights = {
@@ -116,7 +122,7 @@ describe("ATS AI service", () => {
 
   it("uses the job-page-specific private prompt for online analysis", async () => {
     api.fetch.mockResolvedValue(chatResponse(insights, { id: "analysis_1" }));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     await AtsAiService.analyze("user_1", "request_online", "Resume text", "Job text", report, true);
 
@@ -127,7 +133,7 @@ describe("ATS AI service", () => {
 
   it("withholds the candidate's contact details from the analysis model", async () => {
     api.fetch.mockResolvedValue(chatResponse(insights));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     await AtsAiService.analyze(
       "user_1",
@@ -148,7 +154,7 @@ describe("ATS AI service", () => {
     api.fetch.mockResolvedValue(
       chatResponse({ ...insights, keywordOpportunities: ["Kubernetes", "Blockchain"] }),
     );
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     const result = await AtsAiService.analyze(
       "user_1",
@@ -170,7 +176,7 @@ describe("ATS AI service", () => {
         usage: { prompt_tokens: 50, completion_tokens: 9 },
       }),
     );
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     await AtsAiService.analyze("user_1", "request_usage", "Resume", undefined, report, false);
 
@@ -208,7 +214,7 @@ describe("ATS AI service", () => {
         { id: "conversion_1" },
       ),
     );
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     const result = await AtsAiService.convertResume(
       "user_1",
@@ -234,7 +240,7 @@ describe("ATS AI service", () => {
         experience: [{ company: "Initech", role: "Engineer" }],
       }),
     );
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     const result = await AtsAiService.convertResume(
       "user_1",
@@ -272,7 +278,7 @@ describe("ATS AI service", () => {
         skills: null,
       }),
     );
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     const result = await AtsAiService.convertResume(
       "user_1",
@@ -299,7 +305,7 @@ describe("ATS AI service", () => {
 
   it("releases conversion credits when provider output is invalid", async () => {
     api.fetch.mockResolvedValue(chatResponse("{", { id: "conversion_2" }));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     await expect(
       AtsAiService.convertResume("user_1", "request_invalid", "Old resume"),
@@ -312,7 +318,7 @@ describe("ATS AI service", () => {
     const original = config.ai.apiKey;
     config.ai.apiKey = "";
     try {
-      const { AtsAiService } = await import("../../src/services/ats/ai");
+      const { AtsAiService } = await import("../../src/services/ats/ai.js");
       await expect(
         AtsAiService.convertResume("user_1", "request_nokey", "Old resume"),
       ).rejects.toMatchObject({ statusCode: 503 });
@@ -331,7 +337,7 @@ describe("ATS AI service", () => {
     });
     api.fetch.mockResolvedValueOnce(chatResponse(insights));
     api.fetch.mockResolvedValueOnce(chatResponse({ basics: {} }));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     await expect(
       AtsAiService.analyze("user_1", "request_a", "Resume", undefined, report, false),
@@ -344,7 +350,7 @@ describe("ATS AI service", () => {
 
   it("records unknown token counts as null, not as a free call", async () => {
     api.fetch.mockResolvedValue(chatResponse(insights)); // no usage block
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     await AtsAiService.analyze("user_1", "request_nousage", "Resume", undefined, report, false);
 
@@ -373,7 +379,7 @@ describe("ATS AI service — the request signal", () => {
 
   it("passes the signal to the analysis call", async () => {
     api.fetch.mockResolvedValue(chatResponse(insights, { id: "analysis_1" }));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
     const controller = new AbortController();
 
     await AtsAiService.analyze(
@@ -399,7 +405,7 @@ describe("ATS AI service — the request signal", () => {
   it("releases the reservation and answers 504 when the signal aborts mid-call", async () => {
     // The provider never answers; the engine stops waiting on it the moment the signal fires.
     api.fetch.mockImplementation(() => new Promise(() => undefined));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
     const controller = new AbortController();
 
     const pending = AtsAiService.analyze(
@@ -421,7 +427,7 @@ describe("ATS AI service — the request signal", () => {
 
   it("does not retry an aborted call, whatever the route's retries say", async () => {
     api.fetch.mockImplementation(() => new Promise(() => undefined));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
     const controller = new AbortController();
 
     const pending = AtsAiService.convertResume("u1", "r3", "resume text", controller.signal);
@@ -436,7 +442,7 @@ describe("ATS AI service — the request signal", () => {
   it("still reports the provider failure when releasing the reservation fails", async () => {
     api.fetch.mockRejectedValue(new TypeError("fetch failed"));
     releaseReservation.mockRejectedValue(new Error("connection refused"));
-    const { AtsAiService } = await import("../../src/services/ats/ai");
+    const { AtsAiService } = await import("../../src/services/ats/ai.js");
 
     await expect(AtsAiService.convertResume("u1", "r4", "resume text")).rejects.toMatchObject({
       statusCode: 502,

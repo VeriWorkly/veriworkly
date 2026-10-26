@@ -409,9 +409,9 @@ export function EngineCTA() {
             <code className="text-foreground font-mono text-sm">/ats/check</code>,{" "}
             <code className="text-foreground font-mono text-sm">/ats/extract</code> and{" "}
             <code className="text-foreground font-mono text-sm">/ats/analyze</code>. They share your
-            account&apos;s scan quota: 2 scans a day on a free account and 300 per billing period on
-            a paid plan. There is no separate developer plan yet. For volume, run the library
-            yourself: it is free.
+            account&apos;s scan quota: 2 scans a day on a free account and 300 a month with any AI
+            credits. There is no separate developer plan yet. For volume, run the library yourself:
+            it is free.
           </p>
           <a
             href={ENGINE_LINKS.apiReference}

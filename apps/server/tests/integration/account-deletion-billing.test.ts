@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import type { Prisma } from "@prisma/client";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
@@ -542,7 +543,7 @@ describe("billing records outlive the account (V-183, owner decision 5)", () => 
     const other = await createUserWithSession();
     const sub = await subscription(target.id, { status: "CANCELED", rawStatus: "cancelled" });
 
-    const event = (userId: string | null, data: Record<string, unknown>) =>
+    const event = (userId: string | null, data: Prisma.InputJsonObject) =>
       prisma.billingWebhookEvent.create({
         data: {
           providerEventId: `evt_${randomUUID()}`,

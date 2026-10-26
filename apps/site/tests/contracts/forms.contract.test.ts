@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { validate } from "@/features/contact/components/ContactForm";
@@ -18,5 +21,17 @@ describe("contact form validation (W-050)", () => {
         message: "A question about credits.",
       }),
     ).toEqual({});
+  });
+});
+
+describe("contact form timestamp (SV-01)", () => {
+  const source = readFileSync(
+    join(__dirname, "..", "..", "features", "contact", "components", "ContactForm.tsx"),
+    "utf8",
+  );
+
+  it("sets `_ts` at first render, so a submit before any effect runs is not a 400", () => {
+    expect(source).toMatch(/useState\(\(\) => Date\.now\(\)\)/);
+    expect(source).not.toMatch(/useRef<number \| null>\(null\)/);
   });
 });

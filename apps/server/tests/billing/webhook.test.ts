@@ -182,7 +182,7 @@ describe("billing webhook processing and idempotency", () => {
   };
 
   it("successfully processes and marks webhook as PROCESSED", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_1",
@@ -206,7 +206,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("handles retry for FAILED event, increments retryCount, and attempts reprocessing", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     // First, simulate P2002 duplicate key violation on create
     const prismaError = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
@@ -253,7 +253,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("returns duplicate: true and skips processing if existing event is PROCESSED", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     const prismaError = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
       code: "P2002",
@@ -275,7 +275,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("ignores older events and does not overwrite newer subscription state in DB", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     // Existing subscription lastWebhookAt is T2 (newer)
     prismaMock.subscription.findUnique.mockResolvedValue({
@@ -308,7 +308,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("applies a distinct event that shares the row's lastWebhookAt timestamp (V-013)", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     prismaMock.subscription.findUnique.mockResolvedValue({
       id: "sub_1",
@@ -341,7 +341,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("takes a token-checked, renewable 60 s lock and releases it by compare-and-delete (V-014, V-127)", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_1",
@@ -370,7 +370,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("treats a PROCESSING row younger than the lock TTL as in flight (V-014)", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     const prismaError = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
       code: "P2002",
@@ -394,7 +394,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("takes the per-user advisory lock first inside the billing transaction (V-120)", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_1",
@@ -418,7 +418,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("rejects active subscriptions for unknown products", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_1",
@@ -438,7 +438,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("rejects webhook metadata that conflicts with the subscription owner", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
 
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_1",
@@ -460,7 +460,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("creates affiliate commission only when a paid payment event succeeds", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_payment",
       status: "PROCESSING",
@@ -505,7 +505,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("skips a sub-cent commission and still processes the payment (V-143)", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_payment",
       status: "PROCESSING",
@@ -543,7 +543,7 @@ describe("billing webhook processing and idempotency", () => {
   });
 
   it("fails a payment event with no user and grants nothing (V-012)", async () => {
-    const { BillingService } = await import("../../src/services/billingService");
+    const { BillingService } = await import("../../src/services/billingService.js");
     prismaMock.billingWebhookEvent.create.mockResolvedValue({
       id: "evt_payment",
       status: "PROCESSING",
@@ -605,7 +605,7 @@ describe("billing webhook processing and idempotency", () => {
     });
 
     it("expires a renewal allowance one interval after the payment when the stored period end is stale", async () => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
       prismaMock.subscription.findUnique.mockResolvedValue({
         userId: "user_123",
         productKey: "ai_credits",
@@ -645,7 +645,7 @@ describe("billing webhook processing and idempotency", () => {
     });
 
     it("keeps the stored period end when it lies beyond one interval", async () => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
       const periodEnd = new Date("2027-06-11T12:00:00.000Z");
       prismaMock.subscription.findUnique.mockResolvedValue({
         userId: "user_123",
@@ -665,7 +665,7 @@ describe("billing webhook processing and idempotency", () => {
     ])(
       "a one-time bundle pass ($productId) grants the bundle entitlements for $days days and $credits credits",
       async ({ productId, days, credits, interval }) => {
-        const { BillingService } = await import("../../src/services/billingService");
+        const { BillingService } = await import("../../src/services/billingService.js");
         const endsAt = new Date(new Date(PAID_AT).getTime() + days * DAY_MS);
 
         await BillingService.processWebhook(
@@ -675,7 +675,7 @@ describe("billing webhook processing and idempotency", () => {
 
         // Every bundle entitlement, SYSTEM-sourced on the payment id, flagged as a pass.
 
-        const { productCatalog } = await import("../../src/services/productCatalog");
+        const { productCatalog } = await import("../../src/services/productCatalog.js");
         expect(prismaMock.entitlementGrant.upsert).toHaveBeenCalledTimes(
           productCatalog.bundle.entitlements.length,
         );
@@ -701,7 +701,7 @@ describe("billing webhook processing and idempotency", () => {
     );
 
     it("a credit pack grants the pack for 90 days and touches no entitlement", async () => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
 
       await BillingService.processWebhook(
         "evt_pack",
@@ -724,7 +724,7 @@ describe("billing webhook processing and idempotency", () => {
       { label: "an update-payment-method charge", data: { is_update_payment_method: true } },
       { label: "a zero-amount charge", data: { total_amount: 0, settlement_amount: 0 } },
     ])("$label earns no allowance", async ({ data }) => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
       prismaMock.subscription.findUnique.mockResolvedValue({
         userId: "user_123",
         productKey: "ai_credits",
@@ -742,7 +742,7 @@ describe("billing webhook processing and idempotency", () => {
     });
 
     it("skips a usage-only renewal and keys a real renewal's grant on its service period", async () => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
       prismaMock.subscription.findUnique.mockResolvedValue({
         userId: "user_123",
         productKey: "ai_credits",
@@ -774,7 +774,7 @@ describe("billing webhook processing and idempotency", () => {
     });
 
     it("a non-USD settlement still grants, warns, and records the commission in its currency", async () => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
       prismaMock.subscription.findUnique.mockResolvedValue({
         userId: "user_123",
         productKey: "ai_credits",
@@ -850,8 +850,8 @@ describe("billing webhook processing and idempotency", () => {
       { status: "cancelled", stored: "CANCELED", grace: null, granted: true },
       { status: "expired", stored: "CANCELED", grace: null, granted: true },
     ])("$status is stored as $stored", async ({ status, stored, grace, granted }) => {
-      const { BillingService } = await import("../../src/services/billingService");
-      const { productCatalog } = await import("../../src/services/productCatalog");
+      const { BillingService } = await import("../../src/services/billingService.js");
+      const { productCatalog } = await import("../../src/services/productCatalog.js");
       const grants = granted ? productCatalog.portfolio_pro.entitlements.length : 0;
 
       await BillingService.processWebhook(`evt_${status}`, event(status));
@@ -865,7 +865,7 @@ describe("billing webhook processing and idempotency", () => {
     });
 
     it("pending is stored INACTIVE and leaves existing grants alone", async () => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
 
       await BillingService.processWebhook("evt_pending", event("pending"));
 
@@ -878,7 +878,7 @@ describe("billing webhook processing and idempotency", () => {
     });
 
     it("a status outside the table fails the event instead of revoking access", async () => {
-      const { BillingService } = await import("../../src/services/billingService");
+      const { BillingService } = await import("../../src/services/billingService.js");
 
       await expect(BillingService.processWebhook("evt_odd", event("mystery"))).rejects.toThrow(
         'Unknown subscription status "mystery"',

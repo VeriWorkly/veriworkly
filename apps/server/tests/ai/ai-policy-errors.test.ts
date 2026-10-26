@@ -24,7 +24,7 @@ const GENERIC = "AI generation is unavailable right now. Please try again later.
 
 async function loadFresh() {
   vi.resetModules();
-  return import("../../src/services/aiPolicy");
+  return import("../../src/services/aiPolicy.js");
 }
 
 describe("AI actions policy errors (V-184)", () => {
@@ -67,11 +67,11 @@ describe("AI actions policy errors (V-184)", () => {
   it("does not pass the loader's file path through for the ATS policy either", async () => {
     vi.resetModules();
     // The same ApiError class the policy module sees, as the real loader throws it.
-    const { ApiError } = await import("../../src/lib/errors");
+    const { ApiError } = await import("../../src/lib/errors.js");
     atsPolicyJson.mockImplementation(() => {
       throw new ApiError(503, 'ATS AI policy file was not found at "/srv/private/ats.json".');
     });
-    const { publicAtsPolicy } = await import("../../src/services/ats/aiPolicy");
+    const { publicAtsPolicy } = await import("../../src/services/ats/aiPolicy.js");
 
     expect(() => publicAtsPolicy()).toThrow("AI ATS policy is invalid.");
     expect(loggerError).toHaveBeenCalledWith(

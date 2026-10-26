@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import recorded from "./fixtures/ai-wire-bodies.json" with { type: "json" };
-import { WIRE_INPUTS } from "./fixtures/ai-wire-inputs";
-import { chatResponse, stubChatApi } from "./helpers/chatApi";
+import { WIRE_INPUTS } from "./fixtures/ai-wire-inputs.js";
+import { chatResponse, stubChatApi } from "./helpers/chatApi.js";
 
 /**
  * Wire compatibility with the call sites as they were before `@veriworkly/ats-engine/ai`.

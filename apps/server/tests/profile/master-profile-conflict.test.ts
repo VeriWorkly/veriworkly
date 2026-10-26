@@ -30,8 +30,8 @@ vi.mock("#lib/redis", () => ({
   cacheDel: vi.fn(async () => undefined),
 }));
 
-import { ProfileService } from "../../src/services/profileService";
-import { buildResumeShell } from "../../src/services/profileImportService";
+import { ProfileService } from "../../src/services/profileService.js";
+import { buildResumeShell } from "../../src/services/profileImportService.js";
 
 const CURSOR = "2026-04-10T10:00:00.000Z";
 const LATER = new Date("2026-04-10T10:00:05.000Z");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -42,6 +42,26 @@ const TABS = [
 /** Score and parsed record come from one deterministic pass, so switching views never spends a second scan from the quota. */
 export function FullResults({ report, quota }: { report: AtsFullReport; quota: AtsQuota }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("score");
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const onTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const index = TABS.findIndex((entry) => entry.id === tab);
+    const next =
+      event.key === "ArrowRight"
+        ? (index + 1) % TABS.length
+        : event.key === "ArrowLeft"
+          ? (index - 1 + TABS.length) % TABS.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? TABS.length - 1
+              : -1;
+    if (next < 0) return;
+
+    event.preventDefault();
+    setTab(TABS[next]!.id);
+    tabRefs.current[next]?.focus();
+  };
   const categories = groupByCategory(report.rules);
   const rankedFixes = [...report.failedChecks].sort((a, b) => b.scoreImpact - a.scoreImpact);
 
@@ -65,10 +85,19 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
         </ul>
       ) : null}
 
-      <div role="tablist" aria-label="Report views" className="bg-card flex gap-1 rounded-full p-1">
-        {TABS.map(({ id, label, icon: Icon }) => (
+      <div
+        role="tablist"
+        aria-label="Report views"
+        onKeyDown={onTabKeyDown}
+        className="bg-card flex gap-1 rounded-full p-1"
+      >
+        {TABS.map(({ id, label, icon: Icon }, index) => (
           <button
             key={id}
+            ref={(node) => {
+              tabRefs.current[index] = node;
+            }}
+            tabIndex={tab === id ? 0 : -1}
             type="button"
             role="tab"
             id={`ats-tab-${id}`}
@@ -150,8 +179,10 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
           <section className="bg-success/10 flex items-start gap-3 rounded-3xl p-6 sm:p-8">
             <CheckCircle2 className="text-success mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
             <p className="text-base leading-7">
-              Every deterministic check passed. Remaining gains come from the wording itself: add a
-              job description above to see how well this resume covers a specific role.
+              Every deterministic check passed. Remaining gains come from the wording itself
+              {report.jobMatchScore === null
+                ? ": add a job description to see how well this resume covers a specific role."
+                : ", and from the requirements and keywords below."}
             </p>
           </section>
         )}
@@ -164,6 +195,7 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
               title="Matched keywords"
               description="Terms from the job description your resume already uses."
               items={report.matchedKeywords}
+              total={report.keywordCounts?.matched ?? report.matchedKeywords.length}
               tone="good"
               emptyText="No terms from the description appear in your resume yet."
             />
@@ -171,6 +203,10 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
               title="Missing keywords"
               description="Weighted toward terms under Requirements. Only add what is genuinely true."
               items={report.missingKeywordGroups.hard}
+              total={Math.max(
+                report.missingKeywordGroups.hard.length,
+                (report.keywordCounts?.missing ?? 0) - report.missingKeywordGroups.soft.length,
+              )}
               tone="warn"
               emptyText="Nothing significant is missing from this description."
             />
@@ -276,7 +312,7 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
       {quota.tier === "subscriber" ? (
         <section className="bg-accent/10 rounded-3xl p-6 sm:p-8">
           <h2 className="text-accent flex items-center gap-2 text-xl font-bold tracking-tight">
-            <Sparkles className="h-4 w-4" aria-hidden="true" /> Your plan includes AI analysis
+            <Sparkles className="h-4 w-4" aria-hidden="true" /> Your AI credits cover AI analysis
           </h2>
           <p className="text-muted mt-2 text-base leading-7">
             Run this resume through the AI layer in Studio for missing-evidence detection and an
@@ -296,14 +332,14 @@ export function FullResults({ report, quota }: { report: AtsFullReport; quota: A
           </h2>
           <p className="mt-2 max-w-2xl text-base leading-7 opacity-80">
             AI analysis reads the resume itself: it names the evidence a hiring manager expects to
-            see and cannot find, and ranks edits by hiring impact rather than score impact. Part of
-            the AI plan, from $5.99/mo.
+            see and cannot find, and ranks edits by hiring impact rather than score impact. It runs
+            on AI credits: a pack from $2.99, a pass or a plan.
           </p>
           <Link
             href={`${siteConfig.links.main}/pricing`}
             className="bg-background text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent mt-5 inline-flex h-12 items-center justify-center rounded-full px-6 text-base font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-[0.97]"
           >
-            See AI plans
+            See AI credit options
           </Link>
         </section>
       )}
@@ -341,12 +377,15 @@ function KeywordCard({
   title,
   description,
   items,
+  total,
   tone,
   emptyText,
 }: {
   title: string;
   description: string;
   items: string[];
+  /** The real count: the engine lists at most 12 terms per group. */
+  total: number;
   tone: "good" | "warn";
   emptyText: string;
 }) {
@@ -360,10 +399,13 @@ function KeywordCard({
         )}
         {title}
         <span className="text-muted ml-auto text-base font-medium tracking-normal tabular-nums">
-          {items.length}
+          {total}
         </span>
       </h3>
-      <p className="text-muted mt-1 text-sm leading-6">{description}</p>
+      <p className="text-muted mt-1 text-sm leading-6">
+        {description}
+        {total > items.length ? ` Showing the first ${items.length} of ${total}.` : null}
+      </p>
       {items.length ? (
         <ul className="mt-3 flex flex-wrap gap-2">
           {items.map((item) => (

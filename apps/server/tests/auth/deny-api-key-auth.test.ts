@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Request, Response, NextFunction } from "express";
 
-import { denyApiKeyAuth } from "../../src/middleware/apiKeyScope";
+import { denyApiKeyAuth } from "../../src/middleware/apiKeyScope.js";
 
 /**
  * `DELETE /users/me` destroys an account irreversibly: every document, portfolio,

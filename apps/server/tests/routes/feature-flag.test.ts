@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
-import { requireFeatureEnabled } from "../../src/middleware/featureFlag";
+import { requireFeatureEnabled } from "../../src/middleware/featureFlag.js";
 
 function appWith(enabled: boolean) {
   const app = express();

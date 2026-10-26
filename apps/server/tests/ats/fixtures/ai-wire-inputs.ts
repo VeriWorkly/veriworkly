@@ -19,8 +19,17 @@ const resumeText = [
 
 const jobDescription = "We need TypeScript, Kubernetes and payments experience.";
 
-/** A parse that found nothing: the shape every report carries, with no contact details in it. */
-export const EMPTY_PARSED: AtsParsedResume = {
+/**
+ * The empty parse as the engine shaped it when `ai-wire-bodies.json` was recorded, before it
+ * recovered certifications and spoken languages. The wire report keeps this shape so the recorded
+ * bytes still match.
+ */
+const RECORDED_EMPTY_PARSED: Omit<
+  AtsParsedResume,
+  "certifications" | "spokenLanguages" | "highestIsced" | "provenance"
+> & {
+  provenance: Omit<AtsParsedResume["provenance"], "certifications" | "spokenLanguages">;
+} = {
   name: "",
   email: "",
   phone: "",
@@ -39,6 +48,19 @@ export const EMPTY_PARSED: AtsParsedResume = {
   },
 };
 
+/** A parse that found nothing: the shape every report carries, with no contact details in it. */
+export const EMPTY_PARSED: AtsParsedResume = {
+  ...RECORDED_EMPTY_PARSED,
+  certifications: [],
+  spokenLanguages: [],
+  highestIsced: null,
+  provenance: {
+    ...RECORDED_EMPTY_PARSED.provenance,
+    certifications: "none",
+    spokenLanguages: "none",
+  },
+};
+
 const report = {
   version: "ats-v2",
   readinessScore: 72,
@@ -54,7 +76,7 @@ const report = {
   checksPassed: 0,
   checksTotal: 0,
   wordCount: 120,
-  parsed: EMPTY_PARSED,
+  parsed: RECORDED_EMPTY_PARSED,
 } as unknown as AtsReport;
 
 export const WIRE_INPUTS = { resumeText, jobDescription, report };

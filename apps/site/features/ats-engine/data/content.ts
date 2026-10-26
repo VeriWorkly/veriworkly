@@ -47,7 +47,7 @@ export const HERO_FACTS = [
   { label: "Licence", value: "MIT" },
   { label: "Core, gzipped", value: engineSize(".", true) },
   { label: "Runs in", value: "Browser · Edge · Node" },
-  { label: "AI in the score", value: "None" },
+  { label: "Score from", value: "35 rules" },
 ] as const;
 
 export interface EngineFeature {
@@ -139,9 +139,13 @@ export const SURFACES: EngineSurface[] = [
     title: "Score inside your product",
     body: "One function, no network calls. Works the same in a React component, a route handler or a Worker.",
     language: "ts",
-    code: `import { check } from "@veriworkly/ats-engine";
+    code: `import { check, DEFAULT_POLICY } from "@veriworkly/ats-engine";
+import { BUILT_IN_LOCALES, withLocales } from "@veriworkly/ats-engine/locales";
 
-const report = check(resumeText, undefined, { jobDescription });
+// Once at startup: German, French, Hindi, Spanish, Portuguese and 12 regions.
+const policy = withLocales(DEFAULT_POLICY, BUILT_IN_LOCALES);
+
+const report = check(resumeText, policy, { jobDescription });
 
 report.readinessScore; // 0–100
 report.failedChecks;   // each with evidence and a fix
@@ -245,9 +249,15 @@ export const EXTRAS: EngineFeature[] = [
 ];
 
 export const BENCHMARKS = [
-  { label: "Field accuracy, hand-written resumes", value: "100%" },
-  { label: "Field accuracy, generated text, PDF, two-column PDF and DOCX", value: "100%" },
-  { label: "Field accuracy, German, French, Hindi, Spanish and Portuguese", value: "100%" },
+  { label: "Fields read back, hand-written test resumes (regression check)", value: "100%" },
+  {
+    label: "Fields read back, invented resumes as text, PDF, two-column PDF and DOCX",
+    value: "100%",
+  },
+  {
+    label: "Fields read back, invented German, French, Hindi, Spanish and Portuguese resumes",
+    value: "100%",
+  },
 ] as const;
 
 export const AUDIENCES: EngineFeature[] = [

@@ -50,7 +50,7 @@ describe("ATS quota — extraction and scanning are independent budgets", () => 
   });
 
   it("gives an anonymous caller a single scan per window", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
 
     const first = await AtsQuotaService.consume(undefined, "203.0.113.5");
     expect(first.tier).toBe("anonymous");
@@ -62,7 +62,7 @@ describe("ATS quota — extraction and scanning are independent budgets", () => 
   });
 
   it("does not spend the scan quota when a resume is uploaded first", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
 
     await AtsQuotaService.consumeExtract(undefined, "203.0.113.9");
     const summary = await AtsQuotaService.summary(undefined, "203.0.113.9");
@@ -76,7 +76,7 @@ describe("ATS quota — extraction and scanning are independent budgets", () => 
   });
 
   it("lets an anonymous caller upload a few times before extraction itself is capped", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
 
     await AtsQuotaService.consumeExtract(undefined, "203.0.113.20");
     await AtsQuotaService.consumeExtract(undefined, "203.0.113.20");
@@ -89,7 +89,7 @@ describe("ATS quota — extraction and scanning are independent budgets", () => 
   });
 
   it("gives a logged-in free user a bigger, and separate, upload budget", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
 
     const summary = await AtsQuotaService.summary("user_1", "203.0.113.40");
     expect(summary.tier).toBe("free");
@@ -115,7 +115,7 @@ describe("ATS quota — the paid period follows the grant, not the calendar day"
   beforeEach(() => getWallet.mockResolvedValue({ available: 100 }));
 
   it("keeps one period key across days for a grant with no subscription row", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
     findActiveGrant.mockResolvedValue({ createdAt: new Date("2026-10-10T09:30:00Z") });
 
     vi.setSystemTime(new Date("2026-10-25T12:00:00Z"));
@@ -131,7 +131,7 @@ describe("ATS quota — the paid period follows the grant, not the calendar day"
   });
 
   it("rolls to the next period on the grant's day of the month", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
     findActiveGrant.mockResolvedValue({ createdAt: new Date("2026-01-31T00:00:00Z") });
 
     vi.setSystemTime(new Date("2026-02-15T00:00:00Z"));
@@ -147,7 +147,7 @@ describe("ATS quota — the paid period follows the grant, not the calendar day"
   });
 
   it("never anchors on today when the grant's start is unreadable", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
     findActiveGrant.mockResolvedValue({ createdAt: new Date(Number.NaN) });
 
     vi.setSystemTime(new Date("2026-10-25T12:00:00Z"));
@@ -176,7 +176,7 @@ describe("ATS quota — credits, not the ai_credits grant, unlock the paid tier"
   afterEach(() => vi.useRealTimers());
 
   it("gives a credit-pack buyer with no grant the paid tier, conversion and repair", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
     getWallet.mockResolvedValue({ available: 250 });
 
     const summary = await AtsQuotaService.consume("pack_buyer", "203.0.113.60");
@@ -191,7 +191,7 @@ describe("ATS quota — credits, not the ai_credits grant, unlock the paid tier"
   });
 
   it("keeps a grant holder with an empty wallet on the free tier, unable to convert or repair", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
     findActiveGrant.mockResolvedValue({ createdAt: new Date("2026-10-10T09:30:00Z") });
     getWallet.mockResolvedValue({ available: 0 });
 
@@ -203,7 +203,7 @@ describe("ATS quota — credits, not the ai_credits grant, unlock the paid tier"
   });
 
   it("says repair is not possible when the balance cannot cover it or no route is configured", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
     getWallet.mockResolvedValue({ available: 8 });
     expect((await AtsQuotaService.summary("low", "203.0.113.62")).canRepair).toBe(false);
 
@@ -218,8 +218,8 @@ describe("ATS quota — credits, not the ai_credits grant, unlock the paid tier"
   });
 
   it("answers with pricing: null, not a 503, when the ATS AI policy is invalid (V-185)", async () => {
-    const { AtsQuotaService } = await import("../../src/services/ats/quota");
-    const { ApiError } = await import("../../src/lib/errors");
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
+    const { ApiError } = await import("../../src/lib/errors.js");
     publicAtsPolicy.mockImplementation(() => {
       throw new ApiError(503, "AI ATS policy is invalid.");
     });

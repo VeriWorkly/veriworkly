@@ -608,14 +608,14 @@ describe("admin copy says what the server does", () => {
     );
     expect(ownerPrivate).not.toMatch(/Lift takedown/);
 
-    // A visibility change on a portfolio also suspends its publication under a moderation lock
-    // (`takeDownPortfolioPublication`), so "unlisted" cannot let the owner publish again.
+    // Server V-203: only PRIVATE suspends a portfolio; UNLISTED on a moderation-locked one lifts
+    // the lock (the site stays offline until the owner publishes), and changes nothing on a live one.
     const source = await readFile(
       path.join(process.cwd(), "../server/src/services/admin/adminDocumentService.ts"),
       "utf8",
     );
     expect(source.replace(/\s+/g, " ")).toContain(
-      'if (document.type === "PORTFOLIO") await takeDownPortfolioPublication(documentId, "document_hidden")',
+      'const lift = publication !== null && visibility !== "PRIVATE" && locked;',
     );
 
     for (const visibility of ["PUBLIC", "UNLISTED", "PRIVATE"] as const) {
@@ -628,9 +628,23 @@ describe("admin copy says what the server does", () => {
           deleted: false,
         }),
       );
-      expect(page, visibility).not.toMatch(/Lift takedown|can publish/);
-      if (visibility !== "PRIVATE") expect(page, visibility).toMatch(/publication is suspended/);
+      // Not under a moderator's takedown: nothing to lift, and no promise it can be published.
+      expect(page, visibility).not.toMatch(/Make unlisted|stays offline until|can publish/);
+      if (visibility === "PUBLIC") expect(page, visibility).toMatch(/live site is not affected/);
     }
+
+    const lockedPortfolio = await renderAdminText(
+      createElement(DocumentModerationActions, {
+        documentId: "d3",
+        title: "Site",
+        type: "PORTFOLIO",
+        visibility: "PRIVATE",
+        moderatorPrivate: true,
+        deleted: false,
+      }),
+    );
+    expect(lockedPortfolio).toMatch(/Lift takedown/);
+    expect(lockedPortfolio).toMatch(/stays offline until the owner publishes it again/);
 
     const portfolio = await renderAdminText(
       createElement(PortfolioModerationActions, {
@@ -640,8 +654,7 @@ describe("admin copy says what the server does", () => {
       }),
     );
     expect(portfolio).not.toMatch(/can publish again from their editor/);
-    expect(portfolio).not.toMatch(/Lift takedown/);
-    expect(portfolio).toMatch(/cannot publish it again/);
+    expect(portfolio).toMatch(/cannot publish it again until a moderator lifts the takedown/);
   });
 
   it("S-335: an enabled API key works at once", async () => {

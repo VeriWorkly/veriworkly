@@ -218,10 +218,10 @@ const TemplateDetailPage = async ({ params }: PageProps) => {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   href={editorUrl}
-                  rel="nofollow"
+                  rel={isPortfolioTemplate ? undefined : "nofollow"}
                   className="group bg-foreground text-background hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent/40 inline-flex h-12 items-center gap-2 rounded-full px-6 text-base font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]"
                 >
-                  {isPortfolioTemplate ? "Use in Portfolio Builder" : "Use this template"}
+                  {isPortfolioTemplate ? "View in the Portfolio app" : "Use this template"}
                   <ArrowRight
                     aria-hidden="true"
                     className="size-4 transition-transform duration-200 group-hover:translate-x-1"

@@ -20,7 +20,7 @@ describe("Clustering Configuration", () => {
       // Note: we delete the module cache in Node, but since we are running via vitest,
       // vitest runs in isolated contexts or handles imports. Let's dynamically import.
       vi.resetModules();
-      const { config } = await import("../src/config.ts?t=1");
+      const { config } = await import("../src/config.js");
 
       expect(config.server.clusteringEnabled).toBe(true);
       expect(config.server.workers).toBe(4);
@@ -39,7 +39,7 @@ describe("Clustering Configuration", () => {
       process.env.NODE_ENV = "test";
 
       vi.resetModules();
-      const { config } = await import("../src/config.ts?t=2");
+      const { config } = await import("../src/config.js");
 
       expect(config.server.clusteringEnabled).toBe(false);
     } finally {
@@ -56,7 +56,7 @@ describe("Clustering Configuration", () => {
       delete process.env.SERVER_WORKERS;
 
       vi.resetModules();
-      const { config } = await import("../src/config.ts?t=3");
+      const { config } = await import("../src/config.js");
 
       expect(config.server.workers).toBeGreaterThanOrEqual(1);
     } finally {

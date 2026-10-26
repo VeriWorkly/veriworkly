@@ -1,34 +1,19 @@
 import { CheckCircle2, CircleDashed, CircleHelp, XCircle } from "lucide-react";
 
+import { REQUIREMENT_STATUS_LABELS, sortRequirements } from "../../data/requirements";
 import type { AtsRequirement } from "../../types";
 
-const STATUS: Record<
-  AtsRequirement["status"],
-  { label: string; icon: typeof CheckCircle2; className: string }
-> = {
-  met: { label: "Met", icon: CheckCircle2, className: "text-success" },
-  partial: {
-    label: "Partly met",
-    icon: CircleDashed,
-    className: "text-warning",
-  },
-  missing: { label: "Not shown", icon: XCircle, className: "text-destructive" },
-  unverifiable: {
-    label: "Answer in the application",
-    icon: CircleHelp,
-    className: "text-muted",
-  },
+const STATUS: Record<AtsRequirement["status"], { icon: typeof CheckCircle2; className: string }> = {
+  met: { icon: CheckCircle2, className: "text-success" },
+  partial: { icon: CircleDashed, className: "text-warning" },
+  missing: { icon: XCircle, className: "text-destructive" },
+  unverifiable: { icon: CircleHelp, className: "text-muted" },
 };
 
 export function RequirementsPanel({ requirements }: { requirements: AtsRequirement[] }) {
   if (!requirements.length) return null;
 
-  const order = { missing: 0, partial: 1, unverifiable: 2, met: 3 } as const;
-  const sorted = [...requirements].sort(
-    (a, b) =>
-      Number(a.importance === "preferred") - Number(b.importance === "preferred") ||
-      order[a.status] - order[b.status],
-  );
+  const sorted = sortRequirements(requirements);
   const met = requirements.filter((r) => r.status === "met").length;
 
   return (
@@ -55,7 +40,9 @@ export function RequirementsPanel({ requirements }: { requirements: AtsRequireme
               <div className="min-w-0 flex-1">
                 <p className="text-base leading-7 font-medium">{requirement.text}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                  <span className={`font-semibold ${status.className}`}>{status.label}</span>
+                  <span className={`font-semibold ${status.className}`}>
+                    {REQUIREMENT_STATUS_LABELS[requirement.status]}
+                  </span>
                   {requirement.importance === "preferred" ? (
                     <span className="text-muted">Nice to have</span>
                   ) : null}

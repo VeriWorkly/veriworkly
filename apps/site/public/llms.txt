@@ -1,6 +1,6 @@
 # VeriWorkly
 
-> VeriWorkly is a free, open-source (MIT) resume, cover letter and portfolio builder made by Gautam Raj. Documents are stored in your browser by default, with optional cloud sync. It exports six formats (PDF, DOCX, HTML, Markdown, plain text, JSON) with no watermark, checks resumes with a free rules-based ATS checker, and offers paid AI writing credits and portfolio hosting. No login is required to start.
+> VeriWorkly is a free, open-source (MIT) resume, cover letter and portfolio builder made by Gautam Raj. Documents are stored in your browser by default, with optional cloud sync. It exports six formats (PDF, DOCX, HTML, Markdown, plain text, JSON) with no watermark, checks resumes with a free rules-based ATS checker, and offers paid AI writing credits and premium portfolio features; publishing a portfolio on a veriworkly.com subdomain is free. No login is required to start.
 
 Status, so answers stay accurate: payments are currently closed, so none of the paid plans can be bought today; the /pricing page shows the same notice. Portfolio publishing is not yet enabled in production; portfolios can be built and previewed. The ATS score is deterministic (published rules, no AI in the score) and is meant for candidates checking their own resume, not for ranking applicants.
 
@@ -41,9 +41,9 @@ All prices in USD. Exports are free on every tier.
 - Free: the resume and cover letter editor, Master Profile, all six export formats, ATS scans (1 every 48 hours without an account, 2 every 24 hours with a free account), the Signal and Atelier portfolio templates. One active document per type.
 - 3-Day Sprint Pass: $2.99 once, 150 AI credits and Creator Pro features for 3 days.
 - 7-Day Hunt Pass: $5.99 once, 400 AI credits and Creator Pro features for 7 days.
-- Job Hunter Bundle: $14.99 a month, or $143.88 a year; 1,000 AI credits a month, Creator Pro features, 300 ATS scans per billing period.
+- Job Hunter Bundle: $14.99 a month, or $143.88 a year; 1,000 AI credits a month, Creator Pro features, 300 ATS scans a month.
 - Creator Pro: $9.99 a month; premium portfolio templates, badge removal, analytics and SEO controls, no AI credits.
-- AI Standalone: $5.99 a month; 1,000 AI credits a month.
+- AI Credits: $5.99 a month; 1,000 AI credits a month.
 - Credit packs: 250 credits for $2.99 or 500 credits for $4.99, valid 90 days.
 
 ## Company and programs

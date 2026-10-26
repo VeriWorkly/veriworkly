@@ -10,7 +10,7 @@ const faqItems = [
   {
     question: "How do referrals get tracked?",
     answer:
-      "When someone visits your partner link, we log the click, and the referral is attached to their account the first time they sign in through that link. It stays linked to their account from that point on - there's no cookie or short attribution window to race against.",
+      "When someone visits your partner link, we log the click, and the referral is attached to their account the first time they sign in through that link. It has to be attached within 30 days of their sign-up and before their first purchase; after that it stays linked, and every payment they make earns you commission.",
   },
   {
     question: "When and how are payouts processed?",

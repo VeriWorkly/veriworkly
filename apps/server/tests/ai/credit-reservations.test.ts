@@ -71,7 +71,7 @@ describe("AI credit reservations", () => {
   });
 
   it("atomically moves available credits into a reservation", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
 
     const reservation = await CreditService.reserveAction(
       "user_1",
@@ -88,7 +88,7 @@ describe("AI credit reservations", () => {
   });
 
   it("commits a reservation and allocates the oldest valid grant", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
     tx.creditReservation.findUnique.mockResolvedValue({
       id: "reservation_1",
       walletId: "wallet_1",
@@ -126,7 +126,7 @@ describe("AI credit reservations", () => {
   });
 
   it("refuses to commit a reservation that is no longer pending without touching the wallet", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
     tx.creditReservation.findUnique.mockResolvedValue({
       id: "reservation_1",
       walletId: "wallet_1",
@@ -154,7 +154,7 @@ describe("AI credit reservations", () => {
   });
 
   it("returns reserved credits when generation fails", async () => {
-    const { CreditService } = await import("../../src/services/creditService");
+    const { CreditService } = await import("../../src/services/creditService.js");
     tx.creditReservation.findUnique.mockResolvedValue({
       id: "reservation_1",
       walletId: "wallet_1",

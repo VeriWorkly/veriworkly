@@ -19,7 +19,7 @@ const { prismaMock, cacheGetMock, cacheSetMock } = vi.hoisted(() => ({
     },
   },
   cacheGetMock: vi.fn(async () => null),
-  cacheSetMock: vi.fn(async () => undefined),
+  cacheSetMock: vi.fn<(...args: unknown[]) => Promise<undefined>>(async () => undefined),
 }));
 
 vi.mock("#lib/prisma", () => ({ prisma: prismaMock }));
@@ -45,7 +45,7 @@ vi.mock("#utils/slugs", () => ({
   buildUniqueSlugHelper: vi.fn(async () => "some-slug"),
 }));
 
-import { DocumentService } from "../../src/services/documentService";
+import { DocumentService } from "../../src/services/documentService.js";
 
 function legacyResumeDocument() {
   return {

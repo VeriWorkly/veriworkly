@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AtsReport } from "#services/ats/types";
-import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs";
-import { chatResponse, httpError, stubChatApi } from "./helpers/chatApi";
+import { EMPTY_PARSED } from "./fixtures/ai-wire-inputs.js";
+import { chatResponse, httpError, stubChatApi } from "./helpers/chatApi.js";
 
 const reserve = vi.fn();
 const commitReservation = vi.fn();
@@ -93,6 +93,8 @@ function report(readinessScore: number): AtsReport {
     jobMatchScore: null,
     matchedKeywords: [],
     missingKeywords: [],
+    matchedKeywordGroups: { hard: [], soft: [] },
+    missingKeywordGroups: { hard: [], soft: [] },
     parsingWarnings: [],
     strengths: [],
     failedChecks: [],
@@ -103,6 +105,10 @@ function report(readinessScore: number): AtsReport {
     checksTotal: 0,
     wordCount: 400,
     parsed: EMPTY_PARSED,
+    locale: { languages: [], region: null, unsupported: null },
+    engine: { version: "test", policy: "test" },
+    requirements: [],
+    advice: [],
   };
 }
 
