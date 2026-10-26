@@ -20,6 +20,7 @@ import {
   DocumentSyncService,
 } from "./document-sync-service";
 import { SyncEngine, type SyncTelemetry } from "./sync-engine";
+import { canWorkspaceReachCloud } from "./workspace-owner";
 import {
   DOCUMENT_REMOTE_DELETION_EVENT,
   DOCUMENT_STORAGE_UPDATED_EVENT,
@@ -73,6 +74,7 @@ function createGenericDocumentSyncService(type: DocumentType) {
     },
     flushPendingEdits: (id) => flushPendingSave(type, id),
     rekeyLocal: (id) => rekeyDocument(type, id),
+    canReachCloud: canWorkspaceReachCloud,
   });
 }
 

@@ -520,7 +520,7 @@ export default async function AdminPage({
             <TrendChart
               buckets={buckets}
               height={140}
-              formatValue={(value) => formatCompactNumber(value)}
+              format="compact"
               datasets={[{ label: "Views", values: series.portfolioViews, series: 6 }]}
             />
           </PanelBody>
@@ -544,7 +544,7 @@ export default async function AdminPage({
             <TrendChart
               buckets={buckets}
               height={140}
-              formatValue={(value) => formatCompactNumber(value)}
+              format="compact"
               datasets={[{ label: "Credits spent", values: series.creditsSpent, series: 5 }]}
             />
           </PanelBody>

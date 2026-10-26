@@ -41,6 +41,15 @@ export interface AdminUserUpdatePayload {
   reason: string;
 }
 
+/** The email of the account a pasted user id names, for a confirmation to show. */
+export async function fetchAdminAccountEmail(id: string) {
+  const detail = await adminRequest<{ user: { email: string } }>(
+    `/users/${encodeURIComponent(id)}`,
+    "GET",
+  );
+  return detail.user.email;
+}
+
 export function updateAdminUser(id: string, payload: AdminUserUpdatePayload) {
   return adminRequest<AdminUserRow>(`/users/${id}`, "PATCH", payload);
 }
@@ -165,8 +174,8 @@ export function updateAdminSubscription(
 
 /**
  * `idempotencyKey` makes a retried submit apply once (the same key with a different amount is a
- * 409). It goes in the body, not the `Idempotency-Key` header, because the API's CORS policy does
- * not allow that header from the browser.
+ * 409). Sent as the `Idempotency-Key` header, which the API's CORS policy allows (V-194), and in
+ * the body, which the server also reads.
  */
 export function adjustAdminCredits(
   userId: string,
@@ -174,7 +183,11 @@ export function adjustAdminCredits(
   reason: string,
   idempotencyKey: string,
 ) {
-  return adminRequest("/billing/credits", "POST", { userId, amount, reason, idempotencyKey });
+  return fetchApiData("/admin/billing/credits", {
+    method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ userId, amount, reason, idempotencyKey }),
+  });
 }
 
 /** The grantable entitlement keys, matching the server's `ENTITLEMENT_KEYS`. */

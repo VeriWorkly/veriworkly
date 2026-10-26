@@ -42,6 +42,7 @@ export function useDocumentsWorkspace() {
   const [syncDetailsTargetId, setSyncDetailsTargetId] = useState<string | null>(null);
 
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cloudPullSettled, setCloudPullSettled] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DocumentLibraryItem | null>(null);
   const [shareTarget, setShareTarget] = useState<DocumentLibraryItem | null>(null);
   const [renameTarget, setRenameTarget] = useState<DocumentLibraryItem | null>(null);
@@ -74,7 +75,7 @@ export function useDocumentsWorkspace() {
         const result = await action();
         toast[result.ok ? successTone : "error"](result.message);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Sync failed. Please try again.");
+        toast.error(error instanceof Error ? error.message : "Backup failed. Please try again.");
       } finally {
         setSyncingDocumentId((current) => (current === id ? null : current));
         bump();
@@ -92,6 +93,8 @@ export function useDocumentsWorkspace() {
 
     void hydrateAllDocumentsFromCloud().then((results) => {
       if (cancelled) return;
+
+      setCloudPullSettled(true);
 
       const failure = results.find((result) => !result.ok);
       if (failure) toast.error(`Could not load your cloud documents: ${failure.message}`);
@@ -237,6 +240,8 @@ export function useDocumentsWorkspace() {
     syncTargetTelemetry,
     syncTelemetryById,
     totalCount,
+    /** True until a signed-in user's first pull settles: an empty list may not be empty. */
+    isPullingFromCloud: isLoggedIn && !cloudPullSettled,
     viewMode,
     visibleDocs,
     bump,

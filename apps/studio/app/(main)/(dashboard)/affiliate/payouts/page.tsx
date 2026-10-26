@@ -7,6 +7,9 @@ import { formatCents } from "@/features/admin/utils/admin-format";
 export default async function AffiliatePayoutsPage() {
   const data = await getProgramServerData<AffiliateDashboard>("/affiliates/me");
   if (data === PROGRAM_UNAVAILABLE) return <ProgramUnavailable program="affiliate" />;
+  // Payouts are for an active affiliate only, as on the overview: a pending or suspended account
+  // keeps its history but cannot request a withdrawal.
+  const canRequest = data?.affiliateStatus === "ACTIVE";
   return (
     <main className="space-y-5">
       <AffiliateNav />
@@ -22,15 +25,27 @@ export default async function AffiliatePayoutsPage() {
           <p className="mt-2 text-3xl font-black">
             {formatCents(data?.wallet.availableCents ?? 0)}
           </p>
-          <p className="text-muted mt-2 text-xs">
-            Minimum payout {formatCents(data?.minimumWithdrawalCents ?? 2500)}
-          </p>
-          <div className="mt-5">
-            <AffiliatePayoutForm
-              availableCents={data?.wallet.availableCents ?? 0}
-              minimumCents={data?.minimumWithdrawalCents ?? 2500}
-            />
-          </div>
+          {canRequest ? (
+            <>
+              <p className="text-muted mt-2 text-xs">
+                Minimum payout {formatCents(data.minimumWithdrawalCents)}
+              </p>
+              <div className="mt-5">
+                <AffiliatePayoutForm
+                  availableCents={data.wallet.availableCents}
+                  minimumCents={data.minimumWithdrawalCents}
+                />
+              </div>
+            </>
+          ) : (
+            <p className="text-muted mt-5 text-sm">
+              {data?.affiliateStatus === "SUSPENDED"
+                ? "Payouts are disabled while your affiliate account is suspended."
+                : data?.affiliateStatus === "PENDING"
+                  ? "You can request payouts once your affiliate account is approved."
+                  : "Join the affiliate program to earn commission you can withdraw."}
+            </p>
+          )}
         </article>
         <article className="border-border bg-card rounded-2xl border p-5">
           <h2 className="font-black">Payout history</h2>

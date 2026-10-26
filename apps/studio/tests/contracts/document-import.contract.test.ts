@@ -152,6 +152,32 @@ describe("document import contract", () => {
     expect(fromContent?.title).toBe("Product Engineer - Acme Corp");
   });
 
+  it("S-319: a cover letter's JSON export re-imports with its template and title", async () => {
+    const downloads: Blob[] = [];
+    vi.doMock("@/features/documents/export/download", () => ({
+      downloadBlob: (blob: Blob) => downloads.push(blob),
+    }));
+    const { exportCoverLetterDocument } =
+      await import("@/features/documents/export/cover-letter-exporters");
+
+    const letter = {
+      ...createDefaultCoverLetter("cover-letter-original"),
+      title: "Globex, second round",
+      templateId: "executive",
+    };
+
+    await exportCoverLetterDocument(letter, "json");
+    const exported = JSON.parse(await downloads[0].text());
+
+    expect(exported).not.toHaveProperty("sync");
+    expect(getDocumentDefinition("COVER_LETTER").importJson(exported)).toMatchObject({
+      title: "Globex, second round",
+      templateId: "executive",
+    });
+
+    vi.doUnmock("@/features/documents/export/download");
+  });
+
   it("S-118: refuses a file that does not say what it is", async () => {
     for (const type of ["RESUME", "COVER_LETTER"] as const) {
       await expect(importDocumentFromJsonFile(type, jsonFile({}))).rejects.toThrow(

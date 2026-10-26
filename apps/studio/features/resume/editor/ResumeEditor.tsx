@@ -1,10 +1,16 @@
 "use client";
 
+import type { ResumeData } from "@/types/resume";
+
 import { createElement, useCallback, useDeferredValue } from "react";
 
 import { readResumeById } from "@/features/resume/services/resume-service";
 import { DocumentEditorShell } from "@/features/documents/editor/DocumentEditorShell";
 import { DocumentLoadStateCard } from "@/features/documents/editor/DocumentStateCard";
+import {
+  ChangedElsewhereNotice,
+  RecoveredEditsNotice,
+} from "@/features/documents/editor/ChangedElsewhereNotice";
 import { useDocumentTabTitle } from "@/features/documents/editor/editor-load-status";
 import { useDocumentEditorSession } from "@/features/documents/editor/useDocumentEditorSession";
 
@@ -40,12 +46,18 @@ const ResumeEditor = ({ documentId }: ResumeEditorProps) => {
     [setResume],
   );
 
+  const restoreIntoStore = useCallback(
+    (recovered: unknown) => setResume(recovered as ResumeData),
+    [setResume],
+  );
+
   const session = useDocumentEditorSession({
     type: "RESUME",
     documentId,
     loadIntoStore,
     saveToStorage,
     document: resume,
+    replaceInStore: restoreIntoStore,
   });
 
   const deferredResume = useDeferredValue(resume);
@@ -85,6 +97,22 @@ const ResumeEditor = ({ documentId }: ResumeEditorProps) => {
 
   return (
     <DocumentEditorShell
+      notice={
+        session.changedElsewhere ? (
+          <ChangedElsewhereNotice
+            changedElsewhere={session.changedElsewhere}
+            busy={session.resolvingChange}
+            onKeepMine={session.keepMine}
+            onKeepOther={session.keepOther}
+          />
+        ) : session.recovered ? (
+          <RecoveredEditsNotice
+            savedAt={session.recovered.savedAt}
+            onRestore={session.restoreRecovered}
+            onDiscard={session.discardRecovered}
+          />
+        ) : null
+      }
       toolbar={
         <ResumeToolbar
           resumeId={documentId}

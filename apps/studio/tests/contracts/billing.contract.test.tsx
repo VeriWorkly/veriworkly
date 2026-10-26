@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +37,60 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn() }),
   usePathname: () => "/billing",
 }));
+
+/** The resumes on this device, as the document-limit checks read them. */
+const workspace = vi.hoisted(() => ({ resumes: [] as Array<{ id: string }> }));
+
+vi.mock("@/features/documents/services/document-workspace-service", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/features/documents/services/document-workspace-service")
+  >()),
+  listDocuments: vi.fn((type?: string) => (type === "RESUME" ? workspace.resumes : [])),
+}));
+
+const programData = vi.hoisted(() => ({ affiliate: null as unknown }));
+
+vi.mock("@/features/billing/billing-server", () => ({
+  PROGRAM_UNAVAILABLE: Symbol("program-unavailable"),
+  getProgramServerData: async () => programData.affiliate,
+}));
+
+const studioRoot = join(__dirname, "..", "..");
+
+/** The plan credit notes exactly as the server's catalog sends them (`productCatalog.ts`). */
+function serverCreditNotes() {
+  const source = readFileSync(
+    join(studioRoot, "..", "server", "src", "services", "productCatalog.ts"),
+    "utf8",
+  );
+  const note = (name: string) => {
+    const match = source.match(new RegExp(`const ${name} =\\s*"([^"]+)"`));
+    if (!match) throw new Error(`${name} not found in productCatalog.ts`);
+    return match[1];
+  };
+
+  return { monthly: note("MONTHLY_CREDIT_NOTE"), annual: note("ANNUAL_CREDIT_NOTE") };
+}
+
+/** "roll over" may appear only as a denial: owner decision 4, nothing rolls over. */
+function promisedRollovers(text: string) {
+  return [...text.matchAll(/roll(?:s|ed|ing)?[\s-]?over/gi)].filter(
+    (match) =>
+      !/\b(not|never|no|don't|doesn't|won't|cannot)\b[^.]{0,40}$/i.test(
+        text.slice(Math.max(0, match.index - 60), match.index),
+      ),
+  );
+}
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory()
+      ? sourceFiles(join(dir, entry.name))
+      : /\.tsx?$/.test(entry.name)
+        ? [join(dir, entry.name)]
+        : [],
+  );
+}
 
 const DAY = 24 * 60 * 60 * 1000;
 const inDays = (days: number) => new Date(Date.now() + days * DAY).toISOString();
@@ -80,6 +137,7 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
         prices: { monthly: 599, annual: 5990 },
         configuredIntervals: ["monthly", "annual"],
         currency: "USD",
+        creditNotes: serverCreditNotes(),
       },
     ],
     addOns: [],
@@ -90,6 +148,8 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
           key: "credit_pack_250",
           name: "250 extra credits",
           credits: 250,
+          price: 299,
+          currency: "USD",
           expiresInDays: 90,
           configured: true,
         },
@@ -97,6 +157,8 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
           key: "credit_pack_500",
           name: "500 extra credits",
           credits: 500,
+          price: 499,
+          currency: "USD",
           expiresInDays: 90,
           configured: true,
         },
@@ -289,7 +351,8 @@ describe("billing page describes what the customer actually bought", () => {
     );
 
     expect(page).toContain("View upgrade options");
-    expect(page).toContain("Manage subscription");
+    expect(page).toContain("Receipts and invoices");
+    expect(page).not.toContain("Manage subscription");
   });
 
   it("S-182 S-271 S-266: AI Credits is sold monthly and annually, annual credits arrive monthly, packs say how long they last", () => {
@@ -297,9 +360,150 @@ describe("billing page describes what the customer actually bought", () => {
 
     expect(page).toContain("$5.99 / month");
     expect(page).toContain("$59.90 / year");
-    expect(page).toContain("1,000 credits every month");
+    expect(page).toContain(serverCreditNotes().monthly);
+    expect(page).toContain(serverCreditNotes().annual);
     expect(page).toContain("Buy 250 credits");
     expect(page).toMatch(/valid 90 days/);
+  });
+
+  it("S-273: the AI Credits offer shows the server's credit notes and never promises a rollover", () => {
+    const page = renderBilling(summary());
+
+    expect(page).toMatch(/do not roll over/);
+    expect(promisedRollovers(page)).toEqual([]);
+
+    const copyDirs = ["features/billing", "features/credits", "app/(main)/checkout"];
+    for (const file of copyDirs.flatMap((dir) => sourceFiles(join(studioRoot, dir)))) {
+      expect(promisedRollovers(readFileSync(file, "utf8")), file).toEqual([]);
+    }
+  });
+
+  it("S-276: a Creator Pro subscriber is not sold AI Credits, which the server refuses, and is told how to get both", () => {
+    const page = renderBilling(
+      summary({
+        plan: "PORTFOLIO_PRO",
+        productKey: "portfolio_pro",
+        status: "ACTIVE",
+        interval: "MONTHLY",
+        access: { ...summary().access, tier: "portfolio_pro", isPaying: true },
+      }),
+    );
+
+    expect(page).not.toContain("$5.99 / month");
+    expect(page).not.toContain("AI Credits subscription");
+    expect(page).toContain("Upgrade to Job Hunter Bundle");
+    expect(page).not.toMatch(/cancel Creator Pro|contact support to switch/i);
+    expect(page).toContain("Buy 250 credits");
+
+    for (const tier of ["ai_credits", "bundle"] as const) {
+      expect(
+        renderBilling(summary({ access: { ...summary().access, tier, isPaying: true } })),
+      ).not.toContain("$5.99 / month");
+    }
+  });
+
+  it("V-202: Creator Pro and AI Credits subscribers are offered the upgrade; the bundle, an ending plan and a lapsed one are not", () => {
+    const subscriber = (
+      tier: "portfolio_pro" | "ai_credits" | "bundle",
+      overrides: Partial<BillingSummary> = {},
+    ) =>
+      renderBilling(
+        summary({
+          productKey: tier,
+          status: "ACTIVE",
+          interval: "MONTHLY",
+          access: { ...summary().access, tier, isPaying: true },
+          ...overrides,
+        }),
+      );
+
+    expect(subscriber("portfolio_pro")).toContain("Upgrade to Job Hunter Bundle");
+    expect(subscriber("ai_credits")).toContain("Upgrade to Job Hunter Bundle");
+    expect(subscriber("bundle")).not.toContain("Upgrade to Job Hunter Bundle");
+    expect(subscriber("ai_credits", { cancelAtPeriodEnd: true })).not.toContain(
+      "Upgrade to Job Hunter Bundle",
+    );
+    expect(subscriber("ai_credits", { interval: "ONE_DAY" })).not.toContain(
+      "Upgrade to Job Hunter Bundle",
+    );
+  });
+
+  it("S-266 S-223 V-197: pack buttons carry their price, history rows their product and amount", () => {
+    const page = renderBilling(summary(), [
+      {
+        id: "e1",
+        type: "payment.succeeded",
+        processedAt: inDays(-1),
+        createdAt: inDays(-1),
+        productName: "Creator Pro (monthly)",
+        amountCents: 999,
+        currency: "USD",
+      },
+      {
+        id: "e2",
+        type: "subscription.updated",
+        processedAt: null,
+        createdAt: inDays(-1),
+        productName: null,
+        amountCents: null,
+        currency: null,
+      },
+    ]);
+
+    expect(page).toMatch(/Buy 250 credits \$2\.99/);
+    expect(page).toMatch(/Buy 500 credits \$4\.99/);
+    expect(page).toContain("Payment received · Creator Pro (monthly)");
+    expect(page).toContain("$9.99");
+    expect(page).toContain("Subscription updated");
+  });
+
+  it("S-330 S-235: pass and pack buyers reach their receipts; only a live plan is called a subscription", () => {
+    const pass = renderBilling(
+      summary({ access: { ...summary().access, tier: "pass", isPaying: true } }),
+    );
+    const pack = renderBilling(
+      summary({ access: { ...summary().access, tier: "credits", isPaying: true } }),
+    );
+    const subscriber = renderBilling(
+      summary({
+        productKey: "ai_credits",
+        status: "ACTIVE",
+        access: { ...summary().access, tier: "ai_credits", isPaying: true },
+      }),
+    );
+
+    expect(pass).toContain("Receipts and invoices");
+    expect(pack).toContain("Receipts and invoices");
+    expect(subscriber).toContain("Manage subscription");
+    expect(renderBilling(summary())).not.toMatch(/Receipts and invoices|Manage subscription/);
+  });
+
+  it("LOW: an admin-comped plan says when access ends, not that it was paid", () => {
+    const end = inDays(20);
+    const page = renderBilling(
+      summary({
+        plan: "PORTFOLIO_PRO",
+        entitlements: ["portfolio_publish"],
+        access: {
+          ...summary().access,
+          tier: "portfolio_pro",
+          isPaying: false,
+          portfolioAccessEndsAt: end,
+        },
+      }),
+    );
+
+    expect(page).toContain(`Access until ${serverDate(end)}`);
+    expect(page).not.toContain("Paid through");
+  });
+
+  it("LOW: the payment notices use a background colour the theme defines", () => {
+    for (const file of [
+      "features/billing/BillingPage.tsx",
+      "app/(main)/checkout/checkout-redirect.tsx",
+    ]) {
+      expect(readFileSync(join(studioRoot, file), "utf8"), file).not.toContain("bg-accent-soft");
+    }
   });
 
   it("S-223: entitlements and history read as product language, and no lock jargon is shown", () => {
@@ -315,8 +519,19 @@ describe("billing page describes what the customer actually bought", () => {
           type: "subscription.active",
           processedAt: inDays(-2),
           createdAt: inDays(-2),
+          productName: null,
+          amountCents: null,
+          currency: null,
         },
-        { id: "e2", type: "payment.succeeded", processedAt: null, createdAt: inDays(-2) },
+        {
+          id: "e2",
+          type: "payment.succeeded",
+          processedAt: null,
+          createdAt: inDays(-2),
+          productName: null,
+          amountCents: null,
+          currency: null,
+        },
       ],
     );
 
@@ -411,7 +626,7 @@ describe("credits page", () => {
       page.match(new RegExp(serverDate(when).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")),
     ).toHaveLength(4);
     expect(page).toContain("ATS AI analysis");
-    expect(page).toContain("Adjustment");
+    expect(page).toContain("Credits added by support");
     expect(page).toContain("Credits expired");
     expect(page).toContain("AI section rewrite");
     expect(page).not.toMatch(/angry customer|rewrite_section|AI standard action/);
@@ -432,6 +647,311 @@ describe("credits page", () => {
 
   it("S-204: ATS prices that could not be loaded are said to be unavailable", () => {
     expect(renderCredits([], null)).toMatch(/ATS prices could not be loaded/);
+  });
+
+  it("S-279: the LinkedIn import is priced in the grid and named in history", () => {
+    const page = renderCredits([row({ action: "linkedin_import", reason: "AI LinkedIn import" })]);
+
+    expect(page).toMatch(/LinkedIn profile import 25 credits/);
+    expect(page).toContain("LinkedIn import");
+    expect(page).not.toMatch(/\bAdjustment\b/);
+  });
+
+  it("S-333: plan grants say which plan and month they are; support grants never show the typed reason", () => {
+    const page = renderCredits([
+      row({
+        type: "GRANT",
+        amount: 1000,
+        reason: "AI Credits monthly credits (month 3 of 12)",
+      }),
+      row({ type: "GRANT", amount: 150, reason: "Job Hunter Bundle credit allowance" }),
+      row({ type: "GRANT", amount: 1000, reason: "AI Credits credit allowance" }),
+      row({ type: "GRANT", amount: 250, reason: "250 extra credits" }),
+      row({
+        type: "GRANT",
+        amount: 40,
+        action: "admin_adjustment",
+        reason: "sorry about the outage, 40 credits",
+      }),
+      row({ type: "GRANT", amount: 5, reason: "free text nobody should read" }),
+    ]);
+
+    expect(page).toContain("AI Credits annual plan credits, month 3 of 12");
+    expect(page).toContain("Job Hunter Bundle or pass credits");
+    expect(page).toContain("AI Credits plan credits");
+    expect(page).toContain("250 extra credits");
+    expect(page).toContain("Credits added by support");
+    expect(page).toContain("Credits added");
+    expect(page).not.toMatch(/outage|credit allowance|nobody should read/);
+  });
+
+  it("S-346: actions no screen offers are not priced", () => {
+    const page = renderCredits([]);
+
+    expect(page).not.toMatch(/job tailoring|document draft/i);
+  });
+});
+
+/** The plan-change refusals as the server builds them (`planChangeError` in billingService). */
+function serverPlanChangeErrors() {
+  const source = readFileSync(
+    join(studioRoot, "..", "server", "src", "services", "billingService.ts"),
+    "utf8",
+  ).replace(/\r\n/g, "\n");
+  const errors = [...source.matchAll(/planChangeError\(\s*"([A-Z_]+)",\s*("[^"]*"|`[^`]*`)/g)].map(
+    ([, code, literal]) => ({ code, message: literal.slice(1, -1) }),
+  );
+
+  expect(errors.length).toBeGreaterThanOrEqual(8);
+  return errors;
+}
+
+describe("upgrading to the bundle (V-202)", () => {
+  it("V-202: the change is sent with one idempotency key, and a 202 reads as still being confirmed", async () => {
+    const { changePlan, previewPlanChange } = await import("@/features/billing/billing-api");
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).endsWith("/preview")
+        ? new Response(
+            JSON.stringify({
+              data: {
+                productKey: "bundle",
+                interval: "monthly",
+                dueNow: 350,
+                currency: "USD",
+                nextAmount: 1499,
+                nextBillingDate: inDays(12),
+              },
+            }),
+            { status: 200 },
+          )
+        : new Response(
+            JSON.stringify({
+              data: {
+                status: "pending",
+                productKey: "bundle",
+                interval: "monthly",
+                paymentId: null,
+                confirmed: false,
+                replayed: false,
+              },
+            }),
+            { status: 202 },
+          ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(previewPlanChange("bundle", "monthly")).resolves.toMatchObject({ dueNow: 350 });
+    await expect(changePlan("bundle", "monthly", "key-1")).resolves.toMatchObject({
+      confirmed: false,
+    });
+
+    const [url, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(url).toMatch(/\/billing\/subscription\/change-plan$/);
+    expect(new Headers(init.headers).get("Idempotency-Key")).toBe("key-1");
+    expect(JSON.parse(init.body as string)).toEqual({
+      productKey: "bundle",
+      interval: "monthly",
+      idempotencyKey: "key-1",
+    });
+
+    // Both bodies parse with the server's own validator.
+    const { planChangeSchema } = await import("../../../server/src/validators/billingValidator");
+    for (const [, call] of fetchMock.mock.calls as unknown as Array<[string, RequestInit]>) {
+      expect(planChangeSchema.safeParse(JSON.parse(call.body as string)).success).toBe(true);
+    }
+  });
+
+  it("V-202: every refusal says the server's reason; unpaid or paused plans go to billing; payments closed stays closed", async () => {
+    const { describeCheckoutError } = await import("@/features/billing/checkout-rules");
+
+    for (const { code, message } of serverPlanChangeErrors()) {
+      const failure = describeCheckoutError(new ApiRequestError(message, 409, { code }), "x");
+
+      expect(failure.kind, code).not.toBe("checkout-locked");
+      expect(failure.message, code).toBe(message);
+      if (code === "PAYMENT_OUTSTANDING" || code === "SUBSCRIPTION_PAUSED") {
+        expect(failure.kind, code).toBe("manage-billing");
+      }
+    }
+    expect(
+      describeCheckoutError(new ApiRequestError("Payments are disabled.", 403), "x").kind,
+    ).toBe("payments-closed");
+  });
+});
+
+describe("before a paid AI action runs", () => {
+  afterEach(() => {
+    workspace.resumes = [];
+  });
+
+  function stubBilling(plan: BillingSummary["plan"]) {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ data: summary({ plan }) }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("S-278: a free account that already has a resume is stopped before the conversion is charged", async () => {
+    const { conversionLimitMessage } = await import("@/features/ats/AtsWorkspace");
+
+    workspace.resumes = [];
+    const unused = stubBilling("FREE");
+    await expect(conversionLimitMessage()).resolves.toBeNull();
+    expect(unused).not.toHaveBeenCalled();
+
+    workspace.resumes = [{ id: "r1" }];
+    stubBilling("FREE");
+    await expect(conversionLimitMessage()).resolves.toBe(freeLimitMessage("RESUME"));
+
+    stubBilling("BUNDLE");
+    await expect(conversionLimitMessage()).resolves.toBeNull();
+  });
+
+  it("V-201: a document-limit 402 says the limit and does not offer credits", () => {
+    const failure = describePaidActionError(
+      new ApiRequestError("Free accounts can keep 1 active resume at a time.", 402, {
+        code: "DOCUMENT_LIMIT",
+        type: "RESUME",
+      }),
+      "x",
+    );
+
+    expect(failure).toEqual({ message: freeLimitMessage("RESUME"), buyCredits: false });
+  });
+
+  it("V-192: a retry reuses the request id until it succeeds or the request changes", async () => {
+    const { requestIdFor, settleRequestId } = await import("@/features/ai/ai-api");
+    const pending = { current: null as { fingerprint: string; requestId: string } | null };
+
+    const first = requestIdFor(pending, "a");
+    expect(requestIdFor(pending, "a")).toBe(first);
+
+    settleRequestId(pending, new TypeError("Failed to fetch"));
+    expect(requestIdFor(pending, "a")).toBe(first);
+
+    settleRequestId(pending, new ApiRequestError("Upstream timed out.", 504));
+    const second = requestIdFor(pending, "a");
+    expect(second).not.toBe(first);
+    expect(requestIdFor(pending, "b")).not.toBe(second);
+
+    settleRequestId(pending);
+    expect(pending.current).toBeNull();
+  });
+
+  it("S-206 V-197: the import allowance shows unlimited plans and the real GitHub cap", async () => {
+    const { importAllowanceLabel } =
+      await import("@/components/dashboard/modals/ImportProfileModal");
+
+    expect(
+      importAllowanceLabel("linkedin", {
+        isPaid: true,
+        unlimited: true,
+        remaining: null,
+        limit: null,
+        resetsInSeconds: 0,
+        connectedUsername: null,
+      }),
+    ).toBe("No import limit");
+    expect(
+      importAllowanceLabel("github", {
+        isPaid: true,
+        unlimited: false,
+        remaining: 48,
+        limit: 50,
+        resetsInSeconds: 3600,
+        connectedUsername: null,
+      }),
+    ).toBe("48 / 50 left today");
+    expect(
+      importAllowanceLabel("linkedin", {
+        isPaid: false,
+        unlimited: false,
+        remaining: 1,
+        limit: 1,
+        resetsInSeconds: 0,
+        connectedUsername: null,
+      }),
+    ).toBe("1 / 1 left · rolling 30 days");
+  });
+
+  it("SV S-206: GitHub import asks for a sign-in only when no GitHub login is linked", async () => {
+    const { githubImportState } = await import("@/components/dashboard/modals/ImportProfileModal");
+    const quota = {
+      isPaid: false,
+      unlimited: false,
+      remaining: 1,
+      limit: 1,
+      resetsInSeconds: 0,
+    };
+
+    expect(githubImportState({ ...quota, connectedUsername: null, hasGithubAccount: false })).toBe(
+      "needs-sign-in",
+    );
+    expect(githubImportState({ ...quota, connectedUsername: null, hasGithubAccount: true })).toBe(
+      "unreadable",
+    );
+    expect(githubImportState({ ...quota, connectedUsername: "jane", hasGithubAccount: true })).toBe(
+      "ready",
+    );
+  });
+
+  it("S-279: the LinkedIn import says what it costs and what the user has", async () => {
+    const { linkedinImportCostNote } =
+      await import("@/components/dashboard/modals/ImportProfileModal");
+
+    expect(linkedinImportCostNote(25, 100)).toEqual({
+      text: "Uses 25 credits · you have 100",
+      short: false,
+    });
+    expect(linkedinImportCostNote(25, 10)).toEqual({
+      text: "Uses 25 credits · you have 10",
+      short: true,
+    });
+    expect(linkedinImportCostNote(null, 10)).toEqual({ text: "Uses AI credits", short: false });
+  });
+
+  it("S-280: the import modal counts this device's resumes when it mounts open", async () => {
+    const { ImportProfileModal } = await import("@/components/dashboard/modals/ImportProfileModal");
+    const { listDocuments } =
+      await import("@/features/documents/services/document-workspace-service");
+    vi.mocked(listDocuments).mockClear();
+
+    renderToStaticMarkup(<ImportProfileModal open onClose={() => undefined} />);
+
+    expect(listDocuments).toHaveBeenCalledWith("RESUME");
+  });
+});
+
+describe("affiliate payouts", () => {
+  afterEach(() => {
+    programData.affiliate = null;
+  });
+
+  async function renderPayouts(status: string | null) {
+    programData.affiliate =
+      status === null
+        ? null
+        : {
+            affiliateStatus: status,
+            wallet: { pendingCents: 0, availableCents: 5000, paidCents: 0 },
+            minimumWithdrawalCents: 2500,
+            withdrawals: [],
+          };
+    const { default: AffiliatePayoutsPage } =
+      await import("@/app/(main)/(dashboard)/affiliate/payouts/page");
+    return text(renderToStaticMarkup(await AffiliatePayoutsPage()));
+  }
+
+  it("S-282: only an active affiliate is offered the payout form", async () => {
+    expect(await renderPayouts("ACTIVE")).toContain("Request payout");
+
+    for (const status of ["PENDING", "SUSPENDED", "NOT_ENROLLED", null]) {
+      const page = await renderPayouts(status);
+
+      expect(page, String(status)).not.toContain("Request payout");
+      expect(page, String(status)).not.toContain("$25.00");
+    }
   });
 });
 

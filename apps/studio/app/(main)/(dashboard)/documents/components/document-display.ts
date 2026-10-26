@@ -18,7 +18,7 @@ export function LibraryDocumentIcon({ className, type }: LibraryDocumentIconProp
 }
 
 /**
- * The card's sync badge. `telemetry` carries why the last attempt failed, which the sync
+ * The card's backup badge. `telemetry` carries why the last attempt failed, which the sync
  * status alone cannot express: a pending document the server refused for the free-plan limit
  * is not "Pending", it is waiting on an upgrade.
  */
@@ -29,11 +29,11 @@ export function getSyncLabel(
   const reason = telemetry?.lastErrorReason ?? null;
 
   if (!sync.enabled) return reason === "deleted-elsewhere" ? "Deleted elsewhere" : "Local only";
-  if (sync.status === "synced") return "Synced";
-  if (sync.status === "syncing") return "Syncing";
+  if (sync.status === "synced") return "Backed up";
+  if (sync.status === "syncing") return "Backing up";
   if (sync.status === "conflicted") return "Conflict";
   if (reason === "upgrade-required") return "Upgrade needed";
-  if (reason === "forbidden" || reason === "rejected") return "Sync failed";
+  if (reason === "forbidden" || reason === "rejected") return "Backup failed";
 
   return "Pending";
 }
@@ -42,8 +42,8 @@ export function getActivityLabel(
   sync: DocumentLibraryItem["sync"],
   telemetry: SyncTelemetry | null,
 ) {
-  if (sync.lastSyncedAt) return `Last synced ${formatRelative(sync.lastSyncedAt)}`;
+  if (sync.lastSyncedAt) return `Last backed up ${formatRelative(sync.lastSyncedAt)}`;
   if (telemetry?.lastAttemptAt) return `Last attempt ${formatRelative(telemetry.lastAttemptAt)}`;
 
-  return sync.enabled ? "Sync ready" : "Stored locally";
+  return sync.enabled ? "Backup on" : "Stored locally";
 }

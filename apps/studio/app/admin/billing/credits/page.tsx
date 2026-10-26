@@ -4,6 +4,7 @@ import Link from "next/link";
 import AdminStatCard from "@/components/admin/AdminStatCard";
 import AdminListPage from "@/components/admin/AdminListPage";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
+import AdminUserLink from "@/components/admin/AdminUserLink";
 import { CreditAdjustmentForm } from "@/app/admin/billing/BillingActions";
 
 import {
@@ -38,17 +39,7 @@ const columns: Array<AdminTableColumn<AdminCreditWalletRow>> = [
   {
     key: "user",
     header: "Account",
-    render: (row) => (
-      <div className="min-w-0">
-        <Link
-          href={`/admin/users/${row.user.id}`}
-          className="text-foreground font-medium hover:underline"
-        >
-          {row.user.name || row.user.email}
-        </Link>
-        <p className="text-muted truncate text-xs">{row.user.email}</p>
-      </div>
-    ),
+    render: (row) => <AdminUserLink user={row.user} />,
   },
   {
     key: "balance",

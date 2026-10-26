@@ -9,8 +9,9 @@ import { Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  canRetryWithSameRequestId,
-  createRequestId,
+  requestIdFor,
+  settleRequestId,
+  type PendingAiRequest,
   generateAiContent,
   getAiActions,
   type AiAction,
@@ -64,7 +65,7 @@ export function AiFieldAssist({
   // One idempotency key per distinct request. A retry reuses it only after a lost response
   // (see `canRetryWithSameRequestId`), so the server recognises it instead of charging again;
   // a success or any answered error starts a fresh one.
-  const pendingRequestRef = useRef<{ fingerprint: string; requestId: string } | null>(null);
+  const pendingRequestRef = useRef<PendingAiRequest["current"]>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -100,9 +101,7 @@ export function AiFieldAssist({
     const input = { text, context: getContext?.() ?? "", instructions };
     const fingerprint = JSON.stringify([action, mode, input]);
 
-    if (pendingRequestRef.current?.fingerprint !== fingerprint) {
-      pendingRequestRef.current = { fingerprint, requestId: createRequestId() };
-    }
+    const requestId = requestIdFor(pendingRequestRef, fingerprint);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -115,17 +114,21 @@ export function AiFieldAssist({
           action,
           mode,
           input,
-          requestId: pendingRequestRef.current.requestId,
+          requestId,
           documentId,
         },
         controller.signal,
       );
 
-      pendingRequestRef.current = null;
+      settleRequestId(pendingRequestRef);
       setResult(response.content);
-      toast.success(`Draft generated. ${response.credits.spent} credits used.`);
+      toast.success(
+        response.replayed
+          ? "Draft recovered from your last request. No extra credits used."
+          : `Draft generated. ${response.credits.spent} credits used.`,
+      );
     } catch (error) {
-      if (!canRetryWithSameRequestId(error)) pendingRequestRef.current = null;
+      settleRequestId(pendingRequestRef, error);
       if (controller.signal.aborted) return;
       const described = describePaidActionError(error, "AI generation failed.");
       // A 402 stays in the panel with the way to buy credits; anything else is a toast.

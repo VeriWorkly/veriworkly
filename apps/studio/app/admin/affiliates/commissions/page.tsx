@@ -4,6 +4,7 @@ import Link from "next/link";
 import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
 import AdminListPage from "@/components/admin/AdminListPage";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
+import AdminUserLink, { isDeletedAccount } from "@/components/admin/AdminUserLink";
 import { CommissionActions, CommissionCreateForm } from "@/app/admin/affiliates/AffiliateActions";
 
 import { fetchAdminCommissions } from "@/features/admin/services/admin-server";
@@ -38,27 +39,24 @@ const columns: Array<AdminTableColumn<AdminCommissionRow>> = [
   {
     key: "affiliate",
     header: "Affiliate",
-    render: (row) =>
-      row.affiliate ? (
-        <div className="min-w-0">
-          <Link
-            href={`/admin/affiliates/${row.affiliate.id}`}
-            className="text-foreground font-medium hover:underline"
-          >
-            {row.affiliate.name || row.affiliate.email}
-          </Link>
-          <p className="text-muted truncate text-xs">{row.affiliate.affiliateCode || "no code"}</p>
-        </div>
-      ) : (
-        <span className="text-muted text-xs">Deleted account</span>
-      ),
+    render: (row) => (
+      <AdminUserLink
+        user={row.affiliate}
+        href={
+          row.affiliate ? `/admin/affiliates/${encodeURIComponent(row.affiliate.id)}` : undefined
+        }
+        detail={row.affiliate?.affiliateCode || "no code"}
+      />
+    ),
   },
   {
     key: "referred",
     header: "Referred user",
     hideOnMobile: true,
     render: (row) => (
-      <span className="text-muted text-xs">{row.referral?.referredUser.email ?? "—"}</span>
+      <span className="text-muted text-xs">
+        {row.referral?.referredUser.email ?? "Deleted account"}
+      </span>
     ),
   },
   {
@@ -85,14 +83,18 @@ const columns: Array<AdminTableColumn<AdminCommissionRow>> = [
     key: "actions",
     header: "",
     className: "text-right",
-    render: (row) => (
-      <CommissionActions
-        id={row.id}
-        status={row.status}
-        amountCents={row.amountCents}
-        currency={row.currency}
-      />
-    ),
+    render: (row) =>
+      // The server refuses every change to a deleted account's commission.
+      isDeletedAccount(row.affiliate) ? (
+        <span className="text-muted text-xs">Read-only</span>
+      ) : (
+        <CommissionActions
+          id={row.id}
+          status={row.status}
+          amountCents={row.amountCents}
+          currency={row.currency}
+        />
+      ),
   },
 ];
 

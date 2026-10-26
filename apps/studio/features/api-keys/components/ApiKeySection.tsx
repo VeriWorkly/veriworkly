@@ -115,7 +115,7 @@ export default function ApiKeySection({
 
       {!isLoggedIn ? (
         <div className="border-border bg-card/45 absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border p-6 text-center backdrop-blur-sm">
-          <div className="bg-accent-soft text-accent flex h-12 w-12 items-center justify-center rounded-full">
+          <div className="bg-accent/10 text-accent flex h-12 w-12 items-center justify-center rounded-full">
             <LockKeyhole size={20} />
           </div>
           <h2 className="text-foreground mt-4 text-base font-extrabold">

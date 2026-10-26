@@ -1,3 +1,4 @@
+import { freeLimitMessage } from "@/features/documents/services/document-limit";
 import { ApiRequestError } from "@/utils/fetchApiData";
 
 export type PaidActionError = { message: string; buyCredits: boolean };
@@ -8,6 +9,16 @@ export type PaidActionError = { message: string; buyCredits: boolean };
  * both offer the way there. Anything else keeps the server's own message.
  */
 export function describePaidActionError(error: unknown, fallback: string): PaidActionError {
+  // A paid action that would make a document an account has no room for is refused before the
+  // charge (V-201): credits do not lift the limit, so none are offered.
+  if (error instanceof ApiRequestError && error.code === "DOCUMENT_LIMIT") {
+    const type = (error.details as { type?: unknown }).type;
+    return {
+      message: freeLimitMessage(type === "COVER_LETTER" ? "COVER_LETTER" : "RESUME"),
+      buyCredits: false,
+    };
+  }
+
   if (error instanceof ApiRequestError && error.status === 402) {
     return {
       message: /^not enough/i.test(error.message) ? "Not enough credits." : error.message,

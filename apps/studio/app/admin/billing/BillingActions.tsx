@@ -16,30 +16,37 @@ import {
   updateAdminSubscription,
   type AdminEntitlementKey,
 } from "@/features/admin/services/admin-actions";
+import { useAdminAccount, type AdminAccountLookup } from "@/features/admin/utils/use-admin-account";
 
 import type { SubscriptionStatus } from "@/features/admin/types/admin-types";
 
 import { parseCreditAmount } from "./credit-amount";
 
 /**
- * Edits to our copy of a subscription.
+ * Support's controls for one subscription (`adminBillingService.updateSubscription`).
  *
- * Neither control reaches the payment provider (Dodo), and neither grants or revokes access:
- * access follows entitlement grants, and the next provider webhook overwrites these fields. The
- * dialogs say so, because support reading "cancel" would otherwise believe billing stopped.
+ * Both reach real billing. Cancel at period end is made at Dodo first and the row takes Dodo's
+ * answer. A status change moves the plan's access with it, and ending a subscription here is
+ * refused unless Dodo already reports it ended. The dialogs say so, because support reading a
+ * "label" would believe nothing happens to the customer's card or access.
  */
 export function SubscriptionActions({
   id,
   status,
   email,
   cancelAtPeriodEnd,
+  deleted,
 }: {
   id: string;
   status: SubscriptionStatus;
   email: string;
   cancelAtPeriodEnd: boolean;
+  /** Kept as a billing record after the account was deleted; the server refuses every edit. */
+  deleted: boolean;
 }) {
   const [nextStatus, setNextStatus] = useState<SubscriptionStatus>(status);
+
+  if (deleted) return <span className="text-muted text-xs">Read-only</span>;
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -61,38 +68,36 @@ export function SubscriptionActions({
         title="Override subscription status"
         description={
           <>
-            Changes the status label on {email}&apos;s subscription to {nextStatus}, nothing else:
-            it does not grant or revoke access and does not touch billing at Dodo, and the next
-            webhook overwrites it. To give or remove access, use the grant form on{" "}
+            Sets {email}&apos;s subscription to {nextStatus} and moves access with it, as a webhook
+            would: Active grants the plan&apos;s features to the period end; the other statuses
+            withdraw them (a cancelled plan keeps its paid time). Canceled or Inactive is refused
+            unless Dodo already reports the subscription ended: to stop the renewal, use Cancel at
+            period end. Dodo&apos;s next webhook can change the status again. Manual grants live on{" "}
             <Link href="/admin/billing/entitlements" className="text-accent underline">
               Entitlements
             </Link>
             .
           </>
         }
-        confirmLabel="Change label"
+        confirmLabel="Change status"
         onConfirm={async (reason) => {
           await updateAdminSubscription(id, { status: nextStatus, reason });
         }}
       />
 
       <AdminActionDialog
-        trigger={
-          cancelAtPeriodEnd
-            ? "Clear cancel-at-period-end (local flag only)"
-            : "Mark cancel-at-period-end (local flag only — cancel in Dodo)"
-        }
+        trigger={cancelAtPeriodEnd ? "Resume renewal" : "Cancel at period end"}
         title={
           cancelAtPeriodEnd
-            ? "Clear the local cancel-at-period-end flag"
-            : "Mark cancel-at-period-end (local flag only)"
+            ? "Resume this subscription's renewal at Dodo"
+            : "Cancel this subscription's renewal at Dodo"
         }
         description={
           cancelAtPeriodEnd
-            ? `Clears the flag on our copy of ${email}'s subscription. Nothing changes at Dodo, and the next webhook overwrites the flag.`
-            : `Sets a flag on our copy of ${email}'s subscription only. It does not cancel anything at Dodo: the renewal still charges until the subscription is cancelled in the Dodo dashboard, and the next webhook overwrites this flag.`
+            ? `Dodo renews ${email}'s subscription again: the card is charged again at renewal. If Dodo does not confirm, nothing changes and the error says why.`
+            : `Dodo stops renewing ${email}'s subscription: the card is not charged again, and access ends at the end of the paid period. If Dodo does not confirm, nothing changes and the error says why.`
         }
-        confirmLabel="Save flag"
+        confirmLabel={cancelAtPeriodEnd ? "Resume renewal" : "Cancel renewal"}
         onConfirm={async (reason) => {
           await updateAdminSubscription(id, { cancelAtPeriodEnd: !cancelAtPeriodEnd, reason });
         }}
@@ -101,13 +106,36 @@ export function SubscriptionActions({
   );
 }
 
+/** Who a pasted user id belongs to, under the field, so a typo never reaches a stranger. */
+function AccountHint({ lookup }: { lookup: AdminAccountLookup }) {
+  if (lookup.state === "empty") return null;
+
+  return (
+    <p
+      role={lookup.state === "missing" || lookup.state === "error" ? "alert" : undefined}
+      className={
+        lookup.state === "found" ? "text-muted text-xs" : "text-destructive text-xs font-medium"
+      }
+    >
+      {lookup.state === "loading"
+        ? "Looking up the account…"
+        : lookup.state === "found"
+          ? `Account: ${lookup.email}`
+          : lookup.state === "missing"
+            ? "No account has this id."
+            : lookup.message}
+    </p>
+  );
+}
+
 /** Grant or claw back credits for one account, by user id. */
 export function CreditAdjustmentForm() {
   const [userId, setUserId] = useState("");
   const [amount, setAmount] = useState("100");
+  const account = useAdminAccount(userId);
 
   const parsed = parseCreditAmount(amount);
-  const ready = userId.trim().length > 0 && parsed.ok;
+  const ready = account.state === "found" && parsed.ok;
 
   return (
     <div className="space-y-3">
@@ -118,6 +146,7 @@ export function CreditAdjustmentForm() {
         value={userId}
         onChange={(event) => setUserId(event.target.value)}
       />
+      <AccountHint lookup={account} />
 
       <input
         className={ADMIN_INPUT_CLASS}
@@ -143,9 +172,11 @@ export function CreditAdjustmentForm() {
         disabled={!ready}
         title="Adjust a credit balance"
         description={
-          parsed.ok
-            ? `${parsed.amount > 0 ? "Granting" : "Removing"} ${Math.abs(parsed.amount)} credits.`
-            : parsed.message
+          parsed.ok && account.state === "found"
+            ? `${parsed.amount > 0 ? "Granting" : "Removing"} ${Math.abs(parsed.amount)} credits ${parsed.amount > 0 ? "to" : "from"} ${account.email}.`
+            : parsed.ok
+              ? "Enter the id of an existing account."
+              : parsed.message
         }
         confirmLabel="Apply"
         onConfirm={async (reason, attemptKey) => {
@@ -163,6 +194,7 @@ export function EntitlementGrantForm() {
   const [userId, setUserId] = useState("");
   const [key, setKey] = useState<AdminEntitlementKey>(ADMIN_ENTITLEMENT_KEYS[0]);
   const [endsAt, setEndsAt] = useState("");
+  const account = useAdminAccount(userId);
 
   return (
     <div className="space-y-3">
@@ -173,6 +205,7 @@ export function EntitlementGrantForm() {
         value={userId}
         onChange={(event) => setUserId(event.target.value)}
       />
+      <AccountHint lookup={account} />
 
       <Select
         aria-label="Entitlement"
@@ -198,9 +231,9 @@ export function EntitlementGrantForm() {
       <AdminActionDialog
         trigger="Grant entitlement"
         triggerVariant="primary"
-        disabled={!userId.trim()}
+        disabled={account.state !== "found"}
         title="Grant an entitlement"
-        description={`Granting "${key}"${endsAt ? ` until ${endsAt}` : " with no expiry"}.`}
+        description={`Granting "${key}" to ${account.state === "found" ? account.email : "this account"}${endsAt ? ` until ${endsAt}` : " with no expiry"}.`}
         confirmLabel="Grant"
         onConfirm={async (reason) => {
           await grantAdminEntitlement({
@@ -218,16 +251,33 @@ export function EntitlementGrantForm() {
   );
 }
 
+/**
+ * Only a live manual or promotional grant can be revoked. A subscription's grants follow the
+ * subscription (the server refuses with 409, as the next billing event would restore them), an
+ * expired grant gives nothing to take away, and a deleted account's grants are read-only records.
+ */
 export function EntitlementRevokeAction({
   id,
   entitlementKey,
   revoked,
+  source,
+  expired,
+  deleted = false,
 }: {
   id: string;
   entitlementKey: string;
   revoked: boolean;
+  source: string;
+  /** Decided by the server render, which has a clock; this client component must not read one. */
+  expired: boolean;
+  deleted?: boolean;
 }) {
   if (revoked) return <span className="text-muted text-xs">Revoked</span>;
+  if (deleted) return <span className="text-muted text-xs">Read-only</span>;
+  if (source === "SUBSCRIPTION") {
+    return <span className="text-muted text-xs">Follows the subscription</span>;
+  }
+  if (expired) return <span className="text-muted text-xs">Expired</span>;
 
   return (
     <AdminActionDialog

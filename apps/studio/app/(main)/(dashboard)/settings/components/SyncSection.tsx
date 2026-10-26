@@ -65,8 +65,20 @@ export default function SyncSection() {
   }, []);
 
   const handleToggle = async (checked: boolean) => {
-    if (!isLoggedIn) return;
+    // `loading` disables the switch for the whole request: a second toggle while the first is
+    // in flight would capture its half-applied states as the ones to roll back to.
+    if (!isLoggedIn || loading) return;
 
+    setLoading(true);
+
+    try {
+      await applyAutoSync(checked);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyAutoSync = async (checked: boolean) => {
     const previous = autoSync;
     // Per document, so a rollback restores each one's own choice (a document kept local
     // stays local) instead of flattening every document to the old global value.
@@ -101,17 +113,13 @@ export default function SyncSection() {
 
     if (!checked) return;
 
-    setLoading(true);
+    const results = await syncAllPendingDocuments();
+    const failed = results.filter((result) => !result.ok && result.reason !== "in-progress");
 
-    try {
-      const results = await syncAllPendingDocuments();
-      const failed = results.filter((result) => !result.ok && result.reason !== "in-progress");
-
-      if (failed.length > 0) {
-        toast.error(`${pluralize(failed.length, "document")} did not sync: ${failed[0].message}`);
-      }
-    } finally {
-      setLoading(false);
+    if (failed.length > 0) {
+      toast.error(
+        `${pluralize(failed.length, "document")} could not be backed up: ${failed[0].message}`,
+      );
     }
   };
 
@@ -133,7 +141,7 @@ export default function SyncSection() {
             id="auto-sync-label"
             className="text-muted-foreground text-[10px] font-bold tracking-tighter uppercase"
           >
-            Auto-Sync
+            Automatic backup
           </span>
 
           <Switch
@@ -147,7 +155,7 @@ export default function SyncSection() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatsTile
-          label="Sync Health"
+          label="Backup status"
           icon={CheckCircle2}
           success={!!telemetry.lastSuccessAt}
           value={telemetry.lastSuccessAt ? "Healthy" : "Standby"}
@@ -155,7 +163,7 @@ export default function SyncSection() {
 
         <StatsTile
           icon={History}
-          label="Last Attempt"
+          label="Last backup attempt"
           value={
             telemetry.lastAttemptAt ? (
               <>

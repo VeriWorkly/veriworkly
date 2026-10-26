@@ -14,6 +14,7 @@ import {
   prepareWorkspaceStorage,
 } from "@/features/documents/services/document-workspace-service";
 import { invalidateDocumentIndexCache } from "@/features/documents/services/document-index";
+import { getWorkspaceViewer } from "@/features/documents/services/workspace-viewer";
 import { DOCUMENT_TYPES } from "@/features/documents/core/document-types";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
@@ -93,7 +94,8 @@ export function getDocumentLibrarySnapshot(
   // useSyncExternalStore getSnapshot, so it runs on every render — the previous
   // version concatenated the raw JSON of every collection (~563KB at 50 documents)
   // just to decide whether anything had changed.
-  const nextKey = `${activeType}::${getWorkspaceRevision()}::${refreshKey}`;
+  // The viewer too: signing in or out changes which documents are listed, not the storage.
+  const nextKey = `${activeType}::${getWorkspaceRevision()}::${refreshKey}::${getWorkspaceViewer()}`;
   const cached = snapshotCache.get(activeType);
 
   if (cached && cached.key === nextKey) return cached;

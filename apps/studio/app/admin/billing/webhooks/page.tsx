@@ -5,6 +5,7 @@ import AdminStatCard from "@/components/admin/AdminStatCard";
 import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
 import AdminListPage from "@/components/admin/AdminListPage";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
+import AdminUserLink from "@/components/admin/AdminUserLink";
 import { WebhookReplayAction } from "@/app/admin/billing/BillingActions";
 
 import {
@@ -51,17 +52,9 @@ const columns: Array<AdminTableColumn<AdminWebhookRow>> = [
     key: "user",
     header: "Account",
     hideOnMobile: true,
-    render: (row) =>
-      row.user ? (
-        <Link
-          href={`/admin/users/${row.user.id}`}
-          className="text-foreground text-xs hover:underline"
-        >
-          {row.user.email}
-        </Link>
-      ) : (
-        <span className="text-muted text-xs">Unmatched</span>
-      ),
+    // A null user is an event for a deleted account or one no account matched; the server cannot
+    // tell the two apart.
+    render: (row) => <AdminUserLink user={row.user} emptyLabel="Deleted or unmatched account" />,
   },
   {
     key: "status",

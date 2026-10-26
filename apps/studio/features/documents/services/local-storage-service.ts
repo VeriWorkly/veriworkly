@@ -65,6 +65,8 @@ export interface LocalStorageConfig<T extends BaseDocumentData> {
   cloudContentRevision?: (id: string) => number | null;
   /** The id a document was moved to (following every move), or null when it never moved. */
   resolveMovedId?: (id: string) => string | null;
+  /** Who a document first written now belongs to (`DocumentIndexEntry.owner`). */
+  newEntryOwner?: () => string | null;
 }
 
 const CORRUPT_SUFFIX = ":corrupt";
@@ -102,6 +104,18 @@ export class LocalStorageService<T extends BaseDocumentData> {
 
   private indexKeyFor(id: string) {
     return `${this.config.scope}:${id}`;
+  }
+
+  /**
+   * The item's index entry. A document keeps the owner it has; only a new one takes the
+   * current writer's, so an edit or a sync never moves a document between accounts.
+   */
+  private entryFor(index: DocumentIndex, item: T): DocumentIndexEntry {
+    const previous = index.items[this.indexKeyFor(item.id)];
+    const owner = previous ? previous.owner : this.config.newEntryOwner?.();
+    const entry = this.config.toIndexEntry(item);
+
+    return owner === undefined ? entry : { ...entry, owner };
   }
 
   private toComparablePayload(item: T | null | undefined) {
@@ -340,7 +354,7 @@ export class LocalStorageService<T extends BaseDocumentData> {
     const nextIndex = index ?? this.readIndex();
     if (!nextIndex) return { ok: false, reason: "unknown" };
 
-    nextIndex.items[this.indexKeyFor(item.id)] = this.config.toIndexEntry(item);
+    nextIndex.items[this.indexKeyFor(item.id)] = this.entryFor(nextIndex, item);
 
     return writeDocumentIndex(nextIndex);
   }
@@ -384,7 +398,7 @@ export class LocalStorageService<T extends BaseDocumentData> {
 
       if (!write.ok) return write;
 
-      index.items[this.indexKeyFor(item.id)] = this.config.toIndexEntry(toPersist);
+      index.items[this.indexKeyFor(item.id)] = this.entryFor(index, toPersist);
     }
 
     const result = writeDocumentIndex(index);

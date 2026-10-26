@@ -13,6 +13,7 @@ import {
 import { LocalStorageService, type SaveDocumentResult } from "./local-storage-service";
 import { safeSetLocalStorageItem } from "./storage/safe-local-storage";
 import { DOCUMENT_REMOTE_DELETION_EVENT, type RemoteDeletionDetail } from "./storage-keys";
+import { getWorkspaceEpoch } from "./workspace-epoch";
 
 /**
  * Max concurrent document syncs. Browsers allow ~6 connections per host, so going
@@ -69,6 +70,11 @@ export interface DocumentSyncConfig<T extends BaseDocumentData> {
    * it was deleted in the cloud. Returns the moved document, or null when it could not be saved.
    */
   rekeyLocal: (id: string) => T | null;
+  /**
+   * False while this device's documents are not confirmed as the signed-in account's (see
+   * workspace-owner.ts): nothing is uploaded or pulled until the user has chosen. Default true.
+   */
+  canReachCloud?: () => boolean;
 }
 
 type SyncFailure =
@@ -87,6 +93,19 @@ const KEPT_AFTER_REMOTE_DELETE_MESSAGE =
 
 const REKEYED_MESSAGE =
   "The cloud copy of this document had been deleted, so it is being backed up again as a new document.";
+
+/** A reply that arrived after this device's workspace was cleared; nothing was written. */
+const WORKSPACE_CLEARED_RESULT: SyncResult = {
+  ok: false,
+  reason: "unknown",
+  message: "This device was signed out while the sync ran, so its result was dropped.",
+};
+
+/** In place of the server's "Revision mismatch. Client: 3, Server: 4". */
+const CONFLICT_MESSAGE = "This document changed on another device. Choose which version to keep.";
+
+const AWAITING_OWNER_MESSAGE =
+  "Choose what happens to the documents already on this device before they sync with your account.";
 
 function hasDeletedAt(details: unknown) {
   return (
@@ -110,7 +129,7 @@ function classifySyncFailure(error: unknown, phase: "create" | "update"): SyncFa
 
   if (status === 409 && hasDeletedAt(details)) return { kind: "deleted" };
   if (status === 404 && phase === "update") return { kind: "deleted" };
-  if (status === 409 && phase === "update") return { kind: "conflict", message };
+  if (status === 409 && phase === "update") return { kind: "conflict", message: CONFLICT_MESSAGE };
   if (status === 401) return { kind: "retry", reason: "auth", message };
   if (status === 408 || status === 429 || status >= 500) {
     return { kind: "retry", reason: "network", message };
@@ -144,6 +163,10 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
   private get type() {
     return this.config.documentType;
+  }
+
+  private canReachCloud() {
+    return this.config.canReachCloud?.() ?? true;
   }
 
   private scheduleWorkerTick(delayMs: number) {
@@ -183,7 +206,9 @@ export class DocumentSyncService<T extends BaseDocumentData> {
   }
 
   private async runWorkerTick() {
-    if (!this.workerEnabled || this.workerTickInFlight) return;
+    // Not rescheduled while the device's documents await their owner's answer: the sign-in
+    // that settles it restarts the workers.
+    if (!this.workerEnabled || this.workerTickInFlight || !this.canReachCloud()) return;
 
     try {
       const due = this.getNextDueOutboxItem();
@@ -431,6 +456,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       });
 
     this.inFlight.set(id, run);
+    SyncEngine.trackSync(id, this.type, run);
 
     return run;
   }
@@ -462,11 +488,26 @@ export class DocumentSyncService<T extends BaseDocumentData> {
   }
 
   private async performSync(id: string, options?: SyncNowOptions): Promise<SyncResult> {
+    if (!this.canReachCloud()) {
+      return { ok: false, reason: "in-progress", message: AWAITING_OWNER_MESSAGE };
+    }
+
+    const epoch = getWorkspaceEpoch();
+
+    // The last 300 ms of typing are part of what the user asked to back up or share.
+    this.config.flushPendingEdits(id);
+
     const item = this.config.localStorage.loadById(id);
 
     if (!item) {
       SyncEngine.removeOutboxItem(id, this.type);
       return { ok: false, message: "Document not found locally.", reason: "not-found" };
+    }
+
+    // Sending it would carry the revision the cloud has moved past and 409 again; only the
+    // user's choice (keep mine / use the cloud's) unblocks it.
+    if (item.sync.status === "conflicted") {
+      return { ok: false, reason: "conflict", message: CONFLICT_MESSAGE };
     }
 
     const isNew = !item.sync.cloudDocumentId;
@@ -498,6 +539,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       if (isNew) {
         const created = await DocumentApi.create({ id: item.id, type: this.type, ...payload });
 
+        if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
+
         // A 200 means this id was already ours (an earlier sync whose reply was lost, or a
         // stale local copy): the server returned the stored row without applying the body,
         // so the content still has to be sent, against the revision it reported.
@@ -512,8 +555,12 @@ export class DocumentSyncService<T extends BaseDocumentData> {
         });
       }
 
+      if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
+
       return this.recordSuccess(id, item, cloud, options);
     } catch (error: unknown) {
+      if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
+
       const failure = classifySyncFailure(error, isNew ? "create" : "update");
 
       if (failure.kind !== "deleted") return this.recordFailure(id, failure);
@@ -718,8 +765,17 @@ export class DocumentSyncService<T extends BaseDocumentData> {
   }
 
   async hydrateById(id: string, force = false): Promise<SyncResult> {
+    if (!this.canReachCloud()) {
+      return { ok: false, reason: "in-progress", message: AWAITING_OWNER_MESSAGE };
+    }
+
+    const epoch = getWorkspaceEpoch();
+
     try {
       const record = await DocumentApi.get(id);
+
+      if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
+
       const merged = this.mergeCloudDocumentsIntoLocalStorage([record], force);
 
       if (!merged.ok) return { ok: false, message: "Unable to save the cloud document here." };
@@ -759,11 +815,16 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    * only come with an incremental pull.
    */
   async hydrate(options?: HydrateOptions): Promise<SyncResult> {
-    if (!this.shouldHydrate(options)) {
-      return { ok: true, message: "Fresh enough." };
-    }
+    // Not a failure: the sign-in that settles who owns this device's documents pulls again.
+    if (!this.canReachCloud()) return { ok: true, message: AWAITING_OWNER_MESSAGE };
+
+    const epoch = getWorkspaceEpoch();
 
     try {
+      if (!this.shouldHydrate(options)) {
+        return { ok: true, message: "Fresh enough." };
+      }
+
       this.config.localStorage.prepare();
 
       const meta = this.getHydrateMeta();
@@ -772,6 +833,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
         includeContent: true,
         updatedSince: options?.force ? undefined : meta.lastServerCursor,
       });
+
+      if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
 
       const merged = this.mergeCloudDocumentsIntoLocalStorage(documents);
 
@@ -911,6 +974,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
     if (!item) return { ok: false, message: "Document not found.", reason: "not-found" };
 
+    const epoch = getWorkspaceEpoch();
+
     if (item.sync.cloudDocumentId) {
       try {
         await DocumentApi.delete(id);
@@ -926,6 +991,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
         }
       }
     }
+
+    if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
 
     const optOut = SyncEngine.setSyncOptedOut(id, true, this.type);
     const saved = this.config.localStorage.patchSync(id, {
@@ -960,6 +1027,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
   async resolveConflictUseLocal(id: string): Promise<SyncResult> {
     this.config.flushPendingEdits(id);
 
+    const epoch = getWorkspaceEpoch();
     let patch: Partial<T["sync"]>;
 
     try {
@@ -976,6 +1044,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
       patch = { cloudDocumentId: null, revision: 1, status: "pending" } as Partial<T["sync"]>;
     }
+
+    if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
 
     const saved = this.config.localStorage.patchSync(id, patch);
 
@@ -998,13 +1068,23 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     if (!raw) return { lastHydratedAt: 0 };
 
     try {
-      return JSON.parse(raw);
+      const meta: unknown = JSON.parse(raw);
+
+      if (
+        typeof meta === "object" &&
+        meta !== null &&
+        typeof (meta as { lastHydratedAt?: unknown }).lastHydratedAt === "number"
+      ) {
+        return meta as { lastHydratedAt: number; lastServerCursor?: string };
+      }
     } catch {
-      // Self-heal: a corrupted value here must not throw uncaught inside
-      // shouldHydrate()/hydrate(), which would otherwise silently break hydration.
-      localStorage.removeItem(this.cloudHydrateMetaKey);
-      return { lastHydratedAt: 0 };
+      // Unparseable: healed below like a value of the wrong shape.
     }
+
+    // Self-heal: a corrupted value (bad JSON, `null`, another shape) must not break every
+    // later pull; the next one is a full list.
+    localStorage.removeItem(this.cloudHydrateMetaKey);
+    return { lastHydratedAt: 0 };
   }
 
   private setLastHydrateMeta(meta: { lastHydratedAt: number; lastServerCursor?: string }) {

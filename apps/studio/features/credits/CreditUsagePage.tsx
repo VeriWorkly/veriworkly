@@ -5,6 +5,7 @@ import type { CreditTransaction, CreditWallet } from "@/features/credits/types";
 import type { BillingSummary } from "@/features/billing/types";
 import type { AtsPricing } from "@/features/ats/types";
 import { LocalDate } from "@/components/LocalDate";
+import { PLAN_NAMES } from "@/features/billing/checkout-rules";
 
 /** The server keeps the newest entries only (`CREDIT_HISTORY_LIMIT`); there is no paging. */
 const HISTORY_LIMIT = 50;
@@ -25,22 +26,40 @@ const ACTION_LABELS: Record<string, string> = {
   ats_analysis: "ATS AI analysis",
   ats_parse_repair: "AI parse repair",
   ats_resume_conversion: "Resume conversion",
+  linkedin_import: "LinkedIn import",
   admin_adjustment: "Adjustment",
 };
 
+const PRODUCT_NAMES = new Set(Object.values(PLAN_NAMES));
+
 /**
- * What a ledger row is, in product language. Action keys map to names; a grant's reason is
- * server-written (a pack or plan allowance name) and safe to show. Free text an admin typed
- * is never shown: it is internal, so every unlabelled row reads as a plain adjustment.
+ * A grant, named from the reason the server wrote for it: a pack's name, a plan allowance or an
+ * annual plan's month. Only those shapes, naming a product the server sells, are read; any other
+ * reason is free text and never shown. Passes are sold under the bundle, so a bundle allowance is
+ * named for both.
+ */
+function grantLabel(reason: string) {
+  const annual = reason.match(/^(.+) monthly credits \((month \d+ of \d+)\)$/);
+  const allowance = reason.match(/^(.+) credit allowance$/);
+
+  if (/^\d+ extra credits$/.test(reason)) return reason;
+  if (annual && PRODUCT_NAMES.has(annual[1]))
+    return `${annual[1]} annual plan credits, ${annual[2]}`;
+  if (allowance?.[1] === PLAN_NAMES.bundle) return "Job Hunter Bundle or pass credits";
+  if (allowance && PRODUCT_NAMES.has(allowance[1])) return `${allowance[1]} plan credits`;
+  return "Credits added";
+}
+
+/**
+ * What a ledger row is, in product language. Free text an admin typed is never shown: it is
+ * internal, so a support grant reads as such and every unlabelled row as a plain adjustment.
  */
 function entryLabel(item: CreditTransaction) {
+  if (item.action === "admin_adjustment" && item.amount > 0) return "Credits added by support";
   if (item.action && ACTION_LABELS[item.action]) return ACTION_LABELS[item.action];
   if (item.type === "EXPIRATION") return "Credits expired";
   if (item.type === "REFUND") return "Credits returned";
-  if (item.type === "GRANT" && item.reason && /credits$|credit allowance$/.test(item.reason)) {
-    return item.reason;
-  }
-  return item.type === "GRANT" ? "Credits added" : "Adjustment";
+  return item.type === "GRANT" ? grantLabel(item.reason ?? "") : "Adjustment";
 }
 
 function range({ min, max }: { min: number; max: number }) {
@@ -95,6 +114,12 @@ export function CreditUsagePage({
           label: "Resume conversion",
           cost: `${atsPricing.resumeConversionCredits} credits`,
           note: "Old resume to an editable draft",
+        },
+        // The server bills the import as the resume conversion it is (`profileImportService`).
+        {
+          label: "LinkedIn profile import",
+          cost: `${atsPricing.resumeConversionCredits} credits`,
+          note: "Profile to an editable resume",
         },
       ]
     : [];

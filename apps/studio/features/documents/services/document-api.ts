@@ -85,6 +85,28 @@ async function toApiError(response: Response, fallbackMessage: string) {
   );
 }
 
+/**
+ * Every documents call gives up after this long. A hung request would otherwise keep its
+ * document "syncing" (and every later "Back up now" waiting on it) until the tab closed.
+ */
+const DOCUMENT_API_TIMEOUT_MS = 30_000;
+
+async function request(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(backendApiUrl(path), {
+      ...init,
+      credentials: "include",
+      signal: AbortSignal.timeout(DOCUMENT_API_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      throw new Error("The server took too long to answer. Check your connection and try again.");
+    }
+
+    throw error;
+  }
+}
+
 export class DocumentApi {
   /**
    * List documents for the current user.
@@ -107,10 +129,7 @@ export class DocumentApi {
 
     if (params.toString()) url += `?${params.toString()}`;
 
-    const response = await fetch(backendApiUrl(url), {
-      method: "GET",
-      credentials: "include",
-    });
+    const response = await request(url, { method: "GET" });
 
     if (!response.ok) throw await toApiError(response, "Failed to fetch documents");
 
@@ -124,10 +143,7 @@ export class DocumentApi {
   }
 
   static async get(id: string): Promise<CloudDocument> {
-    const response = await fetch(backendApiUrl(`/documents/${id}`), {
-      method: "GET",
-      credentials: "include",
-    });
+    const response = await request(`/documents/${id}`, { method: "GET" });
 
     if (!response.ok) throw await toApiError(response, "Document not found");
 
@@ -148,10 +164,9 @@ export class DocumentApi {
     templateId?: string;
     visibility?: string;
   }): Promise<DocumentCreateResult> {
-    const response = await fetch(backendApiUrl("/documents"), {
+    const response = await request("/documents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify(input),
     });
 
@@ -174,10 +189,9 @@ export class DocumentApi {
       revision: number;
     },
   ): Promise<CloudDocumentSummary> {
-    const response = await fetch(backendApiUrl(`/documents/${id}`), {
+    const response = await request(`/documents/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify(input),
     });
 
@@ -189,10 +203,7 @@ export class DocumentApi {
   }
 
   static async delete(id: string): Promise<void> {
-    const response = await fetch(backendApiUrl(`/documents/${id}`), {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const response = await request(`/documents/${id}`, { method: "DELETE" });
 
     if (!response.ok) throw await toApiError(response, "Failed to delete document");
   }

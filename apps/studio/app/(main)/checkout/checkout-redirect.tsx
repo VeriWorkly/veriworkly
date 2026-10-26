@@ -6,36 +6,16 @@ import { ArrowLeft, Clock, LoaderCircle, RotateCw, ShieldCheck } from "lucide-re
 import { Button } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
-import { beginCheckout, cancelCheckout } from "@/features/billing/billing-api";
+import { beginCheckout, cancelCheckout, openBillingPortal } from "@/features/billing/billing-api";
 import type { ProductKey } from "@/features/billing/types";
 import {
+  type CheckoutFailure,
   type CheckoutInterval,
-  isAlreadySubscribedError,
-  isPaymentsClosedError,
-  PAYMENTS_OPEN_SOON,
+  describeCheckoutError,
+  PLAN_NAMES,
 } from "@/features/billing/checkout-rules";
 import { recordPurchaseBaseline } from "@/features/billing/purchase-baseline";
-import { ApiRequestError } from "@/utils/fetchApiData";
-
-type CheckoutFailure = {
-  message: string;
-  kind: "payments-closed" | "already-subscribed" | "checkout-locked" | "other";
-};
-
-function toCheckoutFailure(cause: unknown): CheckoutFailure {
-  if (isPaymentsClosedError(cause)) return { message: PAYMENTS_OPEN_SOON, kind: "payments-closed" };
-  if (isAlreadySubscribedError(cause)) {
-    return {
-      message: "You already have this plan — manage it in billing.",
-      kind: "already-subscribed",
-    };
-  }
-
-  const message = cause instanceof Error ? cause.message : "Could not start checkout.";
-  const isLocked = cause instanceof ApiRequestError && cause.status === 409;
-
-  return { message, kind: isLocked ? "checkout-locked" : "other" };
-}
+import { UpgradeToBundle } from "@/features/billing/UpgradeToBundle";
 
 export function CheckoutRedirect({
   productKey,
@@ -51,6 +31,7 @@ export function CheckoutRedirect({
   const [error, setError] = useState<CheckoutFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [resetting, setResetting] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -60,7 +41,7 @@ export function CheckoutRedirect({
         if (active) window.location.assign(url);
       })
       .catch((cause) => {
-        if (active) setError(toCheckoutFailure(cause));
+        if (active) setError(describeCheckoutError(cause, "Could not start checkout."));
       });
 
     return () => {
@@ -68,12 +49,30 @@ export function CheckoutRedirect({
     };
   }, [attempt, interval, productKey]);
 
+  const openPortal = async () => {
+    setOpeningPortal(true);
+    try {
+      window.location.assign((await openBillingPortal()).url);
+    } catch (cause) {
+      setError({
+        kind: "other",
+        message: cause instanceof Error ? cause.message : "Could not open the billing portal.",
+      });
+      setOpeningPortal(false);
+    }
+  };
+
+  const retry = () => {
+    setError(null);
+    setAttempt((value) => value + 1);
+  };
+
   return (
     <main className="bg-background grid min-h-dvh place-items-center p-5">
       <section className="border-border bg-card w-full max-w-lg rounded-3xl border p-7 text-center shadow-sm sm:p-10">
         {error?.kind === "payments-closed" ? (
           <>
-            <div className="bg-accent-soft text-accent mx-auto grid size-12 place-items-center rounded-full">
+            <div className="bg-accent/10 text-accent mx-auto grid size-12 place-items-center rounded-full">
               <Clock className="size-5" />
             </div>
             <h1 className="mt-6 text-2xl font-black tracking-tight">Payments open soon</h1>
@@ -81,10 +80,41 @@ export function CheckoutRedirect({
               {productName} ({priceLabel}) is not on sale yet. Nothing has been charged.
             </p>
           </>
-        ) : error?.kind === "already-subscribed" ? (
+        ) : error?.kind === "already-have" ? (
           <>
-            <h1 className="text-2xl font-black tracking-tight">{error.message}</h1>
+            <h1 className="text-2xl font-black tracking-tight">You already have this</h1>
+            <p className="text-muted mt-3 text-sm leading-6">{error.message}</p>
             <Button asChild className="mt-7 w-full">
+              <Link href="/billing">Open billing</Link>
+            </Button>
+          </>
+        ) : error?.kind === "upgrade" ? (
+          <>
+            <h1 className="text-2xl font-black tracking-tight">
+              Upgrade to the {PLAN_NAMES[error.upgrade.productKey]}
+            </h1>
+            <p className="text-muted mt-3 text-sm leading-6">{error.message}</p>
+            <UpgradeToBundle upgrade={error.upgrade} className="mt-7 w-full" />
+            <Button asChild variant="secondary" className="mt-2 w-full">
+              <Link href="/billing">Open billing</Link>
+            </Button>
+          </>
+        ) : error?.kind === "manage-billing" || error?.kind === "overlap" ? (
+          <>
+            <h1 className="text-2xl font-black tracking-tight">
+              {error.kind === "overlap" && error.suggestedProductKey
+                ? `Switch to the ${PLAN_NAMES[error.suggestedProductKey]}`
+                : "Nothing was charged"}
+            </h1>
+            <p className="text-muted mt-3 text-sm leading-6">{error.message}</p>
+            <Button
+              className="mt-7 w-full"
+              loading={openingPortal}
+              onClick={() => void openPortal()}
+            >
+              Manage billing
+            </Button>
+            <Button asChild variant="secondary" className="mt-2 w-full">
               <Link href="/billing">Open billing</Link>
             </Button>
           </>
@@ -103,16 +133,11 @@ export function CheckoutRedirect({
                   setResetting(true);
                   try {
                     await cancelCheckout();
-                    setError(null);
-                    setAttempt((value) => value + 1);
-                  } catch (err) {
-                    setError({
-                      message:
-                        err instanceof Error
-                          ? err.message
-                          : "Could not cancel the earlier checkout.",
-                      kind: "other",
-                    });
+                    retry();
+                  } catch (cause) {
+                    setError(
+                      describeCheckoutError(cause, "Could not cancel the earlier checkout."),
+                    );
                   } finally {
                     setResetting(false);
                   }
@@ -121,13 +146,7 @@ export function CheckoutRedirect({
                 Cancel the earlier checkout and try again
               </Button>
             ) : (
-              <Button
-                className="mt-7 w-full"
-                onClick={() => {
-                  setError(null);
-                  setAttempt((value) => value + 1);
-                }}
-              >
+              <Button className="mt-7 w-full" onClick={retry}>
                 Try secure checkout again
               </Button>
             )}

@@ -23,12 +23,16 @@ import {
   recordPurchaseBaseline,
   takePurchaseBaseline,
 } from "@/features/billing/purchase-baseline";
-import { isPaymentsClosedError, PAYMENTS_OPEN_SOON } from "@/features/billing/checkout-rules";
+import {
+  isPaymentsClosedError,
+  PAYMENTS_OPEN_SOON,
+  PLAN_NAMES,
+} from "@/features/billing/checkout-rules";
+import { UpgradeToBundle } from "@/features/billing/UpgradeToBundle";
 import { LocalDate } from "@/components/LocalDate";
-import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
+import { fetchApiData } from "@/utils/fetchApiData";
 import { formatCents } from "@/features/admin/utils/admin-format";
 
-const CHECKOUT_LOCK_CONFLICT_STATUS = 409;
 // The plan changes only when the payment webhook lands, which can trail the redirect back
 // here by several seconds; past the last delay the user is told to refresh later instead.
 const PURCHASE_POLL_DELAYS_MS = [0, 1500, 2500, 4000, 6000];
@@ -45,25 +49,18 @@ async function waitForPurchaseToApply(before: string): Promise<boolean> {
   return false;
 }
 
-type BillingError = { message: string; isCheckoutLockConflict: boolean; isNotice?: boolean };
+/**
+ * Nothing on this page starts a subscription checkout, so none of its 409s is the checkout lock:
+ * a cancelled checkout whose payment is still processing, or a portal with no billing account
+ * yet, is said as the server says it, with nothing offered that would 409 again.
+ */
+type BillingError = { message: string; isNotice?: boolean };
 
 function toBillingError(cause: unknown, fallbackMessage: string): BillingError {
-  if (isPaymentsClosedError(cause)) {
-    return { message: PAYMENTS_OPEN_SOON, isCheckoutLockConflict: false, isNotice: true };
-  }
+  if (isPaymentsClosedError(cause)) return { message: PAYMENTS_OPEN_SOON, isNotice: true };
 
-  return {
-    message: cause instanceof Error ? cause.message : fallbackMessage,
-    isCheckoutLockConflict:
-      cause instanceof ApiRequestError && cause.status === CHECKOUT_LOCK_CONFLICT_STATUS,
-  };
+  return { message: cause instanceof Error ? cause.message : fallbackMessage };
 }
-
-const PLAN_NAMES = {
-  ai_credits: "AI Credits",
-  portfolio_pro: "Creator Pro",
-  bundle: "Job Hunter Bundle",
-} as const;
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",
@@ -122,8 +119,8 @@ export function BillingPage({
 }) {
   const [loading, setLoading] = useState("");
   const [error, setError] = useState<BillingError | null>(null);
-  const [clearingLock, setClearingLock] = useState(false);
-  const [finalizingPurchase, setFinalizingPurchase] = useState(false);
+  // What is being waited for after a payment: a checkout return or a plan upgrade.
+  const [finalizing, setFinalizing] = useState<"purchase" | "upgrade" | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -140,10 +137,34 @@ export function BillingPage({
   // A lapsed subscriber is "free" or "credits" again and must be able to buy again. During a
   // failed renewal the card is fixed instead: no second subscription is offered.
   const canBuy = !dunning && (!billing || tier === "free" || tier === "credits");
+  const recurringTier = tier === "ai_credits" || tier === "portfolio_pro" || tier === "bundle";
+  // The server refuses AI Credits beside any live subscription (`checkoutOverlap`), so it is
+  // offered only to an account without one.
   const aiCreditsProduct =
-    dunning || tier === "ai_credits" || tier === "bundle"
+    dunning || recurringTier
       ? undefined
       : billing?.catalog.find((product) => product.key === "ai_credits");
+  // The portal holds receipts for every purchase, and manages a subscription only while one runs.
+  const canOpenPortal = Boolean(billing?.productKey || billing?.access.isPaying);
+  const managesSubscription = Boolean(dunning) || (recurringTier && billing?.access.isPaying);
+  // V-202: a live Creator Pro or AI Credits subscription can become the bundle in place, at the
+  // interval it is billed on. The server refuses it for an ending plan and for a pass.
+  const upgradeInterval =
+    billing?.interval === "MONTHLY"
+      ? ("monthly" as const)
+      : billing?.interval === "ANNUAL"
+        ? ("annual" as const)
+        : null;
+  const upgrade =
+    billing &&
+    !dunning &&
+    (tier === "portfolio_pro" || tier === "ai_credits") &&
+    billing.access.isPaying &&
+    billing.productKey === tier &&
+    !billing.cancelAtPeriodEnd &&
+    upgradeInterval
+      ? { productKey: "bundle" as const, interval: upgradeInterval }
+      : null;
 
   // `router.replace` below changes `searchParams`; the ref keeps that re-run from starting
   // the return flow twice, and nothing here is cancelled by it.
@@ -152,7 +173,12 @@ export function BillingPage({
   useEffect(() => {
     const checkoutStatus = searchParams?.get("checkout");
 
-    if (!checkoutStatus || checkoutReturnHandled.current) return;
+    // Cleared once the parameter is gone, so a later upgrade on this same page is handled too.
+    if (!checkoutStatus) {
+      checkoutReturnHandled.current = false;
+      return;
+    }
+    if (checkoutReturnHandled.current) return;
     checkoutReturnHandled.current = true;
 
     if (checkoutStatus === "cancelled") {
@@ -166,7 +192,12 @@ export function BillingPage({
       return;
     }
 
-    if (checkoutStatus === "complete" || checkoutStatus === "success") {
+    // `upgrade`: a plan change was sent (V-202); like a payment, it lands with its webhook.
+    if (
+      checkoutStatus === "complete" ||
+      checkoutStatus === "success" ||
+      checkoutStatus === "upgrade"
+    ) {
       const baseline = takePurchaseBaseline();
       router.replace("/billing");
 
@@ -179,7 +210,7 @@ export function BillingPage({
 
       // Deferred to a microtask so this setState call doesn't run synchronously
       // inside the effect body itself (cascading-render lint rule).
-      queueMicrotask(() => setFinalizingPurchase(true));
+      queueMicrotask(() => setFinalizing(checkoutStatus === "upgrade" ? "upgrade" : "purchase"));
 
       void waitForPurchaseToApply(baseline)
         .then((applied) => {
@@ -190,28 +221,17 @@ export function BillingPage({
 
           setError({
             message:
-              "Your payment is still being confirmed. Refresh this page in a minute to see your plan and credits.",
-            isCheckoutLockConflict: false,
+              checkoutStatus === "upgrade"
+                ? "Your upgrade is still being confirmed. Your plan changes once the payment goes through: refresh this page in a minute."
+                : "Your payment is still being confirmed. Refresh this page in a minute to see your plan and credits.",
           });
         })
         .catch((cause) => {
           setError(toBillingError(cause, "Could not check the status of your purchase."));
         })
-        .finally(() => setFinalizingPurchase(false));
+        .finally(() => setFinalizing(null));
     }
   }, [searchParams, router]);
-
-  const handleClearLock = async () => {
-    setClearingLock(true);
-    try {
-      await cancelCheckout();
-      setError(null);
-    } catch (cause) {
-      setError(toBillingError(cause, "Could not cancel the earlier checkout."));
-    } finally {
-      setClearingLock(false);
-    }
-  };
 
   const openPortal = async () => {
     setLoading("portal");
@@ -251,13 +271,14 @@ export function BillingPage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {billing?.productKey ? (
+              {canOpenPortal ? (
                 <Button
                   variant="secondary"
                   loading={loading === "portal"}
                   onClick={() => void openPortal()}
                 >
-                  Manage subscription <ExternalLink className="mr-2 h-4 w-4" />
+                  {managesSubscription ? "Manage subscription" : "Receipts and invoices"}{" "}
+                  <ExternalLink className="mr-2 h-4 w-4" />
                 </Button>
               ) : null}
               {canBuy ? (
@@ -300,10 +321,12 @@ export function BillingPage({
           </div>
         ) : null}
 
-        {finalizingPurchase ? (
-          <div className="border-accent/30 bg-accent-soft text-accent flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm font-semibold">
+        {finalizing ? (
+          <div className="border-accent/30 bg-accent/10 text-accent flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm font-semibold">
             <span className="border-accent/40 border-t-accent h-4 w-4 animate-spin rounded-full border-2" />
-            Finalizing your purchase — this can take a few seconds while we confirm payment.
+            {finalizing === "upgrade"
+              ? "Upgrade is being confirmed — your plan changes once the payment goes through."
+              : "Finalizing your purchase — this can take a few seconds while we confirm payment."}
           </div>
         ) : null}
 
@@ -313,21 +336,11 @@ export function BillingPage({
             className={cn(
               "flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 text-sm",
               error.isNotice
-                ? "border-accent/30 bg-accent-soft text-accent"
+                ? "border-accent/30 bg-accent/10 text-accent"
                 : "border-destructive/30 bg-destructive/5 text-destructive",
             )}
           >
             <p className="flex-1">{error.message}</p>
-            {error.isCheckoutLockConflict && (
-              <Button
-                size="sm"
-                variant="secondary"
-                loading={clearingLock}
-                onClick={() => void handleClearLock()}
-              >
-                Cancel the earlier checkout
-              </Button>
-            )}
           </div>
         ) : null}
 
@@ -373,10 +386,16 @@ export function BillingPage({
             {aiCreditsProduct ? (
               <div className="border-border mt-5 border-t pt-4">
                 <p className="text-sm font-black">AI Credits subscription</p>
-                <p className="text-muted mt-1 text-xs leading-5">
-                  1,000 credits every month, monthly or annual. Unused credits roll over while the
-                  plan lasts.
-                </p>
+                {(["monthly", "annual"] as const).map((interval) =>
+                  aiCreditsProduct.creditNotes?.[interval] ? (
+                    <p key={interval} className="text-muted mt-1 text-xs leading-5">
+                      <span className="text-foreground font-bold">
+                        {interval === "monthly" ? "Monthly" : "Annual"}:
+                      </span>{" "}
+                      {aiCreditsProduct.creditNotes[interval]}
+                    </p>
+                  ) : null,
+                )}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {(["monthly", "annual"] as const).map((interval) => {
                     const cents = aiCreditsProduct.prices[interval];
@@ -403,6 +422,18 @@ export function BillingPage({
               </div>
             ) : null}
 
+            {upgrade ? (
+              <div className="border-border mt-5 border-t pt-4">
+                <p className="text-sm font-black">{PLAN_NAMES.bundle}</p>
+                <p className="text-muted mt-1 text-xs leading-5">
+                  {PLAN_NAMES.ai_credits} and {PLAN_NAMES.portfolio_pro} in one plan. Upgrade now
+                  and pay only the difference for the rest of this billing period; your renewal date
+                  stays the same.
+                </p>
+                <UpgradeToBundle upgrade={upgrade} className="mt-3 w-full" />
+              </div>
+            ) : null}
+
             <div className="border-border mt-5 border-t pt-4">
               <p className="text-sm font-black">Credit packs</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -416,6 +447,7 @@ export function BillingPage({
                   >
                     {pack.configured ? `Buy ${pack.credits} credits` : "Coming soon"}
                     <span className="text-xs font-semibold opacity-80">
+                      {pack.configured ? `${formatCents(pack.price, pack.currency)} · ` : null}
                       valid {pack.expiresInDays} days
                     </span>
                   </Button>
@@ -443,8 +475,16 @@ export function BillingPage({
             {history.length ? (
               history.map((item) => (
                 <div className="flex items-center justify-between gap-4 py-3 text-sm" key={item.id}>
-                  <span className="font-semibold">{historyLabel(item.type)}</span>
-                  <span className="text-muted">
+                  <span className="font-semibold">
+                    {historyLabel(item.type)}
+                    {item.productName ? ` · ${item.productName}` : ""}
+                  </span>
+                  <span className="text-muted flex shrink-0 gap-3">
+                    {item.amountCents !== null && item.currency ? (
+                      <span className="text-foreground font-bold">
+                        {formatCents(item.amountCents, item.currency)}
+                      </span>
+                    ) : null}
                     <LocalDate value={item.processedAt ?? item.createdAt} />
                   </span>
                 </div>
@@ -458,7 +498,7 @@ export function BillingPage({
 
       {!user ? (
         <div className="border-border bg-card/45 absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border p-6 text-center backdrop-blur-sm">
-          <div className="bg-accent-soft text-accent flex h-12 w-12 items-center justify-center rounded-full">
+          <div className="bg-accent/10 text-accent flex h-12 w-12 items-center justify-center rounded-full">
             <LockKeyhole size={20} />
           </div>
           <h2 className="text-foreground mt-4 text-base font-extrabold">
@@ -530,7 +570,9 @@ function PlanDetails({ billing, inDunning }: { billing: BillingSummary; inDunnin
               label="Billing period"
               value={
                 <>
-                  Paid through <LocalDate value={paidThrough} />
+                  {/* A plan support granted (an admin comp) was never paid for. */}
+                  {access.isPaying ? "Paid through" : "Access until"}{" "}
+                  <LocalDate value={paidThrough} />
                 </>
               }
             />

@@ -38,6 +38,9 @@ export type BillingSummary = {
       key: "credit_pack_250" | "credit_pack_500";
       name: string;
       credits: number;
+      /** USD cents, for display; the charge is the provider product's. */
+      price: number;
+      currency: string;
       expiresInDays: number;
       configured: boolean;
     }>;
@@ -54,10 +57,36 @@ export type CatalogProduct = {
   configuredIntervals: Array<"one_day" | "seven_day" | BillingCycle>;
   currency: "USD";
   recommended?: boolean;
+  /** How a plan delivers its credits, per interval, worded by the server for display. */
+  creditNotes?: Partial<Record<"one_day" | "seven_day" | BillingCycle, string>>;
 };
 export type BillingActivity = {
   id: string;
   type: string;
   processedAt: string | null;
   createdAt: string;
+  /** What the event was for ("Creator Pro (monthly)", a pack name); `null` when unknown. */
+  productName: string | null;
+  /** In the smallest unit of `currency`. */
+  amountCents: number | null;
+  currency: string | null;
+};
+
+export type PlanChangePreview = {
+  productKey: ProductKey;
+  interval: BillingCycle;
+  /** In the smallest unit of `currency`, charged when the change is confirmed. */
+  dueNow: number;
+  currency: string;
+  nextAmount: number;
+  nextBillingDate: string;
+};
+
+export type PlanChangeResult = {
+  status: "pending";
+  productKey: ProductKey;
+  interval: BillingCycle;
+  paymentId: string | null;
+  confirmed: boolean;
+  replayed: boolean;
 };

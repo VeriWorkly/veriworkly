@@ -130,7 +130,9 @@ const columns: Array<AdminTableColumn<AdminDocumentRow>> = [
       <DocumentModerationActions
         documentId={row.id}
         title={row.title}
+        type={row.type}
         visibility={row.visibility}
+        moderatorPrivate={row.moderatorPrivate}
         deleted={Boolean(row.deletedAt)}
       />
     ),

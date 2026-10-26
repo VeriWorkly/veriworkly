@@ -14,8 +14,23 @@ import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import {
   startDocumentSyncWorker,
   subscribeToRemoteDeletions,
+  resolveDocumentConflictUseCloud,
+  resolveDocumentConflictUseLocal,
   hydrateCloudDocumentByIdToLocalStorage,
 } from "@/features/documents/services/document-sync";
+import {
+  clearRecoveredEdits,
+  discardPendingSave,
+  readRecoveredEdits,
+  saveRecoveredEdits,
+  type RecoveredEdits,
+  isOwnVersion,
+  getDocumentIndexEntry,
+} from "@/features/documents/services/document-workspace-service";
+import {
+  DOCUMENT_INDEX_STORAGE_KEY,
+  DOCUMENT_STORAGE_UPDATED_EVENT,
+} from "@/features/documents/services/storage-keys";
 import {
   loadStateFor,
   INITIAL_LOAD_STATE,
@@ -45,13 +60,31 @@ interface DocumentEditorSessionOptions {
    * hold the previous document after a client-side navigation.
    */
   storeDocumentId?: string | null;
+  /** Puts a document into the editor store as unsaved changes (restoring recovered edits). */
+  replaceInStore?: (document: unknown) => void;
 }
+
+/**
+ * Where a version the editor did not write came from, while it holds edits of its own:
+ * `tab` another tab (or a pull) rewrote the stored copy; `device` the cloud has a newer
+ * revision than the one these edits started from.
+ */
+export type ChangedElsewhere = "tab" | "device";
+
+/** Both stores stamp `updatedAt` on every edit, so it names a version of the document. */
+function versionOf(document: unknown): string | null {
+  const updatedAt = (document as { updatedAt?: unknown } | null)?.updatedAt;
+  return typeof updatedAt === "string" ? updatedAt : null;
+}
+
+/** How many of its own versions an editor remembers, to tell its own writes from others'. */
+const SEEN_VERSIONS_LIMIT = 50;
 
 /**
  * Everything an open document editor does besides rendering: resolve the URL id (local
  * first, then the cloud), autosave on a debounce and report the result, follow a document
- * that moved to a new id, react to remote deletions, run the sync worker, and flush pending
- * saves on exit.
+ * that moved to a new id, react to remote deletions and to changes made elsewhere, run the
+ * sync worker, and flush pending saves on exit.
  */
 export function useDocumentEditorSession({
   type,
@@ -60,11 +93,20 @@ export function useDocumentEditorSession({
   saveToStorage,
   document,
   storeDocumentId,
+  replaceInStore,
 }: DocumentEditorSessionOptions) {
   const router = useRouter();
 
   const hasHydratedRef = useRef(false);
   const lastSaveFailureRef = useRef<string | null>(null);
+
+  // Versions this editor loaded or wrote (its own writes come back as storage events), the
+  // last one known to be in storage, and the store's current document.
+  const seenVersionsRef = useRef(new Set<string>());
+  const storedVersionRef = useRef<string | null>(null);
+  const latestDocumentRef = useRef<unknown>(document);
+  // The document whose cloud copy was already asked for during this visit.
+  const cloudCheckedRef = useRef<string | null>(null);
 
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const accountAutoSync = useUserStore((state) => state.user?.autoSyncEnabled);
@@ -74,10 +116,42 @@ export function useDocumentEditorSession({
   const [message, setMessage] = useState("Autosave ready");
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [changedElsewhere, setChangedElsewhere] = useState<ChangedElsewhere | null>(null);
+  const [resolvingChange, setResolvingChange] = useState(false);
+  const [recovered, setRecovered] = useState<RecoveredEdits | null>(null);
+  // True from the moment edits are held for another tab's version until the user chooses.
+  const heldRef = useRef(false);
 
   const load = loadStateFor(loadState, documentId);
   const isReady =
     load.status === "ready" && (storeDocumentId === undefined || storeDocumentId === loadState.id);
+
+  const rememberVersion = useCallback((version: string | null) => {
+    if (!version) return;
+
+    const seen = seenVersionsRef.current;
+    seen.add(version);
+
+    if (seen.size > SEEN_VERSIONS_LIMIT) seen.delete(seen.values().next().value as string);
+  }, []);
+
+  /** Puts the stored copy into the store and records it as the version on disk. */
+  const loadStored = useCallback(
+    (id: string) => {
+      if (!loadIntoStore(id)) return false;
+
+      const version = getDocumentIndexEntry(type, id)?.updatedAt ?? null;
+      rememberVersion(version);
+      storedVersionRef.current = version;
+
+      return true;
+    },
+    [type, loadIntoStore, rememberVersion],
+  );
+
+  useEffect(() => {
+    latestDocumentRef.current = document;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +162,7 @@ export function useDocumentEditorSession({
         return;
       }
 
-      if (loadIntoStore(documentId)) {
+      if (loadStored(documentId)) {
         hasHydratedRef.current = true;
         setLoadState({ id: documentId, status: "ready" });
         return;
@@ -98,7 +172,9 @@ export function useDocumentEditorSession({
 
       if (cancelled) return;
 
-      if (cloudResult.ok && loadIntoStore(documentId)) {
+      if (cloudResult.ok && loadStored(documentId)) {
+        // Just fetched: no need to ask the cloud for a newer copy again.
+        cloudCheckedRef.current = documentId;
         hasHydratedRef.current = true;
         setLoadState({ id: documentId, status: "ready" });
         return;
@@ -114,7 +190,7 @@ export function useDocumentEditorSession({
     return () => {
       cancelled = true;
     };
-  }, [type, documentId, loadAttempt, loadIntoStore]);
+  }, [type, documentId, loadAttempt, loadStored]);
 
   const retryLoad = useCallback(() => {
     setLoadState(INITIAL_LOAD_STATE);
@@ -137,13 +213,13 @@ export function useDocumentEditorSession({
   const followMove = useCallback(
     (newId: string) => {
       // Already loaded: no "loading" flash that would unmount the field being typed in.
-      if (loadIntoStore(newId)) {
+      if (loadStored(newId)) {
         setLoadState({ id: newId, movedFrom: documentId, status: "ready" });
       }
 
       router.replace(getDocumentEditorPath(type, newId));
     },
-    [type, documentId, router, loadIntoStore],
+    [type, documentId, router, loadStored],
   );
 
   // A save refused because the document was deleted (here, or on another device by the sync
@@ -182,24 +258,222 @@ export function useDocumentEditorSession({
 
   // Autosave. A debounced save returns `{ queued: true }` before the write happens, so the
   // real result (a quota failure, or "Saved on this device") only ever comes from `onFlush`.
+  // Held while another tab's version is waiting on the user's choice: saving would write over
+  // it. A cloud conflict is not held: the edits keep saving here (storage keeps the document
+  // conflicted, and sync will not send it until the user chooses).
   useEffect(() => {
-    if (!hasHydratedRef.current || !document) return;
+    if (!hasHydratedRef.current || !document || changedElsewhere === "tab") return;
+
+    const version = versionOf(document);
+    rememberVersion(version);
+
+    const recordResult = (result: SaveDocumentResult) => {
+      if (result.ok) storedVersionRef.current = version;
+      handleSaveResult(result);
+    };
 
     const receipt = saveToStorage({
       debounceMs: 300,
-      onFlush: handleSaveResult,
+      onFlush: recordResult,
     });
 
     if (receipt.ok && receipt.queued) {
       // The autosave itself is the external system this effect drives; the status line is
       // that system reporting back, and the queued half of it is only knowable here.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessage(SAVE_QUEUED_MESSAGE);
       return;
     }
 
-    handleSaveResult(receipt);
-  }, [document, saveToStorage, handleSaveResult]);
+    recordResult(receipt);
+  }, [document, saveToStorage, handleSaveResult, rememberVersion, changedElsewhere]);
+
+  // Another tab, "Use cloud version" in the library or a cloud pull rewrote the stored copy.
+  // An editor with nothing unsaved shows the new version; one holding edits asks which to
+  // keep instead of saving over it, and a cloud conflict always asks.
+  useEffect(() => {
+    if (!isReady) return;
+
+    // The queued autosave would land on the other tab's version within 300 ms; it is dropped,
+    // and the edits stay in the editor until the user chooses ("Keep my version" saves them).
+    const holdEdits = () => {
+      discardPendingSave(type, documentId);
+      heldRef.current = true;
+      setChangedElsewhere("tab");
+    };
+
+    const check = () => {
+      const entry = getDocumentIndexEntry(type, documentId);
+
+      // A deletion is handled by the remote-deletion and save paths.
+      if (!entry) return;
+
+      if (entry.sync.status === "conflicted") {
+        // Never over a hold: "device" saves again, which would write over the other tab's
+        // version before the user has chosen.
+        if (!heldRef.current) setChangedElsewhere("device");
+        return;
+      }
+
+      if (
+        seenVersionsRef.current.has(entry.updatedAt) ||
+        isOwnVersion(type, documentId, entry.updatedAt)
+      ) {
+        return;
+      }
+
+      const unsaved = versionOf(latestDocumentRef.current) !== storedVersionRef.current;
+
+      if (unsaved) {
+        holdEdits();
+        return;
+      }
+
+      if (loadStored(documentId)) setMessage("Updated with changes made elsewhere");
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === DOCUMENT_INDEX_STORAGE_KEY) check();
+    };
+
+    // Opened on a document that is already in conflict.
+    if (getDocumentIndexEntry(type, documentId)?.sync.status === "conflicted") {
+      queueMicrotask(() => setChangedElsewhere("device"));
+    }
+
+    window.addEventListener(DOCUMENT_STORAGE_UPDATED_EVENT, check);
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener(DOCUMENT_STORAGE_UPDATED_EVENT, check);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [type, documentId, isReady, loadStored]);
+
+  // Held edits exist only in this page until the user chooses. Unloading the page asks first;
+  // any leave (in-app navigation fires no unload) keeps them to be offered back next time.
+  useEffect(() => {
+    if (changedElsewhere !== "tab") return;
+
+    const keepForLater = () => {
+      if (!saveRecoveredEdits(type, documentId, latestDocumentRef.current).ok) {
+        console.error("Could not keep the unsaved edits: this device's storage is full.");
+      }
+    };
+
+    const warn = (event: BeforeUnloadEvent) => {
+      keepForLater();
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", warn);
+
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      // Still held: the editor is being left, not the choice made.
+      if (heldRef.current) keepForLater();
+    };
+  }, [changedElsewhere, type, documentId]);
+
+  // Edits held when this document was last left: offered back once it is open.
+  useEffect(() => {
+    if (!isReady || !replaceInStore) return;
+
+    const found = readRecoveredEdits(type, documentId);
+    if (found) queueMicrotask(() => setRecovered(found));
+  }, [type, documentId, isReady, replaceInStore]);
+
+  const restoreRecovered = useCallback(() => {
+    if (!recovered || !replaceInStore) return;
+
+    // Back in the editor as unsaved changes; autosave and the usual checks take it from here.
+    replaceInStore(recovered.document);
+    clearRecoveredEdits(type, documentId);
+    setRecovered(null);
+    setMessage("Restored your unsaved edits");
+  }, [recovered, replaceInStore, type, documentId]);
+
+  const discardRecovered = useCallback(() => {
+    clearRecoveredEdits(type, documentId);
+    setRecovered(null);
+  }, [type, documentId]);
+
+  // A linked document opened from this device's copy: ask the cloud once for a newer
+  // revision, so a second device does not edit a stale copy and 409 on the next backup. A
+  // newer clean copy reloads through the listener above; against local edits it conflicts.
+  useEffect(() => {
+    if (!isReady || !isLoggedIn || cloudCheckedRef.current === documentId) return;
+
+    cloudCheckedRef.current = documentId;
+
+    if (!getDocumentIndexEntry(type, documentId)?.sync.cloudDocumentId) return;
+
+    void hydrateCloudDocumentByIdToLocalStorage(type, documentId).then((result) => {
+      // `in-progress`: the device's documents still await their owner's answer.
+      if (!result.ok && result.reason !== "in-progress") {
+        setMessage(`Could not check the cloud for a newer version: ${result.message}`);
+      }
+    });
+  }, [type, documentId, isReady, isLoggedIn]);
+
+  const keepMine = useCallback(async () => {
+    setResolvingChange(true);
+
+    try {
+      // The editor's version is written over the other one first (other tabs then see it as a
+      // change made elsewhere); the autosave was held, so this is the first write of it.
+      const version = versionOf(latestDocumentRef.current);
+      rememberVersion(version);
+
+      const saved = saveToStorage({ flush: true });
+      handleSaveResult(saved);
+      if (!saved.ok) return;
+
+      storedVersionRef.current = version;
+
+      if (changedElsewhere === "device") {
+        const result = await resolveDocumentConflictUseLocal(type, documentId);
+
+        toast[result.ok ? "success" : "error"](result.message);
+        if (!result.ok) return;
+      }
+
+      heldRef.current = false;
+      clearRecoveredEdits(type, documentId);
+      setChangedElsewhere(null);
+    } finally {
+      setResolvingChange(false);
+    }
+  }, [changedElsewhere, type, documentId, rememberVersion, saveToStorage, handleSaveResult]);
+
+  const keepOther = useCallback(async () => {
+    setResolvingChange(true);
+
+    try {
+      discardPendingSave(type, documentId);
+
+      if (changedElsewhere === "device") {
+        const result = await resolveDocumentConflictUseCloud(type, documentId);
+
+        if (!result.ok) {
+          toast.error(result.message);
+          return;
+        }
+      }
+
+      if (!loadStored(documentId)) {
+        toast.error("The other version could not be loaded. Refresh and try again.");
+        return;
+      }
+
+      heldRef.current = false;
+      clearRecoveredEdits(type, documentId);
+      setChangedElsewhere(null);
+      setMessage("Showing the version from elsewhere");
+    } finally {
+      setResolvingChange(false);
+    }
+  }, [changedElsewhere, type, documentId, loadStored]);
 
   useFlushPendingSavesOnExit(type);
 
@@ -233,5 +507,12 @@ export function useDocumentEditorSession({
     deleteModalOpen,
     openDelete,
     closeDelete,
+    changedElsewhere,
+    resolvingChange,
+    keepMine,
+    keepOther,
+    recovered,
+    restoreRecovered,
+    discardRecovered,
   };
 }

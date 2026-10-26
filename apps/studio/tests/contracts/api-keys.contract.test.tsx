@@ -228,6 +228,43 @@ describe("S-086 S-262 a key's status follows expiry, revocation and admin disabl
     expect(html).not.toMatch(/>Active</);
   });
 
+  it("S-277 V-195 a revoked or rotated-out key in the list reads Revoked, never admin-disabled", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(`${process.cwd()}/../server/src/services/apiKeyService.ts`, "utf8");
+    const listSelect = source.slice(source.indexOf("static async list"));
+    expect(listSelect.slice(0, 2000)).toMatch(/expiresAt: true[\s\S]*revokedAt: true/);
+
+    const { default: ApiKeyList } = await import("@/features/api-keys/components/ApiKeyList");
+    const html = renderToStaticMarkup(
+      <ApiKeyList
+        keys={[
+          {
+            id: "key_revoked",
+            name: "Rotated CI",
+            keyPrefix: "vw_bbbbb",
+            isActive: false,
+            createdAt: "2025-01-01T00:00:00.000Z",
+            lastUsed: null,
+            expiresAt: null,
+            revokedAt: "2026-02-01T00:00:00.000Z",
+          },
+        ]}
+        page={1}
+        totalPages={1}
+        hasMore={false}
+        loading={false}
+        onPrevPage={() => {}}
+        onNextPage={() => {}}
+        onRotate={() => {}}
+        onDelete={() => {}}
+        onRevoke={() => {}}
+      />,
+    );
+
+    expect(html).toContain("Revoked");
+    expect(html).not.toMatch(/administrator disabled/i);
+  });
+
   it("S-262 the detail view of an expired key offers no Rotate and its badge agrees", async () => {
     const { default: ApiKeyDetailView } =
       await import("@/features/api-keys/components/details/ApiKeyDetailView");

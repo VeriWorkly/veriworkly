@@ -7,12 +7,15 @@ import {
   updateAdminDocumentVisibility,
 } from "@/features/admin/services/admin-actions";
 
-import type { Visibility } from "@/features/admin/types/admin-types";
+import type { DocumentType, Visibility } from "@/features/admin/types/admin-types";
 
 interface DocumentModerationActionsProps {
   documentId: string;
   title: string;
+  type: DocumentType;
   visibility: Visibility;
+  /** The server's word that a moderator made it private (V-199); only then is there a takedown. */
+  moderatorPrivate?: boolean;
   deleted: boolean;
 }
 
@@ -20,13 +23,27 @@ interface DocumentModerationActionsProps {
  * Moderation is deliberately one-directional: an admin can pull a document toward private but
  * never publish someone else's private document. The API enforces this too — the visibility
  * enum it accepts stops at UNLISTED.
+ *
+ * "Make private" (and a portfolio takedown) is a lock, not a setting: the owner cannot make the
+ * document visible, share it or publish it again until a moderator makes it unlisted
+ * (`madePrivateByModerator` on the server). That is the lift, so it is offered only on rows the
+ * server marks `moderatorPrivate`: on a document its owner kept private it would expose it.
+ *
+ * For a portfolio (server V-203): "Make private" also suspends its publication under the
+ * moderation lock; lifting it unlists the document and turns the suspension into the owner's
+ * own unpublish, so the site stays offline until the owner publishes again. Unlisting a live
+ * portfolio changes nothing public.
  */
 const DocumentModerationActions = ({
   documentId,
   title,
+  type,
   visibility,
+  moderatorPrivate = false,
   deleted,
 }: DocumentModerationActionsProps) => {
+  const isPortfolio = type === "PORTFOLIO";
+
   if (deleted) {
     return (
       <AdminActionDialog
@@ -48,7 +65,11 @@ const DocumentModerationActions = ({
         <AdminActionDialog
           trigger="Make private"
           title="Force this document private"
-          description={`"${title}" is set to private and a portfolio published from it is taken offline. Its existing share links keep working: revoke them on the Share links page to stop them.`}
+          description={
+            isPortfolio
+              ? `"${title}" is made private and its publication is suspended. The owner cannot publish it again until a moderator lifts the takedown here (Lift takedown).`
+              : `"${title}" is made private. Its share links stop working, since a private document is never served. The owner cannot make it visible or share it again until a moderator lifts the takedown here (Lift takedown).`
+          }
           confirmLabel="Make private"
           onConfirm={async (reason) => {
             await updateAdminDocumentVisibility(documentId, "PRIVATE", reason);
@@ -60,8 +81,28 @@ const DocumentModerationActions = ({
         <AdminActionDialog
           trigger="Unlist"
           title="Unlist this document"
-          description={`"${title}" stays reachable by direct link but is removed from public listings.`}
+          description={
+            isPortfolio
+              ? `"${title}" is removed from public listings. Its live site is not affected.`
+              : `"${title}" stays reachable by direct link but is removed from public listings.`
+          }
           confirmLabel="Unlist"
+          onConfirm={async (reason) => {
+            await updateAdminDocumentVisibility(documentId, "UNLISTED", reason);
+          }}
+        />
+      ) : null}
+
+      {visibility === "PRIVATE" && moderatorPrivate ? (
+        <AdminActionDialog
+          trigger="Lift takedown"
+          title="Lift the takedown (make unlisted)"
+          description={
+            isPortfolio
+              ? `"${title}" becomes unlisted and the takedown is lifted. The site stays offline until the owner publishes it again.`
+              : `"${title}" becomes unlisted: reachable by its direct link and share links again, and the owner can change its visibility and share it again.`
+          }
+          confirmLabel="Make unlisted"
           onConfirm={async (reason) => {
             await updateAdminDocumentVisibility(documentId, "UNLISTED", reason);
           }}

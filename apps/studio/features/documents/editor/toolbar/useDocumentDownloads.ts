@@ -67,8 +67,11 @@ export function useDocumentDownloads({
       // Type-aware, so cover letter exports are finally counted. Previously only the
       // resume toolbar tracked anything, which made cover letter exports invisible.
       void trackUsageEvent({ event: getDocumentExportEventName(document.type) });
-    } catch {
-      onMessage(`Could not generate ${label}. Try again.`);
+    } catch (error) {
+      const reason = error instanceof Error && error.message ? ` ${error.message}` : "";
+
+      console.error(`${label} export failed`, error);
+      onMessage(`Could not generate ${label}.${reason} Try again.`);
     } finally {
       setActiveDownload(null);
     }

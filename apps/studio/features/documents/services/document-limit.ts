@@ -5,6 +5,7 @@ import type { MasterProfileData } from "@veriworkly/profile-core";
 import type { BillingSummary } from "@/features/billing/types";
 import type { BaseDocument } from "@/features/documents/core/types";
 import type { DocumentType } from "@/features/documents/core/document-types";
+import type { DocumentImportDraft } from "@/features/documents/core/definition";
 
 import {
   createDocument,
@@ -14,7 +15,7 @@ import {
   type CreatedDocument,
 } from "./document-workspace-service";
 import { describeSaveResult } from "./save-failure-message";
-import { sanitizeImportedDocument } from "./import-service";
+import { sanitizeImportedDocument, saveImportedDraft } from "./import-service";
 
 import {
   createEmptyStudioMasterProfile,
@@ -64,7 +65,7 @@ async function resolveStartingProfile(
 
 /**
  * The one gate every "new document" path goes through: the dashboard's New button, the
- * `/editor?type=&template=` entry and Duplicate.
+ * `/editor?type=&template=` entry, Duplicate and a single-file import.
  *
  * A second call for the same type while one is running returns `busy`, so a double click
  * makes one document. The count is read after `prepare`, because another tab or entry point
@@ -129,6 +130,25 @@ export function createDocumentWithinLimit(
     type,
     () => resolveStartingProfile(source),
     (master) => createDocument(type, master),
+  );
+}
+
+/**
+ * An imported file (JSON or Markdown, from either editor) as a new document. Import never
+ * writes over the open document, and an export and re-import is no way past the free limit.
+ */
+export function importDraftWithinLimit(
+  type: DocumentType,
+  draft: DocumentImportDraft,
+): Promise<CreateWithinLimitResult> {
+  return withinLimit(
+    type,
+    async () => undefined,
+    () => {
+      const { document, saved } = saveImportedDraft(type, draft);
+
+      return { ...document, saveResult: saved };
+    },
   );
 }
 

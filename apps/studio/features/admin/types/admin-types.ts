@@ -19,7 +19,7 @@ export type AffiliateStatus = "NOT_ENROLLED" | "PENDING" | "ACTIVE" | "SUSPENDED
 export type AffiliateTier = "TIER_1" | "TIER_2" | "TIER_3";
 export type SubscriptionStatus = "INACTIVE" | "ACTIVE" | "PAST_DUE" | "CANCELED";
 export type PublicationStatus = "LIVE" | "GRACE" | "SUSPENDED";
-type DocumentType = "RESUME" | "COVER_LETTER" | "PORTFOLIO" | "LINK_IN_BIO";
+export type DocumentType = "RESUME" | "COVER_LETTER" | "PORTFOLIO" | "LINK_IN_BIO";
 export type Visibility = "PRIVATE" | "UNLISTED" | "PUBLIC";
 type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
 type CommissionStatus = "PENDING" | "AVAILABLE" | "REVERSED" | "PAID";
@@ -32,6 +32,8 @@ export interface AdminUserRef {
   email: string;
   image?: string | null;
   username?: string | null;
+  /** The placeholder for a row whose account was deleted (`AdminUserLink`). */
+  deleted?: true;
 }
 
 export interface AdminAuditEntry {
@@ -230,6 +232,9 @@ export interface AdminUserDetail {
     currentPeriodEnd: string | null;
     cancelAtPeriodEnd: boolean;
     provider: string;
+    /** The provider's own status; `null` on a row made by hand. */
+    rawStatus: string | null;
+    lastWebhookAt: string | null;
     createdAt: string;
     updatedAt: string;
   }>;
@@ -349,7 +354,7 @@ export interface AdminCommissionRow {
   status: CommissionStatus;
   reason: string | null;
   createdAt: string;
-  /** `null` once the affiliate's account is deleted; the money history outlives it. */
+  /** The deleted-account placeholder (or `null`) once the account is gone; the money history stays. */
   affiliate: (AdminUserRef & { affiliateCode: string | null }) | null;
   referral: { id: string; referredUser: { id: string; email: string } } | null;
 }
@@ -363,7 +368,7 @@ export interface AdminWithdrawalRow {
   reviewedAt: string | null;
   paidAt: string | null;
   createdAt: string;
-  /** `null` once the affiliate's account is deleted. */
+  /** The deleted-account placeholder (or `null`) once the affiliate's account is deleted. */
   user:
     | (AdminUserRef & {
         affiliateCode: string | null;
@@ -459,6 +464,8 @@ export interface AdminDocumentRow {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  /** A moderator made it private, a takedown the owner cannot undo (V-199). */
+  moderatorPrivate: boolean;
   user: AdminUserRef;
   _count: { shareLinks: number };
 }
