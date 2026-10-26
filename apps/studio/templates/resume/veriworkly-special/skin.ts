@@ -1,7 +1,7 @@
 import { createTypeScale } from "../shared/typography";
 
 /**
- * Veriworkly Special is deliberately quiet: one confident, tight-tracked
+ * VeriWorkly Special is deliberately quiet: one confident, tight-tracked
  * name, and exactly three small, precise touches of the brand accent — the
  * role label, the rule under the header, and the mark before each section
  * title. Everything else is plain ink on the page, so the accent reads as a

@@ -6,6 +6,7 @@ import type { ResumeWebContext } from "../shared/web";
 
 import { WebContactRow, WebLinkRow, createResumeWebTemplate, px } from "../shared/web";
 import { webText } from "../shared/tokens";
+import { webFixedWidth } from "@/templates/shared/box";
 import { veriworklySpecialGeometry as geometry, veriworklySpecialScale } from "./skin";
 
 function Header(ctx: ResumeWebContext) {
@@ -64,8 +65,8 @@ function SectionHeading(title: string, ctx: ResumeWebContext) {
         style={{
           backgroundColor: style.accentColor,
           display: "block",
+          ...webFixedWidth(geometry.markSize),
           height: px(geometry.markSize),
-          width: px(geometry.markSize),
         }}
       />
       <span style={{ ...webText(tokens.sectionTitle), textTransform: "uppercase" }}>{title}</span>

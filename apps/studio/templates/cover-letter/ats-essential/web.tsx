@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
-
 import { useMemo } from "react";
 
 import type { CSSProperties } from "react";
@@ -16,7 +14,6 @@ import {
 
 import {
   buildProfessionalFlowItems,
-  getCoverLetterDocumentTitle,
   getCoverLetterState,
   type CoverLetterPalette,
   type ProfessionalFlowItem,
@@ -26,14 +23,15 @@ import {
   normalizeLinkHref,
   getLinkDisplayText,
 } from "@/features/documents/rendering/resume-rendering";
-import { FONT_FAMILY_MAP, getFontStylesheetHref } from "@/features/documents/constants/fonts";
+import { FONT_FAMILY_MAP } from "@/features/documents/constants/fonts";
 import { escapeHtml } from "@/features/resume/services/resume-formatters";
 import { webFixedWidth, webFlexible } from "@/templates/shared/box";
 import { webText } from "@/templates/shared/text-tokens";
 import { COVER_LETTER_SCALE as S } from "../tokens";
 import { useFlowPages } from "../use-flow-pages";
+import { coverLetterHtmlDocument, htmlFont, htmlLink } from "../html";
 
-import { SOCIAL_ICON_SRC_BY_TYPE } from "@/templates/shared/social-icons";
+import { WebSocialIcon } from "@/templates/shared/web-social-icon";
 
 const px = (value: number) => `${value}px`;
 
@@ -201,16 +199,7 @@ function LetterHead({
               }}
             >
               {linkDisplayMode !== "url" && (
-                <img
-                  alt=""
-                  aria-hidden="true"
-                  src={SOCIAL_ICON_SRC_BY_TYPE[link.type] || SOCIAL_ICON_SRC_BY_TYPE.custom}
-                  style={{
-                    display: "block",
-                    ...webFixedWidth(S.contact),
-                    height: px(S.contact),
-                  }}
-                />
+                <WebSocialIcon color={palette.accent} size={S.contact} type={link.type} />
               )}
 
               {linkDisplayMode !== "icon" && (
@@ -333,6 +322,8 @@ export function AtsEssentialCoverLetterPreview({ content }: { content: CoverLett
     backgroundColor: appearance.pageColor,
     color: palette.text,
     fontFamily,
+    // A long email or URL wraps, as the PDF breaks it, instead of running out of its column.
+    overflowWrap: "anywhere",
     padding: px(appearance.pageMargin),
   };
 
@@ -410,7 +401,7 @@ export function buildAtsEssentialCoverLetterHtml(content: CoverLetterContent): s
   const {
     appearance,
     palette,
-    tokens,
+    tokens: t,
     senderName,
     senderTitle,
     contact,
@@ -420,13 +411,8 @@ export function buildAtsEssentialCoverLetterHtml(content: CoverLetterContent): s
     recipient,
     subject,
   } = state;
-  const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
-  const fontHref = getFontStylesheetHref(appearance.fontFamily);
   const flowItems = buildProfessionalFlowItems(state.flow);
-
-  const t = tokens;
-  const font = (token: (typeof t)["body"]) =>
-    `font-size:${token.fontSize}px;line-height:${token.lineHeight}px;font-weight:${token.fontWeight};color:${token.color};`;
+  const font = htmlFont;
 
   const contactBlock =
     contact.length > 0
@@ -435,10 +421,7 @@ export function buildAtsEssentialCoverLetterHtml(content: CoverLetterContent): s
   const linksBlock =
     renderedLinks.length > 0
       ? `<div class="links-block">${renderedLinks
-          .map(
-            (link) =>
-              `<a href="${escapeHtml(normalizeLinkHref(link.url))}">${escapeHtml(getLinkDisplayText(link, linkDisplayMode))}</a>`,
-          )
+          .map((link) => htmlLink(link, linkDisplayMode, palette.accent, S.contact))
           .join("")}</div>`
       : "";
   const metaBlock = `<section class="meta">${date ? `<p class="date">${escapeHtml(date)}</p>` : ""}${
@@ -447,8 +430,13 @@ export function buildAtsEssentialCoverLetterHtml(content: CoverLetterContent): s
       : ""
   }</section>`;
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(getCoverLetterDocumentTitle(state))}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(fontHref)}"><style>
-*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:${palette.surface};color:${palette.text};font-family:${fontFamily}}.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{border-bottom:${S.headerRule}px solid ${palette.border};padding-bottom:${S.headerPadBottom}px}header h1{${font(t.senderName)}}header .title{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact-block{display:flex;flex-direction:column;row-gap:4px;margin-top:${S.headerRowGap}px}.contact-block p{${font(t.contact)}}.links-block{display:flex;flex-direction:column;row-gap:4px;margin-top:6px}.links-block a{${font({ ...t.contact, color: palette.accent })}text-decoration:none}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 2}px}.meta .to p{${font(t.contact)}}.subject{${font(t.subject)}margin-top:${S.subjectTop}px}.subject .re{color:${palette.accent}}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}</style></head><body><article class="page"><header>${senderName ? `<h1>${escapeHtml(senderName)}</h1>` : ""}${senderTitle ? `<p class="title">${escapeHtml(senderTitle)}</p>` : ""}${contactBlock}${linksBlock}</header>${metaBlock}${
-    subject ? `<p class="subject"><span class="re">Re:</span> ${escapeHtml(subject)}</p>` : ""
-  }<main class="body">${flowItems.map(renderAtsEssentialHtmlItem).join("")}</main></article></body></html>`;
+  const css = `.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{border-bottom:${S.headerRule}px solid ${palette.border};padding-bottom:${S.headerPadBottom}px}header h1{${font(t.senderName)}}header .title{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact-block{display:flex;flex-direction:column;row-gap:4px;margin-top:${S.headerRowGap}px}.contact-block p{${font(t.contact)}}.links-block{display:flex;flex-direction:column;row-gap:4px;margin-top:6px}.links-block a{${font({ ...t.contact, color: palette.accent })}text-decoration:none}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 2}px}.meta .to p{${font(t.contact)}}.subject{${font(t.subject)}margin-top:${S.subjectTop}px}.subject .re{color:${palette.accent}}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
+
+  return coverLetterHtmlDocument(
+    state,
+    css,
+    `<article class="page"><header>${senderName ? `<h1>${escapeHtml(senderName)}</h1>` : ""}${senderTitle ? `<p class="title">${escapeHtml(senderTitle)}</p>` : ""}${contactBlock}${linksBlock}</header>${metaBlock}${
+      subject ? `<p class="subject"><span class="re">Re:</span> ${escapeHtml(subject)}</p>` : ""
+    }<main class="body">${flowItems.map(renderAtsEssentialHtmlItem).join("")}</main></article>`,
+  );
 }

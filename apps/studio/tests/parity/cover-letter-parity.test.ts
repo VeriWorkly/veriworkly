@@ -41,12 +41,17 @@ const MEASURABLE_FIXTURES = PARITY_FIXTURE_IDS.filter((id) => id !== "cjk" && id
  * - textkit breaks lines with Knuth–Plass and may shrink spaces by a third, so the sample
  *   bullet "Built React and TypeScript document workflows…" (659px of text in a 650px
  *   column) stays on one line in the PDF and wraps in the browser (+22.5px);
- * - the 87-character website is broken at every character in the PDF
- *   (`templates/pdf/fonts.ts`, S-104) but only at its hyphens in the browser (+21px).
+ * - Professional only: the 87-character website. Both engines may now break it anywhere
+ *   (S-298), but the browser still prefers its hyphens and takes 4 lines in the 230px
+ *   column, where the PDF fills each line to the last character and takes 3 (+21px).
+ *
+ * ATS Essential differs by the bullet alone. Neither cause is the "-" textkit prints at a
+ * forced break (S-104/S-297, see `templates/pdf/fonts.ts`); that one is visible, not
+ * vertical.
  */
 const KNOWN_PAGINATION_DIFFERENCES: Record<string, string> = {
-  "professional/long": "preview wraps two header/list lines the PDF does not; 2 pages vs 1",
-  "ats-essential/long": "preview wraps two header/list lines the PDF does not; 2 pages vs 1",
+  "professional/long": "textkit shrinks spaces and fills URL lines; preview wraps 2 more lines",
+  "ats-essential/long": "textkit shrinks spaces; the browser wraps one bullet the PDF does not",
 };
 
 let server: ParityServer;

@@ -7,6 +7,7 @@ import type { CoverLetterSectionId } from "@/features/cover-letter/types";
 import { validateCoverLetterContent } from "@/features/cover-letter/validation";
 import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
 import { LinksEditor } from "@/features/documents/editor/LinksEditor";
+import { veriworklyRailOverflows } from "@/templates/cover-letter/shared";
 import SectionAccordion from "@/features/documents/editor/SectionAccordion";
 import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
 import { coverLetterAiContext } from "@/features/ai/ai-context";
@@ -38,6 +39,7 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
   const [basedOnResumeId, setBasedOnResumeId] = useState(() => resumes[0]?.id ?? "");
 
   const content = useCoverLetterStore((state) => state.document?.content);
+  const templateId = useCoverLetterStore((state) => state.document?.templateId);
   const onUpdateContent = useCoverLetterStore((state) => state.updateContent);
   const onUpdateLinks = useCoverLetterStore((state) => state.updateLinks);
   const onAddLink = useCoverLetterStore((state) => state.addLinkItem);
@@ -50,6 +52,18 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
     () => (content ? validateCoverLetterContent(content) : {}),
     [content],
   );
+
+  // The VeriWorkly rail is one page tall and clips the rest, in the preview and every export.
+  const railOverflows = useMemo(
+    () => templateId === "veriworkly-special" && !!content && veriworklyRailOverflows(content),
+    [content, templateId],
+  );
+  const railNotice = railOverflows ? (
+    <p className="text-muted text-xs" role="note">
+      These contact details and links are too long for the VeriWorkly rail, and whatever does not
+      fit is cut off. Shorten them, remove some, or pick another template.
+    </p>
+  ) : null;
 
   function toggleSection(sectionId: string) {
     setOpenSectionId((currentSectionId) =>
@@ -118,6 +132,8 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
             error={contactErrors.senderWebsite}
             onValueChange={(senderWebsite) => onUpdateContent({ senderWebsite })}
           />
+
+          {railNotice}
         </EditorBlock>
       </SectionAccordion>
 
@@ -136,6 +152,8 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
             onRemoveLink={onRemoveLink}
             emptyMessage="No links yet. Add LinkedIn, a portfolio, or anything worth contacting you through."
           />
+
+          {railNotice}
         </EditorBlock>
       </SectionAccordion>
 

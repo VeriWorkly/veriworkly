@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import React from "react";
 
 import type { CSSProperties } from "react";
@@ -20,6 +18,7 @@ import type { StackedHeaderOptions } from "./stacked-header";
 import {
   RESUME_PAGE_HEIGHT_PX,
   RESUME_PAGE_WIDTH_PX,
+  RESUME_SPACING_LIMITS,
 } from "@/features/resume/constants/resume-layout";
 import { FONT_FAMILY_MAP } from "@/features/documents/constants/fonts";
 import {
@@ -27,7 +26,7 @@ import {
   getResumeRenderModel,
   normalizeLinkHref,
 } from "@/features/documents/rendering/resume-rendering";
-import { SOCIAL_ICON_SRC_BY_TYPE } from "../../shared/social-icons";
+import { WebSocialIcon } from "@/templates/shared/web-social-icon";
 import { buildResumeSections } from "./model";
 import { createResumeTokens, webText } from "./tokens";
 import { createResumeKeepTogether } from "./keep-together";
@@ -174,15 +173,10 @@ export function WebLinkRow({
             target="_blank"
           >
             {displayMode !== "url" && (
-              <img
-                alt=""
-                aria-hidden="true"
-                src={SOCIAL_ICON_SRC_BY_TYPE[link.type] || SOCIAL_ICON_SRC_BY_TYPE.custom}
-                style={{
-                  ...webFixedWidth(scale.contact),
-                  display: "block",
-                  height: px(scale.contact),
-                }}
+              <WebSocialIcon
+                color={ctx.style.mutedTextColor}
+                size={scale.contact}
+                type={link.type}
               />
             )}
             {displayMode !== "icon" && <span>{getLinkDisplayText(link, displayMode)}</span>}
@@ -454,9 +448,12 @@ export function createResumeWebTemplate(skin: ResumeWebSkin): React.FC<TemplateR
     const tokens = createResumeTokens(style, scale);
     const ctx: ResumeWebContext = { model, resume, scale, style, tokens };
 
-    const pagePadding = Math.max(20, skin.pagePadding?.(style.pagePadding) ?? style.pagePadding);
+    const pagePadding = Math.max(
+      RESUME_SPACING_LIMITS.pagePadding.min,
+      skin.pagePadding?.(style.pagePadding) ?? style.pagePadding,
+    );
     const sectionSpacing = Math.max(
-      8,
+      RESUME_SPACING_LIMITS.sectionSpacing.min,
       skin.sectionSpacing?.(style.sectionSpacing) ?? style.sectionSpacing,
     );
 

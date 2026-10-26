@@ -130,6 +130,26 @@ export function getFontStylesheetHref(fontFamily: string | null | undefined) {
 }
 
 /**
+ * The family the PDF draws from when nothing earlier in a stack has the glyph. Inter holds
+ * ⇒ ₩ ₺ ₦ ₱ ₫ ฿ ∆, which Geist and Manrope lack; the preview borrows a system face for
+ * them, but a PDF has only what it embeds.
+ *
+ * Opt-in per document (`needsLastResortPdfFont`): react-pdf fetches every family a
+ * `fontFamily` array names, used or not, and Inter is 340KB a weight.
+ */
+export const PDF_LAST_RESORT_FONT_ID: FontFamilyId = "inter";
+
+function getPdfFontIds(
+  fontFamily: string | null | undefined,
+  withLastResort: boolean,
+): FontFamilyId[] {
+  const font = FONT_REGISTRY[normalizeFontFamilyId(fontFamily)];
+  const ids = [font.id, ...font.pdfFallbackIds];
+
+  return [...new Set(withLastResort ? [...ids, PDF_LAST_RESORT_FONT_ID] : ids)];
+}
+
+/**
  * Every family the PDF may draw a document in, chosen family first.
  *
  * react-pdf accepts an array for `fontFamily` and picks, per glyph, the first
@@ -141,15 +161,17 @@ export function getFontStylesheetHref(fontFamily: string | null | undefined) {
  * The families named here must be registered before layout; see
  * `templates/pdf/fonts.ts`.
  */
-export function getPdfFontStack(fontFamily: string | null | undefined): string[] {
-  const font = FONT_REGISTRY[normalizeFontFamilyId(fontFamily)];
-
-  return [font.primaryFamily, ...font.pdfFallbackIds.map((id) => FONT_REGISTRY[id].primaryFamily)];
+export function getPdfFontStack(
+  fontFamily: string | null | undefined,
+  withLastResort = false,
+): string[] {
+  return getPdfFontIds(fontFamily, withLastResort).map((id) => FONT_REGISTRY[id].primaryFamily);
 }
 
-/** The registry entries a document needs loaded: the chosen family and its fallbacks. */
-export function getPdfFontEntries(fontFamily: string | null | undefined): FontRegistryEntry[] {
-  const font = FONT_REGISTRY[normalizeFontFamilyId(fontFamily)];
-
-  return [font, ...font.pdfFallbackIds.map((id) => FONT_REGISTRY[id])];
+/** The registry entries a PDF needs loaded: the chosen family and its fallbacks. */
+export function getPdfFontEntries(
+  fontFamily: string | null | undefined,
+  withLastResort = false,
+): FontRegistryEntry[] {
+  return getPdfFontIds(fontFamily, withLastResort).map((id) => FONT_REGISTRY[id]);
 }

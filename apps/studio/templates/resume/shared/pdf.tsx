@@ -16,9 +16,12 @@ import type { ResumeSectionStart } from "./keep-together";
 import type { StackedHeaderOptions } from "./stacked-header";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
+import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
+import { needsLastResortPdfFont } from "@/features/documents/export/pdf-unsupported-text";
 import {
   RESUME_PAGE_HEIGHT_PT,
   RESUME_PAGE_WIDTH_PT,
+  RESUME_SPACING_LIMITS,
   pxToPt,
 } from "@/features/resume/constants/resume-layout";
 import {
@@ -71,6 +74,7 @@ export function createResumePdfStyles(
   scale: ResumeTypeScale,
   pagePadding: number,
   layout: "stacked" | "gutter" = "stacked",
+  withLastResortFont = false,
 ) {
   const tokens = createResumeTokens(style, scale);
 
@@ -98,7 +102,7 @@ export function createResumePdfStyles(
     page: {
       backgroundColor: style.pageBackgroundColor,
       color: style.textColor,
-      fontFamily: getPdfFontStack(style.fontFamily),
+      fontFamily: getPdfFontStack(style.fontFamily, withLastResortFont),
       fontSize: pxToPt(scale.body),
       lineHeight: style.bodyLineHeight,
       minHeight: RESUME_PAGE_HEIGHT_PT,
@@ -463,13 +467,22 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
     const model = getResumeRenderModel(resume);
     const { style } = model;
 
-    const pagePadding = Math.max(20, skin.pagePadding?.(style.pagePadding) ?? style.pagePadding);
+    const pagePadding = Math.max(
+      RESUME_SPACING_LIMITS.pagePadding.min,
+      skin.pagePadding?.(style.pagePadding) ?? style.pagePadding,
+    );
     const sectionSpacing = Math.max(
-      8,
+      RESUME_SPACING_LIMITS.sectionSpacing.min,
       skin.sectionSpacing?.(style.sectionSpacing) ?? style.sectionSpacing,
     );
 
-    const styles = createResumePdfStyles(style, scale, pagePadding, layout);
+    const styles = createResumePdfStyles(
+      style,
+      scale,
+      pagePadding,
+      layout,
+      needsLastResortPdfFont({ type: "RESUME", content: resume }),
+    );
     const tokens = createResumeTokens(style, scale);
     const ctx: ResumePdfContext = { model, resume, scale, style, styles, tokens };
 
@@ -572,7 +585,7 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
     };
 
     return (
-      <Document title={model.name ? `${model.name} - Resume` : "Resume"}>
+      <Document {...getPdfMetadata(model.name, "Resume")}>
         <Page size={[RESUME_PAGE_WIDTH_PT, RESUME_PAGE_HEIGHT_PT]} style={styles.page}>
           {(model.showBasics || model.showLinks) && skin.renderHeader(ctx)}
 

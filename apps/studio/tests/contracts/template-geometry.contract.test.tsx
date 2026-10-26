@@ -333,3 +333,58 @@ describe("cover letter pdf geometry matches the shared scale", () => {
     }, 60_000);
   }
 });
+
+describe("S-299: the cover letter letterhead lays out like the preview", () => {
+  beforeAll(() => {
+    registerPdfTestFonts();
+  });
+
+  type StyledNode = Node & { style?: { textAlign?: string } };
+
+  function findAll(node: StyledNode, match: (n: StyledNode) => boolean, found: StyledNode[] = []) {
+    if (match(node)) found.push(node);
+    for (const child of node.children ?? []) findAll(child, match, found);
+    return found;
+  }
+
+  for (const templateId of ["professional", "executive"]) {
+    it(`S-299: ${templateId} gives the name the whole row when there is no contact column`, async () => {
+      const content = structuredClone(
+        createDefaultCoverLetter("geometry").content,
+      ) as CoverLetterContent;
+      content.senderEmail = "";
+      content.senderPhone = "";
+      content.senderLocation = "";
+      content.senderWebsite = "";
+      content.links = { ...content.links!, items: [] };
+
+      const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
+      const [page] = await layoutPages(CoverLetterPdf, { content });
+      const contentWidth = COVER_LETTER_SCALE.pageWidth - content.appearance!.pageMargin * 2;
+      const narrow =
+        contentWidth - COVER_LETTER_SCALE.headerContactWidth - COVER_LETTER_SCALE.headerColumnGap;
+
+      expect(findByWidth(page, narrow), "an identity column sized for a contact column").toBe(
+        undefined,
+      );
+    }, 60_000);
+
+    it(`S-299: ${templateId} right-aligns contact lines, as the preview does`, async () => {
+      const content = createDefaultCoverLetter("geometry").content as CoverLetterContent;
+
+      const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
+      const [page] = await layoutPages(CoverLetterPdf, { content });
+      const contactLines = findAll(
+        page,
+        (node) =>
+          node.type === "TEXT" &&
+          Math.abs(toPx(node.box?.width) - COVER_LETTER_SCALE.headerContactWidth) < 0.02,
+      );
+
+      expect(contactLines.length).toBeGreaterThan(0);
+      expect(contactLines.map((node) => node.style?.textAlign)).toEqual(
+        contactLines.map(() => "right"),
+      );
+    }, 60_000);
+  }
+});

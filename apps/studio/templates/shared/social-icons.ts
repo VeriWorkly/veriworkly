@@ -1,17 +1,7 @@
 import type { ResumeLinkType } from "@/types/resume";
 
-export const SOCIAL_ICON_SRC_BY_TYPE: Record<ResumeLinkType, string> = {
-  behance: "/icons/socials/behance.svg",
-  custom: "/icons/socials/globe.svg",
-  dribbble: "/icons/socials/dribble.svg",
-  github: "/icons/socials/github.svg",
-  linkedin: "/icons/socials/linkedIn.svg",
-  medium: "/icons/socials/medium.svg",
-  portfolio: "/icons/socials/globe.svg",
-  twitter: "/icons/socials/twitter-x.svg",
-  youtube: "/icons/socials/youtube.svg",
-};
-
+// `public/icons/socials/*.svg` stay deployed: HTML files exported before icons were inlined
+// link to them, and the login page shows three.
 export const SOCIAL_ICON_PATH_BY_TYPE: Record<ResumeLinkType, { path: string; viewBox: string }> = {
   behance: {
     viewBox: "0 0 24 24",
@@ -50,3 +40,10 @@ export const SOCIAL_ICON_PATH_BY_TYPE: Record<ResumeLinkType, { path: string; vi
     path: "M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0m4.441 16.892c-2.102.144-6.784.144-8.883 0C5.282 16.736 5.017 15.622 5 12c.017-3.629.285-4.736 2.558-4.892 2.099-.144 6.782-.144 8.883 0C18.718 7.264 18.982 8.378 19 12c-.018 3.629-.285 4.736-2.559 4.892M10 9.658l4.917 2.338L10 14.342z",
   },
 };
+
+/** `WebSocialIcon` as markup, for the HTML exports that are built as strings. */
+export function socialIconSvgHtml(type: ResumeLinkType, color: string, size: number): string {
+  const icon = SOCIAL_ICON_PATH_BY_TYPE[type] || SOCIAL_ICON_PATH_BY_TYPE.custom;
+
+  return `<svg aria-hidden="true" focusable="false" width="${size}" height="${size}" viewBox="${icon.viewBox}" style="display:block;flex-shrink:0"><path d="${icon.path}" fill="${color}"/></svg>`;
+}

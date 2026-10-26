@@ -59,7 +59,14 @@ export function LinksEditor({
 
   return (
     <>
-      <Field label="Display style">
+      <Field
+        label="Display style"
+        hint={
+          links.displayMode === "icon"
+            ? "Icons only: the links are clickable, but no address is printed, so applicant tracking systems and paper copies will not see them."
+            : undefined
+        }
+      >
         <Select
           value={links.displayMode}
           onChange={(event) =>

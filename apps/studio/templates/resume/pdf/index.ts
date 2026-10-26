@@ -7,7 +7,7 @@ import { resumeTemplateRegistry } from "@/templates/resume/registry";
 /**
  * Resolves a resume's PDF renderer on demand.
  *
- * Async, and deliberately so: eagerly importing all six PDF templates here is what
+ * Async, and deliberately so: eagerly importing every PDF template here is what
  * pulled `@react-pdf/renderer` into every route that touched this module. Callers are
  * export paths and the debug route, both of which are already asynchronous.
  */

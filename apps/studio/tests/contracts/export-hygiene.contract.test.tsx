@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { extractResume } from "@veriworkly/ats-engine/node";
 
@@ -8,7 +8,7 @@ import type { BaseDocument, ExportFormat } from "@/features/documents/core/types
 
 import { blankResume, defaultResume } from "@/features/resume/constants/default-resume";
 import { exportResumeDocument } from "@/features/documents/export/resume-exporters";
-import { buildHtml } from "@/features/documents/export/export-html";
+import { buildHtml, exportResumeAsHtml } from "@/features/documents/export/export-html";
 import { buildText } from "@/features/documents/export/export-text";
 import { buildResumeSections } from "@/templates/resume/shared/model";
 import { captureDownloads } from "@/tests/utils/downloads";
@@ -442,5 +442,91 @@ describe("render model details", () => {
     const link = { id: "l", type: "custom" as const, label: "", url: "example.com/jobs?id=42" };
 
     expect(getLinkDisplayText(link, "url")).toBe("example.com/jobs?id=42");
+  });
+});
+
+/**
+ * Just enough DOM for the WYSIWYG branch of the HTML export: a preview root whose layout
+ * width is `offsetWidth` and whose on-screen box, under the editor's zoom, is
+ * `rectWidth`. Styles and fonts are stubbed empty; the test reads the page box width.
+ */
+function stubRenderedPreview(offsetWidth: number, rectWidth: number) {
+  const clone = {
+    style: { cssText: "", margin: "", width: "", maxWidth: "", boxSizing: "" },
+    children: [],
+    get outerHTML() {
+      return `<div style="width: ${clone.style.width}"></div>`;
+    },
+  };
+  const root = {
+    offsetWidth,
+    children: [],
+    getBoundingClientRect: () => ({ width: rectWidth }),
+    cloneNode: () => clone,
+  };
+  const container = { querySelector: () => root, firstElementChild: root };
+
+  vi.stubGlobal("document", {
+    ...globalThis.document,
+    documentElement: { dir: "" },
+    getElementById: (id: string) => (id === "preview" ? container : null),
+  });
+  vi.stubGlobal("window", {
+    location: { origin: "http://localhost" },
+    getComputedStyle: () => ({ length: 0, item: () => "", display: "block", opacity: "1" }),
+  });
+  vi.stubGlobal("fetch", async () => new Response(new Blob(["font"])));
+  vi.stubGlobal(
+    "FileReader",
+    class {
+      result = "data:font/ttf;base64,Zm9udA==";
+      onload: (() => void) | null = null;
+      readAsDataURL() {
+        queueMicrotask(() => this.onload?.());
+      }
+    },
+  );
+}
+
+describe("S-285: WYSIWYG HTML export", () => {
+  it("S-285: takes the page width from layout, not from the zoomed preview", async () => {
+    const downloads = captureDownloads();
+    stubRenderedPreview(794, 619);
+
+    await exportResumeAsHtml(structuredClone(defaultResume), "preview");
+
+    const html = await downloads[0].blob.text();
+    expect(html).toContain("width: 794px");
+    expect(html).toMatch(/@page \{\s*size: 794px 1122px;/);
+  });
+
+  it("S-285: falls back to the generated document when the preview is hidden", async () => {
+    const downloads = captureDownloads();
+    const resume = structuredClone(defaultResume);
+    stubRenderedPreview(0, 0);
+
+    await exportResumeAsHtml(resume, "preview");
+
+    expect(await downloads[0].blob.text()).toBe(buildHtml(resume));
+  });
+});
+
+describe("S-301: resume colours", () => {
+  it("S-301: draws a half-typed or unsafe colour as the default, in every renderer", () => {
+    const resume = structuredClone(defaultResume);
+    resume.customization = {
+      ...resume.customization,
+      accentColor: "#12",
+      textColor: "red;}body{display:none",
+      sectionHeadingColor: "",
+      pageBackgroundColor: " #FAFAFA ",
+    };
+
+    const style = getResumeRenderStyle(resume);
+
+    expect(style.accentColor).toBe("#2563eb");
+    expect(style.textColor).toBe("#0f172a");
+    expect(style.sectionHeadingColor).toBe("#2563eb");
+    expect(style.pageBackgroundColor).toBe("#FAFAFA");
   });
 });

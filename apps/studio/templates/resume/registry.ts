@@ -14,7 +14,7 @@ import { veriworklySpecialMeta } from "./veriworkly-special/meta";
 /**
  * The resume templates.
  *
- * Renderers load on demand — the editor fetches one skin, not six, and the PDF
+ * Renderers load on demand — the editor fetches one skin, not all of them, and the PDF
  * renderers (which drag in `@react-pdf/renderer`) never enter a bundle until an
  * export actually runs. Only `meta.ts` is eager, which is what the template picker
  * and document library read.
