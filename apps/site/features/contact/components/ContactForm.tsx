@@ -57,11 +57,8 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
   const [message, setMessage] = useState("");
   const [selectedTopic, setSelectedTopic] = useState("");
 
-  const mountTimestamp = React.useRef<number | null>(null);
-
-  React.useEffect(() => {
-    mountTimestamp.current = Date.now();
-  }, []);
+  // Set at first render: a submit before a mount effect ran would send no `_ts` and get a 400.
+  const [mountTimestamp, setMountTimestamp] = useState(() => Date.now());
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -102,7 +99,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
           subject: subject.trim(),
           message: message.trim(),
           website,
-          _ts: mountTimestamp.current,
+          _ts: mountTimestamp,
         }),
       });
 
@@ -120,7 +117,7 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
       setSelectedTopic("");
       setWebsite("");
 
-      mountTimestamp.current = Date.now();
+      setMountTimestamp(Date.now());
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 429) {
         setError(
