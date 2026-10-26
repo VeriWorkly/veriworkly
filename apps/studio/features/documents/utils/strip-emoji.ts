@@ -15,3 +15,8 @@ export function stripEmoji(text: string): string {
 
   return text.replace(EMOJI, (match) => (TEXT_SYMBOLS.has(match) ? match : "")).trim();
 }
+
+/** Whether {@link stripEmoji} would take anything out of `text`. */
+export function hasEmoji(text: string): boolean {
+  return stripEmoji(text) !== text.trim();
+}

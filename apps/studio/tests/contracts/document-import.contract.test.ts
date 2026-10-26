@@ -379,6 +379,17 @@ describe("resume Markdown import, every printed section", () => {
     expect(buildMarkdown(imported)).toBe(markdown);
   });
 
+  it("keeps phone numbers in their stored E.164 form through a round trip", () => {
+    const resume = everySectionResume();
+    resume.basics.phone = "+442079460958";
+    resume.references = [{ ...resume.references[0], phone: "+14155550142" }];
+
+    const imported = parseResumeMarkdown(buildMarkdown(resume));
+
+    expect(imported.basics.phone).toBe("+442079460958");
+    expect(imported.references[0].phone).toBe("+14155550142");
+  });
+
   it("does not fail on a link with a bare percent sign", () => {
     const markdown = "# Ada\n\n## Projects\n\n### Tool\n[Sale](https://x.com/50%off)\n";
 

@@ -49,6 +49,50 @@ describe("resume store", () => {
 
     expect(useResumeStore.getState().resume.skills).toEqual([]);
   });
+
+  it("S-292: moves an entry of every list section, and ignores a move past either end", () => {
+    const store = useResumeStore.getState;
+    const ids = (items: Array<{ id: string }>) => items.map((item) => item.id);
+
+    for (let count = 0; count < 2; count += 1) {
+      store().addExperience();
+      store().addEducation();
+      store().addProject();
+      store().addSkillGroup();
+      store().addTypedItem("awards");
+    }
+    store().addCustomSection();
+    const sectionId = store().resume.customSections.at(-1)!.id;
+    store().addCustomSectionItem(sectionId);
+    store().addCustomSectionItem(sectionId);
+
+    const lists = [
+      [() => store().resume.experience, (f: number, t: number) => store().reorderExperience(f, t)],
+      [() => store().resume.education, (f: number, t: number) => store().reorderEducation(f, t)],
+      [() => store().resume.projects, (f: number, t: number) => store().reorderProjects(f, t)],
+      [() => store().resume.skills, (f: number, t: number) => store().reorderSkillGroups(f, t)],
+      [
+        () => store().resume.awards,
+        (f: number, t: number) => store().reorderTypedItem("awards", f, t),
+      ],
+      [
+        () => store().resume.customSections.find((section) => section.id === sectionId)!.items,
+        (f: number, t: number) => store().reorderCustomSectionItem(sectionId, f, t),
+      ],
+    ] as const;
+
+    for (const [read, move] of lists) {
+      const before = ids(read());
+      expect(before.length).toBeGreaterThan(1);
+
+      move(1, 0);
+      expect(ids(read())).toEqual([before[1], before[0], ...before.slice(2)]);
+
+      move(0, -1);
+      move(before.length - 1, before.length);
+      expect(ids(read())).toEqual([before[1], before[0], ...before.slice(2)]);
+    }
+  });
 });
 
 const LINKED_SYNC: ResumeData["sync"] = {

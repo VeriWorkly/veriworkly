@@ -44,6 +44,9 @@ export type AiGenerateResult = {
   replayed?: boolean;
 };
 
+/** The longest job post `/ai/generate` accepts; the server trims it further to its own policy. */
+export const AI_JOB_DESCRIPTION_MAX_CHARS = 20_000;
+
 let actionsPromise: Promise<AiActionPolicy> | null = null;
 
 export function getAiActions() {

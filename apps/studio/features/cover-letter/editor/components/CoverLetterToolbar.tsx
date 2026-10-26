@@ -13,7 +13,7 @@ import { useHiddenFileInput } from "@/features/documents/editor/toolbar/useHidde
 import { useSyncNowAction } from "@/features/documents/editor/toolbar/useSyncNowAction";
 
 import { getDocumentPreviewPath } from "@/features/documents/core/routes";
-import { getMasterProfileForNewDocument } from "@/features/resume/services/master-profile";
+import { getMasterProfileForReset } from "@/features/resume/services/master-profile";
 
 import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
 
@@ -43,7 +43,10 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
 }: CoverLetterToolbarProps) {
   const router = useRouter();
 
-  const document = useCoverLetterStore((state) => state.document);
+  // Only what the toolbar shows: subscribing to the whole letter re-rendered it on every
+  // keystroke and defeated `memo`. The export reads the letter when it runs.
+  const title = useCoverLetterStore((state) => state.document?.title);
+  const templateId = useCoverLetterStore((state) => state.document?.templateId);
   const updateTitle = useCoverLetterStore((state) => state.updateTitle);
   const resetDocument = useCoverLetterStore((state) => state.resetDocument);
   const emptyDocument = useCoverLetterStore((state) => state.emptyDocument);
@@ -59,7 +62,7 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
     onDownloadText,
     onDownloadMarkdown,
   } = useDocumentDownloads({
-    getDocument: () => document,
+    getDocument: () => useCoverLetterStore.getState().document,
     onMessage: onSetMessage,
     // No `previewElementId`: the cover letter's HTML export is generated from its template
     // rather than scraped from the DOM, so there is nothing to point at.
@@ -74,7 +77,7 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
     <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
       <ToolbarHeader
         message={message}
-        title={document?.title ?? "Untitled Cover Letter"}
+        title={title ?? "Untitled Cover Letter"}
         onBack={() => router.push("/documents")}
         onTitleChange={updateTitle}
       />
@@ -117,7 +120,16 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
           onReset={async () => {
             // Reset means "back to a new letter", and a new letter is seeded from the
             // profile — so the identity block has to be re-fetched, not re-hardcoded.
-            resetDocument(await getMasterProfileForNewDocument());
+            let master;
+
+            try {
+              master = await getMasterProfileForReset();
+            } catch (error) {
+              onSetMessage(`Not reset. ${(error as Error).message}`);
+              return;
+            }
+
+            resetDocument(master);
             onSetMessage("Cover letter reset to defaults");
           }}
           onEmptyFields={() => {
@@ -130,7 +142,7 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
             process.env.NODE_ENV === "development"
               ? () =>
                   window.open(
-                    `/pdf-debug/cover-letter/${document?.templateId ?? ""}?id=${documentId}`,
+                    `/pdf-debug/cover-letter/${templateId ?? ""}?id=${documentId}`,
                     "_blank",
                   )
               : undefined

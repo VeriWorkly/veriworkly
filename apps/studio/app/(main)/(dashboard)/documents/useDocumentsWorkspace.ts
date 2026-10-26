@@ -38,7 +38,10 @@ export function useDocumentsWorkspace() {
   const [activeType, setActiveType] = useState<DocumentTypeFilter>("ALL");
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const [syncingDocumentId, setSyncingDocumentId] = useState<string | null>(null);
+  // One entry per card: a second sync must not clear the first card's spinner.
+  const [syncingDocumentIds, setSyncingDocumentIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [syncDetailsTargetId, setSyncDetailsTargetId] = useState<string | null>(null);
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -60,8 +63,7 @@ export function useDocumentsWorkspace() {
 
   /**
    * Runs one sync action for a card. A storage error can reject instead of returning a
-   * failed result, so the spinner is cleared in `finally`, and only if no other card's
-   * action has taken it over meanwhile.
+   * failed result, so the spinner is cleared in `finally`.
    */
   const runSyncAction = useCallback(
     async (
@@ -69,7 +71,7 @@ export function useDocumentsWorkspace() {
       action: () => Promise<{ ok: boolean; message: string }>,
       successTone: "success" | "info" = "success",
     ) => {
-      setSyncingDocumentId(id);
+      setSyncingDocumentIds((current) => new Set(current).add(id));
 
       try {
         const result = await action();
@@ -77,7 +79,11 @@ export function useDocumentsWorkspace() {
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Backup failed. Please try again.");
       } finally {
-        setSyncingDocumentId((current) => (current === id ? null : current));
+        setSyncingDocumentIds((current) => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
         bump();
       }
     },
@@ -236,7 +242,7 @@ export function useDocumentsWorkspace() {
     setSyncDetailsTargetId,
     setViewMode,
     sortMode,
-    syncingDocumentId,
+    syncingDocumentIds,
     syncTargetTelemetry,
     syncTelemetryById,
     totalCount,

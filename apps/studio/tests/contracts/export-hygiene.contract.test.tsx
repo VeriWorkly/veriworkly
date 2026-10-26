@@ -368,6 +368,44 @@ describe("every resume export format", () => {
     }
   }, 60_000);
 
+  it("S-289: prints a stored E.164 phone the way people write it, in every format", async () => {
+    const resume = unfinishedResume();
+    resume.basics.phone = "+442079460958";
+    resume.references = [
+      {
+        id: "ref-1",
+        name: "Grace Hopper",
+        title: "",
+        organization: "",
+        relationship: "",
+        email: "",
+        phone: "+14155550142",
+      },
+    ];
+
+    const files = await exportAllFormats(resume);
+
+    for (const format of ["pdf", "docx", "html", "markdown", "txt"] as const) {
+      expect(files[format], format).toContain("+44 20 7946 0958");
+      expect(files[format], format).toContain("+1 415 555 0142");
+      // The `tel:` link keeps the dialable form; only the printed text is spaced.
+      expect(files[format].replace(/<[^>]*>/g, " "), format).not.toContain("+442079460958");
+    }
+
+    // Storage keeps the canonical form.
+    expect(files.json).toContain("+442079460958");
+
+    for (const template of templateRegistry) {
+      const Template = await loadTemplateComponentById(template.id);
+      const html = renderToStaticMarkup(
+        <Template resume={{ ...resume, templateId: template.id }} />,
+      );
+
+      expect(html, template.id).toContain("+44 20 7946 0958");
+      expect(html, template.id).toContain('href="tel:+442079460958"');
+    }
+  }, 60_000);
+
   it("S-009: plain text is built from the data, not from escaped Markdown", async () => {
     const resume = unfinishedResume();
     resume.basics.fullName = "Ada Lovelace";

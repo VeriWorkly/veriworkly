@@ -3,6 +3,8 @@
 import type { ResumeLinkItem, ResumeLinkType } from "@/types/resume";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 
+import { normalizePhoneValue } from "@veriworkly/profile-core";
+
 import { COVER_LETTER_MARKDOWN_LABELS } from "@/templates/cover-letter/shared";
 
 function cleanMarkdown(value: string): string {
@@ -150,6 +152,34 @@ function isShortLine(block: string) {
   return !block.includes("\n") && /[,:]$/.test(block);
 }
 
+function isOneLine(block: string | undefined): block is string {
+  return block !== undefined && !block.includes("\n");
+}
+
+/**
+ * A sign-off line, known by its words: "Sincerely,", "Kind regards", "Thank you". A trailing
+ * comma or colon is not enough: a last paragraph can end in one too.
+ */
+function isClosing(block: string | undefined) {
+  return (
+    isOneLine(block) &&
+    block.length <= 40 &&
+    /^(sincerely|((kind|warm|warmest|best) )?regards|best( wishes)?|warmly|(many )?thanks|thank you|yours\b|cheers|respectfully|cordially|with (thanks|gratitude|appreciation))\b/i.test(
+      block.trim(),
+    )
+  );
+}
+
+/** A salutation, also one typed without a trailing comma: "Hi team". */
+function isGreeting(block: string) {
+  return (
+    isShortLine(block) ||
+    (!block.includes("\n") &&
+      block.length <= 80 &&
+      /^(dear|hi|hello|hey|greetings|good (morning|afternoon|evening)|to whom)\b/i.test(block))
+  );
+}
+
 /**
  * Reads back a letter written by `buildCoverLetterMarkdown`.
  *
@@ -182,13 +212,31 @@ export function parseCoverLetterMarkdown(
           .trim()
       : "";
 
+  // A salutation opens a letter that goes on; on its own it is the letter.
   const greeting =
-    letterBlocks.length > 0 && isShortLine(letterBlocks[0]) ? letterBlocks.shift()! : "";
-  const signature = letterBlocks.length > 0 ? letterBlocks.pop()! : "";
-  const closing =
-    letterBlocks.length > 0 && isShortLine(letterBlocks[letterBlocks.length - 1])
-      ? letterBlocks.pop()!
-      : "";
+    letterBlocks.length > 1 && isGreeting(letterBlocks[0]) ? letterBlocks.shift()! : "";
+
+  // The sign-off is a closing line ("Sincerely,") and the short line under it, or just the
+  // sender's name, which the export prints in place of an empty signature. Anything else at
+  // the end is the letter's own last paragraph, not a signature.
+  let closing = "";
+  let signature = "";
+  const last = letterBlocks.length - 1;
+  const senderName = cleanMarkdown(nameBlock);
+
+  if (
+    last >= 1 &&
+    isClosing(letterBlocks[last - 1]) &&
+    isOneLine(letterBlocks[last]) &&
+    letterBlocks[last].length <= 80
+  ) {
+    signature = letterBlocks.pop()!;
+    closing = letterBlocks.pop()!;
+  } else if (isClosing(letterBlocks[last])) {
+    closing = letterBlocks.pop()!;
+  } else if (isOneLine(letterBlocks[last]) && senderName && letterBlocks[last] === senderName) {
+    signature = letterBlocks.pop()!;
+  }
 
   const lastBlock = letterBlocks[letterBlocks.length - 1];
   const highlights =
@@ -202,7 +250,8 @@ export function parseCoverLetterMarkdown(
     senderName: cleanMarkdown(nameBlock) === "Your Name" ? "" : cleanMarkdown(nameBlock),
     senderTitle: fields.senderTitle ?? "",
     senderEmail: fields.senderEmail ?? "",
-    senderPhone: fields.senderPhone ?? "",
+    // Printed spaced for reading; stored as E.164 like a typed number.
+    senderPhone: normalizePhoneValue(fields.senderPhone ?? ""),
     senderLocation: fields.senderLocation ?? "",
     senderWebsite: fields.senderWebsite ?? "",
     links: {

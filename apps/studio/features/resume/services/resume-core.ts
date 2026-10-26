@@ -27,8 +27,10 @@ export type SaveResumeOptions = SaveDocumentOptions;
  * (export, sync, storage) takes a `BaseDocument`.
  */
 export function toResumeDocument(resume: ResumeData): BaseDocument {
-  const normalized = normalizeResumeData(resume);
+  return wrapResume(normalizeResumeData(resume));
+}
 
+function wrapResume(normalized: ResumeData): BaseDocument {
   return {
     id: normalized.id,
     type: "RESUME",
@@ -41,7 +43,10 @@ export function toResumeDocument(resume: ResumeData): BaseDocument {
 }
 
 export function saveResume(resume: ResumeData, options?: SaveResumeOptions): SaveResumeResult {
-  const doc = toResumeDocument(resume);
+  // Autosave (the debounced save) hands over the editor store's resume, which `setResume`
+  // normalised and every store action keeps in shape. Normalising it again ran over the
+  // whole document on every keystroke, before the debounce.
+  const doc = options?.debounceMs ? wrapResume(resume) : toResumeDocument(resume);
   const now = new Date().toISOString();
 
   return saveDocument(

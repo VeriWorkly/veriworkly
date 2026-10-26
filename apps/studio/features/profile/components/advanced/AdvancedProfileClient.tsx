@@ -18,6 +18,7 @@ import {
 import ProfileAdvanced from "./ProfileAdvanced";
 import AdvancedSkeleton from "./AdvanceProfileSkeleton";
 import AdvancedProfileStatusBand from "./AdvancedProfilePanels";
+import { RecoveredProfileNotice } from "../RecoveredProfileNotice";
 
 const AdvancedProfileClient = () => {
   const [saving, setSaving] = useState(false);
@@ -26,6 +27,7 @@ const AdvancedProfileClient = () => {
 
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [profile, setProfile] = useState<MasterProfile | null>(null);
+  const [recovered, setRecovered] = useState(false);
 
   // A failed load blocks editing: saving a stand-in would overwrite the profile that did
   // not load. Only "no profile yet" opens the editor without one from the database.
@@ -33,6 +35,7 @@ const AdvancedProfileClient = () => {
     if (result.status === "ready") {
       setProfile(result.profile);
       setUpdatedAt(result.updatedAt);
+      setRecovered(Boolean(result.recovered));
       setLoadError(null);
     } else {
       console.error("Failed to load master profile from the database", result.error);
@@ -73,6 +76,7 @@ const AdvancedProfileClient = () => {
       saveMasterProfileToLocalStorage(savedBundle.profile);
       setProfile(savedBundle.profile);
       setUpdatedAt(savedBundle.updatedAt);
+      setRecovered(false);
     } finally {
       setSaving(false);
     }
@@ -112,6 +116,8 @@ const AdvancedProfileClient = () => {
   return (
     <div className="space-y-6">
       <AdvancedProfileStatusBand updatedAt={updatedAt} />
+
+      {recovered ? <RecoveredProfileNotice /> : null}
 
       <ProfileAdvanced
         isSaving={saving}

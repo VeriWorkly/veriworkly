@@ -283,7 +283,8 @@ describe("template render contract", () => {
       expect(html, `${templateId} must print the sender's name`).toContain("Ada Lovelace");
       expect(html, `${templateId} must print the sender's title`).toContain("Analytical Engineer");
       expect(html, `${templateId} must print the sender's email`).toContain("ada@example.com");
-      expect(html, `${templateId} must print the sender's phone`).toContain("+442079460958");
+      // Printed with spacing; the stored value stays E.164 (S-289).
+      expect(html, `${templateId} must print the sender's phone`).toContain("+44 20 7946 0958");
       expect(html, `${templateId} must print the sender's location`).toContain("London, UK");
 
       expect(html, `${templateId} must not fall back to the sample identity`).not.toContain(

@@ -9,8 +9,16 @@ import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-
 import { LinksEditor } from "@/features/documents/editor/LinksEditor";
 import SectionAccordion from "@/features/documents/editor/SectionAccordion";
 import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
+import { coverLetterAiContext } from "@/features/ai/ai-context";
+import { listDocuments } from "@/features/documents/services/document-workspace-service";
+import { readResumeById } from "@/features/resume/services/resume-service";
 
-import { EditorBlock, TextAreaField, TextInputField } from "@/features/documents/editor/form";
+import {
+  EditorBlock,
+  SelectField,
+  TextAreaField,
+  TextInputField,
+} from "@/features/documents/editor/form";
 
 interface CoverLetterContentPanelProps {
   documentId: string;
@@ -25,6 +33,9 @@ const EMPTY_LINKS = { displayMode: "icon-username" as const, items: [] };
  */
 export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelProps) {
   const [openSectionId, setOpenSectionId] = useState<CoverLetterSectionId | null>("profile");
+  // The resume the AI writes the letter from: the most recent one unless the user picks.
+  const [resumes] = useState(() => listDocuments("RESUME"));
+  const [basedOnResumeId, setBasedOnResumeId] = useState(() => resumes[0]?.id ?? "");
 
   const content = useCoverLetterStore((state) => state.document?.content);
   const onUpdateContent = useCoverLetterStore((state) => state.updateContent);
@@ -79,6 +90,7 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
           <div className="grid gap-3 sm:grid-cols-2">
             <TextInputField
               label="Email"
+              type="email"
               value={content.senderEmail}
               error={contactErrors.senderEmail}
               onValueChange={(senderEmail) => onUpdateContent({ senderEmail })}
@@ -86,6 +98,8 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
 
             <TextInputField
               label="Phone"
+              inputMode="tel"
+              type="tel"
               value={content.senderPhone}
               error={contactErrors.senderPhone}
               onValueChange={(senderPhone) => onUpdateContent({ senderPhone })}
@@ -212,9 +226,29 @@ export function CoverLetterContentPanel({ documentId }: CoverLetterContentPanelP
             className="min-h-44 font-mono text-[13px]"
             onValueChange={(body) => onUpdateContent({ body })}
           />
+          {resumes.length ? (
+            <SelectField
+              label="Write from resume"
+              value={basedOnResumeId}
+              onValueChange={setBasedOnResumeId}
+            >
+              <option value="">None</option>
+              {resumes.map((resume) => (
+                <option key={resume.id} value={resume.id}>
+                  {resume.title || "Untitled resume"}
+                </option>
+              ))}
+            </SelectField>
+          ) : null}
           <AiFieldAssist
             action="generate_cover_letter"
-            getContext={() => JSON.stringify(content)}
+            getContext={() =>
+              coverLetterAiContext(
+                content,
+                basedOnResumeId ? readResumeById(basedOnResumeId) : null,
+              )
+            }
+            getJobDescription={() => content.jobPost ?? ""}
             documentId={documentId}
             onApply={(body) => onUpdateContent({ body })}
             text={content.body}

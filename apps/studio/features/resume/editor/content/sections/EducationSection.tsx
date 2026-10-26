@@ -21,6 +21,7 @@ const EducationSection = ({ isOpen, onToggle }: BaseSectionProps) => {
   const education = useResumeStore((state) => state.resume.education);
   const addEducation = useResumeStore((state) => state.addEducation);
   const removeEducation = useResumeStore((state) => state.removeEducation);
+  const reorderEducation = useResumeStore((state) => state.reorderEducation);
   const updateEducation = useResumeStore((state) => state.updateEducation);
 
   const list = useIndexedListEditor(education, addEducation);
@@ -39,6 +40,7 @@ const EducationSection = ({ isOpen, onToggle }: BaseSectionProps) => {
       list={list}
       items={education}
       onRemove={removeEducation}
+      onMove={reorderEducation}
       labelFor={(item, index) => item.school || item.degree || `Education ${index + 1}`}
       emptyMessage="No education entries yet. Click Add to create one."
     >
@@ -48,21 +50,18 @@ const EducationSection = ({ isOpen, onToggle }: BaseSectionProps) => {
             <TextInputField
               label="School"
               value={activeEducation.school}
-              error={educationErrors.school}
               onValueChange={(school) => updateEducation(list.index, { school })}
             />
 
             <TextInputField
               label="Degree"
               value={activeEducation.degree}
-              error={educationErrors.degree}
               onValueChange={(degree) => updateEducation(list.index, { degree })}
             />
 
             <TextInputField
               label="Field of study"
               value={activeEducation.field}
-              error={educationErrors.field}
               onValueChange={(field) => updateEducation(list.index, { field })}
             />
 

@@ -76,7 +76,7 @@ const OverviewHome = () => {
     setShareTarget,
     setRenameTarget,
     setSyncDetailsTargetId,
-    syncingDocumentId,
+    syncingDocumentIds,
     syncTargetTelemetry,
     totalCount,
     visibleDocs,
@@ -129,7 +129,7 @@ const OverviewHome = () => {
                   <RecentCard
                     key={`${doc.type}-${doc.id}`}
                     doc={doc}
-                    syncing={syncingDocumentId === doc.id}
+                    syncing={syncingDocumentIds.has(doc.id)}
                     onDeleteAction={setDeleteTarget}
                     onShareAction={setShareTarget}
                     onRenameAction={setRenameTarget}
@@ -182,7 +182,7 @@ const OverviewHome = () => {
           document={syncDetailsTarget}
           onSyncNow={handleSyncNow}
           telemetry={syncTargetTelemetry}
-          syncingDocumentId={syncingDocumentId}
+          syncingDocumentIds={syncingDocumentIds}
           onKeepLocalOnly={handleKeepLocalOnly}
           onResolveUseCloud={handleResolveUseCloud}
           onResolveUseLocal={handleResolveUseLocal}

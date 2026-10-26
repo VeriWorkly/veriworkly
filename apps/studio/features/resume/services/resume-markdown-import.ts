@@ -12,7 +12,7 @@ import type {
   ResumeExperienceItem,
 } from "@/types/resume";
 
-import { createId } from "@veriworkly/profile-core";
+import { createId, normalizePhoneValue } from "@veriworkly/profile-core";
 
 import { blankResume } from "@/features/resume/constants/default-resume";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
@@ -178,7 +178,8 @@ function parseHeader(markdown: string, resume: ResumeData) {
     if (isContact) {
       for (const value of values) {
         if (value.includes("@")) resume.basics.email = value;
-        else if (/^\+?[\d\s().-]{6,}$/.test(value)) resume.basics.phone = value;
+        else if (/^\+?[\d\s().-]{6,}$/.test(value))
+          resume.basics.phone = normalizePhoneValue(value);
         else resume.basics.location = value;
       }
       continue;
@@ -347,7 +348,8 @@ function readAdditionalSection(resume: ResumeData, title: string, lines: string[
           title: jobTitle,
           organization,
           email: item.link?.url.replace(/^mailto:/i, "") ?? "",
-          phone: item.meta,
+          // Printed spaced for reading; stored as E.164 like a typed number.
+          phone: normalizePhoneValue(item.meta),
           relationship: item.summary,
         };
       });

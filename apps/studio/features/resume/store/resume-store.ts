@@ -61,7 +61,6 @@ interface ResumeStoreState {
   updateLinkItem: (index: number, values: Partial<ResumeLinkItem>) => void;
   addLinkItem: () => void;
   removeLinkItem: (index: number) => void;
-  updateSkills: (skills: ResumeSkillGroup[]) => void;
   updateSkillGroup: (index: number, values: Partial<ResumeSkillGroup>) => void;
   addSkillGroup: () => void;
   removeSkillGroup: (index: number) => void;
@@ -78,6 +77,7 @@ interface ResumeStoreState {
     values: Partial<ResumeTypedSectionItem<K>>,
   ) => void;
   removeTypedItem: (key: ResumeTypedSectionKey, index: number) => void;
+  reorderTypedItem: (key: ResumeTypedSectionKey, fromIndex: number, toIndex: number) => void;
   /*
    * Custom sections are addressed by their own id, not by `kind`. Every custom section has
    * kind "custom", so a kind-keyed action could only ever reach the first one.
@@ -92,6 +92,7 @@ interface ResumeStoreState {
   ) => void;
   addCustomSectionItem: (sectionId: string) => void;
   removeCustomSectionItem: (sectionId: string, index: number) => void;
+  reorderCustomSectionItem: (sectionId: string, fromIndex: number, toIndex: number) => void;
   updateExperience: (index: number, values: Partial<ResumeExperienceItem>) => void;
   addExperience: () => void;
   removeExperience: (index: number) => void;
@@ -301,14 +302,6 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
       }),
     })),
 
-  updateSkills: (skills) =>
-    set((state) => ({
-      resume: withTimestamp({
-        ...state.resume,
-        skills,
-      }),
-    })),
-
   updateSkillGroup: (index, values) =>
     set((state) => ({
       resume: withTimestamp({
@@ -375,6 +368,18 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
       } as ResumeData),
     })),
 
+  reorderTypedItem: (key, fromIndex, toIndex) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        [key]: reorderItems<ResumeTypedSectionItem<typeof key>>(
+          state.resume[key],
+          fromIndex,
+          toIndex,
+        ),
+      } as ResumeData),
+    })),
+
   addCustomSection: () =>
     set((state) => {
       const section = createCustomSection();
@@ -390,7 +395,7 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
             ...state.resume.sections,
             {
               id: "custom" as const,
-              label: section.title,
+              label: section.title || "Custom",
               visible: true,
               order: state.resume.sections.length,
               customSectionId: section.id,
@@ -476,6 +481,18 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
             items: section.items.filter((_, itemIndex) => itemIndex !== index),
           };
         }),
+      }),
+    })),
+
+  reorderCustomSectionItem: (sectionId, fromIndex, toIndex) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        customSections: state.resume.customSections.map((section) =>
+          section.id === sectionId
+            ? { ...section, items: reorderItems(section.items, fromIndex, toIndex) }
+            : section,
+        ),
       }),
     })),
 

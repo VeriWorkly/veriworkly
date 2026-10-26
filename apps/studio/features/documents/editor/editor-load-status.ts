@@ -38,7 +38,9 @@ export function loadStateFor(state: KeyedLoadState, documentId: string): EditorL
  * other failure (a 500, an expired session, a copy that could not be read) keeps its real
  * reason: calling it "not found" sends the user hunting for a document that still exists.
  */
-export function cloudLoadFailureState(result: SyncResult): EditorLoadState {
+export function cloudLoadFailureState(
+  result: SyncResult,
+): Extract<EditorLoadState, { status: "not-found" | "error" }> {
   if (result.reason === "not-found" || !useUserStore.getState().isLoggedIn) {
     return { status: "not-found" };
   }

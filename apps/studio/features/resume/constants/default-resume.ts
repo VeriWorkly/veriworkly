@@ -64,15 +64,7 @@ export const blankResume: ResumeData = {
   references: [],
   achievements: [],
 
-  customSections: [
-    {
-      id: "custom-default",
-      kind: "custom",
-      title: "Custom Section",
-      editableTitle: true,
-      items: [],
-    },
-  ],
+  customSections: [],
 
   sections: defaultSections,
 

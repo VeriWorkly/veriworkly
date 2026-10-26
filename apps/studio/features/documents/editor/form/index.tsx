@@ -2,9 +2,11 @@
 
 import type { ReactNode } from "react";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Input, Select, cn } from "@veriworkly/ui";
+
+import { hasEmoji } from "@/features/documents/utils/strip-emoji";
 
 /**
  * Form primitives shared by every document editor.
@@ -19,10 +21,19 @@ import { Input, Select, cn } from "@veriworkly/ui";
  * `*Field` components are the value/onChange conveniences built on it.
  */
 
+/** What a control needs to announce the error and hint its `Field` renders below it. */
+export interface FieldControlProps {
+  "aria-invalid"?: true;
+  "aria-describedby"?: string;
+}
+
 /**
  * `hint` is advisory and renders alongside `error`, not instead of it: a field can be
  * perfectly valid and still worth a nudge — a phone number stored without a country code
  * is the case this exists for.
+ *
+ * The error waits until the field has been left once: a form someone has not filled in yet
+ * is not wrong. Pass `children` as a function to wire the control to the error and hint.
  */
 export function Field({
   children,
@@ -30,19 +41,49 @@ export function Field({
   hint,
   label,
 }: {
-  children: ReactNode;
+  children: ReactNode | ((control: FieldControlProps) => ReactNode);
   error?: string;
   hint?: ReactNode;
   label: string;
 }) {
+  const id = useId();
+  const [touched, setTouched] = useState(false);
+
+  const shownError = touched ? error : undefined;
+  const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
+  const describedBy = [shownError ? errorId : "", hint ? hintId : ""].filter(Boolean).join(" ");
+
   return (
-    <label className="text-foreground space-y-2 text-sm font-medium">
-      <span>{label}</span>
-      {children}
-      {error ? <p className="text-xs text-red-500">{error}</p> : null}
-      {hint ? <p className="text-muted text-xs font-normal">{hint}</p> : null}
-    </label>
+    <div className="space-y-2" onBlur={() => setTouched(true)}>
+      <label className="text-foreground block space-y-2 text-sm font-medium">
+        <span>{label}</span>
+        {typeof children === "function"
+          ? children({
+              "aria-invalid": shownError ? true : undefined,
+              "aria-describedby": describedBy || undefined,
+            })
+          : children}
+      </label>
+      {shownError ? (
+        <p className="text-xs font-medium text-red-500" id={errorId}>
+          {shownError}
+        </p>
+      ) : null}
+      {hint ? (
+        <p className="text-muted text-xs" id={hintId}>
+          {hint}
+        </p>
+      ) : null}
+    </div>
   );
+}
+
+/** Every export leaves emoji out (`stripEmoji`), so a field holding one says so. */
+function emojiHint(value: string) {
+  return hasEmoji(value)
+    ? "Emoji are left out of the document: its fonts cannot draw them."
+    : undefined;
 }
 
 function TextArea({
@@ -78,13 +119,15 @@ export function TextInputField({
   value: string;
 }) {
   return (
-    <Field error={error} hint={hint} label={label}>
-      <Input
-        {...props}
-        error={Boolean(error)}
-        onChange={(event) => onValueChange(event.target.value)}
-        value={value}
-      />
+    <Field error={error} hint={hint ?? emojiHint(value)} label={label}>
+      {(control) => (
+        <Input
+          {...props}
+          {...control}
+          onChange={(event) => onValueChange(event.target.value)}
+          value={value}
+        />
+      )}
     </Field>
   );
 }
@@ -107,14 +150,16 @@ export function TextAreaField({
   value: string;
 }) {
   return (
-    <Field error={error} label={label}>
-      <TextArea
-        {...props}
-        aria-invalid={error ? true : undefined}
-        className={cn("min-h-28 leading-6", className)}
-        onChange={(event) => onValueChange(event.target.value)}
-        value={value}
-      />
+    <Field error={error} hint={emojiHint(value)} label={label}>
+      {(control) => (
+        <TextArea
+          {...props}
+          {...control}
+          className={cn("min-h-28 leading-6", className)}
+          onChange={(event) => onValueChange(event.target.value)}
+          value={value}
+        />
+      )}
     </Field>
   );
 }
@@ -171,14 +216,16 @@ export function SelectField({
 }) {
   return (
     <Field error={error} label={label}>
-      <Select
-        {...props}
-        error={Boolean(error)}
-        onChange={(event) => onValueChange(event.target.value)}
-        value={value}
-      >
-        {children}
-      </Select>
+      {(control) => (
+        <Select
+          {...props}
+          {...control}
+          onChange={(event) => onValueChange(event.target.value)}
+          value={value}
+        >
+          {children}
+        </Select>
+      )}
     </Field>
   );
 }

@@ -23,6 +23,7 @@ const ProjectsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
   const resumeId = useResumeStore((state) => state.resume.id);
   const addProject = useResumeStore((state) => state.addProject);
   const removeProject = useResumeStore((state) => state.removeProject);
+  const reorderProjects = useResumeStore((state) => state.reorderProjects);
   const updateProject = useResumeStore((state) => state.updateProject);
 
   const list = useIndexedListEditor(projects, addProject);
@@ -41,6 +42,7 @@ const ProjectsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
       list={list}
       items={projects}
       onRemove={removeProject}
+      onMove={reorderProjects}
       labelFor={(item, index) => item.name || `Project ${index + 1}`}
       emptyMessage="No projects yet. Click Add to create one."
     >
@@ -50,14 +52,12 @@ const ProjectsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
             <TextInputField
               label="Project name"
               value={activeProject.name}
-              error={projectErrors.name}
               onValueChange={(name) => updateProject(list.index, { name })}
             />
 
             <TextInputField
               label="Role"
               value={activeProject.role}
-              error={projectErrors.role}
               onValueChange={(role) => updateProject(list.index, { role })}
             />
 
@@ -72,9 +72,9 @@ const ProjectsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
 
             <TextInputField
               label="Link text"
-              placeholder="Link"
+              placeholder="Leave empty to show the address"
               disabled={!(activeProject.showLinkAsText ?? true)}
-              value={activeProject.linkLabel || "Link"}
+              value={activeProject.linkLabel}
               onValueChange={(linkLabel) => updateProject(list.index, { linkLabel })}
             />
           </div>
@@ -82,12 +82,7 @@ const ProjectsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
           <div className="mt-4 space-y-4">
             <CheckboxField
               checked={activeProject.showLinkAsText ?? true}
-              onCheckedChange={(showLinkAsText) =>
-                updateProject(list.index, {
-                  showLinkAsText,
-                  linkLabel: activeProject.linkLabel || "Link",
-                })
-              }
+              onCheckedChange={(showLinkAsText) => updateProject(list.index, { showLinkAsText })}
             >
               Hide project URL behind text
             </CheckboxField>
@@ -106,7 +101,6 @@ const ProjectsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
             <TextAreaField
               label="Summary"
               value={activeProject.summary}
-              error={projectErrors.summary}
               onValueChange={(summary) => updateProject(list.index, { summary })}
             />
 

@@ -63,4 +63,12 @@ describe("resume export source contract", () => {
     expect(occurrences(markup, CANDIDATE)).toBe(1);
     expect(markup.slice(markup.indexOf(EXPORT_ROOT_ATTRIBUTE))).not.toContain(CANDIDATE);
   });
+
+  it("S-311: keeps the measuring copy's links out of the tab order", () => {
+    const measuring = previewMarkup().match(
+      new RegExp(`<div[^>]*${EXPORT_EXCLUDE_ATTRIBUTE}[^>]*>`),
+    );
+
+    expect(measuring?.[0]).toMatch(/\binert=""/);
+  });
 });
