@@ -24,7 +24,7 @@ const AUDITS = [
   {
     title: "Weak verbs",
     detail:
-      "Passive phrases such as “assisted with” or “worked on” are flagged, with stronger, measurable alternatives suggested.",
+      "Duty openers such as “Responsible for” or “Worked on” are flagged, with a fix that leads with what you did.",
   },
 ];
 

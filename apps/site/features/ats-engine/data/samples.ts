@@ -12,9 +12,9 @@ export const ENGINE_SAMPLES: EngineSample[] = [
     id: "strong",
     label: "Backend engineer",
     summary: "A clean, single-column resume with measured results, against a matching posting.",
-    resume: `Maya Okafor
+    resume: `Sample Candidate A
 Senior Backend Engineer
-maya.okafor@example.com | +1 (415) 555-0142 | linkedin.com/in/maya-okafor-example | Oakland, CA
+sample.candidate.a@example.com | +1 (415) 555-0142 | linkedin.com/in/sample-candidate-a | Oakland, CA
 
 SUMMARY
 Backend engineer building payment and data services in Go and PostgreSQL since 2016.
@@ -59,8 +59,8 @@ Nice to have
     id: "needs-work",
     label: "Data analyst",
     summary: "Duties instead of results, first person, and no Education heading.",
-    resume: `Daniel Reyes
-daniel.reyes@example.com
+    resume: `Sample Candidate B
+sample.candidate.b@example.com
 
 About me
 I am a hard-working and detail-oriented team player who is passionate about data.
@@ -98,8 +98,8 @@ Preferred
     label: "Gaming the screener",
     summary:
       "An instruction aimed at AI screeners and a stuffed keyword line. Watch the deductions.",
-    resume: `Alex Morgan
-alex.morgan@example.com | +1 (312) 555-0187 | github.com/alex-morgan-example
+    resume: `Sample Candidate C
+sample.candidate.c@example.com | +1 (312) 555-0187 | github.com/sample-candidate-c
 
 EXPERIENCE
 Frontend Engineer, Copperleaf Labs | Jan 2020 – Present

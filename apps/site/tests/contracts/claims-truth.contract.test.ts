@@ -50,6 +50,15 @@ describe("copy stays free of the claims the audit found false", () => {
       "W-076: one naming table (server productNames.ts)",
     ],
     [/use in portfolio builder/i, "W-077: the link opens the portfolio app's template page"],
+    [
+      /it never changes the score|"AI in the score"/i,
+      "ATS: the engine's optional AI can change it",
+    ],
+    [/emoji bullets|page-footer artifacts/i, "ATS: no engine rule checks these"],
+    [/measurable alternatives/i, "ATS: the verb rule gives a fix, not alternatives"],
+    [/two steps and a score/i, "ATS: the checker has three steps"],
+    [/field accuracy, /i, "ATS: the tiles are regression figures"],
+    [/maya okafor|daniel reyes|alex morgan/i, "ATS: samples use plainly invented names"],
   ];
 
   const SHIPPED_DIRS = ["app", "components", "config", "features", "public"];

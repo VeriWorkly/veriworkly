@@ -76,7 +76,7 @@ export const SCORING_DIMENSIONS = [
     checks: [
       "Column-gutter detection on PDF uploads",
       "Ruled table grid detection",
-      "Emoji bullets and page-footer artifacts",
+      "Letter-spaced headings that extract as single letters",
     ],
   },
   {

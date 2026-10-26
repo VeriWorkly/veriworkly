@@ -335,7 +335,7 @@ export const faqs: FaqItem[] = [
     category: "developer",
     question: "Does the ATS Engine use AI to score resumes?",
     answer:
-      "No. The score comes from 35 published rules, each with its weight, the evidence it found and a fix. The same resume, policy and date always give the same report, and every report names the engine version and a fingerprint of the policy that produced it. AI is an optional add-on with your own API key: it can explain a report or fill gaps in a parse, and it never changes the score.",
+      "No. The score comes from 35 published rules, each with its weight, the evidence it found and a fix. The same resume, policy and date always give the same report, and every report names the engine version and a fingerprint of the policy that produced it. AI is an optional add-on with your own API key: it can explain a report, fill gaps in a parse, or convert a resume in a language with no pack. When it repairs or converts, the rules score what the model recovered, after anything that is not in the resume has been dropped. The hosted VeriWorkly ATS Checker uses no AI in its score.",
   },
   {
     id: "ats-engine-runtimes",
