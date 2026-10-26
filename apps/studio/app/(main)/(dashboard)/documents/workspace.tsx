@@ -52,6 +52,7 @@ export default function DocumentsWorkspace() {
     syncTargetTelemetry,
     totalCount,
     visibleDocs,
+    isPullingFromCloud,
     bump,
   } = useDocumentsWorkspace();
 
@@ -180,6 +181,11 @@ export default function DocumentsWorkspace() {
               ))}
             </div>
           )
+        ) : isPullingFromCloud && totalCount === 0 ? (
+          // A returning user on a new device: their documents are still on the way.
+          <p className="text-muted p-6 text-sm" role="status">
+            Loading your documents from your account…
+          </p>
         ) : (
           <DocumentWorkspaceEmptyState />
         )}

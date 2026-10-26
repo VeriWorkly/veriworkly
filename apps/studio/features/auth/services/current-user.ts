@@ -1,6 +1,6 @@
 import { unstable_rethrow } from "next/navigation";
 
-import { backendApiUrl } from "@/lib/constants";
+import { backendApiUrl, WORKSPACE_SETTINGS_STORAGE_KEY } from "@/lib/constants";
 
 import type {
   BaseDocument,
@@ -13,12 +13,13 @@ import { withDocumentIdentity } from "@/features/documents/core/content-identity
 import { downloadBlob } from "@/features/documents/export/download";
 import {
   clearWorkspaceStorage,
-  loadDocumentById,
+  getWorkspaceStorage,
 } from "@/features/documents/services/document-workspace-service";
 import {
   WORKSPACE_BACKUP_FORMAT,
   type WorkspaceBackup,
 } from "@/features/documents/services/import-service";
+import { setWorkspaceUser } from "@/features/documents/services/workspace-owner";
 import { useUserStore } from "@/store/useUserStore";
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 import { pluralize } from "@/lib/pluralize";
@@ -122,7 +123,9 @@ const DETACHED_SYNC: DocumentSyncState = {
  * read throws, so the caller never clears a device whose backup is incomplete.
  */
 export function buildWorkspaceBackup(documents: DocumentMeta[], now = new Date()) {
-  const stored = documents.map((meta) => loadDocumentById(meta.type, meta.id));
+  // Storage directly: the documents listed may be another account's, being backed up before
+  // the signed-in user decides what happens to them.
+  const stored = documents.map((meta) => getWorkspaceStorage(meta.type).loadById(meta.id));
   const unreadable = stored.filter((document) => document === null).length;
 
   if (unreadable > 0) {
@@ -174,11 +177,14 @@ function expireGuestModeCookie() {
  * Forgets the account on this device: documents, sync outbox, master-profile cache, the
  * guest flag and the signed-in user. Without it the next person to sign in on a shared
  * device inherits the previous user's documents, and auto-sync pushes them into their
- * account.
+ * account. The account's auto-sync setting goes too, so a guest's new documents start
+ * local-only instead of waiting for a sync that never comes.
  */
 export function clearLocalAccountData() {
   memoryCache = null;
+  setWorkspaceUser(null);
   clearWorkspaceStorage();
+  window.localStorage.removeItem(WORKSPACE_SETTINGS_STORAGE_KEY);
   expireGuestModeCookie();
   useUserStore.getState().logout();
 }

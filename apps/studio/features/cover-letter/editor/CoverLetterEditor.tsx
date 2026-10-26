@@ -6,12 +6,20 @@ import { useCallback, useDeferredValue } from "react";
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
 import { DocumentEditorShell } from "@/features/documents/editor/DocumentEditorShell";
 import { DocumentLoadStateCard } from "@/features/documents/editor/DocumentStateCard";
+import {
+  ChangedElsewhereNotice,
+  RecoveredEditsNotice,
+} from "@/features/documents/editor/ChangedElsewhereNotice";
 import { useDocumentTabTitle } from "@/features/documents/editor/editor-load-status";
 import { useDocumentEditorSession } from "@/features/documents/editor/useDocumentEditorSession";
+import { useImportAsNewDocument } from "@/features/documents/editor/toolbar/useDocumentJsonImport";
 import { importCoverLetterMarkdownFile } from "@/features/cover-letter/markdown-import";
 import { describeSaveResult } from "@/features/documents/services/save-failure-message";
 
-import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
+import {
+  useCoverLetterStore,
+  type CoverLetterDocument,
+} from "@/features/cover-letter/store/cover-letter-store";
 
 import { CoverLetterToolbar } from "./components/CoverLetterToolbar";
 import CoverLetterEditorModals from "./components/CoverLetterEditorModals";
@@ -26,7 +34,12 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
   const document = useCoverLetterStore((state) => state.document);
   const hydrateFromStorage = useCoverLetterStore((state) => state.hydrateFromStorage);
   const saveToStorage = useCoverLetterStore((state) => state.saveToStorage);
-  const updateContent = useCoverLetterStore((state) => state.updateContent);
+  const setDocument = useCoverLetterStore((state) => state.setDocument);
+
+  const restoreIntoStore = useCallback(
+    (recovered: unknown) => setDocument(recovered as CoverLetterDocument),
+    [setDocument],
+  );
 
   // `storeDocumentId`: the store outlives the route, so after a client-side navigation it
   // can still hold the previous letter.
@@ -37,6 +50,7 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
     saveToStorage,
     document,
     storeDocumentId: document?.id ?? null,
+    replaceInStore: restoreIntoStore,
   });
   const { setMessage } = session;
 
@@ -53,22 +67,34 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
     if (failure) toast.error(failure);
   }, [saveToStorage, setMessage]);
 
-  // JSON import creates a new document through the shared toolbar hook; Markdown import
-  // stays here because it merges into the open letter's content.
+  const importAsNewDocument = useImportAsNewDocument("COVER_LETTER", setMessage);
+
+  // Like JSON import, a new letter: the open one (and its job post) is never written over.
+  // The file carries no design, so the new letter keeps the open letter's template and look.
   const importMarkdown = useCallback(
     async (file: File | undefined) => {
-      const content = useCoverLetterStore.getState().document?.content;
+      const current = useCoverLetterStore.getState().document;
 
-      if (!file || !content) return;
+      if (!file || !current) return;
+
+      let content;
 
       try {
-        updateContent(await importCoverLetterMarkdownFile(file, content));
-        toast.success("Cover letter markdown imported");
+        content = await importCoverLetterMarkdownFile(file, current.content);
       } catch {
         toast.error("Import failed. Use a valid cover letter Markdown file.");
+        return;
       }
+
+      await importAsNewDocument({
+        title:
+          [content.jobTitle, content.companyName].filter(Boolean).join(" - ") ||
+          "Untitled Cover Letter",
+        templateId: current.templateId,
+        content,
+      });
     },
-    [updateContent],
+    [importAsNewDocument],
   );
 
   if (!session.isReady || !document) {
@@ -87,6 +113,22 @@ export default function CoverLetterEditor({ documentId }: CoverLetterEditorProps
 
   return (
     <DocumentEditorShell
+      notice={
+        session.changedElsewhere ? (
+          <ChangedElsewhereNotice
+            changedElsewhere={session.changedElsewhere}
+            busy={session.resolvingChange}
+            onKeepMine={session.keepMine}
+            onKeepOther={session.keepOther}
+          />
+        ) : session.recovered ? (
+          <RecoveredEditsNotice
+            savedAt={session.recovered.savedAt}
+            onRestore={session.restoreRecovered}
+            onDiscard={session.discardRecovered}
+          />
+        ) : null
+      }
       toolbar={
         <CoverLetterToolbar
           documentId={documentId}

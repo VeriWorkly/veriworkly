@@ -5,19 +5,26 @@ import type { BaseDocument } from "@/features/documents/core/types";
 import type { CoverLetterContent, CoverLetterSectionId } from "@/features/cover-letter/types";
 
 import { backendApiUrl } from "@/lib/constants";
-import { ApiRequestError, fetchApiData, type OffsetPaginationPayload } from "@/utils/fetchApiData";
+import { clearInvalidSessionAndRedirect } from "@/lib/invalid-session";
+import { fetchApiData, readApiError, type OffsetPaginationPayload } from "@/utils/fetchApiData";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import {
   sectionVisible,
   customSectionVisible,
 } from "@/features/documents/rendering/resume-rendering";
 
+/**
+ * For the owner's share calls, which all need a session. A 401 is an expired session, handled
+ * as `fetchApiData` does: the page leaves for /login and the call never settles. Anything else
+ * throws with the server's message, `details` and `code`.
+ */
 async function throwApiError(response: Response, fallbackMessage: string): Promise<never> {
-  const payload = (await response.json().catch(() => ({}))) as {
-    message?: string;
-  };
+  if (response.status === 401) {
+    void clearInvalidSessionAndRedirect();
+    return new Promise<never>(() => {});
+  }
 
-  throw new ApiRequestError(payload.message || fallbackMessage, response.status);
+  throw await readApiError(response, fallbackMessage);
 }
 
 export type CreateShareLinkOptions = {

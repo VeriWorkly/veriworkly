@@ -4,7 +4,6 @@ import { memo } from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  saveResume,
   toResumeDocument,
   importResumeFromMarkdownFile,
 } from "@/features/resume/services/resume-service";
@@ -14,7 +13,10 @@ import ToolbarActionsMenu from "@/features/documents/editor/toolbar/ToolbarActio
 import ToolbarDownloadMenu from "@/features/documents/editor/toolbar/ToolbarDownloadMenu";
 import { getSaveFailureMessage } from "@/features/documents/services/save-failure-message";
 import { useDocumentDownloads } from "@/features/documents/editor/toolbar/useDocumentDownloads";
-import { useDocumentJsonImport } from "@/features/documents/editor/toolbar/useDocumentJsonImport";
+import {
+  useDocumentJsonImport,
+  useImportAsNewDocument,
+} from "@/features/documents/editor/toolbar/useDocumentJsonImport";
 import { useHiddenFileInput } from "@/features/documents/editor/toolbar/useHiddenFileInput";
 import { useSyncNowAction } from "@/features/documents/editor/toolbar/useSyncNowAction";
 import ToolbarSaveButton from "@/features/documents/editor/toolbar/ToolbarSaveButton";
@@ -22,7 +24,7 @@ import ToolbarSaveButton from "@/features/documents/editor/toolbar/ToolbarSaveBu
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { getMasterProfileForNewDocument } from "@/features/resume/services/master-profile";
 
-import { getDocumentEditorPath, getDocumentPreviewPath } from "@/features/documents/core/routes";
+import { getDocumentPreviewPath } from "@/features/documents/core/routes";
 
 interface ToolbarProps {
   resumeId: string;
@@ -57,7 +59,6 @@ const ResumeToolbar = memo(function ResumeToolbar({
   const resume = useResumeStore((state) => state.resume);
   const resetResume = useResumeStore((state) => state.resetResume);
   const emptyResume = useResumeStore((state) => state.emptyResume);
-  const setResume = useResumeStore((state) => state.setResume);
   const updateTitle = useResumeStore((state) => state.updateTitle);
   const saveToStorage = useResumeStore((state) => state.saveToStorage);
 
@@ -81,25 +82,25 @@ const ResumeToolbar = memo(function ResumeToolbar({
   });
 
   const onImportResume = useDocumentJsonImport("RESUME", onSetMessage);
+  const importAsNewDocument = useImportAsNewDocument("RESUME", onSetMessage);
 
   async function onImportMarkdown(file: File | undefined) {
     if (!file) return;
 
+    let imported;
+
     try {
-      const importedResume = await importResumeFromMarkdownFile(file, resume);
-      const saveResult = saveResume(importedResume);
-
-      if (!saveResult.ok) {
-        onSetMessage(getSaveFailureMessage(saveResult.reason));
-        return;
-      }
-
-      setResume(importedResume);
-      router.push(getDocumentEditorPath("RESUME", importedResume.id));
-      onSetMessage("Markdown imported successfully");
+      imported = toResumeDocument(await importResumeFromMarkdownFile(file, resume));
     } catch {
       onSetMessage("Import failed. Please use a valid Markdown file");
+      return;
     }
+
+    await importAsNewDocument({
+      title: imported.title,
+      templateId: imported.templateId,
+      content: imported.content,
+    });
   }
 
   const jsonInput = useHiddenFileInput(onImportResume);

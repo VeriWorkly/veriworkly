@@ -11,6 +11,7 @@ import AuthCard from "../component/AuthCard";
 
 import { finishSignIn, rememberReferralCode } from "@/lib/sign-in";
 import { getSafeAuthCallback } from "@/lib/auth-redirect";
+import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 const LoginCallbackPage = () => {
   const router = useRouter();
@@ -30,6 +31,10 @@ const LoginCallbackPage = () => {
         const referralCode = searchParams.get("ref");
         if (referralCode) rememberReferralCode(referralCode);
 
+        // A provider can land here without a session (a refused or abandoned sign-in): say so
+        // instead of announcing a sign-in that did not happen.
+        await fetchApiData("/users/me", { redirectOnInvalidSession: false });
+
         const { referralError } = await finishSignIn();
 
         toast.success("Successfully signed in!");
@@ -41,7 +46,13 @@ const LoginCallbackPage = () => {
         router.push(targetPath);
         router.refresh();
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to sign in.";
+        const signedOut =
+          err instanceof ApiRequestError && (err.status === 401 || err.status === 403);
+        const message = signedOut
+          ? "Sign-in did not complete. Please try again."
+          : err instanceof Error
+            ? err.message
+            : "Failed to sign in.";
         toast.error(message);
         router.push("/login");
       }

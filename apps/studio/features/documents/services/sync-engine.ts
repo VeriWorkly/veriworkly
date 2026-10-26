@@ -71,6 +71,30 @@ export class SyncEngine {
     return scope ? `${scope}:${id}` : id;
   }
 
+  /** This tab's running sync per document, for callers outside the sync service. */
+  private static runningSyncs = new Map<string, Promise<unknown>>();
+
+  static trackSync(id: string, scope: string, run: Promise<unknown>) {
+    const key = this.normalizeKey(id, scope);
+    const settle = () => {
+      if (this.runningSyncs.get(key) === run) this.runningSyncs.delete(key);
+    };
+
+    this.runningSyncs.set(key, run);
+    run.then(settle, settle);
+  }
+
+  /**
+   * Resolves once this tab's running sync of the document, if any, has finished. Its outcome
+   * is the sync caller's to report; a waiter only needs the stored state it leaves behind.
+   */
+  static async whenSyncSettled(id: string, scope: string): Promise<void> {
+    await this.runningSyncs.get(this.normalizeKey(id, scope))?.then(
+      () => undefined,
+      () => undefined,
+    );
+  }
+
   /**
    * Parses a raw localStorage value, self-healing (clearing the key and returning
    * `fallback`) on corrupted JSON instead of throwing. An uncaught throw here would

@@ -41,6 +41,8 @@ const PAN_STEP_LARGE = 160;
 
 interface DocumentEditorShellProps {
   toolbar: ReactNode;
+  /** Shown under the toolbar while the document needs a decision (see ChangedElsewhereNotice). */
+  notice?: ReactNode;
   modals?: ReactNode;
   contentPanel: ReactNode;
   settingsPanel: ReactNode;
@@ -76,6 +78,7 @@ function measureFitZoom(canvas: HTMLElement | null, page: HTMLElement | null): n
 
 export function DocumentEditorShell({
   toolbar,
+  notice,
   modals,
   contentPanel,
   settingsPanel,
@@ -286,6 +289,8 @@ export function DocumentEditorShell({
       <div className="border-border/80 bg-card/95 z-30 shrink-0 border-b px-3 py-2 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)] backdrop-blur md:px-4">
         {toolbar}
       </div>
+
+      {notice && <div className="shrink-0 px-3 pt-2 md:px-4">{notice}</div>}
 
       {modals}
 

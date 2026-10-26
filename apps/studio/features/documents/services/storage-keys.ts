@@ -55,6 +55,20 @@ export const DOCUMENT_INDEX_STORAGE_KEY = `veriworkly:docs:${DOCUMENT_STORAGE_VE
 /** `TYPE:oldId` → new id, for documents moved to a fresh id. See `rekeyDocument`. */
 export const DOCUMENT_MOVES_STORAGE_KEY = `veriworkly:docs:${DOCUMENT_STORAGE_VERSION}:moves`;
 
+/**
+ * The id of the account this device's documents belong to; absent for a guest's documents.
+ * Under the `veriworkly:docs:` prefix so clearing the workspace forgets the owner too.
+ */
+export const WORKSPACE_OWNER_STORAGE_KEY = `veriworkly:docs:${DOCUMENT_STORAGE_VERSION}:owner`;
+
+/**
+ * Edits an editor was holding (another tab had saved a different version) when it was left
+ * before the user chose; offered back the next time the document opens.
+ */
+export function getRecoveredEditsKey(type: DocumentType, id: string): string {
+  return `veriworkly:docs:${DOCUMENT_STORAGE_VERSION}:recovered:${type.toLowerCase()}:${id}`;
+}
+
 export function getDocumentKey(type: DocumentType, id: string): string {
   return `veriworkly:docs:${DOCUMENT_STORAGE_VERSION}:doc:${type.toLowerCase()}:${id}`;
 }

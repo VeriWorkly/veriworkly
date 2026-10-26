@@ -29,8 +29,13 @@ export async function exportCoverLetterDocument(
 
   switch (format) {
     case "json": {
+      // The envelope, so a re-import keeps the template and title. Without `sync`: a file
+      // carries no cloud identity (import mints a new one anyway).
+      const { sync, ...envelope } = document;
+      void sync;
+
       downloadBlob(
-        new Blob([JSON.stringify(document.content, null, 2)], { type: "application/json" }),
+        new Blob([JSON.stringify(envelope, null, 2)], { type: "application/json" }),
         `${fileBase}.json`,
       );
       return;

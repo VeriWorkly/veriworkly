@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SyncEngine } from "@/features/documents/services/sync-engine";
 import { LocalStorageService } from "@/features/documents/services/local-storage-service";
 import { DocumentSyncService } from "@/features/documents/services/document-sync-service";
+import { clearWorkspaceStorage } from "@/features/documents/services/document-workspace-service";
 import {
   DocumentApi,
   DocumentApiError,
@@ -126,7 +127,7 @@ function cloudRow(id: string, revision: number, content?: unknown): CloudDocumen
   };
 }
 
-function createSyncHarness() {
+function createSyncHarness(options: { canReachCloud?: () => boolean } = {}) {
   const localStorageMock = createLocalStorageMock();
   const listeners = new Map<string, Array<(event: Event) => void>>();
 
@@ -198,6 +199,7 @@ function createSyncHarness() {
     removeLocal,
     flushPendingEdits,
     rekeyLocal,
+    canReachCloud: options.canReachCloud,
   });
 
   const emit = (name: string) => {
@@ -345,6 +347,18 @@ describe("document sync service contract", () => {
     expect(result.reason).toBe("conflict");
     expect(storage.loadById("doc-1")?.sync.status).toBe("conflicted");
     expect(SyncEngine.getOutboxItem("doc-1", "RESUME")?.state).toBe("conflicted");
+  });
+
+  it("S-316: backing up a conflicted document asks for a choice instead of sending a stale revision", async () => {
+    const { service, seed } = createSyncHarness();
+    seed(createDoc("doc-1", { cloudDocumentId: "doc-1", status: "conflicted", revision: 2 }));
+
+    const result = await service.syncNow("doc-1");
+
+    expect(DocumentApi.update).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, reason: "conflict" });
+    expect(result.message).toMatch(/changed on another device/);
+    expect(result.message).not.toMatch(/Revision mismatch/);
   });
 
   it("S-183/S-002: a 200 adopt on create is followed by a PATCH of the content", async () => {
@@ -763,5 +777,88 @@ describe("document sync service contract", () => {
     const local = storage.loadById("doc-1") as BaseDocument & { content: { text: string } };
     expect(local.content.text).toBe("mine");
     expect(local.sync.status).toBe("conflicted");
+  });
+
+  it("S-284: a pull that resolves after sign-out writes nothing", async () => {
+    const { storage, service } = createSyncHarness();
+
+    let release: (value: Awaited<ReturnType<typeof DocumentApi.list>>) => void = () => {};
+    vi.mocked(DocumentApi.list).mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    const pull = service.hydrate({ force: true });
+    clearWorkspaceStorage();
+    release({
+      documents: [cloudRow("users-a-doc", 1, createDoc("users-a-doc", { status: "synced" }))],
+      deleted: [],
+      serverTime: "2026-10-26T00:00:00.000Z",
+    });
+
+    expect((await pull).ok).toBe(false);
+    expect(storage.loadById("users-a-doc")).toBeNull();
+    expect(localStorage.getItem("veriworkly:cloud-hydrate-meta:resume")).toBeNull();
+  });
+
+  it("S-284: a sync reply that lands after sign-out records nothing", async () => {
+    const { storage, service, seed } = createSyncHarness();
+    seed(createDoc("doc-1", { cloudDocumentId: "doc-1", revision: 2 }));
+
+    let release: (value: CloudDocument) => void = () => {};
+    vi.mocked(DocumentApi.update).mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    const sync = service.syncNow("doc-1");
+    await vi.waitFor(() => expect(DocumentApi.update).toHaveBeenCalled());
+    clearWorkspaceStorage();
+    release(cloudRow("doc-1", 3));
+
+    expect((await sync).ok).toBe(false);
+    expect(storage.loadById("doc-1")).toBeNull();
+    expect(SyncEngine.getOutbox("RESUME")).toEqual({});
+    expect(SyncEngine.getTelemetry("doc-1", "RESUME").lastSuccessAt ?? null).toBeNull();
+  });
+
+  it("S-283: nothing is pulled or uploaded while the device's documents await their owner", async () => {
+    let claimed = false;
+    const { service, seed } = createSyncHarness({ canReachCloud: () => claimed });
+    seed(createDoc("doc-1"));
+
+    expect((await service.syncNow("doc-1")).ok).toBe(false);
+    await service.hydrate({ force: true });
+    await service.hydrateById("doc-1");
+
+    expect(DocumentApi.create).not.toHaveBeenCalled();
+    expect(DocumentApi.list).not.toHaveBeenCalled();
+    expect(DocumentApi.get).not.toHaveBeenCalled();
+
+    claimed = true;
+    vi.mocked(DocumentApi.create).mockResolvedValueOnce({
+      document: cloudRow("doc-1", 1),
+      created: true,
+    });
+
+    expect((await service.syncNow("doc-1")).ok).toBe(true);
+  });
+
+  it("an unreadable hydrate cursor is healed instead of breaking every pull", async () => {
+    const { service } = createSyncHarness();
+    localStorage.setItem("veriworkly:cloud-hydrate-meta:resume", "null");
+    vi.mocked(DocumentApi.list).mockResolvedValueOnce({
+      documents: [],
+      deleted: [],
+      serverTime: null,
+    });
+
+    expect((await service.hydrate()).ok).toBe(true);
+    expect(DocumentApi.list).toHaveBeenCalledWith("RESUME", {
+      includeContent: true,
+      updatedSince: undefined,
+    });
   });
 });

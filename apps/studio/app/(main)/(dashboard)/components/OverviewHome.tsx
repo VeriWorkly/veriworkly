@@ -80,6 +80,7 @@ const OverviewHome = () => {
     syncTargetTelemetry,
     totalCount,
     visibleDocs,
+    isPullingFromCloud,
     bump,
   } = useDocumentsWorkspace();
 
@@ -136,6 +137,11 @@ const OverviewHome = () => {
                     onSyncDetailsAction={setSyncDetailsTargetId}
                   />
                 ))
+              ) : isPullingFromCloud ? (
+                // A returning user on a new device: their documents are still on the way.
+                <p className="text-muted col-span-full min-h-48 text-sm" role="status">
+                  Loading your documents from your account…
+                </p>
               ) : (
                 <FirstRunGuide />
               )}

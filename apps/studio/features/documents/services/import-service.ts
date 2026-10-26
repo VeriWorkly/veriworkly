@@ -84,8 +84,11 @@ export async function importDocumentFromJsonFile(
   return saveImportedDraft(type, draft);
 }
 
-/** `createDocument`, then the draft's content written over the starting content. */
-function saveImportedDraft<T>(type: DocumentType, draft: DocumentImportDraft<T>) {
+/**
+ * `createDocument`, then the draft's content written over the starting content. Holds no limit:
+ * a single import goes through `importDraftWithinLimit`, a backup through its own count.
+ */
+export function saveImportedDraft<T>(type: DocumentType, draft: DocumentImportDraft<T>) {
   const created = createDocument(type);
 
   if (!created.saveResult.ok) {
@@ -123,11 +126,12 @@ function isWorkspaceBackup(raw: unknown): raw is WorkspaceBackup {
 }
 
 export type JsonImportOutcome =
-  | ({ kind: "document" } & DocumentImportResult)
+  /** One document, validated but not yet saved: the caller creates it within the limit. */
+  | { kind: "document"; draft: DocumentImportDraft }
   | { kind: "backup"; imported: BaseDocument[]; skipped: number; saved: SaveDocumentResult };
 
 /**
- * Imports one document of `type`, or every document in a workspace backup.
+ * Reads one document of `type`, or imports every document in a workspace backup.
  *
  * A backup restores each entry as its own new document of the entry's type, whichever
  * editor the import started from. Every entry is validated before anything is written, so a
@@ -147,7 +151,7 @@ export async function importJsonFile(
 
     if (!draft) throw new Error("Invalid document JSON");
 
-    return { kind: "document", ...saveImportedDraft(type, draft) };
+    return { kind: "document", draft };
   }
 
   const entries = raw.documents.map((entry, index) => {

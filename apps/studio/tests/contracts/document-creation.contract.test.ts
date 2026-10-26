@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ResumeData } from "@/types/resume";
+import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
 import { defaultResume } from "@/features/resume/constants/default-resume";
@@ -13,7 +14,9 @@ import {
   createDocumentWithinLimit,
   duplicateDocumentWithinLimit,
   hasUnlimitedDocuments,
+  importDraftWithinLimit,
 } from "@/features/documents/services/document-limit";
+import { importJsonFile } from "@/features/documents/services/import-service";
 import { createResume } from "@/features/resume/services/resume-core";
 import { resolveDocumentsPerType } from "@/features/documents/editor/toolbar/useDocumentJsonImport";
 import { useUserStore } from "@/store/useUserStore";
@@ -328,5 +331,52 @@ describe("free document limit (S-069, S-194, S-215)", () => {
 
     serveBilling({ plan: "BUNDLE" });
     expect(await resolveDocumentsPerType(true, backup)).toBeNull();
+  });
+
+  it("S-286: an imported letter becomes a new document and never overwrites the open one", async () => {
+    useUserStore.setState({ isLoggedIn: true });
+    serveBilling({ plan: "BUNDLE" });
+
+    const open = createDocument("COVER_LETTER");
+    const content = { ...(open.content as CoverLetterContent), senderName: "Imported Sender" };
+
+    const result = await importDraftWithinLimit("COVER_LETTER", {
+      title: "Imported letter",
+      templateId: open.templateId,
+      content,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.document.id).not.toBe(open.id);
+    expect(loadDocumentById("COVER_LETTER", open.id)?.content).toEqual(open.content);
+    expect(
+      (loadDocumentById("COVER_LETTER", result.document.id)?.content as CoverLetterContent)
+        .senderName,
+    ).toBe("Imported Sender");
+  });
+
+  it("S-307: an import is held to the free limit like any new document", async () => {
+    const open = createDocument("RESUME");
+
+    const result = await importDraftWithinLimit("RESUME", {
+      title: "Imported resume",
+      templateId: open.templateId,
+      content: open.content,
+    });
+
+    expect(result).toMatchObject({ ok: false, reason: "limit", existingId: open.id });
+    expect(listDocuments("RESUME")).toHaveLength(1);
+  });
+
+  it("S-307: reading a single JSON file writes nothing until the limit allows it", async () => {
+    const open = createDocument("RESUME");
+    const file = new File([JSON.stringify(open)], "resume.json", { type: "application/json" });
+
+    const outcome = await importJsonFile("RESUME", file, async () => 1);
+
+    expect(outcome.kind).toBe("document");
+    expect(listDocuments("RESUME")).toHaveLength(1);
   });
 });

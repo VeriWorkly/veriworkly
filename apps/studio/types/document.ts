@@ -31,6 +31,12 @@ export interface DocumentIndexEntry {
   description: string;
   updatedAt: string;
   sync: DocumentSyncState;
+  /**
+   * The account the document belongs to on this device; null for one made by a guest.
+   * Absent on entries written before owners were recorded: they belong to the device's
+   * owner (see workspace-owner.ts).
+   */
+  owner?: string | null;
 }
 
 export interface DocumentIndex {

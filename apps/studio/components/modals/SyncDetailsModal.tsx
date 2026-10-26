@@ -20,6 +20,7 @@ import type { SyncTelemetry } from "@/features/documents/services/document-sync"
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
 
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import { freeLimitMessage } from "@/features/documents/services/document-limit";
 
 import { Modal, Button, cn } from "@veriworkly/ui";
 
@@ -46,6 +47,8 @@ const SyncDetailsModal = ({
 }: SyncDetailsModalProps) => {
   const router = useRouter();
   const [confirmingKeepLocal, setConfirmingKeepLocal] = useState(false);
+  // Each resolution overwrites one version with the other, so it takes a second, explicit click.
+  const [confirmingResolve, setConfirmingResolve] = useState<"local" | "cloud" | null>(null);
 
   if (!document) return null;
 
@@ -112,7 +115,7 @@ const SyncDetailsModal = ({
 
     upgradeRequired: {
       label: "Upgrade needed",
-      description: "Free plan limit reached.",
+      description: "Over the document limit.",
       color: "text-orange-500",
       bg: "md:bg-orange-500/10",
       icon: CreditCard,
@@ -246,12 +249,12 @@ const SyncDetailsModal = ({
           {isUpgradeRequired && (
             <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3">
               <p className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                Free plan limit reached — upgrade, then try again
+                Not backed up: over the document limit
               </p>
 
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                This document stays safe on this device. It will be backed up once your plan allows
-                more documents.
+                {freeLimitMessage(document.type)} This document stays safe on this device and is
+                backed up once your plan allows it.
               </p>
 
               <Link
@@ -297,31 +300,70 @@ const SyncDetailsModal = ({
               </div>
 
               <div className="grid gap-3 pt-2">
-                <Button
-                  size="md"
-                  onClick={() => onResolveUseLocal(document.id)}
-                  className="h-11 justify-between bg-white px-4 text-orange-600 shadow-sm ring-1 ring-orange-500/20 hover:bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:hover:bg-orange-950/40"
-                >
-                  <div className="flex items-center gap-3">
-                    <Monitor className="h-4 w-4" />
-                    <span className="text-xs font-bold">Keep this device&apos;s version</span>
+                {confirmingResolve ? (
+                  <div className="space-y-3 rounded-xl border border-orange-500/20 p-3">
+                    <p className="text-muted-foreground text-xs leading-snug">
+                      {confirmingResolve === "local"
+                        ? "This device's version replaces the cloud copy on all your devices. The changes made elsewhere are lost."
+                        : "The cloud version replaces this device's copy. The changes made here that were never backed up are lost."}
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={isSyncing}
+                        onClick={() => setConfirmingResolve(null)}
+                        className="text-[10px] font-black tracking-widest uppercase"
+                      >
+                        Cancel
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        loading={isSyncing}
+                        onClick={() =>
+                          confirmingResolve === "local"
+                            ? onResolveUseLocal(document.id)
+                            : onResolveUseCloud(document.id)
+                        }
+                        className="text-[10px] font-black tracking-widest uppercase"
+                      >
+                        {confirmingResolve === "local" ? "Replace Cloud Copy" : "Replace This Copy"}
+                      </Button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <Button
+                      size="md"
+                      disabled={isSyncing}
+                      onClick={() => setConfirmingResolve("local")}
+                      className="h-11 justify-between bg-white px-4 text-orange-600 shadow-sm ring-1 ring-orange-500/20 hover:bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:hover:bg-orange-950/40"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Monitor className="h-4 w-4" />
+                        <span className="text-xs font-bold">Keep this device&apos;s version</span>
+                      </div>
 
-                  <ChevronRight className="h-3.5 w-3.5 opacity-50" />
-                </Button>
+                      <ChevronRight className="h-3.5 w-3.5 opacity-50" />
+                    </Button>
 
-                <Button
-                  size="md"
-                  onClick={() => onResolveUseCloud(document.id)}
-                  className="h-11 justify-between bg-white px-4 text-orange-600 shadow-sm ring-1 ring-orange-500/20 hover:bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:hover:bg-orange-950/40"
-                >
-                  <div className="flex items-center gap-3">
-                    <Cloud className="h-4 w-4" />
-                    <span className="text-xs font-bold">Use cloud version</span>
-                  </div>
+                    <Button
+                      size="md"
+                      disabled={isSyncing}
+                      onClick={() => setConfirmingResolve("cloud")}
+                      className="h-11 justify-between bg-white px-4 text-orange-600 shadow-sm ring-1 ring-orange-500/20 hover:bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:hover:bg-orange-950/40"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Cloud className="h-4 w-4" />
+                        <span className="text-xs font-bold">Use cloud version</span>
+                      </div>
 
-                  <ChevronRight className="h-3.5 w-3.5 opacity-50" />
-                </Button>
+                      <ChevronRight className="h-3.5 w-3.5 opacity-50" />
+                    </Button>
+                  </>
+                )}
 
                 {confirmingKeepLocal ? (
                   <div className="space-y-3 rounded-xl border border-orange-500/20 p-3">

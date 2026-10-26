@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import type { BillingSummary } from "@/features/billing/types";
 import type { DocumentType } from "@/features/documents/core/document-types";
+import type { DocumentImportDraft } from "@/features/documents/core/definition";
 
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { importJsonFile } from "@/features/documents/services/import-service";
@@ -15,6 +16,7 @@ import { fetchApiData } from "@/utils/fetchApiData";
 import { listDocuments } from "@/features/documents/services/document-workspace-service";
 import {
   hasUnlimitedDocuments,
+  importDraftWithinLimit,
   FREE_DOCUMENTS_PER_TYPE,
 } from "@/features/documents/services/document-limit";
 
@@ -51,21 +53,50 @@ export async function resolveDocumentsPerType(
 }
 
 /**
+ * Saves an imported file's draft as a new document of `type` and opens it, within the free
+ * limit. Every single-file import (JSON or Markdown, either editor) ends here, so the open
+ * document is never written over and the outcome is the same whichever menu item was used.
+ */
+export function useImportAsNewDocument(type: DocumentType, onMessage: (message: string) => void) {
+  const router = useRouter();
+
+  return useCallback(
+    async (draft: DocumentImportDraft) => {
+      const result = await importDraftWithinLimit(type, draft);
+
+      if (result.ok) {
+        router.push(getDocumentEditorPath(type, result.document.id));
+
+        // Toast as well as the status line: navigation remounts the editor, whose autosave
+        // overwrites the status line within a few hundred milliseconds.
+        onMessage("Imported as a new document");
+        toast.success("Imported as a new document");
+        return;
+      }
+
+      // A second click while the first import runs.
+      if (result.reason === "busy") return;
+
+      onMessage(result.message);
+      toast.error(result.message);
+    },
+    [type, onMessage, router],
+  );
+}
+
+/**
  * The "Import JSON" action for both editors.
  *
- * One hook because the menu item is one shared menu item: previously the resume created a
- * new document and navigated to it while the cover letter merged the file into whatever
- * was open, so the same command was safe in one editor and destructive in the other.
- *
- * The outcome is now identical for every type — a new document, saved and opened — and the
- * currently open document is never touched. Navigating remounts the destination editor,
- * which hydrates the imported document straight out of storage, so nothing needs to be
- * pushed into a store from here. A workspace backup restores every document it holds, and
- * opens the library when that is more than one.
+ * One hook because the menu item is one shared menu item: the outcome is identical for every
+ * type, a new document saved and opened, and the currently open document is never touched.
+ * Navigating remounts the destination editor, which hydrates the imported document straight
+ * out of storage, so nothing needs to be pushed into a store from here. A workspace backup
+ * restores every document it holds, and opens the library when that is more than one.
  */
 export function useDocumentJsonImport(type: DocumentType, onMessage: (message: string) => void) {
   const router = useRouter();
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const importAsNewDocument = useImportAsNewDocument(type, onMessage);
 
   return useCallback(
     async function importJson(file: File | undefined) {
@@ -87,21 +118,7 @@ export function useDocumentJsonImport(type: DocumentType, onMessage: (message: s
       }
 
       if (outcome.kind === "document") {
-        if (!outcome.saved.ok) {
-          const failure = getSaveFailureMessage(outcome.saved.reason);
-
-          onMessage(failure);
-          toast.error(failure);
-
-          return;
-        }
-
-        router.push(getDocumentEditorPath(type, outcome.document.id));
-
-        // Toast as well as the status line: navigation remounts the editor, whose autosave
-        // overwrites the status line within a few hundred milliseconds.
-        onMessage("JSON imported successfully");
-        toast.success("Imported as a new document");
+        await importAsNewDocument(outcome.draft);
         return;
       }
 
@@ -110,7 +127,7 @@ export function useDocumentJsonImport(type: DocumentType, onMessage: (message: s
 
       if (skipped > 0) {
         parts.push(
-          `${skipped} skipped: the free plan keeps one document of each type. Upgrade to restore the rest.`,
+          `${skipped} skipped: without a subscription or pass you can keep one document of each type. Upgrade to restore the rest.`,
         );
       }
 
@@ -127,6 +144,6 @@ export function useDocumentJsonImport(type: DocumentType, onMessage: (message: s
         router.push("/documents");
       }
     },
-    [type, onMessage, router, isLoggedIn],
+    [type, onMessage, router, isLoggedIn, importAsNewDocument],
   );
 }

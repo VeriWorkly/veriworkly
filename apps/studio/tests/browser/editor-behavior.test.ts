@@ -620,29 +620,32 @@ describe("editor input (Phase 2)", () => {
     await page.waitForTimeout(1_000);
   });
 
-  it("imports the same JSON file twice, without a page error (S-057)", async () => {
+  it("imports the same JSON file twice, without a page error (S-057, S-307)", async () => {
     const stored = await readStoredDocument(resumeId);
     const file = {
       name: "resume.json",
       mimeType: "application/json",
       buffer: Buffer.from(JSON.stringify(stored)),
     };
+    const status = page.getByTestId("editor-status");
 
     pageErrors.length = 0;
-    const visited: string[] = [];
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const before = page.url();
+      // An edit resets the status line, so the second import has to answer again.
+      await page
+        .getByLabel(/full name/i)
+        .first()
+        .fill(`Before import ${attempt}`);
+      await expect.poll(() => status.innerText()).toBe("Saved on this device");
 
       await page.locator('input[type="file"][accept="application/json"]').setInputFiles(file);
-      await page.waitForFunction((url) => location.href !== url, before);
-      await page.waitForTimeout(1_200);
 
-      visited.push(page.url());
+      // A guest already has their one resume: the import is refused, never written over it.
+      await expect.poll(() => status.innerText()).toMatch(/keep 1 resume at a time/);
     }
 
-    expect(new Set(visited).size).toBe(2);
-    expect(visited).not.toContain(`${server.origin}/editor/resume/${resumeId}`);
+    expect(page.url()).toBe(`${server.origin}/editor/resume/${resumeId}`);
     expect(pageErrors).toEqual([]);
   });
 
@@ -814,5 +817,192 @@ describe("editor input (Phase 2)", () => {
 
   it("raised no page error anywhere in this block", () => {
     expect(pageErrors).toEqual([]);
+  });
+});
+
+describe("an open editor follows changes saved elsewhere (S-315)", () => {
+  let otherTab: Page;
+
+  beforeAll(async () => {
+    await page.setViewportSize(DESKTOP);
+    otherTab = await context.newPage();
+    await otherTab.setViewportSize(DESKTOP);
+  });
+
+  afterAll(async () => {
+    await otherTab?.close();
+  });
+
+  it("S-315: an editor with nothing unsaved shows the version another tab saved", async () => {
+    const editorUrl = `${server.origin}/editor/resume/${await seedResume()}`;
+
+    await page.goto(editorUrl, { waitUntil: "networkidle" });
+    await otherTab.goto(editorUrl, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1_000);
+
+    await otherTab
+      .getByLabel(/full name/i)
+      .first()
+      .fill("Edited In Another Tab");
+
+    // Before the fix the first tab kept its old text, and its next keystroke saved over this.
+    await expect
+      .poll(
+        () =>
+          page
+            .getByLabel(/full name/i)
+            .first()
+            .inputValue(),
+        { timeout: 5_000 },
+      )
+      .toBe("Edited In Another Tab");
+  });
+
+  it("S-315: an editor holding edits neither saves over the other tab's version nor loses it", async () => {
+    const resumeId = await seedResume();
+    const editorUrl = `${server.origin}/editor/resume/${resumeId}`;
+    const editingTab = await context.newPage();
+    const fullName = (tab: Page) => tab.getByLabel(/full name/i).first();
+    const storedName = async () =>
+      ((await readStoredDocument(resumeId))?.content.basics as { fullName?: string } | undefined)
+        ?.fullName;
+
+    try {
+      await editingTab.setViewportSize(DESKTOP);
+      await editingTab.goto(editorUrl, { waitUntil: "networkidle" });
+      await otherTab.goto(editorUrl, { waitUntil: "networkidle" });
+      await page.waitForTimeout(1_000);
+
+      // This tab's 300 ms autosave is stretched to 8 s, so it is still queued when the other
+      // tab saves (the clock API would hold the other tab's timers too).
+      await editingTab.evaluate(() => {
+        const setTimeoutNative = window.setTimeout.bind(window);
+        window.setTimeout = ((handler: TimerHandler, ms?: number) =>
+          setTimeoutNative(handler, ms === 300 ? 8_000 : ms)) as typeof window.setTimeout;
+      });
+      await fullName(editingTab).fill("Mine From Tab A");
+
+      await fullName(otherTab).fill("Theirs From Tab B");
+      await expect.poll(storedName, { timeout: 5_000 }).toBe("Theirs From Tab B");
+
+      await expect
+        .poll(() => editingTab.getByText("This document changed elsewhere").count())
+        .toBe(1);
+
+      // The queued autosave's time comes and goes: it must not land on the other version.
+      await page.waitForTimeout(9_000);
+      expect(await storedName()).toBe("Theirs From Tab B");
+
+      await editingTab.getByRole("button", { name: "Use the other version" }).click();
+      await expect.poll(() => fullName(editingTab).inputValue()).toBe("Theirs From Tab B");
+      expect(await storedName()).toBe("Theirs From Tab B");
+    } finally {
+      await editingTab.close();
+    }
+  });
+
+  it("S-315: held edits survive leaving the editor in-app, and are offered back on reopening", async () => {
+    const resumeId = await seedResume();
+    const editorUrl = `${server.origin}/editor/resume/${resumeId}`;
+    const editingTab = await context.newPage();
+    const fullName = (tab: Page) => tab.getByLabel(/full name/i).first();
+    const setStoredStatus = (status: string) =>
+      otherTab.evaluate(
+        ({ id, status }) => {
+          const documentKey = `veriworkly:docs:v3:doc:resume:${id}`;
+          const indexKey = "veriworkly:docs:v3:index";
+          const stored = JSON.parse(localStorage.getItem(documentKey)!);
+          const index = JSON.parse(localStorage.getItem(indexKey)!);
+
+          stored.sync = { ...stored.sync, status };
+          index.items[`RESUME:${id}`].sync = stored.sync;
+          index.revision += 1;
+
+          localStorage.setItem(documentKey, JSON.stringify(stored));
+          localStorage.setItem(indexKey, JSON.stringify(index));
+        },
+        { id: resumeId, status },
+      );
+
+    try {
+      await editingTab.setViewportSize(DESKTOP);
+      await editingTab.goto(editorUrl, { waitUntil: "networkidle" });
+      await otherTab.goto(editorUrl, { waitUntil: "networkidle" });
+      await page.waitForTimeout(1_000);
+
+      await editingTab.evaluate(() => {
+        const setTimeoutNative = window.setTimeout.bind(window);
+        window.setTimeout = ((handler: TimerHandler, ms?: number) =>
+          setTimeoutNative(handler, ms === 300 ? 8_000 : ms)) as typeof window.setTimeout;
+      });
+      await fullName(editingTab).fill("Held In Tab A");
+      await fullName(otherTab).fill("Saved In Tab B");
+
+      await expect
+        .poll(() => editingTab.getByText("This document changed elsewhere").count())
+        .toBe(1);
+
+      // The stored copy turning conflicted must not end the hold (S-315 re-review).
+      await setStoredStatus("conflicted");
+      await page.waitForTimeout(1_000);
+      expect(await editingTab.getByText("This document changed elsewhere").count()).toBe(1);
+      expect(await editingTab.getByText("This document changed on another device").count()).toBe(0);
+      await setStoredStatus("pending");
+
+      // Leaving in-app: no beforeunload, and nothing queued to flush.
+      await editingTab.getByRole("button", { name: "Back to documents" }).click();
+      await editingTab.waitForURL((url) => url.pathname === "/documents");
+
+      await editingTab.goto(editorUrl, { waitUntil: "networkidle" });
+      await editingTab.getByRole("button", { name: /restore my unsaved edits/i }).click();
+
+      await expect.poll(() => fullName(editingTab).inputValue()).toBe("Held In Tab A");
+      await expect
+        .poll(
+          async () =>
+            ((await readStoredDocument(resumeId))?.content.basics as { fullName?: string })
+              .fullName,
+        )
+        .toBe("Held In Tab A");
+    } finally {
+      await editingTab.close();
+    }
+  });
+
+  it("S-315: edits to a document in conflict with the cloud are still saved on this device", async () => {
+    const resumeId = await seedResume();
+
+    await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1_000);
+
+    // As a cloud pull leaves it when the cloud moved past this device's unsynced edits.
+    await page.evaluate((id) => {
+      const documentKey = `veriworkly:docs:v3:doc:resume:${id}`;
+      const indexKey = "veriworkly:docs:v3:index";
+      const stored = JSON.parse(localStorage.getItem(documentKey)!);
+      const index = JSON.parse(localStorage.getItem(indexKey)!);
+
+      stored.sync = { ...stored.sync, enabled: true, status: "conflicted", cloudDocumentId: id };
+      index.items[`RESUME:${id}`].sync = stored.sync;
+      index.revision += 1;
+
+      localStorage.setItem(documentKey, JSON.stringify(stored));
+      localStorage.setItem(indexKey, JSON.stringify(index));
+    }, resumeId);
+
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForTimeout(1_000);
+    expect(await page.getByText("This document changed on another device").count()).toBe(1);
+
+    await page
+      .getByLabel(/full name/i)
+      .first()
+      .fill("Typed During Conflict");
+    await page.waitForTimeout(1_500);
+
+    const stored = await readStoredDocument(resumeId);
+    expect((stored?.content.basics as { fullName?: string }).fullName).toBe(
+      "Typed During Conflict",
+    );
   });
 });

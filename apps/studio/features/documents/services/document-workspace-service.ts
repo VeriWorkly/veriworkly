@@ -15,12 +15,16 @@ import {
   invalidateDocumentIndexCache,
   listLocalStorageKeys,
   parkCorruptDocumentIndex,
+  readDocumentIndex,
   writeDocumentIndex,
 } from "./document-index";
 import {
   safeSetLocalStorageItem,
   type LocalStorageWriteResult,
 } from "./storage/safe-local-storage";
+
+import { bumpWorkspaceEpoch } from "./workspace-epoch";
+import { getWorkspaceViewer, UNKNOWN_DOCUMENT_OWNER, visibleEntries } from "./workspace-viewer";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { getMasterProfileForNewDocument } from "@/features/resume/services/master-profile";
@@ -35,6 +39,7 @@ import {
   getDocumentKey,
   getDocumentKeyPrefix,
   getLegacyDocumentCollectionKey,
+  getRecoveredEditsKey,
 } from "@/features/documents/services/storage-keys";
 
 const pendingSaves = new Map<
@@ -89,6 +94,7 @@ export function getWorkspaceStorage(type: DocumentType): LocalStorageService<Bas
       repairIndex: rebuildDocumentIndex,
       cloudContentRevision: (id) => SyncEngine.getCloudContentRevision(id, type),
       resolveMovedId: (id) => resolveMovedDocumentId(type, id),
+      newEntryOwner: getWorkspaceViewer,
     });
     storageInstances.set(type, instance);
   }
@@ -108,12 +114,29 @@ function rebuildDocumentIndex(): LocalStorageWriteResult {
     Object.assign(index.items, getWorkspaceStorage(type).entriesFromBodies());
   }
 
+  // Owners lived only in the index (an unparseable one, or not an object, so nothing of it
+  // can be read back): each rebuilt document is marked as of unknown owner.
+  for (const entry of Object.values(index.items)) entry.owner = UNKNOWN_DOCUMENT_OWNER;
+
   // The rebuild overwrites the index key in place, so it needs no extra room; the copy of the
   // corrupt value does, and is skipped under quota rather than blocking every later save.
   const written = writeDocumentIndex(index);
   if (written.ok && corrupt !== null) parkCorruptDocumentIndex(corrupt);
+  if (written.ok) indexRebuildListeners.forEach((listener) => listener());
 
   return written;
+}
+
+const indexRebuildListeners = new Set<() => void>();
+
+/**
+ * Called after the index was rebuilt from the document bodies. Every document is then of
+ * unknown owner, so a signed-in session asks about them again rather than leave backup
+ * paused until the next load. Returns the unsubscribe function.
+ */
+export function subscribeToIndexRebuilds(listener: () => void): () => void {
+  indexRebuildListeners.add(listener);
+  return () => indexRebuildListeners.delete(listener);
 }
 
 /**
@@ -140,14 +163,22 @@ function clearPendingSave(type: DocumentType, id: string) {
 }
 
 /**
- * Document metadata for list views. Reads the storage index only — it never loads or
- * validates a document body, so its cost does not grow with document size.
+ * Every document's index entry on this device, whoever it belongs to. For the ownership and
+ * storage bookkeeping only; anything shown to the user goes through {@link listDocuments}.
  */
-export function listDocuments(type?: DocumentType): DocumentMeta[] {
+export function listAllDocumentEntries(type?: DocumentType): DocumentIndexEntry[] {
   const selectedTypes: DocumentType[] = type ? [type] : [...DOCUMENT_TYPES];
 
-  return selectedTypes
-    .flatMap((t) => getWorkspaceStorage(t).listIndex())
+  return selectedTypes.flatMap((t) => getWorkspaceStorage(t).listIndex());
+}
+
+/**
+ * Metadata of the viewer's documents, for list views (another account's or a guest's
+ * documents on the same device are not listed). Reads the storage index only — it never
+ * loads or validates a document body, so its cost does not grow with document size.
+ */
+export function listDocuments(type?: DocumentType): DocumentMeta[] {
+  return visibleEntries(listAllDocumentEntries(type))
     .map((entry) => ({
       id: entry.id,
       type: entry.type as DocumentType,
@@ -161,11 +192,9 @@ export function listDocuments(type?: DocumentType): DocumentMeta[] {
 
 /** Index entries including the card description, for the document library. */
 export function listDocumentIndexEntries(type?: DocumentType): DocumentIndexEntry[] {
-  const selectedTypes: DocumentType[] = type ? [type] : [...DOCUMENT_TYPES];
-
-  return selectedTypes
-    .flatMap((t) => getWorkspaceStorage(t).listIndex())
-    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  return visibleEntries(listAllDocumentEntries(type)).sort(
+    (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
+  );
 }
 
 /** Monotonic storage revision, for cache keys. Cheap — see document-index.ts. */
@@ -173,12 +202,105 @@ export function getWorkspaceRevision(): number {
   return Math.max(...DOCUMENT_TYPES.map((type) => getWorkspaceStorage(type).getRevision()), 0);
 }
 
+/** The viewer's document with this id; null when it is absent or belongs to someone else. */
 export function loadDocumentById(type: DocumentType, id: string): BaseDocument | null {
+  const entry = readDocumentIndex().items[`${type}:${id}`];
+
+  if (entry && visibleEntries([entry]).length === 0) return null;
+
   return getWorkspaceStorage(type).loadById(id);
 }
 
+/** Records who documents belong to (see `DocumentIndexEntry.owner`), in one index write. */
+export function setDocumentOwners(
+  documents: Array<{ type: string; id: string }>,
+  owner: string | null,
+): LocalStorageWriteResult {
+  const index = readDocumentIndex();
+
+  for (const { type, id } of documents) {
+    const entry = index.items[`${type}:${id}`];
+    if (entry) index.items[`${type}:${id}`] = { ...entry, owner };
+  }
+
+  const result = writeDocumentIndex(index);
+  if (result.ok) window.dispatchEvent(new Event(DOCUMENT_STORAGE_UPDATED_EVENT));
+
+  return result;
+}
+
+/** One document's index entry (version and sync state), without reading its body. */
+export function getDocumentIndexEntry(type: DocumentType, id: string): DocumentIndexEntry | null {
+  return readDocumentIndex().items[`${type}:${id}`] ?? null;
+}
+
+export interface RecoveredEdits {
+  savedAt: string;
+  /** The editor store's document, as it was when the editor was left. */
+  document: unknown;
+}
+
+/** Keeps an editor's held, unsaved version of a document for the next time it opens. */
+export function saveRecoveredEdits(
+  type: DocumentType,
+  id: string,
+  document: unknown,
+): LocalStorageWriteResult {
+  const edits: RecoveredEdits = { savedAt: new Date().toISOString(), document };
+
+  return safeSetLocalStorageItem(
+    window.localStorage,
+    getRecoveredEditsKey(type, id),
+    JSON.stringify(edits),
+  );
+}
+
+export function readRecoveredEdits(type: DocumentType, id: string): RecoveredEdits | null {
+  const raw = window.localStorage.getItem(getRecoveredEditsKey(type, id));
+  if (!raw) return null;
+
+  try {
+    const edits = JSON.parse(raw) as Partial<RecoveredEdits>;
+    if (typeof edits.savedAt === "string" && edits.document) return edits as RecoveredEdits;
+  } catch {
+    // Unreadable: removed below, like one of the wrong shape.
+  }
+
+  console.warn("Discarded unreadable recovered edits.", { type, id });
+  clearRecoveredEdits(type, id);
+  return null;
+}
+
+export function clearRecoveredEdits(type: DocumentType, id: string): void {
+  window.localStorage.removeItem(getRecoveredEditsKey(type, id));
+}
+
+/** Whether an edit to the document is still waiting in the autosave debounce. */
+export function hasPendingSave(type: DocumentType, id: string): boolean {
+  return pendingSaves.has(pendingSaveKey(type, id));
+}
+
+/** Drops the document's debounced autosave unwritten (the user chose another version). */
+export function discardPendingSave(type: DocumentType, id: string): void {
+  clearPendingSave(type, id);
+}
+
+/**
+ * The version (`updatedAt`) of each document this tab's editors last wrote. An editor tells its
+ * own writes from another tab's or a cloud pull's by it: the stores and `saveResume` stamp the
+ * time differently, so the editor's copy cannot.
+ */
+const ownVersions = new Map<string, string>();
+
 function persistDocument(document: BaseDocument): SaveDocumentResult {
+  ownVersions.set(pendingSaveKey(document.type, document.id), document.updatedAt);
+
   return getWorkspaceStorage(document.type).persist(document);
+}
+
+/** Whether `updatedAt` is the version of the document this tab last wrote. */
+export function isOwnVersion(type: DocumentType, id: string, updatedAt: string): boolean {
+  return ownVersions.get(pendingSaveKey(type, id)) === updatedAt;
 }
 
 export function saveDocument(
@@ -243,7 +365,9 @@ export function flushPendingSaves(type?: DocumentType): void {
 
     if (pending.timer !== null) window.clearTimeout(pending.timer);
 
-    pending.onFlush?.(persistDocument(pending.document));
+    // Written first: an optional call skips evaluating its argument when there is no callback.
+    const result = persistDocument(pending.document);
+    pending.onFlush?.(result);
   }
 }
 
@@ -262,7 +386,8 @@ export function flushPendingSave(type: DocumentType, id: string): void {
   pendingSaves.delete(key);
   if (pending.timer !== null) window.clearTimeout(pending.timer);
 
-  pending.onFlush?.(persistDocument(pending.document));
+  const result = persistDocument(pending.document);
+  pending.onFlush?.(result);
 }
 
 function readDocumentMoves(): Record<string, string> {
@@ -295,6 +420,29 @@ function resolveMovedDocumentId(type: DocumentType, id: string): string | null {
 }
 
 /**
+ * Drops the moves whose final destination is no longer on this device (deleted since), so the
+ * map does not grow with every re-key for the life of the device.
+ */
+function pruneDocumentMoves(moves: Record<string, string>): Record<string, string> {
+  const live = new Set(listAllDocumentEntries().map((entry) => `${entry.type}:${entry.id}`));
+
+  return Object.fromEntries(
+    Object.entries(moves).filter(([key]) => {
+      const type = key.slice(0, key.indexOf(":"));
+      let current = key.slice(type.length + 1);
+
+      for (let hop = 0; hop < 16; hop += 1) {
+        const next = moves[`${type}:${current}`];
+        if (!next) break;
+        current = next;
+      }
+
+      return live.has(`${type}:${current}`);
+    }),
+  );
+}
+
+/**
  * Moves a document to a fresh id, unlinked from the cloud and waiting to sync.
  *
  * For a document whose id the server will never accept again (it was deleted in the cloud):
@@ -304,7 +452,7 @@ function resolveMovedDocumentId(type: DocumentType, id: string): string | null {
 export function rekeyDocument(type: DocumentType, id: string): BaseDocument | null {
   flushPendingSave(type, id);
 
-  const current = loadDocumentById(type, id);
+  const current = getWorkspaceStorage(type).loadById(id);
   if (!current) return null;
 
   const nextId = buildDocumentId(type);
@@ -328,7 +476,7 @@ export function rekeyDocument(type: DocumentType, id: string): BaseDocument | nu
 
   // Recorded before the old id goes, so no editor (in any tab) still holding it can save
   // into the gap: its saves are redirected to the new id from here on.
-  const moves = readDocumentMoves();
+  const moves = pruneDocumentMoves(readDocumentMoves());
   moves[`${type}:${id}`] = nextId;
 
   if (
@@ -337,6 +485,16 @@ export function rekeyDocument(type: DocumentType, id: string): BaseDocument | nu
   ) {
     deleteDocument(type, nextId);
     return null;
+  }
+
+  // Held edits follow the document to its new id (deleting the old one clears its key).
+  const recovered = window.localStorage.getItem(getRecoveredEditsKey(type, id));
+
+  if (
+    recovered !== null &&
+    !safeSetLocalStorageItem(window.localStorage, getRecoveredEditsKey(type, nextId), recovered).ok
+  ) {
+    console.error("Unsaved edits could not follow the document to its new id: storage is full.");
   }
 
   deleteDocument(type, id);
@@ -399,7 +557,11 @@ export function deleteDocument(type: DocumentType, id: string): LocalStorageWrit
   clearPendingSave(type, id);
 
   const result = getWorkspaceStorage(type).delete(id);
-  if (result.ok) SyncEngine.removeOutboxItem(id, type);
+
+  if (result.ok) {
+    SyncEngine.removeOutboxItem(id, type);
+    clearRecoveredEdits(type, id);
+  }
 
   return result;
 }
@@ -417,6 +579,10 @@ export async function deleteDocumentEverywhere(
   type: DocumentType,
   doc: { id: string },
 ): Promise<void> {
+  // A first upload still in flight would land after the local delete, take the free slot and
+  // come back on the next pull; once it settles, the linkage below includes it.
+  await SyncEngine.whenSyncSettled(doc.id, type);
+
   // Storage owns the sync block: an editor's copy can predate the first successful sync.
   const linked = Boolean(loadDocumentById(type, doc.id)?.sync.cloudDocumentId);
 
@@ -455,10 +621,9 @@ const WORKSPACE_KEY_PREFIXES = [
 export function clearWorkspaceStorage(): void {
   if (typeof window === "undefined") return;
 
-  for (const [key, pending] of [...pendingSaves.entries()]) {
-    if (pending.timer !== null) window.clearTimeout(pending.timer);
-    pendingSaves.delete(key);
-  }
+  // First, so a sync or pull already in flight drops its reply instead of writing it back.
+  bumpWorkspaceEpoch();
+  dropPendingSaves();
 
   // Index-driven first, so storage without key enumeration is still cleared of documents.
   for (const type of DOCUMENT_TYPES) getWorkspaceStorage(type).clear();
@@ -471,4 +636,80 @@ export function clearWorkspaceStorage(): void {
 
   invalidateDocumentIndexCache();
   window.dispatchEvent(new Event(DOCUMENT_STORAGE_UPDATED_EVENT));
+  announceWorkspaceCleared();
+}
+
+/** Discards debounced autosaves without writing them. */
+function dropPendingSaves() {
+  for (const [key, pending] of [...pendingSaves.entries()]) {
+    if (pending.timer !== null) window.clearTimeout(pending.timer);
+    pendingSaves.delete(key);
+  }
+}
+
+const WORKSPACE_CHANNEL_NAME = "veriworkly:workspace";
+const WORKSPACE_CLEARED_MESSAGE = "workspace-cleared";
+/** Written and removed at once: its `storage` event is the signal where BroadcastChannel is missing. */
+const WORKSPACE_CLEARED_SIGNAL_KEY = "veriworkly:workspace-cleared";
+
+let workspaceChannel: BroadcastChannel | null | undefined;
+
+/** One channel per tab: a channel never receives its own messages, so this tab ignores its clears. */
+function getWorkspaceChannel() {
+  if (workspaceChannel === undefined) {
+    workspaceChannel =
+      typeof window.BroadcastChannel === "function"
+        ? new window.BroadcastChannel(WORKSPACE_CHANNEL_NAME)
+        : null;
+  }
+
+  return workspaceChannel;
+}
+
+function announceWorkspaceCleared() {
+  const channel = getWorkspaceChannel();
+
+  if (channel) {
+    channel.postMessage(WORKSPACE_CLEARED_MESSAGE);
+    return;
+  }
+
+  // Best effort under quota: the other tabs still lose every document key this tab removed,
+  // and their next save of the previous user's document has no index to land in.
+  safeSetLocalStorageItem(window.localStorage, WORKSPACE_CLEARED_SIGNAL_KEY, String(Date.now()));
+  window.localStorage.removeItem(WORKSPACE_CLEARED_SIGNAL_KEY);
+}
+
+/**
+ * Calls `onCleared` when another tab clears the workspace (sign-out, account deletion). This
+ * tab's pending autosaves and in-flight syncs are dropped first, so an editor still holding
+ * the previous user's document cannot write it back. Returns the unsubscribe function.
+ */
+export function subscribeToWorkspaceClears(onCleared: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const handleCleared = () => {
+    bumpWorkspaceEpoch();
+    dropPendingSaves();
+    invalidateDocumentIndexCache();
+    onCleared();
+  };
+
+  const onMessage = (event: MessageEvent) => {
+    if (event.data === WORKSPACE_CLEARED_MESSAGE) handleCleared();
+  };
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === WORKSPACE_CLEARED_SIGNAL_KEY && event.newValue !== null) handleCleared();
+  };
+
+  const channel = getWorkspaceChannel();
+
+  channel?.addEventListener("message", onMessage);
+  window.addEventListener("storage", onStorage);
+
+  return () => {
+    channel?.removeEventListener("message", onMessage);
+    window.removeEventListener("storage", onStorage);
+  };
 }
