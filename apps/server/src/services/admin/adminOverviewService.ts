@@ -115,10 +115,10 @@ const SECTION_ERROR = { error: true } as const;
 async function buildAdminOverview(days: number) {
   const limit = createQueryLimiter(OVERVIEW_QUERY_CONCURRENCY);
 
-  // Weights are each summary's query count (billing 8, affiliates 7, …).
+  // Weights are each summary's query count (billing 11, affiliates 7, …).
   const results = await Promise.allSettled([
     limit(6, () => getUserSummary(days)),
-    limit(8, () => getBillingSummary()),
+    limit(11, () => getBillingSummary()),
     limit(6, () => getPortfolioSummary()),
     limit(6, () => getDocumentSummary()),
     limit(7, () => getAffiliateSummary()),

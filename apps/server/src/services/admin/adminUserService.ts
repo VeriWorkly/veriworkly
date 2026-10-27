@@ -12,7 +12,7 @@ import {
   ADMIN_AUDIT_ACTIONS,
   writeAdminAudit,
   type AdminAuditInput,
-  getAuditHistory,
+  getUserAuditHistory,
 } from "#services/admin/adminAuditService";
 import {
   ACCOUNT_DELETION_TRANSACTION,
@@ -29,6 +29,7 @@ import type {
 } from "#validators/admin/adminUserValidator";
 import { listPage } from "#utils/pagination";
 import { invalidateLeaderboards } from "#services/affiliate/cache";
+import { describeAccessForUsers } from "#services/billingService";
 
 const USER_LIST_SELECT = {
   id: true,
@@ -45,6 +46,9 @@ const USER_LIST_SELECT = {
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
+
+/** Documents the user has, not the ones in their trash (V-271). */
+const LIVE_DOCUMENTS = { where: { deletedAt: null } } satisfies Prisma.User$resumesArgs;
 
 const SUBSCRIPTION_ACTIVE_STATUSES = ["ACTIVE", "PAST_DUE"] as const;
 
@@ -99,7 +103,7 @@ export async function listUsers(query: AdminUserListQuery) {
       where,
       select: {
         ...USER_LIST_SELECT,
-        _count: { select: { resumes: true, apiKeys: true, sessions: true } },
+        _count: { select: { resumes: LIVE_DOCUMENTS, apiKeys: true, sessions: true } },
         subscriptions: {
           where: { status: { in: [...SUBSCRIPTION_ACTIVE_STATUSES] } },
           select: { productKey: true, status: true, currentPeriodEnd: true },
@@ -116,11 +120,16 @@ export async function listUsers(query: AdminUserListQuery) {
     prisma.user.count({ where }),
   ]);
 
+  // The customer's own access summary, the one the billing page shows (V-266): a pass holder or
+  // a pack buyer is never read off `subscription` alone as free. One batch for the whole page.
+  const access = await describeAccessForUsers(items.map((item) => item.id));
+
   return listPage(
     items.map(({ subscriptions, creditWallet, ...user }) => ({
       ...user,
       subscription: subscriptions[0] ?? null,
       creditBalance: creditWallet?.balance ?? 0,
+      access: access.get(user.id) ?? null,
     })),
     total,
     query,
@@ -143,7 +152,7 @@ export async function getUserDetail(userId: string) {
       lastLinkedinImportAt: true,
       _count: {
         select: {
-          resumes: true,
+          resumes: LIVE_DOCUMENTS,
           shareLinks: true,
           apiKeys: true,
           sessions: true,
@@ -169,6 +178,7 @@ export async function getUserDetail(userId: string) {
     apiKeys,
     sessions,
     auditEntries,
+    access,
   ] = await Promise.all([
     prisma.subscription.findMany({
       where: { userId },
@@ -244,11 +254,14 @@ export async function getUserDetail(userId: string) {
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
-    getAuditHistory("User", userId),
+    getUserAuditHistory(userId),
+    describeAccessForUsers([userId]),
   ]);
 
   return {
     user,
+    /** What the customer's own billing summary says they have (V-266). */
+    access: access.get(userId) ?? null,
     subscriptions,
     entitlements,
     credits: {

@@ -298,6 +298,20 @@ function reservationConflict(
   return new ApiError(409, "This AI request id can no longer be reused.");
 }
 
+/**
+ * What a wallet can spend right now (what `reserve` would accept): its unexpired grant credits less
+ * what pending reservations hold, never above the balance. Differs from `balance` while an expiry
+ * is deferred under a pending reservation. `getWallet` and the admin access summary share it.
+ */
+export function spendableCredits(wallet: { balance: number; reserved: number }, unexpired: number) {
+  return Math.max(0, Math.min(wallet.balance, unexpired - wallet.reserved));
+}
+
+/** The credits someone paid for, out of a per-source breakdown (`PAID_CREDIT_SOURCES`). */
+export function paidCreditsIn(bySource: Record<string, number>) {
+  return PAID_CREDIT_SOURCES.reduce((sum, source) => sum + (bySource[source] ?? 0), 0);
+}
+
 export class CreditService {
   static async invalidate(userId: string) {
     await Promise.all([
@@ -425,10 +439,7 @@ export class CreditService {
       ...wallet,
       // What `reserve` would accept right now. Differs from `balance` while an expiry is
       // deferred under a pending reservation: those credits show but cannot be spent.
-      available: Math.max(
-        0,
-        Math.min(wallet.balance, (unexpired._sum.remaining ?? 0) - wallet.reserved),
-      ),
+      available: spendableCredits(wallet, unexpired._sum.remaining ?? 0),
       nextExpiryAt: nextGrant?.expiresAt ?? null,
       nextExpiryCredits: nextGrant?.remaining ?? 0,
     };
@@ -438,16 +449,33 @@ export class CreditService {
 
   /** Unexpired credits left from paid sources (`PAID_CREDIT_SOURCES`); goodwill grants excluded. */
   static async paidCreditsRemaining(userId: string, at = new Date()) {
-    const paid = await prisma.creditGrant.aggregate({
-      where: {
-        userId,
-        source: { in: [...PAID_CREDIT_SOURCES] },
-        remaining: { gt: 0 },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: at } }],
-      },
-      _sum: { remaining: true },
-    });
-    return paid._sum.remaining ?? 0;
+    return paidCreditsIn((await this.unexpiredCreditsBySource([userId], at)).get(userId) ?? {});
+  }
+
+  /**
+   * Unexpired credits left per grant source, for each user (one query for any number of users).
+   * `paidCreditsRemaining` and the admin access summary (V-266) both read through it.
+   */
+  static async unexpiredCreditsBySource(userIds: string[], at = new Date()) {
+    const rows = userIds.length
+      ? await prisma.creditGrant.groupBy({
+          by: ["userId", "source"],
+          where: {
+            userId: { in: userIds },
+            remaining: { gt: 0 },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: at } }],
+          },
+          _sum: { remaining: true },
+        })
+      : [];
+    const result = new Map<string, Record<string, number>>();
+    for (const row of rows) {
+      if (!row.userId) continue;
+      const sources = result.get(row.userId) ?? {};
+      sources[row.source] = row._sum.remaining ?? 0;
+      result.set(row.userId, sources);
+    }
+    return result;
   }
 
   static async reserveAction(userId: string, action: AiActionKey, mode: AiMode, requestId: string) {

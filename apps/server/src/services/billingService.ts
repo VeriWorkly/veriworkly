@@ -27,7 +27,7 @@ import { PREMIUM_PORTFOLIO_TEMPLATE_IDS } from "#validators/portfolioValidator";
 import { EntitlementService, isPaidAccessKey } from "#services/entitlementService";
 import { AffiliateService } from "#services/affiliate/index";
 import { AFFILIATE_TIER_RATE_BPS } from "#services/affiliate/constants";
-import { CreditService } from "#services/creditService";
+import { CreditService, paidCreditsIn, spendableCredits } from "#services/creditService";
 import { CREDIT_SOURCES } from "#services/creditSources";
 import { isDeletedAccount, redactIfForDeletedAccount } from "#services/deletedAccount";
 import {
@@ -1080,6 +1080,79 @@ function describeAccess(
     aiCreditsEndsAt: latestEnd(ai),
     creditBalance,
   };
+}
+
+/**
+ * The customer's access summary (`describeAccess`, the `access` of their own billing summary) for
+ * many users at once, for the admin user list and detail (V-266). The same inputs read the same
+ * way as `buildSummary`: the grants in effect, the latest subscription in dunning, and what the
+ * wallet can spend, through the helpers `getWallet` and `paidCreditsRemaining` use
+ * (`spendableCredits`, `paidCreditsIn`, `unexpiredCreditsBySource`). Four queries whatever the
+ * page size.
+ *
+ * Adds what an admin needs and a customer's summary does not carry: `paidCredits` (unexpired
+ * credits someone paid for, `PAID_CREDIT_SOURCES`) and `creditSources`, the unexpired credits left
+ * per grant source, so goodwill credits are told apart from bought ones.
+ */
+export async function describeAccessForUsers(userIds: string[], at = new Date()) {
+  const ids = [...new Set(userIds)];
+  const result = new Map<
+    string,
+    ReturnType<typeof describeAccess> & {
+      paidCredits: number;
+      creditSources: Record<string, number>;
+    }
+  >();
+  if (ids.length === 0) return result;
+
+  const [grants, dunning, wallets, creditsBySource] = await Promise.all([
+    prisma.entitlementGrant.findMany({
+      where: {
+        userId: { in: ids },
+        startsAt: { lte: at },
+        revokedAt: null,
+        OR: [{ endsAt: null }, { endsAt: { gt: at } }],
+      },
+      select: { userId: true, key: true, endsAt: true, source: true, metadata: true },
+      orderBy: { endsAt: "desc" },
+    }),
+    prisma.subscription.findMany({
+      where: { userId: { in: ids }, status: "PAST_DUE" },
+      select: { userId: true, productKey: true, rawStatus: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.creditWallet.findMany({
+      where: { userId: { in: ids } },
+      select: { userId: true, balance: true, reserved: true },
+    }),
+    CreditService.unexpiredCreditsBySource(ids, at),
+  ]);
+
+  for (const userId of ids) {
+    const userGrants = grants.filter((grant) => grant.userId === userId);
+    const inDunning = dunning.find(
+      (item) => item.userId === userId && isProductKey(item.productKey),
+    );
+    const wallet = wallets.find((item) => item.userId === userId);
+    const creditSources = creditsBySource.get(userId) ?? {};
+    const unexpired = Object.values(creditSources).reduce((sum, value) => sum + value, 0);
+    // The same helpers `getWallet` and `paidCreditsRemaining` use for the customer's summary.
+    const paidCredits = paidCreditsIn(creditSources);
+    const available = wallet ? spendableCredits(wallet, unexpired) : 0;
+
+    result.set(userId, {
+      ...describeAccess(
+        userGrants,
+        available,
+        paidCredits,
+        inDunning ? (inDunning.productKey as ProductKey) : null,
+        Boolean(inDunning && inDunning.rawStatus !== "paused"),
+      ),
+      paidCredits,
+      creditSources,
+    });
+  }
+  return result;
 }
 
 /**

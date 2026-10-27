@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { AffiliateCommission, Prisma } from "@prisma/client";
 
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
@@ -175,7 +175,21 @@ export async function createCommission(
   if (!referral || referral.affiliate.affiliateStatus !== "ACTIVE")
     throw new ApiError(404, "Active affiliate referral not found.");
 
-  const rateBps = AFFILIATE_TIER_RATE_BPS[referral.affiliate.affiliateTier];
+  // A conversion re-records a sale that already earned its commission: at the rate that sale
+  // earned, kept on the original row, not the tier the affiliate holds today (V-270). The
+  // transaction below still refuses an original that is not this affiliate's pending non-USD row.
+  const original = input.convertedFromId
+    ? await prisma.affiliateCommission.findUnique({
+        where: { id: input.convertedFromId },
+        select: { rateBps: true },
+      })
+    : null;
+  if (input.convertedFromId && !original)
+    throw new ApiError(
+      409,
+      "convertedFromId must be a pending non-USD commission of the same affiliate.",
+    );
+  const rateBps = original?.rateBps ?? AFFILIATE_TIER_RATE_BPS[referral.affiliate.affiliateTier];
   const amountCents = Math.floor((input.purchaseAmountCents * rateBps) / 10_000);
   if (amountCents < 1) throw new ApiError(400, "Commission amount is too small.");
 
@@ -270,10 +284,14 @@ export async function createCommission(
 }
 
 /**
- * The one PENDING -> AVAILABLE | REVERSED transition. Maturation is still an admin action this
- * round, but it goes through here so it is a single conditional write: the status flips only if
- * the row is still PENDING at commit time, and the wallet moves only when that flip happened
- * (V-007). Two concurrent releases therefore credit the wallet once; the loser gets 409.
+ * The admin's commission transitions, each committing its audit entry with it (V-074):
+ * - PENDING -> AVAILABLE | REVERSED, a single conditional write: the status flips only if the
+ *   row is still PENDING at commit time, and the wallet moves only when that flip happened
+ *   (V-007). Two concurrent releases therefore credit the wallet once; the loser gets 409.
+ * - AVAILABLE | PAID -> REVERSED (V-269): a released commission taken back, for a refund made
+ *   outside the provider or a chargeback settled by hand. The same claw-back as a refund
+ *   (`reverseLockedCommission`): the available balance gives back what it can, the rest is owed
+ *   and repaid from the next credit.
  */
 export async function updateCommission(
   id: string,
@@ -282,6 +300,8 @@ export async function updateCommission(
   audit?: AdminAuditInput,
 ) {
   const result = await prisma.$transaction(async (tx) => {
+    // Lock order as in the refund path: the commission row, then the wallet.
+    await tx.$queryRaw`SELECT "id" FROM "AffiliateCommission" WHERE "id" = ${id} FOR UPDATE`;
     const commission = await tx.affiliateCommission.findUnique({ where: { id } });
     if (!commission) throw new ApiError(404, "Commission not found.");
     // The affiliate deleted their account: the row stays as history, but there is no wallet
@@ -289,6 +309,29 @@ export async function updateCommission(
     const affiliateId = commission.affiliateId;
     if (!affiliateId)
       throw new ApiError(409, "This commission belongs to a deleted account and cannot change.");
+
+    if (
+      status === "REVERSED" &&
+      (commission.status === "AVAILABLE" || commission.status === "PAID")
+    ) {
+      const reversal = await reverseLockedCommission(tx, commission, reason ?? null);
+      if (audit)
+        await writeAdminAudit(tx, {
+          ...audit,
+          metadata: {
+            ...audit.metadata,
+            status,
+            previousStatus: commission.status,
+            amountCents: commission.amountCents,
+            clawbackCents: reversal.clawbackCents,
+          },
+        });
+      logReversal(reversal, { by: "admin" });
+      return {
+        ...(await tx.affiliateCommission.findUniqueOrThrow({ where: { id } })),
+        affiliateId,
+      };
+    }
 
     const inWalletCurrency = commission.currency === AFFILIATE_WALLET_CURRENCY;
     if (status === "AVAILABLE" && !inWalletCurrency)
@@ -307,7 +350,12 @@ export async function updateCommission(
       },
     });
     if (transitioned.count !== 1)
-      throw new ApiError(409, "Only pending commissions can be updated.");
+      throw new ApiError(
+        409,
+        status === "REVERSED"
+          ? "Only pending, available or paid commissions can be reversed."
+          : "Only pending commissions can be released.",
+      );
 
     // Non-USD commissions were never added to the wallet, so there is nothing to move.
     if (inWalletCurrency) {
@@ -325,7 +373,12 @@ export async function updateCommission(
     if (audit)
       await writeAdminAudit(tx, {
         ...audit,
-        metadata: { ...audit.metadata, status, amountCents: commission.amountCents },
+        metadata: {
+          ...audit.metadata,
+          status,
+          previousStatus: commission.status,
+          amountCents: commission.amountCents,
+        },
       });
 
     return { ...(await tx.affiliateCommission.findUniqueOrThrow({ where: { id } })), affiliateId };
@@ -336,6 +389,107 @@ export async function updateCommission(
 
 const CONVERTED_PREFIX = `Converted to ${AFFILIATE_WALLET_CURRENCY} as `;
 
+type Reversal = {
+  id: string;
+  affiliateId: string | null;
+  from: AffiliateCommission["status"];
+  clawbackCents: number;
+  pendingShortfallCents: number;
+};
+
+/**
+ * Reverses one commission whose row the caller has locked and re-read (and found not REVERSED),
+ * moving the wallet by the rules `reverseCommissionForPayment` describes. Shared by the refund path
+ * and the admin reversal (V-269), so both take money back the same way.
+ */
+async function reverseLockedCommission(
+  tx: Prisma.TransactionClient,
+  commission: AffiliateCommission,
+  reason: string | null,
+): Promise<Reversal> {
+  const affiliateId = commission.affiliateId;
+  if (affiliateId)
+    await tx.$queryRaw`SELECT "id" FROM "AffiliateWallet" WHERE "userId" = ${affiliateId} FOR UPDATE`;
+
+  const transitioned = await tx.affiliateCommission.updateMany({
+    where: { id: commission.id, status: commission.status },
+    data: { status: "REVERSED", reversedAt: new Date(), reason },
+  });
+  if (transitioned.count !== 1)
+    throw new ApiError(409, "The commission changed while it was being reversed. Retry.");
+
+  const inWallet = affiliateId && commission.currency === AFFILIATE_WALLET_CURRENCY;
+  let clawbackCents = 0;
+  let pendingShortfallCents = 0;
+  if (inWallet && commission.status === "PENDING") {
+    // Releases what the wallet still holds for it. A wallet that holds less is a ledger problem
+    // for a human, but the refund itself must still be processed (history, running total), so
+    // the shortfall is returned for the event's note and logged rather than thrown.
+    const wallet = await tx.affiliateWallet.findUnique({
+      where: { userId: affiliateId },
+      select: { pendingCents: true },
+    });
+    const released = Math.min(Math.max(wallet?.pendingCents ?? 0, 0), commission.amountCents);
+    pendingShortfallCents = commission.amountCents - released;
+    if (released > 0)
+      await tx.affiliateWallet.update({
+        where: { userId: affiliateId },
+        data: { pendingCents: { decrement: released } },
+      });
+  } else if (inWallet && (commission.status === "AVAILABLE" || commission.status === "PAID")) {
+    // Released money comes back out of the available balance first, whether it is still there
+    // (AVAILABLE) or was paid out and the balance has earned more since (PAID); only what the
+    // balance cannot cover becomes a claw-back the affiliate owes.
+    const wallet = await tx.affiliateWallet.findUnique({
+      where: { userId: affiliateId },
+      select: { availableCents: true },
+    });
+    const debit = Math.min(Math.max(wallet?.availableCents ?? 0, 0), commission.amountCents);
+    clawbackCents = commission.amountCents - debit;
+    await tx.affiliateWallet.updateMany({
+      where: { userId: affiliateId },
+      data: {
+        availableCents: { decrement: debit },
+        clawbackCents: { increment: clawbackCents },
+      },
+    });
+  }
+  if (clawbackCents > 0)
+    await tx.affiliateCommission.update({
+      where: { id: commission.id },
+      data: { clawbackCents },
+    });
+
+  return {
+    id: commission.id,
+    affiliateId,
+    from: commission.status,
+    clawbackCents,
+    pendingShortfallCents,
+  };
+}
+
+function logReversal(result: Reversal, context: Record<string, unknown>) {
+  logger.info("Affiliate commission reversed", {
+    commissionId: result.id,
+    ...context,
+    from: result.from,
+    clawbackCents: result.clawbackCents,
+  });
+  if (result.clawbackCents > 0)
+    logger.warn("Affiliate owes a claw-back: the reversed commission had already left the wallet", {
+      commissionId: result.id,
+      affiliateId: result.affiliateId,
+      clawbackCents: result.clawbackCents,
+    });
+  if (result.pendingShortfallCents > 0)
+    logger.error("Affiliate wallet held less pending than the reversed commission", {
+      commissionId: result.id,
+      affiliateId: result.affiliateId,
+      shortfallCents: result.pendingShortfallCents,
+    });
+}
+
 /**
  * A refund or a lost dispute took the purchase back, so the commission earned on it goes too
  * (V-205). Safe to repeat: a commission already REVERSED is left alone.
@@ -344,7 +498,8 @@ const CONVERTED_PREFIX = `Converted to ${AFFILIATE_WALLET_CURRENCY} as `;
  * - AVAILABLE: reversed and debited from the available balance; whatever the balance no longer
  *   holds (withdrawn meanwhile) becomes a claw-back the affiliate owes (`clawbackCents` on the
  *   commission and the wallet), repaid from the next credit (`creditAvailable`).
- * - PAID: the money has left, so the whole amount is a claw-back. `paidAt` stays as the record.
+ * - PAID: the money has left, so it comes back out of the available balance like AVAILABLE, and
+ *   what the balance cannot cover is a claw-back. `paidAt` stays as the record.
  * - A non-USD commission an admin converted is followed to the USD commission that replaced it.
  * - A deleted affiliate's commission is marked REVERSED; there is no wallet left to touch.
  *
@@ -366,90 +521,12 @@ export async function reverseCommissionForPayment(providerPaymentId: string, rea
     await tx.$queryRaw`SELECT "id" FROM "AffiliateCommission" WHERE "id" = ${commission.id} FOR UPDATE`;
     commission = await tx.affiliateCommission.findUniqueOrThrow({ where: { id: commission.id } });
     if (commission.status === "REVERSED") return null;
-    const affiliateId = commission.affiliateId;
-    if (affiliateId)
-      await tx.$queryRaw`SELECT "id" FROM "AffiliateWallet" WHERE "userId" = ${affiliateId} FOR UPDATE`;
 
-    const transitioned = await tx.affiliateCommission.updateMany({
-      where: { id: commission.id, status: commission.status },
-      data: { status: "REVERSED", reversedAt: new Date(), reason },
-    });
-    if (transitioned.count !== 1)
-      throw new ApiError(409, "The commission changed while it was being reversed. Retry.");
-
-    const inWallet = affiliateId && commission.currency === AFFILIATE_WALLET_CURRENCY;
-    let clawbackCents = 0;
-    let pendingShortfallCents = 0;
-    if (inWallet && commission.status === "PENDING") {
-      // Releases what the wallet still holds for it. A wallet that holds less is a ledger problem
-      // for a human, but the refund itself must still be processed (history, running total), so
-      // the shortfall is returned for the event's note and logged rather than thrown.
-      const wallet = await tx.affiliateWallet.findUnique({
-        where: { userId: affiliateId },
-        select: { pendingCents: true },
-      });
-      const released = Math.min(Math.max(wallet?.pendingCents ?? 0, 0), commission.amountCents);
-      pendingShortfallCents = commission.amountCents - released;
-      if (released > 0)
-        await tx.affiliateWallet.update({
-          where: { userId: affiliateId },
-          data: { pendingCents: { decrement: released } },
-        });
-    } else if (inWallet && commission.status === "AVAILABLE") {
-      const wallet = await tx.affiliateWallet.findUnique({
-        where: { userId: affiliateId },
-        select: { availableCents: true },
-      });
-      const debit = Math.min(Math.max(wallet?.availableCents ?? 0, 0), commission.amountCents);
-      clawbackCents = commission.amountCents - debit;
-      await tx.affiliateWallet.updateMany({
-        where: { userId: affiliateId },
-        data: {
-          availableCents: { decrement: debit },
-          clawbackCents: { increment: clawbackCents },
-        },
-      });
-    } else if (inWallet && commission.status === "PAID") {
-      clawbackCents = commission.amountCents;
-      await tx.affiliateWallet.updateMany({
-        where: { userId: affiliateId },
-        data: { clawbackCents: { increment: clawbackCents } },
-      });
-    }
-    if (clawbackCents > 0)
-      await tx.affiliateCommission.update({
-        where: { id: commission.id },
-        data: { clawbackCents },
-      });
-
-    return {
-      id: commission.id,
-      affiliateId,
-      from: commission.status,
-      clawbackCents,
-      pendingShortfallCents,
-    };
+    return reverseLockedCommission(tx, commission, reason);
   });
   if (!result) return null;
 
-  logger.info("Affiliate commission reversed: its payment was refunded or disputed", {
-    commissionId: result.id,
-    providerPaymentId,
-    from: result.from,
-    clawbackCents: result.clawbackCents,
-  });
-  if (result.clawbackCents > 0)
-    logger.warn("Affiliate owes a claw-back: the reversed commission had already left the wallet", {
-      commissionId: result.id,
-      affiliateId: result.affiliateId,
-      clawbackCents: result.clawbackCents,
-    });
-  if (result.pendingShortfallCents > 0)
-    logger.error("Affiliate wallet held less pending than the reversed commission", {
-      commissionId: result.id,
-      affiliateId: result.affiliateId,
-      shortfallCents: result.pendingShortfallCents,
-    });
+  logReversal(result, { providerPaymentId, by: "refund or dispute" });
   if (result.affiliateId) await invalidateAffiliate(result.affiliateId, true);
   return { id: result.id, pendingShortfallCents: result.pendingShortfallCents };
 }

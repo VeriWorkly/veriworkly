@@ -35,14 +35,22 @@ const API_KEY_SELECT = {
   user: { select: { id: true, name: true, email: true } },
 } satisfies Prisma.ApiKeySelect;
 
+/**
+ * A key that authenticates right now: enabled, not revoked and not expired, the rule
+ * `ApiKeyService` validates with (V-271). An expired key used to count as active.
+ */
+function usableKeyWhere(now: Date): Prisma.ApiKeyWhereInput {
+  return { isActive: true, revokedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] };
+}
+
 export async function getApiKeySummary() {
   const now = new Date();
 
   const [total, active, revoked, expired, usedLast7Days] = await Promise.all([
     prisma.apiKey.count(),
-    prisma.apiKey.count({ where: { isActive: true, revokedAt: null } }),
+    prisma.apiKey.count({ where: usableKeyWhere(now) }),
     prisma.apiKey.count({ where: { revokedAt: { not: null } } }),
-    prisma.apiKey.count({ where: { expiresAt: { lt: now } } }),
+    prisma.apiKey.count({ where: { expiresAt: { lte: now } } }),
     prisma.apiKey.count({
       where: { lastUsed: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
     }),
@@ -52,12 +60,14 @@ export async function getApiKeySummary() {
 }
 
 export async function listApiKeys(query: ApiKeyListQuery) {
+  const now = new Date();
   const where: Prisma.ApiKeyWhereInput = {
     ...(query.userId ? { userId: query.userId } : {}),
+    // The same rule as the summary's `active` count, so the filter lists what it counted.
     ...(query.active !== undefined
       ? query.active
-        ? { isActive: true, revokedAt: null }
-        : { OR: [{ isActive: false }, { revokedAt: { not: null } }] }
+        ? usableKeyWhere(now)
+        : { NOT: usableKeyWhere(now) }
       : {}),
     ...(query.query
       ? {
