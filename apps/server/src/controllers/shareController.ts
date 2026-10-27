@@ -10,10 +10,10 @@ import { incrementFixedWindow } from "#middleware/rateLimit";
 import { ShareService } from "#services/shareService";
 
 import { logger } from "#lib/logger";
-import { addressBucket, getRequestIpDetails } from "#utils/requestIp";
+import { addressBucket, getRequestIpDetails, getRequestUserAgent } from "#utils/requestIp";
 import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
-import { cacheNamespaces, masterProfileCacheKey, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
 import { parseOffsetPagination, createOffsetPaginationMeta } from "#utils/pagination";
 import { createSuccessResponse, handleValidationError, ApiError } from "#lib/errors";
 
@@ -61,16 +61,44 @@ function buildPublicSharePayload(shareLink: PublicShareLinkView, includeSnapshot
   };
 }
 
-function formatShareLinkResponse<T extends { passwordHash?: string | null }>(shareLink: T | null) {
+/**
+ * A share link as its owner sees it. Never the password hash, and never the snapshot (V-246): the
+ * owner sent it and the studio never reads it back, and up to 1 MB of it per link was echoed in
+ * the create response and carried in the list cached for 30 minutes.
+ */
+function formatShareLinkResponse<T extends { passwordHash?: string | null; snapshot?: unknown }>(
+  shareLink: T | null,
+) {
   if (!shareLink) return shareLink;
 
-  const { passwordHash, ...rest } = shareLink;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { passwordHash, snapshot, ...rest } = shareLink;
 
   return {
     ...rest,
     hasPassword: Boolean(passwordHash),
   };
 }
+
+/**
+ * Counts one view, as the viewer (V-245): the resolved client IP (the forwarded one when a trusted
+ * server render asks on the browser's behalf) and the browser's user agent. `req.ip` and the raw
+ * header made every studio page load the studio server's view, with one IP hash for all of them.
+ */
+function recordView(req: Request, shareLinkId: string) {
+  ShareService.recordShareView(
+    shareLinkId,
+    getRequestIpDetails(req).resolvedIp || undefined,
+    getRequestUserAgent(req),
+  ).catch((error) =>
+    logger.warn("Share view tracking failed", {
+      error: error instanceof Error ? error.message : String(error),
+    }),
+  );
+}
+
+/** The largest share snapshot, serialized: the same 1 MB bound a master profile has. */
+const MAX_SHARE_SNAPSHOT_BYTES = 1_000_000;
 
 export class ShareController {
   /**
@@ -89,6 +117,10 @@ export class ShareController {
       const body = shareLinkCreateSchema.parse(req.body);
       const { documentId } = body;
 
+      // The snapshot is cached per public read for an hour; bounded like a document body (V-246).
+      if (Buffer.byteLength(JSON.stringify(body.snapshot)) > MAX_SHARE_SNAPSHOT_BYTES)
+        throw new ApiError(413, "The shared document is too large. Shorten it and share again.");
+
       const { shareLink } = await ShareService.createShareLink(user.id, documentId, body);
 
       // One bump covers the old slug, the new one and any cached 404 for it.
@@ -98,7 +130,7 @@ export class ShareController {
           cacheNamespaces.sharedDocumentIds(user.id),
           cacheNamespaces.publicShare(shareLink.username),
         ),
-        cacheDel(masterProfileCacheKey(user.id)),
+        bumpGeneration(cacheNamespaces.masterProfile(user.id)),
         cacheDel(userProfileCacheKey(user.id)),
       ]);
 
@@ -212,7 +244,7 @@ export class ShareController {
           cacheNamespaces.sharedDocumentIds(user.id),
           cacheNamespaces.publicShare(revoked.username),
         ),
-        cacheDel(masterProfileCacheKey(user.id)),
+        bumpGeneration(cacheNamespaces.masterProfile(user.id)),
         cacheDel(userProfileCacheKey(user.id)),
       ]);
 
@@ -282,9 +314,7 @@ export class ShareController {
           createSuccessResponse(buildPublicSharePayload(shareLink, false), "Password required"),
         );
 
-      ShareService.recordShareView(shareLink.id, req.ip, req.headers["user-agent"]).catch((err) =>
-        console.error("View tracking failed:", err),
-      );
+      recordView(req, shareLink.id);
 
       res.json(
         createSuccessResponse(
@@ -336,9 +366,7 @@ export class ShareController {
         await cacheDel(attemptsKey);
       }
 
-      ShareService.recordShareView(shareLink.id, req.ip, req.headers["user-agent"]).catch((err) =>
-        console.error("View tracking failed:", err),
-      );
+      recordView(req, shareLink.id);
 
       res.json(
         createSuccessResponse(

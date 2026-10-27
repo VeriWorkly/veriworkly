@@ -267,6 +267,23 @@ function parseCheckoutRecord(raw: string | null): CheckoutRecord | null {
 }
 
 /**
+ * Whether the user has a checkout session that can still be paid, or one being created right now
+ * (V-238): account deletion refuses while one is, or the customer could delete the account and
+ * then pay the open tab, leaving a charge with no account to reconcile it against. Reads the
+ * legacy per-product keys too (`legacyCheckoutRecordKey`). Throws when Redis cannot answer, so a
+ * caller fails closed.
+ */
+export async function hasOpenCheckout(userId: string): Promise<boolean> {
+  const redis = getRedis();
+  const keys = [
+    checkoutRecordKey(userId),
+    ...PRODUCT_KEYS.map((productKey) => legacyCheckoutRecordKey(userId, productKey)),
+  ];
+  const values = await redis.mGet(keys);
+  return values.some((raw) => parseCheckoutRecord(raw) !== null);
+}
+
+/**
  * Whether a new subscription or pass would overlap what the customer already pays for (V-176).
  * Any live subscription (active in period, or in dunning) blocks a second one: the same product
  * twice is a double charge, the bundle already contains both single products, and AI Credits

@@ -8,11 +8,6 @@ export function userProfileCacheKey(userId: string): string {
   return `user:profile:v2:${userId}`;
 }
 
-/** The master profile read (`GET /profiles/master`), whose summary repeats account fields. */
-export function masterProfileCacheKey(userId: string): string {
-  return `profile:${userId}`;
-}
-
 /**
  * Generation namespaces (see `#lib/cacheGeneration`). Each is invalidated as a whole by one
  * `bumpGeneration`, so variants keyed by type, pagination or filters need no prefix SCAN.
@@ -28,6 +23,12 @@ export const cacheNamespaces = {
   sharedDocumentIds: (userId: string) => `share:shared-document-ids:${userId}`,
   /** Every public share snapshot (and cached 404) under a username, whatever the slug. */
   publicShare: (username: string) => `share:public-readable:${username}`,
+  /**
+   * The master profile read (`GET /profiles/master`), whose summary repeats account fields. A
+   * generation, not a plain key (V-244): a slow read that loaded before a save used to store the
+   * old row over it, and every save then 409ed against the stale `updatedAt` for up to an hour.
+   */
+  masterProfile: (userId: string) => `profile:${userId}`,
 };
 
 /** The document itself and every list that contains it. */

@@ -32,6 +32,12 @@ interface FlexibleAuthOptions {
  *      - Allow the request to continue.
  *    - If NOT whitelisted:
  *      - Enforce API Key Auth (which will fail because no key was provided).
+ *
+ * The origin check is a convenience gate, not a security boundary (V-256): `Origin` and
+ * `Referer` are only trustworthy from a browser, so any other client that sends the studio's
+ * origin passes as an anonymous first-party caller. It exists to steer integrations to API keys.
+ * Anonymous callers are bounded by the per-IP rate limit and each route's own quota; nothing that
+ * spends money or reads an account may rely on this gate (those routes require a session or key).
  */
 export function flexibleAuth(options: FlexibleAuthOptions): RequestHandler;
 export function flexibleAuth(req: Request, res: Response, next: NextFunction): Promise<void>;

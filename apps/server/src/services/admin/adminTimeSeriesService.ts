@@ -2,6 +2,7 @@ import { prisma } from "#lib/prisma";
 import { cacheGet, cacheSet } from "#lib/redis";
 
 import { ADMIN_TIME_SERIES_TTL_SECONDS, adminTimeSeriesCacheKey } from "#services/admin/cache";
+import { AFFILIATE_WALLET_CURRENCY } from "#services/affiliate/constants";
 
 /**
  * Daily time series behind the admin dashboard charts.
@@ -129,10 +130,11 @@ async function buildAdminTimeSeries(days: number) {
       WHERE "createdAt" >= ${since} AND "type" = 'DEBIT'
       GROUP BY bucket
     `,
+    // Cents only add up within one currency: the wallet's, as the affiliate summary sums (V-261).
     prisma.$queryRaw<DailyRow[]>`
       SELECT date_trunc('day', "createdAt") AS bucket, SUM("amountCents") AS value
       FROM "AffiliateCommission"
-      WHERE "createdAt" >= ${since}
+      WHERE "createdAt" >= ${since} AND "currency" = ${AFFILIATE_WALLET_CURRENCY}
       GROUP BY bucket
     `,
   ]);

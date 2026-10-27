@@ -125,10 +125,18 @@ function jobText(body: string, contentType: string) {
 }
 
 export class AtsJobFetchService {
-  static async fetch(urlValue: string) {
+  /**
+   * `signal` is the request's (client gone or AI deadline). One `TOTAL_TIMEOUT_MS` budget covers
+   * every redirect hop together (V-241): per hop, a chain of slow redirects could eat most of the
+   * AI deadline before the analysis even started.
+   */
+  static async fetch(urlValue: string, signal?: AbortSignal) {
+    const budget = AbortSignal.timeout(TOTAL_TIMEOUT_MS);
+    const deadline = signal ? AbortSignal.any([budget, signal]) : budget;
     let target = await validateUrl(urlValue);
     for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
-      const response = await requestPage(target);
+      if (deadline.aborted) throw new ApiError(400, "Job page request timed out.");
+      const response = await requestPage(target, deadline);
       if (response.status >= 300 && response.status < 400) {
         const location = response.location;
         if (!location || redirect === MAX_REDIRECTS)
@@ -167,7 +175,7 @@ export function pinnedLookup(target: { address: string; family: number }) {
       : callback(null, target.address, target.family);
 }
 
-function requestPage(target: Awaited<ReturnType<typeof validateUrl>>) {
+function requestPage(target: Awaited<ReturnType<typeof validateUrl>>, signal: AbortSignal) {
   return new Promise<{ status: number; location: string; contentType: string; body: string }>(
     (resolve, reject) => {
       const req = request(
@@ -175,7 +183,7 @@ function requestPage(target: Awaited<ReturnType<typeof validateUrl>>) {
         {
           headers: { Accept: "text/html,text/plain", "User-Agent": "VeriWorkly-ATS/1.0" },
           lookup: pinnedLookup(target) as never,
-          signal: AbortSignal.timeout(TOTAL_TIMEOUT_MS),
+          signal,
         },
         (response) => {
           const declaredLength = Number(response.headers["content-length"] ?? 0);

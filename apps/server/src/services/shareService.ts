@@ -407,6 +407,8 @@ export class ShareService {
     const [links, total] = await Promise.all([
       prisma.shareLink.findMany({
         where,
+        // The snapshot is never listed (V-246): up to 1 MB per link, and nothing reads it here.
+        omit: { snapshot: true },
         include: { document: { select: { slug: true } } },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: query.offset,

@@ -3,8 +3,14 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "#lib/prisma";
 import { ApiError, handleValidationError } from "#lib/errors";
 
-import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
-import { masterProfileCacheKey } from "#lib/cacheKeys";
+import { cacheGet, cacheSet } from "#lib/redis";
+import { cacheNamespaces } from "#lib/cacheKeys";
+import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
+
+/** Drops every cached copy of the user's master profile read (one INCR, V-244). */
+function invalidateMasterProfile(userId: string) {
+  return bumpGeneration(cacheNamespaces.masterProfile(userId));
+}
 import { masterProfileContentSchema } from "#validators/masterProfileValidator";
 
 const MAX_PROFILE_PAYLOAD_BYTES = 1_000_000;
@@ -38,8 +44,10 @@ export class ProfileService {
    */
 
   static async getMasterProfile(userId: string) {
-    const cacheKey = masterProfileCacheKey(userId);
-    const cached = await cacheGet(cacheKey);
+    // The generation is read before the database, so a save that commits during this read moves
+    // readers to a new key and this read's copy lands where nobody looks (V-244).
+    const cacheKey = await resolveGenerationalKey(cacheNamespaces.masterProfile(userId));
+    const cached = cacheKey ? await cacheGet(cacheKey) : null;
 
     if (cached) return cached;
 
@@ -82,7 +90,7 @@ export class ProfileService {
       },
     };
 
-    await cacheSet(cacheKey, responseData, 3600);
+    if (cacheKey) await cacheSet(cacheKey, responseData, 3600);
 
     return responseData;
   }
@@ -116,7 +124,7 @@ export class ProfileService {
       });
 
       if (updated) {
-        await cacheDel(masterProfileCacheKey(userId));
+        await invalidateMasterProfile(userId);
         return updated;
       }
     }
@@ -139,7 +147,7 @@ export class ProfileService {
     try {
       const created = await prisma.masterProfile.create({ data: { userId, content } });
 
-      await cacheDel(masterProfileCacheKey(userId));
+      await invalidateMasterProfile(userId);
 
       return created;
     } catch (error) {

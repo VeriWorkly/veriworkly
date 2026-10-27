@@ -53,19 +53,14 @@ export const AdminDocumentController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminDocumentDeleteSchema.parse(deleteRequestInput(req));
 
-    const document = await AdminDocumentService.softDeleteDocument(id);
-
-    await recordAdminAudit({
+    // The audit entry commits with the change (V-249).
+    return AdminDocumentService.softDeleteDocument(id, {
       actorId,
       action: ADMIN_AUDIT_ACTIONS.documentDelete,
       targetType: "Document",
       targetId: id,
       reason: input.reason,
-      // Ids only: a title outlives the document's purge in the log otherwise (V-206).
-      metadata: { ownerId: document.user.id },
     });
-
-    return document;
   }, "Document deleted successfully"),
 
   /** POST /admin/documents/:id/restore */
@@ -73,19 +68,13 @@ export const AdminDocumentController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminDocumentDeleteSchema.parse(req.body);
 
-    const document = await AdminDocumentService.restoreDocument(id);
-
-    await recordAdminAudit({
+    return AdminDocumentService.restoreDocument(id, {
       actorId,
       action: ADMIN_AUDIT_ACTIONS.documentRestore,
       targetType: "Document",
       targetId: id,
       reason: input.reason,
-      // Ids only: a title outlives the document's purge in the log otherwise (V-206).
-      metadata: { ownerId: document.user.id },
     });
-
-    return document;
   }, "Document restored successfully"),
 };
 

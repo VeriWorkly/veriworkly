@@ -156,6 +156,122 @@ describe("portfolio asset upload cap (V-045)", () => {
   });
 });
 
+describe("V-224 deleting an upload does not give its slot back", () => {
+  function startUpload(user: TestUser) {
+    return as(user, request(app).post("/api/v1/portfolio-assets/upload-url")).send({
+      kind: "AVATAR",
+      mimeType: "image/png",
+      sizeBytes: 1024,
+    });
+  }
+
+  it("an upload deleted while its PUT URL is still valid keeps counting, and the sweep removes whatever was PUT", async () => {
+    const user = await createUserWithSession();
+    for (let i = 0; i < 19; i++) await seedAsset(user.id, { status: "READY" });
+
+    const started = await startUpload(user);
+    expect(started.status).toBe(200);
+    const assetId: string = started.body.data.assetId;
+
+    const removed = await as(user, request(app).delete(`/api/v1/portfolio-assets/${assetId}`));
+    expect(removed.status).toBe(200);
+
+    // The presigned PUT still works for ten minutes: the slot is not free again.
+    expect((await startUpload(user)).status).toBe(429);
+
+    // A completed upload cannot be revived after the delete.
+    const completed = await as(user, request(app).post("/api/v1/portfolio-assets/complete")).send({
+      assetId,
+    });
+    expect(completed.status).toBe(404);
+
+    // The row stays until the stale sweep, which deletes the object a late PUT may have written.
+    const row = await prisma.portfolioAsset.findUniqueOrThrow({ where: { id: assetId } });
+    const old = new Date(Date.now() - 2 * DAY_MS);
+    await prisma.$executeRaw`UPDATE "PortfolioAsset" SET "createdAt" = ${old}, "updatedAt" = ${old} WHERE id = ${assetId}`;
+    s3Send.mockClear();
+    await PortfolioAssetService.cleanupStaleAssets();
+    expect(deletedKeys()).toContain(row.key);
+    expect(await prisma.portfolioAsset.findUnique({ where: { id: assetId } })).toBeNull();
+  });
+});
+
+describe("V-224 the admin asset list leaves DELETED holds out unless asked", () => {
+  it("excludes them from items, total and size by default, and lists them under the DELETED filter", async () => {
+    const owner = await createUserWithSession();
+    const moderator = await createUserWithSession({ email: "admin@example.test" });
+    await seedAsset(owner.id);
+    const held = await seedAsset(owner.id);
+    await prisma.portfolioAsset.update({ where: { id: held.id }, data: { status: "DELETED" } });
+
+    const list = (status?: string) =>
+      as(
+        moderator,
+        request(app).get(
+          `/api/v1/admin/portfolios/assets?userId=${owner.id}${status ? `&status=${status}` : ""}`,
+        ),
+      );
+
+    const all = await list();
+    expect(all.status, JSON.stringify(all.body)).toBe(200);
+    expect(all.body.data.items.map((item: { id: string }) => item.id)).not.toContain(held.id);
+    expect(all.body.data.total).toBe(1);
+    expect(all.body.data.totalSizeBytes).toBe(1024);
+
+    const deleted = await list("DELETED");
+    expect(deleted.body.data.items.map((item: { id: string }) => item.id)).toEqual([held.id]);
+    expect(deleted.body.data.total).toBe(1);
+  });
+});
+
+describe("V-227 published image URLs come from the stored object, never the request", () => {
+  it("rewrites an owned image whose url points elsewhere to the media URL of its key", async () => {
+    const user = await createUserWithSession();
+    const avatar = await seedAsset(user.id);
+    const cover = await seedAsset(user.id);
+    const body = content(avatar, cover);
+    body.identity.avatar = { id: avatar.id, url: "https://tracker.example.test/pixel.png" };
+
+    const draft = await saveDraft(user, { subdomain: `p-${user.id.slice(-8)}`, snapshot: body });
+    expect(draft.status).toBe(200);
+    const published = await as(user, request(app).post("/api/v1/portfolios/publish")).send({
+      documentId: draft.body.data.id,
+      subdomain: draft.body.data.slug,
+      revision: draft.body.data.revision,
+    });
+    expect(published.status, JSON.stringify(published.body)).toBe(201);
+
+    const row = await prisma.portfolioPublication.findUniqueOrThrow({ where: { userId: user.id } });
+    const snapshot = row.snapshot as ReturnType<typeof content>;
+    expect(snapshot.identity.avatar).toEqual({
+      id: avatar.id,
+      url: `https://media.example.test/${avatar.key}`,
+    });
+    expect((snapshot.sections[0].items[0] as { coverImage: unknown }).coverImage).toEqual({
+      id: cover.id,
+      url: `https://media.example.test/${cover.key}`,
+    });
+  });
+
+  it("refuses a cover image with no asset id: a hot-linked URL is not an upload", async () => {
+    const user = await createUserWithSession();
+    const body = content(null);
+    body.sections[0].items = [
+      { id: "p1", title: "Project", coverImage: { url: "https://elsewhere.example.test/a.png" } },
+    ] as never;
+
+    const draft = await saveDraft(user, { subdomain: `p-${user.id.slice(-8)}`, snapshot: body });
+    expect(draft.status).toBe(200);
+    const published = await as(user, request(app).post("/api/v1/portfolios/publish")).send({
+      documentId: draft.body.data.id,
+      subdomain: draft.body.data.slug,
+      revision: draft.body.data.revision,
+    });
+    expect(published.status).toBe(400);
+    expect(published.body.message).toMatch(/unavailable or invalid image/);
+  });
+});
+
 describe("replaced portfolio images are deleted (V-045)", () => {
   it("saving a draft with a new avatar deletes the old object and row after the commit", async () => {
     const user = await createUserWithSession();

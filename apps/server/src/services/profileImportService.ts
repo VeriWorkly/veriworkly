@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomUUID } from "node:crypto";
 
+import { Prisma } from "@prisma/client";
+
 import type { AtsAiResult, AtsConvertedResume } from "@veriworkly/ats-engine/ai";
 import {
   createEmptyMasterProfile,
@@ -12,9 +14,8 @@ import { prisma } from "#lib/prisma";
 import { config } from "#config";
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
-import { cacheDel } from "#lib/redis";
 import { bumpGeneration } from "#lib/cacheGeneration";
-import { cacheNamespaces, masterProfileCacheKey } from "#lib/cacheKeys";
+import { cacheNamespaces } from "#lib/cacheKeys";
 import { masterProfileContentSchema } from "#validators/masterProfileValidator";
 import { getAtsAiPolicy } from "#services/ats/aiPolicy";
 import {
@@ -29,8 +30,12 @@ import { ProfileService } from "#services/profileService";
 import { ProfileImportQuotaService } from "#services/profileImportQuotaService";
 import { EntitlementService } from "#services/entitlementService";
 import { NOT_ENOUGH_CREDITS } from "#services/productNames";
+import { githubFailure, githubGet } from "#services/github/requestPath";
+import { replayFingerprint, CreditService } from "#services/creditService";
 
 const IMPORT_FAILED = "Failed to parse profile data using AI. Please try again.";
+/** The ledger action of a LinkedIn import (also what a replay must match). */
+const LINKEDIN_IMPORT_ACTION = "linkedin_import";
 
 /** GitHub's own rule: 1–39 alphanumerics or hyphens, not starting with a hyphen. */
 const GITHUB_USERNAME = /^[a-z\d](?:[a-z\d-]{0,38})$/i;
@@ -316,10 +321,10 @@ export class ProfileImportService {
 
     // After commit: the list cache was cleared inside createDocument, but a reader between
     // that clear and the commit could have re-cached the pre-import state.
-    await Promise.all([
-      cacheDel(masterProfileCacheKey(userId)),
-      bumpGeneration(cacheNamespaces.documentList(userId)),
-    ]);
+    await bumpGeneration(
+      cacheNamespaces.masterProfile(userId),
+      cacheNamespaces.documentList(userId),
+    );
 
     return document;
   }
@@ -359,18 +364,11 @@ export class ProfileImportService {
 
       token = account.accessToken;
 
-      // Validate token and fetch authenticated user's login username
-      const meResponse = await fetch("https://api.github.com/user", {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "User-Agent": "VeriWorkly-App",
-        },
-      });
+      // Validate token and fetch authenticated user's login username. A failure here is GitHub's
+      // or the link's, never the session's: no 401 (V-240), see `githubFailure`.
+      const meResponse = await githubGet("https://api.github.com/user", token);
 
-      if (!meResponse.ok) {
-        throw new ApiError(401, "GitHub OAuth token is invalid. Reconnect your account.");
-      }
+      if (!meResponse.ok) throw githubFailure(meResponse, true);
 
       const meData = await meResponse.json();
       targetUsername = meData.login;
@@ -382,32 +380,29 @@ export class ProfileImportService {
       await ProfileImportQuotaService.consumePaidGithubImportQuota(userId);
     }
 
-    // Fetch user details
-    const headers: HeadersInit = {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "VeriWorkly-App",
-    };
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
-    const profileResponse = await fetch(`https://api.github.com/users/${targetUsername}`, {
-      headers,
-    });
-    if (!profileResponse.ok) {
-      throw new ApiError(
-        profileResponse.status === 404 ? 404 : 502,
-        `GitHub profile for "${targetUsername}" not found or API call failed.`,
-      );
-    }
+    // Fetch user details. Each call has a deadline and a network error is a 502 (V-243).
+    const profileResponse = await githubGet(
+      `https://api.github.com/users/${targetUsername}`,
+      token,
+    );
+    if (profileResponse.status === 404)
+      throw new ApiError(404, `GitHub profile for "${targetUsername}" not found.`);
+    if (!profileResponse.ok) throw githubFailure(profileResponse, !isPaid);
     const profileData = await profileResponse.json();
 
-    // Fetch repositories
-    const reposResponse = await fetch(
-      `https://api.github.com/users/${targetUsername}/repos?sort=updated&per_page=30`,
-      { headers },
-    );
-    const reposData = reposResponse.ok ? await reposResponse.json() : [];
+    // Fetch repositories: optional, so any failure imports the profile without them.
+    let reposData: any[] = [];
+    try {
+      const reposResponse = await githubGet(
+        `https://api.github.com/users/${targetUsername}/repos?sort=updated&per_page=30`,
+        token,
+      );
+      if (reposResponse.ok) reposData = await reposResponse.json();
+    } catch (error) {
+      logger.warn("GitHub repositories could not be read; importing the profile without them", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     // Map GitHub response directly without AI
     const resumeJson = mapGithubToResumeData(profileData, reposData);
@@ -429,8 +424,31 @@ export class ProfileImportService {
    * for users without paid access. The credits are reserved before the model is called (a short
    * balance is a 402 and nothing runs), and are charged only once the import has committed: a
    * provider failure, unusable output or a failed write releases them.
+   *
+   * The same guarantees as the other AI routes (V-239): the caller's `requestId` keys the
+   * reservation, and a retry with it after a lost response gets the stored document back
+   * (`replayed: true`) before any limit is checked or anything is charged; `signal` ends the
+   * provider call at the request deadline or when the client leaves. The controller holds one of
+   * the user's AI slots around all of it.
    */
-  static async importFromLinkedin(userId: string, profileText: string, replaceMaster: boolean) {
+  static async importFromLinkedin(
+    userId: string,
+    profileText: string,
+    replaceMaster: boolean,
+    options: { requestId?: string; signal?: AbortSignal } = {},
+  ) {
+    const fingerprint = replayFingerprint({ profileText, replaceMaster });
+    if (options.requestId) {
+      const stored = await CreditService.storedResult(
+        userId,
+        options.requestId,
+        LINKEDIN_IMPORT_ACTION,
+        fingerprint,
+      );
+      if (stored && typeof stored === "object" && !Array.isArray(stored))
+        return { ...stored, replayed: true };
+    }
+
     const isPaid = await EntitlementService.isPaid(userId);
 
     // Limits first: the AI call costs money and the quota must not be spent on a 402.
@@ -439,7 +457,9 @@ export class ProfileImportService {
 
     const policy = getAtsAiPolicy();
     const route = policy.resumeConversion;
-    const requestId = `linkedin-import:${randomUUID()}`;
+    const requestId = options.requestId ?? `linkedin-import:${randomUUID()}`;
+    // Set once the import has committed; the charge stores it as the reply to a retry.
+    let delivered: Prisma.InputJsonValue | null = null;
 
     let held: HeldResult<AtsConvertedResume>;
     try {
@@ -453,13 +473,14 @@ export class ProfileImportService {
         userId,
         requestId,
         credits: route.credits,
-        action: "linkedin_import",
+        action: LINKEDIN_IMPORT_ACTION,
         reason: "AI LinkedIn import",
         failure: IMPORT_FAILED,
+        ...(options.requestId ? { replay: { fingerprint, response: () => delivered ?? {} } } : {}),
         run: () =>
           createServerAtsAi(requestId).convertResume(
             { resumeText: profileText },
-            taskRoute(route, policy.prompts.resumeConversion),
+            { ...taskRoute(route, policy.prompts.resumeConversion), signal: options.signal },
           ),
       });
     } catch (error) {
@@ -483,6 +504,8 @@ export class ProfileImportService {
       await held.release();
       throw error;
     }
+
+    delivered = JSON.parse(JSON.stringify(document)) as Prisma.InputJsonValue;
 
     try {
       await held.commit();

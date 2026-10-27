@@ -382,7 +382,8 @@ describe("soft-deleting a PORTFOLIO document (V-049)", () => {
       },
     });
     await prisma.document.update({ where: { id: documentId }, data: { visibility: "PUBLIC" } });
-    await cacheSet(publicPortfolioCacheKey(subdomain), { stale: true }, 600);
+    const siteKey = (await publicPortfolioCacheKey(subdomain))!;
+    await cacheSet(siteKey, { stale: true }, 600);
 
     const deleted = await api.delete(`/api/v1/documents/${documentId}`);
     expect(deleted.status).toBe(200);
@@ -398,7 +399,9 @@ describe("soft-deleting a PORTFOLIO document (V-049)", () => {
     expect(row.deletedAt).toBeInstanceOf(Date);
     expect(row.visibility).toBe("PRIVATE");
 
-    expect(await cacheGet(publicPortfolioCacheKey(subdomain))).toBeNull();
+    // The site's generation moved on: the old entry is unreachable, the new key empty.
+    expect(await publicPortfolioCacheKey(subdomain)).not.toBe(siteKey);
+    expect(await cacheGet((await publicPortfolioCacheKey(subdomain))!)).toBeNull();
   });
 
   it("leaves another document's publication alone", async () => {

@@ -22,6 +22,13 @@ const allowedTypes = new Map([
 const maxBytes = 5 * 1024 * 1024;
 const MAX_UPLOADS_PER_WINDOW = 20;
 const UPLOAD_WINDOW_MS = 60 * 60 * 1000;
+/** How long a presigned PUT URL stays valid. */
+const UPLOAD_URL_TTL_SECONDS = 600;
+/**
+ * How long a DELETED row is kept: past the URL's life (with clock-skew room), nothing can PUT to
+ * its key any more, so deleting the object then is final (V-224).
+ */
+const DELETED_ASSET_HOLD_MS = (UPLOAD_URL_TTL_SECONDS + 5 * 60) * 1000;
 /** How long an abandoned upload, or a completed image nothing references, is kept. */
 const STALE_ASSET_AGE_MS = 24 * 60 * 60 * 1000;
 let client: S3Client | null = null;
@@ -35,21 +42,23 @@ function assetIdOf(value: unknown): string | null {
 }
 
 /**
- * Every asset id a stored portfolio body references: the avatar, the social image, and each
- * item's cover on the main page and on every extra page. Reads stored JSON without parsing it
- * against the schema, so an older or partly invalid body still protects the images it shows.
+ * Calls `visit` with every image slot of a portfolio body: the avatar, the social image, and each
+ * item's cover on the main page and on every extra page. `visit` gets the slot's value and a
+ * setter for it. Reads JSON without parsing it against the schema, so an older or partly invalid
+ * body is still walked.
  */
-export function referencedAssetIds(content: unknown): Set<string> {
-  const ids = new Set<string>();
-  if (!isRecord(content)) return ids;
+function forEachImageSlot(
+  content: unknown,
+  visit: (value: unknown, set: (next: unknown) => void) => void,
+) {
+  if (!isRecord(content)) return;
 
-  const add = (value: unknown) => {
-    const id = assetIdOf(value);
-    if (id) ids.add(id);
+  const slot = (holder: unknown, field: string) => {
+    if (isRecord(holder)) visit(holder[field], (next) => (holder[field] = next));
   };
 
-  if (isRecord(content.identity)) add(content.identity.avatar);
-  if (isRecord(content.seo)) add(content.seo.socialImage);
+  slot(content.identity, "avatar");
+  slot(content.seo, "socialImage");
 
   const sectionLists = [
     content.sections,
@@ -62,11 +71,46 @@ export function referencedAssetIds(content: unknown): Set<string> {
     if (!Array.isArray(sections)) continue;
     for (const section of sections) {
       if (!isRecord(section) || !Array.isArray(section.items)) continue;
-      for (const item of section.items) if (isRecord(item)) add(item.coverImage);
+      for (const item of section.items) slot(item, "coverImage");
     }
   }
+}
 
+/**
+ * Every asset id a stored portfolio body references (see `forEachImageSlot`), so an older or
+ * partly invalid body still protects the images it shows.
+ */
+export function referencedAssetIds(content: unknown): Set<string> {
+  const ids = new Set<string>();
+  forEachImageSlot(content, (value) => {
+    const id = assetIdOf(value);
+    if (id) ids.add(id);
+  });
   return ids;
+}
+
+/** Whether any image slot holds something other than empty or an uploaded asset reference. */
+export function hasUnownedImageSlot(content: unknown): boolean {
+  let found = false;
+  forEachImageSlot(content, (value) => {
+    if (value !== null && value !== undefined && !assetIdOf(value)) found = true;
+  });
+  return found;
+}
+
+/**
+ * A copy of `content` whose every image url is rebuilt from the stored object's key (V-227): the
+ * posted url is a request, and a published site must never hot-link an image that skipped the
+ * upload cap and the type checks. `keys` maps each referenced asset id to its key.
+ */
+export function withStoredAssetUrls<T>(content: T, keys: Map<string, string>): T {
+  const copy = structuredClone(content);
+  forEachImageSlot(copy, (value, set) => {
+    const id = assetIdOf(value);
+    const key = id ? keys.get(id) : undefined;
+    if (id && key) set({ ...(value as Record<string, unknown>), id, url: publicAssetUrl(key) });
+  });
+  return copy;
 }
 
 /** The `suspensionReason` of the user's own Unpublish (see `PortfolioService`). */
@@ -125,6 +169,11 @@ async function deleteAssetObject(s3: S3Client, asset: { id: string; key: string 
   await prisma.portfolioAsset.deleteMany({ where: { id: asset.id } });
 }
 
+/** The public media URL of a stored object. Only ever built from the key we chose. */
+export function publicAssetUrl(key: string) {
+  return `${config.r2.publicBaseUrl}/${key}`;
+}
+
 function getClient() {
   if (
     !config.r2.endpoint ||
@@ -180,14 +229,16 @@ export class PortfolioAssetService {
         ContentType: input.mimeType,
         ContentLength: input.sizeBytes,
       }),
-      { expiresIn: 600 },
+      { expiresIn: UPLOAD_URL_TTL_SECONDS },
     );
 
-    return { assetId: asset.id, uploadUrl, expiresInSeconds: 600 };
+    return { assetId: asset.id, uploadUrl, expiresInSeconds: UPLOAD_URL_TTL_SECONDS };
   }
 
   static async complete(userId: string, assetId: string, checksum?: string) {
-    const asset = await prisma.portfolioAsset.findFirst({ where: { id: assetId, userId } });
+    const asset = await prisma.portfolioAsset.findFirst({
+      where: { id: assetId, userId, status: { not: "DELETED" } },
+    });
 
     if (!asset) throw new ApiError(404, "Portfolio asset not found.");
 
@@ -222,12 +273,14 @@ export class PortfolioAssetService {
       }
     }
 
-    const updated = await prisma.portfolioAsset.update({
-      where: { id: asset.id },
+    // Conditional: a delete that landed during the HEAD keeps the row DELETED.
+    const updated = await prisma.portfolioAsset.updateMany({
+      where: { id: asset.id, status: { not: "DELETED" } },
       data: { status: "READY", checksum },
     });
+    if (updated.count === 0) throw new ApiError(404, "Portfolio asset not found.");
 
-    return { id: updated.id, url: `${config.r2.publicBaseUrl}/${updated.key}` };
+    return { id: asset.id, url: publicAssetUrl(asset.key) };
   }
 
   /**
@@ -247,7 +300,13 @@ export class PortfolioAssetService {
     // the job runs on a schedule and drains any remainder on the next tick.
     const [pending, ready] = await Promise.all([
       prisma.portfolioAsset.findMany({
-        where: { status: "PENDING", createdAt: { lt: staleBefore } },
+        where: {
+          OR: [
+            { status: "PENDING", createdAt: { lt: staleBefore } },
+            // Deleted by the owner while the PUT URL was valid: the object a late PUT wrote goes now.
+            { status: "DELETED", createdAt: { lt: new Date(Date.now() - DELETED_ASSET_HOLD_MS) } },
+          ],
+        },
         select: { id: true, key: true },
         take: 500,
       }),
@@ -313,8 +372,16 @@ export class PortfolioAssetService {
     }
   }
 
+  /**
+   * The owner removes an image. The object goes at once; the row goes too, unless the upload's
+   * presigned PUT URL is still valid (V-224): then it stays as DELETED until the stale sweep, so it
+   * keeps counting toward the hourly upload cap (deleting it gave the slot back while the URL could
+   * still write an object no row knew of) and the sweep removes whatever a late PUT wrote.
+   */
   static async delete(userId: string, assetId: string) {
-    const asset = await prisma.portfolioAsset.findFirst({ where: { id: assetId, userId } });
+    const asset = await prisma.portfolioAsset.findFirst({
+      where: { id: assetId, userId, status: { not: "DELETED" } },
+    });
 
     if (!asset) throw new ApiError(404, "Portfolio asset not found.");
 
@@ -336,7 +403,10 @@ export class PortfolioAssetService {
       );
 
     await getClient().send(new DeleteObjectCommand({ Bucket: config.r2.bucket, Key: asset.key }));
-    await prisma.portfolioAsset.delete({ where: { id: asset.id } });
+
+    if (asset.createdAt.getTime() > Date.now() - DELETED_ASSET_HOLD_MS)
+      await prisma.portfolioAsset.update({ where: { id: asset.id }, data: { status: "DELETED" } });
+    else await prisma.portfolioAsset.delete({ where: { id: asset.id } });
   }
 
   /**

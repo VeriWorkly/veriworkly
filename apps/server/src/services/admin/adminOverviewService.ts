@@ -18,7 +18,10 @@ import { getApiKeySummary } from "#services/admin/adminApiKeyService";
 import { getBillingSummary } from "#services/admin/adminBillingService";
 import { withAccountPlaceholder } from "#services/admin/deletedAccountPlaceholder";
 import { getDocumentSummary } from "#services/admin/adminDocumentService";
-import { getPortfolioSummary } from "#services/admin/adminPortfolioService";
+import {
+  getPortfolioSummary,
+  SUSPENDED_FOR_REVIEW_WHERE,
+} from "#services/admin/adminPortfolioService";
 import { getRecentAuditEntries } from "#services/admin/adminAuditService";
 import { getJobStatus, getSystemHealth } from "#services/admin/adminSystemService";
 
@@ -202,7 +205,7 @@ async function buildAdminOverview(days: number) {
         (value) => value.commissionsByStatus.PENDING?.count ?? 0,
       ),
       failedWebhooks: count(billingResult, (value) => value.webhooks.failed),
-      suspendedPortfolios: count(portfoliosResult, (value) => value.suspended),
+      suspendedPortfolios: count(portfoliosResult, (value) => value.suspendedForReview),
       pendingPortfolioAssets: count(jobsResult, (value) => value.pendingPortfolioAssets),
     },
   };
@@ -231,7 +234,7 @@ async function buildActionQueue() {
     prisma.affiliateWithdrawal.count({ where: { status: "REQUESTED" } }),
     prisma.affiliateCommission.count({ where: { status: "PENDING" } }),
     prisma.billingWebhookEvent.count({ where: { status: "FAILED" } }),
-    prisma.portfolioPublication.count({ where: { status: "SUSPENDED" } }),
+    prisma.portfolioPublication.count({ where: SUSPENDED_FOR_REVIEW_WHERE }),
     prisma.portfolioAsset.count({ where: { status: "PENDING" } }),
   ]);
 

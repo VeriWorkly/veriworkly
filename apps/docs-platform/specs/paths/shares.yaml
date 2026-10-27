@@ -16,6 +16,9 @@ createShareLink:
       The caller **must have claimed a username first**, since it forms the public URL
       (`/{username}/{slug}`); without one the request fails with `400`. Requires the
       `resume:write` scope when called with an API key.
+
+      The snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in
+      the response, nor in the owner's list of links.
     requestBody:
       required: true
       content:
@@ -67,6 +70,12 @@ createShareLink:
               success: false
               statusCode: 404
               message: "Document not found"
+      "413":
+        description: The snapshot is larger than 1 MB.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
 
 listSharedDocumentIds:
   get:

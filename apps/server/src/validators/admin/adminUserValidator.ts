@@ -5,6 +5,7 @@ import {
   adminReasonSchema,
   adminSearchSchema,
 } from "#validators/admin/adminCommonValidator";
+import { usernameSchema } from "#validators/userValidator";
 
 export const adminUserListQuerySchema = adminPaginationSchema.merge(adminSearchSchema).extend({
   role: z.enum(["USER", "AMBASSADOR", "ADMIN"]).optional(),
@@ -24,14 +25,9 @@ export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
 export const adminUserUpdateSchema = z
   .object({
     name: z.string().trim().min(1).max(120).nullable().optional(),
-    username: z
-      .string()
-      .trim()
-      .min(3)
-      .max(39)
-      .regex(/^[a-z0-9][a-z0-9-]*$/i, "Username may only contain letters, numbers and hyphens")
-      .nullable()
-      .optional(),
+    // The user rule, not a looser admin one (V-233): share links are looked up lowercased, so a
+    // mixed-case name 404ed every link while availability called the lowercase one free.
+    username: usernameSchema.nullable().optional(),
     role: z.enum(["USER", "AMBASSADOR", "ADMIN"]).optional(),
     emailVerified: z.boolean().optional(),
     autoSyncEnabled: z.boolean().optional(),

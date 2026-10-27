@@ -5,7 +5,7 @@ import { ApiError } from "#lib/errors";
 
 import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
 import { bumpGeneration } from "#lib/cacheGeneration";
-import { cacheNamespaces, masterProfileCacheKey, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
 import { logger } from "#lib/logger";
 import { usernameInvalidReason } from "#utils/slugs";
 import { revokeAllSessionsForUserSafely } from "#auth/sessions";
@@ -22,6 +22,7 @@ import { redactBillingEventsForUser, redactBillingTextForUser } from "#services/
 import { EntitlementService } from "#services/entitlementService";
 import { PortfolioAssetService } from "#services/portfolioAssetService";
 import { sendAccountDeletedEmail } from "#services/mail/index";
+import { BillingService, hasOpenCheckout } from "#services/billingService";
 
 const userProfileSelect = {
   id: true,
@@ -216,6 +217,80 @@ export async function findChargeableSubscription(userId: string, now = new Date(
 
 type ChargeableSubscription = NonNullable<Awaited<ReturnType<typeof findChargeableSubscription>>>;
 
+/**
+ * Refuses a deletion while a checkout session is open or being created (V-238): it can still be
+ * paid for up to a day, and a payment for an account that no longer exists cannot be
+ * reconciled. 409 with `details.code: "CHECKOUT_IN_PROGRESS"`, the code the checkout lock uses.
+ * Redis not answering is a 503: the deletion is not allowed on a guess.
+ *
+ * `askProvider` (admin deletion): an open session is checked with the provider the way the
+ * customer's own cancel does (`BillingService.cancelCheckout`). One nobody is paying is cleared
+ * and the deletion goes on; one being paid, one still being created, or a provider that cannot be
+ * asked keeps the refusal (409, or 503 when the provider did not answer).
+ */
+export async function assertNoOpenCheckout(
+  userId: string,
+  options: { askProvider?: boolean } = {},
+) {
+  if (options.askProvider) {
+    try {
+      if (await hasOpenCheckout(userId)) await BillingService.cancelCheckout(userId);
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 503) throw error;
+      if (!(error instanceof ApiError && error.statusCode === 409)) {
+        logger.warn("Could not settle the open checkout before an admin account deletion", {
+          userId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw new ApiError(503, "Account deletion is temporarily unavailable. Try again shortly.");
+      }
+      // A payment in flight or a session still being created: the refusal below stands.
+    }
+  }
+
+  let open: boolean;
+  try {
+    open = await hasOpenCheckout(userId);
+  } catch (error) {
+    logger.warn("Could not read the checkout record before an account deletion", {
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new ApiError(503, "Account deletion is temporarily unavailable. Try again shortly.");
+  }
+
+  if (open)
+    throw new ApiError(
+      409,
+      "A checkout is still open for this account. Finish or cancel it before deleting the account.",
+      { code: "CHECKOUT_IN_PROGRESS" },
+    );
+}
+
+/**
+ * Everything after a deletion has committed, shared by self-service and admin deletion (V-232):
+ * the R2 objects, every per-user cache, the public portfolio in the portfolio app's ISR cache,
+ * and the confirmation email. Best effort: the account is gone, so nothing here may throw.
+ */
+export async function finishAccountDeletion(input: {
+  cacheTargets: DeletedUserCacheTargets | null;
+  assetKeys: string[];
+  email: string;
+  name: string | null;
+}) {
+  await Promise.allSettled([
+    PortfolioAssetService.deleteAssetKeys(input.assetKeys),
+    ...(input.cacheTargets ? [purgeDeletedUserCaches(input.cacheTargets)] : []),
+  ]);
+
+  const subdomain = input.cacheTargets?.subdomain ?? null;
+  if (subdomain) void revalidatePublicPortfolios([subdomain]);
+
+  void sendAccountDeletedEmail(input.email, input.name || "").catch((error) => {
+    logger.warn("Failed to send account deletion confirmation email", { error });
+  });
+}
+
 function formatDay(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -282,9 +357,9 @@ export async function purgeDeletedUserCaches(targets: DeletedUserCacheTargets): 
 
   await Promise.allSettled([
     cacheDel(userProfileCacheKey(userId)),
-    cacheDel(masterProfileCacheKey(userId)),
     // One round trip of INCRs: every document, list and public share variant goes dark at once.
     bumpGeneration(
+      cacheNamespaces.masterProfile(userId),
       ...targets.documentIds.map((documentId) => cacheNamespaces.document(userId, documentId)),
       ...(username ? [cacheNamespaces.publicShare(username)] : []),
       cacheNamespaces.documentList(userId),
@@ -313,7 +388,7 @@ async function refreshUserCaches(
 ) {
   await Promise.all([
     cacheSet(userProfileCacheKey(userId), updated, 1800),
-    cacheDel(masterProfileCacheKey(userId)),
+    bumpGeneration(cacheNamespaces.masterProfile(userId)),
     ...(identityChanged ? [invalidateLeaderboards()] : []),
   ]);
 }
@@ -488,6 +563,8 @@ export class UserService {
       throw new ApiError(409, chargeableSubscriptionMessage(liveSubscription));
     }
 
+    await assertNoOpenCheckout(userId);
+
     /**
      * Refuse to delete while a withdrawal is open. The cascade would remove a REQUESTED or
      * APPROVED `AffiliateWithdrawal` the admin is about to pay (or has already sent money for),
@@ -556,18 +633,7 @@ export class UserService {
     // Best-effort cleanup from here on. The account is already gone, so none of this
     // may throw back to the caller — a failed cache purge or a failed R2 delete must
     // not turn a successful deletion into a 500 the user reads as "it didn't work".
-    const subdomain = cacheTargets?.subdomain ?? null;
-
-    await Promise.allSettled([
-      PortfolioAssetService.deleteAssetKeys(assetKeys),
-      ...(cacheTargets ? [purgeDeletedUserCaches(cacheTargets)] : []),
-    ]);
-
-    if (subdomain) void revalidatePublicPortfolios([subdomain]);
-
-    void sendAccountDeletedEmail(user.email, user.name || "").catch((error) => {
-      logger.warn("Failed to send account deletion confirmation email", { error });
-    });
+    await finishAccountDeletion({ cacheTargets, assetKeys, email: user.email, name: user.name });
 
     return { success: true };
   }

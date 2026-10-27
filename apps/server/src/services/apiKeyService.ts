@@ -246,6 +246,9 @@ async function getAuthCache(keyHash: string) {
   }
 }
 
+/** Live (active, unrevoked, unexpired) keys one user may hold (V-242). */
+export const MAX_LIVE_API_KEYS_PER_USER = 10;
+
 export class ApiKeyService {
   static async generateKey(userId: string, input: ApiKeyCreateInput) {
     const rawKey = generateRawKey();
@@ -255,32 +258,54 @@ export class ApiKeyService {
 
     const hashedKey = hashKey(rawKey);
 
-    const created = await prisma.apiKey.create({
-      data: {
-        keyHash: hashedKey,
-        keyPrefix: keyPrefix(rawKey),
-        keySuffix: keySuffix(rawKey),
-        name: input.name,
-        scopes,
-        userId,
-        rateLimit: normalizeRateLimit(input.rateLimit),
-        expiresAt,
-      },
-      select: {
-        id: true,
-        keyPrefix: true,
-        keySuffix: true,
-        name: true,
-        userId: true,
-        isActive: true,
-        rateLimit: true,
-        scopes: true,
-        expiresAt: true,
-        revokedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        lastUsed: true,
-      },
+    // One cap per user (V-242): each key carries its own rate limit, so without it N keys were N
+    // times the budget. Counted and created under the user's advisory lock, so two racing
+    // creates at the cap cannot both pass the count.
+    const created = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`apikeys:${userId}`}))`;
+      const now = new Date();
+      const live = await tx.apiKey.count({
+        where: {
+          userId,
+          isActive: true,
+          revokedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+      });
+      if (live >= MAX_LIVE_API_KEYS_PER_USER)
+        throw new ApiError(
+          409,
+          `You can have at most ${MAX_LIVE_API_KEYS_PER_USER} active API keys. Revoke one you no longer use first.`,
+          { code: "API_KEY_LIMIT", limit: MAX_LIVE_API_KEYS_PER_USER },
+        );
+
+      return tx.apiKey.create({
+        data: {
+          keyHash: hashedKey,
+          keyPrefix: keyPrefix(rawKey),
+          keySuffix: keySuffix(rawKey),
+          name: input.name,
+          scopes,
+          userId,
+          rateLimit: normalizeRateLimit(input.rateLimit),
+          expiresAt,
+        },
+        select: {
+          id: true,
+          keyPrefix: true,
+          keySuffix: true,
+          name: true,
+          userId: true,
+          isActive: true,
+          rateLimit: true,
+          scopes: true,
+          expiresAt: true,
+          revokedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          lastUsed: true,
+        },
+      });
     });
 
     await Promise.all([invalidateProfileCache(userId), invalidateAuthCache(hashedKey)]);
