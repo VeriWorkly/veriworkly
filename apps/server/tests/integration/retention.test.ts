@@ -9,6 +9,10 @@ import {
   type RetentionSettings,
 } from "#jobs/retentionJob";
 import { pool, prisma } from "#lib/prisma";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  MONEY_AUDIT_ACTION_PREFIXES,
+} from "#services/admin/adminAuditService";
 import { restoreDocument as adminRestoreDocument } from "#services/admin/adminDocumentService";
 
 import { createUserWithSession } from "./helpers/auth.js";
@@ -173,6 +177,84 @@ describe("retention rules (V-116)", () => {
     expect(summary.affected).toEqual({ auditLogs: 1, adminAuditEntries: 1 });
     expect(await ids("AuditLog")).toEqual(["audit-fresh"]);
     expect(await ids("AdminAuditEntry")).toEqual(["admin-fresh"]);
+  });
+
+  /**
+   * Every admin action, decided once (V-333 review): does it record money, an amount or a rate?
+   * Keyed by `ADMIN_AUDIT_ACTIONS`, so a new action fails the test below until someone decides,
+   * and a money action outside the 7-year class fails the retention check after it.
+   */
+  const RECORDS_MONEY: Record<keyof typeof ADMIN_AUDIT_ACTIONS, boolean> = {
+    userUpdate: false,
+    userRoleChange: false,
+    userDelete: false,
+    userSessionsRevoke: false,
+    affiliateUpdate: true, // a tier change sets the commission rate
+    affiliateCommissionCreate: true,
+    affiliateCommissionUpdate: true,
+    affiliateWithdrawalUpdate: true,
+    affiliateBalanceForfeit: true, // the forfeited balance and its unrecovered claw-back
+    ambassadorApprove: false,
+    ambassadorReject: false,
+    portfolioStatusChange: false,
+    portfolioUnpublish: false,
+    documentVisibility: false,
+    documentDelete: false,
+    documentRestore: false,
+    shareLinkRevoke: false,
+    subscriptionUpdate: true,
+    creditGrant: true,
+    entitlementGrant: true,
+    entitlementRevoke: true,
+    webhookReplay: true,
+    apiKeyUpdate: false,
+    apiKeyRevoke: false,
+    githubSync: false,
+    cacheFlush: false,
+    roadmapCreate: false,
+    roadmapUpdate: false,
+    roadmapDelete: false,
+    changelogCreate: false,
+    changelogUpdate: false,
+    changelogDelete: false,
+    changelogSync: false,
+  };
+
+  it("classifies every admin action as money or not, and the money class matches (V-333)", () => {
+    expect(Object.keys(RECORDS_MONEY).sort()).toEqual(Object.keys(ADMIN_AUDIT_ACTIONS).sort());
+    for (const [key, money] of Object.entries(RECORDS_MONEY)) {
+      const action = ADMIN_AUDIT_ACTIONS[key as keyof typeof ADMIN_AUDIT_ACTIONS];
+      const inMoneyClass = MONEY_AUDIT_ACTION_PREFIXES.some((prefix) => action.startsWith(prefix));
+      expect(inMoneyClass, `${action} is ${money ? "" : "not "}a money record`).toBe(money);
+    }
+  });
+
+  it("keeps every money action past 1 year and deletes it only after 7 (V-333, V-344)", async () => {
+    const moneyActions = (Object.keys(RECORDS_MONEY) as Array<keyof typeof ADMIN_AUDIT_ACTIONS>)
+      .filter((key) => RECORDS_MONEY[key])
+      .map((key) => ADMIN_AUDIT_ACTIONS[key]);
+    await prisma.adminAuditEntry.createMany({
+      data: moneyActions.flatMap((action) => [
+        { id: `${action}-2y`, action, targetType: "User", createdAt: at(730, "old") },
+        { id: `${action}-8y`, action, targetType: "User", createdAt: at(2555, "old") },
+      ]),
+    });
+
+    const yearly = await applyRetention({
+      settings: { ...disabled, adminAuditEntries: 365 },
+      now,
+    });
+    expect(yearly.affected).toEqual({ adminAuditEntries: 0 });
+    expect(await prisma.adminAuditEntry.count()).toBe(moneyActions.length * 2);
+
+    const sevenYears = await applyRetention({
+      settings: { ...disabled, adminMoneyAuditEntries: 2555 },
+      now,
+    });
+    expect(sevenYears.affected).toEqual({ adminMoneyAuditEntries: moneyActions.length });
+    expect((await ids("AdminAuditEntry")).sort()).toEqual(
+      moneyActions.map((action) => `${action}-2y`).sort(),
+    );
   });
 
   it("deletes terminal credit reservations after 90 days and never touches PENDING ones", async () => {
