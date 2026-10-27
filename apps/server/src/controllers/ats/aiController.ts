@@ -83,6 +83,36 @@ async function refundScanQuietly(
   }
 }
 
+/**
+ * No model could be routed, so the scan goes back and the response says so. Never throws (V-388):
+ * the refund decrements and then reads the summary, and an error reaching the caller's catch
+ * refunded a second time. A failure after the decrement keeps the scan returned and answers with
+ * the quota from before; a failure before it (the period lookup, the decrement itself) means
+ * nothing went back yet, so the refund is tried once more before the loss is logged.
+ */
+async function refundUnroutedScan(
+  userId: string,
+  address: string,
+  requestId: string,
+  quota: AtsQuotaSummary,
+) {
+  let returned = false;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      return await AtsQuotaService.refund(userId, address, quota, () => {
+        returned = true;
+      });
+    } catch (error) {
+      logger.error(
+        returned ? "ATS scan returned; its quota summary failed" : "ATS scan refund failed",
+        { requestId, attempt, error: error instanceof Error ? error.message : String(error) },
+      );
+      if (returned) return quota;
+    }
+  }
+  return quota;
+}
+
 export class AtsAiController {
   static async analyze(req: Request, res: Response, next: NextFunction) {
     try {
@@ -349,7 +379,7 @@ export class AtsAiController {
 
     return {
       ...delivered,
-      quota: routed ? quota : await AtsQuotaService.refund(userId, ip(req), quota),
+      quota: routed ? quota : await refundUnroutedScan(userId, ip(req), input.requestId, quota),
     };
   }
 

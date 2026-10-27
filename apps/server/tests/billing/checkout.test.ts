@@ -375,6 +375,94 @@ describe("cancelCheckout", () => {
     expect(mockRedis.del).not.toHaveBeenCalled();
   });
 
+  // V-377: a customer in 3-D Secure or a bank authorisation is mid-payment. Clearing the record
+  // there lets a second session for the same product be opened and paid. Only a session the
+  // provider says nobody is paying (none started, failed, cancelled, card refused) is cleared,
+  // and a status this code does not know is treated as paying.
+  it.each([
+    "succeeded",
+    "processing",
+    "requires_customer_action",
+    "requires_confirmation",
+    "requires_capture",
+    "requires_merchant_action",
+    "partially_captured",
+    "partially_captured_and_capturable",
+    "a_status_added_later",
+  ])("keeps a session whose payment is %s", async (paymentStatus) => {
+    await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+    dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+    await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
+    expect(store.has(key())).toBe(true);
+  });
+
+  /**
+   * V-377 review: a customer who abandons the 3-D Secure or bank page, or a state this code does
+   * not know, must not hold the checkout (and account deletion) for the session's whole 24 h.
+   * Once the session is an hour old those are cleared; money actually moving never is.
+   */
+  const ageOpenRecord = (minutes: number) => {
+    const record = JSON.parse(store.get(key())!.value) as { createdAt: string };
+    record.createdAt = new Date(Date.now() - minutes * 60_000).toISOString();
+    store.set(key(), { value: JSON.stringify(record) });
+  };
+
+  it.each(["requires_customer_action", "requires_confirmation", "a_status_added_later"])(
+    "clears a session stuck in %s once it is over an hour old",
+    async (paymentStatus) => {
+      await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+      ageOpenRecord(61);
+      dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+      await expect(BillingService.cancelCheckout(USER)).resolves.toMatchObject({
+        cleared: ["portfolio_pro"],
+      });
+      expect(store.has(key())).toBe(false);
+    },
+  );
+
+  it.each(["requires_customer_action", "requires_confirmation", "a_status_added_later"])(
+    "keeps a session in %s that is under an hour old",
+    async (paymentStatus) => {
+      await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+      ageOpenRecord(59);
+      dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+      await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
+      expect(store.has(key())).toBe(true);
+    },
+  );
+
+  it.each([
+    "succeeded",
+    "processing",
+    "requires_capture",
+    "requires_merchant_action",
+    "partially_captured",
+    "partially_captured_and_capturable",
+  ])("keeps a session whose payment is %s however old it is", async (paymentStatus) => {
+    await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+    ageOpenRecord(23 * 60);
+    dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+    await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
+    expect(store.has(key())).toBe(true);
+  });
+
+  it.each([null, undefined, "failed", "cancelled", "requires_payment_method"])(
+    "clears a session whose payment is %s",
+    async (paymentStatus) => {
+      await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+      dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+      await expect(BillingService.cancelCheckout(USER)).resolves.toMatchObject({
+        cleared: ["portfolio_pro"],
+      });
+      expect(store.has(key())).toBe(false);
+    },
+  );
+
   it("refuses to clear when the provider cannot be asked", async () => {
     await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
     dodoMock.retrieve.mockRejectedValueOnce(new Error("timeout"));

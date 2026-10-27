@@ -16,9 +16,15 @@ export function hasWellFormedHostAndProto(headers: IncomingHttpHeaders): boolean
   if (!/^https?$/i.test(proto)) return false;
 
   try {
-    const url = new URL(`${proto.toLowerCase()}://${host}/`);
+    const scheme = proto.toLowerCase();
+    const url = new URL(`${scheme}://${host}/`);
     // The parser accepts credentials and paths inside a host string; a real Host header has none.
-    return url.host === host.toLowerCase() || url.host === host;
+    // It also drops the scheme's default port, which a client or proxy may write out (`:443`
+    // over https, `:80` over http); compare without it, as `isAllowedHost` does (V-396).
+    const defaultPort = scheme === "https" ? ":443" : ":80";
+    const written = host.toLowerCase();
+    const bare = written.endsWith(defaultPort) ? written.slice(0, -defaultPort.length) : written;
+    return url.host === bare;
   } catch {
     return false;
   }

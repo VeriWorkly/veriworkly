@@ -6,7 +6,8 @@ vi.mock("#config", () => ({
   isProduction: true,
 }));
 
-vi.mock("#lib/logger", () => ({
+vi.mock("#lib/logger", async (importOriginal) => ({
+  maskEmails: (await importOriginal<typeof import("#lib/logger")>()).maskEmails,
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
@@ -64,6 +65,13 @@ describe("errorHandler audit diagnostics", () => {
     );
     errorHandler(new multer.MulterError("LIMIT_FIELD_COUNT"), req, res, next);
     expect(statusMock).toHaveBeenLastCalledWith(400);
+  });
+
+  // V-394: the column outlives the account it came from, so an address in a message is masked.
+  it("masks email addresses in an unhandled error's message", () => {
+    errorHandler(new Error("duplicate row for jane.doe@example.com"), req, res, next);
+
+    expect(res.locals.errorMessage).toBe("duplicate row for j***@e***.com");
   });
 
   it("truncates so a large error payload cannot become an unbounded column write", () => {

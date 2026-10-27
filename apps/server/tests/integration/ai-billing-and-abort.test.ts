@@ -333,6 +333,89 @@ describe("V-037 the paid scan period is anchored on the grant, not on today", ()
   });
 });
 
+/**
+ * V-398, owner decision 2: payers are never shown free. A subscriber or pass holder with an empty
+ * wallet keeps the paid scan tier; an admin comp with an empty wallet does not.
+ */
+describe("V-398 the scan quota never calls a payer free", () => {
+  async function grant(userId: string, source: "SUBSCRIPTION" | "SYSTEM" | "MANUAL", pass = false) {
+    await prisma.entitlementGrant.create({
+      data: {
+        userId,
+        key: "portfolio_publish",
+        source,
+        sourceId: randomUUID(),
+        startsAt: new Date(Date.now() - 60_000),
+        endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ...(pass ? { metadata: { pass: true } } : {}),
+      },
+    });
+  }
+
+  async function quotaTier(user: TestUser) {
+    const quota = await request(app)
+      .get("/api/v1/ats/quota")
+      .set("Origin", STUDIO_ORIGIN)
+      .set("Cookie", user.cookie);
+    expect(quota.status).toBe(200);
+    return quota.body.data as { tier: string; limit: number; canConvertResume: boolean };
+  }
+
+  it("keeps a subscriber with no credits on the paid tier", async () => {
+    const user = await createUserWithSession();
+    await grant(user.id, "SUBSCRIPTION");
+
+    expect(await quotaTier(user)).toMatchObject({
+      tier: "subscriber",
+      limit: 300,
+      canConvertResume: false,
+    });
+  });
+
+  it("keeps a pass holder with no credits on the paid tier", async () => {
+    const user = await createUserWithSession();
+    await grant(user.id, "SYSTEM", true);
+
+    expect(await quotaTier(user)).toMatchObject({ tier: "subscriber", limit: 300 });
+  });
+
+  // Owner decision 2026-10-28: dunning gives no paid features and reads free; a pause reads
+  // `paused`, on the free limits.
+  it.each([
+    ["paused", "paused"],
+    ["on_hold", "free"],
+  ])(
+    "a PAST_DUE subscription whose provider status is %s reads %s, on the free limits",
+    async (rawStatus, tier) => {
+      const user = await createUserWithSession();
+      await prisma.subscription.create({
+        data: {
+          userId: user.id,
+          provider: "dodo",
+          providerSubId: `sub_${randomUUID()}`,
+          productKey: "portfolio_pro",
+          status: "PAST_DUE",
+          rawStatus,
+          interval: "MONTHLY",
+          currentPeriodEnd: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      expect(await quotaTier(user)).toMatchObject({ tier, limit: 2 });
+    },
+  );
+
+  it("leaves an admin comp or a non-pass system grant with no credits on the free tier", async () => {
+    const comp = await createUserWithSession();
+    await grant(comp.id, "MANUAL");
+    const system = await createUserWithSession();
+    await grant(system.id, "SYSTEM");
+
+    expect(await quotaTier(comp)).toMatchObject({ tier: "free", limit: 2 });
+    expect(await quotaTier(system)).toMatchObject({ tier: "free", limit: 2 });
+  });
+});
+
 describe("owner decision 1 (V-178, V-179): credits from any source pay for every ATS AI action", () => {
   it("a credit-pack buyer with no ai_credits grant gets repair, conversion and the paid tier", async () => {
     const user = await createUserWithSession();
