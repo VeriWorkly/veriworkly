@@ -545,7 +545,7 @@
     "added": [
       "Build Shared Packages step in GitHub Actions CI workflows (builds.yaml and tests.yaml) to compile @veriworkly/profile-core before app builds and unit tests execute",
       "Helper functions (itemLabel, itemProse, itemFirst, itemList, itemLinkUrl, formatPeriod) in the portfolio mock template library to enable local and CI test runs without private submodule access",
-      "Comprehensive environment variable documentation in ENV_SETUP.md and 24 missing configuration keys in apps/server/.env.example",
+      "Environment variable documentation in apps/server/.env.example, including 24 configuration keys that were missing from it",
       "Preview asset for the VeriWorkly Special resume template"
     ],
     "improved": [

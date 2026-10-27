@@ -7660,7 +7660,8 @@
           "activeProductKeys": { "type": "array", "items": { "type": "string" } },
           "status": {
             "type": "string",
-            "description": "Subscription status (e.g. ACTIVE, TRIALING, INACTIVE)."
+            "enum": ["INACTIVE", "ACTIVE", "PAST_DUE", "CANCELED"],
+            "description": "Status of the subscription in effect today. `INACTIVE` when none is (no plan, or one that\nhas ended); `PAST_DUE` while a failed renewal's grace runs. There are no trials.\n"
           },
           "interval": {
             "type": "string",
