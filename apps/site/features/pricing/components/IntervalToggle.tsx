@@ -1,9 +1,11 @@
 interface IntervalToggleProps {
   value: "monthly" | "annual";
   onChange: (value: "monthly" | "annual") => void;
+  /** Whole-percent annual saving, from annualSavingsPercent. */
+  savings: number;
 }
 
-const IntervalToggle = ({ value, onChange }: IntervalToggleProps) => {
+const IntervalToggle = ({ value, onChange, savings }: IntervalToggleProps) => {
   return (
     <div className="border-border bg-background grid w-full grid-cols-2 rounded-full border p-1 text-xs font-bold">
       {(["annual", "monthly"] as const).map((interval) => (
@@ -17,7 +19,7 @@ const IntervalToggle = ({ value, onChange }: IntervalToggleProps) => {
           onClick={() => onChange(interval)}
           type="button"
         >
-          {interval === "annual" ? "Yearly (Save 20%)" : "Monthly"}
+          {interval === "annual" ? `Yearly (Save ${savings}%)` : "Monthly"}
         </button>
       ))}
     </div>

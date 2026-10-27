@@ -2,6 +2,7 @@ import { CheckCircle2, Minus } from "lucide-react";
 import { comparisonRows, type ProductKey, type BillingInterval } from "../data/pricingData";
 import { useCurrency } from "../context/CurrencyContext";
 import CheckoutButton from "./CheckoutButton";
+import { annualPerMonth } from "../data/offers";
 
 interface PricingComparisonProps {
   loading: string;
@@ -99,7 +100,7 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
               Best long-term value
             </p>
             <h3 className="mt-2 text-2xl font-bold tracking-tight">
-              A full year for {formatPrice(11.99)} per month.
+              A full year for {formatPrice(annualPerMonth("bundle"))} per month.
             </h3>
           </div>
           <CheckoutButton

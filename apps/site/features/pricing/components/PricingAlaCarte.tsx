@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Zap } from "lucide-react";
 import { customPlans, type ProductKey, type BillingInterval } from "../data/pricingData";
+import { PLAN_PRICES, annualPerMonth, annualSavingsPercent } from "../data/offers";
 import CheckoutButton from "./CheckoutButton";
+import IntervalToggle from "./IntervalToggle";
 import { useCurrency } from "../context/CurrencyContext";
 
 interface PricingAlaCarteProps {
@@ -19,15 +22,10 @@ const PricingAlaCarte = ({
   onCheckout,
 }: PricingAlaCarteProps) => {
   const { formatPrice } = useCurrency();
+  const [billing, setBilling] = useState<"monthly" | "annual">("annual");
   const selectedCustom = customPlans[customPlan];
   const CustomIcon = selectedCustom.icon;
-
-  const rawPriceMap = {
-    portfolio_pro: 9.99,
-    ai_credits: 5.99,
-  };
-
-  const formattedPrice = formatPrice(rawPriceMap[customPlan]);
+  const annual = billing === "annual";
 
   return (
     <section className="border-border border-b py-24 lg:py-32">
@@ -86,14 +84,27 @@ const PricingAlaCarte = ({
               </div>
             </div>
 
-            <div className="min-w-45">
-              <p className="text-4xl font-bold tracking-tight">{formattedPrice}</p>
-              <p className="text-muted mt-1 text-xs font-bold">per month</p>
+            <div className="min-w-56">
+              <p className="text-4xl font-bold tracking-tight">
+                {formatPrice(annual ? annualPerMonth(customPlan) : PLAN_PRICES[customPlan].monthly)}
+              </p>
+              <p className="text-muted mt-1 text-xs font-bold">
+                {annual
+                  ? `per month, ${formatPrice(PLAN_PRICES[customPlan].annual)} billed yearly`
+                  : "per month"}
+              </p>
+              <div className="mt-6">
+                <IntervalToggle
+                  value={billing}
+                  onChange={setBilling}
+                  savings={annualSavingsPercent(customPlan)}
+                />
+              </div>
               <CheckoutButton
-                className="bg-foreground text-background hover:bg-foreground/95 mt-6 w-full"
-                loading={loading === `${customPlan}:monthly`}
+                className="bg-foreground text-background hover:bg-foreground/95 mt-3 w-full"
+                loading={loading === `${customPlan}:${billing}`}
                 disabled={paymentsBlocked}
-                onClick={() => void onCheckout(customPlan, "monthly")}
+                onClick={() => void onCheckout(customPlan, billing)}
               >
                 {paymentsBlocked ? "Payments disabled" : `Choose ${selectedCustom.title}`}
               </CheckoutButton>
