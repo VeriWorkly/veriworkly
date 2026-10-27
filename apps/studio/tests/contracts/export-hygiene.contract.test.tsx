@@ -27,7 +27,13 @@ import {
 import { loadTemplateComponentById, templateRegistry } from "@/templates";
 import { registerPdfTestFonts } from "@/tests/utils/pdf";
 import { getResumeSectionHeading } from "@/features/documents/rendering/resume-render-items";
-import { parseResumeDataInput } from "@/features/resume/schemas/resume-storage-schema";
+import {
+  parseResumeDataInput,
+  parseResumeImport,
+} from "@/features/resume/schemas/resume-storage-schema";
+import { buildResumeDocx } from "@/features/documents/export/docx/resume-docx";
+import { PAPER_SIZES, getPageGeometry, type PaperSize } from "@/templates/shared/page-geometry";
+import { docxPageSize } from "@/tests/utils/docx";
 import {
   formatDateRange,
   formatDocumentDate,
@@ -789,5 +795,68 @@ describe("S-296: every output prints the formatted date and the renamed heading"
     await exportResumeAsHtml(localisedResume(), "preview");
 
     expect(await downloads[0].blob.text()).toContain('<html lang="de"');
+  });
+});
+
+describe("Decision 9: a resume's paper size reaches every output", () => {
+  const TWIPS = { a4: { width: 11906, height: 16838 }, letter: { width: 12240, height: 15840 } };
+
+  function onPaper(paperSize: PaperSize): ResumeData {
+    const resume = structuredClone(defaultResume);
+    resume.customization.paperSize = paperSize;
+    return resume;
+  }
+
+  for (const paperSize of PAPER_SIZES) {
+    const { widthPx, heightPx } = getPageGeometry(paperSize);
+
+    it(`the DOCX section page is ${paperSize}`, async () => {
+      expect(await docxPageSize(await buildResumeDocx(onPaper(paperSize)))).toEqual(
+        TWIPS[paperSize],
+      );
+    });
+
+    it(`the WYSIWYG HTML prints one ${paperSize} page per sheet`, async () => {
+      const downloads = captureDownloads();
+      stubRenderedPreview(widthPx, widthPx);
+
+      await exportResumeAsHtml(onPaper(paperSize), "preview");
+
+      const html = await downloads[0].blob.text();
+
+      expect(html.match(/@page \{\s*size: (\d+)px (\d+)px;/)?.slice(1)).toEqual([
+        String(widthPx),
+        String(heightPx),
+      ]);
+    });
+
+    it(`the generated HTML states a ${paperSize} @page`, () => {
+      expect(buildHtml(onPaper(paperSize))).toContain(
+        `@page { size: ${widthPx}px ${heightPx}px; }`,
+      );
+    });
+  }
+
+  it("a resume saved before the setting existed is A4 everywhere", async () => {
+    const resume = structuredClone(defaultResume);
+    delete resume.customization.paperSize;
+
+    expect(getResumeRenderStyle(resume).paperSize).toBe("a4");
+    expect(parseResumeDataInput(resume)?.customization.paperSize).toBe("a4");
+    expect(await docxPageSize(await buildResumeDocx(resume))).toEqual(TWIPS.a4);
+    expect(buildHtml(resume)).toContain("@page { size: 794px 1122px; }");
+  });
+
+  it("storage and import keep Letter and read an unknown size as A4", () => {
+    const letter = onPaper("letter");
+
+    expect(parseResumeDataInput(letter)?.customization.paperSize).toBe("letter");
+    expect(parseResumeImport(letter)?.customization.paperSize).toBe("letter");
+    expect(
+      parseResumeDataInput({
+        ...letter,
+        customization: { ...letter.customization, paperSize: "legal" },
+      })?.customization.paperSize,
+    ).toBe("a4");
   });
 });

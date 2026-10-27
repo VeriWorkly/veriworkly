@@ -11,7 +11,7 @@ import { Card } from "@veriworkly/ui";
 
 import { loadTemplateComponentById } from "@/templates";
 import { useTemplateComponent } from "@/templates/shared/use-template-component";
-import { DOCUMENT_PAGE_WIDTH_PX } from "@/templates/shared/page-geometry";
+import { getPageGeometry } from "@/templates/shared/page-geometry";
 
 import type { ResumeData } from "@/types/resume";
 import { readResumeById, toResumeDocument } from "@/features/resume/services/resume-service";
@@ -52,7 +52,7 @@ function readStored(type: DocumentType, id: string): BaseDocument | null {
  * Scales a fixed-width page down to the width there is (never up) and reserves the scaled
  * height, so a phone sees the whole page and scrolls through it instead of a clipped corner.
  */
-function FitToWidth({ children }: { children: ReactNode }) {
+function FitToWidth({ children, pageWidth }: { children: ReactNode; pageWidth: number }) {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState({ scale: 1, offset: 0, height: 0 });
@@ -65,11 +65,11 @@ function FitToWidth({ children }: { children: ReactNode }) {
 
     // Both: the page grows once its template has loaded and paginated.
     const observer = new ResizeObserver(() => {
-      const scale = Math.min(1, outer.clientWidth / DOCUMENT_PAGE_WIDTH_PX);
+      const scale = Math.min(1, outer.clientWidth / pageWidth);
 
       setFit({
         scale,
-        offset: Math.max(0, (outer.clientWidth - DOCUMENT_PAGE_WIDTH_PX * scale) / 2),
+        offset: Math.max(0, (outer.clientWidth - pageWidth * scale) / 2),
         height: inner.offsetHeight * scale,
       });
     });
@@ -78,7 +78,7 @@ function FitToWidth({ children }: { children: ReactNode }) {
     observer.observe(inner);
 
     return () => observer.disconnect();
-  }, []);
+  }, [pageWidth]);
 
   return (
     <div
@@ -89,7 +89,7 @@ function FitToWidth({ children }: { children: ReactNode }) {
       <div
         ref={innerRef}
         style={{
-          width: DOCUMENT_PAGE_WIDTH_PX,
+          width: pageWidth,
           marginLeft: fit.offset,
           transform: `scale(${fit.scale})`,
           transformOrigin: "top left",
@@ -148,6 +148,9 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
     loaded.id === documentId ? loaded : { id: documentId, status: "loading" };
   const doc = load.status === "ready" ? load.doc : null;
   const resume = type === "RESUME" && doc ? (doc.content as ResumeData) : null;
+  const coverLetter = type === "COVER_LETTER" && doc ? (doc.content as CoverLetterContent) : null;
+  const paperSize = resume ? resume.customization.paperSize : coverLetter?.appearance.paperSize;
+  const pageWidth = getPageGeometry(paperSize).widthPx;
 
   const TemplateComponent = useTemplateComponent(
     loadTemplateComponentById,
@@ -216,17 +219,14 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
         <Card className="p-2 sm:p-4">
           <div className="bg-background rounded-3xl p-2 sm:p-4 md:p-6">
             {resume && TemplateComponent ? (
-              <FitToWidth>
-                <ResumePagedPreview>
+              <FitToWidth pageWidth={pageWidth}>
+                <ResumePagedPreview paperSize={paperSize}>
                   {createElement(TemplateComponent, { resume })}
                 </ResumePagedPreview>
               </FitToWidth>
-            ) : type === "COVER_LETTER" && doc ? (
-              <FitToWidth>
-                <CoverLetterPreview
-                  content={doc.content as CoverLetterContent}
-                  templateId={doc.templateId}
-                />
+            ) : coverLetter && doc ? (
+              <FitToWidth pageWidth={pageWidth}>
+                <CoverLetterPreview content={coverLetter} templateId={doc.templateId} />
               </FitToWidth>
             ) : null}
           </div>

@@ -64,6 +64,20 @@ describe("new documents (S-211)", () => {
     expect(letter.body).toBe("");
   });
 
+  it("Decision 9: every new resume and letter, sample or blank, is A4", () => {
+    for (const signedIn of [false, true]) {
+      if (signedIn) useUserStore.getState().setUser({ email: "ada@example.com" } as never);
+
+      const resume = getDocumentDefinition("RESUME").createDefault("resume-1")
+        .content as ResumeData;
+      const letter = getDocumentDefinition("COVER_LETTER").createDefault("letter-1")
+        .content as CoverLetterContent;
+
+      expect(resume.customization.paperSize).toBe("a4");
+      expect(letter.appearance.paperSize).toBe("a4");
+    }
+  });
+
   it("S-211: the sample letter is not addressed to VeriWorkly and names no founder", () => {
     expect(JSON.stringify(createDefaultCoverLetter("letter-1"))).not.toMatch(/veriworkly|gautam/i);
   });
@@ -79,7 +93,7 @@ describe("cover letter store (S-123, S-129)", () => {
       sync: { ...sample.sync, cloudDocumentId: "cloud-1", revision: 4 },
       content: {
         ...sample.content,
-        appearance: { ...sample.content.appearance, accentColor: "#ff0000" },
+        appearance: { ...sample.content.appearance, accentColor: "#ff0000", paperSize: "letter" },
         language: "fr",
       },
     });
@@ -108,6 +122,7 @@ describe("cover letter store (S-123, S-129)", () => {
       expect(document?.title).toBe("My application");
       expect(document?.templateId).toBe("modern");
       expect(document?.content.appearance.accentColor).toBe("#ff0000");
+      expect(document?.content.appearance.paperSize).toBe("letter");
       expect(document?.sync.cloudDocumentId).toBe("cloud-1");
       expect(document?.content.language).toBe("fr");
       expect(document?.content.senderName).toBe("");

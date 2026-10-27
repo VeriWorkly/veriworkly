@@ -2,26 +2,15 @@ import type { CoverLetterContent } from "@/features/cover-letter/types";
 import type { CoverLetterPalette } from "./shared";
 import type { TextToken } from "@/templates/shared/text-tokens";
 
-import { DOCUMENT_PAGE_HEIGHT_PX, DOCUMENT_PAGE_WIDTH_PX } from "@/templates/shared/page-geometry";
-
 /**
  * Cover-letter type scale and rhythm, in CSS pixels.
  *
  * Both the preview/HTML export (`web.tsx`) and the PDF (`pdf.tsx`) of each
  * template read these, so a number can never be tuned on one side only. See
- * `templates/shared/text-tokens.ts` for why line heights are absolute.
+ * `templates/shared/text-tokens.ts` for why line heights are absolute. The page box is not
+ * here: it follows the letter's paper size, as `getCoverLetterState(...).page`.
  */
 export const COVER_LETTER_SCALE = {
-  /**
-   * The page box comes from the shared document geometry so resumes and cover
-   * letters describe the same physical page with the same numbers. The preview
-   * states it in pixels rather than the Tailwind classes `w-198.5 h-280.75`, which
-   * only resolve correctly while the spacing scale and root font size are left at
-   * their defaults.
-   */
-  pageWidth: DOCUMENT_PAGE_WIDTH_PX,
-  pageHeight: DOCUMENT_PAGE_HEIGHT_PX,
-
   senderName: 34,
   senderTitle: 14,
   contact: 14,

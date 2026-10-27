@@ -18,12 +18,8 @@ import type { StackedHeaderOptions } from "./stacked-header";
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
 import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
 import { needsLastResortPdfFont } from "@/features/documents/export/pdf-unsupported-text";
-import {
-  RESUME_PAGE_HEIGHT_PT,
-  RESUME_PAGE_WIDTH_PT,
-  RESUME_SPACING_LIMITS,
-  pxToPt,
-} from "@/features/resume/constants/resume-layout";
+import { RESUME_SPACING_LIMITS, pxToPt } from "@/features/resume/constants/resume-layout";
+import { getPageGeometry } from "@/templates/shared/page-geometry";
 import {
   getLinkDisplayText,
   getResumeRenderModel,
@@ -94,7 +90,8 @@ export function createResumePdfStyles(
    * edge, while the preview — which measures after layout — wraps correctly.
    * Giving the node a definite width makes the first measure the right one.
    */
-  const { contentWidth, columnWidth } = getTextWidths(scale, pagePadding, layout);
+  const { contentWidth, columnWidth } = getTextWidths(style, scale, pagePadding, layout);
+  const page = getPageGeometry(style.paperSize);
 
   const textColumn = (width: number) => ({ width: pxToPt(width), maxWidth: pxToPt(width) });
 
@@ -105,9 +102,9 @@ export function createResumePdfStyles(
       fontFamily: getPdfFontStack(style.fontFamily, withLastResortFont),
       fontSize: pxToPt(scale.body),
       lineHeight: style.bodyLineHeight,
-      minHeight: RESUME_PAGE_HEIGHT_PT,
+      minHeight: page.heightPt,
       padding: pxToPt(pagePadding),
-      width: RESUME_PAGE_WIDTH_PT,
+      width: page.widthPt,
     },
 
     name: pdfText(tokens.name),
@@ -488,6 +485,7 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
 
     // Which blocks stay on one page: the same answer the web template gives the preview.
     const keepTogether = createResumeKeepTogether(ctx, pagePadding, layout);
+    const page = getPageGeometry(style.paperSize);
 
     /**
      * Spacing goes above a section, never below it.
@@ -586,7 +584,7 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
 
     return (
       <Document {...getPdfMetadata(model.name, "Resume")}>
-        <Page size={[RESUME_PAGE_WIDTH_PT, RESUME_PAGE_HEIGHT_PT]} style={styles.page}>
+        <Page size={[page.widthPt, page.heightPt]} style={styles.page}>
           {(model.showBasics || model.showLinks) && skin.renderHeader(ctx)}
 
           {/*

@@ -3,6 +3,7 @@ import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/rendere
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 import type { CoverLetterPalette } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
+import type { PageGeometry } from "@/templates/shared/page-geometry";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
 import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
@@ -24,13 +25,15 @@ import {
 } from "@/features/documents/rendering/resume-rendering";
 import { PdfSocialIcon } from "@/templates/pdf/SocialIcon";
 
-const PAGE_WIDTH_PT = pxToPt(S.pageWidth);
-const PAGE_HEIGHT_PT = pxToPt(S.pageHeight);
-
 const ATS_MARKER = "-";
 
-function createStyles(palette: CoverLetterPalette, tokens: CoverLetterTokens, pageMargin: number) {
-  const contentWidth = S.pageWidth - pageMargin * 2;
+function createStyles(
+  palette: CoverLetterPalette,
+  tokens: CoverLetterTokens,
+  pageMargin: number,
+  page: PageGeometry,
+) {
+  const contentWidth = page.widthPx - pageMargin * 2;
   const listWidth = contentWidth - S.listPadX * 2;
 
   const column = (width: number) => ({ width: pxToPt(width), maxWidth: pxToPt(width) });
@@ -123,7 +126,7 @@ export function AtsEssentialCoverLetterPdf({ content }: { content: CoverLetterCo
     recipient,
     subject,
   } = state;
-  const styles = createStyles(palette, tokens, appearance.pageMargin);
+  const styles = createStyles(palette, tokens, appearance.pageMargin, state.page);
 
   const paragraphSpacing = { marginBottom: pxToPt(appearance.paragraphSpacing) };
   const links = state.renderedLinks;
@@ -201,7 +204,7 @@ export function AtsEssentialCoverLetterPdf({ content }: { content: CoverLetterCo
   return (
     <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
-        size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
+        size={[state.page.widthPt, state.page.heightPt]}
         style={[
           styles.page,
           {

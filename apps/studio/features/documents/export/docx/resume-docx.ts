@@ -7,7 +7,7 @@ import { getResumeFileBaseName } from "@/features/resume/services/resume-formatt
 
 import { downloadBlob } from "../download";
 import { getResumeExportDocument } from "../resume-export-document";
-import { createDocxParagraph } from "./docx-paragraph";
+import { createDocxParagraph, docxPageProperties } from "./docx-paragraph";
 
 function heading(text: string, level: (typeof HeadingLevel)[keyof typeof HeadingLevel]) {
   return new Paragraph({ heading: level, children: [new TextRun(text)] });
@@ -78,7 +78,7 @@ export async function buildResumeDocx(resume: ResumeData): Promise<Blob> {
     new Document({
       title: document.name ? `${document.name} - Resume` : "Resume",
       creator: document.name || "VeriWorkly",
-      sections: [{ properties: {}, children }],
+      sections: [{ properties: docxPageProperties(resume.customization?.paperSize), children }],
     }),
   );
 }

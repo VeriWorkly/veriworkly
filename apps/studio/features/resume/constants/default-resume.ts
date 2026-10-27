@@ -1,6 +1,7 @@
 import type { ResumeData, ResumeSection } from "@/types/resume";
 
 import { DEFAULT_DOCUMENT_DATE_FORMAT } from "@/features/documents/utils/formatters";
+import { DEFAULT_PAPER_SIZE } from "@/templates/shared/page-geometry";
 
 export const defaultSections: ResumeSection[] = [
   { id: "basics", label: "Basics", visible: true, order: 0 },
@@ -84,6 +85,7 @@ export const blankResume: ResumeData = {
     bodyLineHeight: 1.5,
     headingLineHeight: 1.2,
     dateFormat: DEFAULT_DOCUMENT_DATE_FORMAT,
+    paperSize: DEFAULT_PAPER_SIZE,
   },
 
   sync: {

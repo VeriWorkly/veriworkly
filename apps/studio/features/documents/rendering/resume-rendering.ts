@@ -7,6 +7,7 @@ import type {
   ResumeCustomization,
 } from "@/types/resume";
 import type { DocumentDateFormat } from "@/features/documents/utils/formatters";
+import type { PaperSize } from "@/templates/shared/page-geometry";
 
 import { formatPhoneForDisplay } from "@veriworkly/profile-core";
 
@@ -16,6 +17,7 @@ import { isSectionVisible } from "@/features/documents/utils/section-helpers";
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 import { toSafeHexColor } from "@/features/documents/utils/hex-color";
 import { RESUME_LAYOUT } from "@/features/resume/constants/resume-layout";
+import { toPaperSize } from "@/templates/shared/page-geometry";
 
 export type ResumeRenderStyle = Required<
   Pick<
@@ -34,6 +36,7 @@ export type ResumeRenderStyle = Required<
   >
 > & {
   fontFamily: ReturnType<typeof normalizeFontFamilyId>;
+  paperSize: PaperSize;
 };
 
 export interface RenderContactItem {
@@ -115,6 +118,7 @@ export function getResumeRenderStyle(resume: ResumeData): ResumeRenderStyle {
     pagePadding: customization?.pagePadding ?? RESUME_LAYOUT.pagePadding,
     bodyLineHeight: customization?.bodyLineHeight || RESUME_LAYOUT.bodyLineHeight,
     headingLineHeight: customization?.headingLineHeight || RESUME_LAYOUT.headingLineHeight,
+    paperSize: toPaperSize(customization?.paperSize),
   };
 }
 

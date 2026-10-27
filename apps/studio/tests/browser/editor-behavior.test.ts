@@ -1726,3 +1726,54 @@ describe("readable dates and renamed headings (S-296)", () => {
     expect(await leafTexts()).not.toContain("Berufserfahrung");
   });
 });
+
+describe("paper size (owner decision 9)", () => {
+  /** Every rendered preview page's layout box, unaffected by the editor's zoom. */
+  const pageBoxes = (selector: string) =>
+    page.evaluate(
+      (pageSelector) =>
+        [...document.querySelectorAll<HTMLElement>(pageSelector)]
+          .filter((article) => !article.closest("[aria-hidden='true']"))
+          .map((article) => `${article.offsetWidth}x${article.offsetHeight}`),
+      selector,
+    );
+
+  async function switchesShape(selector: string) {
+    const paper = page.getByLabel("Paper size");
+
+    expect(await paper.inputValue()).toBe("a4");
+    await expect.poll(() => pageBoxes(selector)).toContain("794x1122");
+
+    await paper.selectOption("letter");
+
+    await expect.poll(() => pageBoxes(selector)).toContain("816x1056");
+    expect(await pageBoxes(selector)).not.toContain("794x1122");
+
+    await paper.selectOption("a4");
+
+    await expect.poll(() => pageBoxes(selector)).toContain("794x1122");
+    expect(await pageBoxes(selector)).not.toContain("816x1056");
+  }
+
+  beforeAll(async () => {
+    await page.setViewportSize(DESKTOP);
+  });
+
+  it("Decision 9: switching a resume to US Letter reshapes every preview page", async () => {
+    const resumeId = await seedResume();
+    await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
+    await editorReady();
+    await openSection("typography");
+
+    await switchesShape("article.resume-page-preview");
+  });
+
+  it("Decision 9: switching a cover letter to US Letter reshapes every preview page", async () => {
+    await page.goto(`${server.origin}/editor/cover-letter/${await seedCoverLetter()}`, {
+      waitUntil: "networkidle",
+    });
+    await page.getByLabel("Paper size").waitFor({ state: "visible", timeout: 30_000 });
+
+    await switchesShape("article.shadow-sm");
+  });
+});

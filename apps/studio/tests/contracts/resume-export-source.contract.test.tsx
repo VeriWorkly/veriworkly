@@ -26,7 +26,7 @@ const CANDIDATE = "Ada Lovelace";
 
 function previewMarkup(): string {
   return renderToStaticMarkup(
-    <ResumePagedPreview>
+    <ResumePagedPreview paperSize="a4">
       <div id="resume-container">{CANDIDATE}</div>
     </ResumePagedPreview>,
   );

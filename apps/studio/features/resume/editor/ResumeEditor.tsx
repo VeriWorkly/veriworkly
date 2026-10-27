@@ -78,7 +78,7 @@ const ResumeEditor = ({ documentId }: ResumeEditorProps) => {
   // compiler lint treats a capitalized hook result in JSX position as a component
   // declared during render.
   const preview = TemplateComponent ? (
-    <ResumePagedPreview>
+    <ResumePagedPreview paperSize={deferredResume.customization.paperSize}>
       {createElement(TemplateComponent, { resume: deferredResume })}
     </ResumePagedPreview>
   ) : null;

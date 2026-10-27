@@ -35,6 +35,12 @@ import {
   LANGUAGE_TAG_ERROR,
   isDocumentLanguage,
 } from "@/features/documents/utils/formatters";
+import {
+  PAPER_SIZES,
+  PAPER_SIZE_LABELS,
+  toPaperSize,
+  type PaperSize,
+} from "@/templates/shared/page-geometry";
 
 type SettingsSectionId = "typography" | "colors" | "visibility" | "headings";
 
@@ -112,6 +118,20 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
               {DOCUMENT_DATE_FORMATS.map((format) => (
                 <option key={format} value={format}>
                   {formatDocumentDate("2022-03", format)}
+                </option>
+              ))}
+            </SettingsSelect>
+
+            <SettingsSelect
+              label="Paper size"
+              value={toPaperSize(customization.paperSize)}
+              onChange={(event) =>
+                updateCustomization({ paperSize: event.target.value as PaperSize })
+              }
+            >
+              {PAPER_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {PAPER_SIZE_LABELS[size]}
                 </option>
               ))}
             </SettingsSelect>
@@ -231,6 +251,7 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
                 updateCustomization({
                   ...defaultResume.customization,
                   dateFormat: customization.dateFormat,
+                  paperSize: customization.paperSize,
                 })
               }
               size="sm"

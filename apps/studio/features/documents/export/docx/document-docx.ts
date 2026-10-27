@@ -13,7 +13,7 @@ import {
 } from "@/templates/cover-letter/shared";
 
 import { downloadBlob } from "../download";
-import { createDocxParagraph } from "./docx-paragraph";
+import { createDocxParagraph, docxPageProperties } from "./docx-paragraph";
 import { getDocumentFileBaseName } from "../export-file-names";
 
 function bullet(text: string): Paragraph {
@@ -74,7 +74,7 @@ export function buildCoverLetterDocx(content: CoverLetterContent): Promise<Blob>
     new Document({
       title: getCoverLetterDocumentTitle(state),
       creator: state.senderName || "VeriWorkly",
-      sections: [{ properties: {}, children }],
+      sections: [{ properties: docxPageProperties(state.appearance.paperSize), children }],
     }),
   );
 }

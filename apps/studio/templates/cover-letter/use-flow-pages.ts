@@ -6,11 +6,13 @@ import type { ProfessionalFlowItem, VeriworklyFlowItem } from "./shared";
 
 import { paginateCoverLetterFlow, useCoverLetterFontReady, type FlowFragment } from "./measure";
 import { getFlowPageKey, getFlowSplitKind } from "./shared";
-import { COVER_LETTER_SCALE as S } from "./tokens";
+import type { PageGeometry } from "@/templates/shared/page-geometry";
 
 const px = (value: number) => `${value}px`;
 
 interface FlowPagesOptions {
+  /** The letter's page box (`getCoverLetterState(...).page`), the size the PDF page is. */
+  page: PageGeometry;
   fontFamily: string;
   pageColor: string;
   textColor: string;
@@ -35,7 +37,7 @@ interface FlowPagesOptions {
  */
 export function useFlowPages<T extends ProfessionalFlowItem | VeriworklyFlowItem>(
   flowItems: T[],
-  { fontFamily, pageColor, textColor, pageMargin, bodyStyle, railWidth }: FlowPagesOptions,
+  { page, fontFamily, pageColor, textColor, pageMargin, bodyStyle, railWidth }: FlowPagesOptions,
 ) {
   // No pages until the first measure, one frame later: guessing "everything on page one"
   // showed a long letter clipped at the page foot first.
@@ -50,8 +52,8 @@ export function useFlowPages<T extends ProfessionalFlowItem | VeriworklyFlowItem
       const probe = document.createElement("article");
 
       probe.className = "mx-auto max-w-full overflow-hidden";
-      probe.style.height = px(S.pageHeight);
-      probe.style.width = px(S.pageWidth);
+      probe.style.height = px(page.heightPx);
+      probe.style.width = px(page.widthPx);
       // Inherited by every item measured in it, as on the page the template renders.
       probe.style.overflowWrap = "anywhere";
 
@@ -109,7 +111,17 @@ export function useFlowPages<T extends ProfessionalFlowItem | VeriworklyFlowItem
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [bodyStyle, flowItems, fontFamily, fontsReady, pageColor, pageMargin, railWidth, textColor]);
+  }, [
+    bodyStyle,
+    flowItems,
+    fontFamily,
+    fontsReady,
+    page,
+    pageColor,
+    pageMargin,
+    railWidth,
+    textColor,
+  ]);
 
   const itemRef = (id: string) => (node: HTMLDivElement | null) => {
     if (node) itemRefs.current.set(id, node);

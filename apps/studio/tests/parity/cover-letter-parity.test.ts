@@ -12,7 +12,9 @@ import { recordReport } from "./report";
 import { startParityServer } from "./server";
 import { ptToPx } from "./geometry";
 
-import { COVER_LETTER_SCALE } from "@/templates/cover-letter/tokens";
+import type { CoverLetterContent } from "@/features/cover-letter/types";
+
+import { PAPER_SIZES, getPageGeometry, type PaperSize } from "@/templates/shared/page-geometry";
 import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
 
 /**
@@ -50,9 +52,16 @@ const MEASURABLE_FIXTURES = PARITY_FIXTURE_IDS.filter((id) => id !== "cjk" && id
  * vertical.
  */
 const KNOWN_PAGINATION_DIFFERENCES: Record<string, string> = {
-  "professional/long": "textkit shrinks spaces and fills URL lines; preview wraps 2 more lines",
-  "ats-essential/long": "textkit shrinks spaces; the browser wraps one bullet the PDF does not",
+  "professional/long/a4": "textkit shrinks spaces and fills URL lines; preview wraps 2 more lines",
+  "ats-essential/long/a4": "textkit shrinks spaces; the browser wraps one bullet the PDF does not",
 };
+
+/** A fixture's letter, on the given paper. */
+function fixtureLetter(fixture: string, paperSize: PaperSize): CoverLetterContent {
+  const content = PARITY_FIXTURES[fixture as ParityFixtureId].coverLetter();
+
+  return { ...content, appearance: { ...content.appearance, paperSize } };
+}
 
 let server: ParityServer;
 let browser: Browser;
@@ -74,13 +83,18 @@ interface PreviewPages {
   overflowing: number[];
 }
 
-async function readPreview(templateId: string, fixture: string): Promise<PreviewPages> {
+async function readPreview(
+  templateId: string,
+  fixture: string,
+  paperSize: PaperSize,
+): Promise<PreviewPages> {
   const page = await browser.newPage({ viewport: { width: 1400, height: 2400 } });
 
   try {
-    await page.goto(`${server.origin}/parity/cover-letter/${templateId}?fixture=${fixture}`, {
-      waitUntil: "networkidle",
-    });
+    await page.goto(
+      `${server.origin}/parity/cover-letter/${templateId}?fixture=${fixture}&paper=${paperSize}`,
+      { waitUntil: "networkidle" },
+    );
     await page.waitForSelector('[data-parity-ready="1"]', { timeout: 60_000 });
     await page.waitForSelector("article.shadow-sm", { timeout: 60_000 });
 
@@ -117,80 +131,96 @@ function contentBottom(node: LayoutNode, offset = 0): number {
 }
 
 describe("cover letter preview and PDF produce the same pages", () => {
-  for (const templateId of TEMPLATES) {
-    for (const fixture of MEASURABLE_FIXTURES) {
-      it(`${templateId} / ${fixture}`, async () => {
-        const content = PARITY_FIXTURES[fixture as ParityFixtureId].coverLetter();
-        const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
-        const pdfPages = await layoutPages(CoverLetterPdf, { content });
-        const preview = await readPreview(templateId, fixture);
+  for (const paperSize of PAPER_SIZES) {
+    for (const templateId of TEMPLATES) {
+      for (const fixture of MEASURABLE_FIXTURES) {
+        const name = `${templateId}/${fixture}/${paperSize}`;
 
-        const known = KNOWN_PAGINATION_DIFFERENCES[`${templateId}/${fixture}`];
+        it(
+          name,
+          async () => {
+            const content = fixtureLetter(fixture, paperSize);
+            const { widthPx, heightPx } = getPageGeometry(paperSize);
+            const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
+            const pdfPages = await layoutPages(CoverLetterPdf, { content });
+            const preview = await readPreview(templateId, fixture, paperSize);
 
-        recordReport(
-          `cover letter pagination ${templateId}/${fixture}`,
-          preview.pages === pdfPages.length
-            ? ""
-            : `preview ${preview.pages} page(s) vs pdf ${pdfPages.length}`,
-          { preview: preview.pages, pdf: pdfPages.length, known: Boolean(known) },
+            const known = KNOWN_PAGINATION_DIFFERENCES[name];
+
+            recordReport(
+              `cover letter pagination ${name}`,
+              preview.pages === pdfPages.length
+                ? ""
+                : `preview ${preview.pages} page(s) vs pdf ${pdfPages.length}`,
+              { preview: preview.pages, pdf: pdfPages.length, known: Boolean(known) },
+            );
+
+            if (known) {
+              // Asserted in reverse, so the entry cannot outlive the problem.
+              expect(preview.pages, `${name} now agrees — drop this entry (${known})`).not.toBe(
+                pdfPages.length,
+              );
+            } else {
+              expect(
+                preview.pages,
+                `${name}: preview shows ${preview.pages} page(s), ` +
+                  `the PDF exports ${pdfPages.length}`,
+              ).toBe(pdfPages.length);
+            }
+
+            for (const box of preview.boxes) {
+              expect(box.width).toBeCloseTo(widthPx, 1);
+              expect(box.height).toBeCloseTo(heightPx, 1);
+            }
+
+            for (const page of pdfPages) {
+              expect(ptToPx(page.box?.width)).toBeCloseTo(widthPx, 1);
+              expect(ptToPx(page.box?.height)).toBeCloseTo(heightPx, 1);
+            }
+          },
+          180_000,
         );
-
-        if (known) {
-          // Asserted in reverse, so the entry cannot outlive the problem.
-          expect(
-            preview.pages,
-            `${templateId}/${fixture} now agrees — drop this entry (${known})`,
-          ).not.toBe(pdfPages.length);
-        } else {
-          expect(
-            preview.pages,
-            `${templateId}/${fixture}: preview shows ${preview.pages} page(s), ` +
-              `the PDF exports ${pdfPages.length}`,
-          ).toBe(pdfPages.length);
-        }
-
-        for (const box of preview.boxes) {
-          expect(box.width).toBeCloseTo(COVER_LETTER_SCALE.pageWidth, 1);
-          expect(box.height).toBeCloseTo(COVER_LETTER_SCALE.pageHeight, 1);
-        }
-
-        for (const page of pdfPages) {
-          expect(ptToPx(page.box?.width)).toBeCloseTo(COVER_LETTER_SCALE.pageWidth, 1);
-          expect(ptToPx(page.box?.height)).toBeCloseTo(COVER_LETTER_SCALE.pageHeight, 1);
-        }
-      }, 180_000);
+      }
     }
   }
 });
 
 describe("neither renderer drops cover letter content off the page", () => {
-  for (const templateId of TEMPLATES) {
-    for (const fixture of MEASURABLE_FIXTURES) {
-      it(`${templateId} / ${fixture}`, async () => {
-        const content = PARITY_FIXTURES[fixture as ParityFixtureId].coverLetter();
-        const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
-        const pdfPages = await layoutPages(CoverLetterPdf, { content });
+  for (const paperSize of PAPER_SIZES) {
+    for (const templateId of TEMPLATES) {
+      for (const fixture of MEASURABLE_FIXTURES) {
+        const name = `${templateId}/${fixture}/${paperSize}`;
 
-        // A page that does not wrap silently clips whatever the split put past
-        // its bottom edge, so the content is not merely misplaced — it is gone.
-        const clipped = pdfPages.flatMap((page, index) => {
-          const limit = ptToPx(page.box?.height);
-          const deepest = contentBottom(page);
+        it(
+          name,
+          async () => {
+            const content = fixtureLetter(fixture, paperSize);
+            const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
+            const pdfPages = await layoutPages(CoverLetterPdf, { content });
 
-          return deepest > limit + 1
-            ? [`page ${index + 1}: content reaches ${deepest}px of ${limit}px`]
-            : [];
-        });
+            // A page that does not wrap silently clips whatever the split put past
+            // its bottom edge, so the content is not merely misplaced — it is gone.
+            const clipped = pdfPages.flatMap((page, index) => {
+              const limit = ptToPx(page.box?.height);
+              const deepest = contentBottom(page);
 
-        expect(clipped, `${templateId}/${fixture}: ${clipped.join("; ")}`).toEqual([]);
+              return deepest > limit + 1
+                ? [`page ${index + 1}: content reaches ${deepest}px of ${limit}px`]
+                : [];
+            });
 
-        const preview = await readPreview(templateId, fixture);
+            expect(clipped, `${name}: ${clipped.join("; ")}`).toEqual([]);
 
-        expect(
-          preview.overflowing,
-          `${templateId}/${fixture}: preview page(s) ${preview.overflowing.join(", ")} overflow`,
-        ).toEqual([]);
-      }, 180_000);
+            const preview = await readPreview(templateId, fixture, paperSize);
+
+            expect(
+              preview.overflowing,
+              `${name}: preview page(s) ${preview.overflowing.join(", ")} overflow`,
+            ).toEqual([]);
+          },
+          180_000,
+        );
+      }
     }
   }
 });

@@ -3,6 +3,7 @@ import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/rendere
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 import type { CoverLetterPalette, CoverLetterState } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
+import type { PageGeometry } from "@/templates/shared/page-geometry";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
 import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
@@ -21,9 +22,6 @@ import {
 } from "@/features/documents/rendering/resume-rendering";
 import { PdfSocialIcon } from "@/templates/pdf/SocialIcon";
 
-const PAGE_WIDTH_PT = pxToPt(S.pageWidth);
-const PAGE_HEIGHT_PT = pxToPt(S.pageHeight);
-
 /**
  * Every spatial value goes through `pxToPt` and every text node pins its own
  * line box, so this file lays out exactly like `./web.tsx`.
@@ -37,6 +35,7 @@ function createStyles(
   palette: CoverLetterPalette,
   tokens: CoverLetterTokens,
   appearance: CoverLetterState["appearance"],
+  page: PageGeometry,
 ) {
   /**
    * Column widths, stated rather than left to flex.
@@ -48,7 +47,7 @@ function createStyles(
    * text is not in — and the paragraph runs off the right edge of the page,
    * which is exactly what the preview does not do.
    */
-  const mainWidth = S.pageWidth - S.railWidth - S.hairline - appearance.pageMargin * 2;
+  const mainWidth = page.widthPx - S.railWidth - S.hairline - appearance.pageMargin * 2;
   const railTextWidth = S.railWidth - S.railPadX * 2;
   const listWidth = mainWidth - S.listPadX * 2;
   const recipientWidth = mainWidth - S.metaDateWidth - S.metaColumnGap;
@@ -70,7 +69,7 @@ function createStyles(
       backgroundColor: appearance.sidebarColor,
       borderRightColor: palette.sidebarBorder,
       borderRightWidth: pxToPt(S.hairline),
-      height: PAGE_HEIGHT_PT,
+      height: page.heightPt,
       left: 0,
       paddingHorizontal: pxToPt(S.railPadX),
       paddingVertical: pxToPt(S.railPadY),
@@ -213,7 +212,7 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
     targetTitle,
     targetCompany,
   } = state;
-  const styles = createStyles(palette, tokens, appearance);
+  const styles = createStyles(palette, tokens, appearance, state.page);
 
   const paragraphSpacing = { marginBottom: pxToPt(appearance.paragraphSpacing) };
   const links = state.renderedLinks;
@@ -343,7 +342,7 @@ export function VeriworklyCoverLetterPdf({ content }: { content: CoverLetterCont
   return (
     <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
-        size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
+        size={[state.page.widthPt, state.page.heightPt]}
         style={[
           styles.page,
           {

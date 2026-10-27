@@ -3,6 +3,7 @@ import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/rendere
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 import type { CoverLetterPalette } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
+import type { PageGeometry } from "@/templates/shared/page-geometry";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
 import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
@@ -25,13 +26,15 @@ import {
 import { PdfSocialIcon } from "@/templates/pdf/SocialIcon";
 
 /** Matches `./web.tsx`; see `../professional/pdf.tsx` for why px is stated in points. */
-const PAGE_WIDTH_PT = pxToPt(S.pageWidth);
-const PAGE_HEIGHT_PT = pxToPt(S.pageHeight);
-
 const MINIMAL_MARKER = "–";
 
-function createStyles(palette: CoverLetterPalette, tokens: CoverLetterTokens, pageMargin: number) {
-  const contentWidth = S.pageWidth - pageMargin * 2;
+function createStyles(
+  palette: CoverLetterPalette,
+  tokens: CoverLetterTokens,
+  pageMargin: number,
+  page: PageGeometry,
+) {
+  const contentWidth = page.widthPx - pageMargin * 2;
   const listWidth = contentWidth - S.listPadX * 2;
 
   const column = (width: number) => ({ width: pxToPt(width), maxWidth: pxToPt(width) });
@@ -151,7 +154,7 @@ export function MinimalistCoverLetterPdf({ content }: { content: CoverLetterCont
     recipient,
     subject,
   } = state;
-  const styles = createStyles(palette, tokens, appearance.pageMargin);
+  const styles = createStyles(palette, tokens, appearance.pageMargin, state.page);
 
   const paragraphSpacing = { marginBottom: pxToPt(appearance.paragraphSpacing) };
   const links = state.renderedLinks;
@@ -229,7 +232,7 @@ export function MinimalistCoverLetterPdf({ content }: { content: CoverLetterCont
   return (
     <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
-        size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
+        size={[state.page.widthPt, state.page.heightPt]}
         style={[
           styles.page,
           {

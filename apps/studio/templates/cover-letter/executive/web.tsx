@@ -321,6 +321,7 @@ export function ExecutiveCoverLetterPreview({ content }: { content: CoverLetterC
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const flowItems = useMemo(() => buildProfessionalFlowItems(state.flow), [state.flow]);
   const { pages, measureRef, firstPrefixRef, itemRef } = useFlowPages(flowItems, {
+    page: state.page,
     fontFamily,
     pageColor: appearance.pageColor,
     textColor: palette.text,
@@ -337,7 +338,7 @@ export function ExecutiveCoverLetterPreview({ content }: { content: CoverLetterC
     padding: px(appearance.pageMargin),
   };
 
-  const pageBox: CSSProperties = { height: px(S.pageHeight), width: px(S.pageWidth) };
+  const pageBox: CSSProperties = { height: px(state.page.heightPx), width: px(state.page.widthPx) };
 
   const head = (
     <LetterHead
@@ -357,7 +358,7 @@ export function ExecutiveCoverLetterPreview({ content }: { content: CoverLetterC
         ref={measureRef}
         aria-hidden="true"
         className="pointer-events-none absolute opacity-0"
-        style={{ left: -10000, top: 0, width: S.pageWidth }}
+        style={{ left: -10000, top: 0, width: state.page.widthPx }}
       >
         <article className="overflow-hidden" style={{ ...pageStyle, ...pageBox }}>
           <div ref={firstPrefixRef}>
@@ -433,7 +434,7 @@ export function buildExecutiveCoverLetterHtml(content: CoverLetterContent): stri
           .join("")}</div>`
       : "";
 
-  const css = `.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{display:flex;border-top:${S.hairline}px solid ${palette.strong};border-bottom:${S.hairline}px solid ${palette.strong};padding-top:${S.subjectLabelGap}px;padding-bottom:${S.headerPadBottom}px}header .identity{flex:1 1 auto;min-width:0;text-align:center}header h1{${font(t.senderName)}letter-spacing:0.4px}header .identity p{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px;text-transform:uppercase}.contact{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 ${S.headerContactWidth}px;width:${S.headerContactWidth}px;margin-left:${S.headerColumnGap}px;row-gap:${S.headerRowGap}px}.contact p{${font(t.contact)}text-align:right}.contact a{${font({ ...t.contact, color: palette.strong })}text-decoration:none}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}text-align:center}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 3}px}.meta .to p{${font(t.contact)}}.subject{border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.subjectTop}px;padding-bottom:${S.subjectPadY}px}.label{${font(t.label)}letter-spacing:${(t.label.letterSpacing ?? 0) + 1}px;text-transform:uppercase}.subject h2{${font(t.subject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-top:${S.hairline}px solid ${palette.border};border-bottom:${S.hairline}px solid ${palette.border};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.accent}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
+  const css = `.page{width:${state.page.widthPx}px;min-height:${state.page.heightPx}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{display:flex;border-top:${S.hairline}px solid ${palette.strong};border-bottom:${S.hairline}px solid ${palette.strong};padding-top:${S.subjectLabelGap}px;padding-bottom:${S.headerPadBottom}px}header .identity{flex:1 1 auto;min-width:0;text-align:center}header h1{${font(t.senderName)}letter-spacing:0.4px}header .identity p{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px;text-transform:uppercase}.contact{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 ${S.headerContactWidth}px;width:${S.headerContactWidth}px;margin-left:${S.headerColumnGap}px;row-gap:${S.headerRowGap}px}.contact p{${font(t.contact)}text-align:right}.contact a{${font({ ...t.contact, color: palette.strong })}text-decoration:none}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}text-align:center}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 3}px}.meta .to p{${font(t.contact)}}.subject{border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.subjectTop}px;padding-bottom:${S.subjectPadY}px}.label{${font(t.label)}letter-spacing:${(t.label.letterSpacing ?? 0) + 1}px;text-transform:uppercase}.subject h2{${font(t.subject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-top:${S.hairline}px solid ${palette.border};border-bottom:${S.hairline}px solid ${palette.border};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.accent}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${state.page.widthPx}px ${state.page.heightPx}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
 
   return coverLetterHtmlDocument(
     state,

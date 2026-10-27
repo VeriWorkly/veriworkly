@@ -1,4 +1,13 @@
-import { Paragraph, TextRun } from "docx";
+import { Paragraph, TextRun, type ISectionPropertiesOptions } from "docx";
+
+import { getPageGeometry, type PaperSize } from "@/templates/shared/page-geometry";
+
+/** The section's page in the document's paper size; Word's default page is A4. */
+export function docxPageProperties(paperSize: PaperSize | undefined): ISectionPropertiesOptions {
+  const page = getPageGeometry(paperSize);
+
+  return { page: { size: { width: page.widthTwip, height: page.heightTwip } } };
+}
 
 /**
  * `TextRun` does not convert embedded newlines into visual line breaks — Word would

@@ -3,6 +3,7 @@ import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/rendere
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 import type { CoverLetterPalette } from "../shared";
 import type { CoverLetterTokens } from "../tokens";
+import type { PageGeometry } from "@/templates/shared/page-geometry";
 
 import { getPdfFontStack } from "@/features/documents/constants/fonts";
 import { getPdfMetadata } from "@/templates/shared/pdf-metadata";
@@ -24,9 +25,6 @@ import {
 } from "@/features/documents/rendering/resume-rendering";
 import { PdfSocialIcon } from "@/templates/pdf/SocialIcon";
 
-const PAGE_WIDTH_PT = pxToPt(S.pageWidth);
-const PAGE_HEIGHT_PT = pxToPt(S.pageHeight);
-
 const EXECUTIVE_MARKER = "—";
 
 function createStyles(
@@ -34,8 +32,9 @@ function createStyles(
   tokens: CoverLetterTokens,
   pageMargin: number,
   hasContactColumn: boolean,
+  page: PageGeometry,
 ) {
-  const contentWidth = S.pageWidth - pageMargin * 2;
+  const contentWidth = page.widthPx - pageMargin * 2;
   // Without a contact column the identity takes the whole row, as it does in the preview.
   const identityWidth = hasContactColumn
     ? contentWidth - S.headerContactWidth - S.headerColumnGap
@@ -155,6 +154,7 @@ export function ExecutiveCoverLetterPdf({ content }: { content: CoverLetterConte
     tokens,
     appearance.pageMargin,
     contact.length > 0 || state.renderedLinks.length > 0,
+    state.page,
   );
 
   const paragraphSpacing = { marginBottom: pxToPt(appearance.paragraphSpacing) };
@@ -233,7 +233,7 @@ export function ExecutiveCoverLetterPdf({ content }: { content: CoverLetterConte
   return (
     <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
       <Page
-        size={[PAGE_WIDTH_PT, PAGE_HEIGHT_PT]}
+        size={[state.page.widthPt, state.page.heightPt]}
         style={[
           styles.page,
           {

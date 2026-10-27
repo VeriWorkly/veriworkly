@@ -3,6 +3,7 @@
 import { createElement, useEffect, useState } from "react";
 
 import type { ResumeData } from "@/types/resume";
+import type { PaperSize } from "@/templates/shared/page-geometry";
 
 import { loadTemplateComponentById } from "@/templates";
 import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
@@ -21,16 +22,18 @@ type ParityType = "resume" | "cover-letter";
  *
  * `mode=raw` renders the unpaginated document, which isolates box geometry from
  * the pagination algorithm. `mode=paged` renders through `ResumePagedPreview`,
- * which is what the user actually sees.
+ * which is what the user actually sees. `paper` sets the document's paper size.
  */
 export function ParityClient({
   fixture,
   mode,
+  paperSize,
   templateId,
   type,
 }: {
   fixture: ParityFixtureId;
   mode: "raw" | "paged";
+  paperSize: PaperSize;
   templateId: string;
   type: ParityType;
 }) {
@@ -70,15 +73,27 @@ export function ParityClient({
 
   if (type === "resume") {
     if (ResumeTemplate) {
-      const resume: ResumeData = { ...PARITY_FIXTURES[fixture].resume(), templateId };
+      const fixtureResume = PARITY_FIXTURES[fixture].resume();
+      const resume: ResumeData = {
+        ...fixtureResume,
+        templateId,
+        customization: { ...fixtureResume.customization, paperSize },
+      };
       const element = createElement(ResumeTemplate, { resume });
 
-      body = mode === "paged" ? <ResumePagedPreview>{element}</ResumePagedPreview> : element;
+      body =
+        mode === "paged" ? (
+          <ResumePagedPreview paperSize={paperSize}>{element}</ResumePagedPreview>
+        ) : (
+          element
+        );
     }
   } else {
+    const content = PARITY_FIXTURES[fixture].coverLetter();
+
     body = (
       <CoverLetterPreview
-        content={PARITY_FIXTURES[fixture].coverLetter()}
+        content={{ ...content, appearance: { ...content.appearance, paperSize } }}
         templateId={templateId}
       />
     );

@@ -11,6 +11,7 @@ import type {
 
 import type { DocumentSyncState } from "@/types/document";
 import type { DocumentDateFormat } from "@/features/documents/utils/formatters";
+import type { PaperSize } from "@/templates/shared/page-geometry";
 import type {
   DocumentLinkItem,
   DocumentLinkType,
@@ -193,6 +194,8 @@ export interface ResumeCustomization {
    * `normalizeResumeData` fills it, and the formatter reads a missing one as the default.
    */
   dateFormat?: DocumentDateFormat;
+  /** The printed page, optional for the same reason; a missing one is A4 (`getPageGeometry`). */
+  paperSize?: PaperSize;
 }
 
 type ResumeSyncState = DocumentSyncState;
