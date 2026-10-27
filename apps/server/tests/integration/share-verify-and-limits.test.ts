@@ -63,6 +63,13 @@ async function innerAttemptCount(shareLinkId: string): Promise<number | null> {
   return Number(await getRedis().get(keys[0]!));
 }
 
+// One limiter bucket per route and client (V-162): every test here verifies from 127.0.0.1, so
+// each starts with the route buckets empty instead of inheriting the previous test's count.
+beforeEach(async () => {
+  const keys = await getRedis().keys("rate-limit:*");
+  if (keys.length > 0) await getRedis().del(keys);
+});
+
 describe("share password verify", () => {
   /**
    * V-128: the studio treats every 401 as an expired session and signs the viewer out, so a typo
@@ -122,7 +129,11 @@ describe("share password verify", () => {
 
     // Both spellings drew on one per-link counter and one middleware bucket.
     expect(await innerAttemptCount(shareLinkId)).toBe(5);
-    expect(await getRedis().get(`rate-limit:POST:${lower}:127.0.0.1`)).toBe("5");
+    expect(
+      await getRedis().get(
+        "rate-limit:POST:/api/v1/shares/public/:username/:slug/verify:127.0.0.1",
+      ),
+    ).toBe("5");
 
     const shouted = await verify(shoutedPath, { password: "wrong-again" });
     expect(shouted.status).toBe(429);
@@ -145,7 +156,9 @@ describe("share password verify", () => {
 
     // All ten landed in one outer bucket, which is still under its ceiling.
     expect(
-      await getRedis().get("rate-limit:POST:/api/v1/shares/public/:id/:id/verify:127.0.0.1"),
+      await getRedis().get(
+        "rate-limit:POST:/api/v1/shares/public/:username/:slug/verify:127.0.0.1",
+      ),
     ).toBe("10");
 
     for (const link of [a, b]) {

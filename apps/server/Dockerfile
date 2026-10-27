@@ -20,7 +20,9 @@ COPY apps/server/prisma ./apps/server/prisma
 
 # Build with repository root as context:
 # docker build -f apps/server/Dockerfile .
-RUN npm ci --workspace=@veriworkly/server --workspace=@veriworkly/profile-core --include=dev
+# --legacy-peer-deps, as every CI job installs (V-161): without it a peer conflict CI tolerates
+# would break only the image build.
+RUN npm ci --legacy-peer-deps --workspace=@veriworkly/server --workspace=@veriworkly/profile-core --include=dev
 
 COPY packages/profile-core/tsconfig.json ./packages/profile-core/tsconfig.json
 COPY packages/profile-core/src ./packages/profile-core/src
@@ -35,7 +37,7 @@ RUN npm run build --workspace=@veriworkly/server
 # Dev dependencies are dropped in a separate stage so the `build` stage keeps the Prisma CLI:
 # compose runs `prisma migrate deploy` from it (service `migrate`) before the API starts.
 FROM build AS pruned
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev --legacy-peer-deps
 
 FROM node:${NODE_VERSION}-alpine AS runner
 WORKDIR /app/apps/server

@@ -8,6 +8,8 @@ import { createErrorResponse } from "#lib/errors";
 export function requireFeatureEnabled(enabled: boolean, featureName: string) {
   return (_req: Request, res: Response, next: NextFunction) => {
     if (!enabled) {
+      // Read by the request logger: an expected 503, not an outage (no error line, no audit row).
+      res.locals.programDisabled = true;
       // The code lets a client tell "switched off" from an outage without matching the wording.
       res.status(503).json(
         createErrorResponse(503, `${featureName} is not available yet. Check back soon.`, {

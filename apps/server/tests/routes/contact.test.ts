@@ -106,6 +106,21 @@ describe("contact route", () => {
     );
   });
 
+  it("treats a made-up timestamp such as _ts: 0 as a bot, not as a form open for decades", async () => {
+    req.body = {
+      name: "Zero Bot",
+      email: "bot@zero.com",
+      subject: "Spam Topic",
+      message: "This is a spam message with a zero form timestamp.",
+      _ts: 0,
+    };
+
+    await router(req as Request, res as Response, next);
+
+    expect(sendContactEmail).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
   it("returns 400 validation error when fields are missing or message too short", async () => {
     req.body = {
       name: "",

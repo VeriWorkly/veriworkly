@@ -356,16 +356,46 @@ describe("rateLimitMiddleware unmatched paths", () => {
     mockGetRedis.mockReset();
   });
 
-  it("keys a matched route on its path", async () => {
+  it("keys a matched route on its pattern, so parameter values share one bucket (V-162)", async () => {
     const { routeKey } = await keysFor("get", "/api/v1/things/widget");
-    expect(routeKey).toMatch(/^rate-limit:GET:\/api\/v1\/things\/widget:/);
+    expect(routeKey).toMatch(/^rate-limit:GET:\/api\/v1\/things\/:id:/);
+    expect((await keysFor("get", "/api/v1/things/another-value")).routeKey).toBe(routeKey);
     expect((await keysFor("get", "/api/v1/things/widget/parts")).routeKey).toMatch(
-      /^rate-limit:GET:\/api\/v1\/things\/widget\/parts:/,
+      /^rate-limit:GET:\/api\/v1\/things\/:id\/parts:/,
     );
     // HEAD is answered by the GET route.
     expect((await keysFor("head", "/api/v1/things/widget")).routeKey).toMatch(
-      /^rate-limit:HEAD:\/api\/v1\/things\/widget:/,
+      /^rate-limit:HEAD:\/api\/v1\/things\/:id:/,
     );
+  });
+
+  it("keys an auth request by the better-auth endpoint it reaches, and an unknown one as unmatched (V-162)", async () => {
+    const app = express();
+    app.locals.authEndpointPaths = ["/sign-in/email-otp", "/get-session", "/callback/:id"];
+    app.use(rateLimitMiddleware);
+    app.all(["/api/v1/auth", "/api/v1/auth/*"], (_req, res) => res.json({ ok: true }));
+    const evalFn = vi.fn().mockResolvedValue([1, 60000, 1, 900000]);
+    mockGetRedis.mockReturnValue({ isReady: true, eval: evalFn });
+    const keyFor = async (path: string) => {
+      evalFn.mockClear();
+      await request(app).post(path);
+      return (evalFn.mock.calls[0]![1] as { keys: string[] }).keys[0]!;
+    };
+
+    // Two endpoints, two buckets: sign-in is not spent by session reads.
+    expect(await keyFor("/api/v1/auth/sign-in/email-otp")).toMatch(
+      /^rate-limit:POST:\/api\/v1\/auth\/sign-in\/email-otp:/,
+    );
+    expect(await keyFor("/api/v1/auth/get-session")).toMatch(
+      /^rate-limit:POST:\/api\/v1\/auth\/get-session:/,
+    );
+    // A parameterised endpoint keys on its pattern, so provider names share one bucket.
+    expect(await keyFor("/api/v1/auth/callback/google")).toBe(
+      await keyFor("/api/v1/auth/callback/github"),
+    );
+    // Anything else under /auth is one bucket per client, not a key per random value.
+    expect(await keyFor("/api/v1/auth/a-random-value")).toMatch(/^rate-limit:unmatched:/);
+    expect(await keyFor("/api/v1/auth/another/deeper/path")).toMatch(/^rate-limit:unmatched:/);
   });
 
   it("puts every path no route answers in one bucket per client, in the generic class", async () => {

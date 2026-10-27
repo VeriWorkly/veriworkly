@@ -97,6 +97,8 @@ function enqueueAuditLog(row: AuditRow) {
   else scheduleFlush();
 }
 
+const MAX_LOGGED_PATH_LENGTH = 512;
+
 export function loggingMiddleware(req: Request, res: Response, next: NextFunction) {
   const startTime = performance.now();
 
@@ -105,20 +107,29 @@ export function loggingMiddleware(req: Request, res: Response, next: NextFunctio
   const userAgent = req.headers["user-agent"];
 
   res.on("finish", () => {
+    // A program switched off by config answers 503 by design, on every page view of it; that is
+    // neither a failure to log at error level nor a request to audit.
+    if (res.locals.programDisabled) return;
+
     if (res.statusCode >= 400) {
       const duration = Math.round(performance.now() - startTime);
+      // The full path, not the router-relative `req.path` (a 401 on /api/v1/users/me was logged
+      // as /me), without the query string, which can carry personal data.
+      const path = (req.originalUrl || req.url || req.path || "")
+        .split("?")[0]!
+        .slice(0, MAX_LOGGED_PATH_LENGTH);
 
       // A 4xx is the caller's mistake (an expired session, a missing route, a conflict, a rate
       // limit): warn, so real failures stand out at error level (V-190). The logger adds the
       // level tag itself; the line carries none of its own.
-      const line = `${req.method} ${req.path} ${res.statusCode} ${duration}ms`;
+      const line = `${req.method} ${path} ${res.statusCode} ${duration}ms`;
       if (res.statusCode >= 500) logger.error(line);
       else logger.warn(line);
 
       if (persistenceEnabled() && !UNAUDITED_STATUSES.has(res.statusCode)) {
         enqueueAuditLog({
           method: req.method,
-          path: req.path,
+          path,
           status: res.statusCode,
           ip,
           userAgent,

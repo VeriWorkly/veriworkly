@@ -39,11 +39,16 @@ import adminRoutes from "#routes/admin/index";
 import { BillingController } from "#controllers/billingController";
 
 import { getRequestIpDetails } from "#utils/requestIp";
-import { hasWellFormedHostAndProto } from "#utils/requestOrigin";
+import { hasWellFormedHostAndProto, isAllowedHost } from "#utils/requestOrigin";
 
-import { authNodeHandler, authRequestContext } from "#auth/index";
+import { auth, authNodeHandler, authRequestContext } from "#auth/index";
 
 const app = express();
+
+// The better-auth endpoints, for the limiter's per-endpoint auth buckets (V-162).
+app.locals.authEndpointPaths = Object.values(auth.api as Record<string, { path?: unknown }>)
+  .map((endpoint) => endpoint.path)
+  .filter((path): path is string => typeof path === "string");
 
 // Request duration by route pattern for `/health/metrics`; first, so 429s and CORS refusals count.
 app.use(httpMetricsMiddleware);
@@ -129,6 +134,13 @@ app.all(["/api/v1/auth", "/api/v1/auth/*"], [
     // Express's error path. Refuse those before they reach it.
     if (!hasWellFormedHostAndProto(req.headers))
       return next(new ApiError(400, "Invalid Host or X-Forwarded-Proto header"));
+    if (
+      !isAllowedHost(req.headers, {
+        baseUrl: config.auth.baseUrl,
+        extraHosts: config.auth.allowedHosts,
+      })
+    )
+      return next(new ApiError(400, "Unknown Host header", { code: "HOST_NOT_ALLOWED" }));
 
     let provider: string | undefined = undefined;
     const cleanPath = req.path.replace(/\/+$/, "");

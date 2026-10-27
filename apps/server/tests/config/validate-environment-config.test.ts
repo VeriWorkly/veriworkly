@@ -229,6 +229,40 @@ describe("validateEnvironmentConfig", () => {
       ).not.toThrow();
     });
 
+    it("holds NEXT_PUBLIC_APP_URL, STUDIO_URL's fallback, to the public https rule (V-097)", () => {
+      expect(
+        failingVariables({ ...validProductionEnv, NEXT_PUBLIC_APP_URL: "http://localhost:3001" }),
+      ).toEqual(["NEXT_PUBLIC_APP_URL"]);
+    });
+
+    it("refuses an ALLOWED_ORIGINS entry that is not a bare origin", () => {
+      expect(
+        messageFor({
+          ...validProductionEnv,
+          ALLOWED_ORIGINS: "https://veriworkly.com/,https://app.veriworkly.com",
+        }),
+      ).toMatch(/"https:\/\/veriworkly.com\/" must be a bare origin/);
+    });
+
+    it("refuses an AUTH_COOKIE_DOMAIN that is a URL, and accepts a host name", () => {
+      expect(
+        failingVariables({ ...validProductionEnv, AUTH_COOKIE_DOMAIN: "https://veriworkly.com" }),
+      ).toEqual(["AUTH_COOKIE_DOMAIN"]);
+      expect(() =>
+        validateEnvironmentConfig({ ...validProductionEnv, AUTH_COOKIE_DOMAIN: ".veriworkly.com" }),
+      ).not.toThrow();
+    });
+
+    it("bounds AI_TIMEOUT_MS and ATS_EXTRACT_MAX_RSS_MB", () => {
+      expect(
+        failingVariables({
+          ...validProductionEnv,
+          AI_TIMEOUT_MS: "600000",
+          ATS_EXTRACT_MAX_RSS_MB: "1",
+        }).sort(),
+      ).toEqual(["AI_TIMEOUT_MS", "ATS_EXTRACT_MAX_RSS_MB"]);
+    });
+
     it("accepts the internal keys unset and refuses them shorter than 32 characters (V-151)", () => {
       expect(() => validateEnvironmentConfig(validProductionEnv)).not.toThrow();
       expect(() =>

@@ -74,7 +74,10 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   RETENTION_PORTFOLIO_VIEW_DAYS: { min: 0 },
   RETENTION_DELETED_DOCUMENT_DAYS: { min: 0 },
 
-  AI_TIMEOUT_MS: { min: 1 },
+  // Past Cloudflare's 100 s an answer can never reach the client anyway.
+  AI_TIMEOUT_MS: { min: 1, max: 100_000 },
+  // Below this the extraction child cannot start; the watchdog would kill every extraction.
+  ATS_EXTRACT_MAX_RSS_MB: { min: 64 },
   AI_RATE_LIMIT_WINDOW_MS: { min: 1 },
   AI_RATE_LIMIT_MAX_REQUESTS: { min: 1 },
 
@@ -102,7 +105,13 @@ const REQUIRED_PUBLIC_URLS = [
 ] as const;
 
 /** Same rule, but unset is fine because the `config.ts` production default is already https. */
-const OPTIONAL_PUBLIC_URLS = ["STUDIO_URL", "STUDIO_LOGIN_URL", "SITE_URL"] as const;
+// NEXT_PUBLIC_APP_URL is STUDIO_URL's fallback (`config.ts`), so it is held to the same rule (V-097).
+const OPTIONAL_PUBLIC_URLS = [
+  "STUDIO_URL",
+  "STUDIO_LOGIN_URL",
+  "SITE_URL",
+  "NEXT_PUBLIC_APP_URL",
+] as const;
 
 /** Example/development values that ship in `.env.example` or as `config.ts` fallbacks. */
 const EXAMPLE_AUTH_SECRETS = new Set(["dev-auth-secret", "dev-auth-secret-1234567890"]);
@@ -179,6 +188,27 @@ function publicHttpsUrlProblem(value: string): string | null {
   if (isLocalHostname(canonicalHostname(url))) return "must not point at localhost in production";
 
   return null;
+}
+
+/**
+ * A browser's Origin is scheme://host[:port] with nothing after it, so an entry with a path or a
+ * trailing slash ("https://veriworkly.com/") never matches and silently blocks that site.
+ */
+function bareOriginProblem(value: string): string | null {
+  try {
+    return new URL(value).origin === value
+      ? null
+      : "must be a bare origin (scheme://host[:port], no path or trailing slash)";
+  } catch {
+    return "is not a valid URL";
+  }
+}
+
+/** A cookie Domain attribute is a host name, never a URL, a path or a port. */
+function cookieDomainProblem(value: string): string | null {
+  return /^\.?[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(value)
+    ? null
+    : "must be a host name such as .veriworkly.com (no scheme, path or port)";
 }
 
 function isTrustProxyEntry(entry: string): boolean {
@@ -322,7 +352,7 @@ function validateProduction(env: RawEnv, ctx: z.RefinementCtx): void {
       .map((origin) => origin.trim())
       .filter(Boolean)
       .map((origin) => {
-        const problem = publicHttpsUrlProblem(origin);
+        const problem = publicHttpsUrlProblem(origin) ?? bareOriginProblem(origin);
         return problem ? `"${origin}" ${problem}` : null;
       })
       .filter((problem): problem is string => problem !== null);
@@ -335,6 +365,12 @@ function validateProduction(env: RawEnv, ctx: z.RefinementCtx): void {
     if (value === undefined) continue;
     const problem = publicHttpsUrlProblem(value);
     if (problem) addIssue(ctx, variable, problem);
+  }
+
+  const cookieDomain = env.AUTH_COOKIE_DOMAIN;
+  if (cookieDomain) {
+    const problem = cookieDomainProblem(cookieDomain);
+    if (problem) addIssue(ctx, "AUTH_COOKIE_DOMAIN", problem);
   }
 
   for (const variable of OPTIONAL_PUBLIC_URLS) {
