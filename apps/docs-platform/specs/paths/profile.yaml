@@ -294,7 +294,30 @@ importGithub:
             example:
               success: false
               statusCode: 404
-              message: 'GitHub profile for "octocat" not found or API call failed.'
+              message: 'GitHub profile for "octocat" not found.'
+
+      "409":
+        description: |
+          The linked GitHub token was refused (`details.code: "GITHUB_RECONNECT_REQUIRED"`):
+          reconnect GitHub in settings. Never a `401`, which would read as a signed-out session.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+
+      "502":
+        description: 'GitHub errored, timed out or could not be reached (`details.code: "GITHUB_UNAVAILABLE"`).'
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+
+      "503":
+        description: 'GitHub rate limit (`details.code: "GITHUB_RATE_LIMITED"`); try again later.'
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
 
       "429":
         description: Import quota exceeded
@@ -331,6 +354,10 @@ importLinkedin:
       and creates a new RESUME document from the result. This is an AI-parsed paste, not a LinkedIn
       API integration. Free users get 1 import/month; paid users (AI Credits or Portfolio Pro/Bundle)
       get unlimited imports.
+
+      It is an AI route like the others: it counts toward the AI rate limit and the two AI
+      requests a user may have in flight (`429` beyond that), ends at the AI request deadline
+      (`504`, nothing charged), and takes an optional `requestId` that makes a retry free.
     requestBody:
       required: true
       content:

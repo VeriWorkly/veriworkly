@@ -14,9 +14,8 @@ import { prisma } from "#lib/prisma";
 import { config } from "#config";
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
-import { cacheDel } from "#lib/redis";
 import { bumpGeneration } from "#lib/cacheGeneration";
-import { cacheNamespaces, masterProfileCacheKey } from "#lib/cacheKeys";
+import { cacheNamespaces } from "#lib/cacheKeys";
 import { masterProfileContentSchema } from "#validators/masterProfileValidator";
 import { getAtsAiPolicy } from "#services/ats/aiPolicy";
 import {
@@ -322,10 +321,10 @@ export class ProfileImportService {
 
     // After commit: the list cache was cleared inside createDocument, but a reader between
     // that clear and the commit could have re-cached the pre-import state.
-    await Promise.all([
-      cacheDel(masterProfileCacheKey(userId)),
-      bumpGeneration(cacheNamespaces.documentList(userId)),
-    ]);
+    await bumpGeneration(
+      cacheNamespaces.masterProfile(userId),
+      cacheNamespaces.documentList(userId),
+    );
 
     return document;
   }

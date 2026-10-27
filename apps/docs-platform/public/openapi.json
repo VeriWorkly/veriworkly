@@ -2096,9 +2096,15 @@
                 "example": {
                   "success": false,
                   "statusCode": 404,
-                  "message": "GitHub profile for \"octocat\" not found or API call failed."
+                  "message": "GitHub profile for \"octocat\" not found."
                 }
               }
+            }
+          },
+          "409": {
+            "description": "The linked GitHub token was refused (`details.code: \"GITHUB_RECONNECT_REQUIRED\"`):\nreconnect GitHub in settings. Never a `401`, which would read as a signed-out session.\n",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
             }
           },
           "429": {
@@ -2126,6 +2132,18 @@
                 }
               }
             }
+          },
+          "502": {
+            "description": "GitHub errored, timed out or could not be reached (`details.code: \"GITHUB_UNAVAILABLE\"`).",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "503": {
+            "description": "GitHub rate limit (`details.code: \"GITHUB_RATE_LIMITED\"`); try again later.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           }
         }
       }
@@ -2136,7 +2154,7 @@
         "operationId": "importLinkedin",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Import Profile From LinkedIn",
-        "description": "Parses raw copy-pasted LinkedIn profile text (or text extracted from an exported PDF) using AI\nand creates a new RESUME document from the result. This is an AI-parsed paste, not a LinkedIn\nAPI integration. Free users get 1 import/month; paid users (AI Credits or Portfolio Pro/Bundle)\nget unlimited imports.\n",
+        "description": "Parses raw copy-pasted LinkedIn profile text (or text extracted from an exported PDF) using AI\nand creates a new RESUME document from the result. This is an AI-parsed paste, not a LinkedIn\nAPI integration. Free users get 1 import/month; paid users (AI Credits or Portfolio Pro/Bundle)\nget unlimited imports.\n\nIt is an AI route like the others: it counts toward the AI rate limit and the two AI\nrequests a user may have in flight (`429` beyond that), ends at the AI request deadline\n(`504`, nothing charged), and takes an optional `requestId` that makes a retry free.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -3915,7 +3933,7 @@
         "operationId": "createShareLink",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Share Link",
-        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response — and optionally set to expire.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n",
+        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response — and optionally set to expire.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n\nThe snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in\nthe response, nor in the owner's list of links.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -3972,6 +3990,12 @@
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "example": { "success": false, "statusCode": 404, "message": "Document not found" }
               }
+            }
+          },
+          "413": {
+            "description": "The snapshot is larger than 1 MB.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
             }
           }
         }
@@ -5210,15 +5234,20 @@
           "profileText": {
             "type": "string",
             "minLength": 10,
-            "description": "Raw copy-pasted text from a LinkedIn profile export or PDF (parsed by AI, not fetched via any LinkedIn API).",
-            "maxLength": 50000
+            "maxLength": 50000,
+            "description": "Raw copy-pasted text from a LinkedIn profile export or PDF (parsed by AI, not fetched via any LinkedIn API)."
           },
           "replaceMaster": {
             "type": "boolean",
             "default": false,
             "description": "When true, also overwrites the user's master profile with the imported content."
           },
-          "requestId": { "type": "string", "minLength": 8, "maxLength": 128 }
+          "requestId": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128,
+            "description": "The client's id for this import, as on every other AI route. A retry with the same id\nand the same text after a lost response returns the document already created\n(`replayed: true`) without charging again; the same id with different text is `409`.\n"
+          }
         }
       },
       "ProfileImportResponse": {
@@ -7527,11 +7556,6 @@
             "type": "string",
             "description": "Convenience path built from the owner's username and the link slug. Only returned by\n`POST /shares`, not by the list endpoint.\n",
             "example": "/janedoe/my-resume"
-          },
-          "snapshot": {
-            "type": "object",
-            "additionalProperties": true,
-            "description": "The static content snapshot captured when the link was created."
           },
           "hasPassword": {
             "type": "boolean",

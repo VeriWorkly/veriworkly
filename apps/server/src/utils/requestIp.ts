@@ -61,6 +61,26 @@ function readTrustedForwardedClientIp(req: Request): string | undefined {
   return normalizeIpValue(forwarded);
 }
 
+/** The longest user agent kept for analytics; anything longer is cut. */
+const MAX_USER_AGENT_LENGTH = 512;
+
+/**
+ * The browser's user agent (V-245). A server render (studio, portfolio) fetches on the viewer's
+ * behalf, so its own agent is Node's; it names the browser in `x-forwarded-client-user-agent`,
+ * honoured under the same rule as the forwarded IP: only with `x-internal-key` equal to
+ * `INTERNAL_API_KEY`. Anyone else gets their own `User-Agent`.
+ */
+export function getRequestUserAgent(req: Request): string | null {
+  const key = readHeaderValue(req.headers, "x-internal-key");
+  const forwarded = readHeaderValue(req.headers, "x-forwarded-client-user-agent")?.trim();
+  const agent =
+    forwarded && matchesSharedSecret(key, config.internal?.apiKey)
+      ? forwarded
+      : readHeaderValue(req.headers, "user-agent");
+
+  return agent ? agent.slice(0, MAX_USER_AGENT_LENGTH) : null;
+}
+
 type RequestIpDetails = ReturnType<typeof computeRequestIpDetails>;
 
 /**

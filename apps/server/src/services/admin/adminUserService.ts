@@ -5,7 +5,7 @@ import { ApiError } from "#lib/errors";
 import { cacheDel } from "#lib/redis";
 import { isAdminUser } from "#lib/isAdminUser";
 import { bumpGeneration } from "#lib/cacheGeneration";
-import { cacheNamespaces, masterProfileCacheKey, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
 import { revokeAllSessionsForUser, revokeAllSessionsForUserSafely } from "#auth/sessions";
 import { ApiKeyService } from "#services/apiKeyService";
 import {
@@ -364,7 +364,7 @@ export async function updateUser(
 
   await Promise.all([
     cacheDel(userProfileCacheKey(userId)),
-    cacheDel(masterProfileCacheKey(userId)),
+    bumpGeneration(cacheNamespaces.masterProfile(userId)),
     ...(input.name !== undefined || input.username !== undefined ? [invalidateLeaderboards()] : []),
     // Public share pages are cached under the username: the old name stops resolving at once, and
     // a cached 404 under the new one is dropped (V-233).

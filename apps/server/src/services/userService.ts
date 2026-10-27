@@ -5,7 +5,7 @@ import { ApiError } from "#lib/errors";
 
 import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
 import { bumpGeneration } from "#lib/cacheGeneration";
-import { cacheNamespaces, masterProfileCacheKey, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
 import { logger } from "#lib/logger";
 import { usernameInvalidReason } from "#utils/slugs";
 import { revokeAllSessionsForUserSafely } from "#auth/sessions";
@@ -357,9 +357,9 @@ export async function purgeDeletedUserCaches(targets: DeletedUserCacheTargets): 
 
   await Promise.allSettled([
     cacheDel(userProfileCacheKey(userId)),
-    cacheDel(masterProfileCacheKey(userId)),
     // One round trip of INCRs: every document, list and public share variant goes dark at once.
     bumpGeneration(
+      cacheNamespaces.masterProfile(userId),
       ...targets.documentIds.map((documentId) => cacheNamespaces.document(userId, documentId)),
       ...(username ? [cacheNamespaces.publicShare(username)] : []),
       cacheNamespaces.documentList(userId),
@@ -388,7 +388,7 @@ async function refreshUserCaches(
 ) {
   await Promise.all([
     cacheSet(userProfileCacheKey(userId), updated, 1800),
-    cacheDel(masterProfileCacheKey(userId)),
+    bumpGeneration(cacheNamespaces.masterProfile(userId)),
     ...(identityChanged ? [invalidateLeaderboards()] : []),
   ]);
 }
