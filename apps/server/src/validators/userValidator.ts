@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { isValidUsername, normalizeUsername, usernameInvalidReason } from "#utils/slugs";
 
-const usernameSchema = z
+/** The one username rule, for users and admins alike (V-233): lowercased, 3-32, not reserved. */
+export const usernameSchema = z
   .string()
   .trim()
   .transform((value) => normalizeUsername(value))
