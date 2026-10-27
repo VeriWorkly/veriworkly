@@ -481,9 +481,9 @@ describe("V-226 a takedown that commits after the read is never overwritten", ()
     const owner = await createUserWithSession();
     const { document, publication } = await seedLivePortfolio(owner.id);
 
-    interleave(prisma.portfolioPublication, "findUnique", () =>
-      adminSuspendDirect(publication.id, "Phishing"),
-    );
+    // The delete reads the publication inside its transaction (review of group 2), so the
+    // takedown lands after the delete has read the document and before it reads the site.
+    interleave(prisma.document, "findUnique", () => adminSuspendDirect(publication.id, "Phishing"));
     await adminSoftDeleteDocument(document.id);
 
     const row = await prisma.portfolioPublication.findUniqueOrThrow({

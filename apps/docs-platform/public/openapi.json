@@ -2340,7 +2340,7 @@
             "name": "cursor",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 2048 },
+            "schema": { "type": "string", "minLength": 1, "maxLength": 8192 },
             "description": "The previous page's `nextCursor`, unchanged. Opaque; do not build or edit it."
           }
         ],
@@ -3372,7 +3372,7 @@
             }
           },
           "409": {
-            "description": "Draft was changed in another session, or the subdomain conflicts with an existing document slug",
+            "description": "Draft was changed in another session",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -4210,6 +4210,19 @@
             }
           },
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
+          "403": {
+            "description": "A moderator made this document private, or made another of the account's résumés or\ncover letters private (a trashed one too, until retention purges it). No link is created\nor refreshed on the account until a moderator lifts it. A portfolio takedown does not\npause sharing.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 403,
+                  "message": "A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it."
+                }
+              }
+            }
+          },
           "404": {
             "description": "Document not found",
             "content": {
@@ -6254,7 +6267,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Optional client-generated id. If a document with this id already exists for the caller, it is returned as-is (idempotent create)."
+            "description": "Optional client-generated id. If a document with this id already exists for the caller, it is returned as-is (idempotent create).",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
           },
           "type": {
             "type": "string",
@@ -7210,7 +7224,10 @@
         "required": ["id", "slug", "templateId", "content", "revision", "updatedAt"],
         "properties": {
           "id": { "type": "string" },
-          "slug": { "type": "string", "description": "Kept in sync with the portfolio subdomain." },
+          "slug": {
+            "type": "string",
+            "description": "The subdomain the draft was last saved under. It is not the document's own slug: a rename or\nanother document's slug never changes or blocks it. A PORTFOLIO document never saved as a\ndraft shows its document slug.\n"
+          },
           "templateId": { "type": "string", "enum": ["signal", "atelier", "nimbus", "cipher"] },
           "content": {
             "type": "object",

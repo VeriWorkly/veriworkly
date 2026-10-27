@@ -56,27 +56,32 @@ async function enrichPrRefs(prRefs: unknown): Promise<unknown> {
 
 export async function createChangelogEntry(input: ChangelogAdminCreateInput) {
   const enrichedPrRefs = await enrichPrRefs(input.prRefs);
+  const id = input.id || slugifyVersion(input.version) || randomUUID();
 
-  const entry = await prisma.changelogEntry.create({
-    data: {
-      id: input.id || slugifyVersion(input.version) || randomUUID(),
-      version: input.version,
-      title: input.title,
-      summary: input.summary,
-      type: input.type,
-      publishedAt: input.publishedAt || new Date(),
-      githubUrl: input.githubUrl,
-      added: input.added ?? [],
-      improved: input.improved ?? [],
-      fixed: input.fixed ?? [],
-      breaking: input.breaking ?? [],
-      security: input.security ?? [],
-      tags: input.tags ?? [],
-      prRefs: (enrichedPrRefs as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-      // Admin-written text: the release sync never re-parses it (V-066).
-      editedAt: new Date(),
-    },
-  });
+  // Writing an entry by hand under a deleted release's id withdraws that delete (V-289).
+  const [, entry] = await prisma.$transaction([
+    prisma.changelogReleaseTombstone.deleteMany({ where: { id } }),
+    prisma.changelogEntry.create({
+      data: {
+        id,
+        version: input.version,
+        title: input.title,
+        summary: input.summary,
+        type: input.type,
+        publishedAt: input.publishedAt || new Date(),
+        githubUrl: input.githubUrl,
+        added: input.added ?? [],
+        improved: input.improved ?? [],
+        fixed: input.fixed ?? [],
+        breaking: input.breaking ?? [],
+        security: input.security ?? [],
+        tags: input.tags ?? [],
+        prRefs: (enrichedPrRefs as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        // Admin-written text: the release sync never re-parses it (V-066).
+        editedAt: new Date(),
+      },
+    }),
+  ]);
 
   await invalidateChangelogReadCaches();
   return entry;
@@ -119,14 +124,35 @@ export async function updateChangelogEntry(id: string, input: ChangelogAdminUpda
   return entry;
 }
 
+/**
+ * An entry the release sync made, or one pointing at a GitHub release page: the sync would create
+ * it again from the release, so its delete leaves a tombstone. A hand-made entry leaves none, or
+ * a release later tagged with the same version would never sync.
+ */
+function cameFromRelease(entry: { tags: string[]; githubUrl: string | null }) {
+  return entry.tags.includes("auto-synced") || Boolean(entry.githubUrl?.includes("/releases/"));
+}
+
 export async function deleteChangelogEntry(id: string) {
-  const existing = await prisma.changelogEntry.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.changelogEntry.findUnique({
+    where: { id },
+    select: { id: true, version: true, tags: true, githubUrl: true },
+  });
 
   if (!existing) {
     throw new ApiError(404, "Changelog entry not found");
   }
 
-  await prisma.changelogEntry.delete({ where: { id } });
+  // The delete and its tombstone commit together (V-289): the next sync skips this release.
+  await prisma.$transaction(async (tx) => {
+    await tx.changelogEntry.delete({ where: { id } });
+    if (cameFromRelease(existing))
+      await tx.changelogReleaseTombstone.upsert({
+        where: { id },
+        create: { id, version: existing.version },
+        update: { version: existing.version, deletedAt: new Date() },
+      });
+  });
   await invalidateChangelogReadCaches();
 
   return { id };

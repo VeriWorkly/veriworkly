@@ -69,7 +69,7 @@ let adminPromise: Promise<TestUser> | undefined;
 const adminUser = () =>
   (adminPromise ??= createUserWithSession({ email: "admin@example.test", emailVerified: true }));
 
-async function asAdmin(method: "get" | "post" | "put", url: string, body?: object) {
+async function asAdmin(method: "get" | "post" | "put" | "delete", url: string, body?: object) {
   const admin = await adminUser();
   const pending = request(app)
     [method](url)
@@ -352,5 +352,65 @@ describe("changelog release LOWs", () => {
     });
     expect(created.status).toBe(201);
     expect(created.body.data.id).toBe("v3-32-0");
+  });
+});
+
+describe("an admin delete of a synced release stays deleted (V-289)", () => {
+  afterEach(async () => {
+    // The record a delete leaves behind, so the next test starts from no deletes at all.
+    await prisma.$executeRawUnsafe(`DO $$ BEGIN
+      IF to_regclass('"ChangelogReleaseTombstone"') IS NOT NULL THEN
+        DELETE FROM "ChangelogReleaseTombstone";
+      END IF; END $$`);
+  });
+
+  it("is not recreated by the next sync, and is gone from the public changelog", async () => {
+    mockGitHub();
+    await syncChangelogFromGitHubReleases();
+    expect(await prisma.changelogEntry.count({ where: { id: "v4-1-0" } })).toBe(1);
+
+    const removed = await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`);
+    expect(removed.status, JSON.stringify(removed.body)).toBe(200);
+
+    await syncChangelogFromGitHubReleases();
+    expect(await prisma.changelogEntry.count({ where: { id: "v4-1-0" } })).toBe(0);
+
+    const list = await request(app).get("/api/v1/changelog").set("Origin", STUDIO_ORIGIN);
+    expect(list.status).toBe(200);
+    expect(list.body.data.items.map((item: { id: string }) => item.id)).not.toContain("v4-1-0");
+  });
+
+  it("comes back when an admin writes the entry again by hand", async () => {
+    mockGitHub();
+    await syncChangelogFromGitHubReleases();
+    await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`);
+
+    const created = await asAdmin("post", `${ADMIN}/changelog`, {
+      id: "v4-1-0",
+      version: "4.1.0",
+      title: "Spring, corrected",
+      type: "minor",
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    await prisma.changelogEntry.delete({ where: { id: "v4-1-0" } });
+
+    // Writing it by hand withdrew the delete: the release syncs again like any other.
+    await syncChangelogFromGitHubReleases();
+    expect(await prisma.changelogEntry.count({ where: { id: "v4-1-0" } })).toBe(1);
+  });
+
+  it("does not block a release whose id a deleted hand-made entry once used", async () => {
+    mockGitHub();
+    const created = await asAdmin("post", `${ADMIN}/changelog`, {
+      id: "v4-1-0",
+      version: "4.1.0",
+      title: "Drafted by hand before the release",
+      type: "minor",
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    expect((await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`)).status).toBe(200);
+
+    await syncChangelogFromGitHubReleases();
+    expect(await prisma.changelogEntry.count({ where: { id: "v4-1-0" } })).toBe(1);
   });
 });

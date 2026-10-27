@@ -31,7 +31,11 @@ import {
   type DocumentListFilter,
   type DocumentListPosition,
 } from "#services/documentListCursor";
-import { isModerationLocked, NOT_MODERATION_LOCKED } from "#services/portfolioService";
+import {
+  isModerationLocked,
+  NOT_MODERATION_LOCKED,
+  recordOwnerUnpublishUnderLock,
+} from "#services/portfolioService";
 
 const MODERATED_PRIVATE_MESSAGE = "This document was made private by a moderator.";
 
@@ -168,8 +172,10 @@ function keysetAfter(
 
 export class DocumentService {
   /**
-   * A PORTFOLIO document never gets a reserved subdomain as its slug (V-300): a draft's slug is
-   * its subdomain, so `login`, `billing`, `admin`... are skipped like a taken name ("login-2").
+   * A PORTFOLIO document never gets a reserved subdomain as its slug (V-300), so `login`,
+   * `billing`, `admin`... are skipped like a taken name ("login-2"). A draft's subdomain has its
+   * own column since V-301 (`portfolioSubdomain`); this keeps a reserved name out of the slug a
+   * draft never saved through the portfolio routes still shows as its subdomain.
    */
   private static async buildUniqueSlug(
     userId: string,
@@ -1029,6 +1035,10 @@ export class DocumentService {
             },
           });
         }
+        // Under a moderator's lock the trash is recorded as the owner's unpublish, so the lift
+        // leaves the site offline (V-285). A no-op on a row with no lock.
+        if (publication)
+          await recordOwnerUnpublishUnderLock(tx, { id: publication.id, documentId });
 
         return row;
       });

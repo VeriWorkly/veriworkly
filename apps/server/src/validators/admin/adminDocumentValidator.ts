@@ -20,7 +20,8 @@ export type AdminDocumentListQuery = z.infer<typeof adminDocumentListQuerySchema
 /**
  * Admins can only pull a document *back* toward private. Making someone else's private
  * document public is a disclosure an operator should never be able to perform silently,
- * so the enum stops at UNLISTED.
+ * so the enum stops at UNLISTED. UNLISTED on a PRIVATE document is allowed only as the lift of a
+ * moderator's own "Make private"; the service refuses it otherwise (V-286).
  */
 export const adminDocumentVisibilitySchema = z.object({
   visibility: z.enum(["PRIVATE", "UNLISTED"]),

@@ -8,7 +8,10 @@ export const INVALID_DOCUMENT_CURSOR = "INVALID_DOCUMENT_CURSOR";
 /** The last row a page returned: the walk resumes strictly after it. */
 const positionSchema = z.object({
   at: z.string().datetime(),
-  id: z.string().min(1).max(64),
+  // Unbounded here: a new id is bounded at create (64 characters, V-303), but a document stored
+  // before that bound may have a longer one, and its owner still has to page past it. The cursor
+  // string itself is bounded by the list query.
+  id: z.string().min(1),
 });
 
 /** The request filters a walk was started with. A cursor is only good for the same filters. */
