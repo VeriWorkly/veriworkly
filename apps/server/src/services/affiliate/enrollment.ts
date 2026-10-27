@@ -187,7 +187,7 @@ export async function applyReferral(userId: string, code: string, signals?: Refe
     });
 
   try {
-    const referral = await prisma.affiliateReferral.create({
+    await prisma.affiliateReferral.create({
       data: {
         affiliateId: affiliate.id,
         referredUserId: userId,
@@ -197,7 +197,9 @@ export async function applyReferral(userId: string, code: string, signals?: Refe
       },
     });
     await invalidateAffiliate(affiliate.id);
-    return referral;
+    // Only that it applied (V-323): the row carries the affiliate's user id, the signal hashes
+    // and the shared-address flag, which would teach a self-referrer to switch networks.
+    return { applied: true as const };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
       throw new ApiError(409, "This account already has a referral.");
