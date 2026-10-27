@@ -166,6 +166,12 @@ model Document {
   slug  String // Current editable document slug
   tags  String[]     @default([])
 
+  // A PORTFOLIO draft's chosen subdomain (V-301); null on every other type. Kept apart from
+  // `slug`, which is unique per user across every document (trashed ones included) and follows
+  // the title, so a subdomain matching a résumé's slug or a trashed draft's was refused, and a
+  // rename moved it. Not unique: the name is claimed by `PortfolioPublication.subdomain` on publish.
+  portfolioSubdomain String?
+
   content  Json // The main content (JSON Resume standard)
   metadata Json? // UI state, favorites, tags, etc.
 

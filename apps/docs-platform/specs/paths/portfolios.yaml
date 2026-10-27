@@ -226,7 +226,7 @@ savePortfolioDraft:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
       "409":
-        description: Draft was changed in another session, or the subdomain conflicts with an existing document slug
+        description: Draft was changed in another session
         content:
           application/json:
             schema:

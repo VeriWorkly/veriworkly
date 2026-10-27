@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
@@ -210,5 +210,97 @@ describe("V-300: reserved subdomains cannot be claimed through a document slug",
 
     const republished = await publish(user, document.id, "status");
     expect(republished.status, JSON.stringify(republished.body)).toBe(201);
+  });
+});
+
+describe("V-301: a portfolio subdomain is not one of the user's document slugs", () => {
+  it("saves and publishes on a name a résumé's slug already uses", async () => {
+    const user = await createUserWithSession();
+    const name = sub("gautam-raj");
+    const resume = await asUser(user, request(app).post("/api/v1/documents")).send({
+      type: "RESUME",
+      title: "Resume",
+      slug: name,
+    });
+    expect(resume.status, JSON.stringify(resume.body)).toBe(201);
+    expect(resume.body.data.slug).toBe(name);
+
+    const availability = await asUser(
+      user,
+      request(app).get(`/api/v1/portfolios/subdomains/${name}/availability`),
+    );
+    expect(availability.body.data.available).toBe(true);
+
+    const draft = await saveDraft(user, name, "signal");
+    expect(draft.status, JSON.stringify(draft.body)).toBe(200);
+    expect(draft.body.data.slug).toBe(name);
+
+    const me = await asUser(user, request(app).get("/api/v1/portfolios/me"));
+    expect(me.body.data.draft.slug).toBe(name);
+
+    const published = await publish(user, draft.body.data.id, name);
+    expect(published.status, JSON.stringify(published.body)).toBe(201);
+    expect(published.body.data.subdomain).toBe(name);
+  });
+
+  it("starts again on the subdomain of a portfolio just moved to the trash", async () => {
+    const user = await createUserWithSession();
+    const name = sub("again");
+    const first = await saveDraft(user, name, "signal");
+    expect(first.status).toBe(200);
+
+    const trashed = await asUser(
+      user,
+      request(app).delete(`/api/v1/documents/${first.body.data.id}`),
+    );
+    expect(trashed.status, JSON.stringify(trashed.body)).toBe(200);
+
+    const second = await saveDraft(user, name, "signal");
+    expect(second.status, JSON.stringify(second.body)).toBe(200);
+    expect(second.body.data.id).not.toBe(first.body.data.id);
+    expect(second.body.data.slug).toBe(name);
+  });
+
+  it("keeps the subdomain when the portfolio document is renamed", async () => {
+    const user = await createUserWithSession();
+    const name = sub("keep");
+    const draft = await saveDraft(user, name, "signal");
+
+    const renamed = await asUser(
+      user,
+      request(app).patch(`/api/v1/documents/${draft.body.data.id}`),
+    ).send({ title: "My new site", revision: draft.body.data.revision });
+    expect(renamed.status, JSON.stringify(renamed.body)).toBe(200);
+
+    const me = await asUser(user, request(app).get("/api/v1/portfolios/me"));
+    expect(me.body.data.draft.slug).toBe(name);
+  });
+
+  it("a first save whose document slug is taken in the meantime still saves", async () => {
+    const user = await createUserWithSession();
+    const name = sub("race");
+    // Another document takes the slug the save picked, between its check and its insert.
+    const count = prisma.document.count.bind(prisma.document) as (
+      ...a: unknown[]
+    ) => Promise<number>;
+    let taken: string | null = null;
+    vi.spyOn(prisma.document, "count").mockImplementation((async (...args: unknown[]) => {
+      const free = await count(...args);
+      const slug = (args[0] as { where?: { slug?: string } } | undefined)?.where?.slug;
+      if (taken === null && slug) {
+        taken = slug;
+        await prisma.document.create({
+          data: { userId: user.id, type: "RESUME", title: "Taken", slug, content: {} },
+        });
+      }
+      return free;
+    }) as never);
+
+    const draft = await saveDraft(user, name, "signal");
+    expect(draft.status, JSON.stringify(draft.body)).toBe(200);
+    expect(draft.body.data.slug).toBe(name);
+    expect(taken).not.toBeNull();
+    const row = await prisma.document.findUniqueOrThrow({ where: { id: draft.body.data.id } });
+    expect(row.slug).not.toBe(taken);
   });
 });

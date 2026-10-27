@@ -3372,7 +3372,7 @@
             }
           },
           "409": {
-            "description": "Draft was changed in another session, or the subdomain conflicts with an existing document slug",
+            "description": "Draft was changed in another session",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -7210,7 +7210,10 @@
         "required": ["id", "slug", "templateId", "content", "revision", "updatedAt"],
         "properties": {
           "id": { "type": "string" },
-          "slug": { "type": "string", "description": "Kept in sync with the portfolio subdomain." },
+          "slug": {
+            "type": "string",
+            "description": "The subdomain the draft was last saved under. It is not the document's own slug: a rename or\nanother document's slug never changes or blocks it. A PORTFOLIO document never saved as a\ndraft shows its document slug.\n"
+          },
           "templateId": { "type": "string", "enum": ["signal", "atelier", "nimbus", "cipher"] },
           "content": {
             "type": "object",

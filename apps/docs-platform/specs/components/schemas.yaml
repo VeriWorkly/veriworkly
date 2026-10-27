@@ -3026,7 +3026,10 @@ PortfolioDraft:
       type: string
     slug:
       type: string
-      description: Kept in sync with the portfolio subdomain.
+      description: |
+        The subdomain the draft was last saved under. It is not the document's own slug: a rename or
+        another document's slug never changes or blocks it. A PORTFOLIO document never saved as a
+        draft shows its document slug.
     templateId:
       type: string
       enum: [signal, atelier, nimbus, cipher]

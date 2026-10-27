@@ -172,8 +172,10 @@ function keysetAfter(
 
 export class DocumentService {
   /**
-   * A PORTFOLIO document never gets a reserved subdomain as its slug (V-300): a draft's slug is
-   * its subdomain, so `login`, `billing`, `admin`... are skipped like a taken name ("login-2").
+   * A PORTFOLIO document never gets a reserved subdomain as its slug (V-300), so `login`,
+   * `billing`, `admin`... are skipped like a taken name ("login-2"). A draft's subdomain has its
+   * own column since V-301 (`portfolioSubdomain`); this keeps a reserved name out of the slug a
+   * draft never saved through the portfolio routes still shows as its subdomain.
    */
   private static async buildUniqueSlug(
     userId: string,
