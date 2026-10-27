@@ -91,7 +91,7 @@ export const productCatalog: Record<
   ai_credits: {
     name: PRODUCT_NAMES.ai_credits,
     entitlements: [ENTITLEMENT_KEYS.AI_CREDITS],
-    prices: { monthly: 599, annual: 5_990 },
+    prices: { monthly: 599, annual: 5_988 },
     creditAllowance: { monthly: 1_000, annual: ANNUAL_MONTHLY_CREDITS * ANNUAL_CREDIT_MONTHS },
     creditNotes: { monthly: MONTHLY_CREDIT_NOTE, annual: ANNUAL_CREDIT_NOTE },
   },
