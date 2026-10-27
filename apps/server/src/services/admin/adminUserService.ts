@@ -429,10 +429,11 @@ export async function deleteUser(userId: string, confirmEmail: string, audit: Ad
 
   // Same transaction body as self-service deletion (allocation pre-delete + user cascade),
   // plus the audit row. `AdminAuditEntry.targetId` is not a foreign key, so it survives the
-  // row it names.
+  // row it names. Written after the cascade, whose redaction of entries about the user would
+  // otherwise replace this deletion's own reason (V-231).
   await prisma.$transaction(async (tx) => {
-    await writeAdminAudit(tx, audit);
     await deleteUserCascade(tx, userId);
+    await writeAdminAudit(tx, audit);
   });
 
   // Best effort from here on: the account is gone, so neither may throw back to the admin.

@@ -74,8 +74,8 @@ export const AdminUserController = {
       action: ADMIN_AUDIT_ACTIONS.userDelete,
       targetType: "User",
       targetId: id,
+      // No confirmEmail (V-231): the audit log outlives the account, its address must not.
       reason: input.reason,
-      metadata: { confirmEmail: input.confirmEmail },
     });
   }, "User deleted successfully"),
 };

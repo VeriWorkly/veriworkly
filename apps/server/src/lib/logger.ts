@@ -30,10 +30,36 @@ const MAX_CAUSE_DEPTH = 5;
  */
 const DROPPED_ERROR_KEYS = new Set(["detail", "headers", "config", "request", "response"]);
 
+/**
+ * V-255: an email address never reaches a log line. The privacy policy describes server logs as
+ * request metadata, so every string the logger writes (message, meta, error messages and stacks)
+ * has its addresses masked here, in one place, rather than at each call site:
+ * `jane.doe@example.com` → `j***@e***.com`. Enough to tell two recipients apart in an incident,
+ * not enough to recover either.
+ */
+const EMAIL =
+  /([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9])[A-Za-z0-9.-]*\.([A-Za-z]{2,63})\b/g;
+
+export function maskEmails(value: string): string {
+  return value.replace(EMAIL, "$1***@$2***.$3");
+}
+
+/** Meta keys that hold a URL whose path or query can carry personal data: only the origin stays. */
+const ORIGIN_ONLY_KEYS = new Set(["referer", "referrer"]);
+
+function originOnly(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return "[unparseable]";
+  }
+}
+
 function truncate(value: string): string {
-  return value.length > MAX_STRING_LENGTH
-    ? `${value.slice(0, MAX_STRING_LENGTH)}…[truncated ${value.length - MAX_STRING_LENGTH} chars]`
-    : value;
+  const masked = maskEmails(value);
+  return masked.length > MAX_STRING_LENGTH
+    ? `${masked.slice(0, MAX_STRING_LENGTH)}…[truncated ${masked.length - MAX_STRING_LENGTH} chars]`
+    : masked;
 }
 
 /**
@@ -54,7 +80,12 @@ function toLoggable(value: unknown, ancestors: WeakSet<object>, causeDepth: numb
     if (value instanceof Error) return serializeError(value, ancestors, causeDepth);
     if (Array.isArray(value)) return value.map((item) => toLoggable(item, ancestors, causeDepth));
     return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, toLoggable(item, ancestors, causeDepth)]),
+      Object.entries(value).map(([key, item]) => [
+        key,
+        ORIGIN_ONLY_KEYS.has(key.toLowerCase()) && typeof item === "string"
+          ? originOnly(item)
+          : toLoggable(item, ancestors, causeDepth),
+      ]),
     );
   } finally {
     ancestors.delete(value);
@@ -90,9 +121,10 @@ function serialize(data: unknown, space?: number): string {
   return JSON.stringify(toLoggable(data, new WeakSet(), 0), null, space);
 }
 
-function writeLog(level: LogLevel, message: string, data?: unknown) {
+function writeLog(level: LogLevel, rawMessage: string, data?: unknown) {
   // Read per call, not from `#config`: the logger tests toggle NODE_ENV at runtime.
   const isProduction = process.env.NODE_ENV === "production";
+  const message = maskEmails(rawMessage);
 
   if (isProduction) {
     const logObject: Record<string, unknown> = {
@@ -124,14 +156,14 @@ function writeLog(level: LogLevel, message: string, data?: unknown) {
     if (data !== undefined && data !== null) {
       let formattedData = "";
 
-      if (data instanceof Error) formattedData = data.stack || data.message;
+      if (data instanceof Error) formattedData = maskEmails(data.stack || data.message);
       else if (typeof data === "object") {
         try {
           formattedData = serialize(data, 2);
         } catch {
           formattedData = String(data);
         }
-      } else formattedData = String(data);
+      } else formattedData = maskEmails(String(data));
 
       if (level === LogLevel.ERROR) console.error(prefix, formattedData);
       else if (level === LogLevel.WARN) console.warn(prefix, formattedData);

@@ -3,12 +3,11 @@ import { isAPIError } from "better-auth/api";
 
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
-import { config } from "#config";
 
 import { convertNodeHeadersToWebHeaders, getSessionFromRequestHeaders } from "#auth/index";
 
-import { cacheGet, cacheSet } from "#lib/redis";
-import { getSessionCacheKey } from "#utils/authCache";
+import { cacheGet } from "#lib/redis";
+import { cacheSessionUser, getSessionCacheKey } from "#utils/authCache";
 
 export const AUTH_UNAVAILABLE_MESSAGE = "Authentication is temporarily unavailable";
 
@@ -77,7 +76,8 @@ export async function getSessionUserFromRequest(req: Request): Promise<Authentic
       name: user.name ?? null,
     };
 
-    if (cacheKey) await cacheSet(cacheKey, authUser, config.auth.sessionCacheMaxAgeSeconds);
+    // Not written if the session was revoked while better-auth was looking it up (V-122).
+    if (cacheKey) await cacheSessionUser(cacheKey, authUser);
 
     req.authUser = authUser;
     return authUser;

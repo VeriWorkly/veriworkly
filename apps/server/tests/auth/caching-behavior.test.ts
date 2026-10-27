@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cacheGetMock = vi.fn();
 const cacheSetMock = vi.fn();
+const evalMock = vi.fn();
 const getSessionMock = vi.fn();
 
 const AUTH_SECRET = "unit-test-auth-secret";
@@ -22,6 +23,7 @@ vi.mock("#config", () => ({
 vi.mock("#lib/redis", () => ({
   cacheGet: cacheGetMock,
   cacheSet: cacheSetMock,
+  getRedis: () => ({ eval: evalMock }),
 }));
 
 vi.mock("#auth/index", () => ({
@@ -39,6 +41,7 @@ describe("Session Caching Behavior", () => {
   beforeEach(() => {
     cacheGetMock.mockReset();
     cacheSetMock.mockReset();
+    evalMock.mockReset();
     getSessionMock.mockReset();
   });
 
@@ -64,6 +67,7 @@ describe("Session Caching Behavior", () => {
     expect(getSessionMock).not.toHaveBeenCalled();
     // Cache was not re-written
     expect(cacheSetMock).not.toHaveBeenCalled();
+    expect(evalMock).not.toHaveBeenCalled();
   });
 
   it("queries database on Redis miss and populates cache (cache miss)", async () => {
@@ -90,16 +94,16 @@ describe("Session Caching Behavior", () => {
     expect(getSessionMock).toHaveBeenCalled();
     // User returned is the DB user
     expect(user?.id).toBe("user-db");
-    // Cache was updated with TTL 900
-    expect(cacheSetMock).toHaveBeenCalledWith(
-      expect.stringMatching(/^auth:session:/),
-      {
-        id: "user-db",
-        email: "db@example.com",
-        name: "DB User",
-      },
-      900,
-    );
+    // Cache was updated with TTL 900, unless the session was revoked meanwhile (V-122)
+    const [, write] = evalMock.mock.calls[0];
+    expect(write.keys[0]).toMatch(/^auth:session:/);
+    expect(write.keys[1]).toBe(`${write.keys[0]}:revoked`);
+    expect(JSON.parse(write.arguments[0])).toEqual({
+      id: "user-db",
+      email: "db@example.com",
+      name: "DB User",
+    });
+    expect(write.arguments[1]).toBe("900");
   });
 
   it("never consults or fills the cache for an unsigned cookie; better-auth decides", async () => {
@@ -115,6 +119,7 @@ describe("Session Caching Behavior", () => {
     expect(user).toBeNull();
     expect(cacheGetMock).not.toHaveBeenCalled();
     expect(cacheSetMock).not.toHaveBeenCalled();
+    expect(evalMock).not.toHaveBeenCalled();
     expect(getSessionMock).toHaveBeenCalled();
   });
 });

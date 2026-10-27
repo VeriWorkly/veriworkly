@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cacheGetMock = vi.fn();
 const cacheSetMock = vi.fn();
+const evalMock = vi.fn();
 const cacheDelMock = vi.fn();
 const getSessionMock = vi.fn();
 
@@ -24,6 +25,7 @@ vi.mock("#lib/redis", () => ({
   cacheGet: cacheGetMock,
   cacheSet: cacheSetMock,
   cacheDel: cacheDelMock,
+  getRedis: () => ({ eval: evalMock }),
 }));
 
 vi.mock("#auth/index", () => ({
@@ -51,6 +53,7 @@ describe("session auth cache", () => {
   beforeEach(() => {
     cacheGetMock.mockReset();
     cacheSetMock.mockReset();
+    evalMock.mockReset();
     cacheDelMock.mockReset();
     getSessionMock.mockReset();
   });
@@ -70,11 +73,10 @@ describe("session auth cache", () => {
 
     expect(user?.id).toBe("user-1");
     expect(cacheGetMock).toHaveBeenCalledWith(expectedKey(token));
-    expect(cacheSetMock).toHaveBeenCalledWith(
-      expectedKey(token),
-      { id: "user-1", email: "user@example.com", name: "User" },
-      123,
-    );
+    expect(evalMock).toHaveBeenCalledWith(expect.any(String), {
+      keys: [expectedKey(token), `${expectedKey(token)}:revoked`],
+      arguments: [JSON.stringify({ id: "user-1", email: "user@example.com", name: "User" }), "123"],
+    });
   });
 
   it("invalidateCacheByToken deletes exactly the key the signed cookie was cached under", async () => {
@@ -88,5 +90,20 @@ describe("session auth cache", () => {
 
     expect(cacheDelMock).toHaveBeenCalledTimes(1);
     expect(cacheDelMock).toHaveBeenCalledWith(expectedKey(token));
+  });
+});
+
+describe("sign-out tombstone path", () => {
+  it("is /sign-out only; revoke-session tombstones through session.delete.after", async () => {
+    const { isSignOutPath } = await import("#utils/authCache");
+
+    expect(isSignOutPath("/sign-out")).toBe(true);
+    for (const path of [
+      "/revoke-session",
+      "/revoke-sessions",
+      "/revoke-other-sessions",
+      "/sign-outx",
+    ])
+      expect(isSignOutPath(path), path).toBe(false);
   });
 });

@@ -55,11 +55,9 @@ export async function sendContactEmail(payload: {
     receivedAt,
   };
 
-  logger.info("[Contact] Processing contact submission email dispatch", {
-    senderEmail: mailData.email,
-    adminRecipient: adminEmail,
-    subject: mailData.subject,
-  });
+  // No sender identity or subject in the log (V-255): the privacy policy describes server logs
+  // as request metadata, and the admin copy of the message is the record.
+  logger.info("[Contact] Processing contact submission email dispatch");
 
   // 1. Team/Admin Notification Email (with replyTo set to customer's email)
   const adminSubject = `[VeriWorkly Contact] ${mailData.subject} from ${mailData.name}`;
@@ -86,14 +84,11 @@ export async function sendContactEmail(payload: {
       to: mailData.email,
       ...renderContactReceiptEmail(contactReceiptFirstName(mailData.name)),
     });
-    logger.info("[Contact] User confirmation receipt sent successfully", {
-      userEmail: mailData.email,
-    });
+    logger.info("[Contact] User confirmation receipt sent successfully");
   } catch (userMailError) {
     logger.warn(
       "[Contact] Failed to send user confirmation receipt email (admin email was delivered)",
       {
-        userEmail: mailData.email,
         error: userMailError instanceof Error ? userMailError.message : String(userMailError),
       },
     );

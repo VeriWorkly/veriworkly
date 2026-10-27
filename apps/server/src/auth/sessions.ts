@@ -1,9 +1,8 @@
 import { auth } from "#auth/index";
 
-import { cacheDel } from "#lib/redis";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
-import { invalidateCacheByToken } from "#utils/authCache";
+import { revokeSessionCaches } from "#utils/authCache";
 
 /**
  * Revoking a session means clearing it from THREE independent stores. Deleting the Postgres row
@@ -16,10 +15,11 @@ import { invalidateCacheByToken } from "#utils/authCache";
  *   1. better-auth's session-by-token entry in Redis  -> internalAdapter.deleteSessions()
  *   2. better-auth's `active-sessions-<userId>` index  -> deleted here; note that the *plural*
  *      deleteSessions() does not prune it (only the singular deleteSession() does)
- *   3. this app's own `auth:session:<token-hash>` cache -> invalidateCacheByToken()
+ *   3. this app's own `auth:session:<token-hash>` cache -> revokeSessionCaches(), which also
+ *      leaves a tombstone so a lookup already in flight cannot re-cache it (V-122)
  *
  * A raw Prisma delete also bypasses better-auth's `databaseHooks.session.delete.after`, which is
- * what would otherwise have called invalidateCacheByToken for us. Always route session removal
+ * what would otherwise have called revokeSessionCaches for us. Always route session removal
  * through this module rather than deleting `session` rows directly.
  *
  * Not revocable: the `cookieCache` JWT held by the client (`AUTH_SESSION_CACHE_MAX_AGE_SECONDS`,
@@ -38,8 +38,14 @@ export async function revokeAllSessionsForUser(userId: string): Promise<number> 
   const context = await auth.$context;
 
   await context.internalAdapter.deleteSessions(tokens);
-  await cacheDel(`active-sessions-${userId}`);
-  await Promise.all(tokens.map((token) => invalidateCacheByToken(token)));
+  // better-auth's secondary storage logs and swallows Redis errors, so its deletes above can
+  // fail silently. Strict (V-259): its per-token entries and the active-sessions index are
+  // deleted again here, with our own cache, and anything Redis does not confirm throws, so a
+  // caller never reports a revocation that did not happen.
+  await revokeSessionCaches(tokens, {
+    strict: true,
+    extraKeys: [...tokens, `active-sessions-${userId}`],
+  });
 
   return tokens.length;
 }
