@@ -391,13 +391,18 @@ export async function fetchRoadmapSitemapEntries(): Promise<RoadmapSitemapEntry[
   return perStatus.flat();
 }
 
+/** Feature ids are slugs; `/roadmap/stats` is another backend route, so a payload without a title is not a feature either. */
+const ROADMAP_ID = /^[a-z0-9][a-z0-9-]{0,120}$/i;
+
 export async function fetchRoadmapFeatureById(id: string): Promise<RoadmapFeature | null> {
+  if (!ROADMAP_ID.test(id)) return null;
+
   try {
-    const feature = await fetchApiData<RoadmapFeature>(`/roadmap/${id}`, {
+    const feature = await fetchApiData<RoadmapFeature>(`/roadmap/${encodeURIComponent(id)}`, {
       next: { revalidate: ROADMAP_REVALIDATE_SECONDS },
     });
 
-    return normalizeFeature(feature);
+    return typeof feature?.title === "string" ? normalizeFeature(feature) : null;
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 404) {
       return null;

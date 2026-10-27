@@ -320,13 +320,18 @@ export async function fetchChangelogDetail(id: string): Promise<ChangelogDetail 
   return { entry, older: null, newer: null, isLatest: false };
 }
 
+/** Entry ids are slugged versions ("v3-31-0"): anything else, `stats` included, would reach another backend route. */
+const CHANGELOG_ID = /^v[w-]{1,80}$/;
+
 export async function fetchChangelogEntryById(id: string): Promise<ChangelogEntry | null> {
+  if (!CHANGELOG_ID.test(id)) return null;
+
   try {
-    const entry = await fetchApiData<ChangelogEntry>(`/changelog/${id}`, {
+    const entry = await fetchApiData<ChangelogEntry>(`/changelog/${encodeURIComponent(id)}`, {
       next: { revalidate: CHANGELOG_REVALIDATE_SECONDS },
     });
 
-    return normalizeEntry(entry);
+    return typeof entry?.title === "string" ? normalizeEntry(entry) : null;
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 404) return null;
 

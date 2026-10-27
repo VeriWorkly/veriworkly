@@ -106,3 +106,49 @@ describe("roadmap status walk", () => {
     expect((await fetchRoadmapFromBackend()).failedStatuses).toEqual(["done"]);
   });
 });
+
+describe("item ids never reach another backend route (W-079)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const stubFetch = (body: unknown) => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        urls.push(url);
+        return new Response(JSON.stringify({ success: true, data: body }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+    return urls;
+  };
+
+  it("treats /changelog/stats as no release, without asking the backend", async () => {
+    const urls = stubFetch({ total: 3 });
+    const { fetchChangelogEntryById } =
+      await import("@/features/changelog/services/changelog-backend");
+
+    expect(await fetchChangelogEntryById("stats")).toBeNull();
+    expect(urls).toEqual([]);
+  });
+
+  it("treats a payload without a title as no feature, and encodes the id", async () => {
+    const urls = stubFetch({ total: 3 });
+    const { fetchRoadmapFeatureById } = await import("@/features/roadmap/services/roadmap-backend");
+
+    expect(await fetchRoadmapFeatureById("stats")).toBeNull();
+    expect(await fetchRoadmapFeatureById("a/b")).toBeNull();
+    expect(urls.every((url) => url.endsWith("/roadmap/stats"))).toBe(true);
+  });
+});
+
+describe("a repeated query key reads as its first value (W-078)", () => {
+  it("takes the first of an array", async () => {
+    const { firstParam } = await import("@/lib/search-params");
+
+    expect(firstParam(["a", "b"])).toBe("a");
+    expect(firstParam("a")).toBe("a");
+    expect(firstParam(undefined)).toBeUndefined();
+  });
+});
