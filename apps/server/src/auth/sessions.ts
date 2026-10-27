@@ -22,9 +22,9 @@ import { revokeSessionCaches } from "#utils/authCache";
  * what would otherwise have called revokeSessionCaches for us. Always route session removal
  * through this module rather than deleting `session` rows directly.
  *
- * Not revocable: the `cookieCache` JWT held by the client (`AUTH_SESSION_CACHE_MAX_AGE_SECONDS`,
- * 15 min). That is inherent to a stateless cookie cache — it bounds how fast any revocation can
- * take effect, so keep that TTL short.
+ * better-auth's `cookieCache` is off (`auth/index.ts`) and the middleware passes
+ * `disableCookieCache`, so a `session_data` cookie a client still holds can never answer for the
+ * store: once these three are cleared, the next request is 401 (V-369 / V-312).
  */
 export async function revokeAllSessionsForUser(userId: string): Promise<number> {
   const sessions = await prisma.session.findMany({

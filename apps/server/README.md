@@ -46,7 +46,7 @@ The API will be available at `http://localhost:8080`.
 ## 🚚 Deploy order notes
 
 - **Document list paging (V-263)**: `GET /api/v1/documents` pages with `limit` and `cursor` and answers with `nextCursor` and `total`. A request with neither still gets the old single response (up to 500 documents) so studios already in browsers keep working. Deploy the server after the studio that sends `limit`; a later change makes `limit` default to 20 and drops the unpaged response.
-- **Blank settings and ADMIN_EMAIL**: a boolean setting left blank (`NAME=`) now means "use the default", not "off". The flags whose default is on are `CLUSTERING_ENABLED` (production), `AUTH_SESSION_CACHE_ENABLED` (production), `GITHUB_SYNC_ENABLED`, `CHANGELOG_RELEASE_SYNC_ENABLED`, and `AFFILIATE_PROGRAM_ENABLED`/`AMBASSADOR_PROGRAM_ENABLED` outside production, so set each one to `true` or `false` in the server `.env` before deploying. `ADMIN_EMAIL` is required in every environment and must be a single plain address; the server refuses to boot otherwise.
+- **Blank settings and ADMIN_EMAIL**: a boolean setting left blank (`NAME=`) now means "use the default", not "off". The flags whose default is on are `CLUSTERING_ENABLED` (production), `GITHUB_SYNC_ENABLED`, `CHANGELOG_RELEASE_SYNC_ENABLED`, and `AFFILIATE_PROGRAM_ENABLED`/`AMBASSADOR_PROGRAM_ENABLED` outside production, so set each one to `true` or `false` in the server `.env` before deploying. `ADMIN_EMAIL` is required in every environment and must be a single plain address; the server refuses to boot otherwise. (`AUTH_SESSION_CACHE_ENABLED` is gone: better-auth's cookie cache is always off since V-369.)
 
 ## 🏗️ Architecture
 

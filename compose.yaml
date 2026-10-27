@@ -85,7 +85,6 @@ services:
       # Better Auth Sessions
       AUTH_SESSION_TTL_SECONDS: ${AUTH_SESSION_TTL_SECONDS:-2592000}
       AUTH_SESSION_RESET_TTL_ON_USE: ${AUTH_SESSION_RESET_TTL_ON_USE:-86400}
-      # AUTH_SESSION_CACHE_ENABLED is left to the server default (on in production, src/config.ts).
       AUTH_SESSION_CACHE_MAX_AGE_SECONDS: ${AUTH_SESSION_CACHE_MAX_AGE_SECONDS:-900}
 
       # Auth OTP & Admin
