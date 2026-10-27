@@ -5,11 +5,13 @@ import { useEffect } from "react";
 import { RotateCw } from "lucide-react";
 
 import { StatusPage, statusAction } from "@/components/marketing/StatusPage";
+import { reportClientError } from "@/utils/report-client-error";
 
 /** Catches failures outside the marketing layout (and in it), so it cannot rely on the navbar or footer rendering. */
 const Error = ({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) => {
   useEffect(() => {
     console.error("Root error boundary caught error:", error);
+    reportClientError(error, "root");
   }, [error]);
 
   return (
