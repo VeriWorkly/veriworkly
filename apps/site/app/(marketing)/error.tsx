@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy, RotateCw } from "lucide-react";
 
 import { StatusPage, statusAction } from "@/components/marketing/StatusPage";
+import { reportClientError } from "@/utils/report-client-error";
 
 const MarketingError = ({
   error,
@@ -17,6 +18,7 @@ const MarketingError = ({
 
   useEffect(() => {
     console.error(error);
+    reportClientError(error, "marketing");
   }, [error]);
 
   useEffect(() => {

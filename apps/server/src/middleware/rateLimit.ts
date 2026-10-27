@@ -214,6 +214,7 @@ function getRouteLimitConfig(path: string, internalStats = false): RouteLimit {
   const isOtpRoute = /^\/api\/v1\/auth\/(email-otp\/|forget-password\/email-otp)/.test(path);
   const isStatsEventsRoute = path.startsWith("/api/v1/stats/events") && !internalStats;
   const isContactRoute = path.startsWith("/api/v1/contact");
+  const isClientErrorRoute = path.startsWith("/api/v1/client-errors");
 
   const isShareVerifyRoute = /\/shares\/public\/[^/]+\/[^/]+\/verify$/.test(path);
 
@@ -231,6 +232,14 @@ function getRouteLimitConfig(path: string, internalStats = false): RouteLimit {
       windowMs: 60 * 60 * 1000, // 1 hour
       maxRequests: 5, // 5 requests per hour — unauthenticated route that triggers outbound email
       failClosed: true,
+    };
+
+  // A crash loop in one tab must not fill the logs; a lost report is fine, so it fails open.
+  if (isClientErrorRoute)
+    return {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 10, // 10 reports per minute per IP
+      failClosed: false,
     };
 
   if (isStatsEventsRoute)
