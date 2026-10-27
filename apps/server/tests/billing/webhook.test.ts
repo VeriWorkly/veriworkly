@@ -83,6 +83,8 @@ vi.mock("#lib/redis", () => ({
   cacheGet: vi.fn().mockResolvedValue(null),
   cacheSet: vi.fn().mockResolvedValue(undefined),
   getRedis: vi.fn(() => mockRedis),
+  // Answers in time: the late-write path is covered in tests/redis and the callers' own tests.
+  redisWrite: vi.fn((run: (redis: typeof mockRedis) => Promise<unknown>) => run(mockRedis)),
 }));
 
 vi.mock("#services/affiliate/index", () => ({

@@ -7,7 +7,7 @@ import { CreditService } from "#services/creditService";
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
-import { getRedis } from "#lib/redis";
+import { getRedis, redisWrite } from "#lib/redis";
 import { addressBucket } from "#utils/requestIp";
 
 const ANONYMOUS_WINDOW_SECONDS = 48 * 60 * 60;
@@ -194,10 +194,19 @@ function pricingOrNull(): AtsQuotaSummary["pricing"] {
 
 async function increment(key: string, limit: number, ttlSeconds: number) {
   return Number(
-    await getRedis().eval(INCREMENT_SCRIPT, {
-      keys: [key],
-      arguments: [String(limit), String(ttlSeconds)],
-    }),
+    await redisWrite(
+      (redis) =>
+        redis.eval(INCREMENT_SCRIPT, {
+          keys: [key],
+          arguments: [String(limit), String(ttlSeconds)],
+        }),
+      // The request already failed on the timeout; a count Redis applied later is handed back so
+      // nobody is charged a scan or upload for an error (-1: over the limit, nothing counted).
+      async (late) => {
+        if (Number(late) >= 0)
+          await getRedis().eval(DECREMENT_SCRIPT, { keys: [key], arguments: [] });
+      },
+    ),
   );
 }
 

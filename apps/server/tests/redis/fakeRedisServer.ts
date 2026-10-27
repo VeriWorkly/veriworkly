@@ -6,9 +6,11 @@ import type { AddressInfo } from "node:net";
  * - `stall`: completes node-redis's connection handshake (CLIENT SETINFO, SELECT, …) and then
  *   never answers a command, like a connected Redis stuck in an AOF rewrite fork;
  * - `silent`: accepts the connection and answers nothing, not even the handshake;
+ * - `slow`: completes the handshake, then answers SET with OK and anything else with 1, each
+ *   after `delayMs`, like a Redis that recovers from a stall;
  * - `wrongpass`: answers every command with the error Redis gives a bad password.
  */
-export type FakeRedisMode = "stall" | "silent" | "wrongpass";
+export type FakeRedisMode = "stall" | "silent" | "slow" | "wrongpass";
 
 const HANDSHAKE = new Set(["CLIENT", "SELECT", "HELLO", "AUTH", "PING"]);
 
@@ -48,7 +50,7 @@ function readCommands(buffer: string): { names: string[]; rest: string } {
   return { names, rest };
 }
 
-export async function startFakeRedis(mode: FakeRedisMode) {
+export async function startFakeRedis(mode: FakeRedisMode, options: { delayMs?: number } = {}) {
   const sockets = new Set<net.Socket>();
   const server = net.createServer((socket) => {
     sockets.add(socket);
@@ -62,10 +64,13 @@ export async function startFakeRedis(mode: FakeRedisMode) {
       for (const name of names) {
         if (mode === "wrongpass") {
           socket.write("-WRONGPASS invalid username-password pair or user is disabled.\r\n");
-        } else if (mode === "stall" && HANDSHAKE.has(name)) {
+        } else if (mode !== "silent" && HANDSHAKE.has(name)) {
           socket.write("+OK\r\n");
+        } else if (mode === "slow") {
+          const reply = name === "SET" ? "+OK\r\n" : ":1\r\n";
+          setTimeout(() => socket.writable && socket.write(reply), options.delayMs ?? 0);
         }
-        // Anything else is never answered.
+        // stall and silent: anything else is never answered.
       }
     });
   });

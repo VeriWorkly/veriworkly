@@ -30,17 +30,21 @@ vi.mock("#lib/logger", () => ({ logger: mocks.logger }));
 vi.mock("#lib/prisma", () => ({
   prisma: { gitHubSync: { findUnique: mocks.findUnique, update: mocks.update } },
 }));
-vi.mock("#lib/redis", () => ({
-  getRedis: () => ({
+vi.mock("#lib/redis", () => {
+  const client = {
     set: mocks.redisSet,
     get: async (key: string) => mocks.locks.get(key) ?? null,
     eval: vi.fn(async () => 1),
-  }),
-  cacheGet: vi.fn(),
-  cacheSet: vi.fn(),
-  cacheDel: vi.fn(),
-  cacheDelByPrefix: vi.fn(),
-}));
+  };
+  return {
+    getRedis: () => client,
+    redisWrite: (run: (redis: typeof client) => Promise<unknown>) => run(client),
+    cacheGet: vi.fn(),
+    cacheSet: vi.fn(),
+    cacheDel: vi.fn(),
+    cacheDelByPrefix: vi.fn(),
+  };
+});
 
 const { runGitHubSync } = await import("#jobs/githubSyncJob");
 

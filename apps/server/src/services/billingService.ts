@@ -20,7 +20,7 @@ import {
 import { prisma } from "#lib/prisma";
 import { logger } from "#lib/logger";
 import { ApiError } from "#lib/errors";
-import { cacheDel, cacheGet, cacheSet, getRedis } from "#lib/redis";
+import { cacheDel, cacheGet, cacheSet, getRedis, redisWrite } from "#lib/redis";
 import { acquireJobLock } from "#lib/jobLock";
 import { userProfileCacheKey } from "#lib/cacheKeys";
 import { PREMIUM_PORTFOLIO_TEMPLATE_IDS } from "#validators/portfolioValidator";
@@ -1410,11 +1410,23 @@ export class BillingService {
     }
 
     for (let attempt = 0; ; attempt += 1) {
+      // A claim that lands after this request failed on the timeout would refuse every retry for
+      // the claim TTL; it is deleted again, only while it is still this request's own.
       const claimed =
-        (await redis.set(recordKey, JSON.stringify(claim), {
-          NX: true,
-          EX: CHECKOUT_CLAIM_TTL_SECONDS,
-        })) === "OK";
+        (await redisWrite(
+          (client) =>
+            client.set(recordKey, JSON.stringify(claim), {
+              NX: true,
+              EX: CHECKOUT_CLAIM_TTL_SECONDS,
+            }),
+          async (late) => {
+            if (late === "OK")
+              await getRedis().eval(compareAndDeleteScript, {
+                keys: [recordKey],
+                arguments: [JSON.stringify(claim)],
+              });
+          },
+        )) === "OK";
       if (claimed) break;
 
       // The user's one open session: the same product and interval gets it back; anything else

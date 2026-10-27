@@ -6,6 +6,7 @@ const { createClient, client } = vi.hoisted(() => {
     isReady: true,
     on: vi.fn(),
     connect: vi.fn(async () => undefined),
+    destroy: vi.fn(),
     quit: vi.fn(async () => undefined),
     get: vi.fn(async () => JSON.stringify({ cached: true })),
   };
@@ -40,7 +41,9 @@ describe("Redis client during an outage", () => {
   });
 
   it("serves commands again once ready", async () => {
-    expect(getRedis()).toBe(client);
+    // A bounded wrapper (V-095) around the same client.
+    expect(getRedis().isReady).toBe(true);
+    expect(await getRedis().get("key")).toBe(JSON.stringify({ cached: true }));
     expect(await cacheGet("key")).toEqual({ cached: true });
   });
 });
