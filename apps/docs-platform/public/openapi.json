@@ -5210,13 +5210,15 @@
           "profileText": {
             "type": "string",
             "minLength": 10,
-            "description": "Raw copy-pasted text from a LinkedIn profile export or PDF (parsed by AI, not fetched via any LinkedIn API)."
+            "description": "Raw copy-pasted text from a LinkedIn profile export or PDF (parsed by AI, not fetched via any LinkedIn API).",
+            "maxLength": 50000
           },
           "replaceMaster": {
             "type": "boolean",
             "default": false,
             "description": "When true, also overwrites the user's master profile with the imported content."
-          }
+          },
+          "requestId": { "type": "string", "minLength": 8, "maxLength": 128 }
         }
       },
       "ProfileImportResponse": {

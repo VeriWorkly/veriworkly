@@ -730,8 +730,9 @@
         "schema": {
           "type": "object",
           "properties": {
-            "profileText": { "type": "string", "minLength": 10 },
-            "replaceMaster": { "default": false, "type": "boolean" }
+            "profileText": { "type": "string", "minLength": 10, "maxLength": 50000 },
+            "replaceMaster": { "default": false, "type": "boolean" },
+            "requestId": { "type": "string", "minLength": 8, "maxLength": 128 }
           },
           "required": ["profileText"]
         }

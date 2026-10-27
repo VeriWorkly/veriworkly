@@ -4,6 +4,8 @@ import { prisma } from "#lib/prisma";
 import { getRedis } from "#lib/redis";
 import { EntitlementService, PAID_ACCESS_PHRASE } from "#services/entitlementService";
 import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
+import { githubGet } from "#services/github/requestPath";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -74,22 +76,26 @@ export class ProfileImportQuotaService {
     let connectedUsername: string | null = null;
     if (provider === "github") {
       if (account?.accessToken) {
+        // The username is a nicety on the quota card: with a deadline (V-243), and a failure is
+        // logged and shown as no username, never a failed quota read.
         try {
-          const response = await fetch("https://api.github.com/user", {
-            headers: {
-              Accept: "application/vnd.github+json",
-              Authorization: `Bearer ${account.accessToken}`,
-              "User-Agent": "VeriWorkly-App",
-            },
-          });
+          const response = await githubGet("https://api.github.com/user", account.accessToken);
           if (response.ok) {
             const data = await response.json();
             if (data?.login) {
               connectedUsername = data.login;
             }
+          } else {
+            logger.warn("GitHub refused the linked token on the import quota lookup", {
+              userId,
+              status: response.status,
+            });
           }
-        } catch {
-          // ignore API errors
+        } catch (error) {
+          logger.warn("GitHub could not be reached for the import quota lookup", {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
     }

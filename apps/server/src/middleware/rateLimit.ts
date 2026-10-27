@@ -70,11 +70,15 @@ const RATE_LIMIT_EXEMPT_PATHS = new Set([
 const INTERNAL_KEY_EXEMPT_PATHS = new Set(["/api/v1/health/metrics", "/api/v1/health/jobs"]);
 
 /**
- * The ATS routes that spend AI credits. They sat in the generic 100/15 min class while
- * `/api/v1/ai/*` had its own 20/min, although each call holds a provider connection for up to
- * the request deadline (V-038).
+ * The routes outside `/api/v1/ai` that spend AI credits. They sat in the generic 100/15 min class
+ * while `/api/v1/ai/*` had its own 20/min, although each call holds a provider connection for up
+ * to the request deadline (V-038). The LinkedIn import is the same resume conversion (V-239).
  */
-const AI_BILLED_ATS_PATHS = new Set(["/api/v1/ats/analyze", "/api/v1/ats/convert-resume"]);
+const AI_BILLED_ATS_PATHS = new Set([
+  "/api/v1/ats/analyze",
+  "/api/v1/ats/convert-resume",
+  "/api/v1/profiles/import/linkedin",
+]);
 
 /**
  * Express routing is case-insensitive and non-strict, so `/API/v1/Contact/` reaches the same

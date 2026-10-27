@@ -2,6 +2,8 @@ import { z } from "zod";
 import { NextFunction, Request, Response } from "express";
 
 import { requireAuthUser } from "#middleware/auth";
+import { withAiSlot } from "#middleware/rateLimit";
+import { aiRequestSignal } from "#services/ats/aiDeadline";
 
 import { ProfileService } from "#services/profileService";
 import { ProfileImportService } from "#services/profileImportService";
@@ -105,12 +107,16 @@ export class ProfileController {
   static async importLinkedin(req: Request, res: Response, next: NextFunction) {
     try {
       const user = requireAuthUser(req);
-      const { profileText, replaceMaster } = importLinkedinSchema.parse(req.body);
+      const { profileText, replaceMaster, requestId } = importLinkedinSchema.parse(req.body);
 
-      const doc = await ProfileImportService.importFromLinkedin(
-        user.id,
-        profileText,
-        replaceMaster,
+      // The same guarantees as every AI route (V-239): one of the user's two AI slots for the
+      // whole request, and a signal that ends the provider call at the deadline or when the
+      // client leaves (its reservation is then released, never charged).
+      const doc = await withAiSlot(user.id, () =>
+        ProfileImportService.importFromLinkedin(user.id, profileText, replaceMaster, {
+          requestId,
+          signal: aiRequestSignal(res),
+        }),
       );
 
       res.json(createSuccessResponse(doc, "LinkedIn profile imported successfully"));
