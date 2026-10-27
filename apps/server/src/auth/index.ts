@@ -29,6 +29,7 @@ import {
   revokeSessionCacheForCookie,
   revokeSessionCaches,
 } from "#utils/authCache";
+import { canonicalMailbox } from "#utils/mailbox";
 import { incrementUsageMetric } from "#services/analyticsService";
 
 import { sendAuthOtpEmail, sendWelcomeEmail, sendLoginAlertEmail } from "#services/mail/index";
@@ -50,7 +51,8 @@ const OTP_RECIPIENT_MAX_PER_HOUR = 5;
 const OTP_RECIPIENT_WINDOW_SECONDS = 60 * 60;
 
 function otpRecipientKey(email: string): string {
-  const digest = createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+  // `+tag` and Gmail dot variants reach one inbox, so they share its budget (V-253).
+  const digest = createHash("sha256").update(canonicalMailbox(email)).digest("hex");
   return `auth:otp:recipient:${digest}`;
 }
 
