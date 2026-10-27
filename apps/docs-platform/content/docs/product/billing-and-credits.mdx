@@ -36,19 +36,19 @@ grant, a promotion, and a paid subscription all behave identically.
 
 Three purchasable products, defined in `apps/server/src/services/productCatalog.ts`.
 
-| Product                               | Key             | Entitlements                                   | Monthly | Annual                |
-| :------------------------------------ | :-------------- | :--------------------------------------------- | :------ | :-------------------- |
-| **AI Standalone**                     | `ai_credits`    | `ai_credits`                                   | $5.99   | $59.90 (≈ $4.99/mo)   |
-| **Creator Pro**                       | `portfolio_pro` | All five portfolio entitlements                | $9.99   | $95.88 (≈ $7.99/mo)   |
-| **Job Hunter Bundle** _(recommended)_ | `bundle`        | `ai_credits` + all five portfolio entitlements | $14.99  | $143.88 (≈ $11.99/mo) |
+| Product                               | Key             | Entitlements                                   | Monthly | Annual                        |
+| :------------------------------------ | :-------------- | :--------------------------------------------- | :------ | :---------------------------- |
+| **AI Credits**                        | `ai_credits`    | `ai_credits`                                   | $5.99   | $59.88 ($4.99/mo, save 17%)   |
+| **Creator Pro**                       | `portfolio_pro` | All five portfolio entitlements                | $9.99   | $95.88 ($7.99/mo, save 20%)   |
+| **Job Hunter Bundle** _(recommended)_ | `bundle`        | `ai_credits` + all five portfolio entitlements | $14.99  | $143.88 ($11.99/mo, save 20%) |
 
 ### Included AI credits
 
-| Product           | Monthly                                                   | Annual         |
-| :---------------- | :-------------------------------------------------------- | :------------- |
-| AI Standalone     | 1,000 credits                                             | 12,000 credits |
-| Job Hunter Bundle | 1,000 credits                                             | 12,000 credits |
-| Creator Pro       | — (no AI credits; add AI Standalone or choose the Bundle) | —              |
+| Product           | Monthly                                                | Annual         |
+| :---------------- | :----------------------------------------------------- | :------------- |
+| AI Credits        | 1,000 credits                                          | 12,000 credits |
+| Job Hunter Bundle | 1,000 credits                                          | 12,000 credits |
+| Creator Pro       | — (no AI credits; add AI Credits or choose the Bundle) | —              |
 
 Subscription credits do **not** roll over between billing cycles.
 
@@ -83,13 +83,16 @@ Pass-granted credits expire when the pass window ends.
 
 For extra credits without changing a subscription:
 
-| Pack              | Key               | Credits | Expiry                |
-| :---------------- | :---------------- | :------ | :-------------------- |
-| 250 extra credits | `credit_pack_250` | 250     | 90 days from purchase |
-| 500 extra credits | `credit_pack_500` | 500     | 90 days from purchase |
+| Pack                | Key                | Credits | Price | Expiry                |
+| :------------------ | :----------------- | :------ | :---- | :-------------------- |
+| 250 extra credits   | `credit_pack_250`  | 250     | $2.99 | 90 days from purchase |
+| 500 extra credits   | `credit_pack_500`  | 500     | $4.99 | 90 days from purchase |
+| 1,200 extra credits | `credit_pack_1200` | 1,200   | $9.99 | 90 days from purchase |
 
-Pack **prices are set on the corresponding Dodo Payments product**, not hardcoded in application
-code — the currently published prices are $2.99 and $4.99 respectively. Per the Terms of Service,
+Pack **prices are set on the corresponding Dodo Payments product**; the server's
+`CREDIT_PACK_*_PRICE_CENTS` variables only set the price it displays, so keep the two in step.
+The 1,200-credit pack is priced in Dodo; checkout accepts `credit_pack_1200` once the server
+update that adds it ships. Per the Terms of Service,
 pack credits may also expire immediately on cancellation of an associated subscription where stated.
 
 ---
