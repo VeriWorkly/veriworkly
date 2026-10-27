@@ -17,6 +17,8 @@ const backendOrigin = (() => {
 
     return raw ? new URL(raw).origin : "";
   } catch {
+    // Left out of the CSP, the browser can never reach the API: say why at build time.
+    console.warn(`NEXT_PUBLIC_BACKEND_URL is not a valid URL; the API is left out of connect-src.`);
     return "";
   }
 })();

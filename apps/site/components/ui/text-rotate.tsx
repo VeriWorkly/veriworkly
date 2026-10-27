@@ -1,7 +1,15 @@
 "use client";
 
 import { m, Transition, MotionProps, AnimatePresence, AnimatePresenceProps } from "framer-motion";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@veriworkly/ui";
 
@@ -168,15 +176,32 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
       [next, previous, jumpTo, reset],
     );
 
+    // Rotates only while on screen and the tab is visible: no work nobody can see.
+    const rootRef = useRef<HTMLSpanElement>(null);
+    const [onScreen, setOnScreen] = useState(true);
+
     useEffect(() => {
-      if (!auto) return;
-      const intervalId = setInterval(next, rotationInterval);
+      const node = rootRef.current;
+      if (!node || typeof IntersectionObserver === "undefined") return;
+      const observer = new IntersectionObserver(([entry]) =>
+        setOnScreen(entry?.isIntersecting ?? true),
+      );
+      observer.observe(node);
+      return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+      if (!auto || !onScreen) return;
+      const intervalId = setInterval(() => {
+        if (!document.hidden) next();
+      }, rotationInterval);
 
       return () => clearInterval(intervalId);
-    }, [next, rotationInterval, auto]);
+    }, [next, rotationInterval, auto, onScreen]);
 
     return (
       <m.span
+        ref={rootRef}
         className={cn("flex flex-wrap whitespace-pre-wrap", mainClassName)}
         {...props}
         transition={transition}

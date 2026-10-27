@@ -18,7 +18,7 @@ const AffiliateFooter = () => {
               <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-zinc-200/10">
                 <Image
                   src="/veriworkly-logo.png"
-                  alt="VeriWorkly Logo"
+                  alt=""
                   width={24}
                   height={24}
                   className="object-contain"

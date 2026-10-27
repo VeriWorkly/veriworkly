@@ -9,15 +9,18 @@ import type { AtsFullReport } from "../../types";
 
 export function CopyReportButton({ report }: { report: AtsFullReport }) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const handleCopy = async () => {
     const text = reportToPlainText(report, siteConfig.url);
     try {
       await navigator.clipboard.writeText(text);
+      setFailed(false);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Degrades gracefully on restricted clipboard permissions.
+      // Clipboard refused (permissions, an insecure origin): say so instead of doing nothing.
+      setFailed(true);
     }
   };
 
@@ -36,7 +39,7 @@ export function CopyReportButton({ report }: { report: AtsFullReport }) {
       ) : (
         <>
           <Copy className="h-4 w-4" aria-hidden="true" />
-          <span>Copy report</span>
+          <span>{failed ? "Couldn't copy, try again" : "Copy report"}</span>
         </>
       )}
     </button>

@@ -248,6 +248,7 @@ const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
 
                       <span className="text-foreground font-bold">
                         {new Date(feature.createdAt).toLocaleDateString("en-US", {
+                          timeZone: "UTC",
                           month: "short",
                           day: "numeric",
                           year: "numeric",
@@ -263,6 +264,7 @@ const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
                       <span className="text-foreground font-bold">
                         {feature.startedAt
                           ? new Date(feature.startedAt).toLocaleDateString("en-US", {
+                              timeZone: "UTC",
                               month: "short",
                               day: "numeric",
                               year: "numeric",
@@ -279,6 +281,7 @@ const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
                       <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                         {feature.completedAt
                           ? new Date(feature.completedAt).toLocaleDateString("en-US", {
+                              timeZone: "UTC",
                               month: "short",
                               day: "numeric",
                               year: "numeric",
@@ -299,7 +302,7 @@ const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
                     <Image
                       width={32}
                       height={32}
-                      alt="VeriWorkly Logo"
+                      alt=""
                       src="/veriworkly-logo.png"
                       className="rounded-full"
                     />
