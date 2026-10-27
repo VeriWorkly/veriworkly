@@ -96,6 +96,25 @@ body {
   }
 }
 
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+@keyframes draw-in {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
 @keyframes float-drift {
   50% {
     transform: translateY(var(--drift, -10px));
@@ -201,6 +220,21 @@ body {
 
   .hero-rise {
     animation: rise-in 700ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both;
+  }
+
+  /* Hero entrances without JavaScript: they run from the server HTML, before hydration. */
+  .hero-grow {
+    transform-origin: left;
+    animation: grow-x 1s cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .hero-pop {
+    animation: pop-in 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .hero-draw {
+    stroke-dasharray: 1;
+    animation: draw-in 1.5s ease-in-out both;
   }
 
   @supports (animation-timeline: view()) {

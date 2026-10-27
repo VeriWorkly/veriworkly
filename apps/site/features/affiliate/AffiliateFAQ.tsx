@@ -67,13 +67,7 @@ const AffiliateFAQ = () => {
                 open={isOpen}
                 onOpenChange={(open) => setOpenIndex(open ? idx : null)}
                 panelTransition={{ duration: 0.25, ease: "easeInOut" }}
-                motionProps={{
-                  initial: { opacity: 0, y: 20 },
-                  whileInView: { opacity: 1, y: 0 },
-                  viewport: { once: true, margin: "-50px" },
-                  transition: { duration: 0.5, delay: idx * 0.05 },
-                }}
-                className="border-border/60 bg-card/35 rounded-2xl border p-6 backdrop-blur-sm transition-colors duration-300 hover:border-blue-500/35 dark:border-zinc-800 dark:bg-zinc-900/25"
+                className="reveal border-border/60 bg-card/35 rounded-2xl border p-6 backdrop-blur-sm transition-colors duration-300 hover:border-blue-500/35 dark:border-zinc-800 dark:bg-zinc-900/25"
                 summaryClassName="flex cursor-pointer list-none items-center justify-between gap-4 select-none [&::-webkit-details-marker]:hidden"
                 summary={
                   <>
