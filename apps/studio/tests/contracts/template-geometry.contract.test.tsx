@@ -11,7 +11,7 @@ import { COVER_LETTER_SCALE, createCoverLetterTokens } from "@/templates/cover-l
 import { getCoverLetterPalette } from "@/templates/cover-letter/shared";
 import { getResumeRenderStyle } from "@/features/documents/rendering/resume-rendering";
 import { pxToPt } from "@/features/resume/constants/resume-layout";
-import { DOCUMENT_PAGE_HEIGHT_PX, DOCUMENT_PAGE_WIDTH_PX } from "@/templates/shared/page-geometry";
+import { PAPER_SIZES, getPageGeometry, type PaperSize } from "@/templates/shared/page-geometry";
 import { loadTemplatePdfComponentById } from "@/templates/resume/pdf";
 import { createResumePdfStyles } from "@/templates/resume/shared/pdf";
 import { createResumeTokens } from "@/templates/resume/shared/tokens";
@@ -49,6 +49,9 @@ const SCALES: Record<string, ResumeTypeScale> = Object.fromEntries(
     }),
   ),
 );
+
+/** The default paper size; the "Decision 9" block below lays every template out on both. */
+const A4 = getPageGeometry("a4");
 
 const PAGE_PADDING: Record<string, (padding: number) => number> = {
   "precision-ats": (p) => Math.max(24, p * 0.85),
@@ -181,15 +184,15 @@ describe("resume pdf geometry matches the shared scale", () => {
         }
       };
 
-      near(box(page).width, DOCUMENT_PAGE_WIDTH_PX, "page width");
-      near(box(page).height, DOCUMENT_PAGE_HEIGHT_PX, "page height");
+      near(box(page).width, A4.widthPx, "page width");
+      near(box(page).height, A4.heightPx, "page height");
 
       const pagePadding = (PAGE_PADDING[id] ?? ((p: number) => p))(style.pagePadding);
       const sectionSpacing = (SECTION_SPACING[id] ?? ((s: number) => s))(style.sectionSpacing);
 
       // A section that reaches the bottom of the text area continues on the
       // next page, so react-pdf stretches its box to the break.
-      const contentBottom = DOCUMENT_PAGE_HEIGHT_PX - pagePadding;
+      const contentBottom = A4.heightPx - pagePadding;
       const isSplit = (section: Node) =>
         box(section).top + box(section).height >= contentBottom - 0.5;
 
@@ -299,8 +302,8 @@ describe("cover letter pdf geometry matches the shared scale", () => {
       // fraction narrower and wrap long lines differently. Asserting against the
       // constant (not a literal) is what keeps resumes and cover letters from drifting
       // back to describing the same page with two different heights.
-      near(box(page).width, DOCUMENT_PAGE_WIDTH_PX, `${templateId} page width`);
-      near(box(page).height, DOCUMENT_PAGE_HEIGHT_PX, `${templateId} page height`);
+      near(box(page).width, A4.widthPx, `${templateId} page width`);
+      near(box(page).height, A4.heightPx, `${templateId} page height`);
 
       // Fixed columns must survive Yoga's shrinking. Templates without a fixed
       // header/contact column (stacked, full-width headers) still reserve one for
@@ -360,7 +363,7 @@ describe("S-299: the cover letter letterhead lays out like the preview", () => {
 
       const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
       const [page] = await layoutPages(CoverLetterPdf, { content });
-      const contentWidth = COVER_LETTER_SCALE.pageWidth - content.appearance!.pageMargin * 2;
+      const contentWidth = A4.widthPx - content.appearance!.pageMargin * 2;
       const narrow =
         contentWidth - COVER_LETTER_SCALE.headerContactWidth - COVER_LETTER_SCALE.headerColumnGap;
 
@@ -387,4 +390,122 @@ describe("S-299: the cover letter letterhead lays out like the preview", () => {
       );
     }, 60_000);
   }
+});
+
+describe("Decision 9: the page geometry is one helper keyed on the paper size", () => {
+  it("states A4 and US Letter in px, pt and twips", () => {
+    expect(getPageGeometry("a4")).toEqual({
+      paperSize: "a4",
+      widthPx: 794,
+      heightPx: 1122,
+      widthPt: 595.5,
+      heightPt: 841.5,
+      widthTwip: 11906,
+      heightTwip: 16838,
+    });
+    // 8.5 x 11 in: 215.9 x 279.4 mm.
+    expect(getPageGeometry("letter")).toEqual({
+      paperSize: "letter",
+      widthPx: 816,
+      heightPx: 1056,
+      widthPt: 612,
+      heightPt: 792,
+      widthTwip: 12240,
+      heightTwip: 15840,
+    });
+  });
+
+  it("reads a missing or unknown size as A4", () => {
+    for (const value of [undefined, null, "", "legal", "A4", 4]) {
+      expect(getPageGeometry(value).paperSize, String(value)).toBe("a4");
+    }
+  });
+});
+
+/** The furthest right and lowest any laid-out box reaches, in px from the page's corner. */
+function extent(node: Node, left = 0, top = 0): { right: number; bottom: number } {
+  const x = left + toPx(node.box?.left);
+  const y = top + toPx(node.box?.top);
+
+  return (node.children ?? []).reduce(
+    (furthest, child) => {
+      const inner = extent(child, x, y);
+      return {
+        right: Math.max(furthest.right, inner.right),
+        bottom: Math.max(furthest.bottom, inner.bottom),
+      };
+    },
+    { right: x + toPx(node.box?.width), bottom: y + toPx(node.box?.height) },
+  );
+}
+
+/** Pages whose size is not the paper's, or whose content runs past an edge. */
+function pageProblems(pages: Node[], paperSize: PaperSize): string[] {
+  const { widthPx, heightPx } = getPageGeometry(paperSize);
+
+  return pages.flatMap((page, index) => {
+    const reach = extent({ ...page, box: { ...page.box, top: 0, left: 0 } });
+    const label = `page ${index + 1}`;
+
+    return [
+      ...(Math.abs(box(page).width - widthPx) > 0.02 ? [`${label} width ${box(page).width}`] : []),
+      ...(Math.abs(box(page).height - heightPx) > 0.02
+        ? [`${label} height ${box(page).height}`]
+        : []),
+      ...(reach.right > widthPx + 0.5 ? [`${label} content reaches x=${reach.right}`] : []),
+      ...(reach.bottom > heightPx + 0.5 ? [`${label} content reaches y=${reach.bottom}`] : []),
+    ];
+  });
+}
+
+describe("Decision 9: every template lays out on A4 and US Letter", () => {
+  beforeAll(() => {
+    registerPdfTestFonts();
+  });
+
+  for (const paperSize of PAPER_SIZES) {
+    for (const id of resumeTemplateRegistry.ids) {
+      it(`resume ${id} on ${paperSize}: page size and no overflow`, async () => {
+        const TemplatePdf = await loadTemplatePdfComponentById(id);
+        const pages = await layoutPages(TemplatePdf, {
+          resume: {
+            ...defaultResume,
+            templateId: id,
+            customization: { ...defaultResume.customization, paperSize },
+          },
+        });
+
+        expect(pageProblems(pages, paperSize)).toEqual([]);
+      }, 60_000);
+    }
+
+    for (const templateId of coverLetterTemplateRegistry.ids) {
+      it(`cover letter ${templateId} on ${paperSize}: page size and no overflow`, async () => {
+        const content = createDefaultCoverLetter("geometry").content as CoverLetterContent;
+        const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
+        const pages = await layoutPages(CoverLetterPdf, {
+          content: { ...content, appearance: { ...content.appearance, paperSize } },
+        });
+
+        expect(pageProblems(pages, paperSize)).toEqual([]);
+      }, 60_000);
+    }
+  }
+
+  it("a resume and a letter with no paper size print on A4", async () => {
+    const resume = structuredClone(defaultResume);
+    delete resume.customization.paperSize;
+    const content = createDefaultCoverLetter("geometry").content as CoverLetterContent;
+    delete content.appearance.paperSize;
+
+    const resumePages = await layoutPages(await loadTemplatePdfComponentById("executive-clarity"), {
+      resume,
+    });
+    const letterPages = await layoutPages(
+      await coverLetterTemplateRegistry.loadPdf("professional"),
+      { content },
+    );
+
+    expect(pageProblems([...resumePages, ...letterPages], "a4")).toEqual([]);
+  }, 60_000);
 });

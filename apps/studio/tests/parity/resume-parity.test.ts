@@ -17,7 +17,10 @@ import { measurePagination, measureResume } from "./web-measure";
 import { recordReport } from "./report";
 import { startParityServer } from "./server";
 
+import type { ResumeData } from "@/types/resume";
+
 import { loadTemplatePdfComponentById, pdfTemplateIds } from "@/templates/resume/pdf";
+import { PAPER_SIZES, getPageGeometry, type PaperSize } from "@/templates/shared/page-geometry";
 
 /**
  * The only test that measures both renderers.
@@ -60,10 +63,10 @@ const TOLERANCE_PX = 0.5;
  * this list still fails, and each entry names what makes it unreachable.
  */
 const KNOWN_ENGINE_DIFFERENCES: Record<string, string> = {
-  "timeline-focus/default":
+  "timeline-focus/default/a4":
     "experience bullet 4 measures 595.79px in a 590px column; textkit shrinks its 13 spaces to fit",
-  "timeline-focus/spill": "the same bullet as timeline-focus/default, in the same 590px column",
-  "executive-clarity/dense":
+  "timeline-focus/spill/a4": "the same bullet as timeline-focus/default, in the same 590px column",
+  "executive-clarity/dense/a4":
     "project bullets measure 712.42px in a 710px column; textkit shrinks their spaces to fit",
 };
 
@@ -82,6 +85,13 @@ const MEASURABLE_FIXTURES = PARITY_FIXTURE_IDS.filter((id) => id !== "cjk");
  * clipping are still checked for them below.
  */
 const GEOMETRY_FIXTURES = MEASURABLE_FIXTURES.filter((id) => id !== "overflow");
+
+/** A fixture's resume, on the given paper. */
+function fixtureResume(fixture: string, templateId: string, paperSize: PaperSize): ResumeData {
+  const resume = PARITY_FIXTURES[fixture as ParityFixtureId].resume();
+
+  return { ...resume, templateId, customization: { ...resume.customization, paperSize } };
+}
 
 let server: ParityServer;
 let browser: Browser;
@@ -131,111 +141,135 @@ describe("resume preview and PDF lay out the same boxes", () => {
     expect(Object.keys(TEMPLATES).sort()).toEqual([...pdfTemplateIds].sort());
   });
 
-  for (const [templateId, layout] of Object.entries(TEMPLATES)) {
-    for (const fixture of GEOMETRY_FIXTURES) {
-      it(`${templateId} / ${fixture}`, async () => {
-        const resume = { ...PARITY_FIXTURES[fixture as ParityFixtureId].resume(), templateId };
-        const shape = readResumeDocument(
-          await layoutPages(await loadTemplatePdfComponentById(templateId), { resume }),
-        );
-        const pdfNodes = describeResumePdf(shape, layout);
+  for (const paperSize of PAPER_SIZES) {
+    for (const [templateId, layout] of Object.entries(TEMPLATES)) {
+      for (const fixture of GEOMETRY_FIXTURES) {
+        const name = `${templateId}/${fixture}/${paperSize}`;
 
-        const webNodes = await measure(
-          `/parity/resume/${templateId}?mode=raw&fixture=${fixture}`,
-          async (page) => {
-            await page.waitForSelector("#resume-container");
+        it(
+          name,
+          async () => {
+            const resume = fixtureResume(fixture, templateId, paperSize);
+            const shape = readResumeDocument(
+              await layoutPages(await loadTemplatePdfComponentById(templateId), { resume }),
+            );
+            const pdfNodes = describeResumePdf(shape, layout);
 
-            return page.evaluate(measureResume, {
-              layout,
-              splitSections: splitSectionIndexes(shape),
+            const webNodes = await measure(
+              `/parity/resume/${templateId}?mode=raw&fixture=${fixture}&paper=${paperSize}`,
+              async (page) => {
+                await page.waitForSelector("#resume-container");
+
+                return page.evaluate(measureResume, {
+                  layout,
+                  splitSections: splitSectionIndexes(shape),
+                });
+              },
+            );
+
+            const result = diffGeometry(webNodes, pdfNodes, TOLERANCE_PX);
+            const report = formatDiffs(name, result);
+
+            // Recorded before any assertion: console output is truncated long
+            // before 24 reports fit in it, and a report written only on the happy
+            // path tells you nothing about the run that failed.
+            recordReport(`geometry ${name}`, report, {
+              webNodes: webNodes.length,
+              pdfNodes: pdfNodes.length,
+              pdfPages: shape.pageCount,
+              splitSections: splitSectionIndexes(shape).join("|") || "none",
             });
+
+            expect(webNodes.length, "the preview rendered nothing").toBeGreaterThan(0);
+
+            const known = KNOWN_ENGINE_DIFFERENCES[name];
+
+            if (known) {
+              // Still asserted, just the other way round: if this ever comes out
+              // clean the entry is stale and should be deleted.
+              expect(report, `${name} no longer differs — ${known}`).not.toBe("");
+              return;
+            }
+
+            expect(report, report).toBe("");
           },
+          180_000,
         );
-
-        const result = diffGeometry(webNodes, pdfNodes, TOLERANCE_PX);
-        const report = formatDiffs(`${templateId}/${fixture}`, result);
-
-        // Recorded before any assertion: console output is truncated long
-        // before 24 reports fit in it, and a report written only on the happy
-        // path tells you nothing about the run that failed.
-        recordReport(`geometry ${templateId}/${fixture}`, report, {
-          webNodes: webNodes.length,
-          pdfNodes: pdfNodes.length,
-          pdfPages: shape.pageCount,
-          splitSections: splitSectionIndexes(shape).join("|") || "none",
-        });
-
-        expect(webNodes.length, "the preview rendered nothing").toBeGreaterThan(0);
-
-        const known = KNOWN_ENGINE_DIFFERENCES[`${templateId}/${fixture}`];
-
-        if (known) {
-          // Still asserted, just the other way round: if this ever comes out
-          // clean the entry is stale and should be deleted.
-          expect(report, `${templateId}/${fixture} no longer differs — ${known}`).not.toBe("");
-          return;
-        }
-
-        expect(report, report).toBe("");
-      }, 180_000);
+      }
     }
   }
 });
 
 describe("resume preview and PDF break pages at the same place", () => {
-  for (const templateId of Object.keys(TEMPLATES)) {
-    for (const fixture of MEASURABLE_FIXTURES) {
-      it(`${templateId} / ${fixture}`, async () => {
-        const resume = { ...PARITY_FIXTURES[fixture as ParityFixtureId].resume(), templateId };
-        const shape = readResumeDocument(
-          await layoutPages(await loadTemplatePdfComponentById(templateId), { resume }),
-        );
+  for (const paperSize of PAPER_SIZES) {
+    for (const templateId of Object.keys(TEMPLATES)) {
+      for (const fixture of MEASURABLE_FIXTURES) {
+        const name = `${templateId}/${fixture}/${paperSize}`;
 
-        const preview = await measure(
-          `/parity/resume/${templateId}?mode=paged&fixture=${fixture}`,
-          async (page) => {
-            await page.waitForSelector("article.resume-page-preview");
-            return page.evaluate(measurePagination);
+        it(
+          name,
+          async () => {
+            const resume = fixtureResume(fixture, templateId, paperSize);
+            const { widthPx, heightPx } = getPageGeometry(paperSize);
+            const shape = readResumeDocument(
+              await layoutPages(await loadTemplatePdfComponentById(templateId), { resume }),
+            );
+
+            const preview = await measure(
+              `/parity/resume/${templateId}?mode=paged&fixture=${fixture}&paper=${paperSize}`,
+              async (page) => {
+                await page.waitForSelector("article.resume-page-preview");
+                return page.evaluate(measurePagination);
+              },
+            );
+
+            const message =
+              `preview ${preview.pages} page(s) [${preview.blocksPerPage.join("/")}] vs ` +
+              `pdf ${shape.pageCount} [${shape.blocksPerPage.join("/")}]`;
+
+            recordReport(`pagination ${name}`, preview.pages === shape.pageCount ? "" : message, {
+              preview: preview.pages,
+              pdf: shape.pageCount,
+            });
+
+            expect(preview.pages, `${name}: ${message}`).toBe(shape.pageCount);
+            // A block taller than a page flows on; the page must not cut it off.
+            expect(preview.clippedPages, `${name}: clipped preview pages`).toEqual([]);
+            // Both draw the paper the resume asks for.
+            expect(preview.boxes, `${name}: preview page boxes`).toEqual(
+              preview.boxes.map(() => ({ width: widthPx, height: heightPx })),
+            );
+            expect(shape.pageBox.width, `${name}: pdf page width`).toBeCloseTo(widthPx, 1);
+            expect(shape.pageBox.height, `${name}: pdf page height`).toBeCloseTo(heightPx, 1);
           },
+          180_000,
         );
-
-        const message =
-          `preview ${preview.pages} page(s) [${preview.blocksPerPage.join("/")}] vs ` +
-          `pdf ${shape.pageCount} [${shape.blocksPerPage.join("/")}]`;
-
-        recordReport(
-          `pagination ${templateId}/${fixture}`,
-          preview.pages === shape.pageCount ? "" : message,
-          { preview: preview.pages, pdf: shape.pageCount },
-        );
-
-        expect(preview.pages, `${templateId}/${fixture}: ${message}`).toBe(shape.pageCount);
-        // A block taller than a page flows on; the page must not cut it off.
-        expect(preview.clippedPages, `${templateId}/${fixture}: clipped preview pages`).toEqual([]);
-      }, 180_000);
+      }
     }
   }
 });
 
 describe("no section heading is stranded by a page break", () => {
-  for (const templateId of Object.keys(TEMPLATES)) {
-    for (const fixture of MEASURABLE_FIXTURES) {
-      it(`${templateId} / ${fixture}`, async () => {
-        const resume = { ...PARITY_FIXTURES[fixture as ParityFixtureId].resume(), templateId };
-        const shape = readResumeDocument(
-          await layoutPages(await loadTemplatePdfComponentById(templateId), { resume }),
-        );
+  for (const paperSize of PAPER_SIZES) {
+    for (const templateId of Object.keys(TEMPLATES)) {
+      for (const fixture of MEASURABLE_FIXTURES) {
+        it(`${templateId}/${fixture}/${paperSize}`, async () => {
+          const resume = fixtureResume(fixture, templateId, paperSize);
+          const shape = readResumeDocument(
+            await layoutPages(await loadTemplatePdfComponentById(templateId), { resume }),
+          );
 
-        // A section that breaks immediately after its heading leaves the title
-        // alone at the foot of a page, and react-pdf squeezes the heading box
-        // into whatever space is left rather than moving it.
-        const stranded = shape.sections
-          .map((section, index) => ({ section, index }))
-          .filter(({ section }) => section.partCount > 1 && section.strandedHeading)
-          .map(({ index }) => `section[${index}]`);
+          // A section that breaks immediately after its heading leaves the title
+          // alone at the foot of a page, and react-pdf squeezes the heading box
+          // into whatever space is left rather than moving it.
+          const stranded = shape.sections
+            .map((section, index) => ({ section, index }))
+            .filter(({ section }) => section.partCount > 1 && section.strandedHeading)
+            .map(({ index }) => `section[${index}]`);
 
-        expect(stranded, `${templateId}/${fixture}: ${stranded.join(", ")}`).toEqual([]);
-      }, 180_000);
+          expect(stranded, `${templateId}/${fixture}: ${stranded.join(", ")}`).toEqual([]);
+        }, 180_000);
+      }
     }
   }
 });

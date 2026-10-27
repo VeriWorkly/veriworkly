@@ -11,6 +11,7 @@ import {
   formatDocumentDate,
   toDocumentLanguage,
 } from "@/features/documents/utils/formatters";
+import { getPageGeometry, toPaperSize } from "@/templates/shared/page-geometry";
 import { COVER_LETTER_SCALE, createCoverLetterTokens } from "./tokens";
 
 import {
@@ -436,6 +437,7 @@ export function getCoverLetterState(content: CoverLetterContent) {
     pageColor: toSafeHexColor(appearance.pageColor, defaults.pageColor),
     sidebarColor: toSafeHexColor(appearance.sidebarColor, defaults.sidebarColor),
     textColor: toSafeHexColor(appearance.textColor, defaults.textColor),
+    paperSize: toPaperSize(appearance.paperSize),
   };
 
   const showTarget = isCoverLetterSectionVisible(content, "target");
@@ -475,6 +477,8 @@ export function getCoverLetterState(content: CoverLetterContent) {
 
   return {
     appearance: normalizedAppearance,
+    /** The printed page every renderer draws, from the letter's paper size. */
+    page: getPageGeometry(normalizedAppearance.paperSize),
     palette,
     tokens: createCoverLetterTokens(normalizedAppearance, palette),
     senderName,
@@ -555,7 +559,7 @@ export function veriworklyRailOverflows(content: CoverLetterContent): boolean {
     stack(rows, 8) +
     target;
 
-  return height > S.pageHeight - S.railPadY * 2;
+  return height > state.page.heightPx - S.railPadY * 2;
 }
 
 export function getCoverLetterDocumentTitle(state: CoverLetterState) {

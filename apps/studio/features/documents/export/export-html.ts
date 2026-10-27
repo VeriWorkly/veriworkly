@@ -5,10 +5,7 @@ import { escapeHtml, getResumeFileBaseName } from "@/features/resume/services/re
 import { getResumeRenderStyle } from "@/features/documents/rendering/resume-rendering";
 import { getPdfFontEntries } from "@/features/documents/constants/fonts";
 import { documentDirection, toDocumentLanguage } from "@/features/documents/utils/formatters";
-import {
-  RESUME_PAGE_HEIGHT_PX,
-  RESUME_PAGE_WIDTH_PX,
-} from "@/features/resume/constants/resume-layout";
+import { getPageGeometry } from "@/templates/shared/page-geometry";
 
 import { downloadBlob } from "./download";
 import { EXPORT_EXCLUDE_ATTRIBUTE, EXPORT_ROOT_ATTRIBUTE } from "./export-dom-markers";
@@ -163,6 +160,7 @@ function contentHtml(content: ResumeExportContent): string {
  */
 export function buildHtml(resume: ResumeData): string {
   const document = getResumeExportDocument(resume);
+  const page = getPageGeometry(resume.customization?.paperSize);
   const title = document.name ? `${escapeHtml(document.name)} - Resume` : "Resume";
 
   const header = [
@@ -197,6 +195,7 @@ export function buildHtml(resume: ResumeData): string {
   <title>${title}</title>
   <style>
     :root { color-scheme: light; }
+    @page { size: ${page.widthPx}px ${page.heightPx}px; }
     body { margin: 0; padding: 40px 20px; font-family: "Segoe UI", Arial, sans-serif; background: #f6f7fb; color: #111827; }
     main { max-width: 880px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; }
     h1 { margin: 0 0 8px; font-size: 2rem; line-height: 1.1; }
@@ -285,6 +284,7 @@ async function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): 
   clonedResume.style.boxSizing = "border-box";
 
   const fontFaces = await buildEmbeddedFontFaces(resume);
+  const page = getPageGeometry(resume.customization?.paperSize);
   const name = getResumeExportDocument(resume).name;
   const title = name ? `${escapeHtml(name)} - Resume` : "Resume";
 
@@ -310,7 +310,7 @@ async function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): 
     /* One preview page per sheet. The clone carries its computed size and gaps inline, hence
        !important: the screen height includes the gaps and would print a blank sheet. */
     @page {
-      size: ${RESUME_PAGE_WIDTH_PX}px ${RESUME_PAGE_HEIGHT_PX}px;
+      size: ${page.widthPx}px ${page.heightPx}px;
       margin: 0;
     }
     @media print {

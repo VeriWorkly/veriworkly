@@ -17,6 +17,12 @@ import {
 } from "@/features/documents/editor/DocumentTemplatePickerModal";
 import { fontOptions } from "@/features/documents/constants/fonts";
 import { LANGUAGE_TAG_ERROR, isDocumentLanguage } from "@/features/documents/utils/formatters";
+import {
+  PAPER_SIZES,
+  PAPER_SIZE_LABELS,
+  toPaperSize,
+  type PaperSize,
+} from "@/templates/shared/page-geometry";
 import { templateCatalogByType } from "@/features/documents/core/template-catalog";
 import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
 import { COVER_LETTER_APPEARANCE_RANGES as RANGES } from "@/templates/cover-letter/shared";
@@ -77,6 +83,18 @@ export function CoverLetterSettingsPanel() {
           {fontOptions.map((font) => (
             <option key={font.value} value={font.value}>
               {font.label}
+            </option>
+          ))}
+        </SettingsSelect>
+
+        <SettingsSelect
+          label="Paper size"
+          value={toPaperSize(appearance.paperSize)}
+          onChange={(event) => onUpdateAppearance({ paperSize: event.target.value as PaperSize })}
+        >
+          {PAPER_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {PAPER_SIZE_LABELS[size]}
             </option>
           ))}
         </SettingsSelect>

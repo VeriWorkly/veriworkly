@@ -8,6 +8,7 @@ import {
 import type { BaseDocument } from "@/features/documents/core/types";
 
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
+import { DEFAULT_PAPER_SIZE } from "@/templates/shared/page-geometry";
 
 import type { CoverLetterAppearance, CoverLetterContent } from "./types";
 
@@ -26,7 +27,11 @@ export const COVER_LETTER_TEMPLATE_ID = "professional";
 function toStudioAppearance(appearance: CoverLetterAppearanceCore): CoverLetterAppearance {
   const cloned = structuredClone(appearance);
 
-  return { ...cloned, fontFamily: normalizeFontFamilyId(cloned.fontFamily) };
+  return {
+    ...cloned,
+    fontFamily: normalizeFontFamilyId(cloned.fontFamily),
+    paperSize: DEFAULT_PAPER_SIZE,
+  };
 }
 
 /**

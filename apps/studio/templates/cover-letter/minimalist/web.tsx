@@ -331,6 +331,7 @@ export function MinimalistCoverLetterPreview({ content }: { content: CoverLetter
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const flowItems = useMemo(() => buildProfessionalFlowItems(state.flow), [state.flow]);
   const { pages, measureRef, firstPrefixRef, itemRef } = useFlowPages(flowItems, {
+    page: state.page,
     fontFamily,
     pageColor: appearance.pageColor,
     textColor: palette.text,
@@ -347,7 +348,7 @@ export function MinimalistCoverLetterPreview({ content }: { content: CoverLetter
     padding: px(appearance.pageMargin),
   };
 
-  const pageBox: CSSProperties = { height: px(S.pageHeight), width: px(S.pageWidth) };
+  const pageBox: CSSProperties = { height: px(state.page.heightPx), width: px(state.page.widthPx) };
 
   const head = (
     <LetterHead
@@ -367,7 +368,7 @@ export function MinimalistCoverLetterPreview({ content }: { content: CoverLetter
         ref={measureRef}
         aria-hidden="true"
         className="pointer-events-none absolute opacity-0"
-        style={{ left: -10000, top: 0, width: S.pageWidth }}
+        style={{ left: -10000, top: 0, width: state.page.widthPx }}
       >
         <article className="overflow-hidden" style={{ ...pageStyle, ...pageBox }}>
           <div ref={firstPrefixRef}>
@@ -457,7 +458,7 @@ export function buildMinimalistCoverLetterHtml(content: CoverLetterContent): str
       : ""
   }</section>`;
 
-  const css = `.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{border-bottom:${S.headerRule}px solid transparent;padding-bottom:${S.headerPadBottom}px}header h1{${font(t.senderName)}font-weight:600}header .title{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact-row{display:flex;flex-wrap:wrap;column-gap:10px;row-gap:4px;margin-top:${S.headerRowGap * 2}px}.contact-row .item{display:flex;align-items:center;column-gap:10px}.contact-row .item span{${font(t.contact)}}.contact-row .item .sep{color:${palette.soft}}.links-row{display:flex;flex-wrap:wrap;column-gap:16px;row-gap:4px;margin-top:6px}.links-row a{${font({ ...t.contact, color: palette.strong })}text-decoration:none;display:flex;align-items:center;column-gap:4px}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 2}px}.meta .to p{${font(t.contact)}}.subject{margin-top:${S.subjectTop}px;padding:${S.subjectPadY}px 0}.label{${font(t.label)}letter-spacing:0;text-transform:uppercase}header .label{margin-bottom:6px}.subject h2{${font(t.subject)}font-weight:600;margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-left:2px solid ${palette.accent};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.soft}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid transparent;margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
+  const css = `.page{width:${state.page.widthPx}px;min-height:${state.page.heightPx}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{border-bottom:${S.headerRule}px solid transparent;padding-bottom:${S.headerPadBottom}px}header h1{${font(t.senderName)}font-weight:600}header .title{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact-row{display:flex;flex-wrap:wrap;column-gap:10px;row-gap:4px;margin-top:${S.headerRowGap * 2}px}.contact-row .item{display:flex;align-items:center;column-gap:10px}.contact-row .item span{${font(t.contact)}}.contact-row .item .sep{color:${palette.soft}}.links-row{display:flex;flex-wrap:wrap;column-gap:16px;row-gap:4px;margin-top:6px}.links-row a{${font({ ...t.contact, color: palette.strong })}text-decoration:none;display:flex;align-items:center;column-gap:4px}.meta{margin-top:${S.metaTop}px}.meta .date{${font(t.metaDate)}}.meta .to{display:flex;flex-direction:column;row-gap:${S.metaRowGap}px}.meta .date+.to{margin-top:${S.metaRowGap * 2}px}.meta .to p{${font(t.contact)}}.subject{margin-top:${S.subjectTop}px;padding:${S.subjectPadY}px 0}.label{${font(t.label)}letter-spacing:0;text-transform:uppercase}header .label{margin-bottom:6px}.subject h2{${font(t.subject)}font-weight:600;margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{border-left:2px solid ${palette.accent};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right;color:${palette.soft}}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid transparent;margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${state.page.widthPx}px ${state.page.heightPx}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
 
   return coverLetterHtmlDocument(
     state,

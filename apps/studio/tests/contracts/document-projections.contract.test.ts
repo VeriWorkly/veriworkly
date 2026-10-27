@@ -355,7 +355,11 @@ describe("projectToCoverLetter", () => {
   it("starts with the same appearance a default cover letter has", () => {
     const projected = projectToCoverLetter(filledMasterProfile(), { now: NOW });
 
-    expect(projected.appearance).toEqual(createDefaultCoverLetter("cl-1").content.appearance);
+    // The paper size is the studio's alone: the projection has none, which reads as A4.
+    const { paperSize, ...appearance } = createDefaultCoverLetter("cl-1").content.appearance;
+
+    expect(paperSize).toBe("a4");
+    expect(projected.appearance).toEqual(appearance);
   });
 
   /**

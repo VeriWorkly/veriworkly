@@ -123,7 +123,11 @@ describe("resume store reset and empty (S-008, S-129)", () => {
       title: "My resume",
       language: "de",
       templateId: "modern-minimal",
-      customization: { ...defaultResume.customization, accentColor: "#ff0000" },
+      customization: {
+        ...defaultResume.customization,
+        accentColor: "#ff0000",
+        paperSize: "letter",
+      },
       sections: defaultResume.sections.map((section) =>
         section.id === "projects" ? { ...section, visible: false } : section,
       ),
@@ -152,6 +156,7 @@ describe("resume store reset and empty (S-008, S-129)", () => {
       expect(resume.title).toBe("My resume");
       expect(resume.templateId).toBe("modern-minimal");
       expect(resume.customization.accentColor).toBe("#ff0000");
+      expect(resume.customization.paperSize).toBe("letter");
       expect(resume.language).toBe("de");
       expect(resume.sections.find((section) => section.id === "projects")?.visible).toBe(false);
     });

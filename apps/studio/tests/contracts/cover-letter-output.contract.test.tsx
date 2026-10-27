@@ -1,5 +1,3 @@
-import { inflateRawSync } from "node:zlib";
-
 import { renderToStaticMarkup } from "react-dom/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { describe, expect, it } from "vitest";
@@ -25,7 +23,8 @@ import { buildCoverLetterHtml } from "@/templates/cover-letter/web";
 import { veriworklyRailOverflows } from "@/templates/cover-letter/shared";
 import { createCoverLetterPdfElement } from "@/templates/cover-letter/pdf";
 import { registerPdfTestFonts } from "@/tests/utils/pdf";
-import { DOCUMENT_PAGE_HEIGHT_PX, DOCUMENT_PAGE_WIDTH_PX } from "@/templates/shared/page-geometry";
+import { docxPageSize, unzipDocx } from "@/tests/utils/docx";
+import { PAPER_SIZES, getPageGeometry } from "@/templates/shared/page-geometry";
 
 import { layoutPages, type LayoutNode } from "../parity/pdf-layout";
 import { ptToPx } from "../parity/geometry";
@@ -58,31 +57,6 @@ function letter(
 
 function hiding(...sections: CoverLetterSectionId[]) {
   return { hiddenSections: sections };
-}
-
-/** Every file inside a .docx (a zip), decoded as text. Reads the central directory. */
-async function unzipDocx(blob: Blob): Promise<Map<string, string>> {
-  const bytes = Buffer.from(await blob.arrayBuffer());
-  const files = new Map<string, string>();
-  const end = bytes.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
-  let entry = bytes.readUInt32LE(end + 16);
-
-  for (let count = bytes.readUInt16LE(end + 10); count > 0; count -= 1) {
-    const method = bytes.readUInt16LE(entry + 10);
-    const size = bytes.readUInt32LE(entry + 20);
-    const nameLength = bytes.readUInt16LE(entry + 28);
-    const extraLength = bytes.readUInt16LE(entry + 30);
-    const commentLength = bytes.readUInt16LE(entry + 32);
-    const local = bytes.readUInt32LE(entry + 42);
-    const name = bytes.toString("utf8", entry + 46, entry + 46 + nameLength);
-    const dataStart = local + 30 + bytes.readUInt16LE(local + 26) + bytes.readUInt16LE(local + 28);
-    const data = bytes.subarray(dataStart, dataStart + size);
-
-    files.set(name, (method === 8 ? inflateRawSync(data) : data).toString("utf8"));
-    entry += 46 + nameLength + extraLength + commentLength;
-  }
-
-  return files;
 }
 
 async function docxText(content: CoverLetterContent) {
@@ -226,8 +200,8 @@ describe("the HTML export describes the shared page and cannot be styled from da
     for (const templateId of TEMPLATE_IDS) {
       const html = await buildCoverLetterHtml(letter(), templateId);
 
-      expect(html, templateId).toContain(`width:${DOCUMENT_PAGE_WIDTH_PX}px`);
-      expect(html, templateId).toContain(`min-height:${DOCUMENT_PAGE_HEIGHT_PX}px`);
+      expect(html, templateId).toContain(`width:${getPageGeometry("a4").widthPx}px`);
+      expect(html, templateId).toContain(`min-height:${getPageGeometry("a4").heightPx}px`);
       expect(html, templateId).not.toContain("1123px");
       expect(html, templateId).not.toContain("overflow:hidden");
     }
@@ -672,5 +646,68 @@ describe("S-296: the letter's date and language", () => {
   it("S-296: the language survives a round trip and stays absent on an older letter", () => {
     expect(parseCoverLetterContent({ ...letter(), language: "es-MX" }).language).toBe("es-MX");
     expect("language" in parseCoverLetterContent(letter())).toBe(false);
+  });
+});
+
+describe("Decision 9: a letter's paper size reaches every output", () => {
+  const TWIPS = { a4: { width: 11906, height: 16838 }, letter: { width: 12240, height: 15840 } };
+
+  for (const paperSize of PAPER_SIZES) {
+    it(`the DOCX section page is ${paperSize}`, async () => {
+      const blob = await buildCoverLetterDocx(letter({}, { paperSize }));
+
+      expect(await docxPageSize(blob)).toEqual(TWIPS[paperSize]);
+    });
+
+    it(`every template's HTML sizes its page and @page as ${paperSize}`, async () => {
+      const { widthPx, heightPx } = getPageGeometry(paperSize);
+
+      for (const templateId of TEMPLATE_IDS) {
+        const html = await buildCoverLetterHtml(letter({}, { paperSize }), templateId);
+
+        expect(html, templateId).toContain(`.page{width:${widthPx}px;min-height:${heightPx}px;`);
+        expect(html, templateId).toContain(`@page{size:${widthPx}px ${heightPx}px;`);
+      }
+    });
+
+    it(`the PDF page is ${paperSize}`, async () => {
+      const { widthPt, heightPt } = getPageGeometry(paperSize);
+
+      for (const templateId of TEMPLATE_IDS) {
+        const element = await createCoverLetterPdfElement({
+          content: letter({}, { paperSize }),
+          templateId,
+        });
+        const page = (element.type as (props: unknown) => React.ReactElement)(element.props);
+        const pageElement = (page.props as { children: React.ReactElement<{ size: unknown }> })
+          .children;
+
+        expect(pageElement.props.size, templateId).toEqual([widthPt, heightPt]);
+      }
+    });
+  }
+
+  it("a letter saved before the setting existed prints on A4", async () => {
+    const content = letter();
+    delete content.appearance.paperSize;
+
+    expect(parseCoverLetterContent(content).appearance.paperSize).toBe("a4");
+    expect(getCoverLetterState(content).page).toEqual(getPageGeometry("a4"));
+    expect(await docxPageSize(await buildCoverLetterDocx(content))).toEqual(TWIPS.a4);
+  });
+
+  it("import keeps a Letter setting and reads an unknown one as A4", () => {
+    const stored = letter({}, { paperSize: "letter" });
+
+    expect(parseCoverLetterContent(stored).appearance.paperSize).toBe("letter");
+    expect(
+      parseCoverLetterContent({
+        ...stored,
+        appearance: { ...stored.appearance, paperSize: "legal" },
+      }).appearance.paperSize,
+    ).toBe("a4");
+    expect(
+      parseCoverLetterMarkdown(buildCoverLetterMarkdown(stored), stored).appearance.paperSize,
+    ).toBe("letter");
   });
 });

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PARITY_FIXTURE_IDS, type ParityFixtureId } from "@/tests/parity/fixtures";
+import { PAPER_SIZES, type PaperSize } from "@/templates/shared/page-geometry";
 
 import { ParityClient } from "./ParityClient";
 
@@ -29,21 +30,23 @@ export default async function ParityPage({
   searchParams,
 }: {
   params: Promise<{ type: string; templateId: string }>;
-  searchParams: Promise<{ fixture?: string; mode?: string }>;
+  searchParams: Promise<{ fixture?: string; mode?: string; paper?: string }>;
 }) {
   if (process.env.NODE_ENV === "production") notFound();
 
   const { type, templateId } = await params;
-  const { fixture = "default", mode = "raw" } = await searchParams;
+  const { fixture = "default", mode = "raw", paper = "a4" } = await searchParams;
 
   if (!PARITY_TYPES.includes(type as ParityType)) notFound();
   if (!PARITY_FIXTURE_IDS.includes(fixture as ParityFixtureId)) notFound();
   if (mode !== "raw" && mode !== "paged") notFound();
+  if (!PAPER_SIZES.includes(paper as PaperSize)) notFound();
 
   return (
     <ParityClient
       fixture={fixture as ParityFixtureId}
       mode={mode}
+      paperSize={paper as PaperSize}
       templateId={templateId}
       type={type as ParityType}
     />

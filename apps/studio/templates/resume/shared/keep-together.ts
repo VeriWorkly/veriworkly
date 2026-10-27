@@ -5,10 +5,7 @@ import type { ResumeTokens } from "./tokens";
 import type { ResumeTypeScale } from "./typography";
 
 import { FONT_REGISTRY } from "@/features/documents/constants/fonts";
-import {
-  RESUME_PAGE_HEIGHT_PX,
-  RESUME_PAGE_WIDTH_PX,
-} from "@/features/resume/constants/resume-layout";
+import { getPageGeometry } from "@/templates/shared/page-geometry";
 import { GLYPH_WIDTHS, GLYPH_WIDTH_FIRST_CODE_POINT } from "@/templates/pdf/glyph-widths";
 
 export { HEADING_PRESENCE_LINES } from "@/templates/shared/pagination";
@@ -17,11 +14,12 @@ export type ResumeItemLayout = "stacked" | "gutter";
 
 /** The page's text area and an item's prose column, in px. */
 export function getTextWidths(
+  style: ResumeRenderStyle,
   scale: ResumeTypeScale,
   pagePadding: number,
   layout: ResumeItemLayout,
 ) {
-  const contentWidth = RESUME_PAGE_WIDTH_PX - pagePadding * 2;
+  const contentWidth = getPageGeometry(style.paperSize).widthPx - pagePadding * 2;
   const columnWidth =
     layout === "gutter" ? contentWidth - scale.gutterWidth - scale.gutterGap : contentWidth;
 
@@ -96,9 +94,9 @@ export function createResumeKeepTogether(
   pagePadding: number,
   layout: ResumeItemLayout,
 ) {
-  const capacity = RESUME_PAGE_HEIGHT_PX - pagePadding * 2;
+  const capacity = getPageGeometry(style.paperSize).heightPx - pagePadding * 2;
   const family = FONT_REGISTRY[style.fontFamily].primaryFamily;
-  const { contentWidth, columnWidth } = getTextWidths(scale, pagePadding, layout);
+  const { contentWidth, columnWidth } = getTextWidths(style, scale, pagePadding, layout);
   const bound = (text: string, token: TextToken, width: number) =>
     maxTextHeight(text, token, width, family);
 

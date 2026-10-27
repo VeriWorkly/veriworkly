@@ -4,6 +4,7 @@ import type {
 } from "@veriworkly/profile-core";
 
 import type { FontFamilyId } from "@/features/documents/constants/fonts";
+import type { PaperSize } from "@/templates/shared/page-geometry";
 
 /*
  * The letter's shape is declared once, in `@veriworkly/profile-core`, because the server
@@ -17,6 +18,11 @@ export type { CoverLetterSectionId } from "@veriworkly/profile-core";
 
 export interface CoverLetterAppearance extends Omit<CoverLetterAppearanceCore, "fontFamily"> {
   fontFamily: FontFamilyId;
+  /**
+   * The printed page. The studio's alone, like `language`: a letter the server projects from
+   * the master profile has none, and a missing one is A4 (`getPageGeometry`).
+   */
+  paperSize?: PaperSize;
 }
 
 export interface CoverLetterContent extends Omit<CoverLetterContentCore, "appearance"> {

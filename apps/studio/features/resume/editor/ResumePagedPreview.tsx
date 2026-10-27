@@ -4,10 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import {
-  RESUME_PAGE_HEIGHT_PX,
-  RESUME_PAGE_WIDTH_PX,
-} from "@/features/resume/constants/resume-layout";
+import { getPageGeometry, type PaperSize } from "@/templates/shared/page-geometry";
 import {
   EXPORT_EXCLUDE_ATTRIBUTE,
   EXPORT_ROOT_ATTRIBUTE,
@@ -246,6 +243,7 @@ function withElement(unit: ResumeFlowUnit, element: HTMLElement): ResumeFlowUnit
  * the whole candidate page (the previous approach) made that quadratic.
  */
 function createDomPageProbe(
+  pageHeight: number,
   probe: HTMLElement,
   sectionsWithHeader: Set<number>,
 ): IncrementalPageProbe<ResumeFlowUnit> {
@@ -337,7 +335,7 @@ function createDomPageProbe(
     },
 
     fits() {
-      return probe.scrollHeight <= RESUME_PAGE_HEIGHT_PX + 1;
+      return probe.scrollHeight <= pageHeight + 1;
     },
 
     undo() {
@@ -373,8 +371,7 @@ function createDomPageProbe(
       const scale = screenScale(probe);
       const limit =
         probe.getBoundingClientRect().top +
-        (RESUME_PAGE_HEIGHT_PX -
-          Number.parseFloat(window.getComputedStyle(probe).paddingBottom || "0")) *
+        (pageHeight - Number.parseFloat(window.getComputedStyle(probe).paddingBottom || "0")) *
           scale;
 
       // A section's opening keeps a few lines under its heading, or moves with it — the
@@ -412,7 +409,18 @@ function createDomPageProbe(
   };
 }
 
-export function ResumePagedPreview({ children }: { children: ReactNode }) {
+/**
+ * `paperSize` is the resume's own (`customization.paperSize`): the template draws its page at
+ * that size, and the pages here are cut to the same box.
+ */
+export function ResumePagedPreview({
+  children,
+  paperSize,
+}: {
+  children: ReactNode;
+  paperSize: PaperSize | undefined;
+}) {
+  const geometry = getPageGeometry(paperSize);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [pages, setPages] = useState<ResumePreviewPage[]>([]);
   const [pageStyle, setPageStyle] = useState<CSSProperties>({});
@@ -478,10 +486,10 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
       Object.assign(probe.style, {
         ...nextPageStyle,
         boxShadow: "none",
-        height: `${RESUME_PAGE_HEIGHT_PX}px`,
-        minHeight: `${RESUME_PAGE_HEIGHT_PX}px`,
+        height: `${geometry.heightPx}px`,
+        minHeight: `${geometry.heightPx}px`,
         position: "absolute",
-        width: `${RESUME_PAGE_WIDTH_PX}px`,
+        width: `${geometry.widthPx}px`,
       });
 
       measureRoot.appendChild(probe);
@@ -498,7 +506,7 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
 
       const measuredPages = paginateIncremental(
         units,
-        createDomPageProbe(probe, sectionsWithHeader),
+        createDomPageProbe(geometry.heightPx, probe, sectionsWithHeader),
         undefined,
         isSplittable,
       );
@@ -534,7 +542,7 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
     }, MEASURE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [children, fontsReady, fontLoads]);
+  }, [children, fontsReady, fontLoads, geometry]);
 
   return (
     <div className="relative">
@@ -549,7 +557,7 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
         // Out of the tab order too: its links are copies the user cannot see.
         inert
         className="pointer-events-none absolute opacity-0"
-        style={{ left: -10000, top: 0, width: RESUME_PAGE_WIDTH_PX }}
+        style={{ left: -10000, top: 0, width: geometry.widthPx }}
         {...{ [EXPORT_EXCLUDE_ATTRIBUTE]: "true" }}
       >
         {children}
@@ -562,9 +570,9 @@ export function ResumePagedPreview({ children }: { children: ReactNode }) {
             key={index}
             style={{
               ...pageStyle,
-              width: RESUME_PAGE_WIDTH_PX,
-              minHeight: RESUME_PAGE_HEIGHT_PX,
-              height: RESUME_PAGE_HEIGHT_PX,
+              width: geometry.widthPx,
+              minHeight: geometry.heightPx,
+              height: geometry.heightPx,
             }}
             dangerouslySetInnerHTML={{ __html: page.content }}
           />

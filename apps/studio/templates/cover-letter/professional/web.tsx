@@ -324,6 +324,7 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
   const fontFamily = FONT_FAMILY_MAP[appearance.fontFamily];
   const flowItems = useMemo(() => buildProfessionalFlowItems(state.flow), [state.flow]);
   const { pages, measureRef, firstPrefixRef, itemRef } = useFlowPages(flowItems, {
+    page: state.page,
     fontFamily,
     pageColor: appearance.pageColor,
     textColor: palette.text,
@@ -340,8 +341,8 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
     padding: px(appearance.pageMargin),
   };
 
-  // The page box matches the PDF page exactly; see COVER_LETTER_SCALE.
-  const pageBox: CSSProperties = { height: px(S.pageHeight), width: px(S.pageWidth) };
+  // The page box matches the PDF page exactly; see state.page (getPageGeometry).
+  const pageBox: CSSProperties = { height: px(state.page.heightPx), width: px(state.page.widthPx) };
 
   const head = (
     <LetterHead
@@ -361,7 +362,7 @@ export function ProfessionalCoverLetterPreview({ content }: { content: CoverLett
         ref={measureRef}
         aria-hidden="true"
         className="pointer-events-none absolute opacity-0"
-        style={{ left: -10000, top: 0, width: S.pageWidth }}
+        style={{ left: -10000, top: 0, width: state.page.widthPx }}
       >
         <article className="overflow-hidden" style={{ ...pageStyle, ...pageBox }}>
           <div ref={firstPrefixRef}>
@@ -440,7 +441,7 @@ export function buildProfessionalCoverLetterHtml(content: CoverLetterContent): s
   // One flowing page: the browser's print engine breaks it with the same rules react-pdf
   // uses (whole bullets, signature and greeting; two-line orphans and widows), and the
   // screen copy never clips what does not fit a fixed-height box.
-  const css = `.page{width:${S.pageWidth}px;min-height:${S.pageHeight}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{display:flex;border-bottom:${S.headerRule}px solid ${palette.strong};padding-bottom:${S.headerPadBottom}px}header .identity{flex:1 1 auto;min-width:0}header h1{${font(t.senderName)}}header .identity p{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 ${S.headerContactWidth}px;width:${S.headerContactWidth}px;margin-left:${S.headerColumnGap}px;row-gap:${S.headerRowGap}px}.contact p{${font(t.contact)}text-align:right}.contact a{${font({ ...t.contact, color: palette.strong })}text-decoration:none}.meta{display:flex;margin-top:${S.metaTop}px}.meta .to{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;row-gap:${S.metaRowGap}px}.meta .to p{${font(t.contact)}}.meta .date{${font(t.metaDate)}flex:0 0 ${S.metaDateWidth}px;width:${S.metaDateWidth}px;margin-left:${S.metaColumnGap}px;text-align:right}.subject{border-top:${S.hairline}px solid ${palette.border};border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.subjectTop}px;padding:${S.subjectPadY}px 0}.label{${font(t.label)}letter-spacing:${t.label.letterSpacing}px;text-transform:uppercase}.subject h2{${font(t.subject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{background:${palette.surface};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${S.pageWidth}px ${S.pageHeight}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
+  const css = `.page{width:${state.page.widthPx}px;min-height:${state.page.heightPx}px;margin:0 auto 24px;background:${appearance.pageColor};box-shadow:0 0 0 1px ${palette.border};padding:${appearance.pageMargin}px}p,h1,h2{margin:0;white-space:pre-line}header{display:flex;border-bottom:${S.headerRule}px solid ${palette.strong};padding-bottom:${S.headerPadBottom}px}header .identity{flex:1 1 auto;min-width:0}header h1{${font(t.senderName)}}header .identity p{${font(t.senderTitle)}margin-top:${S.subjectLabelGap}px}.contact{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 ${S.headerContactWidth}px;width:${S.headerContactWidth}px;margin-left:${S.headerColumnGap}px;row-gap:${S.headerRowGap}px}.contact p{${font(t.contact)}text-align:right}.contact a{${font({ ...t.contact, color: palette.strong })}text-decoration:none}.meta{display:flex;margin-top:${S.metaTop}px}.meta .to{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;row-gap:${S.metaRowGap}px}.meta .to p{${font(t.contact)}}.meta .date{${font(t.metaDate)}flex:0 0 ${S.metaDateWidth}px;width:${S.metaDateWidth}px;margin-left:${S.metaColumnGap}px;text-align:right}.subject{border-top:${S.hairline}px solid ${palette.border};border-bottom:${S.hairline}px solid ${palette.border};margin-top:${S.subjectTop}px;padding:${S.subjectPadY}px 0}.label{${font(t.label)}letter-spacing:${t.label.letterSpacing}px;text-transform:uppercase}.subject h2{${font(t.subject)}margin-top:${S.subjectLabelGap}px}.body{display:flex;flex-direction:column;margin-top:${S.bodyTop}px}.body p{${font(t.body)}margin-bottom:${appearance.paragraphSpacing}px}.body .greeting,.body .signature{${font(t.strong)}}.body .signature{margin-bottom:0}.greeting,.closing,.signature,.bullet{break-inside:avoid}.list{background:${palette.surface};padding:${S.listPadY}px ${S.listPadX}px;margin-bottom:${appearance.paragraphSpacing}px}.bullet{display:flex;column-gap:${S.bulletGap}px}.bullet+.bullet{margin-top:${S.bulletRowGap}px}.bullet .marker{flex:0 0 ${S.bulletIndent - S.bulletGap}px;width:${S.bulletIndent - S.bulletGap}px;text-align:right}.bullet span{${font(t.body)}}.body .postscript{${font(t.postscript)}border-top:${S.hairline}px solid ${palette.border};margin:${S.postscriptTop}px 0 0;padding-top:${S.postscriptPadTop}px}@page{size:${state.page.widthPx}px ${state.page.heightPx}px;margin:${appearance.pageMargin}px 0}@media print{body{padding:0;background:${appearance.pageColor}}.page{box-shadow:none;margin:0;min-height:0;padding-top:0;padding-bottom:0}}`;
 
   return coverLetterHtmlDocument(
     state,

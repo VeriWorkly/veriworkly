@@ -7,6 +7,7 @@ import { documentSyncStatusSchema } from "@/features/resume/schemas/resume-stora
 import { clampCoverLetterNumber, isHexColor } from "@/templates/cover-letter/shared";
 import { isDocumentLinkType } from "@/features/documents/core/link-types";
 import { isRecord } from "@/lib/is-record";
+import { toPaperSize } from "@/templates/shared/page-geometry";
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -108,6 +109,7 @@ export function parseCoverLetterContent(input: unknown): CoverLetterContent {
       pageColor: asHexColor(appearanceRaw.pageColor, "#ffffff"),
       textColor: asHexColor(appearanceRaw.textColor, "#18181b"),
       hiddenSections: parseHiddenSections(appearanceRaw.hiddenSections),
+      paperSize: toPaperSize(appearanceRaw.paperSize),
     },
   };
 }

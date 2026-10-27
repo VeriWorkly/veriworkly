@@ -15,11 +15,8 @@ import type { ResumeTypeScale } from "./typography";
 import type { ResumeSectionStart } from "./keep-together";
 import type { StackedHeaderOptions } from "./stacked-header";
 
-import {
-  RESUME_PAGE_HEIGHT_PX,
-  RESUME_PAGE_WIDTH_PX,
-  RESUME_SPACING_LIMITS,
-} from "@/features/resume/constants/resume-layout";
+import { RESUME_SPACING_LIMITS } from "@/features/resume/constants/resume-layout";
+import { getPageGeometry } from "@/templates/shared/page-geometry";
 import { FONT_FAMILY_MAP } from "@/features/documents/constants/fonts";
 import {
   getLinkDisplayText,
@@ -458,6 +455,7 @@ export function createResumeWebTemplate(skin: ResumeWebSkin): React.FC<TemplateR
     );
 
     const keepTogether = createResumeKeepTogether(ctx, pagePadding, layout);
+    const page = getPageGeometry(style.paperSize);
 
     const renderItems = (items: ResumeRenderItem[]) =>
       items.map((item) => (
@@ -506,16 +504,16 @@ export function createResumeWebTemplate(skin: ResumeWebSkin): React.FC<TemplateR
         id="resume-container"
         style={
           {
-            "--resume-page-height": px(RESUME_PAGE_HEIGHT_PX),
+            "--resume-page-height": px(page.heightPx),
             "--resume-page-margin": px(pagePadding),
             backgroundColor: style.pageBackgroundColor,
             color: style.textColor,
             fontFamily: FONT_FAMILY_MAP[style.fontFamily],
             fontSize: px(scale.body),
             lineHeight: px(scale.body * style.bodyLineHeight),
-            minHeight: px(RESUME_PAGE_HEIGHT_PX * 2),
+            minHeight: px(page.heightPx * 2),
             padding: px(pagePadding),
-            width: px(RESUME_PAGE_WIDTH_PX),
+            width: px(page.widthPx),
           } as React.CSSProperties
         }
       >

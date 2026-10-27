@@ -4,6 +4,7 @@ import type { ResumeData, ResumeLinkType, ResumeSection } from "@/types/resume";
 
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 import { toDocumentDateFormat } from "@/features/documents/utils/formatters";
+import { toPaperSize } from "@/templates/shared/page-geometry";
 import { isDocumentLinkType } from "@/features/documents/core/link-types";
 import { blankResume, defaultSections } from "@/features/resume/constants/default-resume";
 
@@ -256,6 +257,7 @@ export function normalizeResumeData(value: Partial<ResumeData> | null | undefine
       ...incomingCustomization,
       fontFamily: normalizeFontFamilyId(incomingFontFamily),
       dateFormat: toDocumentDateFormat(incomingCustomization?.dateFormat),
+      paperSize: toPaperSize(incomingCustomization?.paperSize),
     },
     sync: {
       ...blankResume.sync,

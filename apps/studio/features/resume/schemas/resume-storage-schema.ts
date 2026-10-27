@@ -312,6 +312,7 @@ const resumeDataInputSchema = z
         headingLineHeight: z.number(),
         // Any value parses: `normalizeResumeData` reads an unknown one as the default.
         dateFormat: z.unknown(),
+        paperSize: z.unknown(),
       })
       .partial(),
 
