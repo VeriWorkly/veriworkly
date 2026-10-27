@@ -138,7 +138,7 @@ When every rule is `0`, the job is not scheduled and `/health/jobs` reports it a
 ## 🐘 Database connections
 
 - **Per-replica budget.** Each cluster worker has its own `pg` pool, so one replica opens up to `WEB_CONCURRENCY × pool size` connections. `DB_POOL_MAX_TOTAL` (default 80 in production) is that per-replica budget; the per-worker pool is `max(2, floor(DB_POOL_MAX_TOTAL / workers))`. The master logs `Database connection budget: <workers> workers x <pool> = <total> of DB_POOL_MAX_TOTAL=<budget>` once at boot.
-- **Sizing.** Keep `DB_POOL_MAX_TOTAL × replicas` at or under about 80% of Postgres `max_connections`, leaving room for migrations, `db:studio` and an admin session. Example: `max_connections = 100` and two replicas gives `DB_POOL_MAX_TOTAL=40`.
+- **Sizing.** Keep `DB_POOL_MAX_TOTAL × replicas` at or under about 80% of Postgres `max_connections`, leaving room for migrations, `db:studio` and an admin session. Example: `max_connections = 100` and two replicas gives `DB_POOL_MAX_TOTAL=40`. The two pm2 copies in production are two replicas in this sense: `ecosystem.config.cjs` gives each `DB_POOL_MAX_TOTAL=40`, the 80 the single copy had.
 - **Refusal.** In production the server refuses to boot when the derived pool still overcommits the budget (the floor of 2 per worker against a small budget). Setting `DB_POOL_MAX` explicitly overrides the derived size for the pooler case; an over-budget value then only logs a warning.
 - **URLs.** `DATABASE_URL` should be the pooled host (Neon `-pooler`), so the budget above is spent on pooler client slots rather than Postgres backends. `DIRECT_DATABASE_URL` is the direct host and is what `prisma migrate` uses (`prisma.config.ts`).
 - **Per-connection settings.** Every connection sets `application_name = veriworkly-api-w<worker id>` (visible in `pg_stat_activity`), `statement_timeout` (`DB_POOL_STATEMENT_TIMEOUT_MS`, 30 s).
@@ -177,28 +177,62 @@ The auth routes (`/api/v1/auth/*`) answer only to the host of `AUTH_BASE_URL`, t
 
 ## 🛑 Graceful shutdown and process managers
 
-On SIGTERM or SIGINT each worker stops accepting connections, drains HTTP for up to 10 s and lets a running background job finish for up to 20 s (both in parallel), then closes Redis and Prisma. The cluster master force-kills a worker still alive after 35 s. A process manager must therefore wait **at least 40 s** before its own SIGKILL, or it cuts a flush off mid-transaction:
+On SIGTERM or SIGINT each worker stops accepting connections and lets the requests in flight finish. After 10 s, AI calls still running are aborted: each one releases its credit reservation and AI slot, gives back an ATS scan it counted, and answers 503 `SERVER_RESTARTING` with `Retry-After: 5`, so nobody is charged for an answer they never get and the client retries on the other copy. The drain waits for the last request for up to 25 s in all, and a running background job may finish for up to 20 s in parallel. Redis and Prisma close only after that, never under a request still using them. The cluster master force-kills a worker still alive after 35 s. A process manager must therefore wait **at least 40 s** before its own SIGKILL, or it cuts a flush off mid-transaction. The numbers live in `SHUTDOWN_TIMINGS` (`src/lib/shutdown.ts`), and `tests/lifecycle/deploy-config.test.ts` checks that the files below keep up with them.
 
 - **Docker Compose:** `compose.yaml` sets `stop_grace_period: 40s` on `api` (the default is 10 s).
-- **pm2:** the default `kill_timeout` is 1600 ms. Set it in the ecosystem file (one pm2 process; the server forks its own workers, so do not use pm2 cluster mode):
+- **pm2:** the default `kill_timeout` is 1600 ms. `ecosystem.config.cjs` sets 40 s (the server forks its own workers, so do not use pm2 cluster mode).
 
-  ```js
-  // ecosystem.config.js
-  module.exports = {
-    apps: [
-      {
-        name: "veriworkly-server",
-        script: "dist/index.js",
-        cwd: "/path/to/apps/server",
-        exec_mode: "fork",
-        instances: 1,
-        kill_timeout: 40000,
-      },
-    ],
-  };
-  ```
+## 🚀 Deploying without downtime
 
-  Apply it with `pm2 delete veriworkly-server && pm2 start ecosystem.config.js` (a plain restart keeps the old setting). Without an ecosystem file, start the process with `pm2 start dist/index.js --name veriworkly-server --kill-timeout 40000`.
+One process restarting means nobody listens for the drain plus the boot (Redis connect, Prisma, admin check): nginx answers 502 to autosaves and to share and portfolio pages for that time. So production runs **two copies** of the API and restarts them one at a time (V-373). Every step below is required: skip one and a deploy is still an outage for whoever goes through it.
+
+1. **Two pm2 apps.** `ecosystem.config.cjs` defines `veriworkly-server-a` on port 7042 and `veriworkly-server-b` on 7043, each with one worker (`WEB_CONCURRENCY=1`) and its own Postgres budget (`DB_POOL_MAX_TOTAL=40`). The single copy ran 2 workers on a budget of 80, so the two copies together open at most the same 80 connections. If `.env` sets `DB_POOL_MAX_TOTAL`, set half of it in the ecosystem file instead (its values win over `.env`). Everything else still comes from `.env`. First switch-over:
+
+   ```sh
+   pm2 delete veriworkly-server
+   pm2 start ecosystem.config.cjs
+   pm2 save
+   ```
+
+2. **Public traffic over both copies.** nginx sends `api.veriworkly.com` to both. A copy that is draining refuses new connections, and nginx retries a refused connection on the other copy (also for POSTs, because nothing was sent yet):
+
+   ```nginx
+   upstream veriworkly_api {
+     server 127.0.0.1:7042 max_fails=1 fail_timeout=5s;
+     server 127.0.0.1:7043 max_fails=1 fail_timeout=5s;
+     keepalive 16;
+   }
+   # in the api.veriworkly.com server block, replacing the old proxy_pass to :7042
+   location / {
+     proxy_pass http://veriworkly_api;
+     proxy_http_version 1.1;
+     proxy_set_header Connection "";
+     proxy_next_upstream error timeout;
+     # keep the existing proxy_set_header lines (Host, X-Real-IP, X-Forwarded-For, X-Forwarded-Proto)
+   }
+   ```
+
+3. **Internal traffic over both copies.** The studio and portfolio render pages by calling the API from the same machine (`BACKEND_INTERNAL_URL`). Pointed at `127.0.0.1:7042`, every one of those calls fails while copy a drains and boots, so they must go through a loopback-only nginx listener over both copies. It passes the request through unchanged: it adds no `X-Forwarded-For`, so the API sees the same loopback caller as before, and `x-internal-key` / `x-forwarded-client-ip` reach it as sent.
+
+   ```nginx
+   # A server block of its own, reachable only from this machine.
+   server {
+     listen 127.0.0.1:7040;
+
+     location / {
+       proxy_pass http://veriworkly_api;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+       proxy_set_header Host $http_host;
+       proxy_next_upstream error timeout;
+       proxy_read_timeout 120s;
+     }
+   }
+   ```
+
+   Then, in the studio's and the portfolio's environment, set `BACKEND_INTERNAL_URL=http://127.0.0.1:7040/api/v1` and restart them. Reload nginx with `nginx -t && nginx -s reload`.
+
+4. **Each deploy**, after `npm run build` and the migrations: `sh scripts/rolling-restart.sh`. It restarts copy a only if copy b answers `/api/v1/health/ready`, waits until copy a is ready again, then does the same the other way round. If a copy is not healthy it stops without restarting anything and says which one. Both copies must work against the new schema, so run migrations first, as before.
 
 ## 📁 Folder Structure
 
