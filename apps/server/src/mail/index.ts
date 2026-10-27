@@ -13,7 +13,16 @@ export {
   renderPaymentFailedEmail,
   type PaymentFailedNotice,
 } from "./billing/paymentFailed.js";
-export { renderSubscriptionCancelledEmail } from "./billing/subscriptionCancelled.js";
+export {
+  renderSubscriptionCancelledEmail,
+  subscriptionCancelledParagraphs,
+  type SubscriptionCancelledNotice,
+} from "./billing/subscriptionCancelled.js";
+export {
+  planChangedParagraphs,
+  renderPlanChangedEmail,
+  type PlanChangedNotice,
+} from "./billing/planChanged.js";
 export { renderPortfolioUpdatedEmail } from "./portfolio/portfolioUpdated.js";
 export {
   portfolioFreeTierParagraphs,

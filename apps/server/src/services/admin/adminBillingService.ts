@@ -282,6 +282,16 @@ export async function updateSubscription(
 
   await BillingService.reconcileAccess(userId);
 
+  // The customer is told, as on a portal cancel (V-212). The provider's webhook that follows sees
+  // the flag already set and sends nothing; the notification key keeps it to one email either way.
+  if (providerCancelAtPeriodEnd === true && !existing.cancelAtPeriodEnd && existing.providerSubId)
+    void BillingService.notifyCancellation(
+      userId,
+      existing.providerSubId,
+      existing.productKey,
+      updated.currentPeriodEnd,
+    );
+
   return { subscription: updated, previous: existing };
 }
 

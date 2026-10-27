@@ -114,7 +114,10 @@ vi.mock("#config", () => ({
 const { BillingService } = await import("../../src/services/billingService.js");
 
 const USER = "user_123";
-const key = (product: string) => `billing:checkout:${USER}:${product}`;
+/** The user's one checkout record (V-218). */
+const key = () => `billing:checkout:${USER}`;
+/** A per-product record written before V-218, still read until it expires. */
+const legacyKey = (product: string) => `billing:checkout:${USER}:${product}`;
 
 beforeEach(() => {
   store.clear();
@@ -131,7 +134,7 @@ beforeEach(() => {
   });
 });
 
-describe("createCheckout idempotency per (user, product)", () => {
+describe("createCheckout idempotency per user (V-125, V-218)", () => {
   it("returns the same session for a repeated checkout of one product and interval, with one provider call", async () => {
     const first = await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
     const second = await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
@@ -141,19 +144,18 @@ describe("createCheckout idempotency per (user, product)", () => {
     expect(dodoMock.create).toHaveBeenCalledTimes(1);
   });
 
-  it("remembers the session per user and product for as long as the provider keeps it payable", async () => {
+  it("remembers the session, with its product, for as long as the provider keeps it payable", async () => {
     await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
 
-    const record = store.get(key("portfolio_pro"));
+    const record = store.get(key());
     expect(record).toBeTruthy();
     expect(JSON.parse(record!.value)).toMatchObject({
       sessionId: "cks_1",
       url: "https://pay.example/1",
+      productKey: "portfolio_pro",
       interval: "monthly",
     });
     expect(record!.ttl).toBe(24 * 60 * 60);
-    // A different product is a different checkout.
-    expect(store.has(key("ai_credits"))).toBe(false);
   });
 
   it("refuses a different interval while a session for the product is open", async () => {
@@ -183,7 +185,7 @@ describe("createCheckout idempotency per (user, product)", () => {
 
     // A session still being prepared by a concurrent click that never finishes.
     store.clear();
-    store.set(key("ai_credits"), { value: JSON.stringify({ state: "claimed", token: "t" }) });
+    store.set(key(), { value: JSON.stringify({ state: "claimed", token: "t" }) });
     vi.useFakeTimers();
     try {
       const pending = BillingService.createCheckout(USER, "ai_credits", "monthly");
@@ -198,7 +200,7 @@ describe("createCheckout idempotency per (user, product)", () => {
     }
   });
 
-  it("treats an open bundle checkout as covering the single products, and vice versa", async () => {
+  it("refuses any second product while one checkout is open (V-218)", async () => {
     await BillingService.createCheckout(USER, "bundle", "monthly");
     await expect(
       BillingService.createCheckout(USER, "portfolio_pro", "monthly"),
@@ -211,12 +213,35 @@ describe("createCheckout idempotency per (user, product)", () => {
     await expect(BillingService.createCheckout(USER, "bundle", "annual")).rejects.toMatchObject({
       statusCode: 409,
     });
-    // Two single products do not block each other.
+    // Two single products are the bundle at a higher price (V-176): one checkout at a time.
     await expect(
       BillingService.createCheckout(USER, "portfolio_pro", "monthly"),
-    ).resolves.toMatchObject({
-      url: expect.any(String),
+    ).rejects.toMatchObject({ statusCode: 409, details: { code: "CHECKOUT_IN_PROGRESS" } });
+    expect(dodoMock.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("still honours a per-product record written before V-218", async () => {
+    store.set(legacyKey("portfolio_pro"), {
+      value: JSON.stringify({
+        state: "open",
+        sessionId: "cks_old",
+        url: "https://pay.example/old",
+        interval: "monthly",
+        createdAt: new Date().toISOString(),
+      }),
     });
+
+    await expect(BillingService.createCheckout(USER, "portfolio_pro", "monthly")).resolves.toEqual({
+      url: "https://pay.example/old",
+      reused: true,
+    });
+    await expect(
+      BillingService.createCheckout(USER, "ai_credits", "monthly"),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      details: { code: "CHECKOUT_IN_PROGRESS" },
+    });
+    expect(dodoMock.create).not.toHaveBeenCalled();
   });
 
   it("releases its claim with compare-and-delete when the provider call fails", async () => {
@@ -225,10 +250,10 @@ describe("createCheckout idempotency per (user, product)", () => {
     await expect(BillingService.createCheckout(USER, "portfolio_pro", "monthly")).rejects.toThrow(
       "provider down",
     );
-    expect(store.has(key("portfolio_pro"))).toBe(false);
+    expect(store.has(key())).toBe(false);
     expect(mockRedis.del).not.toHaveBeenCalled();
     expect(mockRedis.eval).toHaveBeenCalledWith(expect.stringContaining('redis.call("get"'), {
-      keys: [key("portfolio_pro")],
+      keys: [key()],
       arguments: [expect.any(String)],
     });
 
@@ -263,7 +288,7 @@ describe("createCheckout idempotency per (user, product)", () => {
     const first = BillingService.createCheckout(USER, "portfolio_pro", "monthly");
     await new Promise((resolve) => setTimeout(resolve, 10));
     // The claim TTL runs out while the provider stalls; a second click claims and opens session 2.
-    store.delete(key("portfolio_pro"));
+    store.delete(key());
     const second = await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
     expect(second).toMatchObject({ url: "https://pay.example/1", reused: false });
 
@@ -274,7 +299,7 @@ describe("createCheckout idempotency per (user, product)", () => {
       message: expect.stringContaining("checkout is already active"),
     });
     // Session 2 stays the tracked one; session 1's URL was never handed out.
-    expect(JSON.parse(store.get(key("portfolio_pro"))!.value)).toMatchObject({
+    expect(JSON.parse(store.get(key())!.value)).toMatchObject({
       sessionId: "cks_1",
       url: "https://pay.example/1",
     });
@@ -301,14 +326,14 @@ describe("cancelCheckout", () => {
 
     dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: "processing" });
     await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
-    expect(store.has(key("portfolio_pro"))).toBe(true);
+    expect(store.has(key())).toBe(true);
 
     dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: null });
     await expect(BillingService.cancelCheckout(USER)).resolves.toMatchObject({
       success: true,
       cleared: ["portfolio_pro"],
     });
-    expect(store.has(key("portfolio_pro"))).toBe(false);
+    expect(store.has(key())).toBe(false);
     expect(mockRedis.del).not.toHaveBeenCalled();
   });
 
@@ -317,7 +342,7 @@ describe("cancelCheckout", () => {
     dodoMock.retrieve.mockRejectedValueOnce(new Error("timeout"));
 
     await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 503 });
-    expect(store.has(key("portfolio_pro"))).toBe(true);
+    expect(store.has(key())).toBe(true);
   });
 
   it("is a no-op success with nothing open", async () => {
@@ -363,11 +388,11 @@ describe("the webhook settles the checkout record", () => {
 
   it("a subscription event for the product consumes the record", async () => {
     await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
-    expect(store.has(key("portfolio_pro"))).toBe(true);
+    expect(store.has(key())).toBe(true);
 
     await BillingService.processWebhook("evt_consume", event("active"));
 
-    expect(store.has(key("portfolio_pro"))).toBe(false);
+    expect(store.has(key())).toBe(false);
     // The lock for the event itself was taken with a token and a renewable PX TTL (V-127).
     expect(mockRedis.set).toHaveBeenCalledWith(
       "billing:webhook:lock:evt_consume",
@@ -386,7 +411,7 @@ describe("the webhook settles the checkout record", () => {
       data: { ...late.data, created_at: createdAt },
     });
 
-    expect(store.has(key("portfolio_pro"))).toBe(true);
+    expect(store.has(key())).toBe(true);
   });
 
   it("a subscription created after the checkout opened consumes it", async () => {
@@ -398,7 +423,7 @@ describe("the webhook settles the checkout record", () => {
       data: { ...active.data, created_at: new Date(Date.now() + 1_000).toISOString() },
     });
 
-    expect(store.has(key("portfolio_pro"))).toBe(false);
+    expect(store.has(key())).toBe(false);
   });
 
   it("a payment settles the record only when it names that checkout session", async () => {
@@ -419,28 +444,27 @@ describe("the webhook settles the checkout record", () => {
     });
 
     await BillingService.processWebhook("evt_pay_other", payment("pay_other", "cks_other"));
-    expect(store.has(key("portfolio_pro"))).toBe(true);
+    expect(store.has(key())).toBe(true);
 
     await BillingService.processWebhook("evt_pay_own", payment("pay_own", "cks_1"));
-    expect(store.has(key("portfolio_pro"))).toBe(false);
+    expect(store.has(key())).toBe(false);
   });
 
-  it("alerts when a user ends up with two ACTIVE subscriptions for one product", async () => {
-    prismaMock.subscription.count.mockResolvedValue(1);
+  it("alerts when a user ends up with a second live subscription, whatever its product (V-218)", async () => {
+    prismaMock.subscription.findMany.mockResolvedValue([
+      { providerSubId: "sub_1", productKey: "ai_credits", status: "ACTIVE" },
+    ]);
 
     await BillingService.processWebhook("evt_double", event("active", "sub_2"));
 
     expect(loggerMock.error).toHaveBeenCalledWith(
-      expect.stringContaining("more than one ACTIVE subscription"),
+      expect.stringContaining("more than one live subscription"),
       expect.objectContaining({ userId: USER, productKey: "portfolio_pro" }),
     );
-    expect(prismaMock.subscription.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({
-        userId: USER,
-        productKey: "portfolio_pro",
-        status: "ACTIVE",
-        providerSubId: { not: "sub_2" },
+    expect(prismaMock.subscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: USER, providerSubId: { not: "sub_2" } }),
       }),
-    });
+    );
   });
 });

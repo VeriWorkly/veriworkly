@@ -4,9 +4,13 @@ import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import {
   sendPaymentFailedEmail,
+  sendPlanChangedEmail,
   sendPurchaseConfirmationEmail,
+  sendSubscriptionCancelledEmail,
   type PaymentFailedNotice,
+  type PlanChangedNotice,
   type PurchaseConfirmation,
+  type SubscriptionCancelledNotice,
 } from "#services/mail/billingMail";
 import {
   sendPortfolioFreeTierEmail,
@@ -36,9 +40,22 @@ export type BillingNotice =
       /** The subscription that failed: a retry is dropped once it has recovered. */
       subscriptionId?: string;
     }
-  | { template: "portfolio_free_tier"; details: PortfolioFreeTierNotice };
+  | { template: "portfolio_free_tier"; details: PortfolioFreeTierNotice }
+  | {
+      template: "subscription_cancelled";
+      details: SubscriptionCancelledNotice;
+      /** The subscription that is ending: a retry is dropped once it renews again. */
+      subscriptionId?: string;
+    }
+  | { template: "plan_changed"; details: PlanChangedNotice };
 
-const TEMPLATES = new Set(["purchase_confirmation", "payment_failed", "portfolio_free_tier"]);
+const TEMPLATES = new Set([
+  "purchase_confirmation",
+  "payment_failed",
+  "portfolio_free_tier",
+  "subscription_cancelled",
+  "plan_changed",
+]);
 
 /** Long enough that a send still in flight is never taken over. */
 const RETRY_AFTER_MS = 5 * 60 * 1000;
@@ -70,6 +87,10 @@ async function send(notice: BillingNotice, user: { email: string; name: string }
     await sendPurchaseConfirmationEmail(user.email, { ...notice.details, name: user.name });
   else if (notice.template === "payment_failed")
     await sendPaymentFailedEmail(user.email, { ...notice.details, name: user.name });
+  else if (notice.template === "subscription_cancelled")
+    await sendSubscriptionCancelledEmail(user.email, { ...notice.details, name: user.name });
+  else if (notice.template === "plan_changed")
+    await sendPlanChangedEmail(user.email, { ...notice.details, name: user.name });
   else await sendPortfolioFreeTierEmail(user.email, { ...notice.details, name: user.name });
 }
 
@@ -80,6 +101,15 @@ async function send(notice: BillingNotice, user: { email: string; name: string }
  * recovery: the failure can land before the subscription's own dunning event.
  */
 async function noLongerTrue(notice: BillingNotice, failedAt: Date, now: Date) {
+  if (notice.template === "subscription_cancelled") {
+    // Resumed since: the subscription renews after all, so "will not renew" is no longer true.
+    if (!notice.subscriptionId) return false;
+    const subscription = await prisma.subscription.findUnique({
+      where: { providerSubId: notice.subscriptionId },
+      select: { status: true, cancelAtPeriodEnd: true },
+    });
+    return subscription?.status === "ACTIVE" && !subscription.cancelAtPeriodEnd;
+  }
   if (notice.template !== "payment_failed" || !notice.subscriptionId) return false;
   const subscription = await prisma.subscription.findUnique({
     where: { providerSubId: notice.subscriptionId },

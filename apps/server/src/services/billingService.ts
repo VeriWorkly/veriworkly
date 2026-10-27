@@ -36,10 +36,7 @@ import {
   subscriptionCreditGrantsWhere,
 } from "#services/annualCreditService";
 import { notifyOnce } from "#services/billingNotifications";
-import {
-  sendSubscriptionCancelledEmail,
-  type PurchaseConfirmation,
-} from "#services/mail/billingMail";
+import type { PurchaseConfirmation } from "#services/mail/billingMail";
 import { PRODUCT_NAMES, PASS_NAMES, UNLOCK_PHRASES, purchaseName } from "#services/productNames";
 import {
   creditPackCatalog,
@@ -63,12 +60,76 @@ import {
 } from "#utils/portfolioPublicationCache";
 
 type BillingIntervalInput = "one_day" | "seven_day" | "monthly" | "annual";
-/** The one field a `refund.succeeded` event is read for. */
+/** What a `refund.succeeded` event is read for. */
 const refundEventSchema = z.object({
   payment_id: z.string().trim().min(1),
   is_partial: z.boolean().nullish(),
   amount: z.number().int().nullish(),
+  currency: z.string().trim().min(1).nullish(),
 });
+/**
+ * What a `dispute.*` event is read for. Dodo sends the disputed amount as a string of minor units
+ * ("precision"); anything that is not a whole number is treated as unknown.
+ */
+const disputeEventSchema = z.object({
+  payment_id: z.string().trim().min(1),
+  amount: z
+    .union([z.string(), z.number()])
+    .nullish()
+    .transform((value) => {
+      const parsed = typeof value === "string" ? Number(value.trim()) : value;
+      return typeof parsed === "number" && Number.isSafeInteger(parsed) ? parsed : null;
+    }),
+  currency: z.string().trim().min(1).nullish(),
+});
+/**
+ * The dispute events in which the money is gone for good: lost at the bank, or accepted by us
+ * (conceding a dispute is losing it). Opened, challenged, won, expired and cancelled change
+ * nothing: the payment still stands, or stands again.
+ */
+const LOST_DISPUTE_EVENTS = new Set(["dispute.lost", "dispute.accepted"]);
+
+/** The provider payment a payment, refund or dispute event is about (V-216); null otherwise. */
+function eventPaymentId(event: { type: string; data: unknown }) {
+  if (!/^(payment|refund|dispute)\./.test(event.type)) return null;
+  const data = event.data as { payment_id?: unknown } | null;
+  return typeof data?.payment_id === "string" && data.payment_id.trim()
+    ? data.payment_id.trim()
+    : null;
+}
+
+/**
+ * What has been reversed of a payment so far (V-216), in its currency's minor units: every stored
+ * `refund.succeeded` and lost or accepted dispute for it that was processed, plus the event being
+ * applied now. One provider refund or dispute delivered under several event ids counts once (by
+ * its `refund_id`/`dispute_id` while the payload lasts); amounts in another currency are left out.
+ */
+async function reversedSoFar(paymentId: string, eventId: string, currency: string | null) {
+  const [row] = await prisma.$queryRaw<Array<{ total: bigint | null }>>`
+    SELECT SUM(amount) AS total FROM (
+      SELECT DISTINCT ON (key) amount FROM (
+        SELECT "amountCents" AS amount, "createdAt",
+          COALESCE("payload" -> 'data' ->> 'refund_id', "payload" -> 'data' ->> 'dispute_id', "id") AS key
+        FROM "BillingWebhookEvent"
+        WHERE "providerPaymentId" = ${paymentId}
+          AND "type" IN ('refund.succeeded', 'dispute.lost', 'dispute.accepted')
+          AND "amountCents" IS NOT NULL
+          AND ("status" = 'PROCESSED' OR "id" = ${eventId})
+          AND ("currency" IS NULL OR ${currency}::text IS NULL OR upper("currency") = upper(${currency}::text))
+      ) AS reversals
+      ORDER BY key, "createdAt" ASC
+    ) AS once`;
+  return Number(row?.total ?? 0);
+}
+
+/** The stored `payment.succeeded` event for a payment: who paid, what, and how much. */
+function findPaymentEvent(paymentId: string) {
+  return prisma.billingWebhookEvent.findFirst({
+    where: { providerPaymentId: paymentId, type: "payment.succeeded" },
+    select: { userId: true, productName: true, amountCents: true, currency: true, payload: true },
+    orderBy: { createdAt: "asc" },
+  });
+}
 const BILLING_SUMMARY_TTL_SECONDS = 60;
 const BILLING_HISTORY_TTL_SECONDS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -171,11 +232,27 @@ type CheckoutRecord =
       state: "open";
       sessionId: string;
       url: string;
+      /** Missing on a legacy per-product record, whose key names the product. */
+      productKey?: ProductKey;
       interval: BillingIntervalInput;
       createdAt: string;
     };
 
-function checkoutRecordKey(userId: string, productKey: ProductKey) {
+/**
+ * One checkout record per user, whatever the product (V-218): any two subscriptions or passes
+ * overlap (V-176), so while one session is open no second one is created. A single key makes that
+ * an atomic claim instead of a check across per-product keys followed by a claim of one of them.
+ */
+function checkoutRecordKey(userId: string) {
+  return `billing:checkout:${userId}`;
+}
+
+/**
+ * The per-product keys used before V-218. Sessions recorded under them stay payable for up to
+ * `CHECKOUT_RECORD_TTL_SECONDS` after the deploy, so they are still read (never written) until
+ * then.
+ */
+function legacyCheckoutRecordKey(userId: string, productKey: ProductKey) {
   return `billing:checkout:${userId}:${productKey}`;
 }
 
@@ -187,14 +264,6 @@ function parseCheckoutRecord(raw: string | null): CheckoutRecord | null {
   } catch {
     return null;
   }
-}
-
-/**
- * The products an open checkout for `productKey` must not overlap with: the same rule as the
- * active-subscription check, since the bundle contains both single products.
- */
-function overlappingProductKeys(productKey: ProductKey): ProductKey[] {
-  return productKey === "bundle" ? [...PRODUCT_KEYS] : [productKey, "bundle"];
 }
 
 /**
@@ -576,31 +645,35 @@ function summarizeBillingEvent(event: unknown): BillingEventSummary {
     };
   }
 
+  if (type.startsWith("dispute.")) {
+    const dispute = disputeEventSchema.safeParse(data);
+    if (!dispute.success) return UNKNOWN_EVENT_SUMMARY;
+    return {
+      productName: null,
+      amountCents: dispute.data.amount,
+      currency: dispute.data.currency?.toUpperCase() ?? null,
+    };
+  }
+
   return UNKNOWN_EVENT_SUMMARY;
 }
 
 /**
- * `summarizeBillingEvent` for an event being stored. A refund names no product itself, so it takes
- * the product of the payment it refunds when that payment's event is on file; otherwise null. The
- * lookup never fails the webhook: an unnamed refund is still a correct history row.
+ * `summarizeBillingEvent` for an event being stored. A refund or dispute names no product itself,
+ * so it takes the product of the payment it reverses when that payment's event is on file;
+ * otherwise null. The lookup never fails the webhook: an unnamed refund is still a correct
+ * history row.
  */
 async function summarizeStoredEvent(event: {
   type: string;
   data: unknown;
 }): Promise<BillingEventSummary> {
   const summary = summarizeBillingEvent(event);
-  if (!event.type.startsWith("refund.") || summary.productName) return summary;
+  const paymentId = eventPaymentId(event);
+  if (!/^(refund|dispute)\./.test(event.type) || summary.productName || !paymentId) return summary;
 
-  const refund = refundEventSchema.safeParse(event.data);
-  if (!refund.success) return summary;
   try {
-    const payment = await prisma.billingWebhookEvent.findFirst({
-      where: {
-        type: "payment.succeeded",
-        payload: { path: ["data", "payment_id"], equals: refund.data.payment_id },
-      },
-      select: { productName: true, payload: true },
-    });
+    const payment = await findPaymentEvent(paymentId);
     if (!payment) return summary;
     return {
       ...summary,
@@ -608,7 +681,7 @@ async function summarizeStoredEvent(event: {
     };
   } catch (error) {
     logger.warn("Refund stored without its product name", {
-      paymentId: refund.data.payment_id,
+      paymentId,
       error: error instanceof Error ? error.message : String(error),
     });
     return summary;
@@ -691,8 +764,10 @@ function subscriptionInEffect(subscription: SubscriptionState, now: Date) {
     return !subscription.currentPeriodEnd || subscription.currentPeriodEnd > now;
   if (subscription.status === "CANCELED")
     return Boolean(subscription.currentPeriodEnd && subscription.currentPeriodEnd > now);
-  if (subscription.status === "PAST_DUE")
-    return Boolean(subscription.graceEndsAt && subscription.graceEndsAt > now);
+  // Dunning is live whether or not the grace window still runs (V-221): the provider keeps
+  // retrying the card and checkout refuses a new purchase with PAYMENT_OUTSTANDING, so the
+  // summary must keep saying PAST_DUE rather than describe a free account that cannot buy.
+  if (subscription.status === "PAST_DUE") return true;
   return false;
 }
 
@@ -945,15 +1020,17 @@ function isPurchasedGrant(grant: AccessGrant) {
  *   only add to `creditBalance`) do not (V-188).
  */
 /**
- * `dunning`: the product of a subscription in dunning with its grace window still running, or
- * null. Its grants are revoked while the card is retried, but the customer is still a paying
- * subscriber with a payment problem (decision 2), never shown as free.
+ * `dunning`: the product of a subscription in dunning (PAST_DUE, grace running or not: the same
+ * rule checkout applies, V-221), or null. Its grants are revoked while the card is retried, but the
+ * customer is still a paying subscriber with a payment problem (decision 2), never shown as free.
+ * `paymentIssue` is false for a pause, which owes nothing.
  */
 function describeAccess(
   grants: AccessGrant[],
   creditBalance: number,
   paidCredits: number,
   dunning: ProductKey | null = null,
+  paymentIssue = dunning !== null,
 ) {
   const portfolio = grants.filter((grant) => grant.key === ENTITLEMENT_KEYS.PORTFOLIO_PUBLISH);
   const ai = grants.filter((grant) => grant.key === ENTITLEMENT_KEYS.AI_CREDITS);
@@ -980,12 +1057,91 @@ function describeAccess(
     tier: shownTier,
     isPaid: grants.some((grant) => isPaidAccessKey(grant.key)),
     isPaying: grants.some(isPurchasedGrant) || paidCredits > 0 || dunning !== null,
-    paymentIssue: dunning !== null,
+    paymentIssue,
     passEndsAt: latestEnd(passes),
     portfolioAccessEndsAt: latestEnd(portfolio),
     aiCreditsEndsAt: latestEnd(ai),
     creditBalance,
   };
+}
+
+/**
+ * Revokes a reversed pass (V-205) and gives back to the passes stacked after it the days it no
+ * longer covers (V-220): a pass bought during this one started where this one ended, so with this
+ * one gone it starts now (or where this one would have started) instead, and its credits' expiry
+ * moves with it. The customer loses no day they paid for. Runs under the billing lock.
+ */
+async function revokeReversedPass(tx: Prisma.TransactionClient, userId: string, paymentId: string) {
+  await lockUserForBilling(tx, userId);
+  const grants = await tx.entitlementGrant.findMany({
+    where: { userId, source: "SYSTEM", sourceId: paymentId, revokedAt: null },
+    select: { startsAt: true, endsAt: true, metadata: true },
+  });
+  if (grants.length === 0) return { count: 0 };
+
+  const now = new Date();
+  const startsAt = new Date(Math.min(...grants.map((grant) => grant.startsAt.getTime())));
+  const ends = grants.flatMap((grant) => (grant.endsAt ? [grant.endsAt.getTime()] : []));
+  const endsAt = ends.length > 0 ? new Date(Math.max(...ends)) : null;
+  const revoked = await tx.entitlementGrant.updateMany({
+    where: { userId, source: "SYSTEM", sourceId: paymentId, revokedAt: null },
+    data: { revokedAt: now },
+  });
+
+  // The days of this pass not yet used: what a pass stacked after it was pushed back by. Never more
+  // than the pass's own length: a pass that was itself stacked on an earlier one ends that much
+  // after it, and the earlier one's days are not this refund's to give back.
+  const interval = (grants[0]?.metadata as { interval?: unknown } | null)?.interval;
+  const ownLengthMs = isCatalogInterval(String(interval))
+    ? addCatalogInterval(startsAt, interval as CatalogInterval).getTime() - startsAt.getTime()
+    : Number.POSITIVE_INFINITY;
+  const unusedMs = Math.min(
+    endsAt && endsAt > now ? endsAt.getTime() - Math.max(now.getTime(), startsAt.getTime()) : 0,
+    ownLengthMs,
+  );
+  if (unusedMs <= 0) return revoked;
+
+  const stacked = await tx.entitlementGrant.findMany({
+    where: {
+      userId,
+      source: "SYSTEM",
+      revokedAt: null,
+      sourceId: { not: paymentId },
+      startsAt: { gte: startsAt },
+      endsAt: { gt: endsAt! },
+      metadata: { path: ["pass"], equals: true },
+    },
+    select: { id: true, sourceId: true, endsAt: true },
+  });
+  for (const grant of stacked)
+    await tx.entitlementGrant.update({
+      where: { id: grant.id },
+      data: { endsAt: new Date(grant.endsAt!.getTime() - unusedMs) },
+    });
+
+  const stackedPayments = [...new Set(stacked.map((grant) => grant.sourceId))];
+  if (stackedPayments.length > 0) {
+    const credits = await tx.creditGrant.findMany({
+      where: {
+        userId,
+        source: CREDIT_SOURCES.subscriptionPayment,
+        sourceId: { in: stackedPayments },
+        expiresAt: { gt: now },
+      },
+      select: { id: true, expiresAt: true },
+    });
+    for (const credit of credits)
+      await tx.creditGrant.update({
+        where: { id: credit.id },
+        data: { expiresAt: new Date(credit.expiresAt!.getTime() - unusedMs) },
+      });
+    logger.info("Passes stacked after a reversed pass moved forward", {
+      paymentId,
+      stackedPayments,
+      unusedMs,
+    });
+  }
+  return revoked;
 }
 
 export class BillingService {
@@ -1070,17 +1226,14 @@ export class BillingService {
     // `available` not `balance`: reads no longer sweep (V-107), so `balance` can still hold
     // expired credits for a while, and those must never make a user look paying.
     const dunning = subscriptions.find(
-      (item) =>
-        item.status === "PAST_DUE" &&
-        item.graceEndsAt &&
-        item.graceEndsAt > at &&
-        isProductKey(item.productKey),
+      (item) => item.status === "PAST_DUE" && isProductKey(item.productKey),
     );
     const access = describeAccess(
       activeGrants,
       wallet.available,
       paidCredits,
       dunning ? (dunning.productKey as ProductKey) : null,
+      Boolean(dunning && dunning.rawStatus !== "paused"),
     );
     const entitlementCurrent = entitlements.includes(ENTITLEMENT_KEYS.PORTFOLIO_PUBLISH);
     const hasAiCredits = entitlements.includes(ENTITLEMENT_KEYS.AI_CREDITS);
@@ -1242,17 +1395,21 @@ export class BillingService {
     if (overlap) throw overlap;
 
     const redis = getRedis();
-    const recordKey = checkoutRecordKey(userId, productKey);
+    const recordKey = checkoutRecordKey(userId);
     const claim: CheckoutRecord = { state: "claimed", token: randomUUID() };
 
-    for (let attempt = 0; ; attempt += 1) {
-      // Another product's open session blocks this one when the two overlap (bundle vs single).
-      for (const other of overlappingProductKeys(productKey)) {
-        if (other === productKey) continue;
-        if (parseCheckoutRecord(await redis.get(checkoutRecordKey(userId, other))))
-          throw new ApiError(409, CHECKOUT_ACTIVE_MESSAGE, CHECKOUT_IN_PROGRESS);
-      }
+    // A session recorded per product before V-218 is still open for up to a day after the deploy.
+    for (const legacyProduct of PRODUCT_KEYS) {
+      const legacy = parseCheckoutRecord(
+        await redis.get(legacyCheckoutRecordKey(userId, legacyProduct)),
+      );
+      if (!legacy) continue;
+      if (legacy.state === "open" && legacyProduct === productKey && legacy.interval === interval)
+        return { url: legacy.url, reused: true };
+      throw new ApiError(409, CHECKOUT_ACTIVE_MESSAGE, CHECKOUT_IN_PROGRESS);
+    }
 
+    for (let attempt = 0; ; attempt += 1) {
       const claimed =
         (await redis.set(recordKey, JSON.stringify(claim), {
           NX: true,
@@ -1260,9 +1417,12 @@ export class BillingService {
         })) === "OK";
       if (claimed) break;
 
+      // The user's one open session: the same product and interval gets it back; anything else
+      // waits until it is paid, settled or cancelled.
       const existing = parseCheckoutRecord(await redis.get(recordKey));
       if (existing?.state === "open") {
-        if (existing.interval === interval) return { url: existing.url, reused: true };
+        if (existing.productKey === productKey && existing.interval === interval)
+          return { url: existing.url, reused: true };
         throw new ApiError(409, CHECKOUT_ACTIVE_MESSAGE, CHECKOUT_IN_PROGRESS);
       }
       // A claim: a concurrent request is creating the session right now. Wait for it and hand
@@ -1317,6 +1477,7 @@ export class BillingService {
         state: "open",
         sessionId: checkout.session_id,
         url: checkout.checkout_url,
+        productKey,
         interval,
         createdAt: new Date().toISOString(),
       };
@@ -1363,8 +1524,15 @@ export class BillingService {
     const paying: ProductKey[] = [];
     let preparing = false;
 
-    for (const productKey of PRODUCT_KEYS) {
-      const key = checkoutRecordKey(userId, productKey);
+    // The user's record, then any per-product record left from before V-218.
+    const keys = [
+      { key: checkoutRecordKey(userId), legacyProduct: null },
+      ...PRODUCT_KEYS.map((legacyProduct) => ({
+        key: legacyCheckoutRecordKey(userId, legacyProduct),
+        legacyProduct,
+      })),
+    ];
+    for (const { key, legacyProduct } of keys) {
       const raw = await redis.get(key);
       const record = parseCheckoutRecord(raw);
       if (!record) continue;
@@ -1372,6 +1540,8 @@ export class BillingService {
         preparing = true;
         continue;
       }
+      const productKey = record.productKey ?? legacyProduct;
+      if (!productKey) continue;
 
       let paymentStatus: string | null | undefined;
       try {
@@ -1421,21 +1591,25 @@ export class BillingService {
   ) {
     try {
       const redis = getRedis();
-      const key = checkoutRecordKey(userId, productKey);
-      const raw = await redis.get(key);
-      const record = parseCheckoutRecord(raw);
-      if (!record || record.state !== "open") return;
+      for (const key of [checkoutRecordKey(userId), legacyCheckoutRecordKey(userId, productKey)]) {
+        const raw = await redis.get(key);
+        const record = parseCheckoutRecord(raw);
+        if (!record || record.state !== "open") continue;
+        // The user's one record may be another product's session: an event about this product
+        // does not settle it (a legacy per-product record names no product and is this one's).
+        if (record.productKey && record.productKey !== productKey) continue;
 
-      if (event.checkoutSessionId) {
-        if (event.checkoutSessionId !== record.sessionId) return;
-      } else if (event.createdAt) {
-        const eventCreatedAt = Date.parse(event.createdAt);
-        const openedAt = Date.parse(record.createdAt);
-        if (eventCreatedAt < openedAt - CHECKOUT_SETTLE_CLOCK_SLACK_MS) return;
+        if (event.checkoutSessionId) {
+          if (event.checkoutSessionId !== record.sessionId) continue;
+        } else if (event.createdAt) {
+          const eventCreatedAt = Date.parse(event.createdAt);
+          const openedAt = Date.parse(record.createdAt);
+          if (eventCreatedAt < openedAt - CHECKOUT_SETTLE_CLOCK_SLACK_MS) continue;
+        }
+
+        // Compare-and-delete on the exact record read: a session opened meanwhile stays.
+        await redis.eval(compareAndDeleteScript, { keys: [key], arguments: [raw as string] });
       }
-
-      // Compare-and-delete on the exact record read: a session opened meanwhile stays.
-      await redis.eval(compareAndDeleteScript, { keys: [key], arguments: [raw as string] });
     } catch (error) {
       logger.warn("Failed to clear a settled checkout record", { error });
     }
@@ -1960,6 +2134,7 @@ export class BillingService {
             providerEventId,
             type: parsedEvent.type,
             payload: parsedEvent as unknown as Prisma.InputJsonValue,
+            providerPaymentId: eventPaymentId(parsedEvent),
             ...(await summarizeStoredEvent(parsedEvent)),
             status: "PROCESSING",
             lastAttemptAt: new Date(),
@@ -2029,14 +2204,41 @@ export class BillingService {
         }
         if (parsedEvent.type === "refund.succeeded") {
           const refund = refundEventSchema.parse(parsedEvent.data);
-          const userId = await this.applyRefund(refund);
+          const reversed = await this.applyPaymentReversal(refund.payment_id, {
+            cause: "refund",
+            isPartial: refund.is_partial ?? null,
+            amount: refund.amount ?? null,
+            currency: refund.currency ?? null,
+            eventId: stored.id,
+          });
+          const userId = reversed.userId;
+          note = reversed.note;
+          if (userId)
+            await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
+          attributedUserId = userId;
+        }
+        if (parsedEvent.type.startsWith("dispute.")) {
+          const dispute = disputeEventSchema.parse(parsedEvent.data);
+          // Every dispute event belongs to the customer whose payment it is about (admin search,
+          // history); only a lost one takes anything back.
+          const reversed = LOST_DISPUTE_EVENTS.has(parsedEvent.type)
+            ? await this.applyPaymentReversal(dispute.payment_id, {
+                cause: "dispute",
+                isPartial: null,
+                amount: dispute.amount,
+                currency: dispute.currency ?? null,
+                eventId: stored.id,
+              })
+            : { userId: await this.paymentOwner(dispute.payment_id), note: null };
+          const userId = reversed.userId;
+          note = reversed.note;
           if (userId)
             await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
           attributedUserId = userId;
         }
         if (parsedEvent.type === "payment.failed") {
           const payment = dodoPaymentSchema.parse(parsedEvent.data);
-          const userId = await this.applyPaymentFailed(payment);
+          const userId = await this.applyPaymentFailed(payment, new Date(parsedEvent.timestamp));
           await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
           attributedUserId = userId;
         }
@@ -2050,6 +2252,8 @@ export class BillingService {
           where: { id: stored.id },
           data: { status: "PROCESSED", processedAt: new Date(), ...(note ? { error: note } : {}) },
         });
+        // History lists PROCESSED rows only: one cached before this line would miss the event.
+        if (attributedUserId) await cacheDel(billingHistoryCacheKey(attributedUserId));
 
         return { duplicate: false };
       } catch (error) {
@@ -2180,7 +2384,14 @@ export class BillingService {
     const { productKey, interval: rawInterval } = product;
     const interval = toBillingInterval(rawInterval);
 
-    const graceEndsAt = mapped.grace ? addDays(eventTime, config.portfolio.graceDays) : null;
+    // The grace window opens once per dunning spell (V-214): a later `on_hold`/`past_due` event
+    // (Dodo redelivers `subscription.updated` while it retries the card) keeps the cutoff the
+    // payment-failed email already named instead of moving it.
+    const graceEndsAt = mapped.grace
+      ? existing?.graceEndsAt && existing.graceEndsAt > eventTime
+        ? existing.graceEndsAt
+        : addDays(eventTime, config.portfolio.graceDays)
+      : null;
     // Without a `next_billing_date` only an ACTIVE subscription earns a fresh period from the
     // event; a cancellation, expiry or failure keeps the period the row already holds (or ends
     // now), so no event can hand out access that was never paid for.
@@ -2242,22 +2453,30 @@ export class BillingService {
           });
         }
 
-        // The checkout record is the only thing standing between a customer and a second
-        // subscription for one product (V-125); if it ever failed, this is the alarm. Not a
-        // reason to fail the event: the customer paid, and the fix is a refund by hand.
+        // The checkout record (one per user, V-218) is the only thing standing between a
+        // customer and a second subscription; if it ever failed, this is the alarm. Any second
+        // live subscription is one too many, whatever its product: the same product twice is a
+        // double charge, the bundle already holds both, and AI Credits plus Creator Pro is the
+        // bundle at a higher price (V-176). Not a reason to fail the event: the customer paid,
+        // and the fix is a refund or a plan change by hand.
         if (normalizedStatus === "ACTIVE") {
-          const others = await tx.subscription.count({
+          const others = await tx.subscription.findMany({
             where: {
               userId,
-              productKey,
-              status: "ACTIVE",
               providerSubId: { not: subscription.subscription_id },
-              OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date() } }],
+              OR: [
+                {
+                  status: "ACTIVE",
+                  OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date() } }],
+                },
+                { status: "PAST_DUE" },
+              ],
             },
+            select: { providerSubId: true, productKey: true, status: true },
           });
-          if (others > 0)
+          if (others.length > 0)
             logger.error(
-              `CRITICAL: user ${userId} holds more than one ACTIVE subscription for ${productKey}; refund the duplicate.`,
+              `CRITICAL: user ${userId} holds more than one live subscription (${[productKey, ...others.map((other) => other.productKey)].join(", ")}); refund or merge the duplicate.`,
               { userId, productKey, subscriptionId: subscription.subscription_id, others },
             );
         }
@@ -2351,33 +2570,89 @@ export class BillingService {
         },
       });
     } else if (
-      previousStatus &&
-      previousStatus !== "CANCELED" &&
-      normalizedStatus === "CANCELED" &&
-      // The mail promises access until the end of the paid period. A natural `expired` (end of
-      // a period or of a pass) is not a cancellation, and without a future period end there is
-      // nothing left to promise.
-      subscription.status !== "expired" &&
-      currentPeriodEnd > new Date()
+      // A cancellation scheduled for the end of the period (V-212): Dodo's portal sends it as an
+      // `active` subscription with `cancel_at_next_billing_date` turning true (the exact event
+      // sequence is unverified, so the flag's false-to-true change is what counts, whichever
+      // event carries it).
+      (normalizedStatus === "ACTIVE" &&
+        subscription.cancel_at_next_billing_date &&
+        existing !== null &&
+        !existing.cancelAtPeriodEnd) ||
+      // Cancelled outright with paid time left. A natural `expired` (end of a period or of a
+      // pass) is not a cancellation, and without a future period end there is nothing to promise.
+      (previousStatus &&
+        previousStatus !== "CANCELED" &&
+        normalizedStatus === "CANCELED" &&
+        subscription.status !== "expired" &&
+        currentPeriodEnd > new Date())
     ) {
-      void this.notifySubscriptionCancelled(userId);
+      void this.notifyCancellation(
+        userId,
+        subscription.subscription_id,
+        productKey,
+        currentPeriodEnd,
+      );
+    }
+
+    // A plan change that took effect (V-219), confirmed once per subscription, plan and period.
+    if (
+      planChanged &&
+      normalizedStatus === "ACTIVE" &&
+      existing &&
+      existing.productKey !== productKey &&
+      isProductKey(existing.productKey)
+    ) {
+      const amountFromProvider = subscription.recurring_pre_tax_amount ?? null;
+      void notifyOnce(
+        "plan_changed",
+        `${subscription.subscription_id}:${productKey}:${rawInterval}:${currentPeriodEnd.toISOString().slice(0, 10)}`,
+        userId,
+        {
+          template: "plan_changed",
+          details: {
+            fromProductName: purchaseName(
+              existing.productKey,
+              fromBillingInterval(existing.interval),
+            ),
+            productName: purchaseName(productKey, rawInterval),
+            amountCents:
+              amountFromProvider ?? productCatalog[productKey].prices[rawInterval] ?? null,
+            currency: (amountFromProvider !== null && subscription.currency) || "USD",
+            amountExcludesTax: amountFromProvider === null || !subscription.tax_inclusive,
+            billingPeriod: rawInterval === "annual" ? "year" : "month",
+            renewsAt: subscription.cancel_at_next_billing_date ? null : currentPeriodEnd,
+          },
+        },
+      );
     }
 
     return userId;
   }
 
-  private static async notifySubscriptionCancelled(userId: string) {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { email: true, name: true },
-      });
-      if (!user?.email) return;
-
-      await sendSubscriptionCancelledEmail(user.email, user.name || "there");
-    } catch (error) {
-      logger.warn("Failed to send subscription cancelled email", error);
-    }
+  /**
+   * The cancellation confirmation (V-212): once per subscription and period end, whichever path
+   * cancelled it (a portal cancel at period end, an outright cancellation, an admin's cancel at the
+   * provider), with the product and the last day of access. Never throws.
+   */
+  static async notifyCancellation(
+    userId: string,
+    providerSubId: string,
+    productKey: string,
+    accessEndsAt: Date | null,
+  ) {
+    await notifyOnce(
+      "subscription_cancel_scheduled",
+      `${providerSubId}:${accessEndsAt ? accessEndsAt.toISOString().slice(0, 10) : "none"}`,
+      userId,
+      {
+        template: "subscription_cancelled",
+        subscriptionId: providerSubId,
+        details: {
+          productName: isProductKey(productKey) ? PRODUCT_NAMES[productKey] : "VeriWorkly",
+          accessEndsAt: accessEndsAt && accessEndsAt > new Date() ? accessEndsAt : null,
+        },
+      },
+    );
   }
 
   private static async applyPaymentEvent(payment: z.infer<typeof dodoPaymentSchema>, paidAt: Date) {
@@ -2428,6 +2703,19 @@ export class BillingService {
     // A card-update charge is a zero-amount `payment.succeeded`; so is a fully discounted one.
     // Neither earns a renewal allowance.
     const earnsAllowance = !payment.is_update_payment_method && payment.total_amount !== 0;
+
+    // A paid charge on a running subscription ends any grace date a failure left on it, so a later
+    // failure starts its own window. A row in dunning keeps its grace until its own event moves it
+    // back to ACTIVE (which clears it), so a portfolio is never suspended in between.
+    if (payment.subscription_id && earnsAllowance)
+      await prisma.subscription.updateMany({
+        where: {
+          providerSubId: payment.subscription_id,
+          status: "ACTIVE",
+          graceEndsAt: { not: null },
+        },
+        data: { graceEndsAt: null },
+      });
 
     const purchasedProduct = payment.metadata.veriworkly_product;
     if (purchasedProduct && isCreditPackKey(purchasedProduct)) {
@@ -2501,39 +2789,55 @@ export class BillingService {
         productKey === "bundle" &&
         (interval === "one_day" || interval === "seven_day");
 
+      // When the pass's access ends. A pass bought while another one still runs extends it
+      // (V-220): its days start where the running pass ends, so none are paid for twice.
+      let passEnd: Date | null = null;
       if (isPass) {
-        await prisma.$transaction(async (tx) => {
+        passEnd = await prisma.$transaction(async (tx) => {
           await lockUserForBilling(tx, userId);
 
-          for (const key of productCatalog.bundle.entitlements) {
-            await tx.entitlementGrant.upsert({
-              where: {
-                userId_key_source_sourceId: {
-                  userId,
-                  key,
-                  source: "SYSTEM",
-                  sourceId: payment.payment_id,
-                },
-              },
-              create: {
+          // Already applied (a redelivery, or a retry after a failure): its window stands, and a
+          // grant a refund revoked stays revoked.
+          const own = await tx.entitlementGrant.findMany({
+            where: { userId, source: "SYSTEM", sourceId: payment.payment_id },
+            select: { endsAt: true },
+          });
+          if (own.length > 0) {
+            const ends = own.flatMap((grant) => (grant.endsAt ? [grant.endsAt.getTime()] : []));
+            return ends.length > 0 ? new Date(Math.max(...ends)) : intervalEnd;
+          }
+
+          const running = await tx.entitlementGrant.findFirst({
+            where: {
+              userId,
+              source: "SYSTEM",
+              revokedAt: null,
+              endsAt: { gt: paidAt },
+              metadata: { path: ["pass"], equals: true },
+            },
+            orderBy: { endsAt: "desc" },
+            select: { endsAt: true },
+          });
+          const end =
+            running?.endsAt && running.endsAt > paidAt
+              ? addCatalogInterval(running.endsAt, interval)
+              : intervalEnd;
+
+          for (const key of productCatalog.bundle.entitlements)
+            await tx.entitlementGrant.create({
+              data: {
                 userId,
                 key,
                 source: "SYSTEM",
                 sourceId: payment.payment_id,
                 startsAt: paidAt,
-                endsAt: intervalEnd,
-                metadata: { productKey, interval, pass: true },
-              },
-              update: {
-                startsAt: paidAt,
-                endsAt: intervalEnd,
-                revokedAt: null,
+                endsAt: end,
                 metadata: { productKey, interval, pass: true },
               },
             });
-          }
 
           await reconcilePortfolioPublication(tx, userId, paidAt, null);
+          return end;
         }, BILLING_TRANSACTION_OPTIONS);
       }
 
@@ -2622,7 +2926,10 @@ export class BillingService {
             requestId: `subscription-credit:${payment.payment_id}`,
             source: CREDIT_SOURCES.subscriptionPayment,
             sourceId,
-            expiresAt: servicePeriod ? new Date(servicePeriod.ends_at) : periodEndGuess,
+            // A pass's credits last as long as the access it bought (V-220).
+            expiresAt: servicePeriod
+              ? new Date(servicePeriod.ends_at)
+              : (passEnd ?? periodEndGuess),
             reason: `${productCatalog[productKey].name} credit allowance`,
             ...(payment.subscription_id
               ? {
@@ -2652,7 +2959,7 @@ export class BillingService {
             ...oneTimePurchase(payment),
             kind: "pass",
             productName: PASS_NAMES[interval as "one_day" | "seven_day"],
-            accessEndsAt: intervalEnd,
+            accessEndsAt: passEnd ?? intervalEnd,
             credits: earnsAllowance && allowance > 0 ? allowance : null,
           },
         });
@@ -2664,53 +2971,171 @@ export class BillingService {
   }
 
   /**
-   * A fully refunded annual payment stops the monthly credit schedule it opened: no further month
-   * is granted for a year that was paid back. A partial refund (a goodwill credit, a proration)
-   * leaves it running. Full means the provider's `is_partial` is false, or, without that flag, a
-   * refund amount at least the payment's total as its stored `payment.succeeded` event recorded
-   * it. Credits already granted stay (their month expires on its own). Every other refund needs
-   * nothing here: access follows the provider's subscription events, and a refunded pack or pass
-   * is handled by hand as before. Returns the schedule's user, or null when nothing applies.
+   * The live account a provider payment belongs to (V-205): the user its stored
+   * `payment.succeeded` event was attributed to, else what the payment left behind (the annual
+   * schedule it opened, the credits or the pass it granted). Null when the payment is unknown or
+   * its account was deleted (those rows are detached, `userId` null).
    */
-  private static async applyRefund(refund: z.infer<typeof refundEventSchema>) {
-    const paymentId = refund.payment_id;
+  private static async paymentOwner(paymentId: string) {
+    const payment = await findPaymentEvent(paymentId);
+    if (payment?.userId) return payment.userId;
+    const [schedule, ledger, pass] = await Promise.all([
+      prisma.subscriptionCreditSchedule.findFirst({
+        where: { openedByPaymentId: paymentId },
+        select: { userId: true },
+      }),
+      prisma.creditTransaction.findFirst({
+        where: {
+          requestId: { in: [`payment-credit:${paymentId}`, `subscription-credit:${paymentId}`] },
+          userId: { not: null },
+        },
+        select: { userId: true },
+      }),
+      prisma.entitlementGrant.findFirst({
+        where: { source: "SYSTEM", sourceId: paymentId, userId: { not: null } },
+        select: { userId: true },
+      }),
+    ]);
+    return schedule?.userId ?? ledger?.userId ?? pass?.userId ?? null;
+  }
+
+  /**
+   * A refund or a lost dispute (V-205, V-216). Every one is attributed to the customer whose payment
+   * it reverses, so it shows in their billing history. A full reversal takes back what that
+   * payment bought:
+   *
+   * - the credits it granted (a pack, a pass or a month's allowance, found by the ledger request id
+   *   keyed on the payment; an annual payment's monthly grants by its schedule), as far as they are
+   *   unspent (`CreditService.clawBackGrant`);
+   * - an annual payment's schedule, which stops: no further month is granted for a year paid back;
+   * - a pass's entitlements, revoked, with the portfolio settled as any lapse is (decision 6);
+   * - the affiliate commission on the payment (`reverseCommissionForPayment`).
+   *
+   * A subscription itself is left to the provider's subscription events: a refund does not cancel
+   * it. A partial reversal (a goodwill credit, a proration) takes nothing back.
+   *
+   * Full or partial: full when the provider says `is_partial: false`, or when everything reversed
+   * so far for the payment (refunds and lost disputes, each counted once, `reversedSoFar`) reaches
+   * its stored `amountCents`, which outlives the payload redaction; so two partial refunds that add
+   * up to the payment, or a partial refund and a lost dispute for the rest, reverse it in full. A lost dispute without a usable
+   * amount is a full chargeback; a refund that cannot be classified is logged for a human and
+   * treated as partial, so nothing is taken back on a guess.
+   *
+   * Safe to repeat: claw-backs are keyed per grant, revokes and reversals are conditional. Returns
+   * the customer's id, or null when the payment belongs to no live account.
+   */
+  private static async applyPaymentReversal(
+    paymentId: string,
+    reversal: {
+      cause: "refund" | "dispute";
+      isPartial: boolean | null;
+      amount: number | null;
+      currency: string | null;
+      /** The stored row of the event being applied: counted in the total even while PROCESSING. */
+      eventId: string;
+    },
+  ) {
+    const [payment, userId] = await Promise.all([
+      findPaymentEvent(paymentId),
+      this.paymentOwner(paymentId),
+    ]);
+    const paid = payment?.amountCents ?? null;
+    const reversedTotal =
+      paid === null
+        ? 0
+        : await reversedSoFar(paymentId, reversal.eventId, payment?.currency ?? null);
+
+    let full: boolean;
+    if (reversal.isPartial === false) full = true;
+    // Everything reversed so far reaches the payment: two partial refunds that add up, or a
+    // partial refund and a lost dispute for the rest.
+    else if (paid !== null && reversedTotal > 0 && reversedTotal >= paid) full = true;
+    else if (reversal.isPartial === true || (reversal.amount !== null && paid !== null))
+      full = false;
+    else if (reversal.cause === "dispute") full = true;
+    else {
+      full = false;
+      logger.error(
+        "Refund without is_partial could not be compared with its payment; nothing was taken back. Check it in the Dodo dashboard.",
+        { paymentId, amount: reversal.amount, currency: reversal.currency },
+      );
+    }
+
+    if (!full) {
+      logger.info("Partial reversal of a payment; what it bought stays", {
+        paymentId,
+        cause: reversal.cause,
+        amount: reversal.amount,
+      });
+      return { userId, note: null };
+    }
+
     const schedule = await prisma.subscriptionCreditSchedule.findFirst({
       where: { openedByPaymentId: paymentId },
       select: { id: true, userId: true, providerSubId: true },
     });
-    if (!schedule) return null;
-
-    let full = refund.is_partial === false;
-    if (refund.is_partial == null && refund.amount != null) {
-      const paid = await prisma.billingWebhookEvent.findFirst({
-        where: {
-          type: "payment.succeeded",
-          payload: { path: ["data", "payment_id"], equals: paymentId },
-        },
-        select: { payload: true },
+    if (schedule) {
+      const stopped = await prisma.subscriptionCreditSchedule.updateMany({
+        where: { id: schedule.id, stoppedAt: null },
+        data: { stoppedAt: new Date() },
       });
-      const data = (paid?.payload as { data?: { total_amount?: unknown } } | null)?.data;
-      full = typeof data?.total_amount === "number" && refund.amount >= data.total_amount;
-    }
-    if (!full) {
-      logger.info("Partial refund of an annual payment; its monthly credits continue", {
-        scheduleId: schedule.id,
-        paymentId,
-      });
-      return schedule.userId;
+      if (stopped.count)
+        logger.info("Annual credit schedule stopped: its payment was reversed", {
+          scheduleId: schedule.id,
+          providerSubId: schedule.providerSubId,
+          paymentId,
+          cause: reversal.cause,
+        });
     }
 
-    const stopped = await prisma.subscriptionCreditSchedule.updateMany({
-      where: { id: schedule.id, stoppedAt: null },
-      data: { stoppedAt: new Date() },
-    });
-    if (stopped.count)
-      logger.info("Annual credit schedule stopped: its payment was refunded", {
-        scheduleId: schedule.id,
-        providerSubId: schedule.providerSubId,
-        paymentId,
-      });
-    return schedule.userId;
+    const reason = `${payment?.productName ?? "Purchase"} ${reversal.cause === "refund" ? "refunded" : "charged back"}`;
+    if (userId) {
+      const [ledgerGrants, scheduleGrants] = await Promise.all([
+        prisma.creditTransaction.findMany({
+          where: {
+            userId,
+            type: "GRANT",
+            requestId: { in: [`payment-credit:${paymentId}`, `subscription-credit:${paymentId}`] },
+          },
+          select: { referenceId: true },
+        }),
+        schedule
+          ? prisma.creditGrant.findMany({
+              where: {
+                userId,
+                source: CREDIT_SOURCES.annualMonthly,
+                sourceId: { startsWith: `${schedule.id}:` },
+              },
+              select: { id: true },
+            })
+          : Promise.resolve([]),
+      ]);
+      const grantIds = new Set([
+        ...ledgerGrants.flatMap((row) => (row.referenceId ? [row.referenceId] : [])),
+        ...scheduleGrants.map((grant) => grant.id),
+      ]);
+      for (const grantId of grantIds) await CreditService.clawBackGrant(userId, grantId, reason);
+
+      const revoked = await prisma.$transaction(
+        (tx) => revokeReversedPass(tx, userId, paymentId),
+        BILLING_TRANSACTION_OPTIONS,
+      );
+      if (revoked.count) {
+        logger.info("Pass revoked: its payment was reversed", { paymentId, userId });
+        // The publication follows the grants left, and a lapsed premium site moves to a free
+        // template (decision 6); `reconcileAccess` clears every billing cache as well.
+        await this.reconcileAccess(userId);
+        // A stacked pass's credits may have moved: the credit summary shows their expiry.
+        await CreditService.invalidate(userId);
+      } else await this.invalidateAfterBillingChange(userId);
+    }
+
+    const commission = await AffiliateService.reverseCommissionForPayment(paymentId, reason);
+    const note =
+      commission && commission.pendingShortfallCents > 0
+        ? `Affiliate ledger: commission ${commission.id} was reversed, but the wallet held ${commission.pendingShortfallCents} cents less pending than it. Check the affiliate wallet.`
+        : null;
+    return { userId, note };
   }
 
   /**
@@ -2719,11 +3144,20 @@ export class BillingService {
    * per failed payment saying what failed and until when the plan is kept. A failed one-time
    * checkout is not mailed: the customer is still on the checkout page and sees it there.
    */
-  private static async applyPaymentFailed(payment: z.infer<typeof dodoPaymentSchema>) {
+  private static async applyPaymentFailed(
+    payment: z.infer<typeof dodoPaymentSchema>,
+    failedAt: Date,
+  ) {
     const subscription = payment.subscription_id
       ? await prisma.subscription.findUnique({
           where: { providerSubId: payment.subscription_id },
-          select: { userId: true, productKey: true, graceEndsAt: true },
+          select: {
+            userId: true,
+            productKey: true,
+            graceEndsAt: true,
+            status: true,
+            lastWebhookAt: true,
+          },
         })
       : null;
     const userId = payment.metadata.veriworkly_user_id || subscription?.userId;
@@ -2741,11 +3175,40 @@ export class BillingService {
       return userId;
     }
 
+    // A declined first charge is a failed checkout, not dunning (V-217): the customer is still on
+    // the checkout page. Dodo's `charge_type: "new"` says so; without it, a subscription that was
+    // never ACTIVE (still `pending`, or `failed`) says the same, whichever of the subscription
+    // event and this one arrives first (their order is unverified).
+    if (payment.charge_type === "new" || subscription.status === "INACTIVE") return userId;
+    // Dunning only opens on a subscription that is still billing: a late failure for one that has
+    // been cancelled, or one older than the subscription's latest event (a renewal that went
+    // through after it), owes nothing and sets no grace date.
+    if (subscription.status !== "ACTIVE" && subscription.status !== "PAST_DUE") return userId;
+    if (subscription.lastWebhookAt && failedAt < subscription.lastWebhookAt) return userId;
+
+    // The grace date the email names is the one the subscription row keeps: the row's own while it
+    // runs, else the failure's time plus the grace days (the base the dunning event uses), stored
+    // on the row so the `on_hold` event that follows keeps it (V-214) instead of computing its own.
     const now = new Date();
-    const graceEndsAt =
+    let graceEndsAt =
       subscription.graceEndsAt && subscription.graceEndsAt > now
         ? subscription.graceEndsAt
-        : addDays(now, config.portfolio.graceDays);
+        : addDays(failedAt, config.portfolio.graceDays);
+    if (graceEndsAt !== subscription.graceEndsAt && payment.subscription_id) {
+      await prisma.subscription.updateMany({
+        where: {
+          providerSubId: payment.subscription_id,
+          OR: [{ graceEndsAt: null }, { graceEndsAt: { lte: now } }],
+        },
+        data: { graceEndsAt },
+      });
+      // A dunning event that landed first set the row's own: that one stands.
+      const stored = await prisma.subscription.findUnique({
+        where: { providerSubId: payment.subscription_id },
+        select: { graceEndsAt: true },
+      });
+      if (stored?.graceEndsAt) graceEndsAt = stored.graceEndsAt;
+    }
     const productName = isProductKey(subscription.productKey)
       ? PRODUCT_NAMES[subscription.productKey]
       : "VeriWorkly";
@@ -2758,6 +3221,12 @@ export class BillingService {
         amountCents: payment.total_amount ?? null,
         currency: payment.currency ?? null,
         graceEndsAt,
+        // Owner decision 9 (V-215): Pro pauses at once; only a portfolio keeps its grace.
+        includesPortfolio:
+          isProductKey(subscription.productKey) &&
+          productCatalog[subscription.productKey].entitlements.includes(
+            ENTITLEMENT_KEYS.PORTFOLIO_PUBLISH,
+          ),
       },
     });
     return userId;
