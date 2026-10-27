@@ -193,34 +193,62 @@ async function invalidateOwnerDocumentCaches(
   );
 }
 
+type PublicationState = {
+  id: string;
+  subdomain: string;
+  status: string;
+  suspensionReason: string | null;
+};
+
 /**
  * A PORTFOLIO document is the source of a public site, which `getPublicPortfolio` serves from
  * `portfolioPublication` alone — hiding or deleting the document does nothing to the subdomain
  * by itself. Deleting the document therefore also takes the publication down, as a sticky
  * moderation suspension (same rules as `adminPortfolioService.updatePublicationStatus`). A row
  * already under a moderation lock keeps its original reason.
+ *
+ * Runs on the delete's transaction (V-284): the delete, the suspension and both audit entries
+ * commit together, so a failed takedown leaves nothing deleted and the admin can retry. The
+ * `portfolio.status.change` entry into SUSPENDED is a takedown record, kept forever (decision 11).
+ * Returns the subdomain to flush once the transaction has committed, or null.
  */
-async function takeDownPortfolioPublication(documentId: string, reason: string) {
-  const publication = await prisma.portfolioPublication.findUnique({
-    where: { documentId },
-    select: { id: true, subdomain: true, status: true, suspensionReason: true },
-  });
+async function takeDownPortfolioPublication(
+  tx: Prisma.TransactionClient,
+  publication: PublicationState | null,
+  documentId: string,
+  reason: string,
+  audit: AdminAuditInput | undefined,
+  ownerId: string,
+) {
+  if (!publication || isModerationLocked(publication)) return null;
 
-  if (!publication || isModerationLocked(publication)) return;
-
+  const suspensionReason = `${MODERATION_SUSPENSION_PREFIX}${reason}`;
   // Conditional (V-226): a takedown that committed after the read keeps its own reason.
-  const { count } = await prisma.portfolioPublication.updateMany({
-    where: { id: publication.id, ...NOT_MODERATION_LOCKED },
-    data: {
-      status: "SUSPENDED",
-      suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${reason}`,
-      suspendedAt: new Date(),
-    },
+  const { count } = await tx.portfolioPublication.updateMany({
+    where: { id: publication.id, documentId, ...NOT_MODERATION_LOCKED },
+    data: { status: "SUSPENDED", suspensionReason, suspendedAt: new Date() },
   });
-  if (count === 0) return;
+  if (count === 0) return null;
 
-  await invalidatePublicPortfolioCaches([publication.subdomain]);
-  void revalidatePublicPortfolios([publication.subdomain]);
+  if (audit)
+    await writeAdminAudit(tx, {
+      actorId: audit.actorId,
+      action: ADMIN_AUDIT_ACTIONS.portfolioStatusChange,
+      targetType: "PortfolioPublication",
+      targetId: publication.id,
+      reason: audit.reason,
+      metadata: {
+        previousStatus: publication.status,
+        status: "SUSPENDED",
+        previousSuspensionReason: publication.suspensionReason,
+        suspensionReason,
+        subdomain: publication.subdomain,
+        documentId,
+        ownerId,
+      },
+    });
+
+  return publication.subdomain;
 }
 
 /** The audit entry of a delete or restore: ids only, a title outlives the purge otherwise (V-206). */
@@ -388,14 +416,37 @@ export async function softDeleteDocument(documentId: string, audit?: AdminAuditI
 
     if (audit) await writeAdminAudit(tx, ownerAudit(audit, document.userId));
 
-    return tx.document.findUniqueOrThrow({
+    // Read here, after the update above locked the document row: a publish of this document
+    // committing first is seen, and the owner republishing the site from another document is not
+    // mistaken for this one's.
+    const publication =
+      document.type === "PORTFOLIO"
+        ? await tx.portfolioPublication.findUnique({
+            where: { documentId },
+            select: { id: true, subdomain: true, status: true, suspensionReason: true },
+          })
+        : null;
+
+    const takenDown = await takeDownPortfolioPublication(
+      tx,
+      publication,
+      documentId,
+      "document_deleted",
+      audit,
+      document.userId,
+    );
+
+    const row = await tx.document.findUniqueOrThrow({
       where: { id: documentId },
       select: DOCUMENT_LIST_SELECT,
     });
+    return { row, takenDown };
   });
 
-  if (document.type === "PORTFOLIO")
-    await takeDownPortfolioPublication(documentId, "document_deleted");
+  if (updated.takenDown) {
+    await invalidatePublicPortfolioCaches([updated.takenDown]);
+    void revalidatePublicPortfolios([updated.takenDown]);
+  }
 
   await invalidateOwnerDocumentCaches(
     document.userId,
@@ -405,7 +456,7 @@ export async function softDeleteDocument(documentId: string, audit?: AdminAuditI
     document.shareLinks.map((share) => share.slug),
   );
 
-  return updated;
+  return updated.row;
 }
 
 /** Restores a soft-deleted document; the audit entry commits with the change (V-249). */
