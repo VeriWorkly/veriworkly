@@ -118,6 +118,13 @@ describe("Better Auth configuration", () => {
     expect(redisMockInstance.del).toHaveBeenCalledWith("test-key");
   });
 
+  it("V-315: a delete Redis refuses fails, so better-auth never drops the row behind it", async () => {
+    const storage = options.secondaryStorage!;
+    mockGetRedis.mockReturnValue({ del: vi.fn().mockRejectedValue(new Error("Redis down")) });
+
+    await expect(storage.delete("session-token")).rejects.toThrow("Redis down");
+  });
+
   it("sends a welcome email on user.create.after", async () => {
     const userCreateAfter = options.databaseHooks?.user?.create?.after;
     expect(userCreateAfter).toBeDefined();

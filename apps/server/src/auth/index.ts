@@ -165,12 +165,18 @@ export const auth = betterAuth({
       }
     },
 
+    // Strict, unlike get and set (V-315). better-auth reads a session from here before Postgres,
+    // and it deletes here before it deletes the row: a delete Redis refused used to be swallowed,
+    // so sign-out or "sign out other devices" answered 200 with the row gone and the Redis entry
+    // still authenticating (for up to the session's 30 days) once Redis came back. Throwing stops
+    // better-auth before the row goes, so the request fails, nothing is half-revoked, and the
+    // client can retry. Only revocation and single-use-value cleanup delete here.
     delete: async (key) => {
       try {
-        const redis = getRedis();
-        await redis.del(key);
+        await getRedis().del(key);
       } catch (error) {
         logger.error("better-auth secondaryStorage delete failed", { error });
+        throw error;
       }
     },
 

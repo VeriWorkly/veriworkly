@@ -3,12 +3,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
 
-import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
+import { cacheGet, cacheSet, cacheSetIfAbsent, cacheDel } from "#lib/redis";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
 import { logger } from "#lib/logger";
 import { usernameInvalidReason } from "#utils/slugs";
-import { revokeAllSessionsForUserSafely } from "#auth/sessions";
+import { revokeSessionsBeforeAccountDeletion } from "#auth/sessions";
 import {
   invalidatePublicPortfolioCaches,
   revalidatePublicPortfolios,
@@ -431,7 +431,9 @@ export class UserService {
 
     if (!user) throw new ApiError(404, "User not found");
 
-    await cacheSet(cacheKey, user, 1800);
+    // Only into an empty key (V-317): a write that committed while this read was in flight has
+    // already put its row there (`refreshUserCaches`), and this older row must not replace it.
+    await cacheSetIfAbsent(cacheKey, user, 1800);
 
     return user;
   }
@@ -487,9 +489,24 @@ export class UserService {
     if (current.username) throw new ApiError(409, "Username is locked and cannot be changed");
 
     try {
-      const updated = await prisma.user.update({
-        where: { id: userId },
+      // Only while the account still has no username (V-316): two sets racing past the check
+      // above both saw none, and the second used to replace the first, stranding any share link
+      // or portfolio made under it.
+      const set = await prisma.user.updateMany({
+        where: { id: userId, username: null },
         data: { username },
+      });
+      if (set.count === 0) {
+        const now = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { username: true },
+        });
+        if (!now) throw new ApiError(404, "User not found");
+        if (now.username === username) return this.getUserById(userId);
+        throw new ApiError(409, "Username is locked and cannot be changed");
+      }
+      const updated = await prisma.user.findUniqueOrThrow({
+        where: { id: userId },
         select: userProfileSelect,
       });
 
@@ -617,8 +634,9 @@ export class UserService {
     // deleting the Session rows signs nobody out on its own. Revoke first, while the tokens
     // can still be read; this also clears the `active-sessions-{userId}` index and this app's
     // `auth:session:*` cache. If the transaction then fails the user is signed out but still
-    // exists, which is the safer side to err on.
-    await revokeAllSessionsForUserSafely(userId);
+    // exists, which is the safer side to err on. If Redis cannot confirm the revocation the
+    // deletion stops with a 503 (V-315 review): no token may outlive the rows it is found by.
+    await revokeSessionsBeforeAccountDeletion(userId);
 
     /**
      * Order matters here, and it is the reverse of the obvious one.

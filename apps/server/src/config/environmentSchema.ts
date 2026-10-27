@@ -23,7 +23,7 @@ type RawEnv = Record<string, string | undefined>;
 
 const NODE_ENVS = ["development", "test", "production"] as const;
 
-/** Integer variables read by `config.ts`, `lib/prisma.ts` and `middleware/rateLimit.ts`. */
+/** Integer variables read by `config.ts`, `lib/prisma.ts`, `lib/redis.ts` and `middleware/rateLimit.ts`. */
 const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   PORT: { min: 1, max: 65535 },
   WEB_CONCURRENCY: { min: 1 },
@@ -50,6 +50,11 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   API_KEY_DEFAULT_RATE_LIMIT: { min: 1 },
   API_KEY_MAX_RATE_LIMIT: { min: 1 },
   API_KEY_DEFAULT_LIFETIME_DAYS: { min: 1 },
+
+  // lib/redis.ts (V-318): 0 would make every bounded Redis command time out at once, so sessions,
+  // OTP throttles (which fail closed) and locks would all act as if Redis were down.
+  REDIS_BOOT_TIMEOUT_MS: { min: 1 },
+  REDIS_COMMAND_TIMEOUT_MS: { min: 1 },
 
   RATE_LIMIT_WINDOW_MS: { min: 1 },
   RATE_LIMIT_MAX_REQUESTS: { min: 1 },
@@ -285,7 +290,7 @@ function validateProduction(env: RawEnv, ctx: z.RefinementCtx): void {
   if (trustProxy === undefined) {
     required(
       "TRUST_PROXY",
-      "set it to the number of proxy hops in front of the API, e.g. 1 behind a single nginx, or a comma-separated IP/CIDR list",
+      "set it to the number of proxy hops in front of the API, e.g. 1 behind a single nginx (with Cloudflare in front, only if nginx restores CF-Connecting-IP; see .env.example), or a comma-separated IP/CIDR list",
     );
   } else if (INTEGER_PATTERN.test(trustProxy)) {
     const hops = Number(trustProxy);
