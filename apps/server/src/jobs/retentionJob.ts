@@ -86,9 +86,60 @@ export function readRetentionSettings(env: NodeJS.ProcessEnv = process.env): Ret
 export const PURGED_DOCUMENT_CONTENT = Object.freeze({ purged: true });
 const PURGED_DOCUMENT_JSON = JSON.stringify(PURGED_DOCUMENT_CONTENT);
 
+/**
+ * The marker as a SQL literal rather than a bound parameter: the partial indexes the purge rules
+ * read (V-250, migration 20261027150000) repeat it in their predicates, and Postgres matches an
+ * index predicate against literals only.
+ */
+const PURGED = Prisma.raw(`'${PURGED_DOCUMENT_JSON}'::jsonb`);
+
 /** A soft-deleted document still holding anything the purge removes. */
-const NOT_YET_PURGED = Prisma.sql`("content" <> ${PURGED_DOCUMENT_JSON}::jsonb OR "title" <> '' OR "tags" <> '{}'
+const NOT_YET_PURGED = Prisma.sql`("content" <> ${PURGED} OR "title" <> '' OR "tags" <> '{}'
   OR "metadata" IS NOT NULL OR "slug" <> "id")`;
+
+type CandidateQuery = (cutoff: Date, limit: number) => Prisma.Sql;
+
+/**
+ * The ids each redact or purge rule still has to do (V-250). Each condition repeats the predicate
+ * of the partial index named beside it, which holds only rows not yet done, so a nightly run costs
+ * the backlog rather than all of history. tests/integration/retention-indexes.test.ts checks the
+ * plans use them.
+ */
+export const RETENTION_CANDIDATES = {
+  // "BillingWebhookEvent_unredacted_idx". A redacted payload is `{ redacted, type }`; FAILED (and
+  // PROCESSING) rows keep their payload so they can still be replayed or investigated.
+  webhookPayloadsRedacted: (cutoff, limit) => Prisma.sql`
+    SELECT "id" FROM "BillingWebhookEvent"
+    WHERE "status" = 'PROCESSED' AND ("payload" - 'type') <> '{"redacted": true}'::jsonb
+      AND "createdAt" < ${cutoff}
+    LIMIT ${limit}`,
+  // "Document_unpurged_deleted_idx"
+  deletedDocumentsPurged: (cutoff, limit) => Prisma.sql`
+    SELECT "id" FROM "Document"
+    WHERE "deletedAt" < ${cutoff} AND ${NOT_YET_PURGED}
+    LIMIT ${limit}`,
+  // "ShareLink_unpurged_idx": shares still holding a snapshot or a title-made slug.
+  deletedShareSnapshotsPurged: (cutoff, limit) => Prisma.sql`
+    SELECT s."id" FROM "ShareLink" s JOIN "Document" d ON d."id" = s."documentId"
+    WHERE (s."snapshot" <> ${PURGED} OR s."slug" <> s."id")
+      AND d."deletedAt" < ${cutoff} AND d."content" = ${PURGED}
+    LIMIT ${limit}`,
+  // "PortfolioPublication_unpurged_idx"
+  deletedPublicationSnapshotsPurged: (cutoff, limit) => Prisma.sql`
+    SELECT p."id" FROM "PortfolioPublication" p JOIN "Document" d ON d."id" = p."documentId"
+    WHERE p."snapshot" <> ${PURGED}
+      AND d."deletedAt" < ${cutoff} AND d."content" = ${PURGED}
+    LIMIT ${limit}`,
+  // "AdminAuditEntry_titled_idx": entries still naming a document by title or slug.
+  deletedDocumentAuditTitlesPurged: (cutoff, limit) => Prisma.sql`
+    SELECT a."id" FROM "AdminAuditEntry" a
+    JOIN "Document" d ON d."id" = COALESCE(
+      a."metadata"->>'documentId',
+      CASE WHEN a."targetType" = 'Document' THEN a."targetId" END)
+    WHERE jsonb_typeof(a."metadata") = 'object' AND a."metadata" ?| ARRAY['title', 'slug']
+      AND d."deletedAt" < ${cutoff} AND d."content" = ${PURGED}
+    LIMIT ${limit}`,
+} satisfies Record<string, CandidateQuery>;
 
 /**
  * Throws 410 for a document the purge rule has already emptied, so a restore cannot bring back a
@@ -144,16 +195,12 @@ const RULES: Array<{ name: string; setting: RetentionSetting; step: BatchStep }>
   {
     // Keeps the row, ids, status and error; FAILED (and PROCESSING) rows keep their payload so
     // they can still be replayed or investigated.
-    name: "webhookPayloadsRedacted", // BillingWebhookEvent(status, createdAt)
+    name: "webhookPayloadsRedacted", // "BillingWebhookEvent_unredacted_idx" (createdAt)
     setting: "webhookPayloads",
     step: (cutoff, limit) => prisma.$executeRaw`
       UPDATE "BillingWebhookEvent"
       SET "payload" = jsonb_build_object('redacted', true, 'type', "type")
-      WHERE "id" IN (
-        SELECT "id" FROM "BillingWebhookEvent"
-        WHERE "status" = 'PROCESSED' AND "createdAt" < ${cutoff}
-          AND "payload" <> jsonb_build_object('redacted', true, 'type', "type")
-        LIMIT ${limit})`,
+      WHERE "id" IN (${RETENTION_CANDIDATES.webhookPayloadsRedacted(cutoff, limit)})`,
   },
   {
     name: "auditLogs", // AuditLog(createdAt)
@@ -247,57 +294,39 @@ const RULES: Array<{ name: string; setting: RetentionSetting; step: BatchStep }>
     // Everything the user wrote goes (V-206): content, title, tags, metadata, and the slug (made
     // from the title) becomes the id. Rows purged before the other fields were added match on
     // them and are finished on the next run.
-    name: "deletedDocumentsPurged", // Document(deletedAt)
+    name: "deletedDocumentsPurged", // "Document_unpurged_deleted_idx" (deletedAt)
     setting: "deletedDocuments",
     step: (cutoff, limit) => prisma.$executeRaw`
-      UPDATE "Document" SET "content" = ${PURGED_DOCUMENT_JSON}::jsonb, "title" = '', "tags" = '{}',
+      UPDATE "Document" SET "content" = ${PURGED}, "title" = '', "tags" = '{}',
           "metadata" = NULL, "slug" = "id"
-      WHERE "id" IN (
-        SELECT "id" FROM "Document"
-        WHERE "deletedAt" < ${cutoff} AND ${NOT_YET_PURGED}
-        LIMIT ${limit})
+      WHERE "id" IN (${RETENTION_CANDIDATES.deletedDocumentsPurged(cutoff, limit)})
       AND "deletedAt" < ${cutoff} AND ${NOT_YET_PURGED}`,
   },
   {
     // A share's snapshot is the full printed document, and its slug comes from the title. Only
     // shares of documents the rule above has already purged, which can no longer be restored.
-    name: "deletedShareSnapshotsPurged", // ShareLink(documentId) via Document(deletedAt)
+    name: "deletedShareSnapshotsPurged", // "ShareLink_unpurged_idx" (documentId)
     setting: "deletedDocuments",
     step: (cutoff, limit) => prisma.$executeRaw`
-      UPDATE "ShareLink" SET "snapshot" = ${PURGED_DOCUMENT_JSON}::jsonb, "slug" = "id"
-      WHERE "id" IN (
-        SELECT s."id" FROM "ShareLink" s JOIN "Document" d ON d."id" = s."documentId"
-        WHERE d."deletedAt" < ${cutoff} AND d."content" = ${PURGED_DOCUMENT_JSON}::jsonb
-          AND (s."snapshot" <> ${PURGED_DOCUMENT_JSON}::jsonb OR s."slug" <> s."id")
-        LIMIT ${limit})`,
+      UPDATE "ShareLink" SET "snapshot" = ${PURGED}, "slug" = "id"
+      WHERE "id" IN (${RETENTION_CANDIDATES.deletedShareSnapshotsPurged(cutoff, limit)})`,
   },
   {
     // The published portfolio. The row stays (subdomain, status and any moderation state).
-    name: "deletedPublicationSnapshotsPurged", // PortfolioPublication(documentId)
+    name: "deletedPublicationSnapshotsPurged", // "PortfolioPublication_unpurged_idx" (documentId)
     setting: "deletedDocuments",
     step: (cutoff, limit) => prisma.$executeRaw`
-      UPDATE "PortfolioPublication" SET "snapshot" = ${PURGED_DOCUMENT_JSON}::jsonb
-      WHERE "id" IN (
-        SELECT p."id" FROM "PortfolioPublication" p JOIN "Document" d ON d."id" = p."documentId"
-        WHERE d."deletedAt" < ${cutoff} AND d."content" = ${PURGED_DOCUMENT_JSON}::jsonb
-          AND p."snapshot" <> ${PURGED_DOCUMENT_JSON}::jsonb
-        LIMIT ${limit})`,
+      UPDATE "PortfolioPublication" SET "snapshot" = ${PURGED}
+      WHERE "id" IN (${RETENTION_CANDIDATES.deletedPublicationSnapshotsPurged(cutoff, limit)})`,
   },
   {
     // Older admin entries named the document by title (delete, restore) or share slug (revoke).
     // Once the document is purged those go too; the ids, action and reason stay.
-    name: "deletedDocumentAuditTitlesPurged", // AdminAuditEntry via Document(deletedAt)
+    name: "deletedDocumentAuditTitlesPurged", // "AdminAuditEntry_titled_idx"
     setting: "deletedDocuments",
     step: (cutoff, limit) => prisma.$executeRaw`
       UPDATE "AdminAuditEntry" SET "metadata" = "metadata" - 'title' - 'slug'
-      WHERE "id" IN (
-        SELECT a."id" FROM "AdminAuditEntry" a
-        JOIN "Document" d ON d."id" = COALESCE(
-          a."metadata"->>'documentId',
-          CASE WHEN a."targetType" = 'Document' THEN a."targetId" END)
-        WHERE d."deletedAt" < ${cutoff} AND d."content" = ${PURGED_DOCUMENT_JSON}::jsonb
-          AND jsonb_typeof(a."metadata") = 'object' AND a."metadata" ?| ARRAY['title', 'slug']
-        LIMIT ${limit})`,
+      WHERE "id" IN (${RETENTION_CANDIDATES.deletedDocumentAuditTitlesPurged(cutoff, limit)})`,
   },
 ];
 
