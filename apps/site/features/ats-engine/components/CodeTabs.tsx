@@ -93,7 +93,7 @@ export function CodeTabs() {
           data-ui
           tabIndex={0}
           aria-label={`${active.label} example`}
-          className="bg-foreground text-background focus-visible:ring-accent/40 min-h-56 min-w-0 self-start overflow-x-auto rounded-3xl p-6 font-mono text-sm leading-relaxed focus-visible:ring-2 focus-visible:outline-none sm:p-8"
+          className="bg-foreground text-background focus-visible:ring-accent/40 relative min-h-56 min-w-0 self-start overflow-x-auto rounded-3xl p-6 font-mono text-sm leading-relaxed focus-visible:ring-2 focus-visible:outline-none sm:p-8"
         >
           <code>{active.code}</code>
         </pre>

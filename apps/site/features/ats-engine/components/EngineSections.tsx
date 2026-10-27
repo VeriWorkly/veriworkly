@@ -173,7 +173,7 @@ export function EngineRuntimes() {
         tabIndex={0}
         role="group"
         aria-label="Entry points and sizes, scrollable"
-        className="bg-card focus-visible:ring-accent/40 reveal overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
+        className="bg-card focus-visible:ring-accent/40 reveal relative overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
       >
         <table className="w-full min-w-xl text-left text-base">
           <thead>
@@ -293,7 +293,7 @@ export function EngineComparison() {
         tabIndex={0}
         role="group"
         aria-label="Comparison with other kinds of tool, scrollable"
-        className="bg-background focus-visible:ring-accent/40 reveal overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
+        className="bg-background focus-visible:ring-accent/40 reveal relative overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
       >
         <table className="w-full min-w-2xl text-left text-base">
           <thead>

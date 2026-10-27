@@ -85,7 +85,7 @@ export function ParsedView({ parsed }: { parsed: AtsParsedResume }) {
         hint="One row per job. Recruiters filter on employer, title and dates, so a gap here is a gap in their search."
       >
         {parsed.roles.length ? (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full min-w-[520px] text-left text-base">
               <thead>
                 <tr className="border-border border-b">
