@@ -6,7 +6,7 @@ vi.mock("#lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { installWorkerRespawn, respawnDelayMs } from "#lib/workerRespawn";
+import { FATAL_CONFIG_EXIT_CODE, installWorkerRespawn, respawnDelayMs } from "#lib/workerRespawn";
 
 /**
  * G LOW: throng revives a dead worker with an immediate `cluster.fork()`, so a boot-time Redis or
@@ -94,6 +94,20 @@ describe("installWorkerRespawn", () => {
     cluster.emit("exit", b, 0, "SIGTERM");
 
     vi.advanceTimersByTime(60_000);
+    expect(cluster.fork).not.toHaveBeenCalled();
+  });
+});
+
+describe("a worker that exits on a fatal configuration error (V-254)", () => {
+  it("is not revived: the primary is told to exit, so pm2 shows the app errored", () => {
+    const cluster = Object.assign(new EventEmitter(), { fork: vi.fn() });
+    const onFatal = vi.fn();
+    installWorkerRespawn(cluster as unknown as Cluster, { onFatal });
+
+    cluster.emit("fork", { id: 1 } as Worker);
+    cluster.emit("exit", { id: 1 } as Worker, FATAL_CONFIG_EXIT_CODE, null);
+
+    expect(onFatal).toHaveBeenCalledWith(FATAL_CONFIG_EXIT_CODE);
     expect(cluster.fork).not.toHaveBeenCalled();
   });
 });

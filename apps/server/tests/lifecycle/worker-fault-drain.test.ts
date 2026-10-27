@@ -24,6 +24,9 @@ const state = vi.hoisted(() => ({
   releaseRequest: undefined as undefined | (() => void),
   requestStarted: undefined as undefined | (() => void),
   events: [] as string[],
+  redisBootError: undefined as Error | undefined,
+  RedisConfigError: class RedisConfigError extends Error {},
+  installWorkerRespawn: vi.fn((..._args: unknown[]) => ({ stop: () => undefined })),
 }));
 
 vi.mock("throng", () => ({
@@ -51,14 +54,20 @@ vi.mock("#app", async () => {
 });
 
 vi.mock("#lib/redis", () => ({
-  initRedis: vi.fn(async () => undefined),
+  RedisConfigError: state.RedisConfigError,
+  initRedis: vi.fn(async () => {
+    if (state.redisBootError) throw state.redisBootError;
+  }),
   closeRedis: vi.fn(async () => void state.events.push("redis closed")),
 }));
 vi.mock("#lib/prisma", () => ({
   closePrisma: vi.fn(async () => void state.events.push("prisma closed")),
 }));
 vi.mock("#lib/metrics", () => ({ markJobsBaseline: vi.fn(async () => undefined) }));
-vi.mock("#lib/workerRespawn", () => ({ installWorkerRespawn: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock("#lib/workerRespawn", () => ({
+  FATAL_CONFIG_EXIT_CODE: 78,
+  installWorkerRespawn: state.installWorkerRespawn,
+}));
 vi.mock("#middleware/logging", () => ({
   flushAuditLogs: vi.fn(async () => void state.events.push("audit flushed")),
 }));
@@ -109,6 +118,7 @@ beforeEach(() => {
   state.throngOptions = undefined;
   state.server = undefined;
   state.events = [];
+  state.redisBootError = undefined;
   handlers = {};
   vi.spyOn(process, "on").mockImplementation(((event: string, handler: Handler) => {
     (handlers[event] ??= []).push(handler);
@@ -196,5 +206,26 @@ describe("worker faults drain gracefully (V-211)", () => {
     expect(exit).toHaveBeenCalledWith(1);
     emit("unhandledRejection", new Error("primary rejection"));
     expect(exit).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("a Redis credentials error at boot is fatal, not a respawn loop (V-254)", () => {
+  it("the worker exits with the configuration code", async () => {
+    state.redisBootError = new state.RedisConfigError("Redis refused the connection: WRONGPASS");
+    await bootIndex(false);
+
+    await waitFor(() => exit.mock.calls.length > 0);
+    expect(exit).toHaveBeenCalledWith(78);
+  });
+
+  it("the primary exits with that code instead of reviving the worker", async () => {
+    await bootIndex(true);
+    state.throngOptions!.master();
+
+    const options = state.installWorkerRespawn.mock.calls.at(-1)![1] as {
+      onFatal: (code: number) => void;
+    };
+    options.onFatal(78);
+    expect(exit).toHaveBeenCalledWith(78);
   });
 });

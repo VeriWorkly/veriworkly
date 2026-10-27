@@ -28,7 +28,16 @@ export function respawnDelayMs(consecutiveFastExits: number): number {
   return Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (consecutiveFastExits - 1));
 }
 
-export function installWorkerRespawn(cluster: Cluster) {
+/**
+ * Exit code of a worker that hit a configuration error no restart can fix (V-254: Redis refused
+ * the credentials). 78 is EX_CONFIG from sysexits.h.
+ */
+export const FATAL_CONFIG_EXIT_CODE = 78;
+
+export function installWorkerRespawn(
+  cluster: Cluster,
+  options: { onFatal?: (code: number) => void } = {},
+) {
   const forkedAt = new WeakMap<Worker, number>();
   const pending = new Set<NodeJS.Timeout>();
   let consecutiveFastExits = 0;
@@ -38,6 +47,20 @@ export function installWorkerRespawn(cluster: Cluster) {
 
   cluster.on("exit", (worker: Worker, code: number | null, signal: string | null) => {
     if (stopped) return;
+
+    // Reviving would fail the same way every 30 s forever; the primary exits instead, so the
+    // process manager shows the app as errored.
+    if (code === FATAL_CONFIG_EXIT_CODE) {
+      logger.error("Cluster worker exited on a fatal configuration error; not reviving", {
+        workerId: worker.id,
+        code,
+      });
+      stopped = true;
+      for (const timer of pending) clearTimeout(timer);
+      pending.clear();
+      options.onFatal?.(code);
+      return;
+    }
 
     const uptimeMs = Date.now() - (forkedAt.get(worker) ?? 0);
     consecutiveFastExits = uptimeMs < FAST_EXIT_MS ? consecutiveFastExits + 1 : 0;

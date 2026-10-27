@@ -7,8 +7,8 @@ import { config, isDevelopment } from "#config";
 
 import { logger } from "#lib/logger";
 import { closePrisma } from "#lib/prisma";
-import { initRedis, closeRedis } from "#lib/redis";
-import { installWorkerRespawn } from "#lib/workerRespawn";
+import { initRedis, closeRedis, RedisConfigError } from "#lib/redis";
+import { FATAL_CONFIG_EXIT_CODE, installWorkerRespawn } from "#lib/workerRespawn";
 import { markJobsBaseline } from "#lib/metrics";
 import { flushAuditLogs } from "#middleware/logging";
 
@@ -197,7 +197,9 @@ async function startWorker(id: number, disconnect: () => void) {
     });
   } catch (error) {
     logger.error(`Worker ${id}: Failed to start:`, error);
-    exitCode = 1;
+    // Wrong Redis credentials cannot be fixed by a restart: exit with the configuration code so
+    // the primary stops reviving workers and exits too (V-254). Anything else is retried.
+    exitCode = error instanceof RedisConfigError ? FATAL_CONFIG_EXIT_CODE : 1;
     void shutdownWorker(id, disconnect);
   }
 }
@@ -249,7 +251,12 @@ function main() {
       void throng({
         master: () => {
           installPrimaryFaultHandlers();
-          const respawn = installWorkerRespawn(cluster);
+          const respawn = installWorkerRespawn(cluster, {
+            onFatal: (code) => {
+              logger.error("Primary process: exiting on a fatal configuration error", { code });
+              process.exit(code);
+            },
+          });
           for (const signal of ["SIGTERM", "SIGINT"] as const) process.on(signal, respawn.stop);
         },
         // startWorker logs and exits on its own failures, like the single-process call below.
