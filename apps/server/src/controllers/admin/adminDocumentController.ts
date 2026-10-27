@@ -61,7 +61,8 @@ export const AdminDocumentController = {
       targetType: "Document",
       targetId: id,
       reason: input.reason,
-      metadata: { ownerId: document.user.id, title: document.title },
+      // Ids only: a title outlives the document's purge in the log otherwise (V-206).
+      metadata: { ownerId: document.user.id },
     });
 
     return document;
@@ -80,7 +81,8 @@ export const AdminDocumentController = {
       targetType: "Document",
       targetId: id,
       reason: input.reason,
-      metadata: { ownerId: document.user.id, title: document.title },
+      // Ids only: a title outlives the document's purge in the log otherwise (V-206).
+      metadata: { ownerId: document.user.id },
     });
 
     return document;
@@ -107,7 +109,8 @@ export const AdminShareLinkController = {
       targetType: "ShareLink",
       targetId: id,
       reason: input.reason,
-      metadata: { slug: result.slug },
+      // Ids only, never the slug (made from the document title).
+      metadata: { documentId: result.documentId, ownerId: result.ownerId },
     });
 
     return result;

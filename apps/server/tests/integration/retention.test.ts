@@ -68,6 +68,7 @@ describe("retention defaults", () => {
       webhookPayloads: 30,
       auditLogs: 90,
       adminAuditEntries: 365,
+      adminMoneyAuditEntries: 2555,
       creditReservations: 90,
       creditReplays: 1,
       flushBatches: 7,
@@ -315,9 +316,19 @@ describe("retention rules (V-116)", () => {
     const summary = await applyRetention({ settings: only("deletedDocuments"), now });
     const second = await applyRetention({ settings: only("deletedDocuments"), now });
 
-    expect(summary.affected).toEqual({ deletedDocumentsPurged: 3 });
+    expect(summary.affected).toEqual({
+      deletedDocumentsPurged: 3,
+      deletedShareSnapshotsPurged: 1,
+      deletedPublicationSnapshotsPurged: 0,
+      deletedDocumentAuditTitlesPurged: 0,
+    });
     // Rows already carrying the marker are skipped.
-    expect(second.affected).toEqual({ deletedDocumentsPurged: 0 });
+    expect(second.affected).toEqual({
+      deletedDocumentsPurged: 0,
+      deletedShareSnapshotsPurged: 0,
+      deletedPublicationSnapshotsPurged: 0,
+      deletedDocumentAuditTitlesPurged: 0,
+    });
     const docs = new Map((await prisma.document.findMany()).map((doc) => [doc.id, doc]));
     expect(docs.size).toBe(5);
     expect(docs.get("d-old")?.content).toEqual(PURGED_DOCUMENT_CONTENT);
@@ -329,6 +340,137 @@ describe("retention rules (V-116)", () => {
     expect(docs.get("d-fresh")?.content).toEqual(content);
     expect(docs.get("d-live")?.content).toEqual(content);
     expect(await prisma.shareLink.count({ where: { documentId: "d-old-shared" } })).toBe(1);
+  });
+
+  it("also blanks title, slug, metadata, tags and every share and publication snapshot (V-206)", async () => {
+    const user = await createUserWithSession();
+    const content = { basics: { name: "Ada Lovelace", email: "ada@example.test" } };
+    const make = (id: string, deletedAt: Date | null, extra: object = {}) =>
+      prisma.document.create({
+        data: {
+          id,
+          userId: user.id,
+          type: "PORTFOLIO",
+          title: `Ada Lovelace CV ${id}`,
+          slug: `ada-lovelace-cv-${id}`,
+          tags: ["engineering", "london"],
+          metadata: { favourite: true, note: "for Babbage & Co" },
+          content,
+          deletedAt,
+          ...extra,
+        },
+      });
+    await make("old", at(30, "old"));
+    await make("fresh", at(30, "fresh"));
+    // Purged before this rule existed: content carries the marker, the rest survived.
+    await make("legacy", at(400, "old"), { content: PURGED_DOCUMENT_CONTENT });
+    for (const id of ["old", "fresh", "legacy"])
+      await prisma.shareLink.create({
+        data: { userId: user.id, documentId: id, slug: `ada-lovelace-cv-${id}`, snapshot: content },
+      });
+    await prisma.portfolioPublication.create({
+      data: {
+        userId: user.id,
+        documentId: "old",
+        subdomain: "ada",
+        templateId: "signal",
+        snapshot: { profile: content },
+        status: "SUSPENDED",
+        suspensionReason: "user_unpublished",
+      },
+    });
+
+    const summary = await applyRetention({ settings: only("deletedDocuments"), now });
+    const second = await applyRetention({ settings: only("deletedDocuments"), now });
+
+    expect(summary.affected).toEqual({
+      deletedDocumentsPurged: 2,
+      deletedShareSnapshotsPurged: 2,
+      deletedPublicationSnapshotsPurged: 1,
+      deletedDocumentAuditTitlesPurged: 0,
+    });
+    expect(second.affected).toEqual({
+      deletedDocumentsPurged: 0,
+      deletedShareSnapshotsPurged: 0,
+      deletedPublicationSnapshotsPurged: 0,
+      deletedDocumentAuditTitlesPurged: 0,
+    });
+
+    for (const id of ["old", "legacy"]) {
+      const doc = await prisma.document.findUniqueOrThrow({ where: { id } });
+      expect(doc).toMatchObject({
+        title: "",
+        slug: id,
+        tags: [],
+        metadata: null,
+        content: PURGED_DOCUMENT_CONTENT,
+      });
+      const share = await prisma.shareLink.findFirstOrThrow({ where: { documentId: id } });
+      expect(share.snapshot).toEqual(PURGED_DOCUMENT_CONTENT);
+      expect(share.slug).toBe(share.id);
+    }
+    const publication = await prisma.portfolioPublication.findUniqueOrThrow({
+      where: { documentId: "old" },
+    });
+    expect(publication.snapshot).toEqual(PURGED_DOCUMENT_CONTENT);
+
+    // Inside the window nothing changes.
+    const fresh = await prisma.document.findUniqueOrThrow({ where: { id: "fresh" } });
+    expect(fresh.title).toBe("Ada Lovelace CV fresh");
+    expect(fresh.content).toEqual(content);
+    const freshShare = await prisma.shareLink.findFirstOrThrow({ where: { documentId: "fresh" } });
+    expect(freshShare.snapshot).toEqual(content);
+  });
+
+  it("removes the title and slug older audit entries recorded about a purged document", async () => {
+    const user = await createUserWithSession();
+    const make = (id: string, deletedAt: Date) =>
+      prisma.document.create({
+        data: {
+          id,
+          userId: user.id,
+          title: `Title ${id}`,
+          slug: `slug-${id}`,
+          content: {},
+          deletedAt,
+        },
+      });
+    await make("audit-old", at(30, "old"));
+    await make("audit-fresh", at(30, "fresh"));
+    await prisma.adminAuditEntry.createMany({
+      data: [
+        {
+          id: "e-delete",
+          action: "document.delete",
+          targetType: "Document",
+          targetId: "audit-old",
+          metadata: { ownerId: user.id, title: "Title audit-old" },
+        },
+        {
+          id: "e-revoke",
+          action: "share_link.revoke",
+          targetType: "ShareLink",
+          targetId: "gone",
+          metadata: { documentId: "audit-old", slug: "slug-audit-old" },
+        },
+        {
+          id: "e-fresh",
+          action: "document.delete",
+          targetType: "Document",
+          targetId: "audit-fresh",
+          metadata: { ownerId: user.id, title: "Title audit-fresh" },
+        },
+      ],
+    });
+
+    const summary = await applyRetention({ settings: only("deletedDocuments"), now });
+
+    expect(summary.affected.deletedDocumentAuditTitlesPurged).toBe(2);
+    const metadata = async (id: string) =>
+      (await prisma.adminAuditEntry.findUniqueOrThrow({ where: { id } })).metadata;
+    expect(await metadata("e-delete")).toEqual({ ownerId: user.id });
+    expect(await metadata("e-revoke")).toEqual({ documentId: "audit-old" });
+    expect(await metadata("e-fresh")).toEqual({ ownerId: user.id, title: "Title audit-fresh" });
   });
 
   it("does nothing for a rule whose setting is 0", async () => {
@@ -523,7 +665,7 @@ describe("purge and restore racing each other", () => {
       await restorer.query("COMMIT");
       const summary = await purge;
 
-      expect(summary.affected).toEqual({ deletedDocumentsPurged: 0 });
+      expect(summary.affected).toMatchObject({ deletedDocumentsPurged: 0 });
     } finally {
       restorer.release();
     }

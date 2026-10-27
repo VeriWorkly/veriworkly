@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import request from "supertest";
 import { describe, expect, it } from "vitest";
@@ -693,34 +693,67 @@ describe("tier auto-promotion (V-180)", () => {
     expect(await tierOf(user.id)).toBe("TIER_2");
   });
 
-  it("finds the admin's tier decision however many other affiliate edits followed it", async () => {
+  it("reads the admin's tier decision from the row, not the audit log (pruned or not)", async () => {
     const { user, code } = await enrolledAffiliate();
-    await seedConverted(user.id, code, 12, new Date(Date.now() - 120_000));
-    await prisma.user.update({ where: { id: user.id }, data: { affiliateTier: "TIER_1" } });
+    await seedConverted(user.id, code, 12, new Date(Date.now() - 60_000));
+
+    const demote = await asUser(await adminUser())
+      .patch(`${ADMIN_BASE}/${user.id}`)
+      .send({ tier: "TIER_1", reason: "Self-referral pattern under review" });
+    expect(demote.status).toBe(200);
+    const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(row.affiliateTierDecidedAt).toBeInstanceOf(Date);
+
+    // A status-only edit is not a tier decision and does not move it.
+    const status = await asUser(await adminUser())
+      .patch(`${ADMIN_BASE}/${user.id}`)
+      .send({ status: "ACTIVE", reason: "Payout details checked" });
+    expect(status.status).toBe(200);
+    expect(
+      (await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).affiliateTierDecidedAt,
+    ).toEqual(row.affiliateTierDecidedAt);
+
+    await prisma.adminAuditEntry.deleteMany({ where: { targetId: user.id } });
+    await convertOne(code);
+    expect(await tierOf(user.id)).toBe("TIER_1");
+  });
+
+  it("the migration backfills the tier decision from the latest audit entry that set a tier", async () => {
+    const { user } = await enrolledAffiliate();
+    const other = await enrolledAffiliate();
+    const decidedAt = new Date(Date.now() - 90_000);
     await prisma.adminAuditEntry.create({
       data: {
         action: "affiliate.update",
         targetType: "User",
         targetId: user.id,
-        reason: "Self-referral pattern under review",
         metadata: { tier: "TIER_1" },
-        createdAt: new Date(Date.now() - 90_000),
+        createdAt: decidedAt,
       },
     });
-    for (let i = 0; i < 25; i += 1)
+    for (let i = 0; i < 3; i += 1)
       await prisma.adminAuditEntry.create({
         data: {
           action: "affiliate.update",
           targetType: "User",
           targetId: user.id,
-          reason: "Payout details checked",
           metadata: { status: "ACTIVE" },
           createdAt: new Date(Date.now() - 60_000 + i),
         },
       });
 
-    await convertOne(code);
-    expect(await tierOf(user.id)).toBe("TIER_1");
+    const migrations = new URL("../../prisma/migrations/", import.meta.url);
+    const folder = readdirSync(migrations).find((name) =>
+      name.endsWith("_affiliate_tier_decision"),
+    );
+    expect(folder).toBeDefined();
+    const sql = readFileSync(new URL(`${folder}/migration.sql`, migrations), "utf8");
+    await prisma.$executeRawUnsafe(sql.slice(sql.indexOf("-- Backfill")));
+
+    const decided = async (id: string) =>
+      (await prisma.user.findUniqueOrThrow({ where: { id } })).affiliateTierDecidedAt;
+    expect(await decided(user.id)).toEqual(decidedAt);
+    expect(await decided(other.user.id)).toBeNull();
   });
 
   it("an admin tier decision holds until a threshold is crossed after it", async () => {
