@@ -1,16 +1,19 @@
 "use client";
 
 import { toast } from "sonner";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { BaseDocument } from "@/features/documents/core/types";
 import type { DocumentType } from "@/features/documents/core/document-types";
 
+import { Button } from "@veriworkly/ui";
+
 import {
   saveDocument,
   loadDocumentById,
 } from "@/features/documents/services/document-workspace-service";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { createDocumentWithinLimit } from "@/features/documents/services/document-limit";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { describeSaveResult } from "@/features/documents/services/save-failure-message";
@@ -50,9 +53,23 @@ function persistTemplate(document: BaseDocument, templateId: string | undefined)
   if (failure) toast.error(`Could not apply the template: ${failure}`);
 }
 
+/** The document a template link reached at the free limit, waiting on "use the template or not". */
+interface TemplateChoice {
+  existing: BaseDocument;
+  limitMessage: string;
+}
+
 export function EditorEntryRedirect({ type, templateId }: EditorEntryRedirectProps) {
   const router = useRouter();
   const createdRef = useRef(false);
+  const [choice, setChoice] = useState<TemplateChoice | null>(null);
+  const questionRef = useRef<HTMLHeadingElement>(null);
+
+  // The card replaces the loading state without a navigation; focus brings the question to a
+  // screen reader instead of leaving it on the page body.
+  useEffect(() => {
+    if (choice) questionRef.current?.focus();
+  }, [choice]);
 
   useEffect(() => {
     if (createdRef.current) return;
@@ -68,14 +85,18 @@ export function EditorEntryRedirect({ type, templateId }: EditorEntryRedirectPro
           return;
         }
 
-        // At the free limit a template link opens the document the user already has, wearing
-        // the template they picked, instead of a dead end or a second document the server
-        // would refuse to sync.
+        // At the free limit a template link opens the document the user already has instead of
+        // a dead end or a second document the server would refuse to sync. Restyling it is the
+        // user's call, so a link naming another template asks first.
         const existing =
           result.reason === "limit" ? loadDocumentById(type, result.existingId) : null;
 
         if (existing && result.reason === "limit") {
-          persistTemplate(existing, templateId);
+          if (applyTemplate(existing, templateId) !== existing) {
+            setChoice({ existing, limitMessage: result.message });
+            return;
+          }
+
           toast.info(`Opened "${existing.title}" instead. ${result.message}`, {
             action: { label: "Upgrade", onClick: () => router.push("/billing") },
           });
@@ -101,6 +122,33 @@ export function EditorEntryRedirect({ type, templateId }: EditorEntryRedirectPro
       }
     })();
   }, [router, templateId, type]);
+
+  if (choice) {
+    const definition = getDocumentDefinition(type);
+    const template = definition.templates.find((entry) => entry.id === templateId);
+    const open = (useTemplate: boolean) => {
+      if (useTemplate) persistTemplate(choice.existing, templateId);
+      router.replace(getDocumentEditorPath(type, choice.existing.id));
+    };
+
+    return (
+      <DocumentStateCard
+        headingRef={questionRef}
+        title={`Open "${choice.existing.title}" with ${template?.name ?? "this template"}?`}
+        message={`${choice.limitMessage} The template changes how your ${definition.label.toLowerCase()} looks; its content stays the same.`}
+      >
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={() => open(true)}>Use {template?.name ?? "this template"}</Button>
+          <Button variant="secondary" onClick={() => open(false)}>
+            Keep its current template
+          </Button>
+          <Button variant="ghost" onClick={() => router.push("/billing")}>
+            Upgrade
+          </Button>
+        </div>
+      </DocumentStateCard>
+    );
+  }
 
   return <DocumentStateCard title="Creating your document" message="Preparing your editor." />;
 }
