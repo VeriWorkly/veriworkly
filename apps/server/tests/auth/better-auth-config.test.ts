@@ -281,6 +281,39 @@ describe("secondaryStorage.increment", () => {
   });
 });
 
+/**
+ * better-auth 1.7 consumes single-use values (sign-in codes live only in Redis) through
+ * `getAndDelete`; it must be one atomic GETDEL so two requests cannot both spend one code.
+ */
+describe("secondaryStorage.getAndDelete", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const storage = (auth.options as any).secondaryStorage;
+
+  it("reads and deletes in one GETDEL", async () => {
+    const redis = { getDel: vi.fn().mockResolvedValue("otp-record"), get: vi.fn(), del: vi.fn() };
+    mockGetRedis.mockReturnValue(redis);
+
+    await expect(storage.getAndDelete("verification:sign-in-otp-a@b.c")).resolves.toBe(
+      "otp-record",
+    );
+    expect(redis.getDel).toHaveBeenCalledWith("verification:sign-in-otp-a@b.c");
+    expect(redis.get).not.toHaveBeenCalled();
+    expect(redis.del).not.toHaveBeenCalled();
+  });
+
+  it("returns null for a missing key and when Redis is down, so nothing is spent twice", async () => {
+    mockGetRedis.mockReturnValue({ getDel: vi.fn().mockResolvedValue(null) });
+    await expect(storage.getAndDelete("verification:missing")).resolves.toBeNull();
+
+    mockGetRedis.mockImplementation(() => {
+      throw new Error("Redis client not ready");
+    });
+    await expect(storage.getAndDelete("verification:any")).resolves.toBeNull();
+
+    mockGetRedis.mockReset();
+  });
+});
+
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

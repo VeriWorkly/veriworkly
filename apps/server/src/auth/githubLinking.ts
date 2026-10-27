@@ -25,10 +25,29 @@ export const GITHUB_ALREADY_LINKED = "GITHUB_ALREADY_LINKED";
 
 const GITHUB = "github";
 
-/** `hooks.before`: refuses better-auth's `/unlink-account` for GitHub. */
-export function assertGithubUnlinkAllowed(path: string, body: unknown): void {
+/**
+ * `hooks.before`: refuses better-auth's `/unlink-account` for GitHub.
+ *
+ * Since better-auth 1.7 the endpoint names the row to remove by its own id (`{ accountId }`) and
+ * ignores `providerId`, so the row is looked up and its provider decides. A `providerId` of
+ * "github" is still refused, so a client written for the old body gets the same answer.
+ */
+export async function assertGithubUnlinkAllowed(path: string, body: unknown): Promise<void> {
   if (path !== "/unlink-account") return;
-  if ((body as { providerId?: unknown } | undefined)?.providerId !== GITHUB) return;
+
+  const fields = (body && typeof body === "object" ? body : {}) as {
+    accountId?: unknown;
+    providerId?: unknown;
+  };
+
+  const namesGithub =
+    fields.providerId === GITHUB ||
+    (typeof fields.accountId === "string" &&
+      (await prisma.account.findFirst({
+        where: { id: fields.accountId, providerId: GITHUB },
+        select: { id: true },
+      })) !== null);
+  if (!namesGithub) return;
 
   throw new APIError("FORBIDDEN", {
     message: "A linked GitHub account cannot be removed.",

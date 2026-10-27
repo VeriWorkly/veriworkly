@@ -174,6 +174,19 @@ export const auth = betterAuth({
       }
     },
 
+    // better-auth 1.7 spends single-use values through this: verification values live only here
+    // (no `verification.storeInDatabase`), so it is how a sign-in OTP is consumed. One GETDEL, so
+    // two requests racing with the same code cannot both read it before either deletes it.
+    // Without Redis nothing is consumed and the code is treated as invalid; the user asks again.
+    getAndDelete: async (key) => {
+      try {
+        return (await getRedis().getDel(key)) || null;
+      } catch (error) {
+        logger.error("better-auth secondaryStorage getAndDelete failed", { error });
+        return null;
+      }
+    },
+
     // Present so better-auth's limiter uses its atomic `consume` instead of get-then-set (V-094).
     // Its keys are `${ip}|${path}`. Without Redis the OTP-send paths report "over any limit"
     // (429) and everything else reports a first hit, which keeps today's fail-open behaviour.
@@ -249,9 +262,9 @@ export const auth = betterAuth({
     // server has its own token-keyed Redis cache with revocation tombstones (utils/authCache.ts)
     // in front of better-auth's Redis secondary storage, so a lookup that misses it costs one
     // Redis read, not a Postgres query.
-    // `strategy` stays "jwt": better-auth still parses a `session_data` cookie it finds, with the
-    // configured strategy, even when the cache is off. Browsers that signed in before this change
-    // hold a JWT one, and the default "compact" parser throws on it (every request a 503).
+    // `strategy` stays "jwt", the format of the `session_data` cookies browsers still hold from
+    // before the cache was turned off. better-auth 1.7 clears such a cookie without parsing it
+    // (1.6 parsed it, and the default "compact" parser threw on a JWT one), so this is harmless.
     cookieCache: { enabled: false, strategy: "jwt" },
   },
 
@@ -319,7 +332,7 @@ export const auth = betterAuth({
       if (recipient) await assertOtpRecipientQuotaAvailable(recipient);
 
       // A linked GitHub is never removed (V-265).
-      assertGithubUnlinkAllowed(ctx.path, ctx.body);
+      await assertGithubUnlinkAllowed(ctx.path, ctx.body);
 
       // Sign-out only. The request's own cookie is the session being ended there; on
       // /revoke-session(s) it is the caller's session, which stays valid, and the sessions that
