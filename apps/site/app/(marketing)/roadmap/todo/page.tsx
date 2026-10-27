@@ -11,6 +11,8 @@ import RoadmapPageShell from "@/features/roadmap/components/RoadmapPageShell";
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/roadmap/todo",
+  // One board split by status: /roadmap is the page that ranks.
+  canonicalPath: "/roadmap",
   title: `Planned AI Features & Updates | ${siteConfig.shortName} Roadmap`,
   description:
     "Discover planned AI features, upcoming resume and portfolio templates, and future platform updates in the VeriWorkly roadmap.",

@@ -72,6 +72,13 @@ const AffiliatePage = async () => {
     name: "VeriWorkly Affiliate Program",
     url: pageUrl,
     isPartOf: webSiteRef,
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+        { "@type": "ListItem", position: 2, name: "Affiliate Program", item: pageUrl },
+      ],
+    },
     description:
       "Earn recurring partner commissions by sharing VeriWorkly with your professional network.",
   };

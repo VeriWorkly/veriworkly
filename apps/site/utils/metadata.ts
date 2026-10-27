@@ -34,6 +34,9 @@ interface BuildPageMetadataOptions {
 
   /** Paginated routes must pass their page here, or Google drops page 2+ as duplicates; empty values are skipped. */
   canonicalParams?: Record<string, string | number | undefined>;
+
+  /** A filtered view of another page (the roadmap status tabs) points its canonical there instead. */
+  canonicalPath?: string;
 }
 
 /** Next does not deep-merge openGraph/twitter from the root layout, so every field a page needs is set here explicitly. */
@@ -120,6 +123,12 @@ export function buildPageMetadata(options: BuildPageMetadataOptions): Metadata {
     },
 
     /** noIndex gets canonical `null` (not omitted, or the root layout's "/" inherits); no hreflang, since every page has one version. */
-    ...(options.noIndex ? { alternates: { canonical: null } } : { alternates: { canonical: url } }),
+    ...(options.noIndex
+      ? { alternates: { canonical: null } }
+      : {
+          alternates: {
+            canonical: options.canonicalPath ? `${siteConfig.url}${options.canonicalPath}` : url,
+          },
+        }),
   };
 }
