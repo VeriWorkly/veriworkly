@@ -187,7 +187,12 @@ cancelBillingCheckout:
       - LocalSession: []
       - ProdSession: []
     summary: Cancel In-Flight Checkout
-    description: Releases the Redis lock created by `POST /billing/checkout`, allowing a new checkout to be started. Session-authenticated only.
+    description: |
+      Forgets the open checkout sessions created by `POST /billing/checkout` and
+      `POST /billing/credits/checkout`, allowing a new checkout to be started (and an account with
+      no other open session to be deleted). Each session is checked with the billing provider
+      first: one whose payment succeeded or is processing stays until its webhook settles it.
+      Session-authenticated only.
     responses:
       "200":
         description: Checkout cancelled successfully
@@ -197,6 +202,18 @@ cancelBillingCheckout:
               $ref: "../components/schemas.yaml#/CancelCheckoutResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "409":
+        description: The subscription or pass session's payment is still processing, or a checkout is still being prepared. A credit pack still being paid does not cause this; it is reported in `stillProcessing`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+      "503":
+        description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
 
 createBillingPortal:
   post:
@@ -245,8 +262,10 @@ createCreditPackCheckout:
     summary: Create Extra Credit Pack Checkout
     description: |
       Creates a one-time Dodo Payments checkout session for an extra AI credit pack, on top of any
-      subscription. Session-authenticated only; blocked for non-admins in production during the
-      current rollout phase.
+      subscription. While the session can still be paid (24 hours, or until its payment lands or
+      `POST /billing/checkout/cancel` clears it), the account cannot be deleted.
+      Session-authenticated only; blocked for non-admins in production during the current rollout
+      phase.
     requestBody:
       required: true
       content:

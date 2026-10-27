@@ -3496,6 +3496,17 @@ CancelCheckoutResponse:
       properties:
         success:
           type: boolean
+        cleared:
+          type: array
+          description: The products (`productKey`) and credit packs (`packKey`) whose open sessions were cleared.
+          items:
+            type: string
+        stillProcessing:
+          type: array
+          description: Present when a credit pack's payment is still processing. Those sessions are kept (and still block account deletion) until the payment lands; they never stop the rest from being cleared.
+          items:
+            type: string
+          example: ["500 extra credits"]
 
 BillingPortalResponse:
   type: object

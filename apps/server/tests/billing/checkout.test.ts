@@ -24,6 +24,9 @@ const mockRedis = {
     },
   ),
   get: vi.fn(async (key: string) => store.get(key)?.value ?? null),
+  // The credit-pack session hash (V-278): none open in these tests.
+  hGetAll: vi.fn(async () => ({})),
+  hDel: vi.fn(async () => 0),
   del: vi.fn(async (keys: string | string[]) => {
     let removed = 0;
     for (const key of Array.isArray(keys) ? keys : [keys]) if (store.delete(key)) removed += 1;

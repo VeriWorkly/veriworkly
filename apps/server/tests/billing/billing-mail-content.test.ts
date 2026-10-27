@@ -136,6 +136,26 @@ describe("cancellation and plan change (V-212, V-219)", () => {
     expect(text).toContain("$14.99 USD (before any tax) per month");
     expect(text).toContain("30 November 2026");
   });
+
+  it("V-279: says an upgrade was charged and a downgrade was not", () => {
+    const base = {
+      fromProductName: "Job Hunter Bundle (monthly)",
+      productName: "Creator Pro (monthly)",
+      amountCents: 999,
+      currency: "USD",
+      amountExcludesTax: true,
+      billingPeriod: "month" as const,
+      renewsAt: new Date("2026-11-30T00:00:00Z"),
+    };
+    const downgrade = planChangedParagraphs({ ...base, direction: "downgrade" }).join(" ");
+    expect(downgrade).not.toMatch(/difference .* was charged/);
+    expect(downgrade).toContain("Nothing extra was charged");
+
+    const upgrade = planChangedParagraphs({ ...base, direction: "upgrade" }).join(" ");
+    expect(upgrade).toContain("was charged when the change was made");
+
+    expect(planChangedParagraphs(base).join(" ")).not.toMatch(/difference .* was charged/);
+  });
 });
 
 describe("naming table", () => {
