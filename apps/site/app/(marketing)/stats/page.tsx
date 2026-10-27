@@ -34,13 +34,10 @@ import StatsBoard from "@/features/stats/components/StatsBoard";
 import StatsFilters from "@/features/stats/components/StatsFilters";
 import StatsOverview from "@/features/stats/components/StatsOverview";
 import StatsPagination from "@/features/stats/components/StatsPagination";
+import { ogPageImage } from "@/features/og/cards";
 
 const pageUrl = `${siteConfig.url}/stats`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Development & AI Platform Statistics",
-)}&description=${encodeURIComponent(
-  "Live platform development stats, AI feature logs, and release metrics.",
-)}`;
+const pageOgImage = ogPageImage("stats");
 
 const statsMetadata = {
   path: "/stats",

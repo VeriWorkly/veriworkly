@@ -12,16 +12,13 @@ import {
   ArchitectureAndDocsSection,
 } from "@/features/how-it-works";
 import { PageClosing } from "@/components/marketing/PageLayout";
+import { ogPageImage } from "@/features/og/cards";
 
 export const revalidate = false;
 export const dynamic = "force-static";
 
 const pageUrl = `${siteConfig.url}/how-it-works`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "How VeriWorkly Works",
-)}&description=${encodeURIComponent(
-  "A privacy-first, local-first pipeline for resumes, cover letters, AI tailoring, and portfolios.",
-)}`;
+const pageOgImage = ogPageImage("how-it-works");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/how-it-works",

@@ -17,16 +17,13 @@ import {
   PrivacyAndExportsSection,
 } from "@/features/features";
 import { PageClosing } from "@/components/marketing/PageLayout";
+import { ogPageImage } from "@/features/og/cards";
 
 export const revalidate = false;
 export const dynamic = "force-static";
 
 const pageUrl = `${siteConfig.url}/features`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Platform Features & Career Tools",
-)}&description=${encodeURIComponent(
-  "AI resume tailoring, cover letter drafting, free ATS scoring, GitHub & LinkedIn imports, and web portfolios.",
-)}`;
+const pageOgImage = ogPageImage("features");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/features",

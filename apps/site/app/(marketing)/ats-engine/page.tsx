@@ -23,16 +23,13 @@ import {
 } from "@/features/ats-engine";
 import { faqs } from "@/features/faq/data/faqItems";
 import { MotionIsland } from "@/providers/motion-island";
+import { ogPageImage } from "@/features/og/cards";
 
 export const revalidate = false;
 export const dynamic = "force-static";
 
 const pageUrl = `${siteConfig.url}/ats-engine`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "VeriWorkly ATS Engine",
-)}&description=${encodeURIComponent(
-  "The open-source ATS resume parser and scorer for TypeScript: a published rubric, a rule-based score, runs in the browser.",
-)}`;
+const pageOgImage = ogPageImage("ats-engine");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/ats-engine",

@@ -19,6 +19,7 @@ import {
 import FeatureHeader from "./components/FeatureHeader";
 import FeatureDetailsContent from "./components/FeatureDetailsContent";
 import SuggestedItemsSidebar from "./components/SuggestedItemsSidebar";
+import { ogRoadmapImage } from "@/features/og/cards";
 
 interface RoadmapDetailPageProps {
   params: Promise<{ id: string }>;
@@ -49,15 +50,6 @@ export async function generateMetadata({ params }: RoadmapDetailPageProps): Prom
     });
   }
 
-  const ogUrl = new URL("/api/og", siteConfig.url);
-  ogUrl.searchParams.set("title", item.title);
-
-  if (item.description) {
-    ogUrl.searchParams.set("description", item.description);
-  } else {
-    ogUrl.searchParams.set("showDesc", "false");
-  }
-
   const metadataDescription = fitDescription(
     item.description ||
       `Track progress, updates, and release details for ${item.title} in the VeriWorkly platform roadmap.`,
@@ -71,7 +63,7 @@ export async function generateMetadata({ params }: RoadmapDetailPageProps): Prom
     ogDescription: metadataDescription,
     twitterTitle: `${item.title} - VeriWorkly Roadmap`,
     twitterDescription: metadataDescription,
-    image: ogUrl.toString(),
+    image: ogRoadmapImage(item.id),
     imageAlt: `${item.title} Roadmap Feature`,
     type: "article",
   });

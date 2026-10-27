@@ -14,12 +14,11 @@ import {
 
 import ChangelogPageShell from "@/features/changelog/components/list/ChangelogPageShell";
 import ChangelogSEOContent from "@/features/changelog/components/list/ChangelogSEOContent";
+import { ogPageImage } from "@/features/og/cards";
 
 const pageUrl = `${siteConfig.url}/changelog`;
 
-const ogImage = `/api/og?title=${encodeURIComponent("Changelog")}&description=${encodeURIComponent(
-  "Every VeriWorkly release, generated straight from our public GitHub history.",
-)}`;
+const ogImage = ogPageImage("changelog");
 
 const changelogMetadata = {
   path: "/changelog",

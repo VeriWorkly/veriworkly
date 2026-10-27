@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { type ChangelogEntry } from "@/features/changelog/services/changelog-backend";
+import { fitDescription } from "@/utils/metadata";
 
 export type ChangelogCategory = "added" | "improved" | "fixed" | "security" | "breaking";
 
@@ -96,4 +97,16 @@ export function buildChangelogHref(basePath: string, updates: Record<string, str
 
   const query = params.toString();
   return query ? `${basePath}?${query}` : basePath;
+}
+
+/** The release's one-line description, shared by its page metadata and its share card. */
+export function describeRelease({
+  title,
+  version,
+  summary,
+}: Pick<ChangelogEntry, "title" | "version" | "summary">) {
+  return fitDescription(
+    releaseSummary(summary) ??
+      `Everything that shipped in VeriWorkly v${version} - ${releaseHeadline(title)}: new features, improvements, fixes, and the pull requests behind them.`,
+  );
 }
