@@ -1,7 +1,7 @@
 import { promisify } from "node:util";
 import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type DocumentType } from "@prisma/client";
 
 import { prisma } from "#lib/prisma";
 import { getRedis } from "#lib/redis";
@@ -15,6 +15,7 @@ import { hashForAnalytics } from "#utils/analyticsHash";
 
 import { UserService } from "#services/userService";
 import { madePrivateByModerator } from "#services/moderationRecord";
+import { PURGED_DOCUMENT_CONTENT } from "#jobs/retentionJob";
 
 export { madePrivateByModerator };
 
@@ -336,6 +337,30 @@ export class ShareService {
     // share link would also be a way around a portfolio takedown.
     if (!SHAREABLE_DOCUMENT_TYPES.has(document.type))
       throw new ApiError(400, "Only résumés and cover letters can be shared by link.");
+
+    // The snapshot is whatever the client posts, so a lock on one document alone was undone by
+    // sharing the same content from another, or from a copy made after deleting the locked one
+    // (V-302). While one of the account's résumés or cover letters is under a moderator's lock,
+    // no link is created or refreshed. A trashed one still counts, or trashing it would be the
+    // way round; once retention has purged its content there is nothing left to copy, and the
+    // hold lapses. A portfolio takedown does not count: it has its own publish lock. Otherwise
+    // lifted with the lock itself.
+    if (!document.moderatedPrivateAt) {
+      const held = await prisma.document.findFirst({
+        where: {
+          userId,
+          type: { in: [...SHAREABLE_DOCUMENT_TYPES] as DocumentType[] },
+          moderatedPrivateAt: { not: null },
+          NOT: { content: { equals: PURGED_DOCUMENT_CONTENT as Prisma.InputJsonObject } },
+        },
+        select: { id: true },
+      });
+      if (held)
+        throw new ApiError(
+          403,
+          "A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it.",
+        );
+    }
 
     // A share link is reachable by anyone with the URL, so a shared document is UNLISTED, and the
     // public lookup serves no link on a PRIVATE one (V-171). Documents start PRIVATE, so sharing

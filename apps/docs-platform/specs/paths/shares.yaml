@@ -60,6 +60,20 @@ createShareLink:
                       message: "String must contain at least 1 character(s)"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        description: |
+          A moderator made this document private, or made another of the account's résumés or
+          cover letters private (a trashed one too, until retention purges it). No link is created
+          or refreshed on the account until a moderator lifts it. A portfolio takedown does not
+          pause sharing.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it."
       "404":
         description: Document not found
         content:
