@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
@@ -129,10 +131,18 @@ export class AmbassadorService {
     action: "APPROVE" | "REJECT",
     reviewerId: string,
     reviewNote?: string,
+    /**
+     * Runs inside the decision's transaction (V-074): the admin path writes its audit entry here,
+     * so the role change and its audit commit together or not at all.
+     */
+    onDecided?: (
+      tx: Prisma.TransactionClient,
+      application: { id: string; userId: string; status: string },
+    ) => Promise<unknown>,
   ) {
     const application = await prisma.ambassadorApplication.findUnique({
       where: { id: applicationId },
-      include: { user: { select: { role: true, email: true, name: true } } },
+      include: { user: { select: { email: true, name: true } } },
     });
     if (!application) throw new ApiError(404, "Ambassador application not found.");
     if (application.status !== "PENDING")
@@ -150,6 +160,14 @@ export class AmbassadorService {
       if (decided.count !== 1)
         throw new ApiError(409, "This application has already been reviewed.");
 
+      // The role is read under a row lock inside the transaction, not before it: an admin role
+      // change committed meanwhile is not overwritten with the stale value.
+      const [current] = await tx.$queryRaw<
+        Array<{ role: Parameters<typeof nextRoleAfterReview>[0] }>
+      >`
+        SELECT role FROM "User" WHERE id = ${application.userId} FOR UPDATE`;
+      if (!current) throw new ApiError(404, "Ambassador application not found.");
+
       await tx.user.update({
         where: { id: application.userId },
         data: {
@@ -157,29 +175,31 @@ export class AmbassadorService {
           // Only ever move a plain USER up, or an AMBASSADOR back down. Writing the role
           // unconditionally meant reviewing an ADMIN's own application silently stripped
           // their admin access — on approval *and* on rejection.
-          role: nextRoleAfterReview(application.user.role, action),
+          role: nextRoleAfterReview(current.role, action),
         },
       });
 
-      return tx.ambassadorApplication.findUniqueOrThrow({ where: { id: applicationId } });
+      const decidedApplication = await tx.ambassadorApplication.findUniqueOrThrow({
+        where: { id: applicationId },
+      });
+      if (onDecided) await onDecided(tx, decidedApplication);
+      return decidedApplication;
     });
 
-    // One mail per decision (V-181): only the review that won the transition sends it. A failed
-    // send is logged and never undoes the decision; the status page shows it either way.
-    if (application.user.email) {
-      try {
-        await sendAmbassadorDecisionEmail(application.user.email, {
-          decision: status,
-          firstName: application.user.name?.trim().split(/\s+/)[0] ?? "",
-          reviewNote: reviewNote?.trim() || null,
-        });
-      } catch (error) {
+    // One mail per decision (V-181): only the review that won the transition sends it. Sent off
+    // the request path; a failed send is logged and never undoes the decision.
+    const email = application.user.email;
+    if (email)
+      void sendAmbassadorDecisionEmail(email, {
+        decision: status,
+        firstName: application.user.name?.trim().split(/\s+/)[0] ?? "",
+        reviewNote: reviewNote?.trim() || null,
+      }).catch((error: unknown) => {
         logger.warn("Failed to send the ambassador decision email", {
           applicationId,
           error: error instanceof Error ? error.message : String(error),
         });
-      }
-    }
+      });
 
     return updatedApplication;
   }

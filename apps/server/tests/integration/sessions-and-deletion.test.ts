@@ -177,7 +177,7 @@ describe("self-service account deletion (V-118, V-048, V-021)", () => {
       `billing:summary:${user.id}`,
       `billing:history:${user.id}`,
       `credits:summary:${user.id}`,
-      `credits:history:v2:${user.id}`,
+      `credits:history:v3:${user.id}`,
       `affiliate:dashboard:${user.id}`,
     ];
     for (const key of keys) await cacheSet(key, { stale: true }, 3600);

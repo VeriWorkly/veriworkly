@@ -79,10 +79,38 @@ const mockRedis = {
     return (Array.isArray(keys) ? keys : [keys]).filter((key) => mockRedisStore.has(key)).length;
   }),
 
-  // Stands in for the two scripts the view code runs: the portfolio view buffer and the
-  // compare-and-delete lock release.
+  getDel: vi.fn((key: string) => {
+    const value = mockRedisStore.get(key) ?? null;
+    mockRedisStore.delete(key);
+    return Promise.resolve(value);
+  }),
+
+  // Stands in for the scripts the view code runs: the share view record, the portfolio view
+  // buffer, the pending-count settle and the compare-and-delete lock release.
   eval: vi.fn(
-    (_script: string, { keys, arguments: args }: { keys: string[]; arguments: string[] }) => {
+    (script: string, { keys, arguments: args }: { keys: string[]; arguments: string[] }) => {
+      if (script.includes("LPUSH")) {
+        const [buffer, counts, lastViewed] = keys as [string, string, string];
+        const [record, linkId, timestamp] = args as [string, string, string];
+        mockRedis.lPush(buffer, record);
+        mockRedis.hIncrBy(counts, linkId, 1);
+        mockRedis.hSet(lastViewed, linkId, timestamp);
+        return Promise.resolve(1);
+      }
+      if (script.includes("HDEL")) {
+        const [marker, ...pendingKeys] = keys as [string, ...string[]];
+        if (mockRedisStore.has(marker)) return Promise.resolve(0);
+        const [dateKey, ...counts] = args as [string, ...string[]];
+        pendingKeys.forEach((key, index) => {
+          const hash = mockRedisStore.get(key) ?? {};
+          const left = (Number(hash[dateKey]) || 0) - Number(counts[index]);
+          if (left <= 0) delete hash[dateKey];
+          else hash[dateKey] = left;
+          mockRedisStore.set(key, hash);
+        });
+        mockRedisStore.set(marker, "1");
+        return Promise.resolve(1);
+      }
       if (keys.length === 3) {
         const [buffer, pending, dedup] = keys as [string, string, string];
         if (dedup && mockRedisStore.has(dedup)) return Promise.resolve(0);

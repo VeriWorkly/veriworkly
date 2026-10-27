@@ -25,6 +25,9 @@ const contactSchema = z.object({
   }),
 });
 
+/** No contact form was loaded before this (2024-01-01 UTC). */
+const EARLIEST_FORM_TIMESTAMP_MS = Date.UTC(2024, 0, 1);
+
 router.post("/", async (req, res) => {
   try {
     const parsed = contactSchema.safeParse(req.body);
@@ -66,8 +69,10 @@ router.post("/", async (req, res) => {
     }
 
     // 2. Timing check: If submitted impossibly fast (< 1200ms from form mount), it's automated.
+    // A timestamp from before the form existed (`_ts: 0`, any made-up small number) skipped this
+    // check entirely: it read as a form open for decades.
     const elapsedMs = Date.now() - _ts;
-    if (elapsedMs < 1200 && elapsedMs >= 0) {
+    if ((elapsedMs < 1200 && elapsedMs >= 0) || _ts < EARLIEST_FORM_TIMESTAMP_MS) {
       logger.warn("[Contact] Bot blocked via fast-submission timing check", {
         ip: req.ip,
         elapsedMs,

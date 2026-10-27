@@ -57,7 +57,7 @@ export async function runGitHubSync(
       return;
     }
 
-    // GITHUB_OWNER/GITHUB_REPO unset: said once, not on every tick (V-058).
+    // GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN unset: said once, not on every tick (V-058).
     if (error instanceof ApiError && error.statusCode === 503) {
       if (!warnedNotConfigured) logger.warn(`GitHub sync skipped: ${error.message}`);
       warnedNotConfigured = true;
@@ -92,9 +92,11 @@ export function startGitHubSyncJob() {
     return;
   }
 
-  // GITHUB_OWNER/GITHUB_REPO unset: every tick would fail the same way (V-058).
+  // GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN unset: every tick would fail the same way (V-058).
   if (!isGitHubSyncJobEnabled()) {
-    logger.warn("GitHub sync is not scheduled: GITHUB_OWNER/GITHUB_REPO are not configured.");
+    logger.warn(
+      "GitHub sync is not scheduled: GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN are not all configured.",
+    );
     return;
   }
 

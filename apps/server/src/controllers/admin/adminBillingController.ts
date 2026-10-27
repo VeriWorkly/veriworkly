@@ -75,7 +75,7 @@ export const AdminBillingController = {
     const idempotencyKey =
       req.get("Idempotency-Key")?.trim().slice(0, 128) || input.idempotencyKey || undefined;
 
-    const { transaction } = await AdminBillingService.adjustCredits(
+    const { transaction, replayed } = await AdminBillingService.adjustCredits(
       input.userId,
       input.amount,
       input.reason,
@@ -95,7 +95,8 @@ export const AdminBillingController = {
       },
     );
 
-    return transaction;
+    // `replayed` tells the console a double submit changed nothing (no second grant, no audit).
+    return { ...transaction, replayed };
   }, "Credits adjusted successfully"),
 
   /** GET /admin/billing/entitlements */

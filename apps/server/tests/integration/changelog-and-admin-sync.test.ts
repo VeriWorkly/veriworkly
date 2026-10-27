@@ -319,3 +319,38 @@ describe("the editedAt backfill migration (V-066)", () => {
     expect(editedAt["edited-audited"]).toEqual(auditedAt);
   });
 });
+
+describe("changelog release LOWs", () => {
+  it("skips prereleases and strips an em-dash version prefix from the title", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/releases") && url.includes("page=1"))
+        return json([
+          { ...release("### Fixed\n- a fix"), name: "v4.1.0 — Spring" },
+          {
+            ...release("### Added\n- preview"),
+            id: 2,
+            tag_name: "v4.2.0-rc.1",
+            name: "v4.2.0-rc.1 — Preview",
+            prerelease: true,
+          },
+        ]);
+      return json([]);
+    });
+
+    await syncChangelogFromGitHubReleases();
+
+    const entries = await prisma.changelogEntry.findMany({ select: { id: true, title: true } });
+    expect(entries).toEqual([{ id: "v4-1-0", title: "Spring" }]);
+  });
+
+  it("does not double the v of a version an admin typed with one", async () => {
+    const created = await asAdmin("post", `${ADMIN}/changelog`, {
+      version: "v3.32.0",
+      title: "Typed with a v",
+      type: "minor",
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.id).toBe("v3-32-0");
+  });
+});

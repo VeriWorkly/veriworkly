@@ -74,6 +74,9 @@ services:
       # Better Auth Core
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required (at least 32 characters)}
       AUTH_BASE_URL: ${AUTH_BASE_URL:?AUTH_BASE_URL is required (public https URL of this API)}
+      # The studio and portfolio reach the API as http://api:8080 (BACKEND_INTERNAL_URL); the auth
+      # routes refuse any other Host than AUTH_BASE_URL's and loopback (V-155).
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-api}
       AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN}
       STUDIO_URL: ${STUDIO_URL}
       STUDIO_LOGIN_URL: ${STUDIO_LOGIN_URL}

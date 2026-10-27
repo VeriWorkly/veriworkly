@@ -1,8 +1,8 @@
 import type { ChangelogType } from "#services/changelog/types";
 
+/** "3.32.0", "v3.32.0" and "Release-v3.32.0" all become "v3-32-0" (never "vv3-32-0"). */
 export function slugifyVersion(version: string): string {
-  return `v${version
-    .trim()
+  return `v${parseReleaseTag(version.trim())
     .replace(/[^\w.]+/g, "-")
     .replace(/\./g, "-")}`;
 }

@@ -81,7 +81,7 @@ describe("runGitHubSync", () => {
     Object.assign(mocks.config.github, { owner: "", repo: "", token: "" });
   });
 
-  it("warns exactly once across runs when GITHUB_OWNER/GITHUB_REPO are empty (V-058)", async () => {
+  it("warns exactly once across runs when GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN are empty (V-058)", async () => {
     await runGitHubSync("cron");
     await runGitHubSync("cron");
     await runGitHubSync("cron");
@@ -90,6 +90,14 @@ describe("runGitHubSync", () => {
     expect(mocks.logger.warn.mock.calls[0][0]).toMatch(/not configured/);
     expect(mocks.logger.error).not.toHaveBeenCalled();
     // The guard runs before the lock, so an unconfigured sync never touches Redis.
+    expect(mocks.redisSet).not.toHaveBeenCalled();
+  });
+
+  it("does not sync anonymously: owner and repo without a token is not configured (V-058)", async () => {
+    Object.assign(mocks.config.github, { owner: "x", repo: "y", token: "" });
+
+    await runGitHubSync("cron");
+
     expect(mocks.redisSet).not.toHaveBeenCalled();
   });
 

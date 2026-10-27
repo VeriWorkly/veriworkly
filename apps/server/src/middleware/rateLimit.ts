@@ -126,7 +126,10 @@ function getSanitizedPath(path: string): string {
  */
 type RouterLayer = {
   regexp: RegExp & { fast_slash?: boolean; fast_star?: boolean };
-  route?: { _handles_method(method: string): boolean };
+  route?: {
+    path: string | RegExp | Array<string | RegExp>;
+    _handles_method(method: string): boolean;
+  };
   handle?: { stack?: RouterLayer[] };
 };
 
@@ -138,7 +141,18 @@ function layerPrefix(layer: RouterLayer, path: string): string | null {
   return layer.regexp.exec(path)?.[0] ?? null;
 }
 
-function routeExists(stack: RouterLayer[], path: string, method: string): boolean {
+/**
+ * The pattern of the route that would answer (mount prefixes as matched, then the route's own
+ * path as declared, e.g. `/api/v1/documents/:id`), or null when none would. Keying on the pattern
+ * rather than the raw path keeps one bucket per route and client: `/documents/<any id>` or any
+ * sub-path of a wildcard route (`/api/v1/auth/*`) cannot mint a new key per value (V-162).
+ */
+function matchedRoutePattern(
+  stack: RouterLayer[],
+  path: string,
+  method: string,
+  mountedAt = "",
+): string | null {
   for (const layer of stack) {
     if (layer.route) {
       if (
@@ -146,7 +160,7 @@ function routeExists(stack: RouterLayer[], path: string, method: string): boolea
         // Express answers OPTIONS itself for any path a route matches.
         (method === "OPTIONS" || layer.route._handles_method(method))
       )
-        return true;
+        return `${mountedAt}${String(layer.route.path)}`;
       continue;
     }
 
@@ -157,10 +171,18 @@ function routeExists(stack: RouterLayer[], path: string, method: string): boolea
     if (prefix === null) continue;
 
     const rest = path.slice(prefix.length);
-    if (routeExists(subStack, rest.startsWith("/") ? rest : `/${rest}`, method)) return true;
+    const pattern = matchedRoutePattern(
+      subStack,
+      rest.startsWith("/") ? rest : `/${rest}`,
+      method,
+      // A mount prefix is literal text in this app; a parameterised one would still be bounded
+      // by the per-client global limit.
+      `${mountedAt}${prefix}`,
+    );
+    if (pattern !== null) return pattern;
   }
 
-  return false;
+  return null;
 }
 
 /**
@@ -169,12 +191,47 @@ function routeExists(stack: RouterLayer[], path: string, method: string): boolea
  * would see is counted under one `unmatched` key per client instead of a key per raw path.
  * Without a router to ask (a bare request object), the path is treated as matched.
  */
-function isMatchedRoute(req: Request): boolean {
+const AUTH_PREFIX = "/api/v1/auth";
+
+/**
+ * better-auth answers every path under /api/v1/auth from one wildcard route, so the route pattern
+ * would put sign-in, callbacks, OTP, get-session and sign-out in one bucket. Auth requests are
+ * keyed by the better-auth endpoint they reach instead (`app.locals.authEndpointPaths`, from
+ * `auth.api`, set in app.ts): a bounded set, a parameterised one on its pattern. A path no
+ * endpoint answers is unmatched (V-162).
+ */
+function authEndpointPattern(endpoints: readonly string[], path: string): string | null {
+  const rest = path.slice(AUTH_PREFIX.length) || "/";
+  const restSegments = rest.split("/");
+  for (const endpoint of endpoints) {
+    const pattern = normalizePath(endpoint);
+    const segments = pattern.split("/");
+    // Segment by segment: a `:param` matches any one segment, the rest literally.
+    if (
+      segments.length === restSegments.length &&
+      segments.every((segment, i) => segment.startsWith(":") || segment === restSegments[i])
+    )
+      return `${AUTH_PREFIX}${pattern}`;
+  }
+  return null;
+}
+
+function routePattern(req: Request): string | null {
   const stack = (req.app as unknown as { _router?: { stack?: RouterLayer[] } } | undefined)?._router
     ?.stack;
-  if (!stack) return true;
+  // No router to ask (a bare request object): the sanitized path stands in for the pattern.
+  if (!stack) return getSanitizedPath(normalizePath(req.path));
 
-  return routeExists(stack, req.path, req.method.toUpperCase());
+  const path = normalizePath(req.path);
+  const authEndpoints = (req.app.locals as { authEndpointPaths?: readonly string[] })
+    .authEndpointPaths;
+  if (authEndpoints && (path === AUTH_PREFIX || path.startsWith(`${AUTH_PREFIX}/`)))
+    return authEndpointPattern(authEndpoints, path);
+
+  const pattern = matchedRoutePattern(stack, req.path, req.method.toUpperCase());
+  // Routing is case-insensitive and non-strict: one spelling per route (a router's "/" route
+  // under its mount prefix would otherwise end in a slash).
+  return pattern === null ? null : normalizePath(pattern);
 }
 
 type RouteLimit = {
@@ -551,7 +608,8 @@ export const rateLimitMiddleware = async (req: Request, res: Response, next: Nex
   if (isRateLimitExempt(req)) return next();
 
   const path = normalizePath(req.path);
-  const matched = isMatchedRoute(req);
+  const pattern = routePattern(req);
+  const matched = pattern !== null;
   // An unmatched path takes the generic class: no handler behind it sends mail or spends credits.
   const { windowMs, maxRequests, failClosed } = matched
     ? getRouteLimitConfig(path, isInternalStatsRequest(req, path))
@@ -564,7 +622,7 @@ export const rateLimitMiddleware = async (req: Request, res: Response, next: Nex
   const key = getClientKey(req);
 
   const routeKey = matched
-    ? `rate-limit:${req.method}:${getSanitizedPath(path)}:${key}`
+    ? `rate-limit:${req.method}:${pattern}:${key}`
     : `rate-limit:unmatched:${key}`;
   const globalKey = `rate-limit:global:${key}`;
   // The autosave class is counted per user after auth (`autosaveRateLimit`); here only globally.

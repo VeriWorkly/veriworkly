@@ -55,6 +55,7 @@ export async function getBillingSummary() {
     walletTotals,
     creditsGranted30,
     creditsSpent30,
+    creditsAdjusted30,
     webhooksByStatus,
     activeEntitlements,
   ] = await Promise.all([
@@ -82,6 +83,11 @@ export async function getBillingSummary() {
     }),
     prisma.creditTransaction.aggregate({
       where: { createdAt: { gte: since30 }, type: "DEBIT" },
+      _sum: { amount: true },
+    }),
+    // Admin adjustments (V-011): goodwill and restored credits are neither paid grants nor AI spend.
+    prisma.creditTransaction.aggregate({
+      where: { createdAt: { gte: since30 }, type: "ADJUSTMENT" },
       _sum: { amount: true },
     }),
     prisma.billingWebhookEvent.groupBy({ by: ["status"], _count: { _all: true } }),
@@ -116,6 +122,8 @@ export async function getBillingSummary() {
       grantedLast30Days: creditsGranted30._sum.amount ?? 0,
       // DEBIT rows are stored as negative amounts; report the magnitude.
       spentLast30Days: Math.abs(creditsSpent30._sum.amount ?? 0),
+      // Net of admin additions and removals, signed.
+      adjustedLast30Days: creditsAdjusted30._sum.amount ?? 0,
     },
     webhooks: {
       byStatus: webhookCounts,
@@ -586,6 +594,11 @@ export async function grantEntitlement(input: {
   });
 
   if (!user) throw new ApiError(404, "User not found.");
+  // A grant that has already ended would be recorded and audited as access given while giving none.
+  if (input.endsAt && new Date(input.endsAt).getTime() <= Date.now())
+    throw new ApiError(400, "The entitlement end date must be in the future.", {
+      code: "ENDS_AT_IN_PAST",
+    });
 
   const grant = await prisma.$transaction(async (tx) => {
     const created = await tx.entitlementGrant.create({
@@ -634,10 +647,16 @@ export async function revokeEntitlement(
     );
 
   const revoked = await prisma.$transaction(async (tx) => {
+    // Conditional on the grant still being live: two concurrent revokes write one audit entry
+    // and the second gets the same 409 as a sequential one.
+    const changed = await tx.entitlementGrant.updateMany({
+      where: { id: grantId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (!changed.count) throw new ApiError(409, "This entitlement is already revoked.");
     const updated = await tx.entitlementGrant.update({
       where: { id: grantId },
       data: {
-        revokedAt: new Date(),
         metadata: {
           ...((grant.metadata as Record<string, unknown> | null) ?? {}),
           revokeReason: reason,

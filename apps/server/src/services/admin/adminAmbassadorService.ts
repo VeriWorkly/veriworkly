@@ -10,7 +10,11 @@ import type {
 } from "#validators/admin/adminAmbassadorValidator";
 import type { z } from "zod";
 import { listPage } from "#utils/pagination";
-import { getAuditHistory } from "#services/admin/adminAuditService";
+import {
+  getAuditHistory,
+  writeAdminAudit,
+  type AdminAuditInput,
+} from "#services/admin/adminAuditService";
 
 type RosterQuery = z.infer<typeof adminAmbassadorRosterQuerySchema>;
 
@@ -161,7 +165,20 @@ export async function reviewApplication(
   applicationId: string,
   action: "APPROVE" | "REJECT",
   reviewerId: string,
-  reviewNote?: string,
+  reviewNote: string | undefined,
+  audit: AdminAuditInput,
 ) {
-  return AmbassadorService.reviewApplication(applicationId, action, reviewerId, reviewNote);
+  // The audit entry commits with the decision and the role change (V-074).
+  return AmbassadorService.reviewApplication(
+    applicationId,
+    action,
+    reviewerId,
+    reviewNote,
+    (tx, application) =>
+      writeAdminAudit(tx, {
+        ...audit,
+        targetId: application.id,
+        metadata: { ...audit.metadata, userId: application.userId, status: application.status },
+      }),
+  );
 }

@@ -163,6 +163,14 @@ What to alert on (example PromQL):
 
 Counters reset when a worker restarts; `rate()` handles that.
 
+## 🌐 Allowed Host headers
+
+The auth routes (`/api/v1/auth/*`) answer only to the host of `AUTH_BASE_URL`, to loopback (`localhost`, `127.0.0.1`, `[::1]`) and to the hosts listed in `ALLOWED_HOSTS` (comma-separated, with or without a port); any other `Host` gets `400 HOST_NOT_ALLOWED` (V-155). better-auth builds its request URL from the raw `Host`, so a forged one is refused before it reaches it.
+
+- **pm2 on the VPS:** nothing to set. nginx forwards `api.veriworkly.com` (the `AUTH_BASE_URL` host) and same-machine callers use loopback.
+- **Docker Compose:** `compose.yaml` sets `ALLOWED_HOSTS=api`, the service name the studio and portfolio call through `BACKEND_INTERNAL_URL` (`http://api:8080`).
+- Any other internal name a client reaches the API by (a staging hostname, a container alias) must be added to `ALLOWED_HOSTS`.
+
 ## 🛑 Graceful shutdown and process managers
 
 On SIGTERM or SIGINT each worker stops accepting connections, drains HTTP for up to 10 s and lets a running background job finish for up to 20 s (both in parallel), then closes Redis and Prisma. The cluster master force-kills a worker still alive after 35 s. A process manager must therefore wait **at least 40 s** before its own SIGKILL, or it cuts a flush off mid-transaction:

@@ -81,6 +81,11 @@ export const config = {
   auth: {
     secret: process.env.AUTH_SECRET || "dev-auth-secret",
     baseUrl: process.env.AUTH_BASE_URL || "http://localhost:8080",
+    /** Hosts besides AUTH_BASE_URL's (and loopback) the auth routes answer to (V-155). */
+    allowedHosts: (process.env.ALLOWED_HOSTS || "")
+      .split(",")
+      .map((host) => host.trim())
+      .filter(Boolean),
     studioUrl: configuredStudioUrl,
     studioLoginUrl: configuredStudioLoginUrl,
     ipAddressHeaders: (
@@ -147,7 +152,7 @@ export const config = {
   },
 
   admin: {
-    email: (process.env.ADMIN_EMAIL || "").toLowerCase(),
+    email: (process.env.ADMIN_EMAIL || "").trim().toLowerCase(),
   },
 
   rateLimit: {
@@ -252,8 +257,6 @@ export const config = {
     webhookSecret: process.env.DODO_PAYMENTS_WEBHOOK_SECRET || "",
     environment: (process.env.DODO_PAYMENTS_ENVIRONMENT || "test_mode") as
       "test_mode" | "live_mode",
-    portfolioProSevenDayProductId:
-      process.env.DODO_PAYMENTS_PORTFOLIO_PRO_SEVEN_DAY_PRODUCT_ID || "",
     bundleOneDayProductId: process.env.DODO_PAYMENTS_BUNDLE_ONE_DAY_PRODUCT_ID || "",
     bundleSevenDayProductId: process.env.DODO_PAYMENTS_BUNDLE_SEVEN_DAY_PRODUCT_ID || "",
     aiCreditsMonthlyProductId: process.env.DODO_PAYMENTS_AI_CREDITS_MONTHLY_PRODUCT_ID || "",

@@ -209,7 +209,7 @@ describe("GET /api/v1/health/jobs", () => {
         );
         expect(github?.enabled).toBe(false);
 
-        Object.assign(config.github, { owner: "x", repo: "y" });
+        Object.assign(config.github, { owner: "x", repo: "y", token: "token" });
         const configured = await request(app)
           .get("/api/v1/health/jobs")
           .set("x-internal-key", INTERNAL_API_KEY_VALUE);

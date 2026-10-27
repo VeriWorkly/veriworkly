@@ -22,10 +22,15 @@ import type {
   GitHubItemSnapshot,
 } from "./types.js";
 
-const PROJECT_URL = config.github.projectUrl;
-const REDIS_STATS_KEY = `github:stats:${PROJECT_URL}`;
+/**
+ * The row and cache keys name the project. Unset, the key stays "" (`github:stats:`), which is
+ * what the stored sync row and its cache already use: deriving a new one would orphan that row and
+ * blank the public stats until the next sync (V-058).
+ */
+export const GITHUB_PROJECT_URL = config.github.projectUrl;
+const REDIS_STATS_KEY = `github:stats:${GITHUB_PROJECT_URL}`;
 /** Generation namespace: a sync invalidates every query variant with one INCR, not a SCAN. */
-const ISSUES_CACHE_NAMESPACE = `github:issues:${encodeURIComponent(PROJECT_URL)}`;
+const ISSUES_CACHE_NAMESPACE = `github:issues:${encodeURIComponent(GITHUB_PROJECT_URL)}`;
 const ISSUES_CACHE_TTL = 300; // 5 minutes
 
 /**
@@ -144,7 +149,7 @@ export async function getGitHubStats(): Promise<GitHubStatsResponse | null> {
   if (cached) return cached;
 
   const latest = await prisma.gitHubSync.findUnique({
-    where: { projectUrl: PROJECT_URL },
+    where: { projectUrl: GITHUB_PROJECT_URL },
   });
 
   if (!latest) return null;
@@ -206,7 +211,7 @@ export async function getGitHubIssues(query: GitHubIssuesQuery): Promise<GitHubI
   if (cached) return cached;
 
   const sync = await prisma.gitHubSync.findUnique({
-    where: { projectUrl: PROJECT_URL },
+    where: { projectUrl: GITHUB_PROJECT_URL },
     select: { id: true, syncedAt: true },
   });
 
@@ -270,7 +275,7 @@ export async function getGitHubIssues(query: GitHubIssuesQuery): Promise<GitHubI
  */
 async function shouldSyncGitHubStats(): Promise<boolean> {
   const latest = await prisma.gitHubSync.findUnique({
-    where: { projectUrl: PROJECT_URL },
+    where: { projectUrl: GITHUB_PROJECT_URL },
     select: { syncedAt: true },
   });
 
@@ -281,9 +286,13 @@ async function shouldSyncGitHubStats(): Promise<boolean> {
   return Date.now() - new Date(latest.syncedAt).getTime() >= TWELVE_HOURS_MS;
 }
 
-/** Owner and repo are what the issue sync cannot run without (V-058). */
+/**
+ * Owner, repo and a token are what the issue sync cannot run without (V-058): without a token it
+ * ran anonymously at GitHub's 60 requests an hour and failed part-way. Same rule as the changelog.
+ */
 export function isGitHubIssueSyncConfigured(): boolean {
-  return Boolean(config.github.owner && config.github.repo);
+  const { owner, repo, token } = config.github;
+  return Boolean(owner && repo && token);
 }
 
 /**
@@ -300,14 +309,14 @@ async function recordSyncFailure(error: unknown) {
 
   try {
     const row = await prisma.gitHubSync.findUnique({
-      where: { projectUrl: PROJECT_URL },
+      where: { projectUrl: GITHUB_PROJECT_URL },
       select: { syncedAt: true },
     });
 
     if (!row) return;
 
     await prisma.gitHubSync.update({
-      where: { projectUrl: PROJECT_URL },
+      where: { projectUrl: GITHUB_PROJECT_URL },
       data: { lastSyncStatus: "error", lastError: message.slice(0, 500), syncedAt: row.syncedAt },
     });
   } catch (recordError) {
@@ -377,7 +386,10 @@ export async function syncGitHubStatsFromGitHub(
   // Without these the request is repos///issues, a 404 on every run.
   if (!isGitHubIssueSyncConfigured()) {
     await options.lock?.release();
-    throw new ApiError(503, "GitHub sync is not configured (GITHUB_OWNER/GITHUB_REPO)");
+    throw new ApiError(
+      503,
+      "GitHub sync is not configured (GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN)",
+    );
   }
 
   const lock = options.lock ?? (await acquireGitHubSyncLock());
@@ -403,7 +415,7 @@ export async function syncGitHubStatsFromGitHub(
     const { owner, repo, token } = config.github;
 
     const existingSync = await prisma.gitHubSync.findUnique({
-      where: { projectUrl: PROJECT_URL },
+      where: { projectUrl: GITHUB_PROJECT_URL },
       select: { etag: true, id: true, data: true },
     });
 
@@ -463,10 +475,10 @@ export async function syncGitHubStatsFromGitHub(
     const syncRecord = await prisma.$transaction(
       async (tx) => {
         const sync = await tx.gitHubSync.upsert({
-          where: { projectUrl: PROJECT_URL },
+          where: { projectUrl: GITHUB_PROJECT_URL },
           create: {
             projectName: `${owner}/${repo}`,
-            projectUrl: PROJECT_URL,
+            projectUrl: GITHUB_PROJECT_URL,
             issueCount: 0,
             todoCount: 0,
             inProgressCount: 0,

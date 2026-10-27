@@ -18,9 +18,15 @@ vi.mock("#utils/requestIp", () => ({
 const { logger } = await import("#lib/logger");
 const { loggingMiddleware } = await import("#middleware/logging");
 
-function finish(statusCode: number) {
-  const res = Object.assign(new EventEmitter(), { statusCode, locals: {} });
-  const req = { method: "GET", path: "/api/v1/documents", headers: {} } as Request;
+function finish(statusCode: number, locals: Record<string, unknown> = {}) {
+  const res = Object.assign(new EventEmitter(), { statusCode, locals });
+  // Inside a router `req.path` is router-relative; the log names the full path, never the query.
+  const req = {
+    method: "GET",
+    path: "/",
+    originalUrl: "/api/v1/documents?email=someone@example.com",
+    headers: {},
+  } as unknown as Request;
 
   loggingMiddleware(req, res as unknown as Response, vi.fn());
   res.emit("finish");
@@ -49,6 +55,13 @@ describe("request log levels", () => {
     expect(logger.warn).toHaveBeenCalledTimes(1);
     const [line] = vi.mocked(logger.warn).mock.calls[0]!;
     expect(line).toMatch(new RegExp(`^GET /api/v1/documents ${status} \\d+ms$`));
+  });
+
+  it("logs nothing for a program switched off by config (an expected 503)", () => {
+    finish(503, { programDisabled: true });
+
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it("logs nothing for a success", () => {
