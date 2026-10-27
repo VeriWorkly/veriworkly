@@ -771,7 +771,7 @@
           "name": "cursor",
           "in": "query",
           "required": false,
-          "schema": { "type": "string", "minLength": 1, "maxLength": 2048 }
+          "schema": { "type": "string", "minLength": 1, "maxLength": 8192 }
         }
       ]
     },
@@ -780,7 +780,7 @@
         "schema": {
           "type": "object",
           "properties": {
-            "id": { "type": "string" },
+            "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
             "type": {
               "type": "string",
               "enum": ["RESUME", "COVER_LETTER", "PORTFOLIO", "LINK_IN_BIO"]

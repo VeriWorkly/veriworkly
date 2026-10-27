@@ -25,8 +25,18 @@ const documentTagsSchema = z
   .max(20)
   .transform((tags) => normalizeTags(tags));
 
+/**
+ * A client-chosen document id (V-303). Bounded like a paging cursor's position id
+ * (`documentListCursor.ts`, at most 64): a longer one minted a cursor the server then refused, so
+ * every paged walk ending on that document failed. The studio's ids (`resume-<time>-<random>`)
+ * and cuids fit.
+ */
+const documentIdSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{1,64}$/, "Use 1 to 64 letters, digits, '-' or '_' for a document id.");
+
 export const documentCreateSchema = z.object({
-  id: z.string().optional(),
+  id: documentIdSchema.optional(),
   type: documentTypeSchema,
   title: documentTitleSchema.optional(),
   slug: documentSlugSchema.optional(),
@@ -76,7 +86,8 @@ export const documentListQuerySchema = z
      */
     limit: z.coerce.number().int().min(1).max(DOCUMENT_PAGE_MAX_LIMIT).optional(),
     /** The previous page's `nextCursor`, sent back unchanged with the same filters. */
-    cursor: z.string().min(1).max(2048).optional(),
+    // Room for a cursor naming a document id stored before ids were bounded (V-303).
+    cursor: z.string().min(1).max(8192).optional(),
   })
   .refine(
     (query) =>

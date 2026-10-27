@@ -123,3 +123,80 @@ describe("V-302 a moderator-locked document holds the account's share links", ()
     expect(response.status, JSON.stringify(response.body)).toBe(201);
   });
 });
+
+describe("V-303 a document id is bounded like the paging cursor's", () => {
+  function create(user: TestUser, id: string) {
+    return as(user, request(app).post("/api/v1/documents")).send({
+      id,
+      type: "RESUME",
+      title: "Resume",
+    });
+  }
+
+  it("refuses an id longer than 64 characters or outside [A-Za-z0-9_-], and writes nothing", async () => {
+    const user = await createUserWithSession();
+
+    for (const id of ["a".repeat(65), "has space", "slash/id", ""]) {
+      const response = await create(user, id);
+      expect(response.status, `${JSON.stringify(id)} ${JSON.stringify(response.body)}`).toBe(400);
+    }
+    expect(await prisma.document.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it("accepts the studio's ids and a 64-character one, and pages across them", async () => {
+    const user = await createUserWithSession();
+    const longest = `r${"x".repeat(63)}`;
+    expect((await create(user, "resume-mh2k9x-a1b2c3")).status).toBe(201);
+    await prisma.document.create({
+      data: {
+        id: longest,
+        userId: user.id,
+        type: "COVER_LETTER",
+        title: "L",
+        slug: "l",
+        content: {},
+      },
+    });
+
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await as(
+        user,
+        request(app).get(`/api/v1/documents?limit=1${cursor ? `&cursor=${cursor}` : ""}`),
+      );
+      expect(page.status, JSON.stringify(page.body)).toBe(200);
+      seen.push(...page.body.data.map((row: { id: string }) => row.id));
+      cursor = page.body.nextCursor ?? undefined;
+    } while (cursor && seen.length < 10);
+
+    expect(seen.sort()).toEqual(["resume-mh2k9x-a1b2c3", longest].sort());
+  });
+
+  it("still pages across a longer id stored before the bound", async () => {
+    const user = await createUserWithSession();
+    const legacy = `legacy/${"y".repeat(300)}`;
+    await prisma.document.create({
+      data: { userId: user.id, type: "COVER_LETTER", title: "Other", slug: "other", content: {} },
+    });
+    // Newest, so the first page ends on it and the cursor carries its id.
+    await prisma.document.create({
+      data: { id: legacy, userId: user.id, type: "RESUME", title: "Old", slug: "old", content: {} },
+    });
+
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await as(
+        user,
+        request(app).get(`/api/v1/documents?limit=1${cursor ? `&cursor=${cursor}` : ""}`),
+      );
+      expect(page.status, JSON.stringify(page.body)).toBe(200);
+      seen.push(...page.body.data.map((row: { id: string }) => row.id));
+      cursor = page.body.nextCursor ?? undefined;
+    } while (cursor && seen.length < 10);
+
+    expect(seen).toContain(legacy);
+    expect(seen).toHaveLength(2);
+  });
+});

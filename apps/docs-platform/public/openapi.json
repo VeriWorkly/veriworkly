@@ -2340,7 +2340,7 @@
             "name": "cursor",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 2048 },
+            "schema": { "type": "string", "minLength": 1, "maxLength": 8192 },
             "description": "The previous page's `nextCursor`, unchanged. Opaque; do not build or edit it."
           }
         ],
@@ -6267,7 +6267,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Optional client-generated id. If a document with this id already exists for the caller, it is returned as-is (idempotent create)."
+            "description": "Optional client-generated id. If a document with this id already exists for the caller, it is returned as-is (idempotent create).",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
           },
           "type": {
             "type": "string",
