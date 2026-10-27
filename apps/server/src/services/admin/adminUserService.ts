@@ -12,7 +12,7 @@ import {
   ADMIN_AUDIT_ACTIONS,
   writeAdminAudit,
   type AdminAuditInput,
-  getAuditHistory,
+  getUserAuditHistory,
 } from "#services/admin/adminAuditService";
 import {
   ACCOUNT_DELETION_TRANSACTION,
@@ -254,7 +254,7 @@ export async function getUserDetail(userId: string) {
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
-    getAuditHistory("User", userId),
+    getUserAuditHistory(userId),
     describeAccessForUsers([userId]),
   ]);
 

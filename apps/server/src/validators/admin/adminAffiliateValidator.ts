@@ -21,12 +21,23 @@ export const adminAffiliateSchema = z
   })
   .refine((value) => value.status || value.tier, "Status or tier is required");
 
+/** `affiliateId` and `userId` name the same filter; two different ids would match nothing. */
+const sameAffiliate = (query: { affiliateId?: string; userId?: string }) =>
+  !query.affiliateId || !query.userId || query.affiliateId === query.userId;
+const sameAffiliateError = {
+  message: "affiliateId and userId name the same affiliate; send one, or the same id in both",
+  path: ["userId"],
+};
+
 export const adminCommissionListQuerySchema = adminPaginationSchema
   .merge(adminSearchSchema)
   .extend({
     status: z.enum(["PENDING", "AVAILABLE", "REVERSED", "PAID"]).optional(),
     affiliateId: z.string().trim().min(1).optional(),
-  });
+    /** Same as `affiliateId`, named as the withdrawals list names it (V-272). */
+    userId: z.string().trim().min(1).optional(),
+  })
+  .refine(sameAffiliate, sameAffiliateError);
 
 export const adminCommissionSchema = z.object({
   referredUserId: z.string().trim().min(1),
@@ -57,7 +68,14 @@ export const adminWithdrawalListQuerySchema = adminPaginationSchema
   .merge(adminSearchSchema)
   .extend({
     status: z.enum(["REQUESTED", "APPROVED", "REJECTED", "PAID"]).optional(),
-  });
+    /**
+     * One affiliate's withdrawals, by exact id (V-272); `query` is a substring search, so ann@x.com
+     * also matched joann@x.com. Either name works.
+     */
+    affiliateId: z.string().trim().min(1).optional(),
+    userId: z.string().trim().min(1).optional(),
+  })
+  .refine(sameAffiliate, sameAffiliateError);
 
 export const adminWithdrawalStatusSchema = z.object({
   status: z.enum(["APPROVED", "REJECTED", "PAID"]),
