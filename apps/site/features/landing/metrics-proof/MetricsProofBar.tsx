@@ -74,7 +74,8 @@ const AnimatedValue = ({
   const [display, setDisplay] = useState(value.toFixed(decimals));
 
   useEffect(() => {
-    if (!isInView) return;
+    // Nothing to count for a figure that starts where it ends (the two zeros).
+    if (!isInView || from === value) return;
 
     const controls = animate(from, value, {
       duration: prefersReducedMotion ? 0 : 1.4,

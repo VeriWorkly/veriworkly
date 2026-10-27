@@ -21,7 +21,7 @@ const AmbassadorApplyNav = () => {
             <Image
               width={20}
               height={20}
-              alt="VeriWorkly Logo"
+              alt=""
               src="/veriworkly-logo.png"
               className="object-contain transition-transform duration-500 group-hover:rotate-12"
             />

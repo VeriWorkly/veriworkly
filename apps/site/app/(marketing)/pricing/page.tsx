@@ -26,7 +26,7 @@ export const metadata: Metadata = buildPageMetadata({
   twitterDescription:
     "Creator Pro, standalone AI credits, or a time-boxed job-hunt pass - pick exactly what your search needs.",
   image: pageOgImage,
-  imageAlt: "VeriWorkly Pricing & AI Credit Packages",
+  imageAlt: "VeriWorkly plans and pricing",
   keywords: [
     "VeriWorkly pricing",
     "AI credit packages",

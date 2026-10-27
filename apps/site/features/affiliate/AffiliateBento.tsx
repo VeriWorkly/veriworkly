@@ -8,19 +8,22 @@ import { siteConfig } from "@/config/site";
 const AffiliateBento = () => {
   const [username, setUsername] = useState("yourcode");
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   // Mirrors the studio's CopyReferralLinkButton; the real code is assigned on join, so this only previews the shape.
-  const referralLink = `${siteConfig.links.app}/login?ref=${username || "yourcode"}`;
+  const referralLink = `${siteConfig.links.app}/login?ref=${encodeURIComponent(username || "yourcode")}`;
   const [scans, setScans] = useState<string[]>(["Filter initialized.", "Network trace: OK."]);
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(referralLink);
     } catch {
-      // Clipboard refused (permissions, insecure origin): the link below is select-all.
+      // Clipboard refused (permissions, insecure origin): point at the select-all link below.
+      setCopyFailed(true);
       return;
     }
 
+    setCopyFailed(false);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -120,6 +123,9 @@ const AffiliateBento = () => {
                 </AnimatePresence>
               </m.button>
             </div>
+            <p role="status" className="text-muted text-xs">
+              {copyFailed ? "Couldn't copy here. Select the link below and copy it." : ""}
+            </p>
             <div className="w-full truncate rounded-xl border border-zinc-200/50 bg-zinc-100/40 p-3 font-mono text-[10px] text-blue-600 select-all dark:border-zinc-800/40 dark:bg-zinc-950/30 dark:text-blue-400">
               {referralLink}
             </div>

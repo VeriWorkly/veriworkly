@@ -22,7 +22,7 @@ export interface GitHubIssueItem {
 /** As apps/server/src/services/github/issues.ts getGitHubStats returns it. */
 export interface GitHubProjectStats {
   projectName: string;
-  /** Not sent by the server today; the page falls back to the repository link. */
+  /** Empty when the server has no project URL configured; the page falls back to the repository link. */
   projectUrl?: string;
   stats: {
     total: number;
@@ -34,7 +34,7 @@ export interface GitHubProjectStats {
     completionRate: string;
   };
   syncedAt: string;
-  /** Not sent by the server today. */
+  /** When the next scheduled sync runs; null when no schedule is configured. */
   nextSyncAt?: string | null;
 }
 

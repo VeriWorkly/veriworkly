@@ -28,7 +28,7 @@ const AboutPrograms = () => {
     <PageSection
       tone="card"
       title="Help other people get hired."
-      lede="Two ways to bring VeriWorkly to the people around you, and be paid back for it."
+      lede="Two ways to bring VeriWorkly to the people around you: earn commission as an affiliate, or represent us on campus as an ambassador."
     >
       <ul className={`grid gap-6 ${open.length > 1 ? "md:grid-cols-2" : ""}`}>
         {open.map((program) => (

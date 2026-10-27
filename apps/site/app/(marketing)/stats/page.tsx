@@ -106,7 +106,8 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
     }).catch(() => null),
   ]);
 
-  const projectUrl = stats?.projectUrl ?? siteConfig.links.github;
+  // || not ??: an empty projectUrl must fall back too, or the link renders as href="".
+  const projectUrl = stats?.projectUrl || siteConfig.links.github;
 
   const isFiltered = kind !== "all" || status !== "all";
 
