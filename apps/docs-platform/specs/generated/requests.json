@@ -1271,6 +1271,43 @@
         }
       }
     },
+    "POST /api/v1/billing/subscription/change-plan/preview": {
+      "requestBody": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "productKey": { "type": "string", "enum": ["ai_credits", "portfolio_pro", "bundle"] },
+            "interval": { "type": "string", "enum": ["monthly", "annual"] }
+          },
+          "required": ["productKey", "interval"]
+        }
+      }
+    },
+    "POST /api/v1/billing/subscription/change-plan": {
+      "requestBody": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "productKey": { "type": "string", "enum": ["ai_credits", "portfolio_pro", "bundle"] },
+            "interval": { "type": "string", "enum": ["monthly", "annual"] },
+            "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          "required": ["productKey", "interval"]
+        }
+      }
+    },
+    "POST /api/v1/stats/events": {
+      "requestBody": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "event": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "value": { "type": "integer", "exclusiveMinimum": 0, "maximum": 1000 }
+          },
+          "required": ["event"]
+        }
+      }
+    },
     "POST /api/v1/shares": {
       "requestBody": {
         "schema": {
@@ -1376,6 +1413,7 @@
     "GET /api/v1/shares/documents/{documentId}": "page/limit/offset are read leniently by parseOffsetPagination",
     "GET /api/v1/affiliates/leaderboard": "period: anything but all_time means monthly",
     "POST /api/v1/auth/email-otp/send-verification-otp": "Better Auth endpoint",
-    "POST /api/v1/auth/sign-in/email-otp": "Better Auth endpoint"
+    "POST /api/v1/auth/sign-in/email-otp": "Better Auth endpoint",
+    "DELETE /api/v1/users/me": "confirmAffiliateForfeit and confirmedAffiliateForfeitCents are read leniently by the controller"
   }
 }

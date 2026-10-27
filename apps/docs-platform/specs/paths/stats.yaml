@@ -1,0 +1,62 @@
+recordUsageEvent:
+  post:
+    tags:
+      - Stats
+    operationId: recordUsageEvent
+    security:
+      - ApiKeyAuth: []
+    summary: Record Usage Event
+    description: |
+      Counts one product usage event (for example `resume_exported`) toward VeriWorkly's daily
+      usage metrics. Any developer API key may call it, whatever its scopes; the studio calls it
+      from the browser.
+
+      Public callers may send only the allow-listed event names listed under `event`, and every
+      call counts as 1. Events the server records itself, such as `auth_login_success`, cannot be
+      reported. Trusted servers send `x-internal-key` instead of an API key, which also allows
+      `custom_*` names (at most 50 distinct custom names per UTC day) and a `value` up to 1000.
+    parameters:
+      - name: x-internal-key
+        in: header
+        required: false
+        description: Server-to-server secret (`STATS_INTERNAL_KEY`). Never sent from a browser.
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/UsageEventRequest"
+          example:
+            event: "resume_exported"
+    responses:
+      "202":
+        description: The event was counted.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/UsageEventResponse"
+            example:
+              success: true
+              message: "Metric accepted"
+              data:
+                accepted: true
+      "400":
+        description: The body is invalid, or the event name is not allow-listed for public callers.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 400
+              message: "Event 'my_event' is not allowlisted for public access."
+      "401":
+        $ref: "../components/responses.yaml#/UnauthorizedError"
+      "429":
+        description: Rate limited, or an internal caller sent a new custom name past the daily cap.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"

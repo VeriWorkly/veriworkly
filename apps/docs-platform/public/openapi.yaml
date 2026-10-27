@@ -94,6 +94,8 @@ tags:
     description: Affiliate enrollment, referrals, commissions, and withdrawals. Off by default in production behind a feature flag.
   - name: Ambassador
     description: Campus ambassador program application intake. Off by default in production behind a feature flag.
+  - name: Stats
+    description: Product usage events counted toward VeriWorkly's daily usage metrics.
 paths:
   /api/v1/health:
     get:
@@ -223,13 +225,44 @@ paths:
         - ProdSession: []
       summary: Delete Current User
       description: |
-        Permanently deletes the authenticated user's account and every document, portfolio, share
-        link, API key, credit and payout record attached to it, then clears the session cookies.
-        This cannot be undone.
+        Permanently deletes the authenticated user's account with its documents, portfolio, share
+        links, API keys and profile, then clears the session cookies. This cannot be undone.
+
+        Billing and payout records are kept, unlinked from the deleted account, for as long as the law
+        requires: subscriptions, purchases, entitlement grants, the credit wallet and its
+        transactions, affiliate commissions and withdrawals.
 
         Session only: a request authenticated with an API key is rejected with `403`, whatever its
-        scopes. While a subscription is active or past due and not set to cancel, the request is
-        refused with `409`; cancel it from Billing first.
+        scopes. The request is refused with `409` while something could still charge the card or
+        while the user holds an unpaid affiliate balance:
+
+        - a subscription that is active or past due and not set to cancel: cancel it from Billing
+          first;
+        - `details.code: "CHECKOUT_IN_PROGRESS"`: a checkout session is open; finish or cancel it
+          first;
+        - `details.code: "AFFILIATE_BALANCE_FORFEIT"`: deleting forfeits the unpaid commissions in
+          `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the
+          amount, then repeat the request with `confirmAffiliateForfeit: true` and
+          `confirmedAffiliateForfeitCents` set to the amount shown. If the balance has grown past
+          that amount, the request is refused again with the new one.
+      parameters:
+        - name: confirmAffiliateForfeit
+          in: query
+          required: false
+          description: Same as `confirmAffiliateForfeit` in the body, for clients that cannot send a body with `DELETE`.
+          schema:
+            type: string
+            enum:
+              - "true"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteAccountRequest"
+            example:
+              confirmAffiliateForfeit: true
+              confirmedAffiliateForfeitCents: 4000
       responses:
         "200":
           description: Account deleted.
@@ -264,15 +297,42 @@ paths:
                 statusCode: 404
                 message: User not found
         "409":
-          description: A live subscription must be cancelled first.
+          description: |
+            A live subscription must be cancelled first, a checkout is open
+            (`details.code: "CHECKOUT_IN_PROGRESS"`), or deleting would forfeit an unpaid affiliate
+            balance that was not confirmed (`details.code: "AFFILIATE_BALANCE_FORFEIT"`, with
+            `amountCents`, `currency`, `availableCents` and `pendingCents`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - $ref: "#/components/schemas/CodedErrorResponse"
+              examples:
+                subscription:
+                  summary: A live subscription
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Cancel your subscription before deleting your account. Open Billing and use Manage Subscription — we cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists.
+                affiliateForfeit:
+                  summary: An unpaid affiliate balance
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: You have 40.00 USD in unpaid affiliate commissions. Deleting your account forfeits it. Confirm to delete anyway.
+                    details:
+                      code: AFFILIATE_BALANCE_FORFEIT
+                      amountCents: 4000
+                      currency: USD
+                      availableCents: 2500
+                      pendingCents: 1500
+        "503":
+          description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: Cancel your subscription before deleting your account. Open Billing and use Manage Subscription — we cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists.
   /api/v1/users/me/name:
     put:
       tags:
@@ -4010,11 +4070,35 @@ paths:
                 statusCode: 403
                 message: Payments are disabled in production during this phase. Only administrators can perform payments.
         "409":
-          description: A checkout is already active, or the caller already has an active subscription
+          description: |
+            The purchase would overlap something the customer already has, or a checkout is already
+            open. `details.code` says which:
+
+            - `CHECKOUT_IN_PROGRESS`: a checkout session is open or being created. Finish it, or
+              cancel it with `POST /billing/checkout/cancel`.
+            - `UPGRADE_AVAILABLE`: the live plan can be upgraded to the bundle in place.
+              `details.upgrade` (`{ productKey: "bundle", interval }`) is the body to send to
+              `POST /billing/subscription/change-plan`.
+            - `ALREADY_SUBSCRIBED`, `ALREADY_INCLUDED`, `SUBSCRIPTION_OVERLAP`: the customer already
+              pays for this, or for a plan that includes it. `details.activeProductKey` names the
+              live plan and `details.suggestedProductKey` the plan to move to, when there is one.
+            - `PAYMENT_OUTSTANDING`, `SUBSCRIPTION_PAUSED`: the live subscription needs attention in
+              the billing portal first.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/CodedErrorResponse"
+              example:
+                success: false
+                statusCode: 409
+                message: "You already have an active AI Credits subscription. AI Credits and Creator Pro together are the Job Hunter Bundle: upgrade AI Credits to the Job Hunter Bundle instead, and pay only the difference for the rest of this billing period."
+                details:
+                  code: UPGRADE_AVAILABLE
+                  activeProductKey: ai_credits
+                  suggestedProductKey: bundle
+                  upgrade:
+                    productKey: bundle
+                    interval: monthly
         "503":
           description: The selected billing product is not configured
           content:
@@ -4115,6 +4199,174 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           description: Extra credit checkout is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/billing/subscription/change-plan/preview:
+    post:
+      tags:
+        - Billing
+      operationId: previewPlanChange
+      security:
+        - LocalSession: []
+        - ProdSession: []
+      summary: Preview Plan Upgrade
+      description: |
+        Prices an upgrade of the live subscription without changing anything: what is charged now
+        for the rest of the period, and what the new plan renews at. Only an upgrade to the
+        `bundle` in the same billing period is accepted (the one `UPGRADE_AVAILABLE` from
+        `POST /billing/checkout` offers). Session-authenticated only; blocked for non-admins in
+        production during the current rollout phase.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanChangePreviewRequest"
+            example:
+              productKey: bundle
+              interval: monthly
+      responses:
+        "200":
+          description: The provider's quote for the upgrade.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanChangePreviewResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          description: Payments disabled in production for non-admins
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: |
+            This plan cannot be changed this way. `details.code` is one of: `NO_SUBSCRIPTION`,
+            `PLAN_CHANGE_UNAVAILABLE` (contact support), `PAYMENT_OUTSTANDING`,
+            `SUBSCRIPTION_PAUSED`, `ALREADY_SUBSCRIBED`, `PLAN_CHANGE_NOT_UPGRADE` (only an upgrade
+            to the bundle), `PLAN_CHANGE_INTERVAL` (the upgrade keeps the current billing period) or
+            `SUBSCRIPTION_ENDING` (resume the subscription first).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodedErrorResponse"
+              example:
+                success: false
+                statusCode: 409
+                message: Your AI Credits plan is billed monthly. The upgrade keeps that billing period.
+                details:
+                  code: PLAN_CHANGE_INTERVAL
+        "502":
+          description: The billing provider could not price the upgrade; nothing was changed. `details.code` is `PROVIDER_UNAVAILABLE`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodedErrorResponse"
+        "503":
+          description: The selected billing product is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/billing/subscription/change-plan:
+    post:
+      tags:
+        - Billing
+      operationId: changePlan
+      security:
+        - LocalSession: []
+        - ProdSession: []
+      summary: Upgrade Plan
+      description: |
+        Upgrades the live subscription to the `bundle` in place. The provider charges the prorated
+        difference, and the plan, its features and its credits move once that payment succeeds and
+        its webhook arrives; until then the answer is `status: "pending"`.
+
+        An idempotency key is required, in the `Idempotency-Key` header or as `idempotencyKey` in
+        the body (the header wins). Retrying with the same key never asks the provider twice: it
+        returns the stored answer with `replayed: true`. Session-authenticated only; blocked for
+        non-admins in production during the current rollout phase.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Up to 128 characters. Required unless `idempotencyKey` is in the body.
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanChangeRequest"
+            example:
+              productKey: bundle
+              interval: monthly
+      responses:
+        "200":
+          description: "The provider accepted the change (`confirmed: true`)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanChangeResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  status: pending
+                  productKey: bundle
+                  interval: monthly
+                  paymentId: pay_123
+                  confirmed: true
+        "202":
+          description: "The provider's answer never arrived (`confirmed: false`). The change may still apply; it is held as pending, and a retry with the same key replays this answer."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanChangeResponse"
+        "400":
+          description: The body is invalid, or no idempotency key was sent (`details.code` `IDEMPOTENCY_KEY_REQUIRED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          description: Payments disabled in production for non-admins
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: |
+            The change was refused. `details.code` is one of the preview's codes, or
+            `PLAN_CHANGE_PENDING` (a change for this subscription is already waiting for its
+            payment) or `IDEMPOTENCY_KEY_REUSED` (this key was used for a different plan change).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodedErrorResponse"
+              example:
+                success: false
+                statusCode: 409
+                message: A plan change for this subscription is already in progress. It completes once the payment is confirmed.
+                details:
+                  code: PLAN_CHANGE_PENDING
+        "502":
+          description: The billing provider refused the change; nothing was changed and the same key may try again. `details.code` is `PROVIDER_UNAVAILABLE`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodedErrorResponse"
+        "503":
+          description: The selected billing product is not configured
           content:
             application/json:
               schema:
@@ -4759,6 +5011,68 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
+  /api/v1/stats/events:
+    post:
+      tags:
+        - Stats
+      operationId: recordUsageEvent
+      security:
+        - ApiKeyAuth: []
+      summary: Record Usage Event
+      description: |
+        Counts one product usage event (for example `resume_exported`) toward VeriWorkly's daily
+        usage metrics. Any developer API key may call it, whatever its scopes; the studio calls it
+        from the browser.
+
+        Public callers may send only the allow-listed event names listed under `event`, and every
+        call counts as 1. Events the server records itself, such as `auth_login_success`, cannot be
+        reported. Trusted servers send `x-internal-key` instead of an API key, which also allows
+        `custom_*` names (at most 50 distinct custom names per UTC day) and a `value` up to 1000.
+      parameters:
+        - name: x-internal-key
+          in: header
+          required: false
+          description: Server-to-server secret (`STATS_INTERNAL_KEY`). Never sent from a browser.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsageEventRequest"
+            example:
+              event: resume_exported
+      responses:
+        "202":
+          description: The event was counted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageEventResponse"
+              example:
+                success: true
+                message: Metric accepted
+                data:
+                  accepted: true
+        "400":
+          description: The body is invalid, or the event name is not allow-listed for public callers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 400
+                message: Event 'my_event' is not allowlisted for public access.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          description: Rate limited, or an internal caller sent a new custom name past the daily cap.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -8845,6 +9159,195 @@ components:
             url:
               type: string
               description: Dodo Payments hosted checkout URL for the one-time credit pack purchase.
+    CodedErrorResponse:
+      type: object
+      description: |
+        An error whose `details` says why in machine form. `details.code` is stable; clients branch on
+        it, not on the message. The other `details` fields depend on the code.
+      required:
+        - success
+        - message
+        - statusCode
+        - details
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        statusCode:
+          type: integer
+        details:
+          type: object
+          required:
+            - code
+          additionalProperties: true
+          properties:
+            code:
+              type: string
+    PlanChangePreviewRequest:
+      type: object
+      required:
+        - productKey
+        - interval
+      properties:
+        productKey:
+          type: string
+          enum:
+            - ai_credits
+            - portfolio_pro
+            - bundle
+          description: The plan to price. Only an upgrade to `bundle` is accepted today.
+        interval:
+          type: string
+          enum:
+            - monthly
+            - annual
+          description: Must match the current subscription's billing period.
+    PlanChangeRequest:
+      type: object
+      required:
+        - productKey
+        - interval
+      properties:
+        productKey:
+          type: string
+          enum:
+            - ai_credits
+            - portfolio_pro
+            - bundle
+          description: The plan to move to. Only an upgrade to `bundle` is accepted today.
+        interval:
+          type: string
+          enum:
+            - monthly
+            - annual
+          description: Must match the current subscription's billing period.
+        idempotencyKey:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Body alternative to the `Idempotency-Key` header; the header wins when both are sent.
+    PlanChangePreviewResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            productKey:
+              type: string
+              enum:
+                - ai_credits
+                - portfolio_pro
+                - bundle
+            interval:
+              type: string
+              enum:
+                - monthly
+                - annual
+            dueNow:
+              type: integer
+              description: The total charged now for the rest of the current period (the provider's prorated quote), in the currency's minor unit.
+            currency:
+              type: string
+              example: USD
+            nextAmount:
+              type: integer
+              description: The new plan's recurring amount before tax, in the minor unit.
+            nextBillingDate:
+              type: string
+              format: date-time
+    PlanChangeResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - pending
+              description: The provider charges the difference; the plan moves once that payment succeeds and its webhook arrives. `GET /billing/me` shows the new plan then.
+            productKey:
+              type: string
+              enum:
+                - ai_credits
+                - portfolio_pro
+                - bundle
+            interval:
+              type: string
+              enum:
+                - monthly
+                - annual
+            paymentId:
+              type: string
+              nullable: true
+            confirmed:
+              type: boolean
+              description: False when the provider's answer never arrived (the response is then `202`); the change may still apply.
+            replayed:
+              type: boolean
+              description: Present and true when this is the stored answer for an idempotency key already used.
+    UsageEventRequest:
+      type: object
+      required:
+        - event
+      properties:
+        event:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: |
+            Normalized to lower case with spaces as `_`. Public callers may send only `resume_created`,
+            `resume_deleted`, `resume_exported`, `cover_letter_exported`, `auth_otp_sent`,
+            `dashboard_opened`, `roadmap_viewed`, `share_link_created`, `share_link_updated` and
+            `share_link_revoked`. Internal callers (`x-internal-key`) may also send `custom_*` names.
+        value:
+          type: integer
+          maximum: 1000
+          description: Internal callers only; a public call always counts as 1.
+          exclusiveMinimum: 0
+    UsageEventResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            accepted:
+              type: boolean
+    DeleteAccountRequest:
+      type: object
+      properties:
+        confirmAffiliateForfeit:
+          type: boolean
+          description: Send `true` after the user saw the `409 AFFILIATE_BALANCE_FORFEIT` amount and still wants the account deleted. The query parameter `confirmAffiliateForfeit=true` works the same way.
+        confirmedAffiliateForfeitCents:
+          type: integer
+          minimum: 0
+          description: The amount the user was shown, from `details.amountCents`. If the unpaid balance has grown past it, the request is refused again with the new amount.
     ShareLink:
       type: object
       properties:

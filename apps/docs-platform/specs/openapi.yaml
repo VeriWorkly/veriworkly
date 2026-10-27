@@ -96,6 +96,8 @@ tags:
     description: Affiliate enrollment, referrals, commissions, and withdrawals. Off by default in production behind a feature flag.
   - name: Ambassador
     description: Campus ambassador program application intake. Off by default in production behind a feature flag.
+  - name: Stats
+    description: Product usage events counted toward VeriWorkly's daily usage metrics.
 
 paths:
   /api/v1/health:
@@ -228,6 +230,10 @@ paths:
     $ref: "./paths/billing.yaml#/createBillingPortal"
   /api/v1/billing/credits/checkout:
     $ref: "./paths/billing.yaml#/createCreditPackCheckout"
+  /api/v1/billing/subscription/change-plan/preview:
+    $ref: "./paths/billing.yaml#/previewPlanChange"
+  /api/v1/billing/subscription/change-plan:
+    $ref: "./paths/billing.yaml#/changePlan"
 
   /api/v1/shares:
     $ref: "./paths/shares.yaml#/createShareLink"
@@ -259,6 +265,9 @@ paths:
     $ref: "./paths/ambassador.yaml#/getAmbassadorStatus"
   /api/v1/ambassador/apply:
     $ref: "./paths/ambassador.yaml#/applyForAmbassador"
+
+  /api/v1/stats/events:
+    $ref: "./paths/stats.yaml#/recordUsageEvent"
 
 components:
   securitySchemes:
