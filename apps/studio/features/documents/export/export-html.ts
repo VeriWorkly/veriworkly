@@ -4,6 +4,7 @@ import type { ResumeExportContent, ResumeExportLink } from "./resume-export-docu
 import { escapeHtml, getResumeFileBaseName } from "@/features/resume/services/resume-formatters";
 import { getResumeRenderStyle } from "@/features/documents/rendering/resume-rendering";
 import { getPdfFontEntries } from "@/features/documents/constants/fonts";
+import { documentDirection, toDocumentLanguage } from "@/features/documents/utils/formatters";
 import {
   RESUME_PAGE_HEIGHT_PX,
   RESUME_PAGE_WIDTH_PX,
@@ -189,7 +190,7 @@ export function buildHtml(resume: ResumeData): string {
     .join("");
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${toDocumentLanguage(resume.language)}" dir="${documentDirection(resume.language)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -288,7 +289,7 @@ async function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): 
   const title = name ? `${escapeHtml(name)} - Resume` : "Resume";
 
   return `<!doctype html>
-<html lang="en" dir="${escapeHtml(document.documentElement.dir || "ltr")}">
+<html lang="${toDocumentLanguage(resume.language)}" dir="${documentDirection(resume.language)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

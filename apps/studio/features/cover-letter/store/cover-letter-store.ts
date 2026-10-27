@@ -83,8 +83,8 @@ function deriveTitle(document: CoverLetterDocument, content: CoverLetterContent)
 
 /**
  * Reset and "Empty fields" replace what the letter says, not how it looks or what it is
- * called: the template, the appearance (which holds the hidden sections), the title and the
- * sync linkage all carry over.
+ * called: the template, the appearance (which holds the hidden sections), the language, the
+ * title and the sync linkage all carry over.
  */
 function replaceContent(
   current: CoverLetterDocument,
@@ -92,7 +92,11 @@ function replaceContent(
 ): CoverLetterDocument {
   return withTimestamp({
     ...current,
-    content: { ...next.content, appearance: current.content.appearance },
+    content: {
+      ...next.content,
+      appearance: current.content.appearance,
+      ...(current.content.language ? { language: current.content.language } : {}),
+    },
   });
 }
 

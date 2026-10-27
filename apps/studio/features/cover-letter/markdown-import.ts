@@ -183,7 +183,7 @@ function isGreeting(block: string) {
 /**
  * Reads back a letter written by `buildCoverLetterMarkdown`.
  *
- * Only the appearance and the link display mode carry over from the letter that is open —
+ * Only the appearance, the language and the link display mode carry over from the letter that is open —
  * they are settings, not content. Every field the file does not state comes back empty,
  * never from the open letter, so an import can be trusted to contain only the file.
  */
@@ -277,6 +277,7 @@ export function parseCoverLetterMarkdown(
     signature,
     postscript,
     appearance: currentContent.appearance,
+    ...(currentContent.language ? { language: currentContent.language } : {}),
   };
 }
 

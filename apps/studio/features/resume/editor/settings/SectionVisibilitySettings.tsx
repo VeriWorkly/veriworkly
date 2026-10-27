@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ResumeSection } from "@/types/resume";
 import { getResumeSectionKey } from "@/features/documents/rendering/resume-rendering";
+import { getResumeSectionHeading } from "@/features/documents/rendering/resume-render-items";
 import { cn } from "@veriworkly/ui";
 import { pluralize } from "@/lib/pluralize";
 
@@ -67,6 +68,7 @@ const SectionVisibilitySettings = ({
     const sectionKey = getResumeSectionKey(section);
     const index = sortedSections.findIndex((s) => getResumeSectionKey(s) === sectionKey);
     const isLocked = section.id === "basics" || section.id === "links";
+    const heading = getResumeSectionHeading(section);
 
     return (
       <div
@@ -94,14 +96,14 @@ const SectionVisibilitySettings = ({
             onChange={(event) => onToggle(sectionKey, event.target.checked)}
             type="checkbox"
           />
-          <span className="text-foreground/90 min-w-0 truncate font-semibold">{section.label}</span>
+          <span className="text-foreground/90 min-w-0 truncate font-semibold">{heading}</span>
         </label>
 
         <div className="flex shrink-0 items-center gap-1.5">
           {/* Column Select Dropdown (visible in two column template) */}
           {isTwoColumn && !isLocked && onUpdateSectionColumn && (
             <select
-              aria-label={`Column for ${section.label}`}
+              aria-label={`Column for ${heading}`}
               value={section.column || "left"}
               onChange={(e) => {
                 onUpdateSectionColumn(sectionKey, e.target.value as "left" | "right");
@@ -116,7 +118,7 @@ const SectionVisibilitySettings = ({
           {/* Position Select Dropdown */}
           {!isLocked && (
             <select
-              aria-label={`Position for ${section.label}`}
+              aria-label={`Position for ${heading}`}
               value={index + 1}
               onChange={(e) => {
                 const targetPos = Number(e.target.value);

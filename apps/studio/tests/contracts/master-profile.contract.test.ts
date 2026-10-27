@@ -80,6 +80,8 @@ vi.mock("@/utils/fetchApiData", () => ({
  */
 function buildMasterProfile(overrides: Partial<MasterProfileData> = {}): MasterProfileData {
   const base = structuredClone(defaultResume) as ResumeData;
+  // The date format is a document's choice; a profile's customization has no such key.
+  delete base.customization.dateFormat;
 
   return {
     schemaVersion: 2,

@@ -53,3 +53,24 @@ describe("certificates and languages in the ATS document", () => {
     expect(report.parsed.spokenLanguages.map((row) => row.cefr)).toEqual(["B1", "C2"]);
   });
 });
+
+describe("S-296: renamed headings in the ATS document", () => {
+  it("S-296: keeps each section on its id and its standard heading, so the score does not move", () => {
+    const renamed = sample();
+    renamed.sections = renamed.sections.map((section) =>
+      section.id === "experience"
+        ? { ...section, label: "Berufserfahrung" }
+        : section.id === "certifications"
+          ? { ...section, label: "Zertifikate" }
+          : section,
+    );
+
+    const sections = toAtsDocument(renamed).sections;
+
+    expect(sections.find((s) => s.kind === "experience")?.title).toBe("Experience");
+    expect(sections.find((s) => s.kind === "certifications")?.title).toBe("Certifications");
+    expect(check(toAtsDocument(renamed), DEFAULT_POLICY).readinessScore).toBe(
+      check(toAtsDocument(sample()), DEFAULT_POLICY).readinessScore,
+    );
+  });
+});

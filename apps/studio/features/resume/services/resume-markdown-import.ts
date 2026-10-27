@@ -4,6 +4,7 @@ import type {
   ResumeData,
   ResumeLanguage,
   ResumeSection,
+  ResumeSectionId,
   ResumeCustomSection,
   ResumeLinkItem,
   ResumeSkillGroup,
@@ -15,9 +16,13 @@ import type {
 import { createId, normalizePhoneValue } from "@veriworkly/profile-core";
 
 import { blankResume } from "@/features/resume/constants/default-resume";
-import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
+import { normalizeMonthDate, normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { getResumeSectionKey } from "@/features/documents/rendering/resume-rendering";
-import { FLUENCY_LABELS } from "@/features/documents/rendering/resume-render-items";
+import {
+  FLUENCY_LABELS,
+  DEFAULT_SECTION_HEADINGS,
+  getResumeSectionHeading,
+} from "@/features/documents/rendering/resume-render-items";
 
 /*
  * Reads the Markdown `export-markdown.ts` writes:
@@ -63,13 +68,22 @@ function parseLink(value: string): { text: string; url: string } | null {
     : null;
 }
 
+/**
+ * A printed range back into stored dates. Each month is read back to the `YYYY-MM` the inputs
+ * write, whichever format printed it ("Mar 2022", "03/2022", "2022-03"); a year or free text
+ * stays as printed.
+ */
 function parseDateRange(value: string) {
-  const [startDate = "", endDate = ""] = value.split(/\s+-\s+/);
+  // Exports join a range with an en dash; older exports and hand-written files use a hyphen.
+  const [first = "", second = ""] = value.split(/\s+[-–]\s+/);
+  // A current entry with no start prints as "Present" alone.
+  const [startDate, endDate] =
+    second || !/^present$/i.test(first.trim()) ? [first, second] : ["", first];
   const current = endDate.trim().toLowerCase() === "present";
 
   return {
-    startDate: startDate.trim(),
-    endDate: current ? "" : endDate.trim(),
+    startDate: normalizeMonthDate(startDate),
+    endDate: current ? "" : normalizeMonthDate(endDate),
     current,
   };
 }
@@ -265,16 +279,35 @@ const LANGUAGE_FLUENCY = Object.fromEntries(
 ) as Record<string, ResumeLanguage["fluency"]>;
 
 /**
+ * The fixed section a `## heading` names, in any case: its default heading, or the one the open
+ * resume renamed it to, so a resume exported with its own headings reads back into place.
+ */
+function sectionIdForHeading(resume: ResumeData, title: string): ResumeSectionId | undefined {
+  const heading = title.trim().toLowerCase();
+
+  return resume.sections.find(
+    (section) =>
+      section.id !== "custom" &&
+      (getResumeSectionHeading(section).toLowerCase() === heading ||
+        DEFAULT_SECTION_HEADINGS[section.id].toLowerCase() === heading),
+  )?.id;
+}
+
+/**
  * The eight typed sections and any custom ones, read back from the fields each prints (see
  * `resume-render-items.ts`). A heading that is none of the eight becomes a custom section, so
  * nothing the file prints is dropped. Returns the section key (see `getResumeSectionKey`).
  */
-function readAdditionalSection(resume: ResumeData, title: string, lines: string[]): string {
+function readAdditionalSection(
+  resume: ResumeData,
+  sectionId: ResumeSectionId | undefined,
+  title: string,
+  lines: string[],
+): string {
   const items = parseItems(lines);
-  const key = title.toLowerCase();
   const website = (item: MarkdownItem) => item.link?.url ?? "";
 
-  switch (key) {
+  switch (sectionId) {
     case "certifications":
       resume.certificates = items.map((item, index) => {
         const [issuer, referenceId] = pair(item.subtitle);
@@ -283,49 +316,49 @@ function readAdditionalSection(resume: ResumeData, title: string, lines: string[
           title: item.title,
           issuer,
           referenceId,
-          date: item.meta,
+          date: normalizeMonthDate(item.meta),
           website: website(item),
           showLink: Boolean(item.link),
           description: item.summary,
         };
       });
-      return key;
+      return sectionId;
     case "awards":
       resume.awards = items.map((item, index) => ({
         id: `award-${index + 1}`,
         title: item.title,
         awarder: unescapeMarkdown(item.subtitle),
-        date: item.meta,
+        date: normalizeMonthDate(item.meta),
         website: website(item),
         showLink: Boolean(item.link),
         description: item.summary,
       }));
-      return key;
+      return sectionId;
     case "publications":
       resume.publications = items.map((item, index) => ({
         id: `publication-${index + 1}`,
         title: item.title,
         publisher: unescapeMarkdown(item.subtitle),
-        date: item.meta,
+        date: normalizeMonthDate(item.meta),
         website: website(item),
         showLink: Boolean(item.link),
         description: item.summary,
       }));
-      return key;
+      return sectionId;
     case "languages":
       resume.languages = items.map((item, index) => ({
         id: `language-${index + 1}`,
         language: item.title,
         fluency: LANGUAGE_FLUENCY[unescapeMarkdown(item.subtitle)] ?? "professional",
       }));
-      return key;
+      return sectionId;
     case "interests":
       resume.interests = items.map((item, index) => ({
         id: `interest-${index + 1}`,
         name: item.title,
         keywords: item.bullets,
       }));
-      return key;
+      return sectionId;
     case "volunteer":
       resume.volunteer = items.map((item, index) => {
         const [role, location] = pair(item.subtitle);
@@ -338,7 +371,7 @@ function readAdditionalSection(resume: ResumeData, title: string, lines: string[
           summary: item.summary,
         };
       });
-      return key;
+      return sectionId;
     case "references":
       resume.references = items.map((item, index) => {
         const [jobTitle, organization] = pair(item.subtitle);
@@ -353,14 +386,14 @@ function readAdditionalSection(resume: ResumeData, title: string, lines: string[
           relationship: item.summary,
         };
       });
-      return key;
+      return sectionId;
     case "achievements":
       resume.achievements = items.map((item, index) => ({
         id: `achievement-${index + 1}`,
         title: item.title,
         description: item.summary,
       }));
-      return key;
+      return sectionId;
     default: {
       const id =
         resume.customSections.length === 0
@@ -378,7 +411,7 @@ function readAdditionalSection(resume: ResumeData, title: string, lines: string[
             name: item.title,
             issuer,
             referenceId,
-            date: item.meta,
+            date: normalizeMonthDate(item.meta),
             link: item.link?.url ?? "",
             description: item.summary,
             details: item.bullets,
@@ -411,6 +444,7 @@ export function parseResumeMarkdown(markdown: string, currentResume?: ResumeData
     ...(currentResume
       ? {
           templateId: currentResume.templateId,
+          language: currentResume.language,
           customization: currentResume.customization,
           sections: currentResume.sections,
         }
@@ -426,7 +460,9 @@ export function parseResumeMarkdown(markdown: string, currentResume?: ResumeData
   const order: string[] = [];
 
   for (const { title, lines } of splitSections(markdown)) {
-    switch (title.toLowerCase()) {
+    const sectionId = sectionIdForHeading(resume, title);
+
+    switch (sectionId) {
       case "summary":
         resume.summary = lines.map(unescapeMarkdown).filter(Boolean).join("\n\n");
         order.push("summary");
@@ -453,7 +489,7 @@ export function parseResumeMarkdown(markdown: string, currentResume?: ResumeData
         break;
       }
       default:
-        order.push(readAdditionalSection(resume, title, lines));
+        order.push(readAdditionalSection(resume, sectionId, title, lines));
     }
   }
 

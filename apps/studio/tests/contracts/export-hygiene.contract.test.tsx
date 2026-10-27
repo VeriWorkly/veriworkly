@@ -26,6 +26,16 @@ import {
 } from "@/templates/resume/shared/model";
 import { loadTemplateComponentById, templateRegistry } from "@/templates";
 import { registerPdfTestFonts } from "@/tests/utils/pdf";
+import { getResumeSectionHeading } from "@/features/documents/rendering/resume-render-items";
+import { parseResumeDataInput } from "@/features/resume/schemas/resume-storage-schema";
+import {
+  formatDateRange,
+  formatDocumentDate,
+  toDocumentDateFormat,
+  toDocumentLanguage,
+  isDocumentLanguage,
+  documentDirection,
+} from "@/features/documents/utils/formatters";
 
 /**
  * An entry the user has partially filled: real company and bullets, but no role, and no
@@ -414,7 +424,7 @@ describe("every resume export format", () => {
     expect(text).not.toContain("\\");
     expect(text).toContain("a_b.c@x.com");
     expect(text).toContain("Northwind_Trading");
-    expect(text).toContain("Jan 2020 - Present");
+    expect(text).toContain("Jan 2020 – Present");
     expect(text).toContain("Cut p99 latency by 40% - and kept it there.");
     expect(text).toContain("tool_kit");
   });
@@ -528,5 +538,256 @@ describe("S-301: resume colours", () => {
     expect(style.textColor).toBe("#0f172a");
     expect(style.sectionHeadingColor).toBe("#2563eb");
     expect(style.pageBackgroundColor).toBe("#FAFAFA");
+  });
+});
+
+describe("S-296: readable dates", () => {
+  it("S-296: prints a stored month in each of the three formats", () => {
+    expect(formatDocumentDate("2022-03")).toBe("Mar 2022");
+    expect(formatDocumentDate("2022-03", "MMM YYYY")).toBe("Mar 2022");
+    expect(formatDocumentDate("2022-03", "MM/YYYY")).toBe("03/2022");
+    expect(formatDocumentDate("2022-03", "YYYY-MM")).toBe("2022-03");
+    expect(formatDocumentDate(" 2019-12 ", "MMM YYYY")).toBe("Dec 2019");
+  });
+
+  it("S-296: joins a range with an en dash and prints Present for a current end", () => {
+    expect(formatDateRange("2022-03", "", true)).toBe("Mar 2022 – Present");
+    expect(formatDateRange("2022-03", "2024-11", false, "MM/YYYY")).toBe("03/2022 – 11/2024");
+    expect(formatDateRange("2022-03", "2024-11", false, "YYYY-MM")).toBe("2022-03 – 2024-11");
+    expect(formatDateRange("", "", true)).toBe("Present");
+    expect(formatDateRange("2022-03", "", false)).toBe("Mar 2022");
+    expect(formatDateRange("", "", false)).toBe("");
+  });
+
+  it("S-296: prints a year-only, free-text or invalid date exactly as typed", () => {
+    expect(formatDateRange("2018", "2022", false)).toBe("2018 – 2022");
+    expect(formatDocumentDate("Spring 2019")).toBe("Spring 2019");
+    expect(formatDocumentDate("Jan 2020", "MM/YYYY")).toBe("Jan 2020");
+    expect(formatDocumentDate("2022-13")).toBe("2022-13");
+    expect(formatDocumentDate("2022-00")).toBe("2022-00");
+    expect(formatDocumentDate("2022-03-15")).toBe("2022-03-15");
+    expect(formatDocumentDate("")).toBe("");
+  });
+
+  it("S-296: reads an unknown stored format as the default", () => {
+    expect(toDocumentDateFormat("MM/YYYY")).toBe("MM/YYYY");
+    expect(toDocumentDateFormat("DD.MM.YYYY")).toBe("MMM YYYY");
+    expect(toDocumentDateFormat(undefined)).toBe("MMM YYYY");
+  });
+
+  it("S-296: a resume stored before the format existed parses unchanged and reads the default", () => {
+    const stored = JSON.parse(JSON.stringify(defaultResume)) as Record<string, unknown>;
+    const customization = { ...(stored.customization as Record<string, unknown>) };
+    delete customization.dateFormat;
+    stored.customization = customization;
+    delete stored.language;
+
+    const parsed = parseResumeDataInput(stored);
+
+    expect(parsed?.customization.dateFormat).toBe("MMM YYYY");
+    expect(parsed?.experience).toEqual(defaultResume.experience);
+    expect(toDocumentLanguage(parsed?.language)).toBe("en");
+
+    // An unknown value never makes the document unreadable.
+    const odd = parseResumeDataInput({
+      ...stored,
+      customization: { ...customization, dateFormat: "DD.MM.YYYY" },
+      language: 42,
+    });
+
+    expect(odd?.customization.dateFormat).toBe("MMM YYYY");
+  });
+});
+
+describe("S-296: editable section headings", () => {
+  it("S-296: a renamed heading prints, an empty one falls back to the default", () => {
+    expect(getResumeSectionHeading({ id: "experience", label: "Berufserfahrung" })).toBe(
+      "Berufserfahrung",
+    );
+    expect(getResumeSectionHeading({ id: "experience", label: "   " })).toBe("Experience");
+    expect(getResumeSectionHeading({ id: "certifications", label: "" })).toBe("Certifications");
+    expect(getResumeSectionHeading({ id: "summary", label: "Profil" })).toBe("Profil");
+  });
+
+  it("S-296: the document language is a BCP-47 tag or English", () => {
+    expect(toDocumentLanguage("de")).toBe("de");
+    expect(toDocumentLanguage(" pt-BR ")).toBe("pt-BR");
+    expect(toDocumentLanguage("de_DE")).toBe("de-DE");
+    expect(isDocumentLanguage("de_DE")).toBe(true);
+    expect(isDocumentLanguage("")).toBe(true);
+    expect(isDocumentLanguage("German")).toBe(false);
+    expect(toDocumentLanguage("German")).toBe("en");
+    expect(toDocumentLanguage("zh-Hant-TW")).toBe("zh-Hant-TW");
+    expect(toDocumentLanguage("")).toBe("en");
+    expect(toDocumentLanguage('en" onload="x')).toBe("en");
+    expect(toDocumentLanguage(undefined)).toBe("en");
+  });
+});
+
+/** A resume with one current role from March 2022, its Experience heading renamed. */
+function localisedResume(dateFormat?: ResumeData["customization"]["dateFormat"]): ResumeData {
+  const resume = unfinishedResume();
+
+  resume.basics.fullName = "Ada Lovelace";
+  resume.experience[0].startDate = "2022-03";
+  resume.education = [
+    {
+      id: "edu-1",
+      school: "Riverside College",
+      degree: "BSc",
+      field: "Physics",
+      startDate: "2018",
+      endDate: "2022",
+      current: false,
+      summary: "",
+    },
+  ];
+  resume.sections = resume.sections.map((section) =>
+    section.id === "experience"
+      ? { ...section, label: "Berufserfahrung" }
+      : section.id === "education"
+        ? { ...section, label: "" }
+        : section,
+  );
+  resume.language = "de";
+  if (dateFormat) resume.customization = { ...resume.customization, dateFormat };
+
+  return resume;
+}
+
+describe("S-296: every output prints the formatted date and the renamed heading", () => {
+  beforeAll(() => {
+    registerPdfTestFonts();
+  });
+
+  it("S-296: the preview of every template", async () => {
+    for (const template of templateRegistry) {
+      const Template = await loadTemplateComponentById(template.id);
+      const html = renderToStaticMarkup(
+        <Template resume={{ ...localisedResume(), templateId: template.id }} />,
+      );
+
+      expect(html, template.id).toContain("Mar 2022 – Present");
+      expect(html, template.id).toContain("2018 – 2022");
+      expect(html, template.id).toContain("Berufserfahrung");
+      expect(html, template.id).toContain("Education");
+      expect(html, template.id).not.toMatch(/>Experience</);
+    }
+  }, 60_000);
+
+  it("S-296: PDF, DOCX, HTML, Markdown and text", async () => {
+    const files = await exportAllFormats(localisedResume());
+
+    for (const format of ["pdf", "docx", "html", "markdown", "txt"] as const) {
+      const text = files[format].replace(/<[^>]*>/g, " ");
+
+      expect(text, format).toContain("Mar 2022 – Present");
+      expect(text, format).toContain("2018 – 2022");
+      expect(text.toLowerCase(), format).toContain("berufserfahrung");
+      expect(text.toLowerCase(), format).toContain("education");
+    }
+
+    // The stored value stays the month the input wrote.
+    expect(files.json).toContain('"startDate": "2022-03"');
+  }, 60_000);
+
+  it("S-296: the chosen numeric format reaches every file", async () => {
+    const files = await exportAllFormats(localisedResume("MM/YYYY"));
+
+    for (const format of ["pdf", "docx", "html", "markdown", "txt"] as const) {
+      expect(files[format], format).toContain("03/2022 – Present");
+    }
+  }, 60_000);
+
+  it("S-296: every dated entry prints in the chosen format", async () => {
+    const resume = localisedResume("MM/YYYY");
+    resume.certificates = [
+      {
+        id: "c1",
+        title: "Cert",
+        issuer: "Org",
+        date: "2021-04",
+        website: "",
+        showLink: false,
+        referenceId: "",
+        description: "",
+      },
+    ];
+    resume.awards = [
+      {
+        id: "a1",
+        title: "Award",
+        awarder: "Org",
+        date: "2020-05",
+        website: "",
+        showLink: false,
+        description: "",
+      },
+    ];
+    resume.publications = [
+      {
+        id: "p1",
+        title: "Paper",
+        publisher: "ACM",
+        date: "2019-06",
+        website: "",
+        showLink: false,
+        description: "",
+      },
+    ];
+    resume.volunteer = [
+      {
+        id: "v1",
+        organization: "Club",
+        role: "Mentor",
+        location: "",
+        startDate: "2018-07",
+        endDate: "2019-08",
+        current: false,
+        summary: "",
+      },
+    ];
+    resume.customSections[0].items[0].date = "2017-09";
+
+    const files = await exportAllFormats(resume);
+    const Template = await loadTemplateComponentById(templateRegistry[0].id);
+    const preview = renderToStaticMarkup(<Template resume={resume} />);
+
+    for (const [label, output] of [...Object.entries(files), ["preview", preview]]) {
+      if (label === "json") continue;
+      for (const printed of ["04/2021", "05/2020", "06/2019", "07/2018 – 08/2019", "09/2017"]) {
+        expect(output, `${label}: ${printed}`).toContain(printed);
+      }
+    }
+  }, 60_000);
+
+  it("S-296: a right-to-left language exports right to left", async () => {
+    expect(documentDirection("ar")).toBe("rtl");
+    expect(documentDirection("he-IL")).toBe("rtl");
+    expect(documentDirection("fa")).toBe("rtl");
+    expect(documentDirection("ur-PK")).toBe("rtl");
+    expect(documentDirection("de")).toBe("ltr");
+    expect(documentDirection(undefined)).toBe("ltr");
+
+    const resume = { ...localisedResume(), language: "ar" };
+    expect(buildHtml(resume)).toContain('<html lang="ar" dir="rtl"');
+    expect(buildHtml(localisedResume())).toContain('<html lang="de" dir="ltr"');
+
+    const downloads = captureDownloads();
+    stubRenderedPreview(794, 619);
+    await exportResumeAsHtml(resume, "preview");
+    expect(await downloads[0].blob.text()).toContain('<html lang="ar" dir="rtl"');
+  });
+
+  it("S-296: both HTML exports carry the document language", async () => {
+    expect(buildHtml(localisedResume())).toContain('<html lang="de"');
+    expect(buildHtml(structuredClone(defaultResume))).toContain('<html lang="en"');
+
+    const downloads = captureDownloads();
+    stubRenderedPreview(794, 619);
+
+    await exportResumeAsHtml(localisedResume(), "preview");
+
+    expect(await downloads[0].blob.text()).toContain('<html lang="de"');
   });
 });

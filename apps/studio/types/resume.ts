@@ -10,6 +10,7 @@ import type {
 } from "@veriworkly/profile-core";
 
 import type { DocumentSyncState } from "@/types/document";
+import type { DocumentDateFormat } from "@/features/documents/utils/formatters";
 import type {
   DocumentLinkItem,
   DocumentLinkType,
@@ -187,6 +188,11 @@ export interface ResumeCustomization {
   pagePadding: number;
   bodyLineHeight: number;
   headingLineHeight: number;
+  /**
+   * How months print. Optional because a resume projected from a master profile has none;
+   * `normalizeResumeData` fills it, and the formatter reads a missing one as the default.
+   */
+  dateFormat?: DocumentDateFormat;
 }
 
 type ResumeSyncState = DocumentSyncState;
@@ -195,6 +201,8 @@ export interface ResumeData {
   id: string;
   templateId: string;
   title?: string;
+  /** BCP-47 tag for the exported HTML; English when absent (see `toDocumentLanguage`). */
+  language?: string;
   basics: ResumeBasics;
   links: ResumeLinks;
   summary: string;

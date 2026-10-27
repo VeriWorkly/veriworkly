@@ -1,8 +1,15 @@
-import type { ResumeData, ResumeCustomSection, ResumeLanguage } from "@/types/resume";
+import type {
+  ResumeData,
+  ResumeSection,
+  ResumeSectionId,
+  ResumeLanguage,
+  ResumeCustomSection,
+} from "@/types/resume";
+import type { DocumentDateFormat } from "@/features/documents/utils/formatters";
 
 import { formatPhoneForDisplay } from "@veriworkly/profile-core";
 
-import { formatDateRange } from "@/features/resume/services/resume-formatters";
+import { formatDateRange, formatDocumentDate } from "@/features/documents/utils/formatters";
 import {
   cleanResumeText,
   getEducationMeta,
@@ -80,11 +87,14 @@ function optionalWebsiteLink(website: string | undefined, showLink: boolean) {
  * PDF/DOCX/HTML. Renderers skip an empty title (see `renderItem` in shared/web.tsx and
  * shared/pdf.tsx).
  */
-export function getExperienceRenderItems(items: ResumeData["experience"]): ResumeRenderItem[] {
+export function getExperienceRenderItems(
+  items: ResumeData["experience"],
+  dateFormat?: DocumentDateFormat,
+): ResumeRenderItem[] {
   return items.map((item) => ({
     id: item.id,
     title: cleanResumeText(item.role),
-    meta: formatDateRange(item.startDate, item.endDate, item.current),
+    meta: formatDateRange(item.startDate, item.endDate, item.current, dateFormat),
     subtitle: joinMeta([item.company, item.location]),
     link: null,
     summary: cleanResumeText(item.summary),
@@ -92,11 +102,14 @@ export function getExperienceRenderItems(items: ResumeData["experience"]): Resum
   }));
 }
 
-export function getEducationRenderItems(items: ResumeData["education"]): ResumeRenderItem[] {
+export function getEducationRenderItems(
+  items: ResumeData["education"],
+  dateFormat?: DocumentDateFormat,
+): ResumeRenderItem[] {
   return items.map((item) => ({
     id: item.id,
     title: getEducationTitle(item),
-    meta: getEducationMeta(item),
+    meta: getEducationMeta(item, dateFormat),
     subtitle: getEducationSchool(item),
     link: null,
     summary: cleanResumeText(item.summary),
@@ -120,14 +133,17 @@ export function getProjectRenderItems(items: ResumeData["projects"]): ResumeRend
   });
 }
 
-export function getCustomRenderItems(section: ResumeCustomSection): ResumeRenderItem[] {
+export function getCustomRenderItems(
+  section: ResumeCustomSection,
+  dateFormat?: DocumentDateFormat,
+): ResumeRenderItem[] {
   return section.items.filter(hasCustomItemContent).map((item) => {
     const href = normalizeLinkHref(item.link);
 
     return {
       id: item.id,
       title: cleanResumeText(item.name),
-      meta: cleanResumeText(item.date),
+      meta: formatDocumentDate(cleanResumeText(item.date), dateFormat),
       subtitle: joinMeta([item.issuer, item.referenceId]),
       link: href ? { href, text: cleanResumeText(item.link) } : null,
       summary: cleanResumeText(item.description),
@@ -154,11 +170,14 @@ export const FLUENCY_LABELS: Record<ResumeLanguage["fluency"], string> = {
   native: "Native",
 };
 
-function getCertificateRenderItems(items: ResumeData["certificates"]): ResumeRenderItem[] {
+function getCertificateRenderItems(
+  items: ResumeData["certificates"],
+  dateFormat?: DocumentDateFormat,
+): ResumeRenderItem[] {
   return items.filter(hasCertificateContent).map((item) => ({
     id: item.id,
     title: cleanResumeText(item.title),
-    meta: cleanResumeText(item.date),
+    meta: formatDocumentDate(cleanResumeText(item.date), dateFormat),
     // The credential id sits beside the issuer, which is where the flattened model printed
     // it and where a reader expects it.
     subtitle: joinMeta([item.issuer, item.referenceId]),
@@ -168,11 +187,14 @@ function getCertificateRenderItems(items: ResumeData["certificates"]): ResumeRen
   }));
 }
 
-function getAwardRenderItems(items: ResumeData["awards"]): ResumeRenderItem[] {
+function getAwardRenderItems(
+  items: ResumeData["awards"],
+  dateFormat?: DocumentDateFormat,
+): ResumeRenderItem[] {
   return items.filter(hasAwardContent).map((item) => ({
     id: item.id,
     title: cleanResumeText(item.title),
-    meta: cleanResumeText(item.date),
+    meta: formatDocumentDate(cleanResumeText(item.date), dateFormat),
     subtitle: cleanResumeText(item.awarder),
     link: optionalWebsiteLink(item.website, item.showLink),
     summary: cleanResumeText(item.description),
@@ -180,11 +202,14 @@ function getAwardRenderItems(items: ResumeData["awards"]): ResumeRenderItem[] {
   }));
 }
 
-function getPublicationRenderItems(items: ResumeData["publications"]): ResumeRenderItem[] {
+function getPublicationRenderItems(
+  items: ResumeData["publications"],
+  dateFormat?: DocumentDateFormat,
+): ResumeRenderItem[] {
   return items.filter(hasPublicationContent).map((item) => ({
     id: item.id,
     title: cleanResumeText(item.title),
-    meta: cleanResumeText(item.date),
+    meta: formatDocumentDate(cleanResumeText(item.date), dateFormat),
     subtitle: cleanResumeText(item.publisher),
     link: optionalWebsiteLink(item.website, item.showLink),
     summary: cleanResumeText(item.description),
@@ -216,12 +241,15 @@ function getInterestRenderItems(items: ResumeData["interests"]): ResumeRenderIte
   }));
 }
 
-export function getVolunteerRenderItems(items: ResumeData["volunteer"]): ResumeRenderItem[] {
+export function getVolunteerRenderItems(
+  items: ResumeData["volunteer"],
+  dateFormat?: DocumentDateFormat,
+): ResumeRenderItem[] {
   return items.filter(hasVolunteerContent).map((item) => ({
     id: item.id,
     title: cleanResumeText(item.organization),
     // A real date range, formatted the same way experience is.
-    meta: formatDateRange(item.startDate, item.endDate, item.current),
+    meta: formatDateRange(item.startDate, item.endDate, item.current, dateFormat),
     subtitle: joinMeta([item.role, item.location]),
     link: null,
     summary: cleanResumeText(item.summary),
@@ -258,8 +286,18 @@ function getAchievementRenderItems(items: ResumeData["achievements"]): ResumeRen
   }));
 }
 
-/** Human-readable heading for each of the eight fixed optional sections. */
-export const ADDITIONAL_SECTION_TITLES = {
+/**
+ * The heading each fixed section prints when the user has not renamed it. A custom section
+ * prints its own title.
+ */
+export const DEFAULT_SECTION_HEADINGS: Record<Exclude<ResumeSectionId, "custom">, string> = {
+  basics: "Basics",
+  links: "Links",
+  summary: "Summary",
+  experience: "Experience",
+  education: "Education",
+  projects: "Projects",
+  skills: "Skills",
   certifications: "Certifications",
   awards: "Awards",
   publications: "Publications",
@@ -268,26 +306,40 @@ export const ADDITIONAL_SECTION_TITLES = {
   volunteer: "Volunteer",
   references: "References",
   achievements: "Achievements",
-} as const;
+};
+
+/**
+ * The heading a section prints: the label the user gave it, or the default when they cleared
+ * it. Every renderer and exporter reads headings through here (via `buildResumeSections`), so
+ * a rename, or a heading in another language, reaches every format at once.
+ */
+export function getResumeSectionHeading(section: Pick<ResumeSection, "id" | "label">): string {
+  return (
+    cleanResumeText(section.label) ||
+    (section.id === "custom" ? "" : DEFAULT_SECTION_HEADINGS[section.id])
+  );
+}
 
 /** The typed items for one of the eight fixed optional sections. */
 export function getAdditionalSectionItems(
   resume: ResumeData,
-  sectionId: keyof typeof ADDITIONAL_SECTION_TITLES | string,
+  sectionId: string,
 ): ResumeRenderItem[] {
+  const { dateFormat } = resume.customization;
+
   switch (sectionId) {
     case "certifications":
-      return getCertificateRenderItems(resume.certificates);
+      return getCertificateRenderItems(resume.certificates, dateFormat);
     case "awards":
-      return getAwardRenderItems(resume.awards);
+      return getAwardRenderItems(resume.awards, dateFormat);
     case "publications":
-      return getPublicationRenderItems(resume.publications);
+      return getPublicationRenderItems(resume.publications, dateFormat);
     case "languages":
       return getLanguageRenderItems(resume.languages);
     case "interests":
       return getInterestRenderItems(resume.interests);
     case "volunteer":
-      return getVolunteerRenderItems(resume.volunteer);
+      return getVolunteerRenderItems(resume.volunteer, dateFormat);
     case "references":
       return getReferenceRenderItems(resume.references);
     case "achievements":

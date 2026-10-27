@@ -23,4 +23,6 @@ export interface CoverLetterContent extends Omit<CoverLetterContentCore, "appear
   appearance: CoverLetterAppearance;
   /** The pasted job post: context for writing the letter with AI, never printed on it. */
   jobPost?: string;
+  /** BCP-47 tag for the exported HTML; English when absent (see `toDocumentLanguage`). */
+  language?: string;
 }

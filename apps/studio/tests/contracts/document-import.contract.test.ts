@@ -11,6 +11,7 @@ import { loadDocumentById } from "@/features/documents/services/document-workspa
 import { buildMarkdown } from "@/features/documents/export/export-markdown";
 import { parseResumeMarkdown } from "@/features/resume/services/resume-markdown-import";
 import { createLocalStorageMock } from "@/tests/utils/local-storage";
+import { DOCUMENT_DATE_FORMATS } from "@/features/documents/utils/formatters";
 
 /**
  * "Import JSON" is one shared menu item and must mean one thing.
@@ -377,6 +378,95 @@ describe("resume Markdown import, every printed section", () => {
 
     // What the import reads back prints exactly what was exported.
     expect(buildMarkdown(imported)).toBe(markdown);
+  });
+
+  for (const dateFormat of DOCUMENT_DATE_FORMATS) {
+    it(`S-296: every printed date reads back as the stored month, printed as ${dateFormat}`, () => {
+      const resume = everySectionResume();
+      resume.customization = { ...resume.customization, dateFormat };
+      resume.customSections[0].items.push({
+        ...resume.customSections[0].items[0],
+        id: "s2",
+        name: "Meetup talk",
+        date: "2023-11",
+      });
+      resume.customSections[0].items.push({
+        ...resume.customSections[0].items[0],
+        id: "s3",
+        name: "Panel",
+        date: "Spring 2019",
+      });
+
+      const markdown = buildMarkdown(resume);
+      if (dateFormat !== "YYYY-MM") expect(markdown).not.toContain("2022-03");
+      expect(markdown).toContain("–");
+
+      const imported = parseResumeMarkdown(markdown);
+
+      expect(imported.experience[0]).toMatchObject({
+        startDate: "2022-03",
+        endDate: "",
+        current: true,
+      });
+      expect(imported.education[0]).toMatchObject({ startDate: "2015", endDate: "2019" });
+      expect(imported.certificates[0].date).toBe("2024-05");
+      expect(imported.awards[0].date).toBe("2023-02");
+      expect(imported.publications[0].date).toBe("2022-09");
+      expect(imported.volunteer[0]).toMatchObject({
+        startDate: "2021-01",
+        endDate: "",
+        current: true,
+      });
+      expect(imported.customSections[0].items.map((item) => item.date)).toEqual([
+        "2024",
+        "2023-11",
+        "Spring 2019",
+      ]);
+    });
+  }
+
+  it("S-296: a Present-only range reads back as current", () => {
+    const resume = everySectionResume();
+    resume.volunteer = [{ ...resume.volunteer[0], startDate: "" }];
+
+    const imported = parseResumeMarkdown(buildMarkdown(resume));
+
+    expect(imported.volunteer[0]).toMatchObject({ startDate: "", endDate: "", current: true });
+  });
+
+  it("S-296: renamed headings read back into their own sections", () => {
+    const resume = everySectionResume();
+    resume.sections = resume.sections.map((section) =>
+      section.id === "experience"
+        ? { ...section, label: "Berufserfahrung" }
+        : section.id === "certifications"
+          ? { ...section, label: "Zertifikate" }
+          : section,
+    );
+
+    const markdown = buildMarkdown(resume);
+    expect(markdown).toContain("## Berufserfahrung");
+
+    const imported = parseResumeMarkdown(markdown, resume);
+
+    expect(imported.experience[0].company).toBe(resume.experience[0].company);
+    expect(imported.certificates[0].title).toBe("AWS Certified Developer");
+    expect(imported.customSections.map((section) => section.title)).toEqual(["Speaking"]);
+    // A file written with the default headings still reads into a renamed resume.
+    const plain = parseResumeMarkdown(buildMarkdown(everySectionResume()), resume);
+    expect(plain.experience[0].company).toBe(resume.experience[0].company);
+    // Case does not matter.
+    const shouted = parseResumeMarkdown(
+      markdown.replace("## Berufserfahrung", "## BERUFSERFAHRUNG"),
+      resume,
+    );
+    expect(shouted.experience).toHaveLength(resume.experience.length);
+  });
+
+  it("S-296: a Markdown import keeps the open resume's language", () => {
+    const resume = { ...everySectionResume(), language: "de" };
+
+    expect(parseResumeMarkdown(buildMarkdown(resume), resume).language).toBe("de");
   });
 
   it("keeps phone numbers in their stored E.164 form through a round trip", () => {

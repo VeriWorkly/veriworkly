@@ -90,6 +90,8 @@ const resumeDataInputSchema = z
     id: z.string(),
     templateId: z.string(),
     title: z.string(),
+    // Shape only: `toDocumentLanguage` checks the tag where it is printed.
+    language: z.string().catch(""),
     basics: z
       .object({
         fullName: z.string(),
@@ -308,6 +310,8 @@ const resumeDataInputSchema = z
         pagePadding: z.number(),
         bodyLineHeight: z.number(),
         headingLineHeight: z.number(),
+        // Any value parses: `normalizeResumeData` reads an unknown one as the default.
+        dateFormat: z.unknown(),
       })
       .partial(),
 
