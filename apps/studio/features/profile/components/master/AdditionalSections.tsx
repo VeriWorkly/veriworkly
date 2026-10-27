@@ -15,6 +15,7 @@ import {
   emptyVolunteer,
   isValidAbsoluteUrl,
   isValidEmail,
+  removeItem,
   updateItem,
 } from "./master-utils";
 import { LinesTextArea } from "./CoreSections";
@@ -124,8 +125,9 @@ export function AdditionalSections({
                   }
                 />
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">Description</label>
+                  <p className="text-sm font-medium">Description</p>
                   <TextArea
+                    aria-label="Description"
                     value={item.description}
                     onChange={(event) =>
                       updateRepeatableItem("awards", item.id, (current) => ({
@@ -236,8 +238,9 @@ export function AdditionalSections({
                   }
                 />
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">Description</label>
+                  <p className="text-sm font-medium">Description</p>
                   <TextArea
+                    aria-label="Description"
                     value={item.description}
                     onChange={(event) =>
                       updateRepeatableItem("certificates", item.id, (current) => ({
@@ -334,8 +337,9 @@ export function AdditionalSections({
                   }
                 />
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">Description</label>
+                  <p className="text-sm font-medium">Description</p>
                   <TextArea
+                    aria-label="Description"
                     value={item.description}
                     onChange={(event) =>
                       updateRepeatableItem("publications", item.id, (current) => ({
@@ -453,8 +457,9 @@ export function AdditionalSections({
                   Current role
                 </label>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">Summary</label>
+                  <p className="text-sm font-medium">Summary</p>
                   <TextArea
+                    aria-label="Summary"
                     value={item.summary}
                     onChange={(event) =>
                       updateRepeatableItem("volunteer", item.id, (current) => ({
@@ -684,6 +689,21 @@ export function AdditionalSections({
                       key={customItem.id}
                       className="border-border/60 bg-card/30 space-y-3 rounded-xl border p-4"
                     >
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label={`Remove ${customItem.name || "item"}`}
+                          onClick={() =>
+                            updateRepeatableItem("customSections", item.id, (current) => ({
+                              ...current,
+                              items: removeItem(current.items, customItem.id),
+                            }))
+                          }
+                        >
+                          Remove item
+                        </Button>
+                      </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <Input
                           aria-label="Name"
@@ -756,8 +776,9 @@ export function AdditionalSections({
                           placeholder="Reference ID"
                         />
                         <div className="space-y-2 md:col-span-2">
-                          <label className="text-sm font-medium">Description</label>
+                          <p className="text-sm font-medium">Description</p>
                           <TextArea
+                            aria-label="Description"
                             value={customItem.description}
                             onChange={(event) =>
                               updateRepeatableItem("customSections", item.id, (current) => ({
@@ -772,8 +793,9 @@ export function AdditionalSections({
                           />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <label className="text-sm font-medium">Details</label>
+                          <p className="text-sm font-medium">Details</p>
                           <LinesTextArea
+                            aria-label="Details"
                             value={customItem.details}
                             onChange={(lines) =>
                               updateRepeatableItem("customSections", item.id, (current) => ({

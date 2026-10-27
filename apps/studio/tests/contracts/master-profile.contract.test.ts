@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MasterProfileData, ResumeData } from "@/types/resume";
@@ -5,7 +7,19 @@ import type { MasterProfileData, ResumeData } from "@/types/resume";
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { getContactItems } from "@/features/documents/rendering/resume-rendering";
-import { validateMasterProfileForSave } from "@/features/profile/components/master/master-utils";
+import {
+  rebaseAfterSave,
+  emptyAward,
+  isInAppNavigation,
+  prepareMasterProfileForSave,
+  validateMasterProfileForSave,
+} from "@/features/profile/components/master/master-utils";
+import ProfileMaster from "@/features/profile/components/master/ProfileMaster";
+import { BasicsAndSummarySections } from "@/features/profile/components/master/BasicsAndSummarySections";
+import {
+  checkMasterProfileJson,
+  prepareMasterProfileJsonForSave,
+} from "@/features/profile/components/advanced/advanced-profile-utils";
 import {
   isValidPhoneValue,
   normalizePhoneValue,
@@ -39,6 +53,11 @@ import { createLocalStorageMock } from "@/tests/utils/local-storage";
 const CORRUPT_KEY = `${MASTER_PROFILE_STORAGE_KEY}:corrupt`;
 
 const fetchApiDataMock = vi.hoisted(() => vi.fn());
+
+vi.mock("next/font/google", () => ({
+  Geist: () => ({ variable: "" }),
+  Geist_Mono: () => ({ variable: "" }),
+}));
 
 vi.mock("@/utils/fetchApiData", () => ({
   fetchApiData: fetchApiDataMock,
@@ -596,5 +615,337 @@ describe("master profile for a new account and a failed load (S-115, S-158, S-18
     });
 
     expect((await getMasterProfileForNewDocument())?.basics.fullName).toBe("Ada Lovelace");
+  });
+});
+
+describe("Master Profile editors (Phase 9 Part D)", () => {
+  it("S-281: the link options say what they do, and how to keep a detail off documents", () => {
+    const html = renderToStaticMarkup(
+      createElement(BasicsAndSummarySections, {
+        localProfile: buildMasterProfile(),
+        updateProfile: () => undefined,
+        setBasicField: () => undefined,
+        updateLink: () => undefined,
+        updateLinkDisplayMode: () => undefined,
+      }),
+    );
+
+    expect(html).not.toMatch(/Show (email|phone|location)/);
+    expect(html).toContain("Phone opens call");
+    expect(html).toContain("leave it empty here");
+  });
+
+  it("S-327: hand-typed month dates are read into YYYY-MM instead of refusing the save", () => {
+    const profile = buildMasterProfile({
+      basics: { ...defaultResume.basics, email: "ada@example.com" },
+      experience: [
+        {
+          ...defaultResume.experience[0],
+          startDate: "Mar 2022",
+          endDate: "Present",
+          current: false,
+        },
+      ],
+    });
+
+    const prepared = prepareMasterProfileForSave(profile);
+
+    expect(prepared.ok).toBe(true);
+    if (!prepared.ok) return;
+    expect(prepared.profile.experience[0]).toMatchObject({
+      startDate: "2022-03",
+      endDate: "",
+      current: true,
+    });
+  });
+
+  it("S-327: what was typed while a save ran survives the save's reply", () => {
+    const submitted = buildMasterProfile();
+    const typedSince = { ...submitted, summary: "typed during the save" };
+    const saved = buildMasterProfile({ summary: "from the server" });
+
+    expect(rebaseAfterSave(typedSince, submitted, saved)).toBe(typedSince);
+    expect(rebaseAfterSave(submitted, submitted, saved)).toBe(saved);
+    expect(rebaseAfterSave(typedSince, null, saved)).toBe(saved);
+  });
+
+  it("S-327: refused fields are listed where they can be read, and a first visit is not 'Synced'", () => {
+    const html = renderToStaticMarkup(
+      createElement(ProfileMaster, {
+        profile: buildMasterProfile(),
+        onSave: async () => undefined,
+        neverSaved: true,
+      }),
+    );
+
+    expect(html).toContain("Not saved yet");
+    expect(html).not.toMatch(/Everything Synced/i);
+  });
+
+  it("S-332: the JSON editor refuses a profile the guided editor would refuse", () => {
+    const profile = buildMasterProfile({
+      basics: { ...defaultResume.basics, email: "" },
+    });
+
+    expect(() => prepareMasterProfileJsonForSave(JSON.stringify(profile))).toThrow(
+      /email must be a valid email/i,
+    );
+  });
+
+  it("O7 LOW: the JSON editor tells a syntax error from a profile that does not fit", () => {
+    expect(checkMasterProfileJson("{")).toMatchObject({ ok: false, kind: "syntax" });
+    expect(checkMasterProfileJson('{"basics": 1}')).toMatchObject({ ok: false, kind: "schema" });
+  });
+});
+
+describe("Master Profile form accessibility and editing (O7 LOW)", () => {
+  it("every multi-line field has a name, and custom items can be removed", async () => {
+    const { CoreSections } = await import("@/features/profile/components/master/CoreSections");
+    const { AdditionalSections } =
+      await import("@/features/profile/components/master/AdditionalSections");
+    const noop = () => undefined;
+    const profile = buildMasterProfile({
+      customSections: [
+        {
+          id: "talks",
+          kind: "custom",
+          title: "Talks",
+          editableTitle: true,
+          items: [
+            {
+              id: "t1",
+              name: "Keynote",
+              issuer: "",
+              date: "",
+              link: "",
+              referenceId: "",
+              description: "",
+              details: [],
+            },
+          ],
+        },
+      ],
+    });
+    const props = {
+      localProfile: profile,
+      updateRepeatableItem: noop,
+      addRepeatableItem: noop,
+      removeRepeatableItem: noop,
+    };
+
+    const html =
+      renderToStaticMarkup(createElement(CoreSections, props)) +
+      renderToStaticMarkup(createElement(AdditionalSections, props));
+
+    expect(html).not.toMatch(/<textarea(?![^>]*aria-label=)[^>]*>/);
+    expect(html).not.toContain('<label class="text-sm font-medium">');
+    expect(html).toContain('aria-label="Remove Keynote"');
+  });
+});
+
+describe("Master Profile review fixes (Phase 9 Part D)", () => {
+  it("S-332 a legacy section in pasted JSON survives a JSON-editor save", () => {
+    const profile = {
+      ...buildMasterProfile({ basics: { ...defaultResume.basics, email: "ada@example.com" } }),
+      awards: [],
+      customSections: [
+        {
+          id: "legacy-awards",
+          kind: "awards",
+          title: "Awards",
+          items: [
+            {
+              id: "a1",
+              name: "Turing Prize",
+              issuer: "ACM",
+              date: "2022-03",
+              link: "",
+              referenceId: "",
+              description: "",
+              details: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const saved = prepareMasterProfileJsonForSave(JSON.stringify(profile));
+
+    expect(saved.awards.map((award) => award.title)).toEqual(["Turing Prize"]);
+  });
+
+  it("the JSON editor imports the Master Profile from an account backup file", () => {
+    const backup = {
+      format: "veriworkly-backup",
+      version: 1,
+      exportedAt: "2026-10-27T00:00:00.000Z",
+      documents: [],
+      masterProfile: buildMasterProfile({
+        basics: { ...defaultResume.basics, fullName: "Ada Lovelace" },
+      }),
+    };
+
+    const checked = checkMasterProfileJson(JSON.stringify(backup));
+
+    expect(checked.ok).toBe(true);
+    if (checked.ok) expect(checked.profile.basics.fullName).toBe("Ada Lovelace");
+  });
+
+  it("S-327 'Save my version' after a conflict saves what was typed after the toast, not before", async () => {
+    const { toast } = await import("sonner");
+    const toastError = vi.spyOn(toast, "error").mockImplementation(() => "id");
+    const { reportMasterSaveFailure } =
+      await import("@/features/profile/components/master/master-save-failure");
+    const { ApiRequestError } = await import("@/utils/fetchApiData");
+
+    // The editor as the retry finds it: whatever was typed last.
+    let draft = "before the conflict";
+    const saved: Array<{ summary: string; cursor?: string }> = [];
+    const saveLatest = async (cursor?: string) => {
+      saved.push({ summary: draft, cursor });
+    };
+
+    await reportMasterSaveFailure(
+      new (ApiRequestError as unknown as new (m: string, s: number, d: unknown) => Error)(
+        "Your profile changed on another device.",
+        409,
+        { currentUpdatedAt: "2026-10-27T10:00:00.000Z" },
+      ),
+      saveLatest,
+    );
+
+    draft = "typed after the toast appeared";
+    const options = toastError.mock.calls[0][1] as unknown as { action: { onClick: () => void } };
+    options.action.onClick();
+    await Promise.resolve();
+
+    expect(saved).toEqual([
+      { summary: "typed after the toast appeared", cursor: "2026-10-27T10:00:00.000Z" },
+    ]);
+  });
+});
+
+describe("Master Profile second-review fixes (Phase 9 Part D)", () => {
+  async function loadRetry() {
+    return import("@/features/profile/components/master/master-save-failure");
+  }
+
+  function editor(overrides: Partial<{ dirty: boolean; saving: boolean }> = {}) {
+    const calls = {
+      saved: [] as Array<string | undefined>,
+      queued: [] as Array<string | undefined>,
+    };
+    return {
+      calls,
+      editor: {
+        isDirty: () => overrides.dirty ?? true,
+        isSaving: () => overrides.saving ?? false,
+        queue: (cursor?: string) => void calls.queued.push(cursor),
+        save: async (cursor?: string) => void calls.saved.push(cursor),
+      },
+    };
+  }
+
+  it("S-327 'Save my version' after Reset does nothing, so newer stored data is not overwritten", async () => {
+    const { retryLatestSave } = await loadRetry();
+    const { calls, editor: clean } = editor({ dirty: false });
+
+    await retryLatestSave(clean, "cursor");
+
+    expect(calls.saved).toEqual([]);
+  });
+
+  it("S-327 a retry clicked while a save runs waits for it instead of being dropped", async () => {
+    const { retryLatestSave } = await loadRetry();
+    const { calls, editor: busy } = editor({ saving: true });
+
+    await retryLatestSave(busy, "cursor");
+
+    expect(calls.saved).toEqual([]);
+    expect(calls.queued).toEqual(["cursor"]);
+  });
+
+  it("S-327 a toast that outlives the editor does nothing", async () => {
+    const { saveThroughRef } = await loadRetry();
+    const ref = { current: null };
+
+    await expect(saveThroughRef(ref)("cursor")).resolves.toBeUndefined();
+  });
+
+  it("S-327 the conflict toast has one id, so Reset and a later save can withdraw it", async () => {
+    const { toast } = await import("sonner");
+    const toastError = vi.spyOn(toast, "error").mockImplementation(() => "id");
+    const dismiss = vi.spyOn(toast, "dismiss").mockImplementation(() => "id");
+    const { reportMasterSaveFailure, dismissMasterSaveFailure } = await loadRetry();
+    const { ApiRequestError } = await import("@/utils/fetchApiData");
+
+    await reportMasterSaveFailure(
+      new (ApiRequestError as unknown as new (m: string, s: number, d: unknown) => Error)(
+        "Changed elsewhere.",
+        409,
+        { currentUpdatedAt: "2026-10-27T10:00:00.000Z" },
+      ),
+      async () => undefined,
+    );
+    dismissMasterSaveFailure();
+
+    const options = toastError.mock.calls[0][1] as unknown as { id: string };
+    expect(dismiss).toHaveBeenCalledWith(options.id);
+  });
+
+  it("S-327 'Present' is read only as an end date; elsewhere it is refused, not blanked", () => {
+    const base = buildMasterProfile({
+      basics: { ...defaultResume.basics, email: "ada@example.com" },
+    });
+    const job = { ...defaultResume.experience[0], current: false };
+
+    const startPresent = prepareMasterProfileForSave({
+      ...base,
+      experience: [{ ...job, startDate: "Present", endDate: "2024-01" }],
+    });
+    const awardNow = prepareMasterProfileForSave({
+      ...base,
+      awards: [{ ...emptyAward(), title: "Prize", date: "now" }],
+    });
+
+    expect(startPresent.ok).toBe(false);
+    if (!startPresent.ok) expect(startPresent.issues.join(" ")).toMatch(/YYYY-MM/);
+    expect(awardNow.ok).toBe(false);
+    if (!awardNow.ok) expect(awardNow.issues.join(" ")).toMatch(/YYYY-MM/);
+  });
+
+  it("S-327 a link to another studio page asks first; new tabs, other sites and skip links do not", () => {
+    const here = { origin: "https://app.example", pathname: "/profile/master", search: "" };
+    const click = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false };
+    const link = (href: string, target = "") => ({ href, target, hasAttribute: () => false });
+
+    expect(isInAppNavigation(click, link("https://app.example/documents"), here)).toBe(true);
+    expect(isInAppNavigation(click, link("https://app.example/profile/master#basics"), here)).toBe(
+      false,
+    );
+    expect(isInAppNavigation(click, link("https://docs.example/"), here)).toBe(false);
+    expect(isInAppNavigation(click, link("https://app.example/documents", "_blank"), here)).toBe(
+      false,
+    );
+    expect(
+      isInAppNavigation({ ...click, metaKey: true }, link("https://app.example/documents"), here),
+    ).toBe(false);
+  });
+
+  it("a backup with no Master Profile says so", () => {
+    const checked = checkMasterProfileJson(
+      JSON.stringify({
+        format: "veriworkly-backup",
+        version: 1,
+        documents: [],
+        masterProfile: null,
+      }),
+    );
+
+    expect(checked).toEqual({
+      ok: false,
+      kind: "schema",
+      message: "This backup has no Master Profile.",
+    });
   });
 });

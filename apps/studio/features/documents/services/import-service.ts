@@ -113,6 +113,8 @@ export interface WorkspaceBackup {
   format: typeof WORKSPACE_BACKUP_FORMAT;
   version: 1;
   exportedAt: string;
+  /** The account's Master Profile, in a backup made before deleting the account. */
+  masterProfile?: unknown;
   documents: BaseDocument[];
 }
 

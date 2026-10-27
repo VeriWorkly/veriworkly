@@ -107,7 +107,7 @@ export function CoreSections({
                       startDate: event.target.value,
                     }))
                   }
-                  placeholder="Start date"
+                  placeholder="Start, e.g. Mar 2022"
                 />
                 <Input
                   aria-label="End date"
@@ -118,7 +118,7 @@ export function CoreSections({
                       endDate: event.target.value,
                     }))
                   }
-                  placeholder="End date"
+                  placeholder="End, e.g. Jun 2024"
                 />
                 <label className="border-border/60 bg-card/40 flex items-center gap-3 rounded-xl border px-3 py-2 text-sm">
                   <input
@@ -135,8 +135,9 @@ export function CoreSections({
                 </label>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Summary</label>
+                <p className="text-sm font-medium">Summary</p>
                 <TextArea
+                  aria-label="Summary"
                   value={item.summary}
                   onChange={(event) =>
                     updateRepeatableItem("experience", item.id, (current) => ({
@@ -148,8 +149,9 @@ export function CoreSections({
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Highlights</label>
+                <p className="text-sm font-medium">Highlights</p>
                 <LinesTextArea
+                  aria-label="Highlights"
                   value={item.highlights}
                   onChange={(lines) =>
                     updateRepeatableItem("experience", item.id, (current) => ({
@@ -226,7 +228,7 @@ export function CoreSections({
                       startDate: event.target.value,
                     }))
                   }
-                  placeholder="Start date"
+                  placeholder="Start year, e.g. 2018"
                 />
                 <Input
                   aria-label="End date"
@@ -237,7 +239,7 @@ export function CoreSections({
                       endDate: event.target.value,
                     }))
                   }
-                  placeholder="End date"
+                  placeholder="End year, e.g. 2022"
                 />
                 <label className="border-border/60 bg-card/40 flex items-center gap-3 rounded-xl border px-3 py-2 text-sm">
                   <input
@@ -254,8 +256,9 @@ export function CoreSections({
                 </label>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Summary</label>
+                <p className="text-sm font-medium">Summary</p>
                 <TextArea
+                  aria-label="Summary"
                   value={item.summary}
                   onChange={(event) =>
                     updateRepeatableItem("education", item.id, (current) => ({
@@ -346,8 +349,9 @@ export function CoreSections({
                   }
                 />
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">Summary</label>
+                  <p className="text-sm font-medium">Summary</p>
                   <TextArea
+                    aria-label="Summary"
                     value={item.summary}
                     onChange={(event) =>
                       updateRepeatableItem("projects", item.id, (current) => ({
@@ -359,8 +363,9 @@ export function CoreSections({
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">Highlights</label>
+                  <p className="text-sm font-medium">Highlights</p>
                   <LinesTextArea
+                    aria-label="Highlights"
                     value={item.highlights}
                     onChange={(lines) =>
                       updateRepeatableItem("projects", item.id, (current) => ({
@@ -411,8 +416,9 @@ export function CoreSections({
                 placeholder="Group name"
               />
               <div className="space-y-2">
-                <label className="text-sm font-medium">Keywords</label>
+                <p className="text-sm font-medium">Keywords</p>
                 <LinesTextArea
+                  aria-label="Keywords"
                   value={item.keywords}
                   onChange={(lines) =>
                     updateRepeatableItem("skills", item.id, (current) => ({
@@ -536,11 +542,13 @@ export function CoreSections({
  * every keystroke, which swallowed Enter and trimmed the space before the next word.
  */
 export function LinesTextArea({
+  "aria-label": ariaLabel,
   onChange,
   placeholder,
   rows,
   value,
 }: {
+  "aria-label"?: string;
   onChange: (lines: string[]) => void;
   placeholder?: string;
   rows?: number;
@@ -548,6 +556,7 @@ export function LinesTextArea({
 }) {
   return (
     <TextArea
+      aria-label={ariaLabel}
       placeholder={placeholder}
       rows={rows}
       {...useDelimitedDraft(value, "newline", onChange)}

@@ -7,6 +7,7 @@ import type { BaseDocument } from "@/features/documents/core/types";
 import type { ResumeData } from "@/types/resume";
 
 import { buildWorkspaceBackup, signOutCurrentUser } from "@/features/auth/services/current-user";
+import { buildAccountBackup, SERVER_LIST_CAP } from "@/features/profile/services/account-backup";
 import {
   purchaseFingerprint,
   recordPurchaseBaseline,
@@ -690,6 +691,14 @@ describe("one backup file before local data is cleared", () => {
     return new File([json], "veriworkly-backup-2026-10-26.json", { type: "application/json" });
   }
 
+  it("S-347: the delete dialog promises no version histories that do not exist", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("features/profile/components/DeleteAccountModal.tsx", "utf8");
+
+    expect(source).not.toMatch(/version histor/i);
+    expect(source).toContain("downloadAccountBackup");
+  });
+
   it("S-217: the backup is one dated file of full documents, detached from the cloud", () => {
     seedWorkspace();
 
@@ -873,5 +882,206 @@ describe("ATS draft: AI output becomes a resume the strict path accepts", () => 
     const resume = buildResumeFromConversion(aiConversion(), "resume-ats");
 
     expect(resume.projects[0].linkLabel).not.toBe("Link");
+  });
+});
+
+describe("S-347: the account backup made before deleting the account", () => {
+  beforeEach(() => {
+    stubBrowser("app.veriworkly.com");
+    vi.stubGlobal("navigator", {});
+  });
+
+  afterEach(() => {
+    setWorkspaceUser(null);
+    clearWorkspaceStorage();
+    vi.unstubAllGlobals();
+  });
+
+  type Row = ReturnType<typeof cloudRecord>;
+
+  /** A full stored document, as the server keeps it in `content`. */
+  function cloudRecord(
+    document: Pick<BaseDocument, "id" | "type" | "title">,
+    revision: number,
+    content: unknown = document,
+  ) {
+    return {
+      id: document.id,
+      type: document.type as string,
+      title: document.title,
+      content,
+      templateId: "template",
+      visibility: "PRIVATE",
+      revision,
+      lastSyncedAt: "2026-10-26T00:00:00.000Z",
+      updatedAt: "2026-10-26T00:00:00.000Z",
+      createdAt: "2026-10-26T00:00:00.000Z",
+    };
+  }
+
+  /**
+   * The documents list as the server answers it: filtered by `type` when asked, every
+   * type (portfolios included) when not. No Master Profile yet.
+   */
+  function serveAccount(records: Row[] | "offline") {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const address = new URL(String(url));
+
+        if (address.pathname.endsWith("/documents")) {
+          if (records === "offline") throw new TypeError("Failed to fetch");
+          const type = address.searchParams.get("type");
+          const data = type ? records.filter((record) => record.type === type) : records;
+          return Response.json({ data, deleted: [], serverTime: null });
+        }
+
+        return Response.json({ message: "Not found" }, { status: 404 });
+      }),
+    );
+  }
+
+  function titled(title: string) {
+    const document = createDocument("RESUME");
+    const content = document.content as ResumeData;
+    saveDocument({ ...document, title, content: { ...content, title } }, { flush: true });
+    return loadDocumentById("RESUME", document.id)!;
+  }
+
+  function linkAs(document: BaseDocument, status: string, revision: number) {
+    getWorkspaceStorage("RESUME").patchSync(document.id, {
+      enabled: true,
+      status,
+      cloudDocumentId: document.id,
+      revision,
+    } as never);
+  }
+
+  async function backup() {
+    return buildAccountBackup();
+  }
+
+  async function backupTitles() {
+    const result = await backup();
+    if (!result.ok) throw new Error(result.message);
+    return (JSON.parse(result.json).documents as BaseDocument[]).map((document) => document.title);
+  }
+
+  it("S-347: a newer cloud revision replaces a synced copy; local-only and cloud-only are both kept", async () => {
+    const linked = titled("Old title");
+    linkAs(linked, "synced", 1);
+    titled("Only on this device");
+    const cloudOnly = { ...titled("Only in the cloud") };
+    deleteDocument("RESUME", cloudOnly.id);
+
+    serveAccount([cloudRecord({ ...linked, title: "New title" }, 2), cloudRecord(cloudOnly, 1)]);
+
+    const titles = await backupTitles();
+
+    expect(titles).toEqual(
+      expect.arrayContaining(["New title", "Only on this device", "Only in the cloud"]),
+    );
+    expect(titles).not.toContain("Old title");
+  });
+
+  it("S-347: a portfolio in the account does not fail the backup", async () => {
+    titled("My resume");
+    serveAccount([
+      cloudRecord({ id: "portfolio-1", type: "PORTFOLIO" as never, title: "My site" }, 1, {
+        sections: [],
+      }),
+    ]);
+
+    expect(await backupTitles()).toEqual(["My resume"]);
+  });
+
+  it("S-347: unsent edits beside a newer cloud revision keep both copies", async () => {
+    const pending = titled("Edited here");
+    linkAs(pending, "pending", 1);
+    serveAccount([cloudRecord({ ...pending, title: "Edited elsewhere" }, 2)]);
+
+    expect(await backupTitles()).toEqual(
+      expect.arrayContaining(["Edited here", "Edited elsewhere (cloud version)"]),
+    );
+  });
+
+  it("S-347: a document in conflict keeps both versions", async () => {
+    const conflicted = titled("Mine");
+    linkAs(conflicted, "conflicted", 1);
+    serveAccount([cloudRecord({ ...conflicted, title: "Theirs" }, 1)]);
+
+    expect(await backupTitles()).toEqual(
+      expect.arrayContaining(["Mine", "Theirs (cloud version)"]),
+    );
+  });
+
+  it("S-347: a list as long as the server's cap is treated as cut short", async () => {
+    const many = Array.from({ length: SERVER_LIST_CAP }, (_, index) =>
+      cloudRecord({ id: `r-${index}`, type: "RESUME", title: `R${index}` }, 1),
+    );
+    serveAccount(many);
+
+    const result = await backup();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/more documents than one backup can fetch/);
+  });
+
+  it("S-347: on a device holding another account's documents, the account's cloud documents are still in it", async () => {
+    setWorkspaceUser("user-a");
+    claimWorkspaceIfUncontested("user-a");
+    titled("User A's resume");
+    setWorkspaceUser("user-b");
+    expect(canWorkspaceReachCloud()).toBe(false);
+
+    const accountDocument = { ...titled("User B's resume") };
+    deleteDocument("RESUME", accountDocument.id);
+    serveAccount([cloudRecord(accountDocument, 1)]);
+
+    const titles = await backupTitles();
+
+    expect(titles).toContain("User B's resume");
+    expect(titles).not.toContain("User A's resume");
+  });
+
+  it("S-347: a document whose owner was lost with the index is left out", async () => {
+    setWorkspaceUser("user-a");
+    claimWorkspaceIfUncontested("user-a");
+    const orphan = titled("Owner unknown");
+    titled("Mine for sure");
+    const index = JSON.parse(localStorage.getItem(DOCUMENT_INDEX_STORAGE_KEY)!);
+    index.items[`RESUME:${orphan.id}`].owner = "unknown:index-rebuilt";
+    localStorage.setItem(DOCUMENT_INDEX_STORAGE_KEY, JSON.stringify(index));
+    // The app shows it to its device owner, but the backup does not adopt it.
+    expect(listDocuments().map((meta) => meta.title)).toContain("Owner unknown");
+    serveAccount([]);
+
+    const titles = await backupTitles();
+
+    expect(titles).toContain("Mine for sure");
+    expect(titles).not.toContain("Owner unknown");
+  });
+
+  it("S-347: a cloud document that cannot be read stops the backup and is named", async () => {
+    const broken = titled("Broken CV");
+    serveAccount([cloudRecord(broken, 1, "not a document")]);
+
+    const result = await backup();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toContain("Broken CV");
+  });
+
+  it("S-347: offline, no account backup is made, and the device-only copy still is", async () => {
+    titled("Offline resume");
+    serveAccount("offline");
+
+    const result = await backup();
+
+    expect(result).toMatchObject({ ok: false });
+    if (!result.ok) expect(result.message).toMatch(/could not be loaded/);
+    expect(JSON.parse(buildWorkspaceBackup(listDocuments()).json).documents[0].title).toBe(
+      "Offline resume",
+    );
   });
 });

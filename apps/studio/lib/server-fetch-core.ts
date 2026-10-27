@@ -85,3 +85,12 @@ export async function serverFetchDataFrom<T>(
 
   return ((await response.json()) as { data: T }).data;
 }
+
+/**
+ * The API's CORS refusal (`cors.ts`) is a 403 too, and the server sends studio's `Origin` on
+ * every call. A refused origin is a deploy misconfiguration, not a dead session: read as one, it
+ * would sign every user out. The API sends no code for it, so its fixed message is the tell.
+ */
+export function isCorsRejection(status: number, message: string | undefined) {
+  return status === 403 && message === "Not allowed by CORS";
+}

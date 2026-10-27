@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 
+import { siteConfig } from "@/config/site";
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 const REFERRAL_STORAGE_KEY = "veriworkly:referral";
@@ -76,7 +77,8 @@ export async function finishSignIn(now = new Date()): Promise<{ referralError?: 
   return {};
 }
 
-function signInHref() {
+/** The sign-in page, set to come back to this page afterwards. */
+export function signInHref() {
   const here = `${window.location.pathname}${window.location.search}`;
 
   return `/login?callbackURL=${encodeURIComponent(here)}`;
@@ -87,4 +89,69 @@ export function toastSignInRequired(message: string) {
   toast.error(message, {
     action: { label: "Sign in", onClick: () => window.location.assign(signInHref()) },
   });
+}
+
+const SIGN_IN_ERRORS: Record<string, string> = {
+  account_not_linked:
+    "This email already has a VeriWorkly account. Sign in with your email code first; you can link GitHub afterwards from Import profile.",
+  unable_to_link_account: "That account could not be linked. Sign in with your email code instead.",
+  // Sent only by a server that still requires one email on both accounts.
+  "email_doesn't_match": "This server still requires the same email on both accounts.",
+  // Your account keeps the one GitHub account it linked (owner decision).
+  github_already_linked:
+    "Your account is already linked to a different GitHub account. It can't be changed.",
+  different_github_account:
+    "Your account is already linked to a different GitHub account. It can't be changed.",
+  unlink_not_allowed: "A linked GitHub account can't be removed.",
+  unlinking_not_allowed: "A linked GitHub account can't be removed.",
+  account_already_linked_to_different_user:
+    "That account is already linked to another VeriWorkly user.",
+  email_not_found: "The provider did not share an email address, so we could not sign you in.",
+  signup_disabled: "New accounts cannot be created right now.",
+  state_mismatch: "The sign-in took too long or was opened in another tab. Please try again.",
+  please_restart_the_process:
+    "The sign-in took too long or was opened in another tab. Please try again.",
+};
+
+/**
+ * What a failed redirect sign-in says, from its `error` code only. The free-text
+ * `error_description` is never shown: anyone can put it in a link to the real login page.
+ */
+export function describeSignInError(code: string): { tone: "info" | "error"; message: string } {
+  if (code === "access_denied" || code === "cancelled") {
+    return { tone: "info", message: "Sign in was cancelled." };
+  }
+
+  return { tone: "error", message: SIGN_IN_ERRORS[code] ?? "Sign in failed. Please try again." };
+}
+
+/** The failed sign-in a redirect reports in its query, read from the `error` code alone. */
+export function signInFailureFromQuery(params: Pick<URLSearchParams, "get">) {
+  const code = params.get("error");
+
+  return code ? describeSignInError(code) : null;
+}
+
+/**
+ * Links a GitHub login to the signed-in account, for the free GitHub import of one's own
+ * profile. GitHub sends the browser back here; a refused link lands on the profile page, which
+ * says why.
+ */
+export async function linkGithubAccount() {
+  // Loaded on click: the auth client is not needed by the many pages that import this module.
+  const { authClient } = await import("@/lib/auth-client");
+  const { error } = await authClient.linkSocial({
+    provider: "github",
+    callbackURL: `${siteConfig.links.app}${window.location.pathname}${window.location.search}`,
+    errorCallbackURL: `${siteConfig.links.app}/profile`,
+  });
+
+  if (error) {
+    const code = typeof error.code === "string" ? error.code.toLowerCase() : "";
+
+    throw new Error(
+      SIGN_IN_ERRORS[code] ??
+        (error.message || "Linking GitHub could not start. Please try again."),
+    );
+  }
 }

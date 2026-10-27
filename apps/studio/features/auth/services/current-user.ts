@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { unstable_rethrow } from "next/navigation";
 
 import { backendApiUrl, WORKSPACE_SETTINGS_STORAGE_KEY } from "@/lib/constants";
@@ -66,31 +67,41 @@ function toSessionUser(user: AccountProfileSummary | null | undefined): SessionU
 }
 
 /**
- * `null` means a guest: no session cookie, or one the server rejects (401/403). Anything else —
+ * `/users/me` for the request being rendered, read once however many server components ask
+ * (the layout and the profile page both do).
+ *
+ * `null` means a guest: no session cookie, or one the server rejects (401/403, but not the 403
+ * of a CORS refusal, which is a misconfigured deploy). Anything else —
  * an auth outage (503 `AUTH_UNAVAILABLE`), a 429, a timeout — throws to the error boundary.
  * Rendering it as "guest" would show a signed-in user an empty, signed-out studio.
  */
-async function fetchServerSessionUser(): Promise<SessionUser | null> {
+export const fetchServerAccount = cache(async (): Promise<AccountProfileSummary | null> => {
   // Loaded on demand: this module also ships to the browser, which must bundle neither.
-  const [{ cookies, headers }, { hasSessionCookieIn, serverFetchDataFrom }] = await Promise.all([
-    import("next/headers"),
-    import("@/lib/server-fetch-core"),
-  ]);
+  const [{ cookies, headers }, { hasSessionCookieIn, isCorsRejection, serverFetchDataFrom }] =
+    await Promise.all([import("next/headers"), import("@/lib/server-fetch-core")]);
   const request = { cookies: await cookies(), headers: await headers() };
 
   if (!hasSessionCookieIn(request.cookies)) return null;
 
   try {
-    return toSessionUser(await serverFetchDataFrom<AccountProfileSummary>(request, "/users/me"));
+    return await serverFetchDataFrom<AccountProfileSummary>(request, "/users/me");
   } catch (error) {
     unstable_rethrow(error);
 
-    if (error instanceof ApiRequestError && (error.status === 401 || error.status === 403)) {
+    if (
+      error instanceof ApiRequestError &&
+      (error.status === 401 || error.status === 403) &&
+      !isCorsRejection(error.status, error.message)
+    ) {
       return null;
     }
 
     throw error;
   }
+});
+
+async function fetchServerSessionUser(): Promise<SessionUser | null> {
+  return toSessionUser(await fetchServerAccount());
 }
 
 export async function fetchCurrentUser(force = false): Promise<SessionUser | null> {
@@ -134,11 +145,21 @@ export function buildWorkspaceBackup(documents: DocumentMeta[], now = new Date()
     );
   }
 
+  return serializeWorkspaceBackup(stored as BaseDocument[], now);
+}
+
+/** Full documents as the backup file; `extras` carries what else an account backup holds. */
+export function serializeWorkspaceBackup(
+  documents: BaseDocument[],
+  now = new Date(),
+  extras: Pick<WorkspaceBackup, "masterProfile"> = {},
+) {
   const backup: WorkspaceBackup = {
     format: WORKSPACE_BACKUP_FORMAT,
     version: 1,
     exportedAt: now.toISOString(),
-    documents: (stored as BaseDocument[]).map((document) => ({
+    ...extras,
+    documents: documents.map((document) => ({
       ...document,
       sync: DETACHED_SYNC,
       content: withDocumentIdentity(document.content, { id: document.id, sync: DETACHED_SYNC }),

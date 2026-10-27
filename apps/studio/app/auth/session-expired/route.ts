@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE_NAMES } from "@/lib/auth-redirect";
 import { serverFetch } from "@/lib/server-fetch";
+import { isCorsRejection } from "@/lib/server-fetch-core";
+
+async function readApiMessage(response: Response) {
+  try {
+    const body = (await response.json()) as { message?: unknown };
+    return typeof body.message === "string" ? body.message : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * The domains the API may have scoped its session cookie to (`AUTH_COOKIE_DOMAIN`): this host
@@ -31,18 +41,24 @@ export async function GET(request: NextRequest) {
   const hasSession = SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name));
   if (!hasSession) return NextResponse.redirect(new URL("/login", request.url));
 
-  const { status } = await serverFetch("/users/me");
-  if (status !== 401 && status !== 403) return NextResponse.redirect(new URL("/", request.url));
+  const response = await serverFetch("/users/me");
+  const { status } = response;
+  const message = status === 403 ? await readApiMessage(response) : undefined;
 
-  const response = NextResponse.redirect(new URL("/login?session=expired", request.url));
+  // A CORS refusal says nothing about the session: keep the cookie, and let the page report it.
+  if ((status !== 401 && status !== 403) || isCorsRejection(status, message)) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  const expired = NextResponse.redirect(new URL("/login?session=expired", request.url));
 
   for (const name of SESSION_COOKIE_NAMES) {
-    response.headers.append("Set-Cookie", expiredCookie(name));
+    expired.headers.append("Set-Cookie", expiredCookie(name));
 
     for (const domain of cookieDomains(request.nextUrl.hostname)) {
-      response.headers.append("Set-Cookie", expiredCookie(name, domain));
+      expired.headers.append("Set-Cookie", expiredCookie(name, domain));
     }
   }
 
-  return response;
+  return expired;
 }

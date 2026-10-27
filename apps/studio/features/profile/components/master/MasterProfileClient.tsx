@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 import { AlertCircle } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 
@@ -8,16 +7,14 @@ import type { MasterProfileData } from "@/types/resume";
 
 import { Button } from "@veriworkly/ui";
 
-import { ApiRequestError } from "@/utils/fetchApiData";
-
 import ProfileMaster from "./ProfileMaster";
+import { reportMasterSaveFailure, saveThroughRef, type SaveLatest } from "./master-save-failure";
 import { MasterSkeleton } from "./MasterProfileLoading";
 import { MASTER_SECTION_NAV } from "./master-section-nav";
 import { MasterMobileSectionNav, MasterProfileNavigator } from "./MasterProfileNavigator";
 import { RecoveredProfileNotice } from "../RecoveredProfileNotice";
 
 import {
-  resolveConflictUpdatedAt,
   loadMasterProfileForEditor,
   saveMasterProfileToDatabase,
   saveMasterProfileToLocalStorage,
@@ -139,21 +136,21 @@ export default function MasterProfileClient() {
     }, 800);
   }, []);
 
+  // Set by `ProfileMaster`: saves what the editor holds at the moment it is called.
+  const saveLatestRef = useRef<SaveLatest | null>(null);
+
   /*
    * A failed save is reported here and re-thrown so `ProfileMaster` keeps its own inline
    * failure state, and so `state.profile` is never replaced with a value the server
    * rejected — the user's draft stays in the editor.
-   *
-   * A 409 means the stored profile is not the one this edit started from. The server's
-   * message says why; "Save my version" overwrites it using the cursor the conflict carries.
    */
-  const handleSave = async (profile: MasterProfileData, expectedUpdatedAt = state.updatedAt) => {
+  const handleSave = async (profile: MasterProfileData, expectedUpdatedAt?: string) => {
     setSaving(true);
 
     try {
       const savedBundle = await saveMasterProfileToDatabase(
         profile,
-        expectedUpdatedAt ?? undefined,
+        expectedUpdatedAt ?? state.updatedAt ?? undefined,
       );
 
       saveMasterProfileToLocalStorage(savedBundle.profile);
@@ -165,46 +162,12 @@ export default function MasterProfileClient() {
         recovered: false,
       });
     } catch (error) {
-      await reportSaveFailure(error, profile);
+      await reportMasterSaveFailure(error, saveThroughRef(saveLatestRef));
       throw error;
     } finally {
       setSaving(false);
     }
   };
-
-  async function reportSaveFailure(error: unknown, profile: MasterProfileData) {
-    const status = error instanceof ApiRequestError ? error.status : null;
-    const message = error instanceof Error ? error.message : "Could not save your master profile.";
-
-    if (status === 409) {
-      const currentUpdatedAt = await resolveConflictUpdatedAt(error);
-
-      toast.error(message, {
-        description: "Your changes are still in the editor.",
-        action: currentUpdatedAt
-          ? {
-              label: "Save my version",
-              onClick: () => void handleSave(profile, currentUpdatedAt).catch(() => undefined),
-            }
-          : undefined,
-      });
-
-      return;
-    }
-
-    if (status === 413) {
-      toast.error("This profile is too large to save. Remove some content and try again.");
-
-      return;
-    }
-
-    toast.error(message, {
-      action: {
-        label: "Retry",
-        onClick: () => void handleSave(profile).catch(() => undefined),
-      },
-    });
-  }
 
   if (loading) return <MasterSkeleton />;
 
@@ -256,7 +219,13 @@ export default function MasterProfileClient() {
           </div>
         ) : null}
 
-        <ProfileMaster profile={state.profile} onSave={handleSave} isSaving={saving} />
+        <ProfileMaster
+          profile={state.profile}
+          onSave={handleSave}
+          saveLatestRef={saveLatestRef}
+          isSaving={saving}
+          neverSaved={state.source !== "database"}
+        />
       </main>
     </div>
   );

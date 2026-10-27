@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import {
   ProfileLinksGrid,
@@ -9,6 +10,7 @@ import ProfileDataPanel from "@/features/profile/components/ProfileDataPanel";
 import AccountStatsPanel from "@/features/profile/components/ProfileAccountStats";
 import DangerZoneCard from "@/features/profile/components/DangerZoneCard";
 import { fetchAccountProfile } from "@/features/profile/services/account-profile";
+import { LinkErrorNotice } from "@/features/profile/components/LinkErrorNotice";
 
 export const metadata: Metadata = {
   title: "Profile",
@@ -21,6 +23,10 @@ export default async function ProfilePage() {
 
   return (
     <main className="space-y-6" aria-labelledby="profile-title">
+      <Suspense fallback={null}>
+        <LinkErrorNotice />
+      </Suspense>
+
       <ProfileHero profile={accountProfile} />
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">

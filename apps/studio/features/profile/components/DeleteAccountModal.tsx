@@ -25,6 +25,7 @@ import {
   downloadWorkspaceBackup,
 } from "@/features/auth/services/current-user";
 import { listDocuments } from "@/features/documents/services/document-workspace-service";
+import { downloadAccountBackup } from "@/features/profile/services/account-backup";
 import { deleteAccount } from "@/features/profile/services/update-profile";
 
 interface DeleteAccountModalProps {
@@ -38,6 +39,9 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
   const [prevOpen, setPrevOpen] = React.useState(open);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [downloading, setDownloading] = React.useState(false);
+  // Why the full download was not made; the device-only copy is then offered instead.
+  const [backupError, setBackupError] = React.useState<string | null>(null);
 
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -45,6 +49,7 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
     if (open) {
       setConfirmationInput("");
       setError(null);
+      setBackupError(null);
       setIsDeleting(false);
     }
   }
@@ -54,7 +59,21 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
   const deviceDocuments = React.useMemo(() => (open ? listDocuments() : []), [open]);
   const localOnlyCount = deviceDocuments.filter((item) => !item.sync.cloudDocumentId).length;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    setDownloading(true);
+    setBackupError(null);
+
+    try {
+      const backup = await downloadAccountBackup();
+      if (!backup.ok) setBackupError(backup.message);
+    } catch (err) {
+      setBackupError(err instanceof Error ? err.message : "Your data could not be downloaded.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleLocalDownload = () => {
     try {
       downloadWorkspaceBackup(deviceDocuments);
     } catch (err) {
@@ -128,8 +147,8 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
               <div className="flex items-start gap-2.5">
                 <FileText className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                 <span>
-                  <strong className="text-foreground">Resumes & Documents:</strong> All cloud-synced
-                  resumes, cover letters, and version histories will be destroyed.
+                  <strong className="text-foreground">Resumes & Documents:</strong> Every resume and
+                  cover letter backed up to your account will be destroyed.
                 </span>
               </div>
 
@@ -194,31 +213,64 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
               </div>
             </div>
 
-            {deviceDocuments.length > 0 ? (
-              <div className="border-border flex flex-col gap-3 rounded-xl border p-4 text-xs sm:flex-row sm:items-center sm:justify-between">
+            <div className="border-border flex flex-col gap-3 rounded-xl border p-4 text-xs sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                {deviceDocuments.length > 0 ? (
+                  <>
+                    <strong className="text-foreground">
+                      {deviceDocuments.length} document{deviceDocuments.length === 1 ? "" : "s"} on
+                      this device
+                    </strong>
+                    {localOnlyCount > 0
+                      ? `, ${localOnlyCount} of them never saved to the cloud.`
+                      : "."}{" "}
+                    Deleting your account removes them from this device too.{" "}
+                  </>
+                ) : null}
+                Download a copy first: one JSON file with every document in your account and your
+                Master Profile. An editor&apos;s Import JSON restores the documents, and Profile,
+                Advanced JSON, Import restores the Master Profile. For a PDF, open a document and
+                download it.
+              </span>
+
+              <Button
+                size="sm"
+                type="button"
+                variant="secondary"
+                loading={downloading}
+                disabled={isDeleting || downloading}
+                onClick={() => void handleDownload()}
+                className="shrink-0 text-xs font-semibold"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Download my data
+              </Button>
+            </div>
+
+            {backupError ? (
+              <div
+                role="alert"
+                className="flex flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs sm:flex-row sm:items-center sm:justify-between"
+              >
                 <span>
-                  <strong className="text-foreground">
-                    {deviceDocuments.length} document{deviceDocuments.length === 1 ? "" : "s"} on
-                    this device
-                  </strong>
-                  {localOnlyCount > 0
-                    ? `, ${localOnlyCount} of them never saved to the cloud.`
-                    : "."}{" "}
-                  Deleting your account removes them from this device too. Download a copy first if
-                  you want to keep them.
+                  <strong className="text-foreground">No download was made.</strong> {backupError}
+                  {deviceDocuments.length > 0
+                    ? " You can still save the documents on this device; it will not include the rest of your account."
+                    : null}
                 </span>
 
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="secondary"
-                  disabled={isDeleting}
-                  onClick={handleDownload}
-                  className="shrink-0 text-xs font-semibold"
-                >
-                  <Download className="mr-1.5 h-3.5 w-3.5" />
-                  Download my documents
-                </Button>
+                {deviceDocuments.length > 0 ? (
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                    disabled={isDeleting}
+                    onClick={handleLocalDownload}
+                    className="shrink-0 text-xs font-semibold"
+                  >
+                    Download local documents only
+                  </Button>
+                ) : null}
               </div>
             ) : null}
 

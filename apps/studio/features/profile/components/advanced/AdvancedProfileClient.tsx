@@ -28,6 +28,8 @@ const AdvancedProfileClient = () => {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [profile, setProfile] = useState<MasterProfile | null>(null);
   const [recovered, setRecovered] = useState(false);
+  // The editor remounts on the saved profile, so the confirmation is carried across from here.
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   // A failed load blocks editing: saving a stand-in would overwrite the profile that did
   // not load. Only "no profile yet" opens the editor without one from the database.
@@ -77,6 +79,7 @@ const AdvancedProfileClient = () => {
       setProfile(savedBundle.profile);
       setUpdatedAt(savedBundle.updatedAt);
       setRecovered(false);
+      setSavedNotice("Profile saved.");
     } finally {
       setSaving(false);
     }
@@ -123,6 +126,7 @@ const AdvancedProfileClient = () => {
         isSaving={saving}
         profile={profile}
         onSave={handleSave}
+        initialStatus={savedNotice}
         key={updatedAt ?? "init"}
       />
     </div>

@@ -110,7 +110,11 @@ export function createEmptyStudioMasterProfile(): MasterProfileData {
   return normalizeProfile(createEmptyMasterProfile());
 }
 
-function toMasterProfileData(value: unknown) {
+/**
+ * A stored or pasted profile as the editors hold it: validated, migrated, legacy sections
+ * unflattened into their typed arrays. `null` when it is not a profile at all.
+ */
+export function toMasterProfileData(value: unknown) {
   const parsed = masterProfileSchema.safeParse(value);
 
   if (!parsed.success) {
