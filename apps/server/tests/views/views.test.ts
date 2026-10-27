@@ -277,10 +277,13 @@ describe("Views tracking buffering and flushing", () => {
         user: { subscriptions: [] },
       });
 
+      // V-363: Date stands still, so the write and the key read below name the same UTC day.
+      vi.useFakeTimers({ toFake: ["Date"], now: Date.now() });
       await PortfolioService.recordView("testsub", "https://google.com");
 
       // Verify Redis contains the entry
       const dateKey = new Date().toISOString().slice(0, 10);
+      vi.useRealTimers();
       const redisKey = `portfolio:views:buffer:${dateKey}`;
 
       expect(mockRedis.hIncrBy).toHaveBeenCalled();

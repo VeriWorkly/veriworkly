@@ -680,7 +680,12 @@ describe("V-034 a client that disconnects during the job fetch", () => {
       releasePage("A job description long enough to count as a posting for scoring.");
 
       // Whatever the server does next, it never charges: no provider call, no committed row.
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // V-362: wait until the handler has finished (its AI slot is released), not a fixed time.
+      const slot = await waitFor(
+        () => getRedis().get(`ai:in-flight:${user.id}`),
+        (value) => !value || value === "0",
+      );
+      expect(slot === null || slot === "0").toBe(true);
       expect(fetchMock).not.toHaveBeenCalled();
       expect(await reservationStatus(body.requestId)).not.toBe("COMMITTED");
       expect(await wallet(user.id)).toEqual({ balance: 50, reserved: 0 });

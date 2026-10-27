@@ -153,10 +153,15 @@ describe("logger masks recipients", () => {
   });
 
   it("masks in the development format too", () => {
+    vi.stubEnv("NODE_ENV", "development");
     const spy = vi.spyOn(console, "log").mockImplementation(() => {});
     logger.info("Admin user created for auth", { email: "admin@veriworkly.com" });
 
+    // V-395: an empty call list (a shell LOG_LEVEL above info, or the production path) passed the
+    // check below without testing anything.
+    expect(spy).toHaveBeenCalled();
     expect(JSON.stringify(spy.mock.calls)).not.toContain("admin@veriworkly.com");
+    expect(JSON.stringify(spy.mock.calls)).toContain("a***@v***.com");
   });
 });
 

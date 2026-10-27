@@ -1,4 +1,4 @@
-import { afterAll, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll } from "vitest";
 
 import { applyServerEnv } from "./env.js";
 
@@ -15,6 +15,15 @@ const { initRedis, closeRedis, getRedis } = await import("#lib/redis");
  * enums and indexes stay exactly as `migrate deploy` left them.
  */
 export async function resetStores(): Promise<void> {
+  // The URL was checked in env.ts; this checks where the connection actually landed (V-364).
+  const [{ name }] = await prisma.$queryRaw<
+    Array<{ name: string }>
+  >`SELECT current_database() AS name`;
+  if (!name.endsWith("_test"))
+    throw new Error(
+      `Integration suite refuses to truncate database "${name}": not a _test database.`,
+    );
+
   const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
     SELECT tablename FROM pg_tables
     WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'
@@ -31,6 +40,17 @@ export async function resetStores(): Promise<void> {
 beforeAll(async () => {
   await initRedis();
   await resetStores();
+});
+
+/**
+ * A billing email is sent fire-and-forget after the webhook answers. One still in flight when a
+ * test ends would land after the next test's mock reset and count as that test's mail (V-360).
+ * Each test waits here for every send it started. Imported late, so a file's own `vi.mock` of the
+ * mail modules is already in place.
+ */
+afterEach(async () => {
+  const { settleBillingNotifications } = await import("#services/billingNotifications");
+  await settleBillingNotifications();
 });
 
 /**

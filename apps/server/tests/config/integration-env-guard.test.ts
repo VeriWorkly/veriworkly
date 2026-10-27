@@ -57,6 +57,29 @@ describe("integration suite database guard (V-258)", () => {
     ).toThrow(/non-local database host/);
   });
 
+  // V-364: node-postgres copies query parameters into the client config, so `?database=` (or
+  // `dbname`, `user`, `port`) would connect somewhere the _test name in the path never named.
+  it.each(["database=veriworkly", "dbname=veriworkly", "user=postgres", "port=5432", "DATABASE=x"])(
+    "refuses a ?%s parameter that overrides the connection target",
+    (query) => {
+      expect(() =>
+        resolveIntegrationEnv({
+          INTEGRATION_DATABASE_URL: `postgresql://u:p@localhost:5433/veriworkly_test?${query}`,
+          INTEGRATION_REDIS_URL: LOCAL_REDIS,
+        }),
+      ).toThrow(/query parameter/);
+    },
+  );
+
+  it("still accepts harmless parameters such as sslmode", () => {
+    expect(() =>
+      resolveIntegrationEnv({
+        INTEGRATION_DATABASE_URL: `${LOCAL_TEST_DB}?sslmode=disable`,
+        INTEGRATION_REDIS_URL: LOCAL_REDIS,
+      }),
+    ).not.toThrow();
+  });
+
   it("refuses a multi-host URL with any remote host", () => {
     expect(() =>
       resolveIntegrationEnv({

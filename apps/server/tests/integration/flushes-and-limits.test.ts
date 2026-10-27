@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
@@ -116,8 +116,13 @@ describe("portfolio views flush (V-103, V-124)", () => {
 });
 
 describe("portfolio view recording (V-114)", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("cannot overshoot the per-day field cap under concurrent views", async () => {
     const publication = await seedPublication();
+    // V-363: Date stands still for this test, so the request and the key read below name the same
+    // UTC day even when the run crosses midnight.
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() });
     const dateKey = new Date().toISOString().slice(0, 10);
     const key = `portfolio:views:buffer:${dateKey}`;
     const filler: Record<string, string> = {};
@@ -347,8 +352,13 @@ describe("autosave limiter class (V-130)", () => {
 });
 
 describe("portfolio view beacon (V-052)", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("counts a view without reading the published page, and 404s a subdomain that serves nothing", async () => {
     const publication = await seedPublication();
+    // V-363: Date stands still for this test, so the request and the key read below name the same
+    // UTC day even when the run crosses midnight.
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() });
     const pageRead = vi.spyOn(PortfolioService, "getPublicPortfolio");
 
     await PortfolioService.recordView(publication.subdomain, "https://www.google.com/");

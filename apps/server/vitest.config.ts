@@ -1,6 +1,8 @@
 import path from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
 
+import { BLANKED_CREDENTIALS } from "./tests/integration/env";
+
 export default defineConfig({
   resolve: {
     alias: [
@@ -40,7 +42,23 @@ export default defineConfig({
      */
     pool: "threads",
     maxWorkers: 4,
+    /**
+     * The unit suite reaches no real service. `config.ts` skips dotenv under Vitest, but values
+     * in the developer's shell (the owner keeps credentials as Windows User variables) still
+     * reach the code, so a test that forgot its mock would call a real AI, mail or Dodo account
+     * or open the real database or Redis (V-365). Every credential is blanked and the database
+     * and Redis URLs point nowhere. The log level and NODE_ENV are pinned so the logger tests do
+     * not depend on the shell either (V-395). The OAuth ids below are dummies the auth module
+     * needs to load.
+     */
     env: {
+      ...Object.fromEntries(BLANKED_CREDENTIALS.map((key) => [key, ""])),
+      DODO_PAYMENTS_API_KEY: "",
+      DODO_PAYMENTS_WEBHOOK_SECRET: "",
+      DATABASE_URL: "postgresql://unit:unit@127.0.0.1:1/unit_suite_has_no_database",
+      REDIS_URL: "redis://127.0.0.1:1/0",
+      LOG_LEVEL: "info",
+      NODE_ENV: "test",
       GOOGLE_CLIENT_ID: "dummy-google-client-id",
       GOOGLE_CLIENT_SECRET: "dummy-google-client-secret",
       GITHUB_CLIENT_ID: "dummy-github-client-id",

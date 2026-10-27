@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
@@ -97,8 +97,6 @@ async function deliverPassWebhook(userId: string) {
   for (const [key, value] of Object.entries(headers)) req.set(key, value);
   return req.send(body);
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe("V-107 wallet reads do not write", () => {
   it("GET /billing/credits for a user with no wallet answers zero and creates no row", async () => {
@@ -251,7 +249,9 @@ describe("V-107 wallet reads do not write", () => {
 describe("V-108 entitlement cache", () => {
   it("a grant that ends inside the 60 s cache window stops counting at endsAt", async () => {
     const user = await createUserWithSession();
-    const endsAt = new Date(Date.now() + 1200);
+    // V-362: half a minute ahead (inside the 60 s cache window), and the clock is moved past it
+    // rather than slept through, so no stall before the first read can end the grant early.
+    const endsAt = new Date(Date.now() + 30_000);
     await entitlementGrant(user.id, "portfolio_publish", endsAt);
 
     expect(await EntitlementService.has(user.id, "portfolio_publish")).toBe(true);
@@ -262,10 +262,14 @@ describe("V-108 entitlement cache", () => {
     expect(
       await EntitlementService.has(user.id, "portfolio_publish", new Date(endsAt.getTime() + 1)),
     ).toBe(false);
-    await sleep(1400);
-    expect(await EntitlementService.has(user.id, "portfolio_publish")).toBe(false);
-    expect(await EntitlementService.listActive(user.id)).toEqual([]);
-    expect(await cachedEntitlements(user.id)).toBeTruthy();
+    vi.useFakeTimers({ toFake: ["Date"], now: endsAt.getTime() + 1_000 });
+    try {
+      expect(await EntitlementService.has(user.id, "portfolio_publish")).toBe(false);
+      expect(await EntitlementService.listActive(user.id)).toEqual([]);
+      expect(await cachedEntitlements(user.id)).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("a second consecutive has() is served from the cache, not the table", async () => {
