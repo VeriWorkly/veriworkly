@@ -55,8 +55,9 @@ describe("ambassador decision emails (V-181)", () => {
     const approved = await review(application.id, "APPROVE");
     expect(approved.status).toBe(200);
 
+    // Sent off the request path.
+    await vi.waitFor(() => expect(mailsTo(user.email)).toHaveLength(1));
     const mails = mailsTo(user.email);
-    expect(mails).toHaveLength(1);
     expect(mails[0]!.subject).toMatch(/approved/i);
     expect(mails[0]!.text).toContain("Asha");
     expect(mails[0]!.text).toContain("http://localhost:3001/ambassador");
@@ -72,8 +73,8 @@ describe("ambassador decision emails (V-181)", () => {
     const rejected = await review(application.id, "REJECT", "Apply again with <b>your campus</b>");
     expect(rejected.status).toBe(200);
 
+    await vi.waitFor(() => expect(mailsTo(user.email)).toHaveLength(1));
     const mails = mailsTo(user.email);
-    expect(mails).toHaveLength(1);
     expect(mails[0]!.subject).not.toMatch(/approved/i);
     expect(mails[0]!.text).toContain("Apply again with <b>your campus</b>");
     expect(mails[0]!.html).toContain("Apply again with &lt;b&gt;your campus&lt;/b&gt;");
@@ -87,7 +88,41 @@ describe("ambassador decision emails (V-181)", () => {
       review(application.id, "REJECT"),
     ]);
     expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
-    expect(mailsTo(user.email)).toHaveLength(1);
+    await vi.waitFor(() => expect(mailsTo(user.email)).toHaveLength(1));
+  });
+
+  it("commits the decision, the role change and the audit entry together (V-074)", async () => {
+    const { user, application } = await pendingApplication();
+
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "AdminAuditEntry" ADD CONSTRAINT "audit_blocked_for_test" CHECK (false) NOT VALID`,
+    );
+    let blocked;
+    try {
+      blocked = await review(application.id, "APPROVE", "Strong application");
+    } finally {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE "AdminAuditEntry" DROP CONSTRAINT "audit_blocked_for_test"`,
+      );
+    }
+    expect(blocked.status).toBeGreaterThanOrEqual(500);
+    expect(
+      (await prisma.ambassadorApplication.findUniqueOrThrow({ where: { id: application.id } }))
+        .status,
+    ).toBe("PENDING");
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).role).toBe("USER");
+    expect(mailsTo(user.email)).toHaveLength(0);
+
+    const approved = await review(application.id, "APPROVE", "Strong application");
+    expect(approved.status).toBe(200);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).role).toBe(
+      "AMBASSADOR",
+    );
+    const audits = await prisma.adminAuditEntry.findMany({
+      where: { targetId: application.id, action: "ambassador.application.approve" },
+    });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]!.metadata).toMatchObject({ userId: user.id, status: "APPROVED" });
   });
 
   it("a failed send does not undo the decision", async () => {

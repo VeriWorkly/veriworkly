@@ -23,6 +23,13 @@ export const roadmapQuerySchema = z
 
 const isoDateTime = z.string().datetime({ offset: true });
 
+/** The whole `details` object serialized, in UTF-8 bytes: custom metadata is kept, so bounded. */
+const ROADMAP_DETAILS_MAX_BYTES = 64 * 1024;
+
+/**
+ * The known sections are checked; any other top-level key is the "custom JSON metadata" the
+ * studio form offers and is kept as sent (V-083), not silently dropped.
+ */
 const roadmapDetailsSchema = z
   .object({
     problem: z.string().nullable().optional(),
@@ -80,6 +87,13 @@ const roadmapDetailsSchema = z
       .nullable()
       .optional(),
   })
+  .passthrough()
+  .refine(
+    (details) => Buffer.byteLength(JSON.stringify(details), "utf8") <= ROADMAP_DETAILS_MAX_BYTES,
+    {
+      message: `Details must be at most ${ROADMAP_DETAILS_MAX_BYTES / 1024} KB`,
+    },
+  )
   .nullable()
   .optional();
 

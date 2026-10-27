@@ -326,6 +326,37 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     expect(response.body.data.startedAt).toBeNull();
   });
 
+  it("keeps custom keys in details and refuses an oversized details object (V-083)", async () => {
+    const admin = await asAdmin();
+
+    const response = await admin.post(`${API}/admin/roadmap`).send({
+      title: "With metadata",
+      description: "Custom details",
+      details: { problem: "Slow exports", rolloutPercent: 25, owner: { team: "core" } },
+    });
+    expect(response.status).toBe(201);
+    expect(response.body.data.details).toEqual({
+      problem: "Slow exports",
+      rolloutPercent: 25,
+      owner: { team: "core" },
+    });
+
+    const tooBig = await admin.post(`${API}/admin/roadmap`).send({
+      title: "Too big",
+      description: "Oversized details",
+      details: { blob: "x".repeat(70 * 1024) },
+    });
+    expect(tooBig.status).toBe(400);
+
+    // Measured in UTF-8 bytes: 40,000 two-byte characters are 80 KB, though only 40,000 chars.
+    const multiByte = await admin.post(`${API}/admin/roadmap`).send({
+      title: "Too big in bytes",
+      description: "Multi-byte details",
+      details: { blob: "é".repeat(40_000) },
+    });
+    expect(multiByte.status).toBe(400);
+  });
+
   it("derives the quarter for done + null, clears it when reopened, keeps an explicit one", async () => {
     const admin = await asAdmin();
 
