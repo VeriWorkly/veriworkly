@@ -4,6 +4,7 @@ import { PageSection, TYPE } from "@/components/marketing/PageLayout";
 
 import CompareCaveatNote from "../shared/CompareCaveatNote";
 
+import { PRICES_CHECKED } from "../../data/competitors";
 import { type Competitor } from "../../types";
 
 interface ComparePricingSectionProps {
@@ -23,8 +24,8 @@ const VERIWORKLY_PRICING_PILLARS = [
 export const ComparePricingSection = ({ competitor }: ComparePricingSectionProps) => (
   <PageSection
     id="pricing"
-    title="What it costs."
-    lede="Side by side, with no renewal traps or per-download fees hidden in the small print."
+    title={`${competitor.name} pricing in ${PRICES_CHECKED.year}.`}
+    lede={`${competitor.name} prices as published on its own site, checked in ${PRICES_CHECKED.month} ${PRICES_CHECKED.year}, beside VeriWorkly. No renewal traps or per-download fees hidden in the small print.`}
   >
     <div className="grid gap-6 lg:grid-cols-2">
       <article className="bg-card reveal flex flex-col rounded-3xl p-7 lg:p-9">

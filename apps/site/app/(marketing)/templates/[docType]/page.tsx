@@ -18,6 +18,13 @@ import TemplateExplorer from "@/features/templates/TemplateExplorer";
 import { toCardData } from "@/features/templates/cardFields";
 import { templatesHeading } from "@/features/templates/utils";
 import { ogPageImage } from "@/features/og/cards";
+import { BLOG_GUIDES, type BlogGuide } from "@/config/blog-guides";
+import { FurtherReading } from "@/components/marketing/FurtherReading";
+
+const GUIDES_BY_TYPE: Record<string, BlogGuide[]> = {
+  resume: [BLOG_GUIDES.resumeLength, BLOG_GUIDES.atsFormat, BLOG_GUIDES.bulletPoints],
+  "cover-letter": [BLOG_GUIDES.coverLetter, BLOG_GUIDES.tailoring],
+};
 
 type PageProps = {
   params: Promise<{ docType: string }>;
@@ -148,6 +155,10 @@ const TemplatesByDocumentTypePage = async ({ params }: PageProps) => {
             templates={templates.map(toCardData)}
             noun={templatesHeading(docTypeData.label).toLowerCase()}
           />
+
+          {GUIDES_BY_TYPE[docType] ? (
+            <FurtherReading className="mt-12" guides={GUIDES_BY_TYPE[docType]} />
+          ) : null}
         </div>
       </section>
     </>

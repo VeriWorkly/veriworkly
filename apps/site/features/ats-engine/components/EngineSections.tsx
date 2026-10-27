@@ -39,7 +39,7 @@ export function EngineHero() {
     <PageHero
       title="Open-source"
       highlight="ATS engine."
-      lede="Reads a resume the way an applicant tracking system does, scores it with a published rubric and matches it to a job posting. Deterministic, and small enough to run in the browser."
+      lede="An open-source resume parser and ATS scoring library for Node, the browser and the edge. It reads a resume the way an applicant tracking system does, scores it with 35 published rules and matches it to a job posting. The VeriWorkly ATS scoring API runs the same engine."
       aside={
         <div className="space-y-6">
           <CopyCommand command={INSTALL_COMMAND} />

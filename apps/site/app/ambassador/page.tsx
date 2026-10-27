@@ -53,6 +53,13 @@ const AmbassadorPage = async () => {
     name: "VeriWorkly Student Ambassador Program",
     url: pageUrl,
     isPartOf: webSiteRef,
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+        { "@type": "ListItem", position: 2, name: "Ambassador Program", item: pageUrl },
+      ],
+    },
     description:
       "A founding-phase campus program. Apply to represent VeriWorkly at your college and help shape how the program rewards its ambassadors.",
   };

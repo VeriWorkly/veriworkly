@@ -12,7 +12,7 @@ export function AtsHero() {
     <PageHero
       title="Is your resume"
       highlight="ATS-ready?"
-      lede="An applicant tracking system files your resume into searchable fields. A two-column layout or a missing heading can leave them empty. See what it reads before a recruiter searches."
+      lede="A free ATS resume checker: 35 published rules read your resume the way an applicant tracking system does, show which fields come out empty, and match it to a job description. Two scans a day with a free account, one every 48 hours without."
       aside={
         <>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">

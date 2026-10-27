@@ -43,16 +43,16 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
     <div className="mt-12 space-y-12">
       {overview && (
         <div className="space-y-3">
-          <h3 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
+          <h2 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
             Overview
-          </h3>
+          </h2>
           <p className="text-muted text-base leading-relaxed md:text-lg">{overview}</p>
         </div>
       )}
 
       {whyItMatters && (
         <div className="border-border/40 space-y-3 rounded-3xl border bg-linear-to-br from-blue-500/5 to-purple-500/5 p-6 md:p-8">
-          <h3 className="text-foreground text-lg font-bold">Why It Matters</h3>
+          <h2 className="text-foreground text-lg font-bold">Why It Matters</h2>
           <p className="text-muted text-base leading-relaxed">{whyItMatters}</p>
         </div>
       )}
@@ -61,18 +61,18 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
         <div className="border-border/40 grid gap-8 border-t pt-10 md:grid-cols-2">
           {details.problem && (
             <div className="space-y-3">
-              <h3 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
+              <h2 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
                 The Challenge
-              </h3>
+              </h2>
               <p className="text-muted leading-relaxed">{details.problem}</p>
             </div>
           )}
 
           {details.solution && (
             <div className="space-y-3">
-              <h3 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
+              <h2 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
                 Our Resolution
-              </h3>
+              </h2>
               <p className="text-muted leading-relaxed">{details.solution}</p>
             </div>
           )}
@@ -81,7 +81,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
       {details.keyImprovements && details.keyImprovements.length > 0 && (
         <div className="border-border/40 space-y-4 border-t pt-10">
-          <h3 className="text-foreground text-xl font-bold">Key Improvements</h3>
+          <h2 className="text-foreground text-xl font-bold">Key Improvements</h2>
 
           <div className="grid gap-6 sm:grid-cols-2">
             {details.keyImprovements.map((improvement, index) => (
@@ -99,7 +99,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
       {details.beforeAfter && details.beforeAfter.length > 0 && (
         <div className="border-border/40 space-y-6 border-t pt-10">
-          <h3 className="text-foreground text-xl font-bold">Before vs After</h3>
+          <h2 className="text-foreground text-xl font-bold">Before vs After</h2>
 
           <div className="space-y-6">
             {details.beforeAfter.map((item, index) => (
@@ -125,9 +125,9 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
       {details.items && details.items.length > 0 && (
         <div className="border-border/40 space-y-6 border-t pt-10">
-          <h3 className="text-foreground text-xl font-bold">
+          <h2 className="text-foreground text-xl font-bold">
             {feature.tags?.includes("templates") ? "Templates Included" : "Scope & Features"}
-          </h3>
+          </h2>
 
           <div className="grid gap-6 sm:grid-cols-2">
             {details.items.map((item, idx) => (
@@ -136,7 +136,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
                 className="border-border/40 bg-card/20 flex flex-col justify-between space-y-4 rounded-2xl border p-6"
               >
                 <div className="space-y-2">
-                  <h4 className="text-foreground text-lg font-bold">{item.name}</h4>
+                  <h3 className="text-foreground text-lg font-bold">{item.name}</h3>
 
                   {item.description && (
                     <p className="text-muted text-sm leading-relaxed">{item.description}</p>
@@ -150,7 +150,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
       {details.media && details.media.length > 0 && (
         <div className="border-border/40 space-y-4 border-t pt-10">
-          <h3 className="text-foreground text-xl font-bold">Related Resources</h3>
+          <h2 className="text-foreground text-xl font-bold">Related Resources</h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {details.media.map((media, index) => (
@@ -160,7 +160,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
               >
                 <div className="space-y-1">
                   {media.label && (
-                    <h4 className="text-foreground text-sm font-bold">{media.label}</h4>
+                    <h3 className="text-foreground text-sm font-bold">{media.label}</h3>
                   )}
                   {media.type && (
                     <span className="text-muted block font-mono text-[10px] tracking-wider uppercase">
@@ -186,7 +186,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
       {details.impactMetrics && details.impactMetrics.length > 0 && (
         <div className="border-border/40 space-y-4 border-t pt-10">
-          <h3 className="text-foreground text-xl font-bold">Expected Impact</h3>
+          <h2 className="text-foreground text-xl font-bold">Expected Impact</h2>
 
           <ul className="list-none space-y-3">
             {details.impactMetrics.map((metric, index) => (
@@ -214,18 +214,18 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
           {approach && (
             <div className="space-y-3">
-              <h3 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
+              <h2 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
                 Implementation Approach
-              </h3>
+              </h2>
               <p className="text-muted leading-relaxed">{approach}</p>
             </div>
           )}
 
           {technicalHighlights && technicalHighlights.length > 0 && (
             <div className="space-y-4">
-              <h3 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
+              <h2 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
                 Technical Highlights
-              </h3>
+              </h2>
 
               <ul className="grid list-none gap-4 sm:grid-cols-2">
                 {technicalHighlights.map((highlight, index) => (
@@ -240,9 +240,9 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
           {githubRefs && githubRefs.length > 0 && (
             <div className="space-y-4">
-              <h3 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
+              <h2 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
                 GitHub References
-              </h3>
+              </h2>
 
               <div className="flex flex-wrap gap-2">
                 {githubRefs.map((ref) => (
@@ -272,9 +272,9 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
 
       {timeline && (
         <div className="border-border/40 space-y-3 border-t pt-10">
-          <h3 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
+          <h2 className="font-mono text-sm font-bold tracking-wider text-zinc-400 uppercase">
             Milestone Timeline
-          </h3>
+          </h2>
 
           <div className="bg-foreground/5 border-border/30 rounded-2xl border p-5">
             <p className="text-muted text-sm leading-relaxed">{timeline}</p>
