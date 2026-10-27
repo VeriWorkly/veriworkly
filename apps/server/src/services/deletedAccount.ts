@@ -269,17 +269,62 @@ export async function redactIfForDeletedAccount(eventId: string, data: unknown) 
   const metadata = isRecord(fields.metadata) ? fields.metadata : {};
   const userId = typeof metadata.veriworkly_user_id === "string" ? metadata.veriworkly_user_id : "";
   const subscriptionId = typeof fields.subscription_id === "string" ? fields.subscription_id : "";
+  const paymentId = typeof fields.payment_id === "string" ? fields.payment_id : "";
 
   const deleted =
-    (userId.length > 0 &&
-      !(await prisma.user.findUnique({ where: { id: userId }, select: { id: true } }))) ||
+    (userId.length > 0 && !(await userExists(userId))) ||
     (subscriptionId.length > 0 &&
       (
         await prisma.subscription.findUnique({
           where: { providerSubId: subscriptionId },
           select: { userId: true },
         })
-      )?.userId === null);
+      )?.userId === null) ||
+    // A refund or dispute names neither: its payment says whose it was (V-277).
+    (paymentId.length > 0 && (await paymentOfDeletedAccount(paymentId, eventId)));
 
   if (deleted) await redactBillingEvent(eventId);
+}
+
+async function userExists(userId: string) {
+  return Boolean(await prisma.user.findUnique({ where: { id: userId }, select: { id: true } }));
+}
+
+/**
+ * Whether a provider payment belonged to an account that is gone, on positive evidence only
+ * (V-277): its stored `payment.succeeded` was redacted (the deletion redacts every event of the
+ * account), or names a user id that no longer exists, or, for a row that names nobody and was
+ * applied with no user attached, its provider customer id belongs to no live user (neither a
+ * user's `billingCustomerId` nor a subscription still attached to a user). A detached row alone
+ * is not evidence: a live customer's row from before `userId` was written looks the same. A
+ * payment that is still failing for a live user is not one.
+ */
+async function paymentOfDeletedAccount(paymentId: string, eventId: string) {
+  const payment = await prisma.billingWebhookEvent.findFirst({
+    where: { providerPaymentId: paymentId, type: "payment.succeeded", id: { not: eventId } },
+    select: { userId: true, status: true, payload: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!payment) return false;
+
+  const payload = isRecord(payment.payload) ? payment.payload : {};
+  if (payload.redacted === true) return true;
+
+  const data = isRecord(payload.data) ? payload.data : {};
+  const metadata = isRecord(data.metadata) ? data.metadata : {};
+  const owner = typeof metadata.veriworkly_user_id === "string" ? metadata.veriworkly_user_id : "";
+  if (owner.length > 0) return !(await userExists(owner));
+
+  if (payment.userId !== null || payment.status !== "PROCESSED") return false;
+  const customer = isRecord(data.customer) ? data.customer : {};
+  const customerId = typeof customer.customer_id === "string" ? customer.customer_id : "";
+  if (!customerId) return false;
+  const [user, subscription] = await Promise.all([
+    prisma.user.findFirst({ where: { billingCustomerId: customerId }, select: { id: true } }),
+    prisma.subscription.findFirst({
+      where: { providerCustomerId: customerId, userId: { not: null } },
+      select: { id: true },
+    }),
+  ]);
+  return !user && !subscription;
 }

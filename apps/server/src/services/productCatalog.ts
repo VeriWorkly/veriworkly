@@ -183,3 +183,10 @@ export function publicCreditEconomics() {
     })),
   };
 }
+
+/** The credit pack a provider product id is configured as, or null (V-274). */
+export function creditPackForProductId(productId: string): CreditPackKey | null {
+  for (const key of Object.keys(creditPackCatalog) as CreditPackKey[])
+    if (creditPackCatalog[key].providerProductId() === productId) return key;
+  return null;
+}
