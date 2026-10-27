@@ -9,13 +9,10 @@ import { buildPageMetadata } from "@/utils/metadata";
 
 import PricingExperience from "@/features/pricing/PricingExperience";
 import { fetchInrPerUsd } from "@/features/pricing/services/exchange-rate";
+import { ogPageImage } from "@/features/og/cards";
 
 const pageUrl = `${siteConfig.url}/pricing`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Pricing & AI Credit Packages",
-)}&description=${encodeURIComponent(
-  "Free resume builder, plus Creator Pro, AI credits, and time-boxed passes.",
-)}`;
+const pageOgImage = ogPageImage("pricing");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/pricing",

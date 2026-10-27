@@ -3,16 +3,11 @@ import { Share2 } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
 
+import { ogPagePath } from "@/features/og/cards";
+
 import BrandSectionHeader from "./BrandSectionHeader";
 
-const PREVIEW_TITLE = "One profile. Every document.";
-const PREVIEW_DESC =
-  "Free AI resumes, cover letters and web portfolios. No login required to start.";
-
-const preview = (theme: "light" | "dark") =>
-  `/api/og?title=${encodeURIComponent(PREVIEW_TITLE)}&description=${encodeURIComponent(
-    PREVIEW_DESC,
-  )}&theme=${theme}`;
+const preview = (theme: "light" | "dark") => ogPagePath("brand-kit-preview", { theme });
 
 const ANATOMY = [
   {
@@ -42,11 +37,11 @@ const ANATOMY = [
   },
 ];
 
-const PARAMS = [
-  { param: "title", detail: "Up to 120 characters. Defaults to “VeriWorkly”." },
-  { param: "description", detail: "Up to 250 characters." },
-  { param: "theme", detail: "light (default) or dark." },
-  { param: "showDesc", detail: "Set to false for a title-only card." },
+const SOURCES = [
+  { source: "page", detail: "A marketing page, by its key in features/og/cards.ts." },
+  { source: "changelog", detail: "A release, by its id: the version and its title." },
+  { source: "roadmap", detail: "A roadmap item, by its id." },
+  { source: "theme", detail: "light (default) or dark." },
 ];
 
 const SocialSection = () => {
@@ -55,7 +50,7 @@ const SocialSection = () => {
       <BrandSectionHeader
         icon={Share2}
         title="Social & Open Graph"
-        description="Share cards are generated from the query string rather than designed one at a time, so no page ever ships without one - and every card uses the same tokens as the site."
+        description="Share cards are drawn from one list of page titles rather than designed one at a time, so no page ever ships without one - and every card uses the same tokens as the site."
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -99,32 +94,24 @@ const SocialSection = () => {
 
         <Card className="space-y-5 p-6 sm:p-8">
           <p className="text-muted text-xs font-semibold tracking-[0.24em] uppercase">
-            Generate your own
+            Where the words come from
           </p>
 
           <p className="text-muted text-sm leading-relaxed">
-            Point an <span className="font-mono">og:image</span> at the endpoint below and it
-            renders on request, then caches for a year. Useful when you are writing about a specific
-            VeriWorkly feature and want a matching card.
+            Cards render on request and cache for a year. The image route draws only titles we
+            wrote: a page from our list, or a real release or roadmap item. Any other request gets
+            the default card, so nobody can mint a VeriWorkly card that says something we
+            didn&apos;t write.
           </p>
 
-          <code className="border-border bg-background text-accent block rounded-xl border p-4 font-mono text-xs leading-relaxed wrap-break-word">
-            veriworkly.com/api/og?title=Your+title&amp;description=Your+description
-          </code>
-
           <dl className="divide-border divide-y">
-            {PARAMS.map((row) => (
-              <div key={row.param} className="flex flex-wrap gap-x-4 gap-y-1 py-2.5 first:pt-0">
-                <dt className="text-accent w-28 shrink-0 font-mono text-xs">{row.param}</dt>
+            {SOURCES.map((row) => (
+              <div key={row.source} className="flex flex-wrap gap-x-4 gap-y-1 py-2.5 first:pt-0">
+                <dt className="text-accent w-28 shrink-0 font-mono text-xs">{row.source}</dt>
                 <dd className="text-muted min-w-0 text-xs leading-relaxed">{row.detail}</dd>
               </div>
             ))}
           </dl>
-
-          <p className="text-muted text-xs leading-relaxed">
-            Text is sanitised and length-capped on the way in, so the endpoint cannot be used to
-            mint a convincing card that says something we didn&apos;t write.
-          </p>
         </Card>
       </div>
     </section>

@@ -1,8 +1,13 @@
 import { ImageResponse } from "next/og";
 
+import { DEFAULT_OG_CARD } from "@/features/og/cards";
+import { resolveOgCard } from "@/features/og/resolve";
+
 export const runtime = "nodejs";
 
 const OG_CACHE_CONTROL = "public, immutable, no-transform, max-age=31536000";
+/** A card not found yet may exist soon (a release id before its sync), so the default is not kept long. */
+const OG_FALLBACK_CACHE_CONTROL = "public, no-transform, max-age=300";
 
 function sanitizeText(value: string | null, fallback: string, maxLength: number) {
   const cleaned = Array.from(value ?? "")
@@ -28,9 +33,12 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const title = sanitizeText(searchParams.get("title"), "VeriWorkly", 120);
+    const resolved = await resolveOgCard(searchParams);
+    const card = resolved ?? DEFAULT_OG_CARD;
 
-    const showDescription = searchParams.get("showDesc") !== "false";
+    const title = sanitizeText(card.title, "VeriWorkly", 120);
+
+    const showDescription = Boolean(card.description);
     const theme = searchParams.get("theme") === "dark" ? "dark" : "light";
 
     const isDark = theme === "dark";
@@ -56,11 +64,7 @@ export async function GET(request: Request) {
           chipBorder: "rgba(23, 23, 23, 0.12)",
         };
 
-    const displayDescription = sanitizeText(
-      searchParams.get("description"),
-      "Building the future of professional resumes, one sync at a time.",
-      250,
-    );
+    const displayDescription = sanitizeText(card.description ?? null, "", 250);
 
     return new ImageResponse(
       <div
@@ -212,7 +216,7 @@ export async function GET(request: Request) {
         width: 1200,
         height: 630,
         headers: {
-          "Cache-Control": OG_CACHE_CONTROL,
+          "Cache-Control": resolved ? OG_CACHE_CONTROL : OG_FALLBACK_CACHE_CONTROL,
         },
       },
     );

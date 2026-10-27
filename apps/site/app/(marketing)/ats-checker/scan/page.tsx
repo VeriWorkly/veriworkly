@@ -12,10 +12,9 @@ import { buildPageMetadata } from "@/utils/metadata";
 
 import { AtsCheckerTool } from "@/features/ats-checker/components/tool/AtsCheckerTool";
 import { MotionIsland } from "@/providers/motion-island";
+import { ogPageImage } from "@/features/og/cards";
 
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Scan Your Resume",
-)}&description=${encodeURIComponent("Free ATS readiness and job match scoring.")}`;
+const pageOgImage = ogPageImage("ats-checker-scan");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/ats-checker/scan",

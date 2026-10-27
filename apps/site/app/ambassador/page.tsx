@@ -13,15 +13,12 @@ import AmbassadorFAQ from "@/features/ambassador/AmbassadorFAQ";
 import AmbassadorFooter from "@/features/ambassador/AmbassadorFooter";
 import "./ambassador.css";
 import { MotionIsland } from "@/providers/motion-island";
+import { ogPageImage } from "@/features/og/cards";
 
 const AmbassadorPlaybook = dynamic(() => import("@/features/ambassador/AmbassadorPlaybook"));
 
 const pageUrl = `${siteConfig.url}/ambassador`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Student Ambassador Program",
-)}&description=${encodeURIComponent(
-  "Represent VeriWorkly on campus. Founding cohort applications open.",
-)}`;
+const pageOgImage = ogPageImage("ambassador");
 
 // Flags come from the runtime env (the build does not pass them), so re-read them every 5 minutes.
 export const revalidate = 300;

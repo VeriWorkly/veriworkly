@@ -17,14 +17,11 @@ import {
   CompareDifferences,
   PRICING_VERIFIED_AT,
 } from "@/features/compare";
+import { ogPageImage } from "@/features/og/cards";
 
 const pageUrl = `${siteConfig.url}/compare`;
 
-const ogImage = `/api/og?title=${encodeURIComponent(
-  "Compare Resume Builders",
-)}&description=${encodeURIComponent(
-  "See how VeriWorkly compares to Rezi, Teal, Kickresume, Novoresume, Zety, and Enhancv on pricing, downloads, and ATS checks.",
-)}`;
+const ogImage = ogPageImage("compare");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/compare",
