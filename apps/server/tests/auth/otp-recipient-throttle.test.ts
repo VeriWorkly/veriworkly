@@ -13,7 +13,8 @@ vi.mock("#lib/redis", () => ({
   cacheDel: vi.fn(),
 }));
 
-vi.mock("#lib/prisma", () => ({ prisma: {} }));
+// `#auth/index` wraps the client with `$extends` at import (V-265).
+vi.mock("#lib/prisma", () => ({ prisma: { $extends: () => ({}) } }));
 
 vi.mock("#services/mail", () => ({
   sendAuthOtpEmail: mockSendAuthOtpEmail,

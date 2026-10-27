@@ -8,6 +8,7 @@ import { DocumentService } from "#services/documentService";
 import { createSuccessResponse, handleValidationError, ApiError } from "#lib/errors";
 
 import {
+  DOCUMENT_PAGE_DEFAULT_LIMIT,
   documentCreateSchema,
   documentListQuerySchema,
   documentUpdateSchema,
@@ -27,8 +28,33 @@ export class DocumentController {
     try {
       const user = requireAuthUser(req);
 
-      const { type, updatedSince, includeContent } = documentListQuerySchema.parse(req.query);
+      const { type, updatedSince, includeContent, limit, cursor } = documentListQuerySchema.parse(
+        req.query,
+      );
 
+      // Keyset paging (V-263) once the caller sends `limit` or `cursor`. The response adds
+      // `nextCursor` (null on the last page) and `total` beside the unchanged fields.
+      if (limit !== undefined || cursor !== undefined) {
+        const page = await DocumentService.listDocumentPage(user.id, type, {
+          updatedSince,
+          includeContent,
+          limit: limit ?? DOCUMENT_PAGE_DEFAULT_LIMIT,
+          cursor,
+        });
+
+        res.json({
+          ...createSuccessResponse(page.documents, "Documents fetched successfully"),
+          serverTime: page.serverTime.toISOString(),
+          deleted: page.deleted,
+          nextCursor: page.nextCursor,
+          total: page.total,
+        });
+        return;
+      }
+
+      // LEGACY (V-263): no `limit` and no `cursor` keeps the old single response (up to 500) for
+      // studios that predate paging. Deploy the server after the studio; a later change makes
+      // `limit` default to 20 and drops this branch.
       const { documents, deleted, serverTime } = await DocumentService.listDocuments(
         user.id,
         type,

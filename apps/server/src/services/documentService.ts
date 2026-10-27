@@ -25,6 +25,12 @@ import {
 } from "#utils/portfolioPublicationCache";
 
 import { assertFreeTierCapacity } from "#services/documentCapacity";
+import {
+  decodeDocumentListCursor,
+  encodeDocumentListCursor,
+  type DocumentListFilter,
+  type DocumentListPosition,
+} from "#services/documentListCursor";
 import { isModerationLocked, NOT_MODERATION_LOCKED } from "#services/portfolioService";
 
 const MODERATED_PRIVATE_MESSAGE = "This document was made private by a moderator.";
@@ -143,6 +149,23 @@ function withMigratedContent<
   return { ...document, content };
 }
 
+/**
+ * The keyset condition "strictly after `position`" in the given order, with `id` breaking ties
+ * between rows stamped in the same millisecond.
+ */
+function keysetAfter(
+  column: "updatedAt" | "deletedAt",
+  position: DocumentListPosition,
+  direction: Prisma.SortOrder,
+): Prisma.DocumentWhereInput {
+  const at = new Date(position.at);
+  const beyond = direction === "asc" ? "gt" : "lt";
+
+  return {
+    OR: [{ [column]: { [beyond]: at } }, { [column]: at, id: { [beyond]: position.id } }],
+  };
+}
+
 export class DocumentService {
   private static async buildUniqueSlug(
     userId: string,
@@ -179,8 +202,11 @@ export class DocumentService {
    * never). Documents soft-deleted at or after the cursor come back as `{ id, deletedAt }`
    * tombstones so the other device can drop them. Incremental responses are never cached:
    * they are small, and a cached one would hand the same cursor out twice.
+   *
+   * LEGACY (V-263): this unpaged list (up to 500, newest first) is served only to a request with
+   * no `limit` and no `cursor`, while the studio switches to {@link listDocumentPage}. Deploy the
+   * server after the studio; a later change makes `limit` default to 20 and removes this path.
    */
-
   static async listDocuments(
     userId: string,
     type?: DocumentType,
@@ -267,6 +293,183 @@ export class DocumentService {
     if (cacheKey) await cacheSet(cacheKey, { documents: migrated, serverTime }, 1800);
 
     return { documents: migrated, deleted: [], serverTime };
+  }
+
+  /**
+   * One page of a keyset walk over the user's documents (V-263). The paged successor to
+   * {@link listDocuments}, which stays only for clients that send no `limit` or `cursor`.
+   *
+   * Order: a sync walk (`updatedSince` set, or `includeContent`) goes oldest first by
+   * `(updatedAt, id)`. A document edited mid-walk gets a newer `updatedAt` than anything already
+   * returned, so it comes round again later in the same walk instead of being skipped. The plain
+   * library list goes newest first, `(updatedAt desc, id desc)`; there an edit mid-walk can move
+   * a document past the reader, which a dashboard can live with and a sync could not.
+   *
+   * Tombstones (only with `updatedSince`) are walked beside the documents in the same cursor,
+   * oldest first by `(deletedAt, id)`, up to `limit` per page as well. Each list keeps its own
+   * position, so neither can push the other's rows off a page; `nextCursor` is null only once
+   * both are exhausted. A document deleted mid-walk carries a `deletedAt` newer than any tombstone
+   * returned so far, so it too still turns up.
+   *
+   * `serverTime` is read on the first page and carried in the cursor, so every page of one walk
+   * reports the same value; the client adopts it as its next `updatedSince` after the last page.
+   * `total` is the user's live documents of this type, whatever `updatedSince` says.
+   *
+   * Only the first page of the plain metadata list is cached (keyed by `limit`); a later page, a
+   * sync page or a page with bodies always comes from Postgres.
+   */
+  static async listDocumentPage(
+    userId: string,
+    type: DocumentType | undefined,
+    options: { updatedSince?: Date; includeContent?: boolean; limit: number; cursor?: string },
+  ): Promise<{
+    documents: DocumentListItem[];
+    deleted: Array<{ id: string; deletedAt: Date }>;
+    serverTime: Date;
+    nextCursor: string | null;
+    total: number;
+  }> {
+    const includeContent = options.includeContent ?? false;
+    const since = options.updatedSince;
+    const limit = options.limit;
+    const filter: DocumentListFilter = {
+      type: type ?? null,
+      updatedSince: since ? since.toISOString() : null,
+      includeContent,
+    };
+    const resumed = options.cursor ? decodeDocumentListCursor(options.cursor, filter) : null;
+    const syncWalk = Boolean(since) || includeContent;
+    const direction: Prisma.SortOrder = syncWalk ? "asc" : "desc";
+
+    const cacheKey =
+      resumed || syncWalk
+        ? null
+        : await resolveGenerationalKey(
+            cacheNamespaces.documentList(userId),
+            type || "all",
+            "page",
+            String(limit),
+            "v1",
+          );
+
+    type CachedPage = {
+      documents: DocumentListItem[];
+      serverTime: string;
+      nextCursor: string | null;
+      total: number;
+    };
+
+    if (cacheKey) {
+      const cached = await cacheGet<CachedPage>(cacheKey);
+
+      if (cached) {
+        return {
+          documents: cached.documents,
+          deleted: [],
+          serverTime: new Date(cached.serverTime),
+          nextCursor: cached.nextCursor,
+          total: cached.total,
+        };
+      }
+    }
+
+    const serverTime = resumed
+      ? new Date(resumed.serverTime)
+      : new Date(Date.now() - SYNC_CURSOR_SLACK_MS);
+    const documentsFrom = resumed ? resumed.documents : null;
+    const deletedFrom = resumed ? resumed.deleted : null;
+
+    const [documents, deleted, total] = await Promise.all([
+      prisma.document.findMany({
+        where: {
+          userId,
+          type,
+          deletedAt: null,
+          AND: [
+            since ? { updatedAt: { gte: since } } : {},
+            documentsFrom ? keysetAfter("updatedAt", documentsFrom, direction) : {},
+          ],
+        },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          slug: true,
+          tags: true,
+          metadata: true,
+          templateId: true,
+          visibility: true,
+          revision: true,
+          lastSyncedAt: true,
+          updatedAt: true,
+          createdAt: true,
+          content: includeContent,
+        },
+        orderBy: [{ updatedAt: direction }, { id: direction }],
+        take: limit + 1,
+      }),
+      !since
+        ? Promise.resolve([])
+        : prisma.document.findMany({
+            where: {
+              userId,
+              type,
+              AND: [
+                { deletedAt: { gte: since } },
+                deletedFrom ? keysetAfter("deletedAt", deletedFrom, "asc") : {},
+              ],
+            },
+            select: { id: true, deletedAt: true },
+            orderBy: [{ deletedAt: "asc" }, { id: "asc" }],
+            take: limit + 1,
+          }),
+      prisma.document.count({ where: { userId, type, deletedAt: null } }),
+    ]);
+
+    const documentPage = documents.slice(0, limit);
+    const deletedPage = (deleted as Array<{ id: string; deletedAt: Date }>).slice(0, limit);
+    const moreDocuments = documents.length > limit;
+    const moreDeleted = deleted.length > limit;
+
+    const lastDocument = documentPage[documentPage.length - 1];
+    const lastDeleted = deletedPage[deletedPage.length - 1];
+    const nextCursor =
+      moreDocuments || moreDeleted
+        ? encodeDocumentListCursor({
+            v: 1,
+            filter,
+            serverTime: serverTime.toISOString(),
+            // A list that ran dry keeps its position (not "done"): the next page looks again, so
+            // a document edited or deleted after its list emptied still turns up in this walk.
+            documents: lastDocument
+              ? { at: lastDocument.updatedAt.toISOString(), id: lastDocument.id }
+              : documentsFrom,
+            deleted: lastDeleted
+              ? { at: lastDeleted.deletedAt.toISOString(), id: lastDeleted.id }
+              : deletedFrom,
+          })
+        : null;
+
+    // The two lists come from separate queries, so a delete landing between them can put one
+    // document in both. A tombstone at or after the live copy's `updatedAt` wins; the cursor above
+    // still advances past the dropped row. A newer live copy (a restore) is kept.
+    const deletedAtById = new Map(
+      deletedPage.map((tombstone) => [tombstone.id, tombstone.deletedAt]),
+    );
+    const livePage = documentPage.filter((document) => {
+      const deletedAt = deletedAtById.get(document.id);
+      return !deletedAt || deletedAt < document.updatedAt;
+    });
+
+    const migrated = (
+      includeContent ? livePage.map((document) => withMigratedContent(document)) : livePage
+    ) as DocumentListItem[];
+
+    if (cacheKey) {
+      await cacheSet(cacheKey, { documents: migrated, serverTime, nextCursor, total }, 1800);
+    }
+
+    return { documents: migrated, deleted: deletedPage, serverTime, nextCursor, total };
   }
 
   /**
