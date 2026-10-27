@@ -44,6 +44,13 @@ const userProfileSelect = {
 } satisfies Prisma.UserSelect;
 
 /**
+ * Interactive-transaction limits for `deleteUserCascade` (V-237). Prisma's default 5 s timeout
+ * fit an empty database; the cascade and the redaction of billing and audit history grow with a
+ * user's history, and a timeout lands after sessions and keys were already revoked.
+ */
+export const ACCOUNT_DELETION_TRANSACTION = { maxWait: 10_000, timeout: 60_000 } as const;
+
+/**
  * Everything a user deletion removes inside ONE transaction. Shared by the self-service path
  * and the admin path so neither can drift from the other again.
  *
@@ -541,8 +548,9 @@ export class UserService {
      */
     // The forfeit is checked again under the wallet lock: a balance that appeared after the check
     // above, unconfirmed, refuses the deletion rather than vanish with it.
-    await prisma.$transaction((tx) =>
-      deleteUserCascade(tx, userId, { ...forfeitOptions, actorId: null }),
+    await prisma.$transaction(
+      (tx) => deleteUserCascade(tx, userId, { ...forfeitOptions, actorId: null }),
+      ACCOUNT_DELETION_TRANSACTION,
     );
 
     // Best-effort cleanup from here on. The account is already gone, so none of this

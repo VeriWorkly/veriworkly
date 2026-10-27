@@ -122,6 +122,42 @@ export function redactBillingPayload(payload: unknown): Prisma.InputJsonValue {
 }
 
 /**
+ * The webhook events of a user: attributed to them, naming them in their metadata, or about one
+ * of their subscriptions. Each branch matches an index (V-237): `userId`, and the expression
+ * indexes `BillingWebhookEvent_payload_user_idx` / `_payload_subscription_idx`, whose expressions
+ * these `#>>` paths must repeat exactly.
+ */
+export function billingEventsOfUserSql(userId: string, subscriptionIds: string[]) {
+  return PrismaNamespace.sql`
+    SELECT "id", "payload" FROM "BillingWebhookEvent"
+    WHERE "userId" = ${userId}
+      OR ("payload" #>> '{data,metadata,veriworkly_user_id}') = ${userId}
+      OR ("payload" #>> '{data,subscription_id}') = ANY(${subscriptionIds}::text[])`;
+}
+
+/**
+ * Admin audit entries about a user: targeting them or one of their rows, or naming them as the
+ * user or owner in their metadata. `= ANY(ARRAY(subquery))` rather than `IN (subquery)`: inside
+ * an OR, `IN` becomes a per-row filter and forces a sequential scan, while the array is computed
+ * once and lets each branch use its index (`targetId`, and the `metadata ->> 'userId'` /
+ * `'ownerId'` expression indexes) (V-237).
+ */
+export function auditEntriesAboutUserSql(userId: string) {
+  return PrismaNamespace.sql`(
+    "targetId" = ANY(ARRAY(
+      SELECT ${userId}::text
+      UNION SELECT "id" FROM "Subscription" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "EntitlementGrant" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "CreditTransaction" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "AffiliateWithdrawal" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "AffiliateCommission" WHERE "affiliateId" = ${userId}
+      UNION SELECT "id" FROM "Document" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "PortfolioPublication" WHERE "userId" = ${userId}))
+    OR ("metadata" ->> 'userId') = ${userId}
+    OR ("metadata" ->> 'ownerId') = ${userId})`;
+}
+
+/**
  * Redacts every stored webhook event of a user who is being deleted: the ones attributed to the
  * account, and the ones that never were (a failed event) but name it in their metadata or concern
  * one of its subscriptions. Runs inside the deletion transaction, before the user row goes.
@@ -134,18 +170,9 @@ export async function redactBillingEventsForUser(tx: Prisma.TransactionClient, u
     })
   ).map((row) => row.providerSubId as string);
 
-  const events = await tx.billingWebhookEvent.findMany({
-    where: {
-      OR: [
-        { userId },
-        { payload: { path: ["data", "metadata", "veriworkly_user_id"], equals: userId } },
-        ...subscriptionIds.map((id) => ({
-          payload: { path: ["data", "subscription_id"], equals: id },
-        })),
-      ],
-    },
-    select: { id: true, payload: true },
-  });
+  const events = await tx.$queryRaw<Array<{ id: string; payload: Prisma.JsonValue }>>(
+    billingEventsOfUserSql(userId, subscriptionIds),
+  );
 
   for (const event of events)
     await tx.billingWebhookEvent.update({
@@ -194,20 +221,7 @@ export async function redactBillingTextForUser(tx: Prisma.TransactionClient, use
           THEN "metadata" - ${AUDIT_IDENTITY_KEYS}::text[] ELSE "metadata" END
     WHERE ("reason" IS NOT NULL
         OR (jsonb_typeof("metadata") = 'object' AND "metadata" ?| ${AUDIT_IDENTITY_KEYS}::text[]))
-      AND (
-        "targetId" = ${userId}
-        OR "metadata" ->> 'userId' = ${userId}
-        OR "metadata" ->> 'ownerId' = ${userId}
-        OR "targetId" IN (
-          SELECT "id" FROM "Subscription" WHERE "userId" = ${userId}
-          UNION SELECT "id" FROM "EntitlementGrant" WHERE "userId" = ${userId}
-          UNION SELECT "id" FROM "CreditTransaction" WHERE "userId" = ${userId}
-          UNION SELECT "id" FROM "AffiliateWithdrawal" WHERE "userId" = ${userId}
-          UNION SELECT "id" FROM "AffiliateCommission" WHERE "affiliateId" = ${userId}
-          UNION SELECT "id" FROM "Document" WHERE "userId" = ${userId}
-          UNION SELECT "id" FROM "PortfolioPublication" WHERE "userId" = ${userId}
-        )
-      )`;
+      AND ${auditEntriesAboutUserSql(userId)}`;
 }
 
 const REDACTED_REASON = "Removed with the account";

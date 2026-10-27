@@ -582,6 +582,10 @@ model AdminAuditEntry {
   @@index([targetType, targetId, createdAt])
   @@index([action, createdAt])
   @@index([createdAt])
+  // Account deletion finds the entries about a user by target alone (V-237). Also hand-written
+  // expression indexes "AdminAuditEntry_metadata_userId_idx" / "_metadata_ownerId_idx" on
+  // (metadata ->> 'userId' / 'ownerId'), migration 20261027140000; Prisma cannot model them.
+  @@index([targetId])
 }
 
 enum PortfolioPublicationStatus {
@@ -647,6 +651,9 @@ model BillingWebhookEvent {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@index([providerPaymentId, type])
+  // Also hand-written expression indexes for account deletion (V-237), migration 20261027140000:
+  // "BillingWebhookEvent_payload_user_idx" (payload #>> '{data,metadata,veriworkly_user_id}') and
+  // "BillingWebhookEvent_payload_subscription_idx" (payload #>> '{data,subscription_id}').
 }
 
 // One row per billing email (V-172, V-177): the unique (kind, reference) is what makes a
