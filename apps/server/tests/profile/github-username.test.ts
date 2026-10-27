@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("#lib/prisma", () => ({ prisma: {} }));
+// `#auth/index` wraps the client with `$extends` at import (V-265).
+vi.mock("#lib/prisma", () => ({ prisma: { $extends: () => ({}) } }));
 vi.mock("#lib/redis", () => ({
   cacheGet: vi.fn(),
   cacheSet: vi.fn(),

@@ -23,7 +23,8 @@ vi.mock("#lib/redis", () => ({
 }));
 
 vi.mock("#lib/prisma", () => ({
-  prisma: mockPrisma,
+  // `#auth/index` wraps the client with `$extends` at import (V-265).
+  prisma: Object.assign(mockPrisma, { $extends: () => mockPrisma }),
 }));
 
 vi.mock("#services/mail", () => ({
@@ -203,6 +204,12 @@ describe("Better Auth configuration", () => {
     expect(options.account?.accountLinking?.trustedProviders).toEqual(["google"]);
     expect(options.account?.accountLinking?.trustedProviders).not.toContain("github");
     expect(options.account?.accountLinking?.trustedProviders).not.toContain("linkedin");
+  });
+
+  it("links a GitHub whose email differs from the account's, and guards GitHub rows (V-265)", () => {
+    // Without this a link fails with email_doesn't_match whenever the two addresses differ.
+    expect(options.account?.accountLinking?.allowDifferentEmails).toBe(true);
+    expect(options.databaseHooks?.account?.create?.before).toEqual(expect.any(Function));
   });
 
   it("configures onAPIError with studioLoginUrl to redirect auth failures to studio login", () => {
