@@ -91,7 +91,7 @@ const FaqInteractiveSection = () => {
           <div
             role="group"
             aria-label="Filter questions by topic"
-            className="hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0"
+            className="hide-scrollbar relative -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0"
           >
             {categories.map((category) => {
               const isActive = selectedCategory === category.id;

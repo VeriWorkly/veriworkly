@@ -41,7 +41,7 @@ export const CompareHubPicker = () => {
         aria-label="Choose a resume builder to compare"
         aria-orientation="vertical"
         onKeyDown={onKeyDown}
-        className="hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0"
+        className="hide-scrollbar relative -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0"
       >
         {COMPETITORS.map((competitor, i) => {
           const active = i === index;

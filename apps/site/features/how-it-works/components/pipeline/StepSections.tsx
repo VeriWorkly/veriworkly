@@ -10,7 +10,7 @@ import { WORKFLOW_STEPS } from "../../data";
 const ProfileJson = () => (
   <div data-ui className="bg-foreground text-background overflow-hidden rounded-3xl">
     <p className="px-6 pt-5 text-sm font-semibold opacity-70 sm:px-8">master-profile.json</p>
-    <pre className="overflow-x-auto px-6 pt-4 pb-7 text-sm leading-7 sm:px-8">
+    <pre className="relative overflow-x-auto px-6 pt-4 pb-7 text-sm leading-7 sm:px-8">
       <code>{`{
   "name": "Gautam Raj",
   "github": {

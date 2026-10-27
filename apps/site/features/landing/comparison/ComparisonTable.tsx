@@ -41,7 +41,7 @@ const rows: ComparisonRow[] = [
 
 const ComparisonTable = () => {
   return (
-    <div className="mt-10 overflow-x-auto pb-2 sm:mt-16">
+    <div className="relative mt-10 overflow-x-auto pb-2 sm:mt-16">
       <table className="w-full min-w-140 border-separate border-spacing-0 sm:min-w-160">
         <caption className="sr-only">
           Feature comparison between VeriWorkly and traditional subscription resume builders

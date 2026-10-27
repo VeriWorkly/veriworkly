@@ -19,7 +19,7 @@ const CompareQuickMatrix = () => (
       tabIndex={0}
       role="region"
       aria-label="Resume builder comparison table, scrollable"
-      className="border-border bg-background focus-visible:ring-accent/40 reveal overflow-x-auto rounded-3xl border focus-visible:ring-2 focus-visible:outline-none"
+      className="border-border bg-background focus-visible:ring-accent/40 reveal relative overflow-x-auto rounded-3xl border focus-visible:ring-2 focus-visible:outline-none"
     >
       <table className="w-full min-w-260 border-collapse text-left">
         <caption className="sr-only">

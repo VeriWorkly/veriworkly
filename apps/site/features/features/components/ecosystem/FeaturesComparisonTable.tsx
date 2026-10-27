@@ -45,7 +45,7 @@ export const FeaturesComparisonTable = () => (
       tabIndex={0}
       role="region"
       aria-label="Feature comparison, scrollable"
-      className="reveal bg-card focus-visible:ring-accent/40 hidden overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none md:block"
+      className="reveal bg-card focus-visible:ring-accent/40 relative hidden overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none md:block"
     >
       <table className="w-full min-w-180 border-collapse text-left">
         <caption className="sr-only">
