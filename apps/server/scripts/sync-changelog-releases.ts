@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { assertLocalDatabase, runtimeDatabaseUrls } from "#lib/databaseTarget";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { initRedis, closeRedis } from "#lib/redis";
@@ -7,6 +8,8 @@ import { syncChangelogFromGitHubReleases } from "#services/changelog/index";
 
 async function run() {
   try {
+    // Writes changelog rows: a remote database needs --allow-production (V-209).
+    assertLocalDatabase("sync:changelog", runtimeDatabaseUrls());
     await initRedis();
     await prisma.$queryRaw`SELECT 1`;
 

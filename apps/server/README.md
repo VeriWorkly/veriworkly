@@ -31,6 +31,8 @@ The backend engine for VeriWorkly — a Node/Express + TypeScript API covering a
 
    On servers run `npm run db:migrate:deploy -w @veriworkly/server` instead. The `db:push` script was removed because it bypasses migrations and leaves the migration history out of step with the database.
 
+   `db:migrate`, `db:drift`, the `seed:*` scripts, `smoke:boot` and the `backfill:*` scripts refuse any database URL whose host is not loopback, whatever `NODE_ENV` says; add `--allow-production` only when you really mean a remote database (`--wipe` is never allowed there).
+
 4. **Start development server**:
    ```bash
    npm run dev:server

@@ -3,7 +3,9 @@ import dotenv from "dotenv";
 
 import { parseIntegerEnv } from "./config/parseEnv.js";
 
-dotenv.config();
+// Never under Vitest (V-257): a developer's `.env` can hold live credentials and the production
+// database URL, and a test run must not inherit them. Tests set the variables they need.
+if (!process.env.VITEST) dotenv.config();
 
 function getCpuCount(): number {
   if (typeof os.availableParallelism === "function") return os.availableParallelism();

@@ -38,6 +38,18 @@ if (!existsSync(entry)) {
   process.exit(2);
 }
 
+// The boot creates the admin user and runs the jobs' first ticks: never against a remote database
+// unless asked for (V-209). The child gets only DATABASE_URL, so that is the one URL to check.
+const { assertLocalDatabase } = await import(
+  pathToFileURL(path.join(serverDir, "dist", "lib", "databaseTarget.js")).href
+);
+try {
+  assertLocalDatabase("smoke-boot", { DATABASE_URL: process.env.DATABASE_URL });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(2);
+}
+
 /** 48 characters, so every secret clears the length checks; distinct per variable. */
 const secret = (name) => `smoke-${name}-`.padEnd(48, "x");
 

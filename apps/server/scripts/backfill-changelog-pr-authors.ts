@@ -7,6 +7,8 @@ import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { fetchPullRequestSummary, type GitHubPullRequestSummary } from "#services/github/index";
 
+import { assertLocalDatabase, runtimeDatabaseUrls } from "#lib/databaseTarget";
+
 interface ChangelogPrRef {
   number: number;
   title: string;
@@ -24,6 +26,9 @@ interface ChangelogPrRef {
  */
 
 async function run() {
+  // Writes every changelog row it enriches: a remote database needs --allow-production (V-209).
+  assertLocalDatabase("backfill:changelog-pr-authors", runtimeDatabaseUrls());
+
   const { owner, repo, token } = config.github;
 
   if (!owner || !repo || !token) {

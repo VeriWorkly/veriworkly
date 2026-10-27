@@ -1,5 +1,6 @@
 import { config } from "#config";
 
+import { assertLocalDatabase, runtimeDatabaseUrls } from "#lib/databaseTarget";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { initRedis, closeRedis } from "#lib/redis";
@@ -8,6 +9,9 @@ import { syncGitHubStatsFromGitHub } from "#services/github/index";
 
 async function run() {
   try {
+    // `npm run sync:github` writes the roadmap tables: a remote database needs
+    // --allow-production (V-209). The scheduled job in the server does not come through here.
+    assertLocalDatabase("sync:github", runtimeDatabaseUrls());
     await initRedis();
     await prisma.$queryRaw`SELECT 1`;
 
