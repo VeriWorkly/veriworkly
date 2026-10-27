@@ -7,6 +7,7 @@ import {
   purchaseConfirmationTerms,
   renderPaymentFailedEmail,
   renderPurchaseConfirmationEmail,
+  renderSubscriptionCancelledEmail,
   subscriptionCancelledParagraphs,
 } from "#mail/index";
 import { formatMoney } from "../../src/mail/billing/billingFormat.js";
@@ -109,6 +110,16 @@ describe("cancellation and plan change (V-212, V-219)", () => {
     expect(text).toContain("Creator Pro");
     expect(text).toContain("30 November 2026");
     expect(text).toMatch(/will not renew/);
+  });
+
+  it("says what ends without claiming the account goes free, since other paid access may remain (V-334)", () => {
+    // Sent per subscription: someone cancelling AI Credits may still hold Creator Pro or a pass.
+    const notice = { productName: "AI Credits", accessEndsAt: new Date("2026-11-30T00:00:00Z") };
+    const text = subscriptionCancelledParagraphs(notice).join(" ");
+    expect(text).toContain("after that, what AI Credits includes ends");
+    expect(text).toMatch(/other plans, passes or credits you hold are not affected/i);
+    expect(text).not.toMatch(/free plan/i);
+    expect(renderSubscriptionCancelledEmail("Sam", notice)).not.toMatch(/free plan/i);
   });
 
   it("states the new plan, the charge model and the next renewal", () => {
