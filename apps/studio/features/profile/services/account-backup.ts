@@ -6,19 +6,16 @@ import { serializeWorkspaceBackup } from "@/features/auth/services/current-user"
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { DOCUMENT_TYPES } from "@/features/documents/core/document-types";
 import { downloadBlob } from "@/features/documents/export/download";
-import { DocumentApi } from "@/features/documents/services/document-api";
+import {
+  DocumentApi,
+  DOCUMENT_PAGE_SIZE_WITH_CONTENT,
+} from "@/features/documents/services/document-api";
 import {
   getWorkspaceStorage,
   listAllDocumentEntries,
 } from "@/features/documents/services/document-workspace-service";
 import { entriesOwnedBy, getWorkspaceViewer } from "@/features/documents/services/workspace-viewer";
 import { loadMasterProfileFromDatabase } from "@/features/resume/services/master-profile";
-
-/**
- * The server's list holds at most this many documents of a type and has no cursor
- * (`MAX_DOCUMENTS_PER_LIST`); a full page may mean there are more it did not send.
- */
-export const SERVER_LIST_CAP = 500;
 
 export type AccountBackup =
   | { ok: true; fileName: string; json: string }
@@ -34,6 +31,38 @@ function cloudVersion(document: BaseDocument): BaseDocument {
 }
 
 /**
+ * A server from before paging (V-263) ignores `limit`, answers with at most this many documents
+ * of a type, newest first, and sends no `nextCursor` or `total`. A full reply from it may be cut
+ * short. Remove once the server no longer serves that unpaged list.
+ */
+export const LEGACY_SERVER_LIST_CAP = 500;
+
+/**
+ * Every document of a type with its body, page by page. A failed page throws: no partial list.
+ * Null when an unpaged server's reply may have left documents out.
+ */
+async function listEveryDocument(type: DocumentType): Promise<CloudDocument[] | null> {
+  const documents: CloudDocument[] = [];
+
+  for await (const page of DocumentApi.pages(type, {
+    includeContent: true,
+    limit: DOCUMENT_PAGE_SIZE_WITH_CONTENT,
+  })) {
+    if (
+      page.nextCursor === null &&
+      page.total === null &&
+      page.documents.length >= LEGACY_SERVER_LIST_CAP
+    ) {
+      return null;
+    }
+
+    documents.push(...page.documents);
+  }
+
+  return documents;
+}
+
+/**
  * Everything the account holds that the user wrote: every resume and cover letter in the
  * account, read straight from the server (not through the sync pull, which skips a device
  * holding someone else's documents), every document of this account on this device the cloud
@@ -41,27 +70,25 @@ function cloudVersion(document: BaseDocument): BaseDocument {
  *
  * A device copy with nothing unsent gives way to a newer cloud revision. One with changes the
  * cloud does not have (pending, in conflict, kept local) is exported beside the cloud copy, so
- * neither side's edits are lost. Anything that cannot be read, or a list the server may have
- * cut short, fails the whole backup with the reason.
+ * neither side's edits are lost. Anything that cannot be read, including any page of the
+ * account's list, fails the whole backup with the reason.
  */
 export async function buildAccountBackup(now = new Date()): Promise<AccountBackup> {
   let records: Array<{ type: DocumentType; record: CloudDocument }>;
 
   try {
-    const lists = await Promise.all(
-      DOCUMENT_TYPES.map((type) => DocumentApi.list(type, { includeContent: true })),
-    );
+    const lists = await Promise.all(DOCUMENT_TYPES.map((type) => listEveryDocument(type)));
 
-    if (lists.some((list) => list.documents.length >= SERVER_LIST_CAP)) {
+    if (lists.some((list) => list === null)) {
       return {
         ok: false,
-        message: `Your account has more documents than one backup can fetch (over ${SERVER_LIST_CAP} of a kind).`,
+        message: `Your account has more documents than one backup can fetch (over ${LEGACY_SERVER_LIST_CAP} of a kind).`,
       };
     }
 
     // Each row is read as the type it was listed under.
-    records = lists.flatMap((list, index) =>
-      list.documents.map((record) => ({ type: DOCUMENT_TYPES[index], record })),
+    records = lists.flatMap((documents, index) =>
+      (documents ?? []).map((record) => ({ type: DOCUMENT_TYPES[index], record })),
     );
   } catch (error) {
     return { ok: false, message: `Your cloud documents could not be loaded: ${errorText(error)}` };

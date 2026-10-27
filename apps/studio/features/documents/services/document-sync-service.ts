@@ -5,6 +5,8 @@ import { SyncEngine, type SyncFailureReason, type SyncStatus } from "./sync-engi
 import {
   DocumentApi,
   DocumentApiError,
+  DOCUMENT_PAGE_SIZE_WITH_CONTENT,
+  createPageGuard,
   isDocumentApiError,
   type CloudDocument,
   type CloudDocumentSummary,
@@ -14,6 +16,7 @@ import { LocalStorageService, type SaveDocumentResult } from "./local-storage-se
 import { safeSetLocalStorageItem } from "./storage/safe-local-storage";
 import { DOCUMENT_REMOTE_DELETION_EVENT, type RemoteDeletionDetail } from "./storage-keys";
 import { getWorkspaceEpoch } from "./workspace-epoch";
+import { getWorkspaceViewer } from "./workspace-viewer";
 
 /**
  * Max concurrent document syncs. Browsers allow ~6 connections per host, so going
@@ -50,6 +53,31 @@ export interface SyncWorkerOptions {
 export interface HydrateOptions {
   force?: boolean;
   minIntervalMs?: number;
+  /** Told the account's live document count of this type, when the server's first page says it. */
+  onTotal?: (total: number) => void;
+}
+
+/** Where a failed pull stopped: the page cursor of a walk from `updatedSince` (null: a full one). */
+interface ResumePoint {
+  updatedSince: string | null;
+  cursor: string;
+}
+
+interface HydrateMeta {
+  lastHydratedAt: number;
+  lastServerCursor?: string;
+  resume?: ResumePoint;
+}
+
+function isResumePoint(value: unknown): value is ResumePoint {
+  if (typeof value !== "object" || value === null) return false;
+  const { updatedSince, cursor } = value as Partial<ResumePoint>;
+
+  return (
+    typeof cursor === "string" &&
+    cursor.length > 0 &&
+    (updatedSince === null || typeof updatedSince === "string")
+  );
 }
 
 export interface DocumentSyncConfig<T extends BaseDocumentData> {
@@ -150,6 +178,13 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
   /** One sync per document in this tab; a second caller shares the first one's result. */
   private inFlight = new Map<string, Promise<SyncResult>>();
+
+  /** The pull walking the cloud now, and the workspace it is writing into. */
+  private pullInFlight: {
+    epoch: number;
+    viewer: string | null;
+    promise: Promise<SyncResult>;
+  } | null = null;
 
   private readonly DEFAULT_MIN_HYDRATE_INTERVAL_MS = 2 * 60 * 1000;
 
@@ -812,13 +847,50 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    *
    * The cursor is the server's own `serverTime` from the previous reply, so device clock skew
    * cannot skip a change. The first pull (and a forced one) fetches everything; tombstones
-   * only come with an incremental pull.
+   * only come with an incremental pull, so a forced pull leaves an existing cursor where it was
+   * and the next incremental pull still brings the deletions made since.
+   *
+   * The server answers in pages of {@link DOCUMENT_PAGE_SIZE_WITH_CONTENT}, oldest change first.
+   * Each page is merged (and its tombstones applied) as it arrives, so a large account fills in
+   * while it downloads. The cursor moves only after the last page. A pull that fails part way
+   * keeps what it merged and records where it stopped; the next pull from the same cursor
+   * resumes there instead of downloading the earlier pages again (merging by revision is
+   * idempotent, so a page seen twice is harmless). A server without paging sends one page with
+   * no `nextCursor`.
+   *
+   * One pull per type at a time: a caller for the same workspace and viewer while a walk runs
+   * gets that walk's result, and its own options are not applied. A forced pull always walks.
    */
   async hydrate(options?: HydrateOptions): Promise<SyncResult> {
     // Not a failure: the sign-in that settles who owns this device's documents pulls again.
     if (!this.canReachCloud()) return { ok: true, message: AWAITING_OWNER_MESSAGE };
 
     const epoch = getWorkspaceEpoch();
+    const viewer = getWorkspaceViewer();
+    const running = this.pullInFlight;
+
+    if (!options?.force && running?.epoch === epoch && running.viewer === viewer) {
+      return running.promise;
+    }
+
+    const promise = this.pullCloudPages(epoch, options);
+    this.pullInFlight = { epoch, viewer, promise };
+
+    try {
+      return await promise;
+    } finally {
+      if (this.pullInFlight?.promise === promise) this.pullInFlight = null;
+    }
+  }
+
+  private async pullCloudPages(epoch: number, options?: HydrateOptions): Promise<SyncResult> {
+    let mergedCount = 0;
+    let conflictCount = 0;
+    let removed = 0;
+    let kept = 0;
+    let meta: HydrateMeta | null = null;
+    let updatedSince: string | undefined;
+    let cursor: string | undefined;
 
     try {
       if (!this.shouldHydrate(options)) {
@@ -827,44 +899,109 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
       this.config.localStorage.prepare();
 
-      const meta = this.getHydrateMeta();
+      const stored = this.getHydrateMeta();
+      meta = stored;
+      updatedSince = options?.force ? undefined : stored.lastServerCursor;
 
-      const { documents, deleted, serverTime } = await DocumentApi.list(this.type, {
-        includeContent: true,
-        updatedSince: options?.force ? undefined : meta.lastServerCursor,
-      });
+      // Where the last pull from this same cursor stopped. A cursor is only good for the filters
+      // it was minted with, which the matching `updatedSince` guarantees.
+      if (
+        !options?.force &&
+        stored.resume &&
+        stored.resume.updatedSince === (updatedSince ?? null)
+      ) {
+        cursor = stored.resume.cursor;
+      }
 
-      if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
+      const checkPage = createPageGuard(DOCUMENT_PAGE_SIZE_WITH_CONTENT, !updatedSince);
+      let serverTime: string | null = null;
+      let firstPage = true;
 
-      const merged = this.mergeCloudDocumentsIntoLocalStorage(documents);
+      do {
+        const page = await DocumentApi.list(this.type, {
+          includeContent: true,
+          updatedSince,
+          limit: DOCUMENT_PAGE_SIZE_WITH_CONTENT,
+          cursor,
+        });
 
-      if (!merged.ok) return { ok: false, message: "Unable to save cloud documents here." };
+        if (epoch !== getWorkspaceEpoch()) return WORKSPACE_CLEARED_RESULT;
 
-      const tombstones = this.applyTombstones(deleted.map((entry) => entry.id));
+        checkPage(cursor, page);
+
+        if (firstPage) {
+          // Every page of a walk repeats its first page's `serverTime`, a resumed one included.
+          serverTime = page.serverTime;
+          // Only a full pull brings every document, so only then can the count tell how many
+          // are still to come.
+          if (!updatedSince && page.total !== null) options?.onTotal?.(page.total);
+          firstPage = false;
+        }
+
+        const merged = this.mergeCloudDocumentsIntoLocalStorage(page.documents);
+
+        if (!merged.ok) return { ok: false, message: "Unable to save cloud documents here." };
+
+        const tombstones = this.applyTombstones(page.deleted.map((entry) => entry.id));
+
+        mergedCount += merged.mergedCount;
+        conflictCount += merged.conflictCount;
+        removed += tombstones.removed;
+        kept += tombstones.kept;
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
 
       const metaWrite = this.setLastHydrateMeta({
         lastHydratedAt: Date.now(),
-        lastServerCursor: serverTime ?? undefined,
+        lastServerCursor:
+          options?.force && stored.lastServerCursor
+            ? stored.lastServerCursor
+            : (serverTime ?? undefined),
       });
 
       if (!metaWrite) {
         return { ok: false, message: "Cloud documents were merged, but storage is full." };
       }
 
-      const parts = [`Merged ${merged.mergedCount} documents.`];
-      if (tombstones.removed > 0) {
-        parts.push(`Removed ${tombstones.removed} deleted on another device.`);
+      const parts = [`Merged ${mergedCount} documents.`];
+      if (removed > 0) {
+        parts.push(`Removed ${removed} deleted on another device.`);
       }
-      if (tombstones.kept > 0) {
+      if (kept > 0) {
         parts.push(
-          `Kept ${tombstones.kept} deleted on another device as local-only copies, because they had unsynced changes.`,
+          `Kept ${kept} deleted on another device as local-only copies, because they had unsynced changes.`,
         );
       }
-      if (merged.conflictCount > 0) parts.push(`${merged.conflictCount} need a conflict decision.`);
+      if (conflictCount > 0) parts.push(`${conflictCount} need a conflict decision.`);
 
       return { ok: true, message: parts.join(" ") };
     } catch (error: unknown) {
-      return { ok: false, message: error instanceof Error ? error.message : String(error) };
+      // The next pull resumes from the last page that arrived. A 400 means the server refused
+      // the request itself (a cursor it no longer accepts), so that pull starts over instead.
+      if (meta && epoch === getWorkspaceEpoch()) {
+        const resume =
+          cursor && !isDocumentApiError(error, 400)
+            ? { updatedSince: updatedSince ?? null, cursor }
+            : undefined;
+
+        if (resume || meta.resume) {
+          this.setLastHydrateMeta({
+            lastHydratedAt: meta.lastHydratedAt,
+            lastServerCursor: meta.lastServerCursor,
+            resume,
+          });
+        }
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+
+      return {
+        ok: false,
+        message:
+          mergedCount > 0
+            ? `${message.replace(/\.?$/, ".")} ${mergedCount} documents arrived before it stopped; the rest will load on the next pull.`
+            : message,
+      };
     }
   }
 
@@ -1062,7 +1199,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     return this.hydrateById(id, true);
   }
 
-  private getHydrateMeta(): { lastHydratedAt: number; lastServerCursor?: string } {
+  private getHydrateMeta(): HydrateMeta {
     if (!this.isBrowser()) return { lastHydratedAt: 0 };
     const raw = localStorage.getItem(this.cloudHydrateMetaKey);
     if (!raw) return { lastHydratedAt: 0 };
@@ -1075,7 +1212,10 @@ export class DocumentSyncService<T extends BaseDocumentData> {
         meta !== null &&
         typeof (meta as { lastHydratedAt?: unknown }).lastHydratedAt === "number"
       ) {
-        return meta as { lastHydratedAt: number; lastServerCursor?: string };
+        const { resume, ...rest } = meta as HydrateMeta;
+
+        // A resume point of the wrong shape is dropped; the walk starts from its first page.
+        return isResumePoint(resume) ? { ...rest, resume } : rest;
       }
     } catch {
       // Unparseable: healed below like a value of the wrong shape.
@@ -1087,7 +1227,7 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     return { lastHydratedAt: 0 };
   }
 
-  private setLastHydrateMeta(meta: { lastHydratedAt: number; lastServerCursor?: string }) {
+  private setLastHydrateMeta(meta: HydrateMeta) {
     if (!this.isBrowser()) return true;
 
     return safeSetLocalStorageItem(localStorage, this.cloudHydrateMetaKey, JSON.stringify(meta)).ok;

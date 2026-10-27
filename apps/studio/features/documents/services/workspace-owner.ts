@@ -6,7 +6,7 @@ import type { DocumentType } from "@/features/documents/core/document-types";
 
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
 
-import { DocumentApi } from "./document-api";
+import { DocumentApi, DOCUMENT_PAGE_SIZE } from "./document-api";
 import { SyncEngine } from "./sync-engine";
 import { listLocalStorageKeys } from "./document-index";
 import { safeSetLocalStorageItem } from "./storage/safe-local-storage";
@@ -136,6 +136,47 @@ export function claimWorkspaceIfUncontested(userId: string): boolean {
   return true;
 }
 
+/** Any `updatedSince` makes the server walk oldest change first; this one covers every document. */
+const FROM_THE_START = "1970-01-01T00:00:00.000Z";
+
+/**
+ * What one settle has learnt of the account's document ids, so asking about the next group of
+ * documents does not list the account again. `complete` once a walk reached the last page.
+ */
+export interface AccountDocumentLookup {
+  ids: Set<string>;
+  complete: boolean;
+}
+
+export function createAccountDocumentLookup(): AccountDocumentLookup {
+  return { ids: new Set(), complete: false };
+}
+
+/**
+ * Records which of `wanted` are documents in the signed-in account. Walks the account's
+ * metadata list (no bodies) oldest change first, so a document edited on another device
+ * mid-walk moves behind the reader and still turns up; newest first it could jump ahead and be
+ * missed, and the user's own copy would be put to them as another account's. A tombstone is
+ * the account's document too: deleted, but theirs. Stops once every wanted id is known.
+ */
+async function findAccountDocumentIds(wanted: Set<string>, lookup: AccountDocumentLookup) {
+  const allKnown = () => [...wanted].every((id) => lookup.ids.has(id));
+
+  if (lookup.complete || allKnown()) return;
+
+  for await (const page of DocumentApi.pages(undefined, {
+    updatedSince: FROM_THE_START,
+    limit: DOCUMENT_PAGE_SIZE,
+  })) {
+    for (const document of page.documents) lookup.ids.add(document.id);
+    for (const tombstone of page.deleted) lookup.ids.add(tombstone.id);
+
+    if (allKnown()) return;
+  }
+
+  lookup.complete = true;
+}
+
 export interface UnclaimedDocuments {
   /** `account`: left by another signed-in account. `guest`: made here without signing in. */
   origin: "account" | "guest";
@@ -148,18 +189,24 @@ export interface UnclaimedDocuments {
  * theirs (a device used before owners were recorded) and is claimed on the spot. Returns
  * null, with the device claimed, when nothing is left to ask about. Throws when the account's
  * documents cannot be listed: without that list the user's own copies would be put to them as
- * another account's, so the caller keeps sync blocked and asks again later.
+ * another account's, so the caller keeps sync blocked and asks again later. Pass one `lookup`
+ * for every call of a settle, so the account is listed once.
  */
-export async function findUnclaimedDocuments(userId: string): Promise<UnclaimedDocuments | null> {
+export async function findUnclaimedDocuments(
+  userId: string,
+  lookup: AccountDocumentLookup = createAccountDocumentLookup(),
+): Promise<UnclaimedDocuments | null> {
   const all = listAllDocumentEntries();
   const mine = new Set(entriesOwnedBy(all, userId).map(entryKey));
   let others = all.filter((entry) => !mine.has(entryKey(entry)));
 
   if (others.some((entry) => entry.sync.cloudDocumentId)) {
-    const { documents: accountDocuments } = await DocumentApi.list();
-    const accountIds = new Set(accountDocuments.map((item) => item.id));
+    await findAccountDocumentIds(
+      new Set(others.flatMap((entry) => entry.sync.cloudDocumentId ?? [])),
+      lookup,
+    );
     const provable = others.filter(
-      (entry) => entry.sync.cloudDocumentId && accountIds.has(entry.sync.cloudDocumentId),
+      (entry) => entry.sync.cloudDocumentId && lookup.ids.has(entry.sync.cloudDocumentId),
     );
 
     if (provable.length > 0 && !setDocumentOwners(provable, userId).ok) {
@@ -294,6 +341,8 @@ export function settleWorkspaceOwnership(
   let running = false;
   let cancelled = false;
   let cancelRetry: (() => void) | null = null;
+  // Shared by every attempt: a retry after a failed page keeps the ids it already learnt.
+  const lookup = createAccountDocumentLookup();
 
   const attempt = () => {
     if (cancelled || running) return;
@@ -302,7 +351,7 @@ export function settleWorkspaceOwnership(
     cancelRetry = null;
     running = true;
 
-    findUnclaimedDocuments(userId).then(
+    findUnclaimedDocuments(userId, lookup).then(
       (found) => {
         running = false;
         if (cancelled) return;
