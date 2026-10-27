@@ -28,7 +28,7 @@ import { prisma } from "#lib/prisma";
 import { getRedis } from "#lib/redis";
 
 import { STUDIO_ORIGIN } from "./env.js";
-import { createSessionForUser } from "./helpers/sessions.js";
+import { createSessionForUser, seedBetterAuthSessionEntries } from "./helpers/sessions.js";
 
 function auth(path: string, body: object) {
   return request(app).post(`/api/v1/auth${path}`).set("Origin", STUDIO_ORIGIN).send(body);
@@ -137,9 +137,9 @@ describe("email-code sign-in on better-auth 1.7", () => {
   });
 
   /**
-   * New in 1.7 (upgrade guide, "Email OTP and magic links"): a code proves the mailbox, so on an
-   * account whose email was never proven every earlier link and session is dropped before the
-   * owner gets in. This is what stops someone who signed up with an unverified GitHub email from
+   * A code proves the mailbox, so on an account whose email was never proven every earlier session
+   * is dropped before the owner gets in (as in 1.6), and since 1.7 every linked account too (upgrade
+   * guide, "Email OTP and magic links"). This is what stops someone who signed up with an unverified GitHub email from
    * keeping access to the real owner's account. It is the one way a GitHub link goes away (V-265
    * otherwise forbids it), and only once: the email is verified afterwards.
    */
@@ -147,6 +147,13 @@ describe("email-code sign-in on better-auth 1.7", () => {
     const { user } = await seedExistingUser({ emailVerified: false });
     const earlier = await createSessionForUser(user.id);
     expect(await prisma.session.count({ where: { userId: user.id } })).toBe(1);
+    // Warm both caches, so the 401 below proves revocation reached them, not just Postgres.
+    await seedBetterAuthSessionEntries(user.id, [earlier.sessionToken]);
+    const warm = await request(app)
+      .get("/api/v1/users/me")
+      .set("Origin", STUDIO_ORIGIN)
+      .set("Cookie", earlier.cookie);
+    expect(warm.status).toBe(200);
 
     const otp = await requestCode(user.email);
     const signIn = await auth("/sign-in/email-otp", { email: user.email, otp });
@@ -164,6 +171,7 @@ describe("email-code sign-in on better-auth 1.7", () => {
       .set("Origin", STUDIO_ORIGIN)
       .set("Cookie", earlier.cookie);
     expect(stale.status).toBe(401);
+    expect(await getRedis().get(earlier.sessionToken)).toBeNull();
     expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).emailVerified).toBe(
       true,
     );

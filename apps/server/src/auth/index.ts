@@ -262,9 +262,9 @@ export const auth = betterAuth({
     // server has its own token-keyed Redis cache with revocation tombstones (utils/authCache.ts)
     // in front of better-auth's Redis secondary storage, so a lookup that misses it costs one
     // Redis read, not a Postgres query.
-    // `strategy` stays "jwt": better-auth still parses a `session_data` cookie it finds, with the
-    // configured strategy, even when the cache is off. Browsers that signed in before this change
-    // hold a JWT one, and the default "compact" parser throws on it (every request a 503).
+    // `strategy` stays "jwt", the format of the `session_data` cookies browsers still hold from
+    // before the cache was turned off. better-auth 1.7 clears such a cookie without parsing it
+    // (1.6 parsed it, and the default "compact" parser threw on a JWT one), so this is harmless.
     cookieCache: { enabled: false, strategy: "jwt" },
   },
 
