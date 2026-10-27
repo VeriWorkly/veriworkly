@@ -22,9 +22,10 @@ import { AFFILIATE_WALLET_CURRENCY } from "#services/affiliate/constants";
  * non-UTC session.
  *
  * Every series counts what was *created* that day, whatever happened to the row afterwards: a
- * subscription cancelled later, a commission reversed later and a document soft-deleted later
- * all stay on their creation day (`getDocumentSummary.createdLast30Days` follows the same rule).
- * Filtering on current state made yesterday's bars shrink as rows changed.
+ * subscription cancelled later and a document soft-deleted later stay on their creation day
+ * (`getDocumentSummary.createdLast30Days` follows the same rule). The one exception is money:
+ * `commissionCents` leaves reversed commissions out (V-267), because a commission taken back was
+ * never earned, so a refund shrinks its sale day's bar.
  *
  * Every query here is a literal template — no identifier is interpolated from input — so the
  * only parameter that ever reaches Postgres is the window start date.
@@ -131,10 +132,13 @@ async function buildAdminTimeSeries(days: number) {
       GROUP BY bucket
     `,
     // Cents only add up within one currency: the wallet's, as the affiliate summary sums (V-261).
+    // Commission still owed, released or paid; a reversed one (refunded, or a non-USD row replaced
+    // by its USD conversion) was never earned, and counting it doubled converted sales (V-267).
     prisma.$queryRaw<DailyRow[]>`
       SELECT date_trunc('day', "createdAt") AS bucket, SUM("amountCents") AS value
       FROM "AffiliateCommission"
       WHERE "createdAt" >= ${since} AND "currency" = ${AFFILIATE_WALLET_CURRENCY}
+        AND "status" <> 'REVERSED'
       GROUP BY bucket
     `,
   ]);

@@ -137,7 +137,9 @@ export function billingEventsOfUserSql(userId: string, subscriptionIds: string[]
 
 /**
  * Admin audit entries about a user: targeting them or one of their rows, or naming them as the
- * user or owner in their metadata. `= ANY(ARRAY(subquery))` rather than `IN (subquery)`: inside
+ * user or owner in their metadata. Deliberately wide (every row the user owns,
+ * ledger included); the admin user history reads a narrower, joined form
+ * (`userAuditHistoryIdsSql`). `= ANY(ARRAY(subquery))` rather than `IN (subquery)`: inside
  * an OR, `IN` becomes a per-row filter and forces a sequential scan, while the array is computed
  * once and lets each branch use its index (`targetId`, and the `metadata ->> 'userId'` /
  * `'ownerId'` expression indexes) (V-237).
@@ -152,7 +154,11 @@ export function auditEntriesAboutUserSql(userId: string) {
       UNION SELECT "id" FROM "AffiliateWithdrawal" WHERE "userId" = ${userId}
       UNION SELECT "id" FROM "AffiliateCommission" WHERE "affiliateId" = ${userId}
       UNION SELECT "id" FROM "Document" WHERE "userId" = ${userId}
-      UNION SELECT "id" FROM "PortfolioPublication" WHERE "userId" = ${userId}))
+      UNION SELECT "id" FROM "PortfolioPublication" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "ApiKey" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "ShareLink" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "AmbassadorApplication" WHERE "userId" = ${userId}
+      UNION SELECT "id" FROM "BillingWebhookEvent" WHERE "userId" = ${userId}))
     OR ("metadata" ->> 'userId') = ${userId}
     OR ("metadata" ->> 'ownerId') = ${userId})`;
 }

@@ -36,6 +36,75 @@ type EntitlementKey = (typeof ENTITLEMENT_KEYS)[number];
 
 const PAYING_STATUSES = ["ACTIVE", "PAST_DUE"] as const;
 
+/**
+ * A paying subscription of a live account. Billing rows outlive a deleted account (decision 5),
+ * detached with `userId` null, and nobody is paying through them any more (V-267).
+ */
+const LIVE_PAYING_WHERE = {
+  status: { in: [...PAYING_STATUSES] },
+  userId: { not: null },
+} satisfies Prisma.SubscriptionWhereInput;
+
+type RevenueRow = {
+  currency: string;
+  payments: bigint | number;
+  grossCents: bigint | number | null;
+  reversedCents: bigint | number | null;
+};
+
+/**
+ * Money taken, per currency, from the amounts stored on the processed webhook events (V-197):
+ * every successful payment once (a payment delivered under several event ids counts once, by its
+ * provider payment id), less every refund and lost or accepted dispute once (by its refund or
+ * dispute id while the payload lasts, as `reversedSoFar` counts them). A failed or unprocessed
+ * event moved no money. Amounts never add up across currencies, so each currency is its own row.
+ * `since` null is all time; a reversal counts in the window it happened in.
+ */
+async function revenueByCurrency(since: Date | null) {
+  const rows = await prisma.$queryRaw<RevenueRow[]>`
+    WITH payments AS (
+      SELECT DISTINCT ON (COALESCE("providerPaymentId", "id"))
+        upper("currency") AS currency, "amountCents" AS amount
+      FROM "BillingWebhookEvent"
+      WHERE "type" = 'payment.succeeded' AND "status" = 'PROCESSED'
+        AND "amountCents" IS NOT NULL AND "currency" IS NOT NULL
+        AND (${since}::timestamp IS NULL OR "createdAt" >= ${since}::timestamp)
+      ORDER BY COALESCE("providerPaymentId", "id"), "createdAt" ASC
+    ), reversals AS (
+      SELECT DISTINCT ON (COALESCE("payload" -> 'data' ->> 'refund_id', "payload" -> 'data' ->> 'dispute_id', "id"))
+        upper("currency") AS currency, "amountCents" AS amount
+      FROM "BillingWebhookEvent"
+      WHERE "type" IN ('refund.succeeded', 'dispute.lost', 'dispute.accepted')
+        AND "status" = 'PROCESSED'
+        AND "amountCents" IS NOT NULL AND "currency" IS NOT NULL
+        AND (${since}::timestamp IS NULL OR "createdAt" >= ${since}::timestamp)
+      ORDER BY COALESCE("payload" -> 'data' ->> 'refund_id', "payload" -> 'data' ->> 'dispute_id', "id"), "createdAt" ASC
+    )
+    SELECT currency,
+      COUNT(*) FILTER (WHERE kind = 'payment') AS payments,
+      SUM(amount) FILTER (WHERE kind = 'payment') AS "grossCents",
+      SUM(amount) FILTER (WHERE kind = 'reversal') AS "reversedCents"
+    FROM (
+      SELECT currency, amount, 'payment' AS kind FROM payments
+      UNION ALL
+      SELECT currency, amount, 'reversal' AS kind FROM reversals
+    ) AS money
+    GROUP BY currency
+    ORDER BY currency`;
+
+  return rows.map((row) => {
+    const grossCents = Number(row.grossCents ?? 0);
+    const reversedCents = Number(row.reversedCents ?? 0);
+    return {
+      currency: row.currency,
+      payments: Number(row.payments),
+      grossCents,
+      reversedCents,
+      netCents: grossCents - reversedCents,
+    };
+  });
+}
+
 const SUBSCRIBER_SELECT = {
   id: true,
   name: true,
@@ -58,18 +127,21 @@ export async function getBillingSummary() {
     creditsAdjusted30,
     webhooksByStatus,
     activeEntitlements,
+    paying,
+    revenueLast30Days,
+    revenueAllTime,
   ] = await Promise.all([
     prisma.subscription.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.subscription.groupBy({
       by: ["productKey"],
-      where: { status: { in: [...PAYING_STATUSES] } },
+      where: LIVE_PAYING_WHERE,
       _count: { _all: true },
     }),
     prisma.subscription.count({
-      where: { createdAt: { gte: since30 }, status: { in: [...PAYING_STATUSES] } },
+      where: { createdAt: { gte: since30 }, ...LIVE_PAYING_WHERE },
     }),
     prisma.subscription.count({
-      where: { cancelAtPeriodEnd: true, status: { in: [...PAYING_STATUSES] } },
+      where: { cancelAtPeriodEnd: true, ...LIVE_PAYING_WHERE },
     }),
     // Live accounts only (V-252): a wallet or grant detached by an account deletion is a billing
     // record, not credit anyone can spend or access anyone holds.
@@ -99,6 +171,9 @@ export async function getBillingSummary() {
         OR: [{ endsAt: null }, { endsAt: { gt: now } }],
       },
     }),
+    prisma.subscription.count({ where: LIVE_PAYING_WHERE }),
+    revenueByCurrency(since30),
+    revenueByCurrency(null),
   ]);
 
   const statusCounts = Object.fromEntries(byStatus.map((row) => [row.status, row._count._all]));
@@ -108,8 +183,9 @@ export async function getBillingSummary() {
 
   return {
     subscriptions: {
+      // Every row, detached ones included; `paying` and the counts below are live accounts only.
       byStatus: statusCounts,
-      paying: PAYING_STATUSES.reduce((sum, status) => sum + (statusCounts[status] ?? 0), 0),
+      paying,
       byProduct: Object.fromEntries(byProduct.map((row) => [row.productKey, row._count._all])),
       newLast30Days: newLast30,
       cancelingAtPeriodEnd: cancelingSoon,
@@ -131,6 +207,8 @@ export async function getBillingSummary() {
       failed: webhookCounts.FAILED ?? 0,
     },
     activeEntitlements,
+    /** Per currency, from stored payment amounts; see `revenueByCurrency`. */
+    revenue: { last30Days: revenueLast30Days, allTime: revenueAllTime },
   };
 }
 

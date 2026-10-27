@@ -265,7 +265,9 @@ function personSearch(search: string): Prisma.UserWhereInput[] {
 export async function listCommissions(query: CommissionListQuery) {
   const where: Prisma.AffiliateCommissionWhereInput = {
     ...(query.status ? { status: query.status } : {}),
-    ...(query.affiliateId ? { affiliateId: query.affiliateId } : {}),
+    ...(query.affiliateId || query.userId
+      ? { affiliateId: query.affiliateId ?? query.userId }
+      : {}),
     ...(query.query
       ? {
           OR: [
@@ -280,7 +282,15 @@ export async function listCommissions(query: CommissionListQuery) {
     prisma.affiliateCommission.findMany({
       where,
       include: {
-        affiliate: { select: { id: true, name: true, email: true, affiliateCode: true } },
+        affiliate: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            affiliateCode: true,
+            affiliateStatus: true,
+          },
+        },
         referral: {
           select: { id: true, referredUser: { select: { id: true, email: true } } },
         },
@@ -303,6 +313,9 @@ export async function listCommissions(query: CommissionListQuery) {
       // A deleted affiliate's money history is kept, detached (V-183).
       ...withAffiliatePlaceholder(item),
       requiresManualConversion: item.currency !== AFFILIATE_WALLET_CURRENCY,
+      // Whether "Convert to USD" can be offered: conversion needs an ACTIVE affiliate (V-272).
+      // Null for a deleted affiliate.
+      affiliateStatus: item.affiliate?.affiliateStatus ?? null,
     })),
     total,
     query,
@@ -315,6 +328,7 @@ export async function listCommissions(query: CommissionListQuery) {
 export async function listWithdrawals(query: WithdrawalListQuery) {
   const where: Prisma.AffiliateWithdrawalWhereInput = {
     ...(query.status ? { status: query.status } : {}),
+    ...(query.affiliateId || query.userId ? { userId: query.affiliateId ?? query.userId } : {}),
     ...(query.query ? { user: { OR: personSearch(query.query) } } : {}),
   };
 
