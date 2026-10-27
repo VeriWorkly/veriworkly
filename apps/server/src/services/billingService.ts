@@ -41,6 +41,11 @@ import {
   subscriptionCreditGrantsWhere,
 } from "#services/annualCreditService";
 import { notifyOnce } from "#services/billingNotifications";
+import {
+  alertOperator,
+  BILLING_WEBHOOK_DEAD_LETTER_RETRIES,
+  describeErrorForAlert,
+} from "#services/operatorAlerts";
 import type { PurchaseConfirmation } from "#services/mail/billingMail";
 import { PRODUCT_NAMES, PASS_NAMES, purchaseName } from "#services/productNames";
 import {
@@ -2719,6 +2724,15 @@ export class BillingService {
             },
           });
         });
+        // And it reaches the operator, not only the webhook list (V-371).
+        if (note)
+          void alertOperator("billing_webhook_note", stored.id, {
+            subject: `Billing event ${providerEventId} needs a person`,
+            lines: [
+              note,
+              `Event type: ${parsedEvent.type}. It is listed in Admin > Billing > Webhooks.`,
+            ],
+          });
         // History lists PROCESSED rows only: one cached before this line would miss the event.
         if (attributedUserId) await cacheDel(billingHistoryCacheKey(attributedUserId));
 
@@ -2745,7 +2759,7 @@ export class BillingService {
           data: { status: "FAILED", error: errorMessage },
         });
 
-        if (updatedEvent.retryCount >= 5) {
+        if (updatedEvent.retryCount >= BILLING_WEBHOOK_DEAD_LETTER_RETRIES) {
           logger.error(
             `CRITICAL: Webhook event ${providerEventId} exceeded max retries. Dead-letter alert!`,
             {
@@ -2754,6 +2768,15 @@ export class BillingService {
               retryCount: updatedEvent.retryCount,
             },
           );
+          // The customer may have paid and received nothing (V-371).
+          void alertOperator("billing_webhook_dead_letter", stored.id, {
+            subject: `Billing event ${providerEventId} failed ${updatedEvent.retryCount} times`,
+            lines: [
+              `The ${updatedEvent.type} event has failed every attempt so far. The customer may have paid and received nothing.`,
+              `Last error: ${describeErrorForAlert(error)}`,
+              "Fix the cause, then replay it from Admin > Billing > Webhooks.",
+            ],
+          });
         }
 
         throw error;
@@ -2962,11 +2985,19 @@ export class BillingService {
             },
             select: { providerSubId: true, productKey: true, status: true },
           });
-          if (others.length > 0)
+          if (others.length > 0) {
             logger.error(
               `CRITICAL: user ${userId} holds more than one live subscription (${[productKey, ...others.map((other) => other.productKey)].join(", ")}); refund or merge the duplicate.`,
               { userId, productKey, subscriptionId: subscription.subscription_id, others },
             );
+            void alertOperator("duplicate_live_subscription", subscription.subscription_id, {
+              subject: `User ${userId} holds more than one live subscription`,
+              lines: [
+                `Live subscriptions: ${[subscription.subscription_id, ...others.map((other) => other.providerSubId)].join(", ")} (${[productKey, ...others.map((other) => other.productKey)].join(", ")}).`,
+                "The customer is being charged twice. Refund or merge the duplicate from the Dodo dashboard.",
+              ],
+            });
+          }
         }
 
         const access = accessStatus({ status: normalizedStatus, currentPeriodEnd, graceEndsAt });

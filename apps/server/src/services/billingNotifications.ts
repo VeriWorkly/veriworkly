@@ -16,6 +16,7 @@ import {
   sendPortfolioFreeTierEmail,
   type PortfolioFreeTierNotice,
 } from "#services/mail/portfolioMail";
+import { sendOperatorAlertEmail, type OperatorAlert } from "#services/mail/operatorMail";
 
 /**
  * Billing emails (V-172, V-177) go out at most once per (kind, reference), and are not lost when
@@ -47,7 +48,9 @@ export type BillingNotice =
       /** The subscription that is ending: a retry is dropped once it renews again. */
       subscriptionId?: string;
     }
-  | { template: "plan_changed"; details: PlanChangedNotice };
+  | { template: "plan_changed"; details: PlanChangedNotice }
+  /** To the operator (ADMIN_EMAIL), not a customer (V-371). */
+  | { template: "operator_alert"; details: OperatorAlert };
 
 const TEMPLATES = new Set([
   "purchase_confirmation",
@@ -55,6 +58,7 @@ const TEMPLATES = new Set([
   "portfolio_free_tier",
   "subscription_cancelled",
   "plan_changed",
+  "operator_alert",
 ]);
 
 /** Long enough that a send still in flight is never taken over. */
@@ -91,6 +95,8 @@ async function send(notice: BillingNotice, user: { email: string; name: string }
     await sendSubscriptionCancelledEmail(user.email, { ...notice.details, name: user.name });
   else if (notice.template === "plan_changed")
     await sendPlanChangedEmail(user.email, { ...notice.details, name: user.name });
+  else if (notice.template === "operator_alert")
+    await sendOperatorAlertEmail(user.email, notice.details);
   else await sendPortfolioFreeTierEmail(user.email, { ...notice.details, name: user.name });
 }
 
@@ -159,7 +165,14 @@ export function notifyOnce(
   userId: string,
   notice: BillingNotice,
 ): Promise<void> {
-  const run = sendOnce(kind, reference, userId, notice);
+  return trackBillingNotification(sendOnce(kind, reference, userId, notice));
+}
+
+/**
+ * Counts a send that starts with other work first (an operator alert looks the admin up) as in
+ * flight from the start, so `settleBillingNotifications` waits for it too.
+ */
+export function trackBillingNotification(run: Promise<void>): Promise<void> {
   inFlight.add(run);
   void run.finally(() => inFlight.delete(run));
   return run;

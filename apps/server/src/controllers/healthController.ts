@@ -10,6 +10,7 @@ import { createErrorResponse, createSuccessResponse } from "#lib/errors";
 import { getExtractQueueStats } from "#services/ats/extractPool";
 import { matchesSharedSecret } from "#utils/requestIp";
 import { enabledJobs } from "#jobs/scheduledJobs";
+import { billingIncidentCounts } from "#services/operatorAlerts";
 
 /** Per-dependency bound for `/ready` (V-096): a probe must fail fast, not wait on the pool's 30 s. */
 const READY_CHECK_TIMEOUT_MS = 2_000;
@@ -200,10 +201,27 @@ export class HealthController {
    * when it has not succeeded within twice its schedule interval, or has never succeeded and twice
    * the interval has passed since the jobs baseline (the first boot). A job the
    * configuration does not schedule is reported `enabled: false` and never counts as stale.
+   *
+   * `billing` counts the money incidents still open (V-371): dead-lettered webhooks not yet
+   * replayed and events processed with a note for a person in the last day. `attention` is true
+   * while either is non-zero, so the uptime check can alert on it as it does on `stale`.
    */
   static async jobs(_req: Request, res: Response) {
-    const [lastSuccess, baseline] = await Promise.all([getJobLastSuccess(), getJobsBaseline()]);
+    const [lastSuccess, baseline, billing] = await Promise.all([
+      getJobLastSuccess(),
+      getJobsBaseline(),
+      billingIncidentCounts().catch((error: unknown) => {
+        logger.error("Health jobs: could not count billing incidents", error);
+        return null;
+      }),
+    ]);
     const jobs = jobStatuses(lastSuccess, enabledJobs(), baseline);
-    res.json(createSuccessResponse({ stale: jobs.some((job) => job.stale), jobs }, "Job status"));
+    const attention = Boolean(billing && (billing.failedWebhooks > 0 || billing.notedWebhooks > 0));
+    res.json(
+      createSuccessResponse(
+        { stale: jobs.some((job) => job.stale), attention, billing, jobs },
+        "Job status",
+      ),
+    );
   }
 }
