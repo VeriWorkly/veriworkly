@@ -6,6 +6,7 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
+import { applyRetention, readRetentionSettings, type RetentionSettings } from "#jobs/retentionJob";
 import { prisma } from "#lib/prisma";
 import { PortfolioService } from "#services/portfolioService";
 
@@ -634,5 +635,43 @@ describe("V-286 an admin never moves an owner-private document away from PRIVATE
       (await prisma.portfolioPublication.findUniqueOrThrow({ where: { id: publication.id } }))
         .suspensionReason,
     ).toBe("user_unpublished");
+  });
+});
+
+describe("V-287 a forfeited affiliate balance is a money record", () => {
+  it("is kept 7 years by retention, not 365 days", async () => {
+    const now = new Date();
+    const ago = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000 - 3600_000);
+    await prisma.adminAuditEntry.deleteMany({});
+    await prisma.adminAuditEntry.createMany({
+      data: [
+        {
+          id: "forfeit-1y",
+          action: "affiliate.balance.forfeit",
+          targetType: "x",
+          createdAt: ago(400),
+        },
+        {
+          id: "forfeit-8y",
+          action: "affiliate.balance.forfeit",
+          targetType: "x",
+          createdAt: ago(8 * 365),
+        },
+        { id: "general-1y", action: "user.update", targetType: "x", createdAt: ago(400) },
+      ],
+    });
+    const settings = Object.fromEntries(
+      Object.keys(readRetentionSettings({})).map((key) => [key, 0]),
+    ) as RetentionSettings;
+
+    await applyRetention({
+      settings: { ...settings, adminAuditEntries: 365, adminMoneyAuditEntries: 7 * 365 },
+      now,
+    });
+
+    const left = (await prisma.adminAuditEntry.findMany({ select: { id: true } })).map(
+      (row) => row.id,
+    );
+    expect(left).toEqual(["forfeit-1y"]);
   });
 });
