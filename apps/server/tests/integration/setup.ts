@@ -33,7 +33,29 @@ beforeAll(async () => {
   await resetStores();
 });
 
+/**
+ * Network handles still open once both stores are closed: a Postgres or Redis client the file
+ * opened outside `#lib/prisma`/`#lib/redis` (a second app graph, a raw `pg` client) and never
+ * closed. Such a handle keeps the forked worker alive past the run, which Vitest reports only as
+ * "Timeout terminating forks worker" with no file name (seen on `credits-ledger.test.ts` in the
+ * 2026-10-26 review); failing here names the file instead. Closing sockets settle within a few
+ * event-loop turns, so the check waits up to a second before it fails.
+ */
+async function openNetworkHandles(): Promise<string[]> {
+  const network = () => process.getActiveResourcesInfo().filter((name) => /^(TCP|TLS)/.test(name));
+  for (let attempt = 0; attempt < 20 && network().length > 0; attempt += 1)
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  return network();
+}
+
 afterAll(async () => {
   await closeRedis();
   await closePrisma();
+
+  const open = await openNetworkHandles();
+  if (open.length > 0)
+    throw new Error(
+      `This file left ${open.length} network handle(s) open (${open.join(", ")}); close every ` +
+        "Postgres/Redis client it created before it ends.",
+    );
 });
