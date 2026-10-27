@@ -15,7 +15,7 @@ import {
 } from "@/features/admin/services/admin-server";
 import type { AdminSubscriptionRow } from "@/features/admin/types/admin-types";
 import {
-  formatDate,
+  formatPeriodEnd,
   formatNumber,
   formatRelativeTime,
   humanizeKey,
@@ -96,9 +96,9 @@ const columns: Array<AdminTableColumn<AdminSubscriptionRow>> = [
   },
   {
     key: "period",
-    header: "Renews",
+    header: "Period end",
     hideOnMobile: true,
-    render: (row) => <span className="text-muted text-xs">{formatDate(row.currentPeriodEnd)}</span>,
+    render: (row) => <span className="text-muted text-xs">{formatPeriodEnd(row)}</span>,
   },
   {
     key: "webhook",

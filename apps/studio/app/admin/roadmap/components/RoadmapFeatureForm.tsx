@@ -22,6 +22,19 @@ const STATUS_OPTIONS: Array<{ value: RoadmapStatus; label: string }> = [
   { value: "done", label: "Done" },
 ];
 
+/**
+ * Which date fields the server keeps for a status (`resolveStatusTimestamps`): a to-do item
+ * clears both dates, an in-progress one its completion date, and the quarter label is set only
+ * on a done item. The rest are disabled, so nothing typed into them is silently dropped.
+ */
+export function roadmapDateFields(status: RoadmapStatus) {
+  return {
+    startedAt: status !== "todo",
+    completedAt: status === "done",
+    completedQuarter: status === "done",
+  };
+}
+
 const toDatetimeLocalValue = (value?: string | null) => {
   if (!value) return "";
 
@@ -59,6 +72,7 @@ export default function RoadmapFeatureForm({
   });
 
   const titleText = mode === "create" ? "Create roadmap item" : "Update roadmap item";
+  const dateFields = roadmapDateFields(formData.status);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -75,7 +89,16 @@ export default function RoadmapFeatureForm({
     try {
       setIsSaving(true);
 
-      const payload = buildRoadmapPayload(formData, mode);
+      // A disabled date is sent as blank, as shown: the server would drop it anyway.
+      const payload = buildRoadmapPayload(
+        {
+          ...formData,
+          startedAt: dateFields.startedAt ? formData.startedAt : "",
+          completedAt: dateFields.completedAt ? formData.completedAt : "",
+          completedQuarter: dateFields.completedQuarter ? formData.completedQuarter : "",
+        },
+        mode,
+      );
 
       if (mode === "create") {
         await createRoadmapFeature(payload);
@@ -173,9 +196,10 @@ export default function RoadmapFeatureForm({
 
           <Input
             id="startedAt"
-            disabled={isSaving}
+            disabled={isSaving || !dateFields.startedAt}
             type="datetime-local"
-            value={formData.startedAt}
+            aria-describedby={dateFields.startedAt ? undefined : "roadmap-dates-hint"}
+            value={dateFields.startedAt ? formData.startedAt : ""}
             onChange={handleInputChange}
           />
         </div>
@@ -187,9 +211,10 @@ export default function RoadmapFeatureForm({
 
           <Input
             id="completedAt"
-            disabled={isSaving}
+            disabled={isSaving || !dateFields.completedAt}
             type="datetime-local"
-            value={formData.completedAt}
+            aria-describedby={dateFields.completedAt ? undefined : "roadmap-dates-hint"}
+            value={dateFields.completedAt ? formData.completedAt : ""}
             onChange={handleInputChange}
           />
         </div>
@@ -200,13 +225,22 @@ export default function RoadmapFeatureForm({
           </label>
 
           <Input
-            disabled={isSaving}
+            disabled={isSaving || !dateFields.completedQuarter}
             id="completedQuarter"
             placeholder="Q2 2026"
+            aria-describedby={dateFields.completedQuarter ? undefined : "roadmap-dates-hint"}
             onChange={handleInputChange}
-            value={formData.completedQuarter}
+            value={dateFields.completedQuarter ? formData.completedQuarter : ""}
           />
         </div>
+
+        {formData.status !== "done" ? (
+          <p id="roadmap-dates-hint" className="text-muted text-xs md:col-span-2">
+            {formData.status === "todo"
+              ? "A to-do item has no start or completion date; they are set when it moves on."
+              : "An in-progress item has no completion date or quarter yet; they are set when it is done."}
+          </p>
+        ) : null}
 
         <div className="space-y-2">
           <label className="text-foreground text-sm font-semibold" htmlFor="tags">
@@ -271,13 +305,13 @@ export default function RoadmapFeatureForm({
               className="text-foreground flex items-center gap-2 text-sm font-semibold"
               htmlFor="detailsJson"
             >
-              <Badge className="py-.5 bg-accent/10 border-accent/20 border px-1.5 text-[10px]">
+              <Badge className="bg-accent/10 border-accent/20 border px-1.5 py-0.5 text-[10px]">
                 JSON
               </Badge>
               Details Metadata
             </label>
 
-            <span className="text-muted-foreground/60 text-[10px] font-medium tracking-wider uppercase">
+            <span className="text-muted/60 text-[10px] font-medium tracking-wider uppercase">
               Advanced Configuration
             </span>
           </div>
@@ -293,20 +327,20 @@ export default function RoadmapFeatureForm({
               placeholder='{ "problem": "...", "solution": "..." }'
               className={cn(
                 "relative min-h-50 rounded-[20px] font-mono text-[13px] leading-relaxed transition-all",
-                "border-slate-800 bg-[#0f172a] text-slate-300 placeholder:text-slate-600",
+                "border-border bg-background text-foreground placeholder:text-muted",
                 "focus-visible:ring-accent/10 focus-visible:border-accent/30 shadow-inner",
                 "selection:bg-accent/30 hide-scrollbar",
               )}
             />
 
             <div className="pointer-events-none absolute top-3 right-4 flex gap-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-slate-600" />
-              <div className="h-1.5 w-1.5 rounded-full bg-slate-600" />
-              <div className="h-1.5 w-1.5 rounded-full bg-slate-600" />
+              <div className="bg-muted/50 h-1.5 w-1.5 rounded-full" />
+              <div className="bg-muted/50 h-1.5 w-1.5 rounded-full" />
+              <div className="bg-muted/50 h-1.5 w-1.5 rounded-full" />
             </div>
           </div>
 
-          <p className="text-muted-foreground/70 pl-1 text-[11px]">
+          <p className="text-muted pl-1 text-[11px]">
             Valid JSON required. Used for technical highlights and impact metrics.
           </p>
         </div>

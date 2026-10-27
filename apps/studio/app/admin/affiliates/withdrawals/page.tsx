@@ -90,6 +90,7 @@ const columns: Array<AdminTableColumn<AdminWithdrawalRow>> = [
           id={row.id}
           status={row.status}
           amountCents={row.amountCents}
+          currency={row.currency}
           email={row.user.email}
         />
       ),
@@ -121,7 +122,7 @@ export default async function AdminWithdrawalsPage({
       columns={columns}
       rowKey={(row) => row.id}
       emptyMessage="No withdrawal requests match these filters."
-      caption={`${formatCents(data.totalAmountCents)} across ${pluralize(data.total, "matching request")}. Payouts are sent out of band — this queue records the decision and the transfer.`}
+      caption={`${pluralize(data.total, "matching request")}, ${formatCents(data.totalAmountCents)} requested in all${params.status ? "" : " (every status, rejected included)"}. Payouts are sent out of band — this queue records the decision and the transfer.`}
     />
   );
 }

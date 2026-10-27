@@ -25,7 +25,7 @@ const columns: Array<AdminTableColumn<AdminAmbassadorRosterRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/users/${row.id}`}
+          href={`/admin/users/${encodeURIComponent(row.id)}`}
           className="text-foreground font-medium hover:underline"
         >
           {row.name || row.email}

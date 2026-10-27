@@ -51,7 +51,7 @@ const columns: Array<AdminTableColumn<AdminAmbassadorRow>> = [
     render: (application) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/ambassadors/${application.id}`}
+          href={`/admin/ambassadors/${encodeURIComponent(application.id)}`}
           className="text-foreground font-medium hover:underline"
         >
           {application.user.name || application.user.email}

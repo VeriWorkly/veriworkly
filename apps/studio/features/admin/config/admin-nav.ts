@@ -20,6 +20,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import type { AdminActionQueueKey } from "@/features/admin/types/admin-types";
+import { isAdminPage } from "@/features/admin/config/admin-routes";
 
 /**
  * The one description of the admin's information architecture.
@@ -218,15 +219,27 @@ export function isNavItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** A record id in a path (a cuid, or a roadmap item's UUID), not a page name. */
+const RECORD_ID =
+  /^(c[a-z0-9]{20,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+
+export interface AdminBreadcrumb {
+  path: string;
+  /** `null` for a path that is no page (a roadmap item has only its `/edit` page). */
+  href: string | null;
+  label: string;
+}
+
 /**
  * Breadcrumb trail for a pathname, resolved against the IA above.
  *
- * Falls back to title-casing an unrecognised segment (a record id, a nested `new`/`edit` route)
- * rather than dropping it, so a detail page still shows where it sits.
+ * Falls back to title-casing an unrecognised segment (a nested `new`/`edit` route) rather than
+ * dropping it, so a detail page still shows where it sits; a record id reads "Detail". A crumb
+ * links only where a page exists.
  */
-export function buildAdminBreadcrumbs(pathname: string) {
+export function buildAdminBreadcrumbs(pathname: string): AdminBreadcrumb[] {
   const segments = pathname.split("/").filter(Boolean).slice(1);
-  const crumbs = [{ href: "/admin", label: "Admin" }];
+  const crumbs: AdminBreadcrumb[] = [{ path: "/admin", href: "/admin", label: "Admin" }];
 
   let accumulated = "/admin";
 
@@ -236,12 +249,11 @@ export function buildAdminBreadcrumbs(pathname: string) {
     const known = ADMIN_NAV_ROUTES.find((route) => route.href === accumulated);
 
     crumbs.push({
-      href: accumulated,
-      // A cuid segment is an id, not a page name — label it generically rather than printing
-      // 25 characters of base36 into the breadcrumb.
+      path: accumulated,
+      href: known || isAdminPage(accumulated) ? accumulated : null,
       label:
         known?.label.split(" · ").pop() ??
-        (/^c[a-z0-9]{20,}$/i.test(segment)
+        (RECORD_ID.test(segment)
           ? "Detail"
           : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ")),
     });

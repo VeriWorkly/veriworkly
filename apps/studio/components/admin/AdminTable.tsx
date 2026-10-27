@@ -42,12 +42,14 @@ function AdminTable<T>({
 }: AdminTableProps<T>) {
   return (
     <div className="border-border bg-card overflow-hidden rounded-xl border shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      {caption ? (
-        <div className="border-border text-muted border-b px-4 py-2.5 text-xs">{caption}</div>
-      ) : null}
-
       <div className="w-full overflow-x-auto">
         <table className="w-full min-w-[46rem] border-collapse text-left text-sm">
+          {caption ? (
+            <caption className="border-border text-muted border-b px-4 py-2.5 text-left text-xs">
+              {caption}
+            </caption>
+          ) : null}
+
           <thead className="bg-admin-inset">
             <tr>
               {columns.map((column) => (
@@ -61,7 +63,8 @@ function AdminTable<T>({
                     column.className,
                   )}
                 >
-                  {column.header}
+                  {/* A blank header still names its column for a screen reader (the row actions). */}
+                  {column.header === "" ? <span className="sr-only">Actions</span> : column.header}
                 </th>
               ))}
             </tr>

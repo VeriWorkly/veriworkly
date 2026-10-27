@@ -56,7 +56,7 @@ const columns: Array<AdminTableColumn<AdminPortfolioRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/portfolios/${row.id}`}
+          href={`/admin/portfolios/${encodeURIComponent(row.id)}`}
           className="text-foreground font-medium hover:underline"
         >
           {row.subdomain}
@@ -71,7 +71,7 @@ const columns: Array<AdminTableColumn<AdminPortfolioRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/users/${row.user.id}`}
+          href={`/admin/users/${encodeURIComponent(row.user.id)}`}
           className="text-foreground text-sm hover:underline"
         >
           {row.user.name || row.user.email}
@@ -114,6 +114,7 @@ const columns: Array<AdminTableColumn<AdminPortfolioRow>> = [
         publicationId={row.id}
         subdomain={row.subdomain}
         status={row.status}
+        templateId={row.templateId}
       />
     ),
   },

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@veriworkly/ui";
 
-import { formatNumber } from "@/features/admin/utils/admin-format";
+import { formatNumber, lastPageOffset } from "@/features/admin/utils/admin-format";
 
 interface AdminPaginationProps {
   total: number;
@@ -42,6 +42,9 @@ const AdminPagination = ({ total, limit, offset, basePath, params = {} }: AdminP
 
   const hasPrevious = offset > 0;
   const hasNext = offset + limit < total;
+  // A stale link (rows deleted since) can land past the end; it has no range to show.
+  const pastEnd = offset > 0 && offset >= total;
+  const previousOffset = pastEnd ? lastPageOffset(total, limit) : Math.max(0, offset - limit);
 
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + limit, total);
@@ -57,20 +60,31 @@ const AdminPagination = ({ total, limit, offset, basePath, params = {} }: AdminP
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-      <p className="text-muted admin-numeric text-xs">
-        <span className="text-foreground font-medium">{rangeStart}</span>–
-        <span className="text-foreground font-medium">{rangeEnd}</span> of{" "}
-        <span className="text-foreground font-medium">{formatNumber(total)}</span>
-        <span className="mx-1.5 opacity-50">·</span>
-        page {page} of {pageCount}
-      </p>
+      {pastEnd ? (
+        <p className="text-muted admin-numeric text-xs">
+          {total === 0 ? (
+            "Past the last page: nothing matches these filters now."
+          ) : (
+            <>
+              Past the last page: there are{" "}
+              <span className="text-foreground font-medium">{formatNumber(total)}</span> results in{" "}
+              {pageCount} {pageCount === 1 ? "page" : "pages"}.
+            </>
+          )}
+        </p>
+      ) : (
+        <p className="text-muted admin-numeric text-xs">
+          <span className="text-foreground font-medium">{rangeStart}</span>–
+          <span className="text-foreground font-medium">{rangeEnd}</span> of{" "}
+          <span className="text-foreground font-medium">{formatNumber(total)}</span>
+          <span className="mx-1.5 opacity-50">·</span>
+          page {page} of {pageCount}
+        </p>
+      )}
 
       <div className="flex items-center gap-2">
         {hasPrevious ? (
-          <Link
-            href={buildHref(basePath, params, Math.max(0, offset - limit))}
-            className={controlClass}
-          >
+          <Link href={buildHref(basePath, params, previousOffset)} className={controlClass}>
             <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
             Previous
           </Link>

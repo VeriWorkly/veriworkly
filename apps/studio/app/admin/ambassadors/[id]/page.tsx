@@ -113,7 +113,7 @@ export default async function AdminAmbassadorDetailPage({
           <h3 className="text-foreground font-semibold tracking-tight">Applicant</h3>
 
           <Link
-            href={`/admin/users/${application.user.id}`}
+            href={`/admin/users/${encodeURIComponent(application.user.id)}`}
             className="text-accent text-sm font-medium hover:underline"
           >
             Open full account →

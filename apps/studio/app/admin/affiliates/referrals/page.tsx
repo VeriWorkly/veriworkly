@@ -38,7 +38,7 @@ const columns: Array<AdminTableColumn<AdminReferralRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/affiliates/${row.affiliate.id}`}
+          href={`/admin/affiliates/${encodeURIComponent(row.affiliate.id)}`}
           className="text-foreground font-medium hover:underline"
         >
           {row.affiliate.name || row.affiliate.email}
@@ -53,7 +53,7 @@ const columns: Array<AdminTableColumn<AdminReferralRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/users/${row.referredUser.id}`}
+          href={`/admin/users/${encodeURIComponent(row.referredUser.id)}`}
           className="text-foreground text-sm hover:underline"
         >
           {row.referredUser.name || row.referredUser.email}

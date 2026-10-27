@@ -16,10 +16,17 @@ export interface AdminFilterSelect {
   options: AdminFilterOption[];
 }
 
+/** A `YYYY-MM-DD` URL param, picked with a date input. */
+export interface AdminFilterDate {
+  name: string;
+  label: string;
+}
+
 interface AdminFilterBarProps {
   basePath: string;
   searchPlaceholder?: string;
   selects?: AdminFilterSelect[];
+  dates?: AdminFilterDate[];
 }
 
 /**
@@ -33,6 +40,7 @@ const AdminFilterBar = ({
   basePath,
   searchPlaceholder = "Search…",
   selects = [],
+  dates = [],
 }: AdminFilterBarProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -103,6 +111,22 @@ const AdminFilterBar = ({
             </option>
           ))}
         </Select>
+      ))}
+
+      {dates.map((date) => (
+        <label
+          key={date.name}
+          className="text-muted flex h-9 items-center gap-1.5 text-xs whitespace-nowrap"
+        >
+          {date.label}
+          <input
+            type="date"
+            name={date.name}
+            value={searchParams.get(date.name) ?? ""}
+            onChange={(event) => applyParam(date.name, event.target.value)}
+            className="border-border bg-background text-foreground focus:border-accent h-9 rounded-lg border px-2 text-xs outline-none"
+          />
+        </label>
       ))}
 
       <Button type="submit" size="sm" className="h-9 rounded-lg">

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CornerDownLeft, Search } from "lucide-react";
 
-import { cn } from "@veriworkly/ui";
+import { Modal, cn } from "@veriworkly/ui";
 
 import { ADMIN_NAV_ROUTES, ADMIN_QUICK_LINKS } from "@/features/admin/config/admin-nav";
 
@@ -55,13 +55,18 @@ interface AdminCommandPaletteProps {
 /**
  * ⌘K / Ctrl+K jump-to for every admin route and queue.
  *
- * Built on plain React rather than a combobox dependency: the behaviour needed here is a
- * filtered list with arrow keys, which is ~40 lines, and the admin already ships no client
- * JS beyond what its mutations require.
+ * A combobox: focus stays in the search field, and arrow keys move `aria-activedescendant`
+ * through the listbox, so a screen reader announces each result as it is highlighted. The
+ * shared `Modal` owns the dialog parts: focus trap, Escape, focus returned to whatever opened
+ * it, and the counted scroll lock other dialogs share.
  */
 const AdminCommandPalette = ({ onClose }: AdminCommandPaletteProps) => {
   const router = useRouter();
   const listRef = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const baseId = useId();
+  const listId = `${baseId}-results`;
+  const optionId = (index: number) => `${baseId}-option-${index}`;
 
   const [query, setQuery] = useState("");
   const [highlighted, setHighlighted] = useState(0);
@@ -81,21 +86,18 @@ const AdminCommandPalette = ({ onClose }: AdminCommandPaletteProps) => {
    */
   const activeIndex = Math.min(highlighted, Math.max(0, results.length - 1));
 
+  // Focused from an effect, not `autoFocus`: the Modal records what had focus (the button that
+  // opened the palette) in its own effect, which runs first; `autoFocus` would have moved focus
+  // into the field before that, and closing would hand focus back to a field that is gone.
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     listRef.current
       ?.querySelector(`[data-index="${activeIndex}"]`)
       ?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
-
-  // The page behind a modal must not scroll under it.
-  useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, []);
 
   const go = (href: string) => {
     onClose();
@@ -103,12 +105,6 @@ const AdminCommandPalette = ({ onClose }: AdminCommandPaletteProps) => {
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setHighlighted((activeIndex + 1) % Math.max(1, results.length));
@@ -128,31 +124,26 @@ const AdminCommandPalette = ({ onClose }: AdminCommandPaletteProps) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]">
-      <button
-        type="button"
-        aria-label="Close command palette"
-        className="bg-foreground/25 absolute inset-0 cursor-default backdrop-blur-[2px]"
-        onClick={() => onClose()}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
+    <Modal open onClose={onClose}>
+      <Modal.Content
         aria-label="Admin command palette"
-        className="border-border bg-card relative flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border shadow-2xl"
-        onKeyDown={onKeyDown}
+        className="flex max-h-[70vh] flex-col overflow-hidden p-0 md:max-w-xl [&>div[aria-hidden]:first-child]:hidden"
       >
         <div className="border-border flex items-center gap-2.5 border-b px-4">
           <Search className="text-muted h-4 w-4 shrink-0" aria-hidden="true" />
 
           <input
-            autoFocus
+            ref={inputRef}
+            role="combobox"
+            aria-expanded={results.length > 0}
+            aria-autocomplete="list"
+            aria-controls={results.length > 0 ? listId : undefined}
+            aria-activedescendant={results.length > 0 ? optionId(activeIndex) : undefined}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={onKeyDown}
             placeholder="Jump to a page or queue…"
             aria-label="Search admin pages"
-            aria-controls="admin-command-results"
             className="text-foreground placeholder:text-muted h-12 min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
 
@@ -161,44 +152,51 @@ const AdminCommandPalette = ({ onClose }: AdminCommandPaletteProps) => {
           </kbd>
         </div>
 
-        <ul id="admin-command-results" ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-2">
-          {results.length === 0 ? (
-            <li className="text-muted px-3 py-8 text-center text-sm">Nothing matches “{query}”.</li>
-          ) : (
-            results.map((entry, index) => (
-              <li key={`${entry.href}-${entry.label}`}>
-                <button
-                  type="button"
-                  data-index={index}
-                  onClick={() => go(entry.href)}
-                  onMouseMove={() => setHighlighted(index)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition",
-                    index === activeIndex ? "bg-admin-inset" : "",
-                  )}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="text-foreground block truncate text-sm font-medium">
-                      {entry.label}
-                    </span>
-                    <span className="text-muted block truncate text-xs">{entry.description}</span>
+        {results.length === 0 ? (
+          <p role="status" className="text-muted px-3 py-8 text-center text-sm">
+            Nothing matches “{query}”.
+          </p>
+        ) : (
+          <ul
+            id={listId}
+            ref={listRef}
+            role="listbox"
+            aria-label="Admin pages"
+            className="min-h-0 flex-1 overflow-y-auto p-2"
+          >
+            {results.map((entry, index) => (
+              // Options are not tab stops: focus stays in the field and the highlight moves.
+              <li
+                key={`${entry.href}-${entry.label}`}
+                id={optionId(index)}
+                role="option"
+                aria-selected={index === activeIndex}
+                data-index={index}
+                onClick={() => go(entry.href)}
+                onMouseMove={() => setHighlighted(index)}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left transition",
+                  index === activeIndex ? "bg-admin-inset" : "",
+                )}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="text-foreground block truncate text-sm font-medium">
+                    {entry.label}
                   </span>
+                  <span className="text-muted block truncate text-xs">{entry.description}</span>
+                </span>
 
-                  {index === activeIndex ? (
-                    <CornerDownLeft
-                      className="text-muted h-3.5 w-3.5 shrink-0"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <span className="text-muted shrink-0 text-[11px]">{entry.group}</span>
-                  )}
-                </button>
+                {index === activeIndex ? (
+                  <CornerDownLeft className="text-muted h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <span className="text-muted shrink-0 text-[11px]">{entry.group}</span>
+                )}
               </li>
-            ))
-          )}
-        </ul>
-      </div>
-    </div>
+            ))}
+          </ul>
+        )}
+      </Modal.Content>
+    </Modal>
   );
 };
 

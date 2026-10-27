@@ -87,7 +87,7 @@ const columns: Array<AdminTableColumn<AdminDocumentRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/users/${row.user.id}`}
+          href={`/admin/users/${encodeURIComponent(row.user.id)}`}
           className="text-foreground text-sm hover:underline"
         >
           {row.user.name || row.user.email}

@@ -103,6 +103,11 @@ const ADMIN_ROUTES: AdminRoute[] = [
     surface: "the webhook events",
     skeleton: { kind: "list", stats: 3 },
   },
+  {
+    path: "/admin/billing/webhooks/[id]",
+    surface: "this webhook event",
+    skeleton: { kind: "detail" },
+  },
 
   { path: "/admin/roadmap", surface: "the roadmap", skeleton: { kind: "kanban" } },
   { path: "/admin/roadmap/new", surface: "the roadmap editor", skeleton: { kind: "form" } },
@@ -139,6 +144,11 @@ function matches(pattern: string, pathname: string) {
     expected.length === actual.length &&
     expected.every((segment, index) => segment === "[id]" || segment === actual[index])
   );
+}
+
+/** Whether a pathname is an admin page; a breadcrumb links only to one. */
+export function isAdminPage(pathname: string) {
+  return ADMIN_ROUTES.some((route) => matches(route.path, pathname));
 }
 
 export function resolveAdminRoute(pathname: string | null): AdminRoute {

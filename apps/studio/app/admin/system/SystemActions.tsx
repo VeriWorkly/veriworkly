@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useSyncExternalStore } from "react";
 
 import { Select } from "@veriworkly/ui";
 
 import AdminActionDialog from "@/components/admin/AdminActionDialog";
 import {
-  fetchAdminGithubSyncRunning,
   flushAdminCache,
   triggerAdminGithubSync,
   type AdminCachePrefix,
 } from "@/features/admin/services/admin-actions";
+import { useGithubSyncRunning } from "@/features/admin/utils/use-github-sync";
 
 const subscribeNever = () => () => {};
 
@@ -103,44 +102,19 @@ export function CacheFlushControls() {
   );
 }
 
-const SYNC_POLL_MS = 3000;
-
 /**
  * A manual sync answers 202 and runs in the background for up to several minutes, so the
  * control polls the status endpoint while one is running and refreshes the page once it ends.
  */
 export function GithubSyncControls({
-  running: initiallyRunning,
+  running: serverRunning,
   nextSyncAt,
 }: {
   running: boolean;
   nextSyncAt: string | null;
 }) {
-  const router = useRouter();
-
   const [force, setForce] = useState(false);
-  const [running, setRunning] = useState(initiallyRunning);
-  const [pollError, setPollError] = useState("");
-
-  useEffect(() => {
-    if (!running) return;
-
-    const timer = window.setInterval(async () => {
-      try {
-        if (await fetchAdminGithubSyncRunning()) return;
-
-        setRunning(false);
-        router.refresh();
-      } catch (error) {
-        setRunning(false);
-        setPollError(
-          `Could not check the sync's progress: ${error instanceof Error ? error.message : "unknown error"}. Reload to see its result.`,
-        );
-      }
-    }, SYNC_POLL_MS);
-
-    return () => window.clearInterval(timer);
-  }, [running, router]);
+  const { running, pollError, markStarted } = useGithubSyncRunning(serverRunning);
 
   return (
     <div className="space-y-3">
@@ -184,8 +158,7 @@ export function GithubSyncControls({
         confirmLabel="Run sync"
         onConfirm={async (reason) => {
           await triggerAdminGithubSync(reason, force);
-          setPollError("");
-          setRunning(true);
+          markStarted();
         }}
       />
     </div>

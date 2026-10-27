@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import AdminRecordGone from "@/components/admin/AdminRecordGone";
 
 import AdminAuditList from "@/components/admin/AdminAuditList";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
@@ -32,7 +32,17 @@ export default async function AdminPortfolioDetailPage({
   const { id } = await params;
 
   const data = await loadAdminDetail(fetchAdminPortfolioDetail(id, 30));
-  if (!data) notFound();
+  if (!data) {
+    return (
+      <AdminRecordGone
+        noun="portfolio publication"
+        targetType="PortfolioPublication"
+        targetId={id}
+        backHref="/admin/portfolios"
+        backLabel="Back to portfolios"
+      />
+    );
+  }
 
   const { publication, totalViews, dailyViews, topReferrers, auditEntries } = data;
 
@@ -51,6 +61,7 @@ export default async function AdminPortfolioDetailPage({
             publicationId={publication.id}
             subdomain={publication.subdomain}
             status={publication.status}
+            templateId={publication.templateId}
           />
         }
       />
@@ -122,7 +133,7 @@ export default async function AdminPortfolioDetailPage({
             <h3 className="text-foreground font-semibold tracking-tight">Owner</h3>
 
             <Link
-              href={`/admin/users/${publication.user.id}`}
+              href={`/admin/users/${encodeURIComponent(publication.user.id)}`}
               className="text-accent text-sm font-medium hover:underline"
             >
               {publication.user.name || publication.user.email}
@@ -164,7 +175,7 @@ export default async function AdminPortfolioDetailPage({
             <AdminStatusBadge status={publication.document.visibility} />
 
             <Link
-              href={`/admin/documents?query=${publication.document.id}`}
+              href={`/admin/documents?query=${encodeURIComponent(publication.document.id)}`}
               className="text-accent block text-xs font-semibold hover:underline"
             >
               Open in documents →

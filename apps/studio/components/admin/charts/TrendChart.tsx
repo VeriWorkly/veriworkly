@@ -7,7 +7,7 @@ import { cn } from "@veriworkly/ui";
 import { formatCompactNumber, formatNumber } from "@/features/admin/utils/admin-format";
 
 import { chartColor, chartFillId, type ChartSeries } from "./ChartDefs";
-import { buildAreaPath, buildLinePath, niceMax, toPoints } from "./geometry";
+import { buildAreaPath, buildLinePath, gridSteps, niceMax, toPoints } from "./geometry";
 
 interface TrendDataset {
   label: string;
@@ -28,8 +28,6 @@ interface TrendChartProps {
 }
 
 const FORMATTERS = { number: formatNumber, compact: formatCompactNumber } as const;
-
-const GRID_STEPS = 4;
 
 function formatAxisDate(iso: string) {
   // The bucket is a plain calendar day; parsing it as UTC avoids the local-timezone shift that
@@ -84,13 +82,10 @@ const TrendChart = ({
     [datasets, height, scale],
   );
 
+  const steps = gridSteps(scale.max);
   const ticks = useMemo(
-    () =>
-      Array.from(
-        { length: GRID_STEPS + 1 },
-        (_, step) => (scale.max / GRID_STEPS) * step,
-      ).reverse(),
-    [scale.max],
+    () => Array.from({ length: steps + 1 }, (_, step) => (scale.max / steps) * step).reverse(),
+    [scale.max, steps],
   );
 
   if (buckets.length === 0) {
@@ -127,7 +122,7 @@ const TrendChart = ({
           aria-hidden="true"
         >
           {ticks.map((tick, index) => (
-            <span key={index}>{formatValue(Math.round(tick))}</span>
+            <span key={index}>{formatValue(tick)}</span>
           ))}
         </div>
 
@@ -145,7 +140,7 @@ const TrendChart = ({
             aria-label={`${datasets.map((dataset) => dataset.label).join(", ")} from ${formatAxisDate(buckets[0])} to ${formatAxisDate(buckets[buckets.length - 1])}`}
           >
             {ticks.map((_, index) => {
-              const y = (height / GRID_STEPS) * index;
+              const y = (height / steps) * index;
 
               return (
                 <line
@@ -260,6 +255,31 @@ const TrendChart = ({
           ) : null}
         </div>
       </div>
+
+      {/* The values the tooltip shows on hover, for keyboard and screen-reader users too. */}
+      <table className="sr-only">
+        <caption>{datasets.map((dataset) => dataset.label).join(", ")} per day</caption>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            {datasets.map((dataset) => (
+              <th key={dataset.label} scope="col">
+                {dataset.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {buckets.map((bucket, index) => (
+            <tr key={bucket}>
+              <th scope="row">{formatAxisDate(bucket)}</th>
+              {datasets.map((dataset) => (
+                <td key={dataset.label}>{formatValue(dataset.values[index] ?? 0)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <div className="text-muted admin-numeric mt-2 ml-12 flex justify-between text-[10px]">
         <span>{formatAxisDate(buckets[0])}</span>
