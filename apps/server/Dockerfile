@@ -52,9 +52,9 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=pruned /app/package*.json /app/
 COPY --from=pruned /app/node_modules /app/node_modules
 # Whole directories, not just package.json and dist: npm nests a dependency inside a workspace
-# when its version conflicts with the root copy (better-auth and zod 3 under apps/server, zod
-# under each package), and the runtime must find them where the lockfile put them. The packages
-# are also the targets of the workspace symlinks in node_modules/@veriworkly.
+# when its version conflicts with the root copy (nothing is nested today; every workspace is on
+# one zod and one better-auth), and the runtime must find it where the lockfile put it. The
+# packages are also the targets of the workspace symlinks in node_modules/@veriworkly.
 COPY --from=pruned /app/packages /app/packages
 COPY --from=pruned /app/apps/server ./
 

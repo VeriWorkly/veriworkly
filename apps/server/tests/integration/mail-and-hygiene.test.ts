@@ -102,7 +102,6 @@ describe("welcome and login-alert mail never hold up sign-in (V-047 / V-099)", (
 
 describe("structured logger (V-159)", () => {
   it("serialises an Error nested in the meta with message, stack and cause in production", () => {
-    const previous = process.env.NODE_ENV;
     const written: string[] = [];
     const write = vi.spyOn(process.stderr, "write").mockImplementation((chunk: unknown) => {
       written.push(String(chunk));
@@ -110,11 +109,11 @@ describe("structured logger (V-159)", () => {
     });
 
     try {
-      process.env.NODE_ENV = "production";
+      vi.stubEnv("NODE_ENV", "production");
       const error = new Error("x", { cause: new Error("root cause") });
       logger.error("nested", { action: "AUDIT", error, plain: { a: 1 } });
     } finally {
-      process.env.NODE_ENV = previous;
+      vi.unstubAllEnvs();
       write.mockRestore();
     }
 

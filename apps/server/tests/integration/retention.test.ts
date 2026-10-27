@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   applyRetention,
@@ -596,13 +596,6 @@ describe("restoring a purged document", () => {
   });
 
   describe("with the window changed after the purge", () => {
-    const previous = process.env.RETENTION_DELETED_DOCUMENT_DAYS;
-
-    afterEach(() => {
-      if (previous === undefined) delete process.env.RETENTION_DELETED_DOCUMENT_DAYS;
-      else process.env.RETENTION_DELETED_DOCUMENT_DAYS = previous;
-    });
-
     it.each(["0", "3650"])("still refuses a purged document (setting %s)", async (setting) => {
       const user = await createUserWithSession();
       await prisma.document.create({
@@ -617,7 +610,7 @@ describe("restoring a purged document", () => {
       });
       await applyRetention({ settings: only("deletedDocuments"), now });
 
-      process.env.RETENTION_DELETED_DOCUMENT_DAYS = setting;
+      vi.stubEnv("RETENTION_DELETED_DOCUMENT_DAYS", setting);
 
       await expect(adminRestoreDocument("purged")).rejects.toMatchObject({ statusCode: 410 });
       const row = await prisma.document.findUniqueOrThrow({ where: { id: "purged" } });

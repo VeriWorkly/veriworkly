@@ -34,7 +34,11 @@ const validProductionEnv: Env = Object.freeze({
   TRUST_PROXY: "1",
   WEB_CONCURRENCY: "2",
   RATE_LIMIT_MAX_REQUESTS: "100",
+  ADMIN_EMAIL: "ops@veriworkly.com",
 }) as Env;
+
+/** The smallest environment that boots outside production: ADMIN_EMAIL is required everywhere. */
+const devEnv = Object.freeze({ NODE_ENV: "development", ADMIN_EMAIL: "admin@example.com" }) as Env;
 
 function messageFor(env: Env): string {
   try {
@@ -55,7 +59,7 @@ function failingVariables(env: Env): string[] {
 describe("validateEnvironmentConfig", () => {
   it("does not read or write process.env when an env object is passed", () => {
     const before = JSON.stringify(process.env);
-    expect(() => validateEnvironmentConfig({ NODE_ENV: "development" })).not.toThrow();
+    expect(() => validateEnvironmentConfig(devEnv)).not.toThrow();
     expect(JSON.stringify(process.env)).toBe(before);
   });
 
@@ -124,6 +128,7 @@ describe("validateEnvironmentConfig", () => {
           "DODO_PAYMENTS_CHECKOUT_RETURN_URL",
           "DODO_PAYMENTS_CHECKOUT_CANCEL_URL",
           "DODO_PAYMENTS_PORTAL_RETURN_URL",
+          "ADMIN_EMAIL",
         ]),
       );
     });
@@ -301,7 +306,7 @@ describe("validateEnvironmentConfig", () => {
       ).toContain("AUTH_IP_ADDRESS_HEADERS");
       expect(
         failingVariables({
-          NODE_ENV: "development",
+          ...devEnv,
           AUTH_IP_ADDRESS_HEADERS: "x-forwarded-client-ip",
         }),
       ).toEqual(["AUTH_IP_ADDRESS_HEADERS"]);
@@ -319,34 +324,34 @@ describe("validateEnvironmentConfig", () => {
 
   describe("every environment", () => {
     it("refuses RATE_LIMIT_MAX_REQUESTS=abc in development (it would silently disable the limiter)", () => {
-      expect(failingVariables({ NODE_ENV: "development", RATE_LIMIT_MAX_REQUESTS: "abc" })).toEqual(
-        ["RATE_LIMIT_MAX_REQUESTS"],
-      );
+      expect(failingVariables({ ...devEnv, RATE_LIMIT_MAX_REQUESTS: "abc" })).toEqual([
+        "RATE_LIMIT_MAX_REQUESTS",
+      ]);
     });
 
     it("refuses MAX_MEMORY_ENTRIES=abc (it would make the fallback map unbounded)", () => {
-      expect(failingVariables({ NODE_ENV: "test", MAX_MEMORY_ENTRIES: "abc" })).toEqual([
+      expect(failingVariables({ ...devEnv, NODE_ENV: "test", MAX_MEMORY_ENTRIES: "abc" })).toEqual([
         "MAX_MEMORY_ENTRIES",
       ]);
     });
 
     it.each(["12abc", "1.5", "1e3", "Infinity", "NaN", "70000"])("refuses PORT=%s", (value) => {
-      expect(failingVariables({ NODE_ENV: "development", PORT: value })).toEqual(["PORT"]);
+      expect(failingVariables({ ...devEnv, PORT: value })).toEqual(["PORT"]);
     });
 
     it("refuses an integer too large to represent exactly (parseIntegerEnv would default it)", () => {
       expect(
         failingVariables({
-          NODE_ENV: "development",
+          ...devEnv,
           RATE_LIMIT_MAX_REQUESTS: "12345678901234567890",
         }),
       ).toEqual(["RATE_LIMIT_MAX_REQUESTS"]);
-      expect(
-        failingVariables({ NODE_ENV: "development", RATE_LIMIT_MAX_REQUESTS: "9007199254740992" }),
-      ).toEqual(["RATE_LIMIT_MAX_REQUESTS"]);
+      expect(failingVariables({ ...devEnv, RATE_LIMIT_MAX_REQUESTS: "9007199254740992" })).toEqual([
+        "RATE_LIMIT_MAX_REQUESTS",
+      ]);
       expect(() =>
         validateEnvironmentConfig({
-          NODE_ENV: "development",
+          ...devEnv,
           RATE_LIMIT_MAX_REQUESTS: "9007199254740991",
         }),
       ).not.toThrow();
@@ -355,7 +360,7 @@ describe("validateEnvironmentConfig", () => {
     it("lists every bad numeric variable, not just the first", () => {
       expect(
         failingVariables({
-          NODE_ENV: "development",
+          ...devEnv,
           RATE_LIMIT_MAX_REQUESTS: "abc",
           AUTH_OTP_TTL_SECONDS: "five",
           DB_POOL_MAX_TOTAL: "lots",
@@ -364,17 +369,17 @@ describe("validateEnvironmentConfig", () => {
     });
 
     it("refuses RATE_LIMIT_MAX_REQUESTS=0 (every request would be rejected)", () => {
-      expect(failingVariables({ NODE_ENV: "development", RATE_LIMIT_MAX_REQUESTS: "0" })).toEqual([
+      expect(failingVariables({ ...devEnv, RATE_LIMIT_MAX_REQUESTS: "0" })).toEqual([
         "RATE_LIMIT_MAX_REQUESTS",
       ]);
     });
 
     it("refuses an unknown NODE_ENV", () => {
-      expect(failingVariables({ NODE_ENV: "prod" })).toEqual(["NODE_ENV"]);
+      expect(failingVariables({ ...devEnv, NODE_ENV: "prod" })).toEqual(["NODE_ENV"]);
     });
 
     it("reports NODE_ENV, numeric and production problems together", () => {
-      expect(failingVariables({ NODE_ENV: "staging", PORT: "http" }).sort()).toEqual([
+      expect(failingVariables({ ...devEnv, NODE_ENV: "staging", PORT: "http" }).sort()).toEqual([
         "NODE_ENV",
         "PORT",
       ]);
@@ -386,7 +391,7 @@ describe("validateEnvironmentConfig", () => {
       // Formerly checked again by validateAuthRuntimeConfig; the schema is now the only check.
       expect(
         failingVariables({
-          NODE_ENV: "development",
+          ...devEnv,
           AUTH_SESSION_RESET_TTL_ON_USE: "0",
           API_KEY_AUTH_CACHE_TTL_SECONDS: "0",
           API_KEY_LAST_USED_TOUCH_INTERVAL_SECONDS: "0",
@@ -398,6 +403,50 @@ describe("validateEnvironmentConfig", () => {
       ]);
     });
 
+    it.each(["development", "test", "production"])(
+      "refuses a missing or blank ADMIN_EMAIL in %s",
+      (nodeEnv) => {
+        const base = nodeEnv === "production" ? validProductionEnv : devEnv;
+        for (const value of [undefined, "", "   "]) {
+          expect(failingVariables({ ...base, NODE_ENV: nodeEnv, ADMIN_EMAIL: value })).toEqual([
+            "ADMIN_EMAIL",
+          ]);
+        }
+      },
+    );
+
+    it.each([
+      "admin",
+      "admin@localhost",
+      "a@example.com,b@example.com",
+      "Admin <admin@example.com>",
+      "ad min@example.com",
+    ])("refuses ADMIN_EMAIL=%s (one plain address only)", (value) => {
+      expect(failingVariables({ ...devEnv, ADMIN_EMAIL: value })).toEqual(["ADMIN_EMAIL"]);
+    });
+
+    it("accepts ADMIN_EMAIL with surrounding spaces or capitals (the config trims and lowercases)", () => {
+      expect(() =>
+        validateEnvironmentConfig({ ...devEnv, ADMIN_EMAIL: "  Ops@VeriWorkly.com " }),
+      ).not.toThrow();
+    });
+
+    it.each(["0", "-5", "thirty", "1.5", "366"])(
+      "refuses AFFILIATE_ATTRIBUTION_DAYS=%s",
+      (value) => {
+        expect(failingVariables({ ...devEnv, AFFILIATE_ATTRIBUTION_DAYS: value })).toEqual([
+          "AFFILIATE_ATTRIBUTION_DAYS",
+        ]);
+      },
+    );
+
+    it("accepts AFFILIATE_ATTRIBUTION_DAYS unset or a whole number of days up to a year", () => {
+      expect(() => validateEnvironmentConfig(devEnv)).not.toThrow();
+      expect(() =>
+        validateEnvironmentConfig({ ...devEnv, AFFILIATE_ATTRIBUTION_DAYS: "365" }),
+      ).not.toThrow();
+    });
+
     it("accepts the .env.example values in development", () => {
       expect(() =>
         validateEnvironmentConfig({ ...exampleEnv, NODE_ENV: "development" }),
@@ -405,10 +454,8 @@ describe("validateEnvironmentConfig", () => {
     });
 
     it("does not apply the production rules outside production", () => {
-      expect(() =>
-        validateEnvironmentConfig({ NODE_ENV: "development", TRUST_PROXY: "true" }),
-      ).not.toThrow();
-      expect(() => validateEnvironmentConfig({})).not.toThrow();
+      expect(() => validateEnvironmentConfig({ ...devEnv, TRUST_PROXY: "true" })).not.toThrow();
+      expect(() => validateEnvironmentConfig({ ADMIN_EMAIL: devEnv.ADMIN_EMAIL })).not.toThrow();
     });
   });
 });

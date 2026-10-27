@@ -23,32 +23,23 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     restoreMocks: true,
+    // Tests change the environment only through `vi.stubEnv`, and every stub is undone before the
+    // next test, so no test can leak a variable into the ones after it.
+    unstubEnvs: true,
     /**
-     * The default 5000ms is too tight for this suite's own thread-pool contention:
-     * 38 files spread across worker threads oversubscribe the CPU, so an individual
-     * test can sit queued past 5s even though its own logic (Redis and Prisma are
-     * mocked in every affected test — no real I/O, no timers) finishes in
-     * milliseconds once actually scheduled. Confirmed by running the full suite with
-     * --testTimeout=20000: 191/191 pass in the same wall-clock time, so this isn't
-     * hiding a slow test — it's giving the scheduler room it already needed.
+     * Room for a test that waits in the scheduler on a busy machine. The tests that hit the old
+     * 5000ms default mock Redis and Prisma (no real I/O, no timers) and finish in milliseconds
+     * once they run; the time was spent queued behind other workers, not in the test.
      */
     testTimeout: 20_000,
     /**
-     * Bounded rather than left at the CPU-count default. Vitest's thread pool
-     * defaulting to one worker per core means this suite alone can saturate an 8-core
-     * machine — and on a dev box that's never the only thing running (editors, a
-     * second project's dev server, etc.), that saturation is what pushed individual
-     * tests past the timeout above under real conditions, not a bug in any test.
-     * Capping concurrency trades some wall-clock time for the suite being
-     * deterministic regardless of what else is running on the machine.
+     * Bounded rather than left at the CPU-count default. One worker per core lets this suite
+     * saturate the machine, and on a dev box it is never the only thing running, which is what
+     * pushed tests past the timeout above. Vitest 4 reads `maxWorkers` (the old
+     * `poolOptions.threads.maxThreads` is ignored); `--maxWorkers` on the command line overrides it.
      */
     pool: "threads",
-    poolOptions: {
-      threads: {
-        maxThreads: 4,
-        minThreads: 1,
-      },
-    },
+    maxWorkers: 4,
     env: {
       GOOGLE_CLIENT_ID: "dummy-google-client-id",
       GOOGLE_CLIENT_SECRET: "dummy-google-client-secret",

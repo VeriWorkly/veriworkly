@@ -15,10 +15,10 @@ const CREDIT_HISTORY_TTL_SECONDS = 60;
 const CREDIT_HISTORY_LIMIT = 50;
 /**
  * Must outlive the slowest AI run that holds a reservation open, or a concurrent wallet read
- * expires the reservation and the commit 409s after the provider was paid. Worst case today:
- * `(retries + 1) × AI_TIMEOUT_MS` with retries ≤ 2 (`ats/aiPolicy.ts`) and `AI_TIMEOUT_MS` 120 s
- * (`config.ts`) = 360 s, plus 1 s + 2 s backoff and up to two honoured 60 s `retry-after` waits
- * = 483 s. 900 s keeps a margin above that; lowering the AI timeout only widens the margin.
+ * expires the reservation and the commit 409s after the provider was paid. Every billed AI call
+ * on a request shares the `AI_REQUEST_DEADLINE_MS` budget (85 s, `ats/aiDeadline.ts`) and is cut
+ * off there, so a run ends long before 900 s; the margin covers a commit delayed by a slow
+ * database. (`AI_TIMEOUT_MS`, per provider attempt, defaults to 45 s.)
  */
 const CREDIT_RESERVATION_TTL_MS = 15 * 60 * 1000;
 

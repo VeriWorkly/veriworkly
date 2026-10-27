@@ -17,8 +17,8 @@ export type AdminPortfolioListQuery = z.infer<typeof adminPortfolioListQuerySche
 
 /**
  * Suspending takes a live portfolio off the public internet, so the reason is mandatory and
- * is stored on the publication itself (`suspensionReason`) as well as in the audit log —
- * the owner-facing UI reads it to explain why their site went dark.
+ * is stored on the publication itself (`suspensionReason`) as well as in the audit log. The
+ * owner's `GET /portfolios/me` does not return it today; it is for admins and the moderation lock.
  */
 export const adminPortfolioStatusSchema = z
   .object({

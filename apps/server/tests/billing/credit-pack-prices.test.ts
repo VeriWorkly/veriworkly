@@ -6,6 +6,9 @@ import { validateEnvironmentConfig } from "../../src/config/environmentSchema.js
 vi.mock("dotenv", () => ({ default: { config: vi.fn().mockReturnValue({}) } }));
 vi.mock("#services/aiPolicy", () => ({ publicAiActionPolicy: () => ({}) }));
 
+/** ADMIN_EMAIL is required in every environment. */
+const devEnv = { NODE_ENV: "development", ADMIN_EMAIL: "admin@example.com" };
+
 async function catalogPrices() {
   vi.resetModules();
   const { publicCreditEconomics } = await import("../../src/services/productCatalog.js");
@@ -43,9 +46,7 @@ describe("credit pack prices", () => {
     "refuses to boot with a price of %j",
     (value) => {
       for (const variable of ["CREDIT_PACK_250_PRICE_CENTS", "CREDIT_PACK_500_PRICE_CENTS"]) {
-        expect(() =>
-          validateEnvironmentConfig({ NODE_ENV: "development", [variable]: value }),
-        ).toThrow(variable);
+        expect(() => validateEnvironmentConfig({ ...devEnv, [variable]: value })).toThrow(variable);
       }
     },
   );
@@ -53,7 +54,7 @@ describe("credit pack prices", () => {
   it("accepts a positive whole number of cents", () => {
     expect(() =>
       validateEnvironmentConfig({
-        NODE_ENV: "development",
+        ...devEnv,
         CREDIT_PACK_250_PRICE_CENTS: "349",
         CREDIT_PACK_500_PRICE_CENTS: "599",
       }),

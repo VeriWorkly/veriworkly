@@ -82,10 +82,11 @@ export function createRequestId(): string {
  * Whether a failed generate call may be retried under the same request id.
  *
  * Only when the server never answered (network drop, abort, timeout): it may still hold or
- * have committed that reservation, and the same id keeps a retry from charging twice. Once it
- * has answered with an error, the id is spent — a released reservation answers 409 "can no
- * longer be reused" and a committed one 409 "already completed" — so reusing it would fail
- * every retry.
+ * have committed that reservation, and the same id keeps a retry from charging twice: a retry of
+ * a committed request is answered from the stored result (`replayed: true`) while the server
+ * keeps it (`RETENTION_CREDIT_REPLAY_DAYS`, 1 day), and 409 "already completed" after that. Once
+ * the server has answered with an error, the reservation was released and the id is spent (409
+ * "can no longer be reused"), so reusing it would fail every retry.
  */
 export function canRetryWithSameRequestId(error: unknown): boolean {
   if (error instanceof ApiRequestError) return false;

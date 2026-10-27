@@ -165,7 +165,8 @@ export class ApiKeyController {
   }
 
   /**
-   * Temporarily revoke (deactivate) an API key.
+   * Revoke an API key. Revocation is permanent: a revoked key never authenticates again, and
+   * the user creates (or rotates to) a new one instead.
    */
 
   static async revokeKey(req: Request, res: Response, next: NextFunction) {

@@ -53,7 +53,7 @@ import { validateAuthRuntimeConfig } from "#auth/runtime";
 
 describe("validateAuthRuntimeConfig with Resend", () => {
   beforeEach(() => {
-    process.env.API_KEY_HASH_SECRET = "dedicated-api-key-hash-secret";
+    vi.stubEnv("API_KEY_HASH_SECRET", "dedicated-api-key-hash-secret");
     mockIsProduction = true;
     mockConfig.auth.emailProvider = "resend";
     mockConfig.auth.resendApiKey = "re_test_key_123";

@@ -6,8 +6,9 @@ import { defineConfig } from "vitest/config";
  * Nothing here is mocked, which is the point. One file at a time (`fileParallelism: false`) in a
  * forked process, because every file starts by truncating the database and flushing the Redis db.
  *
- * Connection targets and the safety rules (local hosts only, no Redis db 0) live in
- * `tests/integration/env.ts`. Migrations are applied by `tests/integration/global-setup.ts`.
+ * Connection targets and the safety rules (a named `_test` database on a local host, a Redis db
+ * other than 0) live in `tests/integration/env.ts`. Migrations are applied by
+ * `tests/integration/global-setup.ts`.
  */
 export default defineConfig({
   resolve: {
@@ -22,6 +23,8 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     restoreMocks: true,
+    // A test that needs a different environment uses `vi.stubEnv`; this undoes it before the next.
+    unstubEnvs: true,
     pool: "forks",
     fileParallelism: false,
     testTimeout: 30_000,

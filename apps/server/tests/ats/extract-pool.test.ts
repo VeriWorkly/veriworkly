@@ -66,14 +66,14 @@ describe("extractPool", () => {
    * so the real watchdog fires on a real child here without a 500 MB fixture.
    */
   it("kills a child past the memory cap and fails that job with 422, then keeps serving", async () => {
-    process.env.ATS_EXTRACT_MAX_RSS_MB = "1";
+    vi.stubEnv("ATS_EXTRACT_MAX_RSS_MB", "1");
     stopExtractPool();
     try {
       await expect(
         extractInChildProcess("text", Buffer.from("a file the child never finishes")),
       ).rejects.toMatchObject({ statusCode: 422, message: "This file is too complex to read." });
     } finally {
-      delete process.env.ATS_EXTRACT_MAX_RSS_MB;
+      vi.unstubAllEnvs();
       stopExtractPool();
     }
 
