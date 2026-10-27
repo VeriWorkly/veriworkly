@@ -187,6 +187,7 @@ export function applyServerEnv(target: NodeJS.ProcessEnv = process.env): Integra
     DODO_PAYMENTS_BUNDLE_SEVEN_DAY_PRODUCT_ID: "prod_bundle_seven_day",
     DODO_PAYMENTS_CREDIT_PACK_250_PRODUCT_ID: "prod_pack_250",
     DODO_PAYMENTS_CREDIT_PACK_500_PRODUCT_ID: "prod_pack_500",
+    DODO_PAYMENTS_CREDIT_PACK_1200_PRODUCT_ID: "prod_pack_1200",
     GITHUB_SYNC_ENABLED: "false",
     CHANGELOG_RELEASE_SYNC_ENABLED: "false",
     AFFILIATE_PROGRAM_ENABLED: "true",

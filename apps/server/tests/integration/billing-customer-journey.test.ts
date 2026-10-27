@@ -1452,6 +1452,13 @@ describe("V-197 billing payloads carry what the studio shows", () => {
         price: 499,
         currency: "USD",
       }),
+      expect.objectContaining({
+        key: "credit_pack_1200",
+        name: "1,200 extra credits",
+        credits: 1_200,
+        price: 999,
+        currency: "USD",
+      }),
     ]);
   });
 

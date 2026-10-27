@@ -123,6 +123,7 @@ vi.mock("#config", () => ({
       bundleSevenDayProductId: "prod_bundle_seven_day",
       creditPack250ProductId: "prod_pack_250",
       creditPack500ProductId: "prod_pack_500",
+      creditPack1200ProductId: "prod_pack_1200",
     },
     apiKeys: {
       hashSecret: "test-api-key-secret",

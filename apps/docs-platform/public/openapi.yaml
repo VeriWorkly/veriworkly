@@ -8823,6 +8823,7 @@ components:
           enum:
             - credit_pack_250
             - credit_pack_500
+            - credit_pack_1200
         redirectUrl:
           type: string
           description: Relative path (must start with a single `/`) to return to after checkout.
