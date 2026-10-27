@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { Request, Response, NextFunction } from "express";
 
 import { config } from "#config";
@@ -11,17 +10,7 @@ import {
   getAdminDashboardMetrics,
 } from "#services/analyticsService";
 import { getGitHubStats } from "#services/github/index";
-
-/**
- * Validation schema for incoming usage metrics.
- * Ensures the event name is a non-empty string with a maximum length of 64 characters,
- * and the value is a positive integer.
- */
-
-const usageMetricEventSchema = z.object({
-  event: z.string().trim().min(1).max(64),
-  value: z.number().int().positive().max(1000).optional(),
-});
+import { usageMetricEventSchema } from "#validators/statsValidator";
 
 /**
  * Events the server itself records authoritatively when the underlying action actually happens

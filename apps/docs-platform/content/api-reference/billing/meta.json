@@ -8,6 +8,8 @@
     "getCreditWallet",
     "getCreditHistory",
     "createBillingCheckout",
+    "previewPlanChange",
+    "changePlan",
     "cancelBillingCheckout",
     "createBillingPortal",
     "createCreditPackCheckout"

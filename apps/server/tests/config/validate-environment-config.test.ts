@@ -357,6 +357,23 @@ describe("validateEnvironmentConfig", () => {
       ).not.toThrow();
     });
 
+    it("reads a blank integer as unset, as parseIntegerEnv does, so a blank compose pass-through boots (V-347)", () => {
+      expect(() =>
+        validateEnvironmentConfig({
+          ...validProductionEnv,
+          MAX_MEMORY_ENTRIES: "",
+          RETENTION_AUDIT_LOG_DAYS: " ",
+          DB_POOL_MAX: "",
+        }),
+      ).not.toThrow();
+    });
+
+    it("still requires a blank WEB_CONCURRENCY in production, since blank would silently default", () => {
+      expect(failingVariables({ ...validProductionEnv, WEB_CONCURRENCY: "" })).toEqual([
+        "WEB_CONCURRENCY",
+      ]);
+    });
+
     it("lists every bad numeric variable, not just the first", () => {
       expect(
         failingVariables({

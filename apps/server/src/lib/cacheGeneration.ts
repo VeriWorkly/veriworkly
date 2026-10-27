@@ -75,19 +75,108 @@ export async function getGeneration(namespace: string): Promise<string | null> {
   }
 }
 
-/** Invalidates every key in each namespace, all in one round trip. */
+/** Whether the client can run commands now (`getRedis` throws while it is not ready). */
+function redisReady() {
+  try {
+    getRedis();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function runBump(namespaces: string[]) {
+  return getRedis().eval(BUMP_GENERATION_SCRIPT, {
+    keys: namespaces.map(generationCounterKey),
+    arguments: [String(GENERATION_TTL_SECONDS)],
+  });
+}
+
+/**
+ * A lost bump is a privacy bug, not just a stale read (V-370): a revoked share or a document made
+ * private would stay public until its cache entry expired. So a bump that fails is retried while
+ * the request waits (a Redis blip is usually over in well under a second), and one that still
+ * fails is queued and retried in the background until Redis answers. The queue lives in this
+ * process; the public share cache TTL (5 minutes, `shareController.ts`) bounds the staleness if
+ * the process dies before the queue drains.
+ */
+const INLINE_RETRY_DELAYS_MS = [100, 300];
+const BACKGROUND_RETRY_DELAYS_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
+/** Past every TTL a privacy action depends on, so a stale entry has aged out by then anyway. */
+const BACKGROUND_GIVE_UP_MS = 10 * 60_000;
+
+const pendingBumps = new Set<string>();
+let backgroundTimer: NodeJS.Timeout | null = null;
+let backgroundAttempt = 0;
+let backgroundDeadline = 0;
+
+function scheduleBackgroundBump() {
+  if (backgroundTimer) return;
+  const delay =
+    BACKGROUND_RETRY_DELAYS_MS[Math.min(backgroundAttempt, BACKGROUND_RETRY_DELAYS_MS.length - 1)]!;
+  backgroundTimer = setTimeout(() => void flushPendingBumps(), delay);
+  backgroundTimer.unref();
+}
+
+async function flushPendingBumps() {
+  backgroundTimer = null;
+  const namespaces = [...pendingBumps];
+  if (namespaces.length === 0) return;
+
+  try {
+    await runBump(namespaces);
+    for (const namespace of namespaces) pendingBumps.delete(namespace);
+    backgroundAttempt = 0;
+    logger.info("Queued cache invalidations applied after Redis recovered", {
+      namespaces: namespaces.length,
+    });
+  } catch (error) {
+    backgroundAttempt += 1;
+    if (Date.now() > backgroundDeadline) {
+      logger.error("Gave up on queued cache invalidations; their entries have expired since", {
+        namespaces: namespaces.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      pendingBumps.clear();
+      backgroundAttempt = 0;
+      return;
+    }
+  }
+  if (pendingBumps.size > 0) scheduleBackgroundBump();
+}
+
+/**
+ * Invalidates every key in each namespace, all in one round trip. Never throws: a bump Redis
+ * refuses is retried briefly, then queued for the background until Redis is back (V-370).
+ */
 export async function bumpGeneration(...namespaces: string[]): Promise<void> {
   const unique = [...new Set(namespaces.filter(Boolean))];
   if (unique.length === 0) return;
 
-  try {
-    await getRedis().eval(BUMP_GENERATION_SCRIPT, {
-      keys: unique.map(generationCounterKey),
-      arguments: [String(GENERATION_TTL_SECONDS)],
-    });
-  } catch (error) {
-    logger.error("Cache generation bump error", error);
+  for (let attempt = 0; ; attempt++) {
+    // Redis down altogether (the client is not ready): retrying in line only makes every write
+    // wait for nothing, so the bump goes straight to the background queue (V-370 review).
+    if (!redisReady()) {
+      logger.warn("Redis not ready; cache invalidation queued for retry", {
+        namespaces: unique.length,
+      });
+      break;
+    }
+    try {
+      await runBump(unique);
+      return;
+    } catch (error) {
+      if (attempt >= INLINE_RETRY_DELAYS_MS.length) {
+        logger.error("Cache generation bump error; queued for retry", error);
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, INLINE_RETRY_DELAYS_MS[attempt]));
+    }
   }
+
+  for (const namespace of unique) pendingBumps.add(namespace);
+  backgroundDeadline = Date.now() + BACKGROUND_GIVE_UP_MS;
+  scheduleBackgroundBump();
 }
 
 export function generationalKey(namespace: string, generation: string, ...parts: string[]) {

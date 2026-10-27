@@ -821,6 +821,15 @@ export async function replayWebhookEvent(eventId: string) {
   if (!event) throw new ApiError(404, "Webhook event not found.");
   if (event.status === "PROCESSED")
     throw new ApiError(409, "This webhook event has already been processed successfully.");
+  // Retention or an account deletion replaced the payload with a summary (`redacted: true`).
+  // What is left cannot be processed faithfully, so say so instead of failing its parse (V-352).
+  const payload = event.payload as { redacted?: unknown } | null;
+  if (payload && typeof payload === "object" && payload.redacted === true)
+    throw new ApiError(
+      409,
+      "This event's payload was removed by data retention or an account deletion, so it cannot be replayed. Reconcile it from the provider's dashboard instead.",
+      { code: "WEBHOOK_PAYLOAD_REDACTED" },
+    );
 
   const result = await BillingService.processWebhook(
     event.providerEventId,

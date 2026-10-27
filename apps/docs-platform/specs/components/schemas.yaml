@@ -3535,6 +3535,163 @@ CreditPackCheckoutResponse:
           type: string
           description: Dodo Payments hosted checkout URL for the one-time credit pack purchase.
 
+CodedErrorResponse:
+  type: object
+  description: |
+    An error whose `details` says why in machine form. `details.code` is stable; clients branch on
+    it, not on the message. The other `details` fields depend on the code.
+  required: [success, message, statusCode, details]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    statusCode:
+      type: integer
+    details:
+      type: object
+      required: [code]
+      additionalProperties: true
+      properties:
+        code:
+          type: string
+
+PlanChangePreviewRequest:
+  type: object
+  required: [productKey, interval]
+  properties:
+    productKey:
+      type: string
+      enum: [ai_credits, portfolio_pro, bundle]
+      description: The plan to price. Only an upgrade to `bundle` is accepted today.
+    interval:
+      type: string
+      enum: [monthly, annual]
+      description: Must match the current subscription's billing period.
+
+PlanChangeRequest:
+  type: object
+  required: [productKey, interval]
+  properties:
+    productKey:
+      type: string
+      enum: [ai_credits, portfolio_pro, bundle]
+      description: The plan to move to. Only an upgrade to `bundle` is accepted today.
+    interval:
+      type: string
+      enum: [monthly, annual]
+      description: Must match the current subscription's billing period.
+    idempotencyKey:
+      type: string
+      minLength: 1
+      maxLength: 128
+      description: Body alternative to the `Idempotency-Key` header; the header wins when both are sent.
+
+PlanChangePreviewResponse:
+  type: object
+  required: [success, message, data]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    data:
+      type: object
+      properties:
+        productKey:
+          type: string
+          enum: [ai_credits, portfolio_pro, bundle]
+        interval:
+          type: string
+          enum: [monthly, annual]
+        dueNow:
+          type: integer
+          description: The total charged now for the rest of the current period (the provider's prorated quote), in the currency's minor unit.
+        currency:
+          type: string
+          example: USD
+        nextAmount:
+          type: integer
+          description: The new plan's recurring amount before tax, in the minor unit.
+        nextBillingDate:
+          type: string
+          format: date-time
+
+PlanChangeResponse:
+  type: object
+  required: [success, message, data]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    data:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending]
+          description: The provider charges the difference; the plan moves once that payment succeeds and its webhook arrives. `GET /billing/me` shows the new plan then.
+        productKey:
+          type: string
+          enum: [ai_credits, portfolio_pro, bundle]
+        interval:
+          type: string
+          enum: [monthly, annual]
+        paymentId:
+          type: string
+          nullable: true
+        confirmed:
+          type: boolean
+          description: False when the provider's answer never arrived (the response is then `202`); the change may still apply.
+        replayed:
+          type: boolean
+          description: Present and true when this is the stored answer for an idempotency key already used.
+
+UsageEventRequest:
+  type: object
+  required: [event]
+  properties:
+    event:
+      type: string
+      minLength: 1
+      maxLength: 64
+      description: |
+        Normalized to lower case with spaces as `_`. Public callers may send only `resume_created`,
+        `resume_deleted`, `resume_exported`, `cover_letter_exported`, `auth_otp_sent`,
+        `dashboard_opened`, `roadmap_viewed`, `share_link_created`, `share_link_updated` and
+        `share_link_revoked`. Internal callers (`x-internal-key`) may also send `custom_*` names.
+    value:
+      type: integer
+      minimum: 1
+      maximum: 1000
+      description: Internal callers only; a public call always counts as 1.
+
+UsageEventResponse:
+  type: object
+  required: [success, message, data]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    data:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+
+DeleteAccountRequest:
+  type: object
+  properties:
+    confirmAffiliateForfeit:
+      type: boolean
+      description: Send `true` after the user saw the `409 AFFILIATE_BALANCE_FORFEIT` amount and still wants the account deleted. The query parameter `confirmAffiliateForfeit=true` works the same way.
+    confirmedAffiliateForfeitCents:
+      type: integer
+      minimum: 0
+      description: The amount the user was shown, from `details.amountCents`. If the unpaid balance has grown past it, the request is refused again with the new amount.
+
 ##################################################
 # SHARE SCHEMA
 ##################################################

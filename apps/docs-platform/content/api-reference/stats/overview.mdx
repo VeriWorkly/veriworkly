@@ -1,0 +1,19 @@
+---
+title: Stats
+description: Product usage events.
+---
+
+## Description
+
+One endpoint: count a product usage event, such as an export, toward VeriWorkly's daily usage
+metrics. The counts feed the admin dashboard; nothing here is tied to a user.
+
+## Authentication
+
+Any developer API key may call it, whatever its scopes. The studio calls it from the browser.
+Trusted servers use the `x-internal-key` header instead, which also allows `custom_*` event
+names and a `value` above 1.
+
+## Available Endpoints
+
+- `POST /stats/events` — [Record Usage Event](./recordUsageEvent)

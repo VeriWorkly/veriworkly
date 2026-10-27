@@ -5,7 +5,11 @@ import { aiGenerateSchema } from "#validators/aiValidator";
 import { ambassadorApplicationSchema } from "#validators/ambassadorValidator";
 import { apiKeyCreateSchema, apiKeyRotateSchema } from "#validators/apiKeyValidator";
 import { atsAnalyzeSchema, atsCheckSchema, atsConvertResumeSchema } from "#validators/atsValidator";
-import { checkoutSchema, creditPackCheckoutSchema } from "#validators/billingValidator";
+import {
+  checkoutSchema,
+  creditPackCheckoutSchema,
+  planChangeSchema,
+} from "#validators/billingValidator";
 import { changelogQuerySchema } from "#validators/changelogValidator";
 import {
   documentCreateSchema,
@@ -27,6 +31,7 @@ import {
 } from "#validators/portfolioValidator";
 import { importGithubSchema, importLinkedinSchema } from "#validators/profileImportValidator";
 import { roadmapQuerySchema } from "#validators/roadmapValidator";
+import { usageMetricEventSchema } from "#validators/statsValidator";
 import {
   publicReadableParamsSchema,
   sharedDocumentIdsQuerySchema,
@@ -107,6 +112,12 @@ export const OPENAPI_REQUEST_REGISTRY: Record<string, OperationRequestSchemas> =
 
   "POST /api/v1/billing/checkout": { body: checkoutSchema },
   "POST /api/v1/billing/credits/checkout": { body: creditPackCheckoutSchema },
+  "POST /api/v1/billing/subscription/change-plan/preview": {
+    body: planChangeSchema.omit({ idempotencyKey: true }),
+  },
+  "POST /api/v1/billing/subscription/change-plan": { body: planChangeSchema },
+
+  "POST /api/v1/stats/events": { body: usageMetricEventSchema },
 
   "POST /api/v1/shares": { body: shareLinkCreateSchema },
   "GET /api/v1/shares/documents/shared-ids": { query: sharedDocumentIdsQuerySchema },
@@ -133,4 +144,6 @@ export const HAND_WRITTEN_REQUESTS: Record<string, string> = {
   "GET /api/v1/affiliates/leaderboard": "period: anything but all_time means monthly",
   "POST /api/v1/auth/email-otp/send-verification-otp": "Better Auth endpoint",
   "POST /api/v1/auth/sign-in/email-otp": "Better Auth endpoint",
+  "DELETE /api/v1/users/me":
+    "confirmAffiliateForfeit and confirmedAffiliateForfeitCents are read leniently by the controller",
 };

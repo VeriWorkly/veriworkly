@@ -393,6 +393,53 @@ describe("withdrawal transitions (V-007, one active withdrawal)", () => {
     expect(next.status).toBe(200);
   });
 
+  it("refuses a withdrawal one cent over the available balance and moves nothing (V-353)", async () => {
+    const { user: affiliate } = await enrolledAffiliate();
+    await prisma.affiliateWallet.update({
+      where: { userId: affiliate.id },
+      data: { availableCents: 4_000 },
+    });
+
+    const tooMuch = await asUser(affiliate)
+      .post(`${BASE}/withdrawals`)
+      .send({ amountCents: 4_001 });
+
+    expect(tooMuch.status).toBe(400);
+    expect(tooMuch.body.message).toBe("Available balance is too low.");
+    expect(await wallet(affiliate.id)).toEqual({
+      pendingCents: 0,
+      availableCents: 4_000,
+      paidCents: 0,
+    });
+    expect(await prisma.affiliateWithdrawal.count({ where: { userId: affiliate.id } })).toBe(0);
+
+    // Exactly the balance is allowed.
+    const all = await asUser(affiliate).post(`${BASE}/withdrawals`).send({ amountCents: 4_000 });
+    expect(all.status).toBe(200);
+    expect((await wallet(affiliate.id)).availableCents).toBe(0);
+  });
+
+  it("never draws the wallet below zero when the one-in-progress rule is out of the way (V-353)", async () => {
+    const { user: affiliate } = await enrolledAffiliate();
+    await prisma.affiliateWallet.update({
+      where: { userId: affiliate.id },
+      data: { availableCents: 10_000 },
+    });
+
+    const first = await asUser(affiliate).post(`${BASE}/withdrawals`).send({ amountCents: 6_000 });
+    expect(first.status).toBe(200);
+    // Take the in-progress row away so only the balance guard stands between the second request
+    // and a negative wallet: the two requests together ask for 12,000 of 10,000.
+    await prisma.affiliateWithdrawal.delete({ where: { id: first.body.data.id } });
+
+    const second = await asUser(affiliate).post(`${BASE}/withdrawals`).send({ amountCents: 6_000 });
+
+    expect(second.status).toBe(400);
+    expect(second.body.message).toBe("Available balance is too low.");
+    expect((await wallet(affiliate.id)).availableCents).toBe(4_000);
+    expect(await prisma.affiliateWithdrawal.count({ where: { userId: affiliate.id } })).toBe(0);
+  });
+
   it("(d) two concurrent withdrawal requests leave one row and one 409", async () => {
     const { user: affiliate } = await enrolledAffiliate();
     await prisma.affiliateWallet.update({

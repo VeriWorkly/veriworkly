@@ -45,6 +45,15 @@ vi.mock("#app", async () => {
     state.events.push("request finished");
     res.json({ ok: true });
   });
+  // A billed AI call: it holds a reservation until its signal fires, then releases it and answers.
+  app.get("/ai", async (_req, res) => {
+    const { aiRequestSignal } = await import("#services/ats/aiDeadline");
+    const signal = aiRequestSignal(res);
+    state.requestStarted?.();
+    await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
+    state.events.push("ai aborted, reservation released");
+    res.status(504).json({ ok: false });
+  });
   const listen = app.listen.bind(app);
   app.listen = ((...args: Parameters<typeof listen>) => {
     state.server = listen(...args);
@@ -135,11 +144,11 @@ afterEach(async () => {
 });
 
 /** Starts a request that stays open until `state.releaseRequest` is called. */
-async function openRequest(): Promise<{ response: Promise<Response> }> {
+async function openRequest(path = "/slow"): Promise<{ response: Promise<Response> }> {
   await waitFor(() => Boolean(state.server?.listening));
   const { port } = state.server!.address() as AddressInfo;
   const started = new Promise<void>((resolve) => (state.requestStarted = resolve));
-  const response = fetch(`http://127.0.0.1:${port}/slow`);
+  const response = fetch(`http://127.0.0.1:${port}${path}`);
   await started;
   return { response };
 }
@@ -227,5 +236,67 @@ describe("a Redis credentials error at boot is fatal, not a respawn loop (V-254)
     };
     options.onFatal(78);
     expect(exit).toHaveBeenCalledWith(78);
+  });
+});
+
+describe("a drain never closes Redis and Postgres under a request still running (V-313)", () => {
+  /** Real I/O, fake clocks: the drain's grace timers are what is under test. */
+  function fakeClocks() {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
+  }
+  afterEach(() => void vi.useRealTimers());
+
+  it("an AI call still running at the HTTP grace is aborted and releases its reservation before the pools close", async () => {
+    await bootIndex(false);
+    const { response } = await openRequest("/ai");
+    fakeClocks();
+
+    emit("unhandledRejection", new Error("deploy"));
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect(state.events).not.toContain("redis closed");
+
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect((await response).status).toBe(504);
+    await vi.advanceTimersByTimeAsync(500);
+    await vi.waitFor(() => expect(exit).toHaveBeenCalled());
+
+    const released = state.events.indexOf("ai aborted, reservation released");
+    expect(released).toBeGreaterThanOrEqual(0);
+    expect(released).toBeLessThan(state.events.indexOf("redis closed"));
+    expect(state.events.indexOf("redis closed")).toBeLessThan(
+      state.events.indexOf("prisma closed"),
+    );
+  });
+
+  it("a request that outlives the HTTP grace keeps Redis and Postgres open until it ends", async () => {
+    await bootIndex(false);
+    const { response } = await openRequest("/slow");
+    fakeClocks();
+
+    emit("unhandledRejection", new Error("deploy"));
+    await vi.advanceTimersByTimeAsync(15_000);
+    // Past the HTTP grace, but the request is still running: its queries need the pool.
+    expect(state.events).not.toContain("redis closed");
+    expect(state.events).not.toContain("prisma closed");
+
+    state.releaseRequest!();
+    expect((await response).status).toBe(200);
+    await vi.advanceTimersByTimeAsync(500);
+    await vi.waitFor(() => expect(exit).toHaveBeenCalled());
+    expect(state.events.indexOf("request finished")).toBeLessThan(
+      state.events.indexOf("redis closed"),
+    );
+  });
+
+  it("a request that never ends is cut off at the hard cap, before throng's force kill", async () => {
+    await bootIndex(false);
+    const { response } = await openRequest("/slow");
+    response.catch(() => undefined);
+    fakeClocks();
+
+    emit("unhandledRejection", new Error("deploy"));
+    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.waitFor(() => expect(state.events).toContain("prisma closed"));
+    expect(state.events).not.toContain("request finished");
   });
 });

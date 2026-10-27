@@ -1,0 +1,5 @@
+{
+  "title": "Stats",
+  "description": "Product usage events.",
+  "pages": ["overview", "recordUsageEvent"]
+}

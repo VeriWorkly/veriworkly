@@ -6,7 +6,7 @@ import { requireAuthUser } from "#middleware/auth";
 import { withAiSlot } from "#middleware/rateLimit";
 
 import { AiService } from "#services/aiService";
-import { aiRequestSignal } from "#services/ats/aiDeadline";
+import { aiRequestSignal, aiRouteError } from "#services/ats/aiDeadline";
 
 import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
@@ -33,7 +33,7 @@ export class AiController {
 
       res.json(createSuccessResponse(result));
     } catch (error) {
-      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+      next(error instanceof z.ZodError ? handleValidationError(error) : aiRouteError(error));
     }
   }
 }

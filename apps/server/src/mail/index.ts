@@ -31,3 +31,4 @@ export {
 } from "./portfolio/portfolioFreeTier.js";
 export { renderAdminContactNotificationEmail } from "./general/contactAdmin.js";
 export { contactReceiptFirstName, renderContactReceiptEmail } from "./general/contactReceipt.js";
+export { renderOperatorAlertEmail, type OperatorAlert } from "./general/operatorAlert.js";

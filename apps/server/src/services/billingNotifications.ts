@@ -16,6 +16,7 @@ import {
   sendPortfolioFreeTierEmail,
   type PortfolioFreeTierNotice,
 } from "#services/mail/portfolioMail";
+import { sendOperatorAlertEmail, type OperatorAlert } from "#services/mail/operatorMail";
 
 /**
  * Billing emails (V-172, V-177) go out at most once per (kind, reference), and are not lost when
@@ -47,7 +48,9 @@ export type BillingNotice =
       /** The subscription that is ending: a retry is dropped once it renews again. */
       subscriptionId?: string;
     }
-  | { template: "plan_changed"; details: PlanChangedNotice };
+  | { template: "plan_changed"; details: PlanChangedNotice }
+  /** To the operator (ADMIN_EMAIL), not a customer (V-371). */
+  | { template: "operator_alert"; details: OperatorAlert };
 
 const TEMPLATES = new Set([
   "purchase_confirmation",
@@ -55,6 +58,7 @@ const TEMPLATES = new Set([
   "portfolio_free_tier",
   "subscription_cancelled",
   "plan_changed",
+  "operator_alert",
 ]);
 
 /** Long enough that a send still in flight is never taken over. */
@@ -91,6 +95,8 @@ async function send(notice: BillingNotice, user: { email: string; name: string }
     await sendSubscriptionCancelledEmail(user.email, { ...notice.details, name: user.name });
   else if (notice.template === "plan_changed")
     await sendPlanChangedEmail(user.email, { ...notice.details, name: user.name });
+  else if (notice.template === "operator_alert")
+    await sendOperatorAlertEmail(user.email, notice.details);
   else await sendPortfolioFreeTierEmail(user.email, { ...notice.details, name: user.name });
 }
 
@@ -137,16 +143,42 @@ async function markSent(id: string) {
   });
 }
 
+/** Sends started by `notifyOnce` that have not finished, most of them fire-and-forget. */
+const inFlight = new Set<Promise<void>>();
+
+/**
+ * Resolves once every billing email started so far has been sent or has failed, including ones
+ * started while it waits. The webhooks start their emails without awaiting them, so this is how
+ * a caller (the integration tests, V-354) knows there is no send still to land.
+ */
+export async function settleBillingNotifications() {
+  while (inFlight.size > 0) await Promise.allSettled([...inFlight]);
+}
+
 /**
  * Sends a billing email at most once per (kind, reference). A failed send keeps its claim for the
  * retry job. Never throws: the payment is processed whether or not the mail goes out.
  */
-export async function notifyOnce(
+export function notifyOnce(
   kind: string,
   reference: string,
   userId: string,
   notice: BillingNotice,
-) {
+): Promise<void> {
+  return trackBillingNotification(sendOnce(kind, reference, userId, notice));
+}
+
+/**
+ * Counts a send that starts with other work first (an operator alert looks the admin up) as in
+ * flight from the start, so `settleBillingNotifications` waits for it too.
+ */
+export function trackBillingNotification(run: Promise<void>): Promise<void> {
+  inFlight.add(run);
+  void run.finally(() => inFlight.delete(run));
+  return run;
+}
+
+async function sendOnce(kind: string, reference: string, userId: string, notice: BillingNotice) {
   try {
     const user = await recipient(userId);
     if (!user) return;

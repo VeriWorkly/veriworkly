@@ -13,7 +13,8 @@ import { z } from "zod";
 import { requireAuthUser } from "#middleware/auth";
 import { withAiSlot } from "#middleware/rateLimit";
 import { ANALYSIS_ACTION, AtsAiService } from "#services/ats/ai";
-import { aiRequestSignal, aiTimeoutError } from "#services/ats/aiDeadline";
+import { aiRequestSignal, aiRouteError, aiTimeoutError } from "#services/ats/aiDeadline";
+import { isShuttingDown } from "#lib/shutdown";
 import { publicAtsPolicy } from "#services/ats/aiPolicy";
 import { AtsJobFetchService } from "#services/ats/jobFetch";
 import { AtsQuotaService } from "#services/ats/quota";
@@ -137,10 +138,16 @@ export class AtsAiController {
          * quota an actual budget on egress.
          */
         const quota = await AtsQuotaService.consume(user.id, ip(req));
-        const jobDescription =
-          fetchesJobPage && input.jobUrl
-            ? await AtsJobFetchService.fetch(input.jobUrl, signal)
-            : input.jobDescription;
+        let jobDescription = input.jobDescription;
+        if (fetchesJobPage && input.jobUrl) {
+          try {
+            jobDescription = await AtsJobFetchService.fetch(input.jobUrl, signal);
+          } catch (error) {
+            // Cut off by a restart, not by the page: the scan goes back (V-313 review).
+            if (isShuttingDown()) await refundScanQuietly(user.id, ip(req), input.requestId);
+            throw error;
+          }
+        }
 
         // From here on a failure is ours, not the caller's, so the scan goes back. The job
         // fetch above is deliberately outside this: refunding a failed fetch would make
@@ -169,7 +176,9 @@ export class AtsAiController {
             ),
           );
         } catch (error) {
+          // A restart is never the caller's doing: the scan goes back whatever was fetched.
           const scanSpent =
+            !isShuttingDown() &&
             fetchesJobPage &&
             (signal.aborted ||
               (error instanceof ApiError &&
@@ -179,7 +188,7 @@ export class AtsAiController {
         }
       });
     } catch (error) {
-      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+      next(error instanceof z.ZodError ? handleValidationError(error) : aiRouteError(error));
     }
   }
 
@@ -344,7 +353,7 @@ export class AtsAiController {
 
       res.json(createSuccessResponse(result));
     } catch (error) {
-      next(error instanceof z.ZodError ? handleValidationError(error) : error);
+      next(error instanceof z.ZodError ? handleValidationError(error) : aiRouteError(error));
     }
   }
 }

@@ -38,6 +38,9 @@ export function idleInTransactionTimeoutOption(env: NodeJS.ProcessEnv = process.
  * So the budget is expressed cluster-wide and divided down. `DB_POOL_MAX_TOTAL` defaults to 80,
  * leaving headroom under a stock Postgres for migrations, `db:studio`, and an admin psql session.
  * Raise it to roughly 80% of your instance's real `max_connections`.
+ * The budget is per process (one pm2 app, one compose replica): when several run against one
+ * database, as the two pm2 copies in `ecosystem.config.cjs` do, their budgets must add up to it,
+ * which is why each copy sets its own `DB_POOL_MAX_TOTAL` there.
  */
 // Read defensively: this is a sizing hint, and the database layer must not fail to load because
 // of it. Falling back to a single worker only ever under-commits the pool, which degrades
