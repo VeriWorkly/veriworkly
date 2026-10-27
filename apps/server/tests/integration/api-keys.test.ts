@@ -578,3 +578,50 @@ describe("API keys through the real stack", () => {
     expect(asked.body.data.rateLimit).toBeLessThan(5_000);
   });
 });
+
+describe("V-242 a user's live keys are capped", () => {
+  it("the eleventh live key is a 409 API_KEY_LIMIT; revoking one frees a slot", async () => {
+    const user = await createUserWithSession();
+    const keys: CreatedKey[] = [];
+    for (let i = 0; i < 10; i++) keys.push(await createKey(user, { name: `key ${i}` }));
+
+    const refused = await asUser(user).post("/api/v1/api-keys").send({ name: "one too many" });
+    expect(refused.status).toBe(409);
+    expect(refused.body.details?.code).toBe("API_KEY_LIMIT");
+    expect(refused.body.details?.limit).toBe(10);
+
+    const revoked = await asUser(user).post(`/api/v1/api-keys/${keys[0].id}/revoke`);
+    expect(revoked.status).toBe(200);
+    await createKey(user, { name: "replacement" });
+  });
+
+  it("two racing creates at the cap leave exactly ten live keys", async () => {
+    const user = await createUserWithSession();
+    for (let i = 0; i < 9; i++) await createKey(user, { name: `key ${i}` });
+
+    const results = await Promise.all(
+      [0, 1].map((i) =>
+        asUser(user)
+          .post("/api/v1/api-keys")
+          .send({ name: `race ${i}` }),
+      ),
+    );
+    expect(results.map((response) => response.status).sort()).toEqual([201, 409]);
+    expect(await prisma.apiKey.count({ where: { userId: user.id, revokedAt: null } })).toBe(10);
+  });
+});
+
+describe("V-256 the API-key gate is a convenience, documented as such", () => {
+  it("a non-browser client naming the studio origin is served as an anonymous caller; one with no origin gets API_KEY_REQUIRED", async () => {
+    const withOrigin = await request(app).get("/api/v1/roadmap").set("Origin", STUDIO_ORIGIN);
+    expect(withOrigin.status).not.toBe(401);
+
+    const bare = await request(app).get("/api/v1/roadmap");
+    expect(bare.status).toBe(401);
+    expect(bare.body.details?.code).toBe("API_KEY_REQUIRED");
+
+    // Anonymous all the same: an account route behind the same gate still wants a session.
+    const account = await request(app).get("/api/v1/documents").set("Origin", STUDIO_ORIGIN);
+    expect(account.status).toBe(401);
+  });
+});

@@ -84,6 +84,11 @@ Rules the callers can rely on:
 - Public `/stats/events` callers (browser origin or any developer API key, whatever its scopes) may only send the allow-listed event names (`KNOWN_EVENTS` in `src/services/analyticsService.ts`); `value` is ignored and every call counts as 1. An unknown name is `400`.
 - The two secrets must differ (production refuses to boot when they are equal), and `AUTH_IP_ADDRESS_HEADERS` may never list `x-forwarded-client-ip` (boot error; the parser also drops it), because better-auth would trust it without the key.
 - The forwarded IP wins over `TRUST_PROXY` handling, so only send it with the browser's real address (from the incoming request's trusted proxy headers).
+- With the same `INTERNAL_API_KEY`, `x-forwarded-client-user-agent: <browser User-Agent>` names the browser for analytics (share views); without the key it is ignored and the request's own `User-Agent` is used.
+
+### The "API key required" gate is a convenience, not a security boundary
+
+Routes behind `flexibleAuth` with no session or key accept any request whose `Origin` or `Referer` is one of `ALLOWED_ORIGINS` (or a portfolio subdomain) as an anonymous first-party caller, and answer `401 API_KEY_REQUIRED` otherwise. Those headers are only trustworthy from a browser: any other client can send the studio's origin and pass as anonymous (V-256). The gate exists to point third-party integrations at API keys, not to protect anything. What bounds an anonymous caller is the per-IP rate limit and, on the costly anonymous routes (`/ats/extract`, `/ats/check`, the public reads), their own per-IP quotas and caches; every route that spends money or touches an account requires a session or a key, whatever the origin says.
 
 ## ⏰ Cron jobs
 
