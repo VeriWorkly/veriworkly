@@ -10,7 +10,7 @@ export const HeroBadge = () => {
           className="h-2.5 w-2.5 text-blue-600 lg:h-3 lg:w-3 dark:text-blue-400"
         />
       </div>
-      Zero Paywalls • Zero Forced Signups
+      Free to Build and Export • Zero Forced Signups
     </div>
   );
 };
