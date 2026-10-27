@@ -201,7 +201,7 @@ describe("V-216 full or partial, from the stored payment when the provider does 
       userId: user.id,
       subscriptionId,
       productId: "prod_ai_credits_annual",
-      amount: 5_990,
+      amount: 5_988,
       at: periodStart,
       servicePeriod: { startsAt: periodStart, endsAt: periodEnd },
     });
@@ -211,7 +211,7 @@ describe("V-216 full or partial, from the stored payment when the provider does 
       SET "payload" = jsonb_build_object('redacted', true, 'type', "type")
       WHERE "type" = 'payment.succeeded' AND "userId" = ${user.id}`;
 
-    await deliver(refundEvent(payment.data.payment_id, { amount: 5_990, isPartial: null }));
+    await deliver(refundEvent(payment.data.payment_id, { amount: 5_988, isPartial: null }));
 
     const schedule = await prisma.subscriptionCreditSchedule.findFirstOrThrow({
       where: { providerSubId: subscriptionId },

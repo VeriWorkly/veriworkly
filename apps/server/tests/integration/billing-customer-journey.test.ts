@@ -614,7 +614,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
       userId: user.id,
       subscriptionId,
       productId,
-      amount: 5_990,
+      amount: 5_988,
       at: periodStart,
       servicePeriod: { startsAt: periodStart, endsAt: periodEnd },
     });
@@ -849,7 +849,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         payment_id: payment.data.payment_id,
         status: "succeeded",
         is_partial: false,
-        amount: 5_990,
+        amount: 5_988,
         currency: "USD",
         created_at: new Date().toISOString(),
       },
@@ -874,7 +874,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         payment_id: payment.data.payment_id,
         status: "succeeded",
         is_partial: false,
-        amount: 5_990,
+        amount: 5_988,
         currency: "USD",
         created_at: new Date().toISOString(),
       },
@@ -891,7 +891,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
     expect(row).toMatchObject({
       type: "refund.succeeded",
       productName: "AI Credits (annual)",
-      amountCents: 5_990,
+      amountCents: 5_988,
       currency: "USD",
     });
   });
@@ -940,7 +940,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId: "sub_annual_renew",
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
         at: periodEnd,
         servicePeriod: { startsAt: periodEnd, endsAt: nextEnd },
       }),
@@ -973,7 +973,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
       userId: user.id,
       subscriptionId,
       productId: "prod_ai_credits_annual",
-      amount: 5_990,
+      amount: 5_988,
       at: firstPaidAt,
     });
     await deliver(firstPayment);
@@ -988,7 +988,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId,
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
       }),
     );
     // A redelivery of the first payment opens nothing.
@@ -1049,7 +1049,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
       }),
     );
     const base = { userId: user.id, subscriptionId, productId: "prod_ai_credits_annual" };
-    await deliver(paymentEvent({ ...base, amount: 5_990, at: firstPaidAt }));
+    await deliver(paymentEvent({ ...base, amount: 5_988, at: firstPaidAt }));
     // A proration for an upgrade, half-way through the year.
     await deliver(paymentEvent({ ...base, amount: 4_200 }));
 
@@ -1088,7 +1088,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId,
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
         at: periodStart,
         servicePeriod: { startsAt: periodStart, endsAt: periodEnd },
       }),
@@ -1111,7 +1111,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId,
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
         servicePeriod: { startsAt: legacyEnds, endsAt: addMonthsUtc(legacyEnds, 12) },
       }),
     );
@@ -1450,6 +1450,13 @@ describe("V-197 billing payloads carry what the studio shows", () => {
         name: "500 extra credits",
         credits: 500,
         price: 499,
+        currency: "USD",
+      }),
+      expect.objectContaining({
+        key: "credit_pack_1200",
+        name: "1,200 extra credits",
+        credits: 1_200,
+        price: 999,
         currency: "USD",
       }),
     ]);

@@ -22,30 +22,38 @@ describe("credit pack prices", () => {
     vi.unstubAllEnvs();
   });
 
-  it("defaults to 299 and 499 USD cents when unset", async () => {
+  it("defaults to 299, 499 and 999 USD cents when unset", async () => {
     vi.stubEnv("CREDIT_PACK_250_PRICE_CENTS", undefined);
     vi.stubEnv("CREDIT_PACK_500_PRICE_CENTS", undefined);
+    vi.stubEnv("CREDIT_PACK_1200_PRICE_CENTS", undefined);
 
     expect(await catalogPrices()).toEqual({
       credit_pack_250: [299, "USD"],
       credit_pack_500: [499, "USD"],
+      credit_pack_1200: [999, "USD"],
     });
   });
 
-  it("takes CREDIT_PACK_250_PRICE_CENTS and CREDIT_PACK_500_PRICE_CENTS from the environment", async () => {
+  it("takes each CREDIT_PACK_*_PRICE_CENTS from the environment", async () => {
     vi.stubEnv("CREDIT_PACK_250_PRICE_CENTS", "349");
     vi.stubEnv("CREDIT_PACK_500_PRICE_CENTS", "599");
+    vi.stubEnv("CREDIT_PACK_1200_PRICE_CENTS", "1099");
 
     expect(await catalogPrices()).toEqual({
       credit_pack_250: [349, "USD"],
       credit_pack_500: [599, "USD"],
+      credit_pack_1200: [1099, "USD"],
     });
   });
 
   it.each(["0", "-299", "2.99", "abc", "299 cents"])(
     "refuses to boot with a price of %j",
     (value) => {
-      for (const variable of ["CREDIT_PACK_250_PRICE_CENTS", "CREDIT_PACK_500_PRICE_CENTS"]) {
+      for (const variable of [
+        "CREDIT_PACK_250_PRICE_CENTS",
+        "CREDIT_PACK_500_PRICE_CENTS",
+        "CREDIT_PACK_1200_PRICE_CENTS",
+      ]) {
         expect(() => validateEnvironmentConfig({ ...devEnv, [variable]: value })).toThrow(variable);
       }
     },
@@ -57,6 +65,7 @@ describe("credit pack prices", () => {
         ...devEnv,
         CREDIT_PACK_250_PRICE_CENTS: "349",
         CREDIT_PACK_500_PRICE_CENTS: "599",
+        CREDIT_PACK_1200_PRICE_CENTS: "1099",
       }),
     ).not.toThrow();
   });

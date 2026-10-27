@@ -1261,7 +1261,10 @@
         "schema": {
           "type": "object",
           "properties": {
-            "packKey": { "type": "string", "enum": ["credit_pack_250", "credit_pack_500"] },
+            "packKey": {
+              "type": "string",
+              "enum": ["credit_pack_250", "credit_pack_500", "credit_pack_1200"]
+            },
             "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)[^\\\\\\s]*$" }
           },
           "required": ["packKey"]

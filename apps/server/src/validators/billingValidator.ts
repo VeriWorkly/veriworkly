@@ -30,7 +30,7 @@ export const planChangeSchema = z.object({
 });
 
 export const creditPackCheckoutSchema = z.object({
-  packKey: z.enum(["credit_pack_250", "credit_pack_500"]),
+  packKey: z.enum(["credit_pack_250", "credit_pack_500", "credit_pack_1200"]),
   redirectUrl: z
     .string()
     .trim()

@@ -18,7 +18,7 @@ import { purchaseName, UNLOCK_PHRASES } from "#services/productNames";
 const subscription = {
   kind: "subscription" as const,
   productName: purchaseName("ai_credits", "annual"),
-  amountCents: 5_990,
+  amountCents: 5_988,
   currency: "USD",
   amountExcludesTax: true,
   accessEndsAt: new Date("2027-10-26T00:00:00Z"),
@@ -34,12 +34,12 @@ describe("purchase confirmation", () => {
     expect(subscription.productName).toBe("AI Credits (annual)");
     expect(purchaseConfirmationRows(subscription)).toEqual([
       ["Purchase", "AI Credits (annual)"],
-      ["Price", "$59.90 USD (before any tax) per year"],
+      ["Price", "$59.88 USD (before any tax) per year"],
       ["AI credits", subscription.creditsNote],
       ["Current period ends", "26 October 2027"],
     ]);
     expect(purchaseConfirmationTerms(subscription)).toContain(
-      "renews automatically on 26 October 2027 at $59.90 USD (before any tax) per year",
+      "renews automatically on 26 October 2027 at $59.88 USD (before any tax) per year",
     );
     const html = renderPurchaseConfirmationEmail("Ada <script>", subscription);
     expect(html).not.toContain("<script>");

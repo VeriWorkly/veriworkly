@@ -271,9 +271,11 @@ export const config = {
     bundleAnnualProductId: process.env.DODO_PAYMENTS_BUNDLE_ANNUAL_PRODUCT_ID || "",
     creditPack250ProductId: process.env.DODO_PAYMENTS_CREDIT_PACK_250_PRODUCT_ID || "",
     creditPack500ProductId: process.env.DODO_PAYMENTS_CREDIT_PACK_500_PRODUCT_ID || "",
+    creditPack1200ProductId: process.env.DODO_PAYMENTS_CREDIT_PACK_1200_PRODUCT_ID || "",
     // Display prices in USD cents; Dodo charges the product's own price, so keep them in step.
     creditPack250PriceCents: parseIntegerEnv(process.env.CREDIT_PACK_250_PRICE_CENTS, 299),
     creditPack500PriceCents: parseIntegerEnv(process.env.CREDIT_PACK_500_PRICE_CENTS, 499),
+    creditPack1200PriceCents: parseIntegerEnv(process.env.CREDIT_PACK_1200_PRICE_CENTS, 999),
     checkoutReturnUrl:
       process.env.DODO_PAYMENTS_CHECKOUT_RETURN_URL ||
       "http://localhost:3001/billing?checkout=complete",

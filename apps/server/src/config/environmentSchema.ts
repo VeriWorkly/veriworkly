@@ -95,6 +95,7 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   // Credit pack display prices in USD cents; a free or negative pack price is a typo.
   CREDIT_PACK_250_PRICE_CENTS: { min: 1 },
   CREDIT_PACK_500_PRICE_CENTS: { min: 1 },
+  CREDIT_PACK_1200_PRICE_CENTS: { min: 1 },
 };
 
 /** Browser-facing URLs that must be public https in production when set. */
