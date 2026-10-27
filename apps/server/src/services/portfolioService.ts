@@ -110,7 +110,8 @@ const SETTLE_PENDING_VIEWS_SCRIPT = `
 /** How long the view beacon trusts a subdomain → publication id lookup (V-052). */
 const VIEW_TARGET_TTL_SECONDS = 60;
 
-// The sitemap asks for everything; a bound keeps one unparameterised GET from streaming the table.
+// One page without a `limit`: the sitemap pages through with `offset` (V-310), and the bound keeps
+// one unparameterised GET from streaming the table.
 const PUBLIC_LIST_MAX = 1000;
 
 /**
@@ -516,10 +517,14 @@ function freeTierSnapshot(
 }
 
 export class PortfolioService {
-  static async listPublicPortfolios(limit?: number, offset?: number) {
+  static async listPublicPortfolios(
+    limit?: number,
+    offset?: number,
+    order: "recent" | "stable" = "recent",
+  ) {
     type PublicListItem = { subdomain: string; updatedAt: string | Date };
 
-    const cacheKey = await publicPortfolioListCacheKey(limit, offset);
+    const cacheKey = await publicPortfolioListCacheKey(limit, offset, order);
     const readCache = async () => (cacheKey ? cacheGet<PublicListItem[]>(cacheKey) : null);
     const cached = await readCache();
 
@@ -529,7 +534,9 @@ export class PortfolioService {
       const result = await prisma.portfolioPublication.findMany({
         where: servedPublicationWhere(new Date()),
         select: { subdomain: true, updatedAt: true },
-        orderBy: { updatedAt: "desc" },
+        // `stable` (the sitemap's paging, V-310) is by id, which never changes; the default is
+        // the most recently updated first, with the id breaking ties.
+        orderBy: order === "stable" ? { id: "asc" } : [{ updatedAt: "desc" }, { id: "asc" }],
         take: limit ?? PUBLIC_LIST_MAX,
         skip: offset,
       });

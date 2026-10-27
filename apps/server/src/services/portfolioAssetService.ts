@@ -20,6 +20,13 @@ const allowedTypes = new Map([
 ]);
 
 const maxBytes = 5 * 1024 * 1024;
+
+/** HeadObject on a key that holds nothing: the SDK's `NotFound`, or any 404. */
+function isObjectMissing(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { name, $metadata } = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+  return name === "NotFound" || name === "NoSuchKey" || $metadata?.httpStatusCode === 404;
+}
 const MAX_UPLOADS_PER_WINDOW = 20;
 const UPLOAD_WINDOW_MS = 60 * 60 * 1000;
 /** How long a presigned PUT URL stays valid. */
@@ -245,9 +252,14 @@ export class PortfolioAssetService {
     if (!config.r2.publicBaseUrl)
       throw new ApiError(503, "Portfolio media delivery is not configured.");
 
-    const meta = await getClient().send(
-      new HeadObjectCommand({ Bucket: config.r2.bucket, Key: asset.key }),
-    );
+    const meta = await getClient()
+      .send(new HeadObjectCommand({ Bucket: config.r2.bucket, Key: asset.key }))
+      .catch((error: unknown) => {
+        // The browser's PUT failed or was aborted, and the client completed anyway (V-307).
+        if (isObjectMissing(error))
+          throw new ApiError(409, "The upload was not received. Upload the image again.");
+        throw error;
+      });
 
     if (meta.ContentLength !== asset.sizeBytes) {
       throw new ApiError(

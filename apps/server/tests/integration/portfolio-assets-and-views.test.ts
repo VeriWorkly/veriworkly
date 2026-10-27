@@ -196,6 +196,34 @@ describe("V-224 deleting an upload does not give its slot back", () => {
   });
 });
 
+describe("V-307 completing an upload that never reached storage", () => {
+  it("is a 409, not a 500, and leaves the upload pending", async () => {
+    const user = await createUserWithSession();
+    const started = await as(user, request(app).post("/api/v1/portfolio-assets/upload-url")).send({
+      kind: "AVATAR",
+      mimeType: "image/png",
+      sizeBytes: 1024,
+    });
+    expect(started.status).toBe(200);
+    const assetId: string = started.body.data.assetId;
+
+    s3Send.mockRejectedValueOnce(
+      Object.assign(new Error("NotFound"), {
+        name: "NotFound",
+        $metadata: { httpStatusCode: 404 },
+      }),
+    );
+    const completed = await as(user, request(app).post("/api/v1/portfolio-assets/complete")).send({
+      assetId,
+    });
+    expect(completed.status).toBe(409);
+    expect(completed.body.message).toMatch(/not received/);
+    expect((await prisma.portfolioAsset.findUniqueOrThrow({ where: { id: assetId } })).status).toBe(
+      "PENDING",
+    );
+  });
+});
+
 describe("V-224 the admin asset list leaves DELETED holds out unless asked", () => {
   it("excludes them from items, total and size by default, and lists them under the DELETED filter", async () => {
     const owner = await createUserWithSession();

@@ -70,8 +70,9 @@ export class ProfileService {
         where: { userId: user.id },
       }),
 
+      // What the share list shows: links on documents that are not deleted (V-306).
       prisma.shareLink.count({
-        where: { userId: user.id },
+        where: { userId: user.id, document: { deletedAt: null } },
       }),
     ]);
 

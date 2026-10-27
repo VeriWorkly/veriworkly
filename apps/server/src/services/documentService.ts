@@ -1056,8 +1056,10 @@ export class DocumentService {
       ...(existing.user?.username && existing.shareLinks.length > 0
         ? [cacheNamespaces.publicShare(existing.user.username)]
         : []),
+      // The master profile's share count leaves out links on deleted documents (V-306).
+      ...(existing.shareLinks.length > 0 ? [cacheNamespaces.masterProfile(userId)] : []),
     );
-    // The account read counts live documents (V-186); create drops it too.
+    // The account read counts live documents (V-186) and their share links; create drops it too.
     await cacheDel(userProfileCacheKey(userId));
 
     if (livePublication) {

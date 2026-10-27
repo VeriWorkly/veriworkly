@@ -156,9 +156,24 @@ export const portfolioSubdomainParamsSchema = z.object({
 
 export type PortfolioContentInput = z.infer<typeof portfolioDraftContentSchema>;
 
+/** The sitemap protocol's cap on URLs in one sitemap file. */
+export const PUBLIC_PORTFOLIO_LIST_MAX_ROWS = 50_000;
+
+/**
+ * Without `limit` a page is 1,000 rows; the portfolio sitemap pages through them with `offset`
+ * (V-310), up to the sitemap protocol's 50,000 URLs. `order=stable` lists by publication id, an
+ * order nothing changes, so paging never skips or repeats a site; the default, `recent`, is most
+ * recently updated first, and `updatedAt` moves on every republish and billing reconcile.
+ */
 export const publicPortfolioListQuerySchema = z.object({
+  order: z.enum(["recent", "stable"]).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
-  offset: z.coerce.number().int().min(0).max(5000).optional(),
+  offset: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(PUBLIC_PORTFOLIO_LIST_MAX_ROWS - 1)
+    .optional(),
 });
 
 /** Only the referrer's host is kept; a longer referrer is cut, never a reason to lose the view. */

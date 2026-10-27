@@ -24,7 +24,18 @@ export function publicPortfolioCacheKey(subdomain: string) {
 }
 
 /** Reads the list generation; call before the DB query. `null` means skip the cache. */
-export function publicPortfolioListCacheKey(limit?: number, offset?: number) {
+export function publicPortfolioListCacheKey(
+  limit?: number,
+  offset?: number,
+  order: "recent" | "stable" = "recent",
+) {
+  if (order === "stable")
+    return resolveGenerationalKey(
+      PUBLIC_LIST_CACHE_NAMESPACE,
+      "stable",
+      String(limit || 0),
+      String(offset || 0),
+    );
   return limit !== undefined || offset !== undefined
     ? resolveGenerationalKey(PUBLIC_LIST_CACHE_NAMESPACE, String(limit || 0), String(offset || 0))
     : resolveGenerationalKey(PUBLIC_LIST_CACHE_NAMESPACE);

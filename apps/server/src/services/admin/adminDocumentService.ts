@@ -6,7 +6,8 @@ import { ApiError } from "#lib/errors";
 import { assertConfirmation } from "#services/admin/adminConfirmation";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { assertDocumentNotPurged, PURGED_DOCUMENT_CONTENT } from "#jobs/retentionJob";
-import { cacheNamespaces, documentCacheNamespaces } from "#lib/cacheKeys";
+import { cacheNamespaces, documentCacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheDel } from "#lib/redis";
 
 import {
   isModerationLocked,
@@ -192,7 +193,10 @@ async function invalidateOwnerDocumentCaches(
     // The share list leaves out links on soft-deleted documents (V-030).
     cacheNamespaces.shareList(userId),
     ...(username && shareSlugs.length > 0 ? [cacheNamespaces.publicShare(username)] : []),
+    // The master profile and the account page count share links on live documents (V-306).
+    ...(shareSlugs.length > 0 ? [cacheNamespaces.masterProfile(userId)] : []),
   );
+  await cacheDel(userProfileCacheKey(userId));
 }
 
 type PublicationState = {
