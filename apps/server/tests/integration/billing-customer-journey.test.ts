@@ -368,14 +368,19 @@ describe("V-172 dunning is visible", () => {
     expect(me.publicationStatus).toBe("GRACE");
   });
 
-  it("reports INACTIVE once the grace window is over", async () => {
+  it("stays PAST_DUE with the payment issue once the grace window is over (V-221)", async () => {
     const user = await createUserWithSession();
     await seedSubscription(user.id, {
       status: "PAST_DUE",
       currentPeriodEnd: new Date(Date.now() - 9 * DAY_MS),
       graceEndsAt: new Date(Date.now() - DAY_MS),
     });
-    expect((await billingMe(user)).status).toBe("INACTIVE");
+    // Checkout still refuses with PAYMENT_OUTSTANDING (Dodo keeps retrying), so the summary must
+    // not describe a free account: the same rule, PAST_DUE is live.
+    const me = await billingMe(user);
+    expect(me.status).toBe("PAST_DUE");
+    expect(me.access.paymentIssue).toBe(true);
+    expect(me.publicationStatus).toBe("SUSPENDED");
   });
 
   it("emails once per failed payment, however often the event is delivered", async () => {
@@ -711,7 +716,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
     await CreditService.reserve(user.id, 30, "ats_analysis", requestId);
     // A long-running request: the reservation is still open when the month ends.
     await prisma.creditReservation.update({
-      where: { userId_requestId: { userId: user.id, requestId } },
+      where: { userId_requestId: { userId: user.id, requestId: `ai:${requestId}` } },
       data: { expiresAt: new Date(periodStart.getTime() + 60 * DAY_MS) },
     });
 
@@ -1607,7 +1612,9 @@ describe("V-197 billing payloads carry what the studio shows", () => {
     await prisma.billingWebhookEvent.createMany({
       data: rows.map(([name, type, payload, columns]) => ({
         providerEventId: `evt_${name}_${tag}`,
-        userId: user.id,
+        // What the code of that release stored: a refund of anything but an annual payment was
+        // never attributed (V-197); migration 20261027090000 attributes it later (V-205).
+        userId: name === "refund" ? null : user.id,
         type,
         payload,
         status: "PROCESSED" as const,

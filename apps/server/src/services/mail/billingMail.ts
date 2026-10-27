@@ -1,17 +1,27 @@
 import {
   paymentFailedParagraphs,
+  planChangedParagraphs,
   purchaseConfirmationRows,
   purchaseConfirmationTerms,
   renderPaymentFailedEmail,
+  renderPlanChangedEmail,
   renderPurchaseConfirmationEmail,
   renderSubscriptionCancelledEmail,
+  subscriptionCancelledParagraphs,
   type PaymentFailedNotice,
+  type PlanChangedNotice,
   type PurchaseConfirmation,
+  type SubscriptionCancelledNotice,
 } from "#mail/index";
 
 import { sendMail } from "./transporter.js";
 
-export type { PaymentFailedNotice, PurchaseConfirmation };
+export type {
+  PaymentFailedNotice,
+  PlanChangedNotice,
+  PurchaseConfirmation,
+  SubscriptionCancelledNotice,
+};
 
 /**
  * Confirms a purchase (V-177): a new or newly paid subscription, a pass or a credit pack. The
@@ -38,7 +48,7 @@ export async function sendPurchaseConfirmationEmail(
   await sendMail({ to: email, subject, text, html });
 }
 
-/** A subscription charge failed and dunning has started (V-172). */
+/** A subscription charge failed and dunning has started (V-172, V-215). */
 export async function sendPaymentFailedEmail(
   email: string,
   details: PaymentFailedNotice & { name: string },
@@ -56,13 +66,38 @@ export async function sendPaymentFailedEmail(
   await sendMail({ to: email, subject, text, html });
 }
 
-/**
- * Send subscription cancellation email
- */
-export async function sendSubscriptionCancelledEmail(email: string, name: string): Promise<void> {
-  const subject = "Your VeriWorkly subscription has been cancelled";
-  const text = `Hi ${name},\n\nWe're sorry to see you go. Your subscription has been cancelled.`;
-  const html = renderSubscriptionCancelledEmail(name);
+/** A subscription will not renew (V-212): the product and the last day of access. */
+export async function sendSubscriptionCancelledEmail(
+  email: string,
+  details: SubscriptionCancelledNotice & { name: string },
+): Promise<void> {
+  const subject = `Your VeriWorkly ${details.productName} subscription is cancelled`;
+  const text = [
+    `Hi ${details.name},`,
+    "",
+    ...subscriptionCancelledParagraphs(details).flatMap((p) => [p, ""]),
+  ]
+    .concat("Questions? Reach us at info@veriworkly.com.")
+    .join("\n");
+  const html = renderSubscriptionCancelledEmail(details.name, details);
+
+  await sendMail({ to: email, subject, text, html });
+}
+
+/** A plan change took effect (V-219): the new plan and its renewal. */
+export async function sendPlanChangedEmail(
+  email: string,
+  details: PlanChangedNotice & { name: string },
+): Promise<void> {
+  const subject = `Your VeriWorkly plan is now ${details.productName}`;
+  const text = [
+    `Hi ${details.name},`,
+    "",
+    ...planChangedParagraphs(details).flatMap((p) => [p, ""]),
+  ]
+    .concat("Questions? Reach us at info@veriworkly.com.")
+    .join("\n");
+  const html = renderPlanChangedEmail(details.name, details);
 
   await sendMail({ to: email, subject, text, html });
 }

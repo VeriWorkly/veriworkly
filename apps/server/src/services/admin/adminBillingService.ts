@@ -10,8 +10,10 @@ import {
   lockUserForBilling,
   syncSubscriptionGrants,
 } from "#services/billingService";
+import { addMonthsUtc } from "#services/annualCreditService";
 import { CreditService } from "#services/creditService";
-import { isProductKey } from "#services/productCatalog";
+import { CREDIT_SOURCES } from "#services/creditSources";
+import { creditPackCatalog, isProductKey, productCatalog } from "#services/productCatalog";
 import { withAccountPlaceholder } from "#services/admin/deletedAccountPlaceholder";
 import { writeAdminAudit, type AdminAuditInput } from "#services/admin/adminAuditService";
 
@@ -68,7 +70,10 @@ export async function getBillingSummary() {
     prisma.subscription.count({
       where: { cancelAtPeriodEnd: true, status: { in: [...PAYING_STATUSES] } },
     }),
+    // Live accounts only (V-252): a wallet or grant detached by an account deletion is a billing
+    // record, not credit anyone can spend or access anyone holds.
     prisma.creditWallet.aggregate({
+      where: { userId: { not: null } },
       _sum: { balance: true, reserved: true, lifetimeCredited: true, lifetimeDebited: true },
     }),
     prisma.creditTransaction.aggregate({
@@ -82,6 +87,7 @@ export async function getBillingSummary() {
     prisma.billingWebhookEvent.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.entitlementGrant.count({
       where: {
+        userId: { not: null },
         revokedAt: null,
         startsAt: { lte: now },
         OR: [{ endsAt: null }, { endsAt: { gt: now } }],
@@ -276,6 +282,16 @@ export async function updateSubscription(
 
   await BillingService.reconcileAccess(userId);
 
+  // The customer is told, as on a portal cancel (V-212). The provider's webhook that follows sees
+  // the flag already set and sends nothing; the notification key keeps it to one email either way.
+  if (providerCancelAtPeriodEnd === true && !existing.cancelAtPeriodEnd && existing.providerSubId)
+    void BillingService.notifyCancellation(
+      userId,
+      existing.providerSubId,
+      existing.productKey,
+      updated.currentPeriodEnd,
+    );
+
   return { subscription: updated, previous: existing };
 }
 
@@ -314,14 +330,94 @@ export async function listCreditWallets(query: WalletListQuery) {
 /** Without a client key, identical adjustments this close together are one double submit. */
 const ADMIN_CREDIT_DEDUPE_WINDOW_MS = 10_000;
 
+/**
+ * What an admin adjustment is (V-230): goodwill credits (never expire, not paid for), a lost
+ * credit pack (paid, the pack's 90-day expiry) or a lost subscription month (paid, ends with the
+ * current credit month and is replaced by the next one, like every allowance).
+ */
+export type CreditAdjustmentKind = "goodwill" | "pack" | "subscription_month";
+
+/** What the customer's credit history says when the admin left no note (V-229). */
+function defaultCustomerNote(kind: CreditAdjustmentKind, amount: number) {
+  if (kind === "pack") return "Credit pack restored by VeriWorkly support";
+  if (kind === "subscription_month") return "Monthly plan credits restored by VeriWorkly support";
+  return amount > 0
+    ? "Credits added by VeriWorkly support"
+    : "Credits removed by VeriWorkly support";
+}
+
+/**
+ * The subscription a restored month belongs to and when its current credit month ends: a live
+ * plan that carries credits (AI Credits or the bundle, active in its period or cancelled with paid
+ * time left). Monthly plans: the period end. Annual plans: the end of the schedule's current month
+ * (owner decision 4: nothing rolls over), else a month from now within the paid period.
+ */
+async function subscriptionCreditMonth(userId: string, now: Date) {
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      providerSubId: { not: null },
+      productKey: { in: ["ai_credits", "bundle"] },
+      status: { in: ["ACTIVE", "CANCELED"] },
+      currentPeriodEnd: { gt: now },
+    },
+    orderBy: { currentPeriodEnd: "desc" },
+    select: { providerSubId: true, productKey: true, interval: true, currentPeriodEnd: true },
+  });
+  if (
+    !subscription?.providerSubId ||
+    !subscription.currentPeriodEnd ||
+    !isProductKey(subscription.productKey) ||
+    !productCatalog[subscription.productKey].creditAllowance
+  )
+    throw new ApiError(
+      409,
+      "This account has no live plan with monthly credits, so a subscription month cannot be restored. Restore the credits as goodwill instead.",
+      { code: "NO_CREDIT_SUBSCRIPTION" },
+    );
+
+  let expiresAt = subscription.currentPeriodEnd;
+  if (subscription.interval === "ANNUAL") {
+    const schedule = await prisma.subscriptionCreditSchedule.findFirst({
+      where: {
+        providerSubId: subscription.providerSubId,
+        periodStart: { lte: now },
+        periodEnd: { gt: now },
+      },
+      orderBy: { periodStart: "desc" },
+      select: { periodStart: true, periodEnd: true },
+    });
+    let monthEnd = addMonthsUtc(now, 1);
+    if (schedule)
+      for (let month = 1; month <= 12; month += 1) {
+        const end = addMonthsUtc(schedule.periodStart, month);
+        if (end > now) {
+          monthEnd = end < schedule.periodEnd ? end : schedule.periodEnd;
+          break;
+        }
+      }
+    if (monthEnd < expiresAt) expiresAt = monthEnd;
+  }
+  return { providerSubId: subscription.providerSubId, expiresAt };
+}
+
 export async function adjustCredits(
   userId: string,
   amount: number,
   reason: string,
-  options: { actorId: string; idempotencyKey?: string; audit: AdminAuditInput },
+  options: {
+    actorId: string;
+    idempotencyKey?: string;
+    kind?: CreditAdjustmentKind;
+    customerNote?: string;
+    audit: AdminAuditInput;
+  },
 ) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!user) throw new ApiError(404, "User not found.");
+  const kind = options.kind ?? "goodwill";
+  if (kind !== "goodwill" && amount < 0)
+    throw new ApiError(400, "Only a goodwill adjustment can remove credits.");
 
   // CreditService dedupes on the request id, per user. With a client-supplied Idempotency-Key a
   // retried submit returns the original transaction. The key carries the admin's id so two
@@ -335,7 +431,7 @@ export async function adjustCredits(
         select: { id: true },
       }),
     );
-    return applyCreditAdjustment(userId, amount, reason, requestId, replayed, options);
+    return applyCreditAdjustment(userId, amount, requestId, replayed, { ...options, kind });
   }
 
   // V-126: the studio sends no key, so a double submit would grant twice. Without one the key is
@@ -344,7 +440,9 @@ export async function adjustCredits(
   // later lands in a fresh bucket and is a new grant.
   const bucket = Math.floor(Date.now() / ADMIN_CREDIT_DEDUPE_WINDOW_MS);
   const fingerprint = createHash("sha256")
-    .update(JSON.stringify([options.actorId, userId, amount, reason]))
+    .update(
+      JSON.stringify([options.actorId, userId, amount, reason, kind, options.customerNote ?? null]),
+    )
     .digest("base64url");
   const derivedRequestId = (at: number) => `admin-credit:auto:${fingerprint}:${at}`;
 
@@ -355,30 +453,67 @@ export async function adjustCredits(
     if (existing) return { transaction: existing, replayed: true };
   }
 
-  return applyCreditAdjustment(userId, amount, reason, derivedRequestId(bucket), false, options);
+  return applyCreditAdjustment(userId, amount, derivedRequestId(bucket), false, {
+    ...options,
+    kind,
+  });
 }
 
 async function applyCreditAdjustment(
   userId: string,
   amount: number,
-  reason: string,
   requestId: string,
   replayed: boolean,
-  options: { actorId: string; audit: AdminAuditInput },
+  options: {
+    actorId: string;
+    kind: CreditAdjustmentKind;
+    customerNote?: string;
+    audit: AdminAuditInput;
+  },
 ) {
-  const transaction = await CreditService.adjust(userId, amount, {
-    requestId,
-    reason,
-    action: "admin_adjustment",
-    actorId: options.actorId,
-    // Committed with the ledger rows, and only when a row is written: a replay audits nothing.
-    onWrite: async (tx, written) => {
-      await writeAdminAudit(tx, {
-        ...options.audit,
-        metadata: { ...options.audit.metadata, amount, transactionId: written.id },
-      });
+  // The source and expiry the credits carry (V-230): a restored pack or month follows the same
+  // rules as the one that was lost, and counts as paid credit.
+  const now = new Date();
+  let grant: { source: string; sourceId: string; expiresAt: Date | null } | undefined;
+  if (options.kind === "pack")
+    grant = {
+      source: CREDIT_SOURCES.creditPack,
+      sourceId: `admin:${requestId}`,
+      expiresAt: new Date(
+        now.getTime() + creditPackCatalog.credit_pack_500.expiresInDays * 24 * 60 * 60 * 1000,
+      ),
+    };
+  else if (options.kind === "subscription_month" && !replayed) {
+    const month = await subscriptionCreditMonth(userId, now);
+    grant = {
+      source: CREDIT_SOURCES.subscriptionPayment,
+      // `<subscription id>:` keeps it with the plan's other monthly grants, so the next month's
+      // allowance replaces what is left of it (`subscriptionCreditGrantsWhere`).
+      sourceId: `${month.providerSubId}:admin:${requestId}`,
+      expiresAt: month.expiresAt,
+    };
+  }
+
+  const transaction = await CreditService.adjust(
+    userId,
+    amount,
+    {
+      requestId,
+      // The customer reads this line (V-229); the admin's own reason stays in the audit entry.
+      reason: options.customerNote ?? defaultCustomerNote(options.kind, amount),
+      action: "admin_adjustment",
+      actorId: options.actorId,
+      metadata: { kind: options.kind },
+      // Committed with the ledger rows, and only when a row is written: a replay audits nothing.
+      onWrite: async (tx, written) => {
+        await writeAdminAudit(tx, {
+          ...options.audit,
+          metadata: { ...options.audit.metadata, amount, transactionId: written.id },
+        });
+      },
     },
-  });
+    grant,
+  );
 
   // `CreditService.grant` returns the stored row for a reused request id without checking
   // that it matches (`consume` does); the comparison belongs here either way.

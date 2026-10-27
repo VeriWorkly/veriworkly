@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   paymentFailedParagraphs,
+  planChangedParagraphs,
   purchaseConfirmationRows,
   purchaseConfirmationTerms,
+  renderPaymentFailedEmail,
   renderPurchaseConfirmationEmail,
+  subscriptionCancelledParagraphs,
 } from "#mail/index";
 import { formatMoney } from "../../src/mail/billing/billingFormat.js";
 import { addMonthsUtc } from "#services/annualCreditService";
@@ -67,16 +70,60 @@ describe("purchase confirmation", () => {
   });
 });
 
-describe("payment failed", () => {
-  it("says what failed and the date the account moves to the free plan", () => {
+describe("payment failed (V-215, owner decision 9)", () => {
+  const notice = {
+    productName: "Creator Pro",
+    amountCents: 999,
+    currency: "USD",
+    graceEndsAt: new Date("2026-11-02T12:00:00Z"),
+  };
+
+  it("says Pro features are paused now and the portfolio stays online until the grace date", () => {
+    const text = paymentFailedParagraphs(notice).join(" ");
+    expect(text).toContain("payment of $9.99 USD for your Creator Pro subscription failed");
+    expect(text).toContain("Pro features are paused until you update your card.");
+    expect(text).toContain("Your portfolio stays online until 2 November 2026.");
+    expect(text).not.toMatch(/free plan/i);
+    const html = renderPaymentFailedEmail("Sam", notice);
+    expect(html).toContain("Portfolio online until");
+    expect(html).not.toMatch(/free plan/i);
+  });
+
+  it("leaves the portfolio out for a plan without one", () => {
     const text = paymentFailedParagraphs({
-      productName: "Creator Pro",
-      amountCents: 999,
-      currency: "USD",
-      graceEndsAt: new Date("2026-11-02T12:00:00Z"),
+      ...notice,
+      productName: "AI Credits",
+      includesPortfolio: false,
     }).join(" ");
-    expect(text).toContain("payment of $9.99 USD for your Creator Pro subscription");
-    expect(text).toContain("by 2 November 2026");
+    expect(text).toContain("paused until you update your card");
+    expect(text).not.toMatch(/portfolio/i);
+  });
+});
+
+describe("cancellation and plan change (V-212, V-219)", () => {
+  it("names the product and the date access ends", () => {
+    const text = subscriptionCancelledParagraphs({
+      productName: "Creator Pro",
+      accessEndsAt: new Date("2026-11-30T00:00:00Z"),
+    }).join(" ");
+    expect(text).toContain("Creator Pro");
+    expect(text).toContain("30 November 2026");
+    expect(text).toMatch(/will not renew/);
+  });
+
+  it("states the new plan, the charge model and the next renewal", () => {
+    const text = planChangedParagraphs({
+      fromProductName: "Creator Pro (monthly)",
+      productName: "Job Hunter Bundle (monthly)",
+      amountCents: 1_499,
+      currency: "USD",
+      amountExcludesTax: true,
+      billingPeriod: "month",
+      renewsAt: new Date("2026-11-30T00:00:00Z"),
+    }).join(" ");
+    expect(text).toContain("Creator Pro (monthly) to Job Hunter Bundle (monthly)");
+    expect(text).toContain("$14.99 USD (before any tax) per month");
+    expect(text).toContain("30 November 2026");
   });
 });
 

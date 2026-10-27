@@ -4,14 +4,37 @@ import { ApiError } from "#lib/errors";
 import { prisma } from "#lib/prisma";
 
 import { invalidateAffiliate } from "#services/affiliate/cache";
+import {
+  creditAvailable,
+  markCommissionsPaid,
+  settleReversedClawback,
+} from "#services/affiliate/commissions";
 import { writeAdminAudit, type AdminAuditInput } from "#services/admin/adminAuditService";
 
 const WITHDRAWAL_IN_PROGRESS = "A withdrawal is already in progress";
+
+/**
+ * Only an ACTIVE affiliate's money moves out (V-204, studio S-092): a SUSPENDED (for example
+ * fraud-flagged) or PENDING affiliate can neither request a withdrawal nor have one approved or
+ * paid. Rejecting one, which returns the money to the wallet, stays open. Read with the user row
+ * locked inside the transaction that moves the money, so a suspension that commits first wins.
+ */
+async function requireActiveAffiliate(tx: Prisma.TransactionClient, userId: string) {
+  const [user] = await tx.$queryRaw<Array<{ affiliateStatus: string }>>`
+    SELECT "affiliateStatus" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+  if (user?.affiliateStatus !== "ACTIVE")
+    throw new ApiError(
+      403,
+      "This affiliate account is not active, so its balance cannot be paid out.",
+      { code: "AFFILIATE_NOT_ACTIVE", affiliateStatus: user?.affiliateStatus ?? null },
+    );
+}
 
 export async function requestWithdrawal(userId: string, amountCents: number) {
   let result;
   try {
     result = await prisma.$transaction(async (tx) => {
+      await requireActiveAffiliate(tx, userId);
       const active = await tx.affiliateWithdrawal.findFirst({
         where: { userId, status: { in: ["REQUESTED", "APPROVED"] } },
         select: { id: true },
@@ -68,6 +91,7 @@ export async function updateWithdrawal(
     // Detached by an account deletion (only PAID or REJECTED rows can be): nothing to move.
     if (!withdrawal.userId)
       throw new ApiError(409, "This withdrawal belongs to a deleted account.");
+    if (status !== "REJECTED") await requireActiveAffiliate(tx, withdrawal.userId);
 
     const transitioned = await tx.affiliateWithdrawal.updateMany({
       where: { id, status: { in: TRANSITION_FROM[status] } },
@@ -97,15 +121,21 @@ export async function updateWithdrawal(
 
     if (status === "REJECTED" || status === "PAID") {
       // Credits need no balance guard, but a missing wallet row must roll the transition back
-      // rather than surface as a P2025 the caller cannot act on.
-      const credited = await tx.affiliateWallet.updateMany({
-        where: { userId: withdrawal.userId },
-        data:
-          status === "REJECTED"
-            ? { availableCents: { increment: withdrawal.amountCents } }
-            : { paidCents: { increment: withdrawal.amountCents } },
-      });
-      if (credited.count !== 1) throw new ApiError(409, "Affiliate wallet not found.");
+      // rather than surface as a P2025 the caller cannot act on. Money a rejection returns
+      // repays any claw-back the affiliate owes first (V-205).
+      if (status === "REJECTED") {
+        const repaid = await creditAvailable(tx, withdrawal.userId, withdrawal.amountCents);
+        if (repaid === null) throw new ApiError(409, "Affiliate wallet not found.");
+        await settleReversedClawback(tx, withdrawal.userId, repaid);
+      } else {
+        const paid = await tx.affiliateWallet.updateMany({
+          where: { userId: withdrawal.userId },
+          data: { paidCents: { increment: withdrawal.amountCents } },
+        });
+        if (paid.count !== 1) throw new ApiError(409, "Affiliate wallet not found.");
+      }
+      // The commissions this payout covered are paid now (V-017).
+      if (status === "PAID") await markCommissionsPaid(tx, withdrawal.userId, id);
     }
 
     if (audit)

@@ -69,7 +69,10 @@ const emailSamples = [
     id: "billing-subscription-cancelled",
     name: "6. Billing: Subscription Cancelled",
     category: "Billing",
-    html: renderSubscriptionCancelledEmail("Alex Morgan"),
+    html: renderSubscriptionCancelledEmail("Alex Morgan", {
+      productName: "Creator Pro",
+      accessEndsAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+    }),
   },
   {
     id: "portfolio-updated",

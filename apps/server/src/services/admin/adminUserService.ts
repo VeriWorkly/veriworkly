@@ -432,7 +432,7 @@ export async function deleteUser(userId: string, confirmEmail: string, audit: Ad
   // row it names. Written after the cascade, whose redaction of entries about the user would
   // otherwise replace this deletion's own reason (V-231).
   await prisma.$transaction(async (tx) => {
-    await deleteUserCascade(tx, userId);
+    await deleteUserCascade(tx, userId, { actorId: audit.actorId });
     await writeAdminAudit(tx, audit);
   });
 
