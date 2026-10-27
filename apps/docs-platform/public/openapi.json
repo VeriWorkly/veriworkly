@@ -4174,7 +4174,7 @@
         "operationId": "createShareLink",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Share Link",
-        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response — and optionally set to expire.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n\nThe snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in\nthe response, nor in the owner's list of links.\n",
+        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response.\n\nA link expires 7, 14, 30 or 90 days after it is made, or never. Send `noExpiry: true` for\nnever, or an `expiresAt` 7, 14, 30 or 90 days from now (within a day, for clock skew). With\nneither, a new link lasts **7 days** and replacing an existing link keeps its expiry. Any\nother date, or `noExpiry` together with a date, is `400`.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n\nThe snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in\nthe response, nor in the owner's list of links.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -8081,9 +8081,13 @@
             "minLength": 1
           },
           "expiresAt": {
+            "description": "7, 14, 30 or 90 days from now (within a day), or the link's current expiry to keep it. Omitted or null, a new link lasts 7 days and an existing one keeps its expiry.",
             "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
           },
-          "noExpiry": { "type": "boolean" },
+          "noExpiry": {
+            "type": "boolean",
+            "description": "true for a link that never expires. Not allowed together with expiresAt."
+          },
           "updateSlug": {
             "type": "boolean",
             "description": "Regenerate the public slug instead of reusing the existing one (if a link already exists for this document)."

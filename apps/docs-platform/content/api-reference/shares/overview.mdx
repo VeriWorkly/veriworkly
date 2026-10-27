@@ -10,7 +10,8 @@ without exposing the live document. Each document can have at most one active sh
 time — creating a new one replaces the existing one.
 
 Links can optionally be password-protected (scrypt-hashed, verified with a timing-safe comparison
-— the hash itself is never returned by any response) and/or set to expire.
+— the hash itself is never returned by any response). Every link expires after 7, 14, 30 or 90
+days, or never if asked for with `noExpiry: true`; a link created without either lasts 7 days.
 
 Creating a link requires the owner to have **claimed a username** first, since it forms the public
 URL (`/{username}/{slug}`); without one the request fails with `400`.

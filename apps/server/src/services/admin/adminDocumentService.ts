@@ -601,8 +601,15 @@ export async function listShareLinks(query: ShareLinkListQuery) {
   );
 }
 
-/** `confirm` is the slug the admin retyped (V-082), checked before the link is deleted. */
-export async function revokeShareLink(shareLinkId: string, confirm?: string) {
+/**
+ * `confirm` is the slug the admin retyped (V-082), checked before the link is deleted. The audit
+ * entry commits with the delete (V-291).
+ */
+export async function revokeShareLink(
+  shareLinkId: string,
+  confirm: string | undefined,
+  audit: Pick<AdminAuditInput, "actorId" | "reason">,
+) {
   const share = await prisma.shareLink.findUnique({
     where: { id: shareLinkId },
     select: {
@@ -618,7 +625,21 @@ export async function revokeShareLink(shareLinkId: string, confirm?: string) {
   if (!share) throw new ApiError(404, "Share link not found.");
   assertConfirmation(confirm, share.slug, "share link's slug");
 
-  await prisma.shareLink.delete({ where: { id: shareLinkId } });
+  // The delete and its audit entry commit together (V-291): a revoke with no record, or a record
+  // of a revoke that did not happen, is not possible. `deleteMany` so a concurrent revoke of the
+  // same link is a 404, not a P2025 500.
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.shareLink.deleteMany({ where: { id: shareLinkId } });
+    if (count === 0) throw new ApiError(404, "Share link not found.");
+    await writeAdminAudit(tx, {
+      ...audit,
+      action: ADMIN_AUDIT_ACTIONS.shareLinkRevoke,
+      targetType: "ShareLink",
+      targetId: shareLinkId,
+      // Ids only, never the slug (made from the document title).
+      metadata: { documentId: share.documentId, ownerId: share.userId },
+    });
+  });
 
   await invalidateOwnerDocumentCaches(
     share.userId,
