@@ -613,6 +613,9 @@ model PortfolioPublication {
   publishedRevision Int                        @default(1)
   suspensionReason  String?
   suspendedAt       DateTime?
+  // The owner's or billing's own suspension reason a moderation lock covers, restored when the
+  // lock lifts; null when the site was online as the lock went on (V-285).
+  reasonBeforeModeration String?
   publishedAt       DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   views             PortfolioViewDaily[]

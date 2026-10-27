@@ -137,6 +137,43 @@ export function isModerationLocked(publication: {
 }
 
 /**
+ * The `reasonBeforeModeration` a moderation lock records as it goes on (V-285): the owner's or
+ * billing's own suspension reason it covers, or null when the site was online. A row already
+ * under a lock keeps what its first lock recorded, so this returns `{}` for it.
+ */
+export function rememberReasonBeforeModeration(publication: {
+  status: string;
+  suspensionReason: string | null;
+}): { reasonBeforeModeration?: string | null } {
+  if (isModerationLocked(publication)) return {};
+
+  return {
+    reasonBeforeModeration:
+      publication.status === "SUSPENDED" ? publication.suspensionReason : null,
+  };
+}
+
+/**
+ * The owner's own unpublish (or trashing the document) while a moderator's lock is on: the lock
+ * and its reason stay, and the owner's choice is what the lift returns the site to (V-285).
+ * A no-op on a row with no lock, so callers run it beside their ordinary unpublish write.
+ */
+export function recordOwnerUnpublishUnderLock(
+  tx: Prisma.TransactionClient,
+  where: Prisma.PortfolioPublicationWhereInput,
+) {
+  return tx.portfolioPublication.updateMany({
+    where: {
+      AND: [
+        where,
+        { status: "SUSPENDED", suspensionReason: { startsWith: MODERATION_SUSPENSION_PREFIX } },
+      ],
+    },
+    data: { reasonBeforeModeration: USER_UNPUBLISHED_REASON },
+  });
+}
+
+/**
  * `isModerationLocked` as a write condition: a publication the caller may still change. Every
  * owner write (publish, unpublish, delete) and the admin takedown use it in a conditional
  * `updateMany`, so a takedown that commits after their read is never overwritten (V-226). A
@@ -892,9 +929,8 @@ export class PortfolioService {
 
       // A moderated row keeps its moderation reason: rewriting it as the user's own takedown
       // would let the next Publish lift the lock. Conditional, so a takedown committed after the
-      // read above is kept too (V-226).
-      if (isModerationLocked(publication)) return publication;
-
+      // read above is kept too (V-226). On a locked row the unpublish is recorded under the lock
+      // instead, so the moderator's lift leaves the site offline as the owner chose (V-285).
       await tx.portfolioPublication.updateMany({
         where: { userId, ...NOT_MODERATION_LOCKED },
         data: {
@@ -903,6 +939,7 @@ export class PortfolioService {
           suspendedAt: new Date(),
         },
       });
+      await recordOwnerUnpublishUnderLock(tx, { userId });
 
       return tx.portfolioPublication.findUniqueOrThrow({ where: { userId } });
     });

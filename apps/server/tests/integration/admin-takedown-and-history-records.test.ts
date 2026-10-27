@@ -1,9 +1,15 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 
+import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
+import { app } from "#app";
 import { prisma } from "#lib/prisma";
+import { PortfolioService } from "#services/portfolioService";
 
+import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession } from "./helpers/auth.js";
 import { adminClient } from "./helpers/admin.js";
 
@@ -245,5 +251,320 @@ describe("V-284 the takedown reads the publication inside the delete's transacti
     expect(
       await prisma.portfolioPublication.findUniqueOrThrow({ where: { documentId: document.id } }),
     ).toMatchObject({ status: "SUSPENDED", suspensionReason: "moderation:document_deleted" });
+  });
+});
+
+describe("V-285 an admin LIVE or GRACE only lifts a moderation lock", () => {
+  async function setStatus(publicationId: string, status: string) {
+    return admin
+      .request("patch", `/admin/portfolios/${publicationId}`)
+      .send({ status, reason: "Reviewed by support" });
+  }
+
+  async function suspend(publicationId: string, suspensionReason: string) {
+    await prisma.portfolioPublication.update({
+      where: { id: publicationId },
+      data: { status: "SUSPENDED", suspensionReason, suspendedAt: new Date() },
+    });
+  }
+
+  it("refuses to put an owner-unpublished site back online", async () => {
+    const owner = await createUserWithSession();
+    const { publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "user_unpublished");
+
+    const response = await setStatus(publication.id, "LIVE");
+    expect(response.status).toBe(409);
+    const row = await prisma.portfolioPublication.findUniqueOrThrow({
+      where: { id: publication.id },
+    });
+    expect(row).toMatchObject({ status: "SUSPENDED", suspensionReason: "user_unpublished" });
+    expect(await prisma.adminAuditEntry.count({ where: { targetId: publication.id } })).toBe(0);
+  });
+
+  it("refuses to lift a billing suspension", async () => {
+    const owner = await createUserWithSession();
+    const { publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "grace_expired");
+
+    expect((await setStatus(publication.id, "LIVE")).status).toBe(409);
+    expect(
+      (await prisma.portfolioPublication.findUniqueOrThrow({ where: { id: publication.id } }))
+        .status,
+    ).toBe("SUSPENDED");
+  });
+
+  it("refuses to bring back a site whose document is in the trash", async () => {
+    const owner = await createUserWithSession();
+    const { document, publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "moderation:spam");
+    await prisma.document.update({ where: { id: document.id }, data: { deletedAt: new Date() } });
+
+    expect((await setStatus(publication.id, "LIVE")).status).toBe(409);
+    expect(
+      (await prisma.portfolioPublication.findUniqueOrThrow({ where: { id: publication.id } }))
+        .suspensionReason,
+    ).toBe("moderation:spam");
+  });
+
+  it("still lifts a moderator's own takedown", async () => {
+    const owner = await createUserWithSession();
+    const { publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "moderation:spam");
+
+    const response = await setStatus(publication.id, "LIVE");
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(
+      await prisma.portfolioPublication.findUniqueOrThrow({ where: { id: publication.id } }),
+    ).toMatchObject({ status: "LIVE", suspensionReason: null });
+  });
+
+  // Review of group 2: a moderation lock put over an owner's or billing's suspension used to
+  // replace that reason, so the next LIVE put the site back online against the owner's choice.
+  // A lift now returns the row to the reason it had before the lock.
+  async function row(publicationId: string) {
+    return prisma.portfolioPublication.findUniqueOrThrow({ where: { id: publicationId } });
+  }
+
+  it("owner unpublish, then admin SUSPENDED, then LIVE leaves the owner's unpublish", async () => {
+    const owner = await createUserWithSession();
+    const { publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "user_unpublished");
+
+    expect((await setStatus(publication.id, "SUSPENDED")).status).toBe(200);
+    expect((await row(publication.id)).suspensionReason).toBe("moderation:Reviewed by support");
+
+    const lifted = await setStatus(publication.id, "LIVE");
+    expect(lifted.status, JSON.stringify(lifted.body)).toBe(200);
+    expect(await row(publication.id)).toMatchObject({
+      status: "SUSPENDED",
+      suspensionReason: "user_unpublished",
+    });
+    expect(lifted.body.data.status).toBe("SUSPENDED");
+  });
+
+  it("owner unpublish, then admin delete and restore, then LIVE leaves the owner's unpublish", async () => {
+    const owner = await createUserWithSession();
+    const { document, publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "user_unpublished");
+
+    expect(
+      (await admin.request("delete", `/admin/documents/${document.id}`).send({ reason: "Spam" }))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await admin
+          .request("post", `/admin/documents/${document.id}/restore`)
+          .send({ reason: "Mistake" })
+      ).status,
+    ).toBe(200);
+
+    expect((await setStatus(publication.id, "LIVE")).status).toBe(200);
+    expect(await row(publication.id)).toMatchObject({
+      status: "SUSPENDED",
+      suspensionReason: "user_unpublished",
+    });
+  });
+
+  it("billing suspension, then a force-unpublish, then LIVE goes back to billing's suspension", async () => {
+    const owner = await createUserWithSession();
+    const { publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "grace_expired");
+
+    const takenDown = await admin
+      .request("delete", `/admin/portfolios/${publication.id}`)
+      .send({ reason: "Phishing" });
+    expect(takenDown.status, JSON.stringify(takenDown.body)).toBe(200);
+
+    expect((await setStatus(publication.id, "LIVE")).status).toBe(200);
+    expect(await row(publication.id)).toMatchObject({
+      status: "SUSPENDED",
+      suspensionReason: "grace_expired",
+    });
+  });
+
+  it("billing suspension, then Make private, then Make unlisted goes back to billing's suspension", async () => {
+    const owner = await createUserWithSession();
+    const { document, publication } = await seedLivePortfolio(owner.id);
+    await suspend(publication.id, "grace_expired");
+
+    const hide = (visibility: string) =>
+      admin
+        .request("patch", `/admin/documents/${document.id}`)
+        .send({ visibility, reason: "Reviewed" });
+    expect((await hide("PRIVATE")).status).toBe(200);
+    expect((await hide("UNLISTED")).status).toBe(200);
+    expect(await row(publication.id)).toMatchObject({
+      status: "SUSPENDED",
+      suspensionReason: "grace_expired",
+    });
+  });
+
+  // Final review: the owner's own unpublish or trash while a lock is on used to be dropped.
+  function asOwner(cookie: string, req: request.Test) {
+    return req.set("Origin", STUDIO_ORIGIN).set("Cookie", cookie);
+  }
+
+  it("an owner unpublish during the lock survives the lift", async () => {
+    const owner = await createUserWithSession();
+    const { publication } = await seedLivePortfolio(owner.id);
+    expect((await setStatus(publication.id, "SUSPENDED")).status).toBe(200);
+
+    const unpublished = await asOwner(
+      owner.cookie,
+      request(app).post("/api/v1/portfolios/unpublish"),
+    ).send({});
+    expect(unpublished.status, JSON.stringify(unpublished.body)).toBe(200);
+    expect((await row(publication.id)).suspensionReason).toBe("moderation:Reviewed by support");
+
+    expect((await setStatus(publication.id, "LIVE")).status).toBe(200);
+    expect(await row(publication.id)).toMatchObject({
+      status: "SUSPENDED",
+      suspensionReason: "user_unpublished",
+    });
+  });
+
+  it("an owner trash during the lock keeps the site offline after the lift", async () => {
+    const owner = await createUserWithSession();
+    const { document, publication } = await seedLivePortfolio(owner.id);
+    expect((await setStatus(publication.id, "SUSPENDED")).status).toBe(200);
+
+    const trashed = await asOwner(
+      owner.cookie,
+      request(app).delete(`/api/v1/documents/${document.id}`),
+    );
+    expect(trashed.status, JSON.stringify(trashed.body)).toBe(200);
+
+    const lifted = await setStatus(publication.id, "LIVE");
+    expect(lifted.status, JSON.stringify(lifted.body)).toBe(200);
+    expect(await row(publication.id)).toMatchObject({
+      status: "SUSPENDED",
+      suspensionReason: "user_unpublished",
+    });
+  });
+
+  it("the migration backfills the reason a lock replaced, from takedown records that hold it", async () => {
+    // One publication per user.
+    const sites = [];
+    for (let i = 0; i < 6; i += 1)
+      sites.push((await seedLivePortfolio((await createUserWithSession()).id)).publication);
+    const [owned, billed, relocked, online, unknown, known] = sites;
+    const lock = (id: string, reason = "moderation:Phishing") =>
+      prisma.portfolioPublication.update({
+        where: { id },
+        data: { status: "SUSPENDED", suspensionReason: reason, reasonBeforeModeration: null },
+      });
+    for (const site of [owned, billed, relocked, online, unknown]) await lock(site.id);
+    await lock(known.id);
+    await prisma.portfolioPublication.update({
+      where: { id: known.id },
+      data: { reasonBeforeModeration: "grace_expired" },
+    });
+
+    const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60_000);
+    const entry = (targetId: string, action: string, metadata: object, minutesAgo: number) => ({
+      actorId: admin.id,
+      action,
+      targetType: "PortfolioPublication",
+      targetId,
+      metadata,
+      createdAt: at(minutesAgo),
+    });
+    await prisma.adminAuditEntry.createMany({
+      data: [
+        // Older force-unpublish of an owner-unpublished site, then the latest one: latest wins.
+        entry(owned.id, "portfolio.unpublish", { previousStatus: "LIVE" }, 20),
+        entry(
+          owned.id,
+          "portfolio.unpublish",
+          { previousStatus: "SUSPENDED", previousSuspensionReason: "user_unpublished" },
+          10,
+        ),
+        entry(
+          billed.id,
+          "portfolio.unpublish",
+          { previousStatus: "SUSPENDED", previousSuspensionReason: "grace_expired" },
+          10,
+        ),
+        // A second lock over a first: what the first replaced is not in this entry.
+        entry(
+          relocked.id,
+          "portfolio.unpublish",
+          { previousStatus: "SUSPENDED", previousSuspensionReason: "moderation:spam" },
+          10,
+        ),
+        entry(
+          online.id,
+          "portfolio.status.change",
+          { previousStatus: "LIVE", status: "SUSPENDED" },
+          10,
+        ),
+        // Older status changes record no reason at all.
+        entry(
+          unknown.id,
+          "portfolio.status.change",
+          { previousStatus: "SUSPENDED", status: "SUSPENDED" },
+          10,
+        ),
+        entry(
+          known.id,
+          "portfolio.unpublish",
+          { previousStatus: "SUSPENDED", previousSuspensionReason: "user_unpublished" },
+          10,
+        ),
+      ],
+    });
+
+    const migrations = path.resolve(__dirname, "..", "..", "prisma", "migrations");
+    const folder = readdirSync(migrations).find((name) =>
+      name.endsWith("_publication_reason_before_moderation"),
+    );
+    expect(folder).toBeDefined();
+    const sql = readFileSync(path.join(migrations, folder!, "migration.sql"), "utf8");
+    const backfill = sql.slice(sql.indexOf("-- Backfill"));
+    expect(backfill.length).toBeGreaterThan(20);
+    await prisma.$executeRawUnsafe(backfill);
+    // Idempotent: a second run changes nothing.
+    expect(await prisma.$executeRawUnsafe(backfill)).toBe(0);
+
+    const before = async (id: string) => (await row(id)).reasonBeforeModeration;
+    expect(await before(owned.id)).toBe("user_unpublished");
+    expect(await before(billed.id)).toBe("grace_expired");
+    expect(await before(relocked.id)).toBeNull();
+    expect(await before(online.id)).toBeNull();
+    expect(await before(unknown.id)).toBeNull();
+    // A value already recorded is never overwritten.
+    expect(await before(known.id)).toBe("grace_expired");
+  });
+
+  it("a billing suspension under a lock of more than 30 days still drops to the free tier on lift", async () => {
+    const owner = await createUserWithSession();
+    const { publication } = await seedLivePortfolio(owner.id);
+    const nimbus = { ...portfolioContent(), templateId: "nimbus" };
+    await prisma.portfolioPublication.update({
+      where: { id: publication.id },
+      data: {
+        templateId: "nimbus",
+        snapshot: nimbus,
+        status: "SUSPENDED",
+        suspensionReason: "grace_expired",
+        suspendedAt: new Date(),
+      },
+    });
+    expect((await setStatus(publication.id, "SUSPENDED")).status).toBe(200);
+    // The lock lasted 31 days.
+    await prisma.portfolioPublication.update({
+      where: { id: publication.id },
+      data: { suspendedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
+    });
+
+    expect((await setStatus(publication.id, "LIVE")).status).toBe(200);
+    // What the hourly job does; the lift has already settled it, so this is a no-op then.
+    await PortfolioService.settleLapsedPortfolios();
+
+    const after = await row(publication.id);
+    expect(after).toMatchObject({ status: "LIVE", suspensionReason: null });
+    expect(after.templateId).not.toBe("nimbus");
   });
 });

@@ -11,6 +11,7 @@ import {
   isModerationLocked,
   MODERATION_SUSPENSION_PREFIX,
   NOT_MODERATION_LOCKED,
+  rememberReasonBeforeModeration,
 } from "#services/portfolioService";
 import { moderatorPrivateDocumentIds } from "#services/moderationRecord";
 import {
@@ -226,7 +227,12 @@ async function takeDownPortfolioPublication(
   // Conditional (V-226): a takedown that committed after the read keeps its own reason.
   const { count } = await tx.portfolioPublication.updateMany({
     where: { id: publication.id, documentId, ...NOT_MODERATION_LOCKED },
-    data: { status: "SUSPENDED", suspensionReason, suspendedAt: new Date() },
+    data: {
+      status: "SUSPENDED",
+      suspensionReason,
+      suspendedAt: new Date(),
+      ...rememberReasonBeforeModeration(publication),
+    },
   });
   if (count === 0) return null;
 
@@ -300,12 +306,21 @@ export async function updateDocumentVisibility(
     document.type === "PORTFOLIO"
       ? await prisma.portfolioPublication.findUnique({
           where: { documentId },
-          select: { id: true, subdomain: true, status: true, suspensionReason: true },
+          select: {
+            id: true,
+            subdomain: true,
+            status: true,
+            suspensionReason: true,
+            reasonBeforeModeration: true,
+          },
         })
       : null;
   const locked = publication !== null && isModerationLocked(publication);
   const takeDown = publication !== null && visibility === "PRIVATE" && !locked;
   const lift = publication !== null && visibility !== "PRIVATE" && locked;
+
+  // A lock put over the owner's or billing's own suspension lifts back to it (V-285).
+  const liftedReason = publication?.reasonBeforeModeration ?? USER_UNPUBLISHED_REASON;
 
   const updated = await prisma.$transaction(async (tx) => {
     const row = await tx.document.update({
@@ -348,6 +363,7 @@ export async function updateDocumentVisibility(
             status: "SUSPENDED",
             suspensionReason: `${MODERATION_SUSPENSION_PREFIX}document_hidden`,
             suspendedAt: new Date(),
+            ...rememberReasonBeforeModeration(publication),
           },
         }),
       );
@@ -357,7 +373,7 @@ export async function updateDocumentVisibility(
       assertApplied(
         await tx.portfolioPublication.updateMany({
           where: unchanged,
-          data: { suspensionReason: USER_UNPUBLISHED_REASON },
+          data: { suspensionReason: liftedReason, reasonBeforeModeration: null },
         }),
       );
       await writeAdminAudit(tx, {
@@ -370,7 +386,7 @@ export async function updateDocumentVisibility(
           previousStatus: publication.status,
           status: "SUSPENDED",
           previousSuspensionReason: publication.suspensionReason,
-          suspensionReason: USER_UNPUBLISHED_REASON,
+          suspensionReason: liftedReason,
           subdomain: publication.subdomain,
           documentId,
           ownerId: document.userId,
