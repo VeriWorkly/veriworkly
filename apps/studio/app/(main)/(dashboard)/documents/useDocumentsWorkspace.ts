@@ -14,6 +14,10 @@ import {
   resolveDocumentConflictUseLocal,
   hydrateAllDocumentsFromCloud,
   subscribeToRemoteDeletions,
+  subscribeToCloudPull,
+  getCloudPullState,
+  IDLE_CLOUD_PULL,
+  countPendingCloudDocuments,
 } from "@/features/documents/services/document-sync";
 import {
   type DocumentLibraryItem,
@@ -29,13 +33,17 @@ export type ViewMode = "grid" | "list";
 export type SortMode = "updated" | "title";
 export type DocumentTypeFilter = DocumentType | "ALL";
 
+/** Cards per library page: every document stays local, but only one page is rendered. */
+export const DOCUMENT_LIBRARY_PAGE_SIZE = 20;
+
 export function useDocumentsWorkspace() {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
 
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [sortMode, setSortMode] = useState<SortMode>("updated");
+  const [sortMode, setSortModeState] = useState<SortMode>("updated");
 
-  const [activeType, setActiveType] = useState<DocumentTypeFilter>("ALL");
+  const [activeType, setActiveTypeState] = useState<DocumentTypeFilter>("ALL");
+  const [page, setPage] = useState(0);
 
   const [refreshKey, setRefreshKey] = useState(0);
   // One entry per card: a second sync must not clear the first card's spinner.
@@ -56,10 +64,32 @@ export function useDocumentsWorkspace() {
     () => DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
   );
 
-  const { docs, counts } = snapshot;
+  const { docs, counts, linkedCounts } = snapshot;
   const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
+  const cloudPull = useSyncExternalStore(
+    subscribeToCloudPull,
+    getCloudPullState,
+    () => IDLE_CLOUD_PULL,
+  );
+
+  // Documents of the shown type the account holds that have not reached this device yet, while
+  // a full pull is bringing them. The local index stays the count everywhere; this only says
+  // more are on the way.
+  const pendingCloudCount = countPendingCloudDocuments(cloudPull, linkedCounts, activeType);
+
   const bump = useCallback(() => setRefreshKey((key) => key + 1), []);
+
+  // A new filter or order starts again from its first page.
+  const setActiveType = useCallback((type: DocumentTypeFilter) => {
+    setActiveTypeState(type);
+    setPage(0);
+  }, []);
+
+  const setSortMode = useCallback((mode: SortMode) => {
+    setSortModeState(mode);
+    setPage(0);
+  }, []);
 
   /**
    * Runs one sync action for a card. A storage error can reject instead of returning a
@@ -121,22 +151,42 @@ export function useDocumentsWorkspace() {
     [],
   );
 
-  const visibleDocs = useMemo(() => {
-    return [...docs].sort((left, right) => {
-      if (sortMode === "title") return left.title.localeCompare(right.title);
-      return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
-    });
-  }, [docs, sortMode]);
+  // The snapshot is already newest first; only the title order needs a sort of its own.
+  const visibleDocs = useMemo(
+    () =>
+      sortMode === "title"
+        ? [...docs].sort((left, right) => left.title.localeCompare(right.title))
+        : docs,
+    [docs, sortMode],
+  );
+
+  // A delete or a pull can shrink the list under the page being shown; stay on the last one.
+  const pageCount = Math.max(1, Math.ceil(visibleDocs.length / DOCUMENT_LIBRARY_PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+
+  // Written back, so a list that grows again stays on the page being shown rather than jumping
+  // to the one stored before it shrank. React allows this update during render.
+  if (page !== currentPage) setPage(currentPage);
+
+  const pageDocs = useMemo(
+    () =>
+      visibleDocs.slice(
+        currentPage * DOCUMENT_LIBRARY_PAGE_SIZE,
+        (currentPage + 1) * DOCUMENT_LIBRARY_PAGE_SIZE,
+      ),
+    [visibleDocs, currentPage],
+  );
 
   const syncDetailsTarget = useMemo(
     () => docs.find((doc) => doc.id === syncDetailsTargetId) ?? null,
     [docs, syncDetailsTargetId],
   );
 
+  // Only the cards on screen read their telemetry.
   const syncTelemetryById = useMemo(() => {
     if (!isLoggedIn) return {};
-    return getDocumentSyncTelemetryByDocs(docs);
-  }, [docs, isLoggedIn]);
+    return getDocumentSyncTelemetryByDocs(pageDocs);
+  }, [pageDocs, isLoggedIn]);
 
   const syncTargetTelemetry = useMemo(
     () =>
@@ -249,7 +299,15 @@ export function useDocumentsWorkspace() {
     /** True until a signed-in user's first pull settles: an empty list may not be empty. */
     isPullingFromCloud: isLoggedIn && !cloudPullSettled,
     viewMode,
+    /** Every document of the filter, in order. */
     visibleDocs,
+    /** The one page of `visibleDocs` the library renders. */
+    pageDocs,
+    currentPage,
+    pageCount,
+    setPage,
+    /** How many of the account's documents a running pull has yet to bring to this device. */
+    pendingCloudCount: isLoggedIn ? pendingCloudCount : 0,
     bump,
   };
 }

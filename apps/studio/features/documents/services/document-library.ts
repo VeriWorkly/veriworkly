@@ -36,6 +36,8 @@ export type DocumentLibraryItem = {
 export type DocumentLibrarySnapshot = {
   docs: DocumentLibraryItem[];
   counts: Record<DocumentType, number>;
+  /** Of `counts`, the documents linked to a cloud copy: what the account's total is measured against. */
+  linkedCounts: Record<DocumentType, number>;
   key: string;
 };
 
@@ -47,6 +49,7 @@ const EMPTY_COUNTS = Object.fromEntries(DOCUMENT_TYPES.map((type) => [type, 0]))
 export const DOCUMENT_LIBRARY_SERVER_SNAPSHOT: DocumentLibrarySnapshot = {
   docs: [],
   counts: EMPTY_COUNTS,
+  linkedCounts: EMPTY_COUNTS,
   key: "server",
 };
 
@@ -108,13 +111,16 @@ export function getDocumentLibrarySnapshot(
     .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
 
   const counts: Record<DocumentType, number> = { ...EMPTY_COUNTS };
+  const linkedCounts: Record<DocumentType, number> = { ...EMPTY_COUNTS };
   allDocs.forEach((doc) => {
     counts[doc.type] += 1;
+    if (doc.sync.cloudDocumentId) linkedCounts[doc.type] += 1;
   });
 
   const snapshot: DocumentLibrarySnapshot = {
     docs: activeType === "ALL" ? allDocs : allDocs.filter((doc) => doc.type === activeType),
     counts,
+    linkedCounts,
     key: nextKey,
   };
 

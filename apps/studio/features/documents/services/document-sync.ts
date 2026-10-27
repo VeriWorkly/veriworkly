@@ -14,6 +14,7 @@ import {
 } from "@/features/documents/services/document-workspace-service";
 
 import {
+  type HydrateOptions,
   type SyncNowOptions,
   type SyncResult,
   type SyncWorkerOptions,
@@ -21,6 +22,8 @@ import {
 } from "./document-sync-service";
 import { SyncEngine, type SyncTelemetry } from "./sync-engine";
 import { canWorkspaceReachCloud } from "./workspace-owner";
+import { getWorkspaceEpoch } from "./workspace-epoch";
+import { getWorkspaceViewer } from "./workspace-viewer";
 import {
   DOCUMENT_REMOTE_DELETION_EVENT,
   DOCUMENT_STORAGE_UPDATED_EVENT,
@@ -54,7 +57,7 @@ type SharedDocumentSyncService = {
   captureSyncStates(): Record<string, DocumentSyncState>;
   restoreSyncStates(states: Record<string, DocumentSyncState>): SaveDocumentResult;
   hydrateById(id: string, force?: boolean): Promise<SyncResult>;
-  hydrate(options?: { force?: boolean; minIntervalMs?: number }): Promise<SyncResult>;
+  hydrate(options?: HydrateOptions): Promise<SyncResult>;
 };
 
 function createGenericDocumentSyncService(type: DocumentType) {
@@ -135,6 +138,65 @@ export async function syncAllPendingDocuments(type?: DocumentType): Promise<Sync
 }
 
 /**
+ * What the cloud pull knows while it runs: whether one is walking, and each type's live
+ * document count in the account as a full pull's first page reported it, for the workspace
+ * (sign-in epoch and viewer) it was reported in. The library compares a count with the
+ * documents already here to say how many are still on the way.
+ */
+export type CloudPullState = {
+  pulling: boolean;
+  totals: Partial<Record<DocumentType, number>>;
+  workspace: string | null;
+};
+
+export const IDLE_CLOUD_PULL: CloudPullState = { pulling: false, totals: {}, workspace: null };
+
+let cloudPullState = IDLE_CLOUD_PULL;
+let pullsRunning = 0;
+const cloudPullListeners = new Set<() => void>();
+
+function currentWorkspace() {
+  return `${getWorkspaceEpoch()}:${getWorkspaceViewer() ?? "guest"}`;
+}
+
+function setCloudPullState(next: CloudPullState) {
+  cloudPullState = next;
+  for (const listener of cloudPullListeners) listener();
+}
+
+export function subscribeToCloudPull(listener: () => void) {
+  cloudPullListeners.add(listener);
+  return () => {
+    cloudPullListeners.delete(listener);
+  };
+}
+
+export function getCloudPullState() {
+  return cloudPullState;
+}
+
+/**
+ * How many of the account's documents (of `type`, or of every type) a running full pull has
+ * yet to bring here: the account's count less the documents already linked to it. Zero when no
+ * pull runs, when only an incremental pull ran (it reports no count), and for counts reported
+ * in another workspace.
+ */
+export function countPendingCloudDocuments(
+  state: CloudPullState,
+  linkedCounts: Record<DocumentType, number>,
+  type: DocumentType | "ALL",
+) {
+  if (!state.pulling || state.workspace !== currentWorkspace()) return 0;
+
+  const types: readonly DocumentType[] = type === "ALL" ? DOCUMENT_TYPES : [type];
+
+  return types.reduce((sum: number, documentType) => {
+    const total = state.totals[documentType];
+    return total === undefined ? sum : sum + Math.max(0, total - linkedCounts[documentType]);
+  }, 0);
+}
+
+/**
  * Pulls cloud changes for every type: documents created or edited on another device, and
  * deletions made there. The documents library and the overview run this on mount for
  * signed-in users, which is what makes a second device show the user's documents.
@@ -143,15 +205,44 @@ export async function hydrateAllDocumentsFromCloud(options?: {
   force?: boolean;
   minIntervalMs?: number;
 }): Promise<SyncResult[]> {
-  const settled = await Promise.allSettled(
-    DOCUMENT_TYPES.map((type) => getService(type).hydrate(options)),
-  );
+  const workspace = currentWorkspace();
 
-  return settled.map((result) =>
-    result.status === "fulfilled"
-      ? result.value
-      : { ok: false, message: String(result.reason?.message ?? result.reason), reason: "unknown" },
-  );
+  pullsRunning += 1;
+  // Counts are dropped when a pull starts with none running (they may be stale) and when the
+  // workspace changed (another account's); a pull joining a running one keeps that one's.
+  const keep = pullsRunning > 1 && cloudPullState.workspace === workspace;
+  setCloudPullState({ pulling: true, totals: keep ? cloudPullState.totals : {}, workspace });
+
+  try {
+    const settled = await Promise.allSettled(
+      DOCUMENT_TYPES.map((type) =>
+        getService(type).hydrate({
+          ...options,
+          onTotal: (total) => {
+            if (cloudPullState.workspace !== workspace) return;
+
+            setCloudPullState({
+              ...cloudPullState,
+              totals: { ...cloudPullState.totals, [type]: total },
+            });
+          },
+        }),
+      ),
+    );
+
+    return settled.map((result) =>
+      result.status === "fulfilled"
+        ? result.value
+        : {
+            ok: false,
+            message: String(result.reason?.message ?? result.reason),
+            reason: "unknown",
+          },
+    );
+  } finally {
+    pullsRunning -= 1;
+    if (pullsRunning === 0) setCloudPullState({ ...cloudPullState, pulling: false });
+  }
 }
 
 /** Starts (or stops) the background sync worker for every document type. */

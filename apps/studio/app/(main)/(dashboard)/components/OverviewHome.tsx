@@ -17,6 +17,7 @@ import RenameDocumentModal from "@/components/modals/RenameDocumentModal";
 
 import { useDocumentsWorkspace } from "../documents/useDocumentsWorkspace";
 import { CreateDocumentActions } from "../documents/components/CreateDocumentActions";
+import { PendingCloudDocuments } from "../documents/components/DocumentPagination";
 import RecentCard from "./RecentCard";
 import OverviewHomeHeader from "./OverviewHomeHeader";
 import OverviewReferenceCard from "./OverviewReferenceCard";
@@ -81,6 +82,7 @@ const OverviewHome = () => {
     totalCount,
     visibleDocs,
     isPullingFromCloud,
+    pendingCloudCount,
     bump,
   } = useDocumentsWorkspace();
 
@@ -114,6 +116,12 @@ const OverviewHome = () => {
               <div>
                 <h2 className="text-lg font-black">Recently edited</h2>
                 <p className="text-muted text-sm">Pick up where you left off.</p>
+                {hydrated && totalCount > 0 ? (
+                  <PendingCloudDocuments
+                    count={pendingCloudCount}
+                    className="text-muted mt-1 text-xs"
+                  />
+                ) : null}
               </div>
 
               <Link href="/documents" className="text-accent text-sm font-bold">

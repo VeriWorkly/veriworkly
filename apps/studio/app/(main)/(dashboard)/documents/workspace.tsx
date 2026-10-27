@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Grid2X2, LayoutList, Upload } from "lucide-react";
 
 import { Card, Select, Button } from "@veriworkly/ui";
@@ -17,10 +18,12 @@ import { IconToggle } from "./components/DocumentWorkspaceControls";
 import { DocumentPreviewCard } from "./components/DocumentPreviewCard";
 import { DocumentWorkspaceEmptyState } from "./components/DocumentWorkspaceEmptyState";
 import { CreateDocumentActions } from "./components/CreateDocumentActions";
+import { DocumentPagination, PendingCloudDocuments } from "./components/DocumentPagination";
 
 import {
   type SortMode,
   type DocumentTypeFilter,
+  DOCUMENT_LIBRARY_PAGE_SIZE,
   useDocumentsWorkspace,
 } from "./useDocumentsWorkspace";
 
@@ -52,9 +55,16 @@ export default function DocumentsWorkspace() {
     syncTargetTelemetry,
     totalCount,
     visibleDocs,
+    pageDocs,
+    currentPage,
+    pageCount,
+    setPage,
+    pendingCloudCount,
     isPullingFromCloud,
     bump,
   } = useDocumentsWorkspace();
+
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
   return (
     <section className="space-y-7" aria-label="VeriWorkly dashboard">
@@ -79,13 +89,20 @@ export default function DocumentsWorkspace() {
       </header>
 
       <Card className="overflow-visible rounded-2xl p-0">
-        <div className="border-border/70 flex flex-col gap-4 border-b p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-6">
+        <div
+          ref={toolbarRef}
+          className="border-border/70 flex scroll-mt-4 flex-col gap-4 border-b p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between"
+        >
+          <div className="flex flex-col gap-1">
             <span className="text-foreground text-sm font-semibold">
               {activeType === "ALL"
                 ? "All documents"
                 : `${getDocumentDefinition(activeType).label}s`}
             </span>
+
+            {totalCount > 0 ? (
+              <PendingCloudDocuments count={pendingCloudCount} className="text-muted text-xs" />
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -153,8 +170,11 @@ export default function DocumentsWorkspace() {
 
         {visibleDocs.length > 0 ? (
           viewMode === "grid" ? (
-            <div className="grid grid-cols-1 gap-3 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {visibleDocs.map((doc) => (
+            <div
+              key={currentPage}
+              className="animate-in fade-in grid grid-cols-1 gap-3 p-4 duration-300 sm:p-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            >
+              {pageDocs.map((doc) => (
                 <DocumentPreviewCard
                   doc={doc}
                   key={doc.id}
@@ -169,8 +189,11 @@ export default function DocumentsWorkspace() {
               ))}
             </div>
           ) : (
-            <div className="divide-border divide-y">
-              {visibleDocs.map((doc) => (
+            <div
+              key={currentPage}
+              className="animate-in fade-in divide-border divide-y duration-300"
+            >
+              {pageDocs.map((doc) => (
                 <DocumentListRow
                   doc={doc}
                   key={doc.id}
@@ -203,6 +226,26 @@ export default function DocumentsWorkspace() {
         ) : (
           <DocumentWorkspaceEmptyState />
         )}
+
+        <DocumentPagination
+          page={currentPage}
+          pageCount={pageCount}
+          pageSize={DOCUMENT_LIBRARY_PAGE_SIZE}
+          total={visibleDocs.length}
+          onPageChange={(next) => {
+            setPage(next);
+            // From the controls under the list, the new page starts above the fold.
+            const top = toolbarRef.current;
+            if (top && top.getBoundingClientRect().top < 0) {
+              top.scrollIntoView({
+                block: "start",
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                  ? "auto"
+                  : "smooth",
+              });
+            }
+          }}
+        />
       </Card>
 
       <ConfirmDialog

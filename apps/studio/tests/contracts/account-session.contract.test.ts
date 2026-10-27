@@ -7,7 +7,10 @@ import type { BaseDocument } from "@/features/documents/core/types";
 import type { ResumeData } from "@/types/resume";
 
 import { buildWorkspaceBackup, signOutCurrentUser } from "@/features/auth/services/current-user";
-import { buildAccountBackup, SERVER_LIST_CAP } from "@/features/profile/services/account-backup";
+import {
+  buildAccountBackup,
+  LEGACY_SERVER_LIST_CAP,
+} from "@/features/profile/services/account-backup";
 import {
   purchaseFingerprint,
   recordPurchaseBaseline,
@@ -31,6 +34,7 @@ import {
 import {
   canWorkspaceReachCloud,
   claimWorkspaceIfUncontested,
+  createAccountDocumentLookup,
   findUnclaimedDocuments,
   resolveUnclaimedDocuments,
   setWorkspaceUser,
@@ -59,6 +63,28 @@ import { createLocalStorageMock } from "@/tests/utils/local-storage";
 vi.hoisted(() => {
   process.env.NEXT_PUBLIC_BACKEND_URL ||= "http://localhost:8080/api/v1";
 });
+
+/**
+ * The documents list as the server answers it: the old single reply when no `limit` is sent,
+ * otherwise `limit` rows from the offset carried in `cursor`, with `nextCursor` and `total`.
+ */
+function documentListReply(rows: unknown[], url: string) {
+  const params = new URL(url).searchParams;
+  const limit = params.get("limit");
+
+  if (!limit) return Response.json({ data: rows, deleted: [], serverTime: null });
+
+  const from = Number(params.get("cursor") ?? 0);
+  const to = from + Number(limit);
+
+  return Response.json({
+    data: rows.slice(from, to),
+    deleted: [],
+    serverTime: "2026-10-27T00:00:00.000Z",
+    nextCursor: to < rows.length ? String(to) : null,
+    total: rows.length,
+  });
+}
 
 function stubBrowser(hostname: string) {
   const localStorageMock = createLocalStorageMock();
@@ -171,7 +197,7 @@ function serveDocumentsApi(accountIds: string[], createGate?: Promise<void>) {
       calls.push({ method, url });
 
       if (method === "GET") {
-        return Response.json({ data: accountIds.map(row), deleted: [], serverTime: null });
+        return documentListReply(accountIds.map(row), url);
       }
 
       if (method === "POST") {
@@ -475,6 +501,130 @@ describe("S-283: a device's documents belong to the account that made them", () 
     expect(signIn("user-b")).toBe(false);
     expect(await findUnclaimedDocuments("user-b")).toBeNull();
     expect(canWorkspaceReachCloud()).toBe(true);
+  });
+
+  /**
+   * The account's metadata list as the paging server walks it: oldest change first when
+   * `updatedSince` is sent, newest first otherwise, resuming strictly after the cursor's row.
+   * Rows can be edited between pages (`onPage`); tombstones come with the first sync page.
+   */
+  function serveOrderedAccount(
+    rows: Array<{ id: string; updatedAt: string }>,
+    options: { deleted?: string[]; onPage?: (page: number) => void } = {},
+  ) {
+    const calls: URLSearchParams[] = [];
+    const sortKey = (row: { id: string; updatedAt: string }) => `${row.updatedAt}|${row.id}`;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if ((init?.method ?? "GET") !== "GET") return new Response(null, { status: 204 });
+
+        const params = new URL(String(url)).searchParams;
+        calls.push(params);
+
+        const ascending = params.has("updatedSince");
+        const limit = Number(params.get("limit"));
+        const after = params.get("cursor");
+        const ordered = [...rows].sort((left, right) =>
+          ascending
+            ? sortKey(left).localeCompare(sortKey(right))
+            : sortKey(right).localeCompare(sortKey(left)),
+        );
+        const rest =
+          after === null
+            ? ordered
+            : ordered.filter((row) => (ascending ? sortKey(row) > after : sortKey(row) < after));
+        const pageRows = rest.slice(0, limit);
+        const reply = Response.json({
+          data: pageRows.map((row) => ({ ...row, type: "RESUME", title: row.id, revision: 1 })),
+          deleted:
+            ascending && after === null
+              ? (options.deleted ?? []).map((id) => ({ id, deletedAt: "2026-10-20T00:00:00.000Z" }))
+              : [],
+          serverTime: "2026-10-27T00:00:00.000Z",
+          nextCursor: rest.length > limit ? sortKey(pageRows[pageRows.length - 1]) : null,
+          total: rows.length,
+        });
+
+        options.onPage?.(calls.length);
+        return reply;
+      }),
+    );
+
+    return calls;
+  }
+
+  /** `count` account rows, one minute apart, oldest first. */
+  function accountRows(count: number) {
+    return Array.from({ length: count }, (_, index) => ({
+      id: `cloud-${String(index).padStart(3, "0")}`,
+      updatedAt: new Date(Date.parse("2026-10-01T00:00:00.000Z") + index * 60_000).toISOString(),
+    }));
+  }
+
+  function linkedCopy(cloudId?: string) {
+    const copy = createDocument("RESUME");
+    getWorkspaceStorage("RESUME").patchSync(copy.id, {
+      enabled: true,
+      status: "synced",
+      cloudDocumentId: cloudId ?? copy.id,
+    });
+    return copy;
+  }
+
+  it("Part H: the account's own copy is found even when it is edited elsewhere mid-walk", async () => {
+    const own = linkedCopy();
+    const rows = accountRows(120);
+    // The 61st oldest: on the second page either way the list is walked.
+    rows[60] = { ...rows[60], id: own.id };
+
+    const calls = serveOrderedAccount(rows, {
+      // Edited on another device after the first page: it becomes the newest row.
+      onPage: (page) => {
+        if (page === 1) rows[60] = { id: own.id, updatedAt: "2026-10-27T00:00:00.000Z" };
+      },
+    });
+
+    expect(signIn("user-b")).toBe(false);
+    expect(await findUnclaimedDocuments("user-b")).toBeNull();
+    expect(calls.every((params) => params.get("updatedSince") === "1970-01-01T00:00:00.000Z")).toBe(
+      true,
+    );
+    expect(calls.every((params) => params.get("includeContent") === null)).toBe(true);
+    expect(calls.map((params) => params.get("limit"))).toEqual(["50", "50", "50"]);
+  });
+
+  it("Part H: a copy of a document the account deleted is still the account's", async () => {
+    const own = linkedCopy();
+    serveOrderedAccount(accountRows(3), { deleted: [own.id] });
+
+    expect(signIn("user-b")).toBe(false);
+    expect(await findUnclaimedDocuments("user-b")).toBeNull();
+  });
+
+  it("Part H: the walk stops at the page where the last wanted id turns up", async () => {
+    const own = linkedCopy();
+    const rows = accountRows(150);
+    rows[10] = { ...rows[10], id: own.id };
+    const calls = serveOrderedAccount(rows);
+
+    expect(signIn("user-b")).toBe(false);
+    expect(await findUnclaimedDocuments("user-b")).toBeNull();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("Part H: one settle lists the account once, however often it asks", async () => {
+    linkedCopy("another-accounts-document");
+    const calls = serveOrderedAccount(accountRows(60));
+    const lookup = createAccountDocumentLookup();
+
+    expect(signIn("user-b")).toBe(false);
+    expect(await findUnclaimedDocuments("user-b", lookup)).toMatchObject({ origin: "account" });
+    expect(calls).toHaveLength(2);
+
+    expect(await findUnclaimedDocuments("user-b", lookup)).toMatchObject({ origin: "account" });
+    expect(calls).toHaveLength(2);
   });
 
   it("S-283: an empty device belongs to whoever signs in next", () => {
@@ -923,7 +1073,10 @@ describe("S-347: the account backup made before deleting the account", () => {
    * The documents list as the server answers it: filtered by `type` when asked, every
    * type (portfolios included) when not. No Master Profile yet.
    */
-  function serveAccount(records: Row[] | "offline") {
+  function serveAccount(
+    records: Row[] | "offline",
+    options: { failCursor?: string; legacy?: boolean } = {},
+  ) {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -931,9 +1084,14 @@ describe("S-347: the account backup made before deleting the account", () => {
 
         if (address.pathname.endsWith("/documents")) {
           if (records === "offline") throw new TypeError("Failed to fetch");
+          if (options.failCursor && address.searchParams.get("cursor") === options.failCursor) {
+            return Response.json({ message: "Service unavailable" }, { status: 503 });
+          }
           const type = address.searchParams.get("type");
           const data = type ? records.filter((record) => record.type === type) : records;
-          return Response.json({ data, deleted: [], serverTime: null });
+          // A server from before paging ignores `limit`: one reply, no cursor, no total.
+          if (options.legacy) return Response.json({ data, deleted: [], serverTime: null });
+          return documentListReply(data, String(url));
         }
 
         return Response.json({ message: "Not found" }, { status: 404 });
@@ -1015,16 +1173,57 @@ describe("S-347: the account backup made before deleting the account", () => {
     );
   });
 
-  it("S-347: a list as long as the server's cap is treated as cut short", async () => {
-    const many = Array.from({ length: SERVER_LIST_CAP }, (_, index) =>
+  function manyCloudRecords(count: number) {
+    return Array.from({ length: count }, (_, index) => {
+      const document = createDocument("RESUME");
+      deleteDocument("RESUME", document.id);
+      return cloudRecord({ ...document, title: `R${index}` }, 1);
+    });
+  }
+
+  it("Part H: the backup walks every page of the account, 20 bodies at a time", async () => {
+    serveAccount(manyCloudRecords(45));
+
+    const titles = await backupTitles();
+
+    expect(titles).toHaveLength(45);
+    expect(titles).toEqual(expect.arrayContaining(["R0", "R20", "R44"]));
+    const resumeCalls = vi
+      .mocked(fetch)
+      .mock.calls.map(([url]) => new URL(String(url)).searchParams)
+      .filter((params) => params.get("type") === "RESUME");
+    expect(resumeCalls.map((params) => [params.get("limit"), params.get("cursor")])).toEqual([
+      ["20", null],
+      ["20", "20"],
+      ["20", "40"],
+    ]);
+  });
+
+  it("Part H: a full reply from a server without paging is treated as cut short", async () => {
+    const many = Array.from({ length: LEGACY_SERVER_LIST_CAP }, (_, index) =>
       cloudRecord({ id: `r-${index}`, type: "RESUME", title: `R${index}` }, 1),
     );
-    serveAccount(many);
+    serveAccount(many, { legacy: true });
 
     const result = await backup();
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.message).toMatch(/more documents than one backup can fetch/);
+  });
+
+  it("Part H: a short reply from a server without paging is the whole list", async () => {
+    serveAccount(manyCloudRecords(3), { legacy: true });
+
+    expect(await backupTitles()).toHaveLength(3);
+  });
+
+  it("Part H: a page that fails part way makes no backup at all", async () => {
+    serveAccount(manyCloudRecords(45), { failCursor: "40" });
+
+    const result = await backup();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/could not be loaded: Service unavailable/);
   });
 
   it("S-347: on a device holding another account's documents, the account's cloud documents are still in it", async () => {

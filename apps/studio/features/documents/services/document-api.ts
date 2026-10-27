@@ -26,14 +26,72 @@ export interface DocumentListOptions {
   updatedSince?: string;
   /** Include document bodies. Off by default — they dominate the payload. */
   includeContent?: boolean;
+  /**
+   * Page size. Sending it (or `cursor`) asks for one page of a keyset walk; the server allows
+   * at most 50, and at most 20 with `includeContent`. A server without paging ignores it.
+   */
+  limit?: number;
+  /** The previous page's `nextCursor`, sent back with the same filters. */
+  cursor?: string;
 }
 
 export interface DocumentListResult {
   documents: CloudDocument[];
   /** Documents soft-deleted since `updatedSince`. Always empty for a full list. */
   deleted: Array<{ id: string; deletedAt: string }>;
-  /** The server's cursor for the next incremental list; null when the server sent none. */
+  /**
+   * The server's cursor for the next incremental list; null when the server sent none. Every
+   * page of one walk repeats the first page's value.
+   */
   serverTime: string | null;
+  /**
+   * Send back as `cursor` for the next page. Null on the last page, and from a server without
+   * paging, whose one reply is the whole list.
+   */
+  nextCursor: string | null;
+  /** The account's live documents of this type; null when the server did not say. */
+  total: number | null;
+}
+
+/** The most documents with bodies the server sends in one page. */
+export const DOCUMENT_PAGE_SIZE_WITH_CONTENT = 20;
+/** The most documents without bodies the server sends in one page. */
+export const DOCUMENT_PAGE_SIZE = 50;
+
+/**
+ * The most pages one walk may take when the server's count cannot bound it (no `total`, or
+ * tombstones paged beside the documents): 20,000 documents at 20 a page.
+ */
+const MAX_PAGES_PER_WALK = 1_000;
+
+/** Pages allowed over the counted ones, for documents edited mid-walk that come round again. */
+const PAGE_SLACK = 5;
+
+/**
+ * Checks each page of one walk and throws rather than let a misbehaving server keep it going
+ * forever: a page that hands back the cursor it was asked with, or more pages than the
+ * account's documents can fill. `countsEveryRow` is false when tombstones ride along (an
+ * `updatedSince` walk), since `total` counts only live documents.
+ */
+export function createPageGuard(limit: number, countsEveryRow: boolean) {
+  let pages = 0;
+  let maxPages = MAX_PAGES_PER_WALK;
+
+  return (sent: string | undefined, page: Pick<DocumentListResult, "nextCursor" | "total">) => {
+    if (page.nextCursor !== null && page.nextCursor === sent) {
+      throw new Error("The server sent the same page of documents twice. Please try again later.");
+    }
+
+    pages += 1;
+
+    if (pages === 1 && countsEveryRow && page.total !== null) {
+      maxPages = Math.min(MAX_PAGES_PER_WALK, Math.ceil(page.total / limit) + PAGE_SLACK);
+    }
+
+    if (page.nextCursor !== null && pages >= maxPages) {
+      throw new Error("The server kept sending pages of documents. Please try again later.");
+    }
+  };
 }
 
 export interface DocumentCreateResult {
@@ -109,7 +167,7 @@ async function request(path: string, init: RequestInit): Promise<Response> {
 
 export class DocumentApi {
   /**
-   * List documents for the current user.
+   * List documents for the current user: one page when `limit` or `cursor` is set.
    *
    * Bodies are opt-in: a metadata-only list of 50 resumes is a few KB where the
    * full-content version was ~600KB. Callers that merge content (the sync hydrate
@@ -126,6 +184,8 @@ export class DocumentApi {
     if (type) params.append("type", type);
     if (options?.updatedSince) params.append("updatedSince", options.updatedSince);
     if (options?.includeContent) params.append("includeContent", "true");
+    if (options?.limit !== undefined) params.append("limit", String(options.limit));
+    if (options?.cursor) params.append("cursor", options.cursor);
 
     if (params.toString()) url += `?${params.toString()}`;
 
@@ -139,7 +199,28 @@ export class DocumentApi {
       documents: body.data ?? [],
       deleted: Array.isArray(body.deleted) ? body.deleted : [],
       serverTime: typeof body.serverTime === "string" ? body.serverTime : null,
+      nextCursor: typeof body.nextCursor === "string" && body.nextCursor ? body.nextCursor : null,
+      total: typeof body.total === "number" ? body.total : null,
     };
+  }
+
+  /**
+   * Every page of one list, in order, each yielded as it arrives; leaving the loop early stops
+   * the walk. Against a server without paging this is the one full reply.
+   */
+  static async *pages(
+    type: DocumentType | undefined,
+    options: Omit<DocumentListOptions, "cursor"> & { limit: number },
+  ): AsyncGenerator<DocumentListResult> {
+    const checkPage = createPageGuard(options.limit, !options.updatedSince);
+    let cursor: string | undefined;
+
+    do {
+      const page = await DocumentApi.list(type, { ...options, cursor });
+      checkPage(cursor, page);
+      yield page;
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
   }
 
   static async get(id: string): Promise<CloudDocument> {

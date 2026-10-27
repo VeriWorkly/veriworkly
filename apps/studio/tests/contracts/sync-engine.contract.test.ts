@@ -5,6 +5,11 @@ import { LocalStorageService } from "@/features/documents/services/local-storage
 import { DocumentSyncService } from "@/features/documents/services/document-sync-service";
 import { clearWorkspaceStorage } from "@/features/documents/services/document-workspace-service";
 import {
+  countPendingCloudDocuments,
+  getCloudPullState,
+  hydrateAllDocumentsFromCloud,
+} from "@/features/documents/services/document-sync";
+import {
   DocumentApi,
   DocumentApiError,
   type CloudDocument,
@@ -480,6 +485,8 @@ describe("document sync service contract", () => {
       documents: [],
       deleted: [{ id: "doc-1", deletedAt: "2026-10-05T00:00:00.000Z" }],
       serverTime: "2026-10-05T00:00:00.000Z",
+      nextCursor: null,
+      total: null,
     });
 
     await service.hydrate({ force: true });
@@ -557,6 +564,8 @@ describe("document sync service contract", () => {
       documents: [cloudRow("doc-1", 3, createDoc("doc-1", {}, "from the other device"))],
       deleted: [],
       serverTime: "2026-10-04T00:00:00.000Z",
+      nextCursor: null,
+      total: null,
     });
     await service.hydrate({ force: true });
 
@@ -725,6 +734,8 @@ describe("document sync service contract", () => {
       documents: [cloudRow("remote", 1, createDoc("remote", { status: "synced" }))],
       deleted: [],
       serverTime: "2026-10-04T00:00:00.000Z",
+      nextCursor: null,
+      total: null,
     });
 
     const first = await service.hydrate({ force: true });
@@ -743,6 +754,8 @@ describe("document sync service contract", () => {
         { id: "local", deletedAt: "2026-10-05T00:00:00.000Z" },
       ],
       serverTime: "2026-10-05T00:00:00.000Z",
+      nextCursor: null,
+      total: null,
     });
 
     await service.hydrate({ minIntervalMs: 0 });
@@ -750,6 +763,7 @@ describe("document sync service contract", () => {
     expect(DocumentApi.list).toHaveBeenLastCalledWith("RESUME", {
       includeContent: true,
       updatedSince: "2026-10-04T00:00:00.000Z",
+      limit: 20,
     });
     expect(storage.loadById("linked")).toBeNull();
     // Unsynced edits survive a deletion made elsewhere, as an unlinked local-only copy.
@@ -770,6 +784,8 @@ describe("document sync service contract", () => {
       documents: [cloudRow("doc-1", 3, createDoc("doc-1", {}, "theirs"))],
       deleted: [],
       serverTime: "2026-10-04T00:00:00.000Z",
+      nextCursor: null,
+      total: null,
     });
 
     await service.hydrate({ force: true });
@@ -795,6 +811,8 @@ describe("document sync service contract", () => {
       documents: [cloudRow("users-a-doc", 1, createDoc("users-a-doc", { status: "synced" }))],
       deleted: [],
       serverTime: "2026-10-26T00:00:00.000Z",
+      nextCursor: null,
+      total: null,
     });
 
     expect((await pull).ok).toBe(false);
@@ -853,12 +871,494 @@ describe("document sync service contract", () => {
       documents: [],
       deleted: [],
       serverTime: null,
+      nextCursor: null,
+      total: null,
     });
 
     expect((await service.hydrate()).ok).toBe(true);
     expect(DocumentApi.list).toHaveBeenCalledWith("RESUME", {
       includeContent: true,
       updatedSince: undefined,
+      limit: 20,
     });
+  });
+
+  describe("V-263 / Part H: the pull walks the server's pages", () => {
+    const HYDRATE_META_KEY = "veriworkly:cloud-hydrate-meta:resume";
+
+    type ListPage = Awaited<ReturnType<typeof DocumentApi.list>>;
+
+    function page(overrides: Partial<ListPage>): ListPage {
+      return {
+        documents: [],
+        deleted: [],
+        serverTime: "2026-10-27T00:00:00.000Z",
+        nextCursor: null,
+        total: null,
+        ...overrides,
+      };
+    }
+
+    function remote(id: string, revision = 1) {
+      return cloudRow(id, revision, createDoc(id, { status: "synced" }));
+    }
+
+    function storedCursor() {
+      const raw = localStorage.getItem(HYDRATE_META_KEY);
+      return raw ? (JSON.parse(raw) as { lastServerCursor?: string }).lastServerCursor : undefined;
+    }
+
+    it("Part H: walks every page of 20, merges each, and stores the cursor after the last", async () => {
+      const { storage, service } = createSyncHarness();
+      const onTotal = vi.fn();
+      const firstPageTime = "2026-10-27T01:00:00.000Z";
+      let storedAfterFirstPage: string | undefined = "unset";
+
+      vi.mocked(DocumentApi.list)
+        .mockResolvedValueOnce(
+          page({ documents: [remote("a")], serverTime: firstPageTime, nextCursor: "c1", total: 3 }),
+        )
+        .mockImplementationOnce(async () => {
+          // The first page is already in storage, but the cursor has not moved yet.
+          expect(storage.loadById("a")).not.toBeNull();
+          storedAfterFirstPage = storedCursor();
+          return page({ documents: [remote("b")], serverTime: firstPageTime, nextCursor: "c2" });
+        })
+        .mockResolvedValueOnce(page({ documents: [remote("c")], serverTime: firstPageTime }));
+
+      const result = await service.hydrate({ force: true, onTotal });
+
+      expect(result).toMatchObject({ ok: true, message: "Merged 3 documents." });
+      expect(vi.mocked(DocumentApi.list).mock.calls.map(([, options]) => options)).toEqual([
+        { includeContent: true, updatedSince: undefined, limit: 20, cursor: undefined },
+        { includeContent: true, updatedSince: undefined, limit: 20, cursor: "c1" },
+        { includeContent: true, updatedSince: undefined, limit: 20, cursor: "c2" },
+      ]);
+      expect(["a", "b", "c"].map((id) => storage.loadById(id)?.sync.cloudDocumentId)).toEqual([
+        "a",
+        "b",
+        "c",
+      ]);
+      expect(storedAfterFirstPage).toBeUndefined();
+      expect(storedCursor()).toBe(firstPageTime);
+      expect(onTotal).toHaveBeenCalledTimes(1);
+      expect(onTotal).toHaveBeenCalledWith(3);
+    });
+
+    it("Part H: a failure mid-walk keeps what merged, keeps the cursor, and the next pull resumes there", async () => {
+      const { storage, service } = createSyncHarness();
+
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(
+        page({ serverTime: "2026-10-26T00:00:00.000Z" }),
+      );
+      await service.hydrate({ force: true });
+
+      vi.mocked(DocumentApi.list)
+        .mockResolvedValueOnce(page({ documents: [remote("a")], nextCursor: "c1" }))
+        .mockRejectedValueOnce(new Error("The server took too long to answer."));
+
+      const failed = await service.hydrate({ minIntervalMs: 0 });
+
+      expect(failed.ok).toBe(false);
+      expect(failed.message).toContain("The server took too long to answer.");
+      expect(failed.message).toContain("1 documents arrived before it stopped");
+      expect(storage.loadById("a")?.sync.cloudDocumentId).toBe("a");
+      expect(storedCursor()).toBe("2026-10-26T00:00:00.000Z");
+
+      // The next pull resumes at the page that failed, from the same cursor, without
+      // downloading the pages that already arrived.
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(page({ documents: [remote("b")] }));
+
+      const retried = await service.hydrate({ minIntervalMs: 0 });
+
+      expect(retried.ok).toBe(true);
+      expect(DocumentApi.list).toHaveBeenCalledTimes(4);
+      expect(DocumentApi.list).toHaveBeenLastCalledWith("RESUME", {
+        includeContent: true,
+        updatedSince: "2026-10-26T00:00:00.000Z",
+        limit: 20,
+        cursor: "c1",
+      });
+      expect(
+        storage
+          .listIndex()
+          .map((entry) => entry.id)
+          .sort(),
+      ).toEqual(["a", "b"]);
+      expect(storedCursor()).toBe("2026-10-27T00:00:00.000Z");
+      expect(JSON.parse(localStorage.getItem(HYDRATE_META_KEY)!).resume).toBeUndefined();
+    });
+
+    it("Part H: a sign-out between pages stops the walk and writes nothing more", async () => {
+      const { storage, service } = createSyncHarness();
+
+      let release: (value: ListPage) => void = () => {};
+      vi.mocked(DocumentApi.list)
+        .mockResolvedValueOnce(page({ documents: [remote("a")], nextCursor: "c1" }))
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+        );
+
+      const pull = service.hydrate({ force: true });
+      await vi.waitFor(() => expect(DocumentApi.list).toHaveBeenCalledTimes(2));
+      clearWorkspaceStorage();
+      release(page({ documents: [remote("b")], nextCursor: "c2" }));
+
+      expect((await pull).ok).toBe(false);
+      expect(DocumentApi.list).toHaveBeenCalledTimes(2);
+      expect(storage.loadById("a")).toBeNull();
+      expect(storage.loadById("b")).toBeNull();
+      expect(localStorage.getItem(HYDRATE_META_KEY)).toBeNull();
+    });
+
+    it("Part H: tombstones on every page are applied", async () => {
+      const { storage, service, seed } = createSyncHarness();
+      seed(createDoc("gone-1", { cloudDocumentId: "gone-1", status: "synced", revision: 1 }));
+      seed(createDoc("gone-2", { cloudDocumentId: "gone-2", status: "synced", revision: 1 }));
+      localStorage.setItem(
+        HYDRATE_META_KEY,
+        JSON.stringify({ lastHydratedAt: 0, lastServerCursor: "2026-10-26T00:00:00.000Z" }),
+      );
+
+      vi.mocked(DocumentApi.list)
+        .mockResolvedValueOnce(
+          page({
+            deleted: [{ id: "gone-1", deletedAt: "2026-10-26T01:00:00.000Z" }],
+            nextCursor: "c1",
+          }),
+        )
+        .mockResolvedValueOnce(
+          page({ deleted: [{ id: "gone-2", deletedAt: "2026-10-26T02:00:00.000Z" }] }),
+        );
+
+      const result = await service.hydrate();
+
+      expect(result.ok).toBe(true);
+      expect(result.message).toContain("Removed 2 deleted on another device.");
+      expect(storage.loadById("gone-1")).toBeNull();
+      expect(storage.loadById("gone-2")).toBeNull();
+    });
+
+    it("Part H: a server without paging answers once, and that one reply is the whole pull", async () => {
+      const { storage, service } = createSyncHarness();
+
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(
+        page({ documents: [remote("a"), remote("b")], serverTime: "2026-10-27T02:00:00.000Z" }),
+      );
+
+      expect((await service.hydrate({ force: true })).ok).toBe(true);
+      expect(DocumentApi.list).toHaveBeenCalledTimes(1);
+      expect(storage.listIndex()).toHaveLength(2);
+      expect(storedCursor()).toBe("2026-10-27T02:00:00.000Z");
+    });
+
+    it("Part H: a page that repeats its own cursor stops the walk instead of looping", async () => {
+      const { service } = createSyncHarness();
+
+      vi.mocked(DocumentApi.list)
+        .mockResolvedValueOnce(page({ documents: [remote("a")], nextCursor: "c1" }))
+        .mockResolvedValue(page({ nextCursor: "c1" }));
+
+      const result = await service.hydrate({ force: true });
+
+      expect(result.ok).toBe(false);
+      expect(DocumentApi.list).toHaveBeenCalledTimes(2);
+      expect(storedCursor()).toBeUndefined();
+    });
+
+    it("Part H: a second pull while one is walking shares it instead of walking again", async () => {
+      const { service } = createSyncHarness();
+
+      let release: (value: ListPage) => void = () => {};
+      vi.mocked(DocumentApi.list).mockReturnValueOnce(
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+      );
+
+      const first = service.hydrate({ minIntervalMs: 0 });
+      const second = service.hydrate({ minIntervalMs: 0 });
+      release(page({ documents: [remote("a")] }));
+
+      expect(await second).toEqual(await first);
+      expect(DocumentApi.list).toHaveBeenCalledTimes(1);
+    });
+
+    it("Part H: a resume point the server refuses (400) is dropped, and the next pull starts over", async () => {
+      const { service } = createSyncHarness();
+      localStorage.setItem(
+        HYDRATE_META_KEY,
+        JSON.stringify({
+          lastHydratedAt: 0,
+          lastServerCursor: "2026-10-26T00:00:00.000Z",
+          resume: { updatedSince: "2026-10-26T00:00:00.000Z", cursor: "stale" },
+        }),
+      );
+
+      vi.mocked(DocumentApi.list).mockRejectedValueOnce(
+        new DocumentApiError(400, "Invalid cursor", null, { code: "INVALID_DOCUMENT_CURSOR" }),
+      );
+      expect((await service.hydrate()).ok).toBe(false);
+      expect(DocumentApi.list).toHaveBeenLastCalledWith(
+        "RESUME",
+        expect.objectContaining({ cursor: "stale" }),
+      );
+
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(page({}));
+      expect((await service.hydrate()).ok).toBe(true);
+      expect(DocumentApi.list).toHaveBeenLastCalledWith(
+        "RESUME",
+        expect.objectContaining({ updatedSince: "2026-10-26T00:00:00.000Z", cursor: undefined }),
+      );
+    });
+
+    it("Part H: a resume point from another cursor is not used, and a forced pull ignores it", async () => {
+      const { service } = createSyncHarness();
+      localStorage.setItem(
+        HYDRATE_META_KEY,
+        JSON.stringify({
+          lastHydratedAt: 0,
+          lastServerCursor: "2026-10-26T00:00:00.000Z",
+          resume: { updatedSince: null, cursor: "from-a-full-walk" },
+        }),
+      );
+
+      vi.mocked(DocumentApi.list).mockResolvedValue(page({}));
+
+      await service.hydrate();
+      expect(DocumentApi.list).toHaveBeenLastCalledWith(
+        "RESUME",
+        expect.objectContaining({ cursor: undefined }),
+      );
+
+      localStorage.setItem(
+        HYDRATE_META_KEY,
+        JSON.stringify({
+          lastHydratedAt: 0,
+          lastServerCursor: "2026-10-26T00:00:00.000Z",
+          resume: { updatedSince: "2026-10-26T00:00:00.000Z", cursor: "c1" },
+        }),
+      );
+
+      await service.hydrate({ force: true });
+      expect(DocumentApi.list).toHaveBeenLastCalledWith(
+        "RESUME",
+        expect.objectContaining({ updatedSince: undefined, cursor: undefined }),
+      );
+    });
+
+    it("Part H: a walk longer than the account's documents can fill is stopped", async () => {
+      const { service } = createSyncHarness();
+      let n = 0;
+
+      // 40 documents fill 2 pages; with slack for edits mid-walk the guard allows 7.
+      vi.mocked(DocumentApi.list).mockImplementation(async () => {
+        n += 1;
+        return page({ documents: [remote(`d${n}`)], nextCursor: `c${n}`, total: 40 });
+      });
+
+      const result = await service.hydrate({ force: true });
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("kept sending pages");
+      expect(DocumentApi.list).toHaveBeenCalledTimes(7);
+      expect(storedCursor()).toBeUndefined();
+    });
+
+    it("Part H: only a full pull reports the account's count", async () => {
+      const { service } = createSyncHarness();
+      const onTotal = vi.fn();
+      localStorage.setItem(
+        HYDRATE_META_KEY,
+        JSON.stringify({ lastHydratedAt: 0, lastServerCursor: "2026-10-26T00:00:00.000Z" }),
+      );
+
+      // An incremental pull brings only what changed; its count could never be closed.
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(page({ total: 30 }));
+      await service.hydrate({ onTotal });
+      expect(onTotal).not.toHaveBeenCalled();
+
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(page({ total: 30 }));
+      await service.hydrate({ force: true, onTotal });
+      expect(onTotal).toHaveBeenCalledWith(30);
+    });
+
+    it("Part H: a forced pull leaves the cursor, so the deletions since it still arrive", async () => {
+      const { storage, service, seed } = createSyncHarness();
+      seed(createDoc("gone", { cloudDocumentId: "gone", status: "synced", revision: 1 }));
+      localStorage.setItem(
+        HYDRATE_META_KEY,
+        JSON.stringify({ lastHydratedAt: 0, lastServerCursor: "2026-10-26T00:00:00.000Z" }),
+      );
+
+      // A full list carries no tombstones.
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(
+        page({ serverTime: "2026-10-27T05:00:00.000Z" }),
+      );
+      expect((await service.hydrate({ force: true })).ok).toBe(true);
+      expect(storedCursor()).toBe("2026-10-26T00:00:00.000Z");
+
+      vi.mocked(DocumentApi.list).mockResolvedValueOnce(
+        page({ deleted: [{ id: "gone", deletedAt: "2026-10-26T12:00:00.000Z" }] }),
+      );
+      await service.hydrate({ minIntervalMs: 0 });
+
+      expect(DocumentApi.list).toHaveBeenLastCalledWith(
+        "RESUME",
+        expect.objectContaining({ updatedSince: "2026-10-26T00:00:00.000Z" }),
+      );
+      expect(storage.loadById("gone")).toBeNull();
+    });
+
+    it("Part H: a forced pull does not join a walk already running", async () => {
+      const { service } = createSyncHarness();
+
+      let release: (value: ListPage) => void = () => {};
+      vi.mocked(DocumentApi.list)
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+        )
+        .mockResolvedValueOnce(page({ documents: [remote("forced")] }));
+
+      const running = service.hydrate({ minIntervalMs: 0 });
+      const forced = await service.hydrate({ force: true });
+      release(page({}));
+      await running;
+
+      expect(forced.message).toBe("Merged 1 documents.");
+      expect(DocumentApi.list).toHaveBeenCalledTimes(2);
+    });
+
+    it("Part H: a caller joining a running walk shares its result; its own options are not applied", async () => {
+      const { service } = createSyncHarness();
+      const joinerTotal = vi.fn();
+
+      let release: (value: ListPage) => void = () => {};
+      vi.mocked(DocumentApi.list).mockReturnValueOnce(
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+      );
+
+      const first = service.hydrate({ force: true });
+      const joined = service.hydrate({ minIntervalMs: 0, onTotal: joinerTotal });
+      release(page({ total: 4 }));
+
+      expect(await joined).toEqual(await first);
+      expect(joinerTotal).not.toHaveBeenCalled();
+    });
+
+    it("Part H: a walk from before a sign-out is never shared with a pull after it", async () => {
+      const { service } = createSyncHarness();
+
+      let release: (value: ListPage) => void = () => {};
+      vi.mocked(DocumentApi.list)
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+        )
+        .mockResolvedValueOnce(page({ documents: [remote("after")] }));
+
+      const before = service.hydrate({ minIntervalMs: 0 });
+      clearWorkspaceStorage();
+      const after = await service.hydrate({ minIntervalMs: 0 });
+      release(page({ documents: [remote("before")] }));
+
+      expect(after.ok).toBe(true);
+      expect(after.message).toBe("Merged 1 documents.");
+      expect((await before).ok).toBe(false);
+      expect(DocumentApi.list).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+describe("Part H: how many documents a pull has still to bring", () => {
+  type ListPage = Awaited<ReturnType<typeof DocumentApi.list>>;
+  const NONE_LINKED = { RESUME: 0, COVER_LETTER: 0 };
+
+  function page(overrides: Partial<ListPage>): ListPage {
+    return {
+      documents: [],
+      deleted: [],
+      serverTime: "2026-10-27T00:00:00.000Z",
+      nextCursor: null,
+      total: null,
+      ...overrides,
+    };
+  }
+
+  /** Starts a pull of every type whose resume walk stalls on its second page. */
+  function startStalledPull() {
+    let release: (value: ListPage) => void = () => {};
+
+    vi.mocked(DocumentApi.list).mockImplementation(async (type, options) => {
+      if (type === "COVER_LETTER") return page({ total: 4 });
+      if (!options?.cursor) return page({ total: 30, nextCursor: "c1" });
+
+      return new Promise<ListPage>((resolve) => {
+        release = resolve;
+      });
+    });
+
+    const pull = hydrateAllDocumentsFromCloud({ minIntervalMs: 0 });
+
+    return {
+      pull,
+      finish: async () => {
+        await vi.waitFor(() => expect(DocumentApi.list).toHaveBeenCalledTimes(3));
+        release(page({}));
+        await pull;
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(DocumentApi.list).mockReset();
+    createSyncHarness();
+  });
+
+  it("Part H: counts only the type the library shows, and nothing once the pull ends", async () => {
+    const { finish } = startStalledPull();
+    await vi.waitFor(() => expect(DocumentApi.list).toHaveBeenCalledTimes(3));
+
+    const state = getCloudPullState();
+    expect(countPendingCloudDocuments(state, NONE_LINKED, "RESUME")).toBe(30);
+    expect(countPendingCloudDocuments(state, NONE_LINKED, "COVER_LETTER")).toBe(4);
+    expect(countPendingCloudDocuments(state, NONE_LINKED, "ALL")).toBe(34);
+    expect(countPendingCloudDocuments(state, { RESUME: 25, COVER_LETTER: 4 }, "ALL")).toBe(5);
+
+    await finish();
+    expect(countPendingCloudDocuments(getCloudPullState(), NONE_LINKED, "ALL")).toBe(0);
+  });
+
+  it("Part H: an incremental pull shows no count it could never close", async () => {
+    for (const key of ["resume", "cover_letter"]) {
+      localStorage.setItem(
+        `veriworkly:cloud-hydrate-meta:${key}`,
+        JSON.stringify({ lastHydratedAt: 0, lastServerCursor: "2026-10-26T00:00:00.000Z" }),
+      );
+    }
+
+    const { finish } = startStalledPull();
+    await vi.waitFor(() => expect(DocumentApi.list).toHaveBeenCalledTimes(3));
+
+    expect(countPendingCloudDocuments(getCloudPullState(), NONE_LINKED, "ALL")).toBe(0);
+    await finish();
+  });
+
+  it("Part H: counts reported before a sign-out are not shown after it", async () => {
+    const { finish } = startStalledPull();
+    await vi.waitFor(() => expect(DocumentApi.list).toHaveBeenCalledTimes(3));
+
+    clearWorkspaceStorage();
+
+    expect(getCloudPullState().pulling).toBe(true);
+    expect(countPendingCloudDocuments(getCloudPullState(), NONE_LINKED, "ALL")).toBe(0);
+    await finish();
   });
 });
