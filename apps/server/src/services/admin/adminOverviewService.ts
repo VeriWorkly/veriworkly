@@ -200,9 +200,12 @@ async function buildAdminOverview(days: number) {
     actionQueue: {
       pendingAmbassadorApplications: count(ambassadorsResult, (value) => value.pending),
       pendingWithdrawals: count(affiliatesResult, (value) => value.pendingWithdrawals.count),
+      // Every PENDING commission, as the nav badge counts them (V-290): the status totals are
+      // wallet-currency only, so the ones awaiting conversion are added back.
       pendingCommissions: count(
         affiliatesResult,
-        (value) => value.commissionsByStatus.PENDING?.count ?? 0,
+        (value) =>
+          (value.commissionsByStatus.PENDING?.count ?? 0) + value.commissionsAwaitingConversion,
       ),
       failedWebhooks: count(billingResult, (value) => value.webhooks.failed),
       suspendedPortfolios: count(portfoliosResult, (value) => value.suspendedForReview),

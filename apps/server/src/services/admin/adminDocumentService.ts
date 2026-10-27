@@ -274,8 +274,8 @@ async function loadDocumentForMutation(documentId: string) {
       visibility: true,
       moderatedPrivateAt: true,
       deletedAt: true,
-      // For restoreDocument's purge check (assertDocumentNotPurged).
-      content: true,
+      // No `content` (V-298): a résumé can be megabytes, and only the restore needs to know whether
+      // it was purged, which its conditional write and the re-read after it answer.
       user: { select: { username: true } },
       shareLinks: { select: { slug: true } },
     },
@@ -513,9 +513,8 @@ export async function restoreDocument(documentId: string, audit?: AdminAuditInpu
 
   if (!document.deletedAt) throw new ApiError(409, "Document is not deleted.");
 
-  assertDocumentNotPurged(document);
-
-  // Conditional, so a purge that lands between the read above and this write wins (410).
+  // Conditional on the content not being purged: a purged document, or a purge that lands
+  // between the read above and this write, is answered 410 by the re-read below.
   const restored = await prisma.$transaction(async (tx) => {
     const result = await tx.document.updateMany({
       where: {

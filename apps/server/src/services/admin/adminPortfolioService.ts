@@ -309,7 +309,9 @@ export async function updatePublicationStatus(
       ? {
           status,
           suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${reason}`,
-          suspendedAt: new Date(),
+          // A second suspension over a lock is a new reason, not a new takedown: the site went
+          // down when the first one landed (V-294). The audit entry keeps both reasons.
+          ...(locked ? {} : { suspendedAt: new Date() }),
           ...rememberReasonBeforeModeration(publication),
         }
       : { status, suspensionReason: null, suspendedAt: null, reasonBeforeModeration: null };
@@ -473,7 +475,8 @@ export async function forceUnpublish(
       data: {
         status: "SUSPENDED",
         suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${audit?.reason?.trim() || "force_unpublished"}`,
-        suspendedAt: new Date(),
+        // Over an existing lock the site is already down: it keeps that date (V-294).
+        ...(isModerationLocked(publication) ? {} : { suspendedAt: new Date() }),
         ...rememberReasonBeforeModeration(publication),
       },
     });

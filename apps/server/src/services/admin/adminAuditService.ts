@@ -114,6 +114,14 @@ export function writeAdminAudit(tx: Prisma.TransactionClient, input: AdminAuditI
 }
 
 /**
+ * Records an admin action after the fact and fails with it (V-291): for an action that is safe to
+ * repeat (a session revoke), so a lost record is a 500 the admin retries, never a silent 200.
+ */
+export function recordAdminAuditOrThrow(input: AdminAuditInput) {
+  return prisma.adminAuditEntry.create({ data: auditData(input) });
+}
+
+/**
  * Records an admin action after the fact, for the mutations that are not transactional (cache
  * flushes, sync triggers, API-key edits, content pages).
  *

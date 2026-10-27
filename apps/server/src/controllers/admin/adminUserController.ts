@@ -1,7 +1,7 @@
 import { adminHandler, deleteRequestInput } from "#controllers/admin/adminRequestHandler";
 
 import * as AdminUserService from "#services/admin/adminUserService";
-import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
+import { ADMIN_AUDIT_ACTIONS, recordAdminAuditOrThrow } from "#services/admin/adminAuditService";
 
 import { adminIdParamSchema } from "#validators/admin/adminCommonValidator";
 import {
@@ -50,7 +50,9 @@ export const AdminUserController = {
 
     const result = await AdminUserService.revokeUserSessions(id);
 
-    await recordAdminAudit({
+    // Must be on record (V-291): a failed write is a 500, not a silent 200. Revoking again on
+    // the retry is harmless.
+    await recordAdminAuditOrThrow({
       actorId,
       action: ADMIN_AUDIT_ACTIONS.userSessionsRevoke,
       targetType: "User",

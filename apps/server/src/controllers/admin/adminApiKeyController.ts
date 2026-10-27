@@ -1,7 +1,6 @@
 import { adminHandler, deleteRequestInput } from "#controllers/admin/adminRequestHandler";
 
 import * as AdminApiKeyService from "#services/admin/adminApiKeyService";
-import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
 
 import { adminIdParamSchema } from "#validators/admin/adminCommonValidator";
 import {
@@ -28,24 +27,8 @@ export const AdminApiKeyController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminApiKeyUpdateSchema.parse(req.body);
 
-    const { apiKey, previous } = await AdminApiKeyService.updateApiKey(id, input);
-
-    await recordAdminAudit({
-      actorId,
-      action: ADMIN_AUDIT_ACTIONS.apiKeyUpdate,
-      targetType: "ApiKey",
-      targetId: id,
-      reason: input.reason,
-      metadata: {
-        ownerId: previous.userId,
-        previousIsActive: previous.isActive,
-        previousRateLimit: previous.rateLimit,
-        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-        ...(input.rateLimit !== undefined ? { rateLimit: input.rateLimit } : {}),
-      },
-    });
-
-    return apiKey;
+    // Audited in the update's transaction (V-291).
+    return AdminApiKeyService.updateApiKey(id, input, { actorId, reason: input.reason });
   }, "API key updated successfully"),
 
   /** DELETE /admin/api-keys/:id — permanent revocation (the row is kept for the audit trail). */
@@ -53,17 +36,9 @@ export const AdminApiKeyController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminApiKeyRevokeSchema.parse(deleteRequestInput(req));
 
-    const apiKey = await AdminApiKeyService.revokeApiKey(id, input.confirm);
-
-    await recordAdminAudit({
+    return AdminApiKeyService.revokeApiKey(id, input.confirm, {
       actorId,
-      action: ADMIN_AUDIT_ACTIONS.apiKeyRevoke,
-      targetType: "ApiKey",
-      targetId: id,
       reason: input.reason,
-      metadata: { ownerId: apiKey.user.id, name: apiKey.name },
     });
-
-    return apiKey;
   }, "API key revoked successfully"),
 };
