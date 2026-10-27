@@ -152,3 +152,30 @@ describe("a repeated query key reads as its first value (W-078)", () => {
     expect(firstParam(undefined)).toBeUndefined();
   });
 });
+
+describe("real release ids reach the backend", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("asks for v3-31-0 and returns the entry", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        urls.push(url);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: { id: "v3-31-0", version: "3.31.0", title: "Release", publishedAt: "2026-10-24" },
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+    const { fetchChangelogEntryById } =
+      await import("@/features/changelog/services/changelog-backend");
+
+    expect((await fetchChangelogEntryById("v3-31-0"))?.title).toBe("Release");
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).toMatch(/\/changelog\/v3-31-0$/);
+  });
+});

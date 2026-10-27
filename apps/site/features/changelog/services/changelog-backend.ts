@@ -321,7 +321,7 @@ export async function fetchChangelogDetail(id: string): Promise<ChangelogDetail 
 }
 
 /** Entry ids are slugged versions ("v3-31-0"): anything else, `stats` included, would reach another backend route. */
-const CHANGELOG_ID = /^v[w-]{1,80}$/;
+const CHANGELOG_ID = /^v[\w-]{1,80}$/;
 
 export async function fetchChangelogEntryById(id: string): Promise<ChangelogEntry | null> {
   if (!CHANGELOG_ID.test(id)) return null;
