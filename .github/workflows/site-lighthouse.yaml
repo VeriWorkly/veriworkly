@@ -10,6 +10,12 @@ on:
       - "apps/site/**"
       - "packages/ui/**"
       - ".github/workflows/site-lighthouse.yaml"
+  # Two pull requests can each pass their JS budgets and go over once both are merged.
+  push:
+    branches: [master]
+    paths:
+      - "apps/site/**"
+      - "packages/ui/**"
   workflow_dispatch:
 
 permissions:

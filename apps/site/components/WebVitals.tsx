@@ -34,9 +34,12 @@ export function WebVitals() {
     };
 
     // @ts-expect-error Next's compiled copy of web-vitals ships without type declarations.
-    void import("next/dist/compiled/web-vitals").then((vitals: Record<string, OnMetric>) => {
-      for (const name of ["onLCP", "onINP", "onCLS", "onFCP", "onTTFB"]) vitals[name]?.(report);
-    });
+    void import("next/dist/compiled/web-vitals")
+      .then((vitals: Record<string, OnMetric>) => {
+        for (const name of ["onLCP", "onINP", "onCLS", "onFCP", "onTTFB"]) vitals[name]?.(report);
+      })
+      // A private Next path: if an upgrade moves it, lose the metrics, not the page.
+      .catch(() => {});
   }, []);
 
   return null;

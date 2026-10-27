@@ -78,3 +78,24 @@ describe("server-side calls forward only the auth cookies (W-066)", () => {
     ).toBe("veriworkly-auth.session_token=abc.def; __Secure-veriworkly-auth.session_data=x%20y");
   });
 });
+
+describe("server-side API calls act for the visitor (W-088)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("forwards the visitor's IP only with the internal key", async () => {
+    const { visitorHeaders } = await import("@/lib/server-api");
+    const request = new Headers({ "x-forwarded-for": "198.51.100.7, 203.0.113.9" });
+
+    vi.stubEnv("INTERNAL_API_KEY", "");
+    expect(visitorHeaders(request)).toEqual({});
+
+    vi.stubEnv("INTERNAL_API_KEY", "k".repeat(40));
+    expect(visitorHeaders(request)).toEqual({
+      "x-internal-key": "k".repeat(40),
+      "x-forwarded-client-ip": "203.0.113.9",
+    });
+    expect(visitorHeaders(new Headers({ "x-real-ip": "192.0.2.1" }))["x-forwarded-client-ip"]).toBe(
+      "192.0.2.1",
+    );
+  });
+});
