@@ -30,6 +30,9 @@ COPY apps/server/tsconfig.json ./apps/server/tsconfig.json
 # The Prisma CLI reads the datasource URL from prisma.config.ts; `migrate deploy` (compose service
 # `migrate`, run from this stage) fails without it.
 COPY apps/server/prisma.config.ts ./apps/server/prisma.config.ts
+# prisma.config.ts imports this helper; without it `prisma generate` (prebuild) and `migrate
+# deploy` cannot load the config (V-343). tests/config/dockerfile-install.test.ts checks it.
+COPY apps/server/scripts/migrationUrl.ts ./apps/server/scripts/migrationUrl.ts
 COPY apps/server/src ./apps/server/src
 
 RUN npm run build --workspace=@veriworkly/server
