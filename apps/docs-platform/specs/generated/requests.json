@@ -1250,7 +1250,7 @@
               "enum": ["ai_credits", "portfolio_pro", "bundle"]
             },
             "interval": { "type": "string", "enum": ["one_day", "seven_day", "monthly", "annual"] },
-            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)" }
+            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)[^\\\\\\s]*$" }
           },
           "required": ["interval"]
         }
@@ -1262,7 +1262,7 @@
           "type": "object",
           "properties": {
             "packKey": { "type": "string", "enum": ["credit_pack_250", "credit_pack_500"] },
-            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)" }
+            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)[^\\\\\\s]*$" }
           },
           "required": ["packKey"]
         }

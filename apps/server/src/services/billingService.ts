@@ -31,13 +31,14 @@ import { CreditService } from "#services/creditService";
 import { CREDIT_SOURCES } from "#services/creditSources";
 import { isDeletedAccount, redactIfForDeletedAccount } from "#services/deletedAccount";
 import {
+  addMonthsUtc,
   grantDueMonths,
   openAnnualCreditSchedule,
   subscriptionCreditGrantsWhere,
 } from "#services/annualCreditService";
 import { notifyOnce } from "#services/billingNotifications";
 import type { PurchaseConfirmation } from "#services/mail/billingMail";
-import { PRODUCT_NAMES, PASS_NAMES, UNLOCK_PHRASES, purchaseName } from "#services/productNames";
+import { PRODUCT_NAMES, PASS_NAMES, purchaseName } from "#services/productNames";
 import {
   creditPackCatalog,
   isCreditPackKey,
@@ -531,10 +532,9 @@ function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * DAY_MS);
 }
 
+/** In UTC and clamped to the month's last day: Jan 31 + 1 month is Feb 28/29, never Mar 3. */
 function addMonths(date: Date, months: number) {
-  const d = new Date(date.getTime());
-  d.setMonth(d.getMonth() + months);
-  return d;
+  return addMonthsUtc(date, months);
 }
 
 function addYears(date: Date, years: number) {
@@ -1162,10 +1162,6 @@ async function revokeReversedPass(tx: Prisma.TransactionClient, userId: string, 
 }
 
 export class BillingService {
-  static async getLatestSubscription(userId: string) {
-    return prisma.subscription.findFirst({ where: { userId }, orderBy: { updatedAt: "desc" } });
-  }
-
   /**
    * The follow-up every billing change owes the user, for callers that edit grants or
    * subscription rows without a provider event (admin edits): the publication is recomputed
@@ -1299,19 +1295,11 @@ export class BillingService {
       creditEconomics: publicCreditEconomics(),
       addOns: entitlementCurrent
         ? [
+            // Only what can be bought: there is no extra publish capacity product.
             { key: "extra_credits", name: "Extra credit packs" },
-            { key: "extra_publish_capacity", name: "Extra publish capacity" },
           ]
         : [],
     };
-  }
-
-  static async requirePublishAccess(userId: string) {
-    return EntitlementService.require(
-      userId,
-      ENTITLEMENT_KEYS.PORTFOLIO_PUBLISH,
-      `Publishing this template requires ${UNLOCK_PHRASES.portfolioPro}.`,
-    );
   }
 
   /**
@@ -2070,9 +2058,16 @@ export class BillingService {
     if (!user) throw new ApiError(404, "User not found.");
 
     const appendCallback = (base: string) => {
-      const url = new URL(base);
-      if (redirectUrl) url.searchParams.set("callbackURL", redirectUrl);
-      return url.toString();
+      if (!redirectUrl) return base;
+      try {
+        const url = new URL(base);
+        url.searchParams.set("callbackURL", redirectUrl);
+        return url.toString();
+      } catch {
+        // A relative or malformed configured URL: append rather than fail the checkout with a 500.
+        const separator = base.includes("?") ? "&" : "?";
+        return `${base}${separator}callbackURL=${encodeURIComponent(redirectUrl)}`;
+      }
     };
     const checkout = await getDodoCheckoutClient().checkoutSessions.create({
       product_cart: [{ product_id: productId, quantity: 1 }],
@@ -2133,9 +2128,17 @@ export class BillingService {
     const parsedEvent = dodoWebhookEventSchema.parse(event);
 
     // Token lock, renewed while the attempt runs and released by compare-and-delete (V-127):
-    // an attempt that outlives the TTL keeps its lock, and never deletes a retry's.
+    // an attempt that outlives the TTL keeps its lock, and never deletes a retry's. With Redis
+    // down the event is still processed (V-014): the row's unique `providerEventId` and the
+    // conditional claim below keep two attempts from running at once without it.
     const lock = await acquireJobLock(`billing:webhook:lock:${providerEventId}`, {
       ttlMs: WEBHOOK_LOCK_TTL_SECONDS * 1000,
+    }).catch((error: unknown) => {
+      logger.warn("Billing webhook lock unavailable; relying on the database claim", {
+        providerEventId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { stillOwner: async () => true, release: async () => undefined };
     });
 
     if (!lock) {
@@ -2187,21 +2190,33 @@ export class BillingService {
           // the lock (restart, flush) or the attempt crashed moments ago. Either way, running
           // a second attempt alongside it is the race the lock exists to prevent; tell the
           // provider to retry after the lock budget has passed.
-          if (
-            existing.status === "PROCESSING" &&
-            existing.lastAttemptAt &&
-            Date.now() - existing.lastAttemptAt.getTime() < WEBHOOK_LOCK_TTL_SECONDS * 1000
-          )
-            throw new ApiError(503, WEBHOOK_IN_FLIGHT_MESSAGE);
-
-          stored = await prisma.billingWebhookEvent.update({
-            where: { id: existing.id },
+          // Claimed only while no other attempt holds the row (V-014): a conditional update, so
+          // two retries cannot both take it even when the Redis lock is unavailable.
+          const claimed = await prisma.billingWebhookEvent.updateMany({
+            where: {
+              id: existing.id,
+              status: { not: "PROCESSED" },
+              OR: [
+                { status: { not: "PROCESSING" } },
+                { lastAttemptAt: null },
+                { lastAttemptAt: { lt: new Date(Date.now() - WEBHOOK_LOCK_TTL_SECONDS * 1000) } },
+              ],
+            },
             data: {
               status: "PROCESSING",
               retryCount: { increment: 1 },
               lastAttemptAt: new Date(),
             },
           });
+          if (!claimed.count) {
+            const current = await prisma.billingWebhookEvent.findUnique({
+              where: { id: existing.id },
+              select: { status: true },
+            });
+            if (current?.status === "PROCESSED") return { duplicate: true };
+            throw new ApiError(503, WEBHOOK_IN_FLIGHT_MESSAGE);
+          }
+          stored = existing;
         } else {
           throw error;
         }

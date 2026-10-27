@@ -8756,7 +8756,7 @@ components:
         redirectUrl:
           type: string
           description: Relative path (must start with a single `/`) to return to after checkout.
-          pattern: ^\/(?!\/)
+          pattern: ^\/(?!\/)[^\\\s]*$
     CheckoutResponse:
       type: object
       required:
@@ -8820,7 +8820,7 @@ components:
         redirectUrl:
           type: string
           description: Relative path (must start with a single `/`) to return to after checkout.
-          pattern: ^\/(?!\/)
+          pattern: ^\/(?!\/)[^\\\s]*$
     CreditPackCheckoutResponse:
       type: object
       required:

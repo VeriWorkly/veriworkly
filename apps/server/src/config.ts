@@ -252,8 +252,6 @@ export const config = {
     webhookSecret: process.env.DODO_PAYMENTS_WEBHOOK_SECRET || "",
     environment: (process.env.DODO_PAYMENTS_ENVIRONMENT || "test_mode") as
       "test_mode" | "live_mode",
-    portfolioProSevenDayProductId:
-      process.env.DODO_PAYMENTS_PORTFOLIO_PRO_SEVEN_DAY_PRODUCT_ID || "",
     bundleOneDayProductId: process.env.DODO_PAYMENTS_BUNDLE_ONE_DAY_PRODUCT_ID || "",
     bundleSevenDayProductId: process.env.DODO_PAYMENTS_BUNDLE_SEVEN_DAY_PRODUCT_ID || "",
     aiCreditsMonthlyProductId: process.env.DODO_PAYMENTS_AI_CREDITS_MONTHLY_PRODUCT_ID || "",

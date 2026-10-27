@@ -1,12 +1,19 @@
 import { z } from "zod";
 
+/**
+ * A same-site path to return to after checkout. Browsers read a backslash as a slash, so
+ * "/\evil.com" is the protocol-relative "//evil.com": no backslash or whitespace anywhere, and no
+ * second leading slash.
+ */
+const RELATIVE_REDIRECT = /^\/(?!\/)[^\\\s]*$/;
+
 export const checkoutSchema = z.object({
   productKey: z.enum(["ai_credits", "portfolio_pro", "bundle"]).default("portfolio_pro"),
   interval: z.enum(["one_day", "seven_day", "monthly", "annual"]),
   redirectUrl: z
     .string()
     .trim()
-    .regex(/^\/(?!\/)/, "Redirect URL must be a relative path")
+    .regex(RELATIVE_REDIRECT, "Redirect URL must be a relative path")
     .optional(),
 });
 
@@ -27,7 +34,7 @@ export const creditPackCheckoutSchema = z.object({
   redirectUrl: z
     .string()
     .trim()
-    .regex(/^\/(?!\/)/)
+    .regex(RELATIVE_REDIRECT, "Redirect URL must be a relative path")
     .optional(),
 });
 

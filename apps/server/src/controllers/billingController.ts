@@ -26,6 +26,7 @@ export class BillingController {
       throw new ApiError(
         403,
         "Payments are disabled in production during this phase. Only administrators can perform payments.",
+        { code: "PAYMENTS_DISABLED" },
       );
   }
 
