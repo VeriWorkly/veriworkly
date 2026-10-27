@@ -1,7 +1,7 @@
 import { fetchApiData, ApiRequestError } from "@/utils/fetchApiData";
 import { siteConfig } from "@/config/site";
 
-/** One week: every release ships with a deploy that drops this cache; the timer only backstops backend edits. */
+/** One week as a backstop: the API calls /api/revalidate with the "changelog" tag after every sync or edit. The fetch cache survives deploys. */
 
 const CHANGELOG_REVALIDATE_SECONDS = 604800;
 
@@ -192,7 +192,7 @@ async function fetchChangelogPage(
   if (query.search) params.set("search", query.search);
 
   const listData = await fetchApiData<ChangelogListPayload>(`/changelog?${params.toString()}`, {
-    next: { revalidate: CHANGELOG_REVALIDATE_SECONDS },
+    next: { revalidate: CHANGELOG_REVALIDATE_SECONDS, tags: ["changelog"] },
   });
 
   return { entries: listData.items.map(normalizeEntry), total: listData.total };
@@ -206,7 +206,7 @@ export async function fetchChangelogFromBackend(
     const [{ entries, total }, stats] = await Promise.all([
       fetchChangelogPage(query, page),
       fetchApiData<ChangelogStats>("/changelog/stats", {
-        next: { revalidate: CHANGELOG_REVALIDATE_SECONDS },
+        next: { revalidate: CHANGELOG_REVALIDATE_SECONDS, tags: ["changelog"] },
       }).catch(() => null),
     ]);
 
@@ -234,7 +234,7 @@ export async function fetchChangelogFromBackend(
 export async function fetchLatestChangelogPublishedAt(): Promise<Date | null> {
   try {
     const listData = await fetchApiData<ChangelogListPayload>("/changelog?limit=1&offset=0", {
-      next: { revalidate: 604800 },
+      next: { revalidate: 604800, tags: ["changelog"] },
     });
 
     const newest = listData.items[0];
@@ -328,7 +328,7 @@ export async function fetchChangelogEntryById(id: string): Promise<ChangelogEntr
 
   try {
     const entry = await fetchApiData<ChangelogEntry>(`/changelog/${encodeURIComponent(id)}`, {
-      next: { revalidate: CHANGELOG_REVALIDATE_SECONDS },
+      next: { revalidate: CHANGELOG_REVALIDATE_SECONDS, tags: ["changelog"] },
     });
 
     return typeof entry?.title === "string" ? normalizeEntry(entry) : null;
