@@ -28,6 +28,10 @@ import type {
 import { listPage } from "#utils/pagination";
 import { USER_UNPUBLISHED_REASON } from "#services/portfolioAssetService";
 import {
+  isBillingSuspensionReason,
+  settleRestoredBillingSuspension,
+} from "#services/admin/adminPortfolioService";
+import {
   ADMIN_AUDIT_ACTIONS,
   getAuditHistory,
   writeAdminAudit,
@@ -346,8 +350,13 @@ export async function updateDocumentVisibility(
       : visibility;
   // A lock put over the owner's or billing's own suspension lifts back to it (V-285).
   const liftedReason = publication?.reasonBeforeModeration ?? USER_UNPUBLISHED_REASON;
+  const restoresBilling = isBillingSuspensionReason(liftedReason);
 
   const updated = await prisma.$transaction(async (tx) => {
+    // A lift takes the owner's billing lock first, as the status lift and `dropToFreeTier` do,
+    // then the Document row (below), then the publication: one order everywhere.
+    if (lift) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${document.userId}))`;
+
     // Conditional on the visibility and lock read above, so the owner's own "make private" that
     // commits in between is not turned into an unlist on a stale read.
     const { count } = await tx.document.updateMany({
@@ -405,11 +414,17 @@ export async function updateDocumentVisibility(
       );
 
     if (publication && unchanged && lift) {
-      // Still offline, so `suspendedAt` keeps the date it went down; only the lock goes.
+      // Still offline, so `suspendedAt` keeps the date it went down; only the lock goes. A billing
+      // reason comes back dated now, as the publication lift does it: the free-tier drop only
+      // takes billing suspensions inside its restore window. Settled after the commit, below.
       assertApplied(
         await tx.portfolioPublication.updateMany({
           where: unchanged,
-          data: { suspensionReason: liftedReason, reasonBeforeModeration: null },
+          data: {
+            suspensionReason: liftedReason,
+            reasonBeforeModeration: null,
+            ...(restoresBilling ? { suspendedAt: new Date() } : {}),
+          },
         }),
       );
       await writeAdminAudit(tx, {
@@ -437,6 +452,9 @@ export async function updateDocumentVisibility(
     await invalidatePublicPortfolioCaches([publication.subdomain]);
     void revalidatePublicPortfolios([publication.subdomain]);
   }
+
+  if (publication && lift && restoresBilling)
+    await settleRestoredBillingSuspension(document.userId);
 
   await invalidateOwnerDocumentCaches(
     document.userId,

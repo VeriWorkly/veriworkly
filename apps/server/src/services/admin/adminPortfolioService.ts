@@ -17,7 +17,7 @@ import {
   PortfolioService,
   rememberReasonBeforeModeration,
 } from "#services/portfolioService";
-import { BILLING_SUSPENSION_REASONS } from "#services/billingService";
+import { BILLING_SUSPENSION_REASONS, BillingService } from "#services/billingService";
 import { logger } from "#lib/logger";
 import { USER_UNPUBLISHED_REASON } from "#services/portfolioAssetService";
 import {
@@ -321,14 +321,16 @@ export async function updatePublicationStatus(
     // row locks, so the two never wait on each other in opposite orders.
     if (lifting)
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${publication.userId}))`;
-    if (goesOnline) {
-      // Then the Document row, in the order the owner's delete takes (Document, then the
-      // publication): a delete committing first is seen here, and one arriving later finds the
+    if (lifting) {
+      // Then the Document row, on every lift, in the order the owner's unpublish and delete take
+      // (Document, then the publication). A lift back to the reason under the lock writes the
+      // document after the publication too, so taking it only when going online let the two wait
+      // on each other. A delete committing first is seen here, and one arriving later finds the
       // site LIVE and takes it down.
       const [source] = await tx.$queryRaw<Array<{ deletedAt: Date | null }>>`
         SELECT "deletedAt" FROM "Document" WHERE "id" = ${publication.documentId}
         FOR NO KEY UPDATE`;
-      if (!source || source.deletedAt)
+      if (goesOnline && (!source || source.deletedAt))
         throw new ApiError(
           409,
           "This portfolio's document is in the trash, so its site cannot go back online.",
@@ -401,24 +403,51 @@ export async function updatePublicationStatus(
     publication.documentId,
   );
 
-  // A restored billing suspension drops to the free tier now rather than at the next hourly run.
-  // Committed already, so a failure here is left to that run.
-  if (restoredBilling) {
-    try {
-      if ((await PortfolioService.settleLapsedPortfolioFor(publication.userId)).length > 0)
-        return {
-          publication: await prisma.portfolioPublication.findUniqueOrThrow({
-            where: { id: publicationId },
-            select: PUBLICATION_LIST_SELECT,
-          }),
-          previousStatus: publication.status,
-        };
-    } catch (error) {
-      logger.error("Could not settle a portfolio after lifting a moderation lock", error);
-    }
-  }
+  if (restoredBilling && (await settleRestoredBillingSuspension(publication.userId)))
+    return {
+      publication: await prisma.portfolioPublication.findUniqueOrThrow({
+        where: { id: publicationId },
+        select: PUBLICATION_LIST_SELECT,
+      }),
+      previousStatus: publication.status,
+    };
 
   return { publication: updated, previousStatus: publication.status };
+}
+
+/** Whether a lift restores a billing suspension, which then has to be settled (below). */
+export function isBillingSuspensionReason(reason: string | null | undefined): boolean {
+  return reason != null && (BILLING_SUSPENSION_REASONS as readonly string[]).includes(reason);
+}
+
+/**
+ * After a lift put a billing suspension back. Billing's own sweep skips a locked row, so what
+ * happened to the account during the lock is applied now, not at the next billing event or
+ * hourly run: the billing reconcile first, which brings the site back online for a customer who
+ * paid during the lock, then the free-tier drop for one who did not. Committed already, so a
+ * failure here is logged and left to those runs. True when either changed something.
+ */
+export async function settleRestoredBillingSuspension(userId: string): Promise<boolean> {
+  try {
+    const before = await prisma.portfolioPublication.findUnique({
+      where: { userId },
+      select: { status: true, templateId: true },
+    });
+    await BillingService.reconcileAccess(userId);
+    const settled = await PortfolioService.settleLapsedPortfolioFor(userId);
+    const after = await prisma.portfolioPublication.findUnique({
+      where: { userId },
+      select: { status: true, templateId: true },
+    });
+    return (
+      settled.length > 0 ||
+      before?.status !== after?.status ||
+      before?.templateId !== after?.templateId
+    );
+  } catch (error) {
+    logger.error("Could not settle a portfolio after lifting a moderation lock", error);
+    return false;
+  }
 }
 
 /**
