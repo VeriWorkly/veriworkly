@@ -61,6 +61,8 @@ vi.mock("#services/github/index", () => ({
   }),
 }));
 vi.mock("#services/changelog/index", () => ({
+  // Configured, so the job is scheduled and its tick runs (V-260 skips it otherwise).
+  isChangelogSyncConfigured: () => true,
   syncChangelogFromGitHubReleases: vi.fn(async () => {
     mocks.getRedis();
   }),

@@ -15,6 +15,7 @@ import {
   getAuditHistory,
 } from "#services/admin/adminAuditService";
 import {
+  ACCOUNT_DELETION_TRANSACTION,
   deleteUserCascade,
   findChargeableSubscription,
   purgeDeletedUserCaches,
@@ -434,7 +435,7 @@ export async function deleteUser(userId: string, confirmEmail: string, audit: Ad
   await prisma.$transaction(async (tx) => {
     await deleteUserCascade(tx, userId, { actorId: audit.actorId });
     await writeAdminAudit(tx, audit);
-  });
+  }, ACCOUNT_DELETION_TRANSACTION);
 
   // Best effort from here on: the account is gone, so neither may throw back to the admin.
   await Promise.allSettled([

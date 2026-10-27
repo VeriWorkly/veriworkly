@@ -156,6 +156,15 @@ function deriveTitle(release: GitHubReleasePayload, version: string): string {
  * `options.onlyIfStale` (the startup run) checks the freshness marker once the lock is held and
  * resolves to null when the last sync is recent, so two booting workers cannot both pass it.
  */
+export const CHANGELOG_SYNC_NOT_CONFIGURED =
+  "Changelog sync is not configured (GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN)";
+
+/** The release sync needs all three; without them the job is not scheduled (V-260). */
+export function isChangelogSyncConfigured(): boolean {
+  const { owner, repo, token } = config.github;
+  return Boolean(owner && repo && token);
+}
+
 export async function syncChangelogFromGitHubReleases(): Promise<ChangelogSyncResult>;
 export async function syncChangelogFromGitHubReleases(options: {
   lock?: JobLock;
@@ -166,12 +175,10 @@ export async function syncChangelogFromGitHubReleases(
 ): Promise<ChangelogSyncResult | null> {
   const { owner, repo, token } = config.github;
 
+  // Not a successful empty run: that left /health/jobs calling the job stale forever (V-260).
   if (!owner || !repo || !token) {
     await options.lock?.release();
-    logger.warn(
-      "Changelog release sync skipped: GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN not configured.",
-    );
-    return { created: 0, refreshed: 0, skipped: 0, total: 0 };
+    throw new ApiError(503, CHANGELOG_SYNC_NOT_CONFIGURED);
   }
 
   // Renewed while the sync runs (V-127): 20 PR pages plus the releases can outlast a fixed TTL.

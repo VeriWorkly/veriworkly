@@ -6,7 +6,10 @@ import { ApiError } from "#lib/errors";
 import { getRedis } from "#lib/redis";
 import { createRunTracker, type JobLock } from "#lib/jobLock";
 
-import { syncChangelogFromGitHubReleases } from "#services/changelog/index";
+import {
+  isChangelogSyncConfigured,
+  syncChangelogFromGitHubReleases,
+} from "#services/changelog/index";
 
 let job: ScheduledTask | null = null;
 const runs = createRunTracker();
@@ -69,14 +72,23 @@ export function runChangelogSyncInBackground(lock: JobLock): void {
 
 /** Whether startChangelogSyncJob schedules anything; `/health/jobs` reports it disabled otherwise. */
 export function isChangelogSyncJobEnabled(): boolean {
-  return config.changelogSync.enabled;
+  return config.changelogSync.enabled && isChangelogSyncConfigured();
 }
 
 export function startChangelogSyncJob() {
   const { cron: cronExpression, timezone } = config.changelogSync;
 
-  if (!isChangelogSyncJobEnabled()) {
+  if (!config.changelogSync.enabled) {
     logger.warn("Changelog release sync is disabled in config.");
+    return;
+  }
+
+  // Every run would stop at the missing setting, and /health/jobs would call the job stale
+  // forever; it is reported disabled instead (V-260).
+  if (!isChangelogSyncJobEnabled()) {
+    logger.warn(
+      "Changelog release sync is not scheduled: GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN are not configured.",
+    );
     return;
   }
 

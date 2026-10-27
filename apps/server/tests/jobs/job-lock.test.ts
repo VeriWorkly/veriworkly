@@ -11,20 +11,38 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   recordJobSuccess: vi.fn(),
+  eval: vi.fn(async (..._args: unknown[]) => 1),
+  lateWrite: false,
+  RedisTimeoutError: class RedisTimeoutError extends Error {},
 }));
 
 vi.mock("#lib/logger", () => ({ logger: mocks.logger }));
 vi.mock("#lib/metrics", () => ({ recordJobSuccess: mocks.recordJobSuccess }));
-vi.mock("#lib/redis", () => ({
-  getRedis: () => ({
+vi.mock("#lib/redis", () => {
+  const client = {
     set: async (_key: string, token: string) => {
       mocks.token = token;
       return "OK";
     },
     get: mocks.get,
-    eval: async () => 1,
-  }),
-}));
+    eval: mocks.eval,
+  };
+  return {
+    getRedis: () => client,
+    RedisTimeoutError: mocks.RedisTimeoutError,
+    // Scripted like lib/redis: answers in time unless a test says otherwise.
+    redisWrite: vi.fn(
+      async (
+        run: (redis: typeof client) => Promise<unknown>,
+        undo: (late: unknown) => Promise<unknown>,
+      ) => {
+        if (!mocks.lateWrite) return run(client);
+        await undo(await run(client));
+        throw new mocks.RedisTimeoutError("Redis did not answer within 500 ms");
+      },
+    ),
+  };
+});
 
 const { acquireJobLock, withJobLock } = await import("#lib/jobLock");
 
@@ -85,5 +103,24 @@ describe("withJobLock", () => {
       "Job some:lock failed",
       expect.objectContaining({ error: "boom" }),
     );
+  });
+});
+
+describe("acquireJobLock when Redis answers late", () => {
+  it("deletes its own lock if the SET landed after the acquire already failed on the timeout", async () => {
+    mocks.lateWrite = true;
+    mocks.eval.mockClear();
+    try {
+      await expect(acquireJobLock("test:late", { ttlMs: 60_000 })).rejects.toThrow(
+        /did not answer/,
+      );
+    } finally {
+      mocks.lateWrite = false;
+    }
+
+    // Compare-and-delete with this attempt's own token, so a lock someone else took stays.
+    expect(mocks.eval).toHaveBeenCalledTimes(1);
+    expect(mocks.eval.mock.calls[0]![1]).toEqual({ keys: ["test:late"], arguments: [mocks.token] });
+    expect(String(mocks.eval.mock.calls[0]![0])).toMatch(/del/);
   });
 });

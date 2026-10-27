@@ -29,6 +29,7 @@ import {
   revokeSessionCacheForCookie,
   revokeSessionCaches,
 } from "#utils/authCache";
+import { canonicalMailbox } from "#utils/mailbox";
 import { incrementUsageMetric } from "#services/analyticsService";
 
 import { sendAuthOtpEmail, sendWelcomeEmail, sendLoginAlertEmail } from "#services/mail/index";
@@ -50,7 +51,8 @@ const OTP_RECIPIENT_MAX_PER_HOUR = 5;
 const OTP_RECIPIENT_WINDOW_SECONDS = 60 * 60;
 
 function otpRecipientKey(email: string): string {
-  const digest = createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+  // `+tag` and Gmail dot variants reach one inbox, so they share its budget (V-253).
+  const digest = createHash("sha256").update(canonicalMailbox(email)).digest("hex");
   return `auth:otp:recipient:${digest}`;
 }
 
@@ -213,15 +215,14 @@ export const auth = betterAuth({
     window: Math.max(1, Math.ceil(config.rateLimit.authWindowMs / 1000)),
     max: config.rateLimit.authMaxRequests,
     storage: "secondary-storage",
+    // Per IP, so sized for many people behind one address (campus, office, carrier NAT); at
+    // better-auth's default 3 a minute they got 429 signing in. Guessing one code is bounded by
+    // `allowedAttempts` and mail to one address by the per-recipient cap, so these only stop
+    // floods. Keys are exact endpoint paths: the old "/email-otp/verify-otp" matched nothing
+    // (V-213), which a test now catches.
     customRules: {
-      "/email-otp/send-verification-otp": {
-        window: 60,
-        max: 3,
-      },
-      "/email-otp/verify-otp": {
-        window: 60,
-        max: 5,
-      },
+      "/email-otp/send-verification-otp": { window: 60, max: 10 },
+      "/sign-in/email-otp": { window: 60, max: 20 },
     },
   },
 

@@ -7,7 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * being paid.
  */
 
-const { dodoMock, loggerMock } = vi.hoisted(() => ({
+const { dodoMock, loggerMock, lateWrite } = vi.hoisted(() => ({
+  lateWrite: { next: false, RedisTimeoutError: class RedisTimeoutError extends Error {} },
   dodoMock: { create: vi.fn(), retrieve: vi.fn(), clientOptions: [] as unknown[] },
   loggerMock: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
@@ -65,6 +66,19 @@ vi.mock("#lib/redis", () => ({
   cacheGet: vi.fn().mockResolvedValue(null),
   cacheSet: vi.fn().mockResolvedValue(undefined),
   getRedis: vi.fn(() => mockRedis),
+  RedisTimeoutError: lateWrite.RedisTimeoutError,
+  // Scripted like lib/redis: answers in time unless a test makes the next write late.
+  redisWrite: vi.fn(
+    async (
+      run: (redis: typeof mockRedis) => Promise<unknown>,
+      undo: (late: unknown) => Promise<unknown>,
+    ) => {
+      if (!lateWrite.next) return run(mockRedis);
+      lateWrite.next = false;
+      await undo(await run(mockRedis));
+      throw new lateWrite.RedisTimeoutError("Redis did not answer within 500 ms");
+    },
+  ),
 }));
 vi.mock("#utils/portfolioPublicationCache", () => ({
   invalidatePublicPortfolioCaches: vi.fn().mockResolvedValue(undefined),
@@ -264,6 +278,21 @@ describe("createCheckout idempotency per user (V-125, V-218)", () => {
       reused: false,
     });
     expect(dodoMock.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("deletes its own claim when the claim SET lands after the request failed on the timeout", async () => {
+    lateWrite.next = true;
+
+    await expect(
+      BillingService.createCheckout(USER, "portfolio_pro", "monthly"),
+    ).rejects.toBeInstanceOf(lateWrite.RedisTimeoutError);
+    expect(store.has(key())).toBe(false);
+    expect(dodoMock.create).not.toHaveBeenCalled();
+
+    // So a retry is not refused for the claim TTL.
+    await expect(
+      BillingService.createCheckout(USER, "portfolio_pro", "monthly"),
+    ).resolves.toMatchObject({ reused: false });
   });
 
   it("a concurrent second click waits for the first session instead of opening another", async () => {

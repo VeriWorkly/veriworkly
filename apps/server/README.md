@@ -29,7 +29,7 @@ The backend engine for VeriWorkly — a Node/Express + TypeScript API covering a
    npm run db:migrate -w @veriworkly/server
    ```
 
-   On servers run `npm run db:migrate:deploy -w @veriworkly/server` instead. The `db:push` script was removed because it bypasses migrations and leaves the migration history out of step with the database.
+   On servers run `npm run db:migrate:deploy -w @veriworkly/server` instead. Before that, if `DATABASE_URL` is the pooler (Neon `-pooler` host), set `DIRECT_DATABASE_URL` in the server's `.env` to the Neon direct host (the same URL without `-pooler`). Otherwise `prisma migrate deploy` refuses to run: the migration lock does not hold through a pooler. The `db:push` script was removed because it bypasses migrations and leaves the migration history out of step with the database.
 
    `db:migrate`, `db:drift`, the `seed:*` scripts, `smoke:boot` and the `backfill:*` scripts refuse any database URL whose host is not loopback, whatever `NODE_ENV` says; add `--allow-production` only when you really mean a remote database (`--wipe` is never allowed there).
 

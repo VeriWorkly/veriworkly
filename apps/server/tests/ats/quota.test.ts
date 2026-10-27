@@ -5,8 +5,13 @@ const store = new Map<string, number>();
 const redis = {
   get: vi.fn(async (key: string) => (store.has(key) ? String(store.get(key)) : null)),
   ttl: vi.fn(async () => 3600),
-  eval: vi.fn(async (_script: string, opts: { keys: string[]; arguments: string[] }) => {
+  eval: vi.fn(async (script: string, opts: { keys: string[]; arguments: string[] }) => {
     const [key] = opts.keys;
+    if (script.includes("DECR")) {
+      const current = store.get(key) ?? 0;
+      if (current > 0) store.set(key, current - 1);
+      return Math.max(0, current - 1);
+    }
     const limit = Number(opts.arguments[0]);
     const current = store.get(key) ?? 0;
     if (current >= limit) return -1;
@@ -16,7 +21,15 @@ const redis = {
   }),
 };
 
-vi.mock("#lib/redis", () => ({ getRedis: () => redis }));
+class RedisTimeoutError extends Error {}
+/** Scripted like lib/redis: by default the command answers in time. */
+const redisWrite = vi.fn(
+  async (
+    run: (client: typeof redis) => Promise<unknown>,
+    _undo: (late: unknown) => Promise<unknown>,
+  ) => run(redis),
+);
+vi.mock("#lib/redis", () => ({ getRedis: () => redis, redisWrite, RedisTimeoutError }));
 vi.mock("#config", () => ({
   config: { auth: { secret: "test-secret" } },
 }));
@@ -230,5 +243,41 @@ describe("ATS quota — credits, not the ai_credits grant, unlock the paid tier"
     expect(summary.used).toBe(1);
     expect(summary.canConvertResume).toBe(false);
     expect(summary.canRepair).toBe(false);
+  });
+});
+
+describe("ATS quota when Redis answers late", () => {
+  beforeEach(() => {
+    store.clear();
+    vi.clearAllMocks();
+  });
+
+  it("hands back a scan whose count landed after the request already failed on the timeout", async () => {
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
+    redisWrite.mockImplementationOnce(async (run, undo) => {
+      const late = await run(redis); // Redis applied the count after all...
+      await undo(late); // ...and answered once it recovered.
+      throw new RedisTimeoutError("Redis did not answer within 500 ms");
+    });
+
+    await expect(AtsQuotaService.consume("user-1", "203.0.113.7")).rejects.toBeInstanceOf(
+      RedisTimeoutError,
+    );
+
+    expect((await AtsQuotaService.summary("user-1", "203.0.113.7")).used).toBe(0);
+  });
+
+  it("refunds nothing when the late reply says the quota was already full", async () => {
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
+    await AtsQuotaService.consume(undefined, "203.0.113.8");
+    redisWrite.mockImplementationOnce(async (run, undo) => {
+      await undo(await run(redis));
+      throw new RedisTimeoutError("late");
+    });
+
+    await expect(AtsQuotaService.consume(undefined, "203.0.113.8")).rejects.toBeInstanceOf(
+      RedisTimeoutError,
+    );
+    expect((await AtsQuotaService.summary(undefined, "203.0.113.8")).used).toBe(1);
   });
 });

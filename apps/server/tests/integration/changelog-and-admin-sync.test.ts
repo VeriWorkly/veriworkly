@@ -2,12 +2,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import request from "supertest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { app } from "#app";
 import { config } from "#config";
 import { prisma } from "#lib/prisma";
 import { getRedis } from "#lib/redis";
+import { isChangelogSyncJobEnabled } from "#jobs/changelogSyncJob";
 import { syncChangelogFromGitHubReleases } from "#services/changelog/index";
 
 import { STUDIO_ORIGIN } from "./env.js";
@@ -231,6 +232,34 @@ describe("admin syncs run in the background (V-080)", () => {
         (await asAdmin("get", `${ADMIN}/changelog/sync`)).body.data.running === false,
     );
   });
+});
+
+describe("changelog sync without GitHub configured (V-260)", () => {
+  it.each(["owner", "repo", "token"] as const)(
+    "with no GitHub %s the job is not scheduled and the admin trigger answers 503",
+    async (missing) => {
+      const fetchSpy = mockGitHub();
+      Object.assign(config.github, { [missing]: "" });
+      // The integration env turns the schedule off; this test is about the GitHub settings.
+      const scheduled = config.changelogSync.enabled;
+      config.changelogSync.enabled = true;
+      onTestFinished(() => void (config.changelogSync.enabled = scheduled));
+
+      // /health/jobs reports a disabled job as disabled, never as stale.
+      expect(isChangelogSyncJobEnabled()).toBe(false);
+
+      const res = await asAdmin("post", `${ADMIN}/changelog/sync`);
+      expect(res.status).toBe(503);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      // No lock was taken, so a later configured sync is not refused with 409.
+      Object.assign(config.github, { owner: "x", repo: "y", token: "token" });
+      expect(isChangelogSyncJobEnabled()).toBe(true);
+      expect((await asAdmin("post", `${ADMIN}/changelog/sync`)).status).toBe(202);
+      await waitFor(
+        async () => (await asAdmin("get", `${ADMIN}/changelog/sync`)).body.data.running === false,
+      );
+    },
+  );
 });
 
 describe("the editedAt backfill migration (V-066)", () => {

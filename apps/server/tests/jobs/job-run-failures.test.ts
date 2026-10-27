@@ -32,15 +32,17 @@ vi.mock("#lib/logger", () => ({ logger: mocks.logger }));
 vi.mock("#lib/metrics", () => ({ recordJobSuccess: mocks.recordJobSuccess }));
 vi.mock("#lib/redis", () => {
   let held = "";
+  const client = {
+    set: async (_key: string, token: string) => {
+      held = token;
+      return "OK";
+    },
+    get: async () => held,
+    eval: async () => 1,
+  };
   return {
-    getRedis: () => ({
-      set: async (_key: string, token: string) => {
-        held = token;
-        return "OK";
-      },
-      get: async () => held,
-      eval: async () => 1,
-    }),
+    getRedis: () => client,
+    redisWrite: (run: (redis: typeof client) => Promise<unknown>) => run(client),
   };
 });
 vi.mock("#services/portfolioService", () => ({ PortfolioService: mocks.portfolio }));
