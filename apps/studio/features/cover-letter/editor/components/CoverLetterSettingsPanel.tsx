@@ -9,12 +9,14 @@ import {
   SettingsColor,
   SettingsRange,
   SettingsSelect,
+  SettingsText,
 } from "@/features/documents/editor/settings/SettingControls";
 import {
   DocumentTemplateSummary,
   DocumentTemplatePickerModal,
 } from "@/features/documents/editor/DocumentTemplatePickerModal";
 import { fontOptions } from "@/features/documents/constants/fonts";
+import { LANGUAGE_TAG_ERROR, isDocumentLanguage } from "@/features/documents/utils/formatters";
 import { templateCatalogByType } from "@/features/documents/core/template-catalog";
 import { useCoverLetterStore } from "@/features/cover-letter/store/cover-letter-store";
 import { COVER_LETTER_APPEARANCE_RANGES as RANGES } from "@/templates/cover-letter/shared";
@@ -28,6 +30,8 @@ export function CoverLetterSettingsPanel() {
 
   const templateId = useCoverLetterStore((state) => state.document?.templateId);
   const appearance = useCoverLetterStore((state) => state.document?.content.appearance);
+  const language = useCoverLetterStore((state) => state.document?.content.language);
+  const onUpdateContent = useCoverLetterStore((state) => state.updateContent);
   const setTemplateId = useCoverLetterStore((state) => state.setTemplateId);
   const onUpdateAppearance = useCoverLetterStore((state) => state.updateAppearance);
   const setSectionVisibilityInStore = useCoverLetterStore((state) => state.setSectionVisibility);
@@ -100,6 +104,15 @@ export function CoverLetterSettingsPanel() {
           value={appearance.lineHeight}
           label={`Line height (${appearance.lineHeight.toFixed(2)})`}
           onChange={(event) => onUpdateAppearance({ lineHeight: Number(event.target.value) })}
+        />
+
+        <SettingsText
+          label="Document language"
+          hint="e.g. en, de, pt-BR"
+          placeholder="en"
+          value={language ?? ""}
+          error={isDocumentLanguage(language) ? undefined : LANGUAGE_TAG_ERROR}
+          onChange={(event) => onUpdateContent({ language: event.target.value })}
         />
       </div>
 

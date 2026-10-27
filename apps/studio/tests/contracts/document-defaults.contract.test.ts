@@ -80,6 +80,7 @@ describe("cover letter store (S-123, S-129)", () => {
       content: {
         ...sample.content,
         appearance: { ...sample.content.appearance, accentColor: "#ff0000" },
+        language: "fr",
       },
     });
   });
@@ -98,7 +99,7 @@ describe("cover letter store (S-123, S-129)", () => {
   });
 
   for (const action of ["resetDocument", "emptyDocument"] as const) {
-    it(`S-129: ${action} keeps template, appearance, title and sync linkage`, () => {
+    it(`S-129 S-296: ${action} keeps template, appearance, title, language and sync linkage`, () => {
       useCoverLetterStore.getState().updateTitle("My application");
       useCoverLetterStore.getState()[action]();
 
@@ -108,6 +109,7 @@ describe("cover letter store (S-123, S-129)", () => {
       expect(document?.templateId).toBe("modern");
       expect(document?.content.appearance.accentColor).toBe("#ff0000");
       expect(document?.sync.cloudDocumentId).toBe("cloud-1");
+      expect(document?.content.language).toBe("fr");
       expect(document?.content.senderName).toBe("");
     });
   }

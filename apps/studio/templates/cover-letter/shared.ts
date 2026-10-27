@@ -6,6 +6,11 @@ import { DEFAULT_COVER_LETTER_APPEARANCE, formatPhoneForDisplay } from "@veriwor
 
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 import { isHexColor, toSafeHexColor } from "@/features/documents/utils/hex-color";
+import {
+  documentDirection,
+  formatDocumentDate,
+  toDocumentLanguage,
+} from "@/features/documents/utils/formatters";
 import { COVER_LETTER_SCALE, createCoverLetterTokens } from "./tokens";
 
 import {
@@ -477,7 +482,10 @@ export function getCoverLetterState(content: CoverLetterContent) {
     contact,
     linkDisplayMode,
     renderedLinks,
-    date: cleanText(content.date),
+    // A month typed as "2026-01" reads as the resume prints one; a written date is kept.
+    date: formatDocumentDate(cleanText(content.date)),
+    language: toDocumentLanguage(content.language),
+    direction: documentDirection(content.language),
     recipient,
     /** The "Re" line: the subject, or the role applied for. */
     subject: showTarget ? subject || jobTitle : "",

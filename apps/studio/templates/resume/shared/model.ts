@@ -13,7 +13,7 @@ import {
   getEducationRenderItems,
   getExperienceRenderItems,
   getAdditionalSectionItems,
-  ADDITIONAL_SECTION_TITLES,
+  getResumeSectionHeading,
   type ResumeRenderItem,
   type ResumeSkillLine,
 } from "@/features/documents/rendering/resume-render-items";
@@ -70,6 +70,7 @@ export function buildResumeSections<T>(
   render: ResumeSectionRenderers<T>,
 ): ResumeSectionBlock<T>[] {
   const blocks: ResumeSectionBlock<T>[] = [];
+  const { dateFormat } = resume.customization;
 
   for (const section of getOrderedResumeSections(resume)) {
     const id = getResumeSectionKey(section);
@@ -79,7 +80,7 @@ export function buildResumeSections<T>(
         if (!hasResumeSectionContent(resume, "summary")) break;
         blocks.push({
           id,
-          title: "Summary",
+          title: getResumeSectionHeading(section),
           children: render.summary(cleanResumeText(resume.summary)),
         });
         break;
@@ -88,8 +89,8 @@ export function buildResumeSections<T>(
         if (!hasResumeSectionContent(resume, "experience")) break;
         blocks.push({
           id,
-          title: "Experience",
-          children: render.items(getExperienceRenderItems(model.visibleExperience)),
+          title: getResumeSectionHeading(section),
+          children: render.items(getExperienceRenderItems(model.visibleExperience, dateFormat)),
         });
         break;
 
@@ -97,8 +98,8 @@ export function buildResumeSections<T>(
         if (!hasResumeSectionContent(resume, "education")) break;
         blocks.push({
           id,
-          title: "Education",
-          children: render.items(getEducationRenderItems(model.visibleEducation)),
+          title: getResumeSectionHeading(section),
+          children: render.items(getEducationRenderItems(model.visibleEducation, dateFormat)),
         });
         break;
 
@@ -106,7 +107,7 @@ export function buildResumeSections<T>(
         if (!hasResumeSectionContent(resume, "projects")) break;
         blocks.push({
           id,
-          title: "Projects",
+          title: getResumeSectionHeading(section),
           children: render.items(getProjectRenderItems(model.visibleProjects)),
         });
         break;
@@ -115,7 +116,7 @@ export function buildResumeSections<T>(
         if (!hasResumeSectionContent(resume, "skills")) break;
         blocks.push({
           id,
-          title: "Skills",
+          title: getResumeSectionHeading(section),
           children: render.skills(getSkillLines(model.visibleSkills)),
         });
         break;
@@ -137,7 +138,7 @@ export function buildResumeSections<T>(
 
         if (!custom) break;
 
-        const items = getCustomRenderItems(custom);
+        const items = getCustomRenderItems(custom, dateFormat);
 
         if (!items.length) break;
 
@@ -150,16 +151,13 @@ export function buildResumeSections<T>(
       }
 
       default: {
-        const title =
-          ADDITIONAL_SECTION_TITLES[section.id as keyof typeof ADDITIONAL_SECTION_TITLES];
-
-        if (!title || !hasResumeSectionContent(resume, section.id)) break;
+        if (!hasResumeSectionContent(resume, section.id)) break;
 
         const items = getAdditionalSectionItems(resume, section.id);
 
         if (!items.length) break;
 
-        blocks.push({ id, title, children: render.items(items) });
+        blocks.push({ id, title: getResumeSectionHeading(section), children: render.items(items) });
       }
     }
   }

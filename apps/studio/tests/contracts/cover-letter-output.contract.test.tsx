@@ -634,3 +634,43 @@ describe("the editor warns when the VeriWorkly rail cannot hold the contact list
     expect(veriworklyRailOverflows(content)).toBe(false);
   });
 });
+
+describe("S-296: the letter's date and language", () => {
+  it("S-296: a month typed as YYYY-MM prints readably in every output; free text is kept", async () => {
+    registerPdfTestFonts();
+
+    for (const [label, output] of await allOutputs(letter({ date: "2026-01" }))) {
+      expect(output, label).toContain("Jan 2026");
+      expect(output.replace(/<[^>]*>/g, " "), label).not.toContain("2026-01");
+    }
+
+    const element = await createCoverLetterPdfElement({
+      content: letter({ date: "2026-01" }),
+      templateId: "professional",
+    });
+    expect((await extractResume(await renderToBuffer(element), "pdf")).text).toContain("Jan 2026");
+
+    for (const [label, output] of await allOutputs(letter({ date: "January 1, 2026" }))) {
+      expect(output, label).toContain("January 1, 2026");
+    }
+  }, 60_000);
+
+  it("S-296: the HTML export carries the letter's language, English by default", async () => {
+    for (const templateId of TEMPLATE_IDS) {
+      expect(await buildCoverLetterHtml(letter({ language: "fr" }), templateId)).toContain(
+        '<html lang="fr"',
+      );
+      expect(await buildCoverLetterHtml(letter(), templateId)).toContain(
+        '<html lang="en" dir="ltr"',
+      );
+      expect(await buildCoverLetterHtml(letter({ language: "he" }), templateId)).toContain(
+        '<html lang="he" dir="rtl"',
+      );
+    }
+  });
+
+  it("S-296: the language survives a round trip and stays absent on an older letter", () => {
+    expect(parseCoverLetterContent({ ...letter(), language: "es-MX" }).language).toBe("es-MX");
+    expect("language" in parseCoverLetterContent(letter())).toBe(false);
+  });
+});

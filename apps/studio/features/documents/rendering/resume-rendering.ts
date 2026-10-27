@@ -6,6 +6,7 @@ import type {
   ResumeSectionId,
   ResumeCustomization,
 } from "@/types/resume";
+import type { DocumentDateFormat } from "@/features/documents/utils/formatters";
 
 import { formatPhoneForDisplay } from "@veriworkly/profile-core";
 
@@ -222,8 +223,11 @@ export function getEducationSchool(item: ResumeData["education"][number]): strin
   return cleanResumeText(item.school);
 }
 
-export function getEducationMeta(item: ResumeData["education"][number]): string {
-  return formatDateRange(item.startDate, item.endDate, item.current);
+export function getEducationMeta(
+  item: ResumeData["education"][number],
+  dateFormat?: DocumentDateFormat,
+): string {
+  return formatDateRange(item.startDate, item.endDate, item.current, dateFormat);
 }
 
 export function getProjectTitle(item: ResumeData["projects"][number]): string {

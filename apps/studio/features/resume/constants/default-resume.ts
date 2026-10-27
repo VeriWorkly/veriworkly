@@ -1,5 +1,7 @@
 import type { ResumeData, ResumeSection } from "@/types/resume";
 
+import { DEFAULT_DOCUMENT_DATE_FORMAT } from "@/features/documents/utils/formatters";
+
 export const defaultSections: ResumeSection[] = [
   { id: "basics", label: "Basics", visible: true, order: 0 },
   { id: "links", label: "Links", visible: true, order: 1 },
@@ -81,6 +83,7 @@ export const blankResume: ResumeData = {
     pagePadding: 32,
     bodyLineHeight: 1.5,
     headingLineHeight: 1.2,
+    dateFormat: DEFAULT_DOCUMENT_DATE_FORMAT,
   },
 
   sync: {

@@ -1674,3 +1674,55 @@ describe("a phone scrolls the preview natively (S-351)", () => {
     expect(transform).toContain("translate3d(0px, 0px, 0px)");
   });
 });
+
+describe("readable dates and renamed headings (S-296)", () => {
+  const pages = () => page.locator("[data-resume-pages]");
+  /** The text of every leaf element in the pages: a section heading is one on its own. */
+  const leafTexts = () =>
+    pages().evaluate((root) =>
+      [...root.querySelectorAll("*")]
+        .filter((element) => element.children.length === 0)
+        .map((element) => element.textContent?.trim() ?? ""),
+    );
+
+  beforeAll(async () => {
+    await page.setViewportSize(DESKTOP);
+    const resumeId = await seedResume();
+    await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
+    await editorReady();
+
+    // Earlier suites edit this guest document, so the role under test is set here.
+    await ensureExperienceEntries(1);
+    const panel = page.locator('[id="section-accordion-panel-experience"]');
+    await panel
+      .getByRole("combobox", { name: /experience entry to edit/i })
+      .selectOption({ index: 0 });
+    await panel.getByLabel("Start (YYYY-MM)").fill("2021-07");
+    await panel.getByLabel("I currently work here").check();
+  });
+
+  it("S-296: the preview prints the chosen date format and updates when it changes", async () => {
+    await page.getByLabel("Date format").selectOption("MMM YYYY");
+    await expect.poll(() => pages().innerText()).toContain("Jul 2021 – Present");
+
+    await page.getByLabel("Date format").selectOption("MM/YYYY");
+
+    await expect.poll(() => pages().innerText()).toContain("07/2021 – Present");
+    expect(await pages().innerText()).not.toContain("Jul 2021");
+  });
+
+  it("S-296: a renamed heading reaches the preview, and clearing it restores the default", async () => {
+    await openSection("headings");
+
+    const heading = page.getByLabel("Experience heading");
+    await heading.fill("Berufserfahrung");
+
+    await expect.poll(leafTexts).toContain("Berufserfahrung");
+    expect(await leafTexts()).not.toContain("Experience");
+
+    await heading.fill("");
+
+    await expect.poll(leafTexts).toContain("Experience");
+    expect(await leafTexts()).not.toContain("Berufserfahrung");
+  });
+});

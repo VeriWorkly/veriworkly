@@ -121,6 +121,7 @@ describe("resume store reset and empty (S-008, S-129)", () => {
       ...cloneResume(defaultResume),
       id: "resume-linked",
       title: "My resume",
+      language: "de",
       templateId: "modern-minimal",
       customization: { ...defaultResume.customization, accentColor: "#ff0000" },
       sections: defaultResume.sections.map((section) =>
@@ -140,7 +141,7 @@ describe("resume store reset and empty (S-008, S-129)", () => {
   });
 
   for (const action of ["resetResume", "emptyResume"] as const) {
-    it(`S-008 S-129: ${action} keeps sync linkage, template, customization, sections and title`, () => {
+    it(`S-008 S-129 S-296: ${action} keeps sync linkage, template, customization, sections, title and language`, () => {
       const result = useResumeStore.getState()[action]();
       const resume = useResumeStore.getState().resume;
 
@@ -151,6 +152,7 @@ describe("resume store reset and empty (S-008, S-129)", () => {
       expect(resume.title).toBe("My resume");
       expect(resume.templateId).toBe("modern-minimal");
       expect(resume.customization.accentColor).toBe("#ff0000");
+      expect(resume.language).toBe("de");
       expect(resume.sections.find((section) => section.id === "projects")?.visible).toBe(false);
     });
 

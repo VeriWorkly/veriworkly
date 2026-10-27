@@ -7,13 +7,16 @@ import {
 
 import type { ResumeData, ResumeLanguage, ResumeSection } from "@/types/resume";
 
+import { DEFAULT_SECTION_HEADINGS } from "@/features/documents/rendering/resume-render-items";
+
 /**
  * A saved Studio resume as the engine's structured input.
  *
  * Built from the typed fields, so the ATS record is read from the data rather than re-parsed
- * from text, and ordered and titled exactly as the template prints it: sections in the user's
- * order, hidden ones left out, headings as labelled. The engine renders it to the page text the
- * content rules score, so structure findings describe the resume the user will actually send.
+ * from text, and ordered exactly as the template prints it: sections in the user's order,
+ * hidden ones left out. The engine renders it to the page text the content rules score, so
+ * structure findings describe the resume the user will actually send; only a renamed heading
+ * goes in as its standard one (see `section`).
  *
  * Volunteering, certifications and the other secondary sections go in as `other`: an ATS files
  * them separately from work history, and they must not count toward years of experience.
@@ -47,7 +50,13 @@ function span(start: string, end: string, current: boolean) {
 }
 
 function section(resume: ResumeData, placement: ResumeSection): AtsDocumentSection | null {
-  const title = placement.label;
+  /*
+   * A fixed section goes in under its standard heading, not the one the user renamed it to:
+   * the engine files "other" sections by heading text, and a heading in another language must
+   * not change what is scored. A custom section has no standard heading and keeps its title.
+   */
+  const title =
+    placement.id === "custom" ? placement.label : DEFAULT_SECTION_HEADINGS[placement.id];
 
   switch (placement.id) {
     case "summary":

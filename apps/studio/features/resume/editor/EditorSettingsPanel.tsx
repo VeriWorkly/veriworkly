@@ -5,6 +5,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@veriworkly/ui";
 
 import type { FontFamilyId } from "@/features/documents/constants/fonts";
+import type { DocumentDateFormat } from "@/features/documents/utils/formatters";
 
 import { templateCatalogByType } from "@/features/documents/core/template-catalog";
 import {
@@ -18,20 +19,31 @@ import {
   SettingsColor,
   SettingsRange,
   SettingsSelect,
+  SettingsText,
 } from "@/features/documents/editor/settings/SettingControls";
 
 import { fontOptions } from "@/features/documents/constants/fonts";
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { RESUME_SPACING_LIMITS } from "@/features/resume/constants/resume-layout";
+import { DEFAULT_SECTION_HEADINGS } from "@/features/documents/rendering/resume-render-items";
+import { getResumeSectionKey } from "@/features/documents/rendering/resume-rendering";
+import {
+  DOCUMENT_DATE_FORMATS,
+  DEFAULT_DOCUMENT_DATE_FORMAT,
+  formatDocumentDate,
+  LANGUAGE_TAG_ERROR,
+  isDocumentLanguage,
+} from "@/features/documents/utils/formatters";
 
-type SettingsSectionId = "typography" | "colors" | "visibility";
+type SettingsSectionId = "typography" | "colors" | "visibility" | "headings";
 
 const EditorSettingsPanel = memo(function EditorSettingsPanel() {
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [openSection, setOpenSection] = useState<SettingsSectionId | null>("typography");
 
   const sections = useResumeStore((state) => state.resume.sections);
+  const language = useResumeStore((state) => state.resume.language);
   const templateId = useResumeStore((state) => state.resume.templateId);
   const customization = useResumeStore((state) => state.resume.customization);
 
@@ -40,6 +52,8 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
   const updateCustomization = useResumeStore((state) => state.updateCustomization);
   const setSectionVisibility = useResumeStore((state) => state.setSectionVisibility);
   const updateSectionColumn = useResumeStore((state) => state.updateSectionColumn);
+  const setSectionHeading = useResumeStore((state) => state.setSectionHeading);
+  const updateLanguage = useResumeStore((state) => state.updateLanguage);
 
   const selectedTemplate = templateCatalogByType.RESUME.find(
     (template) => template.id === templateId,
@@ -84,6 +98,20 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
               {fontOptions.map((font) => (
                 <option key={font.value} value={font.value}>
                   {font.label}
+                </option>
+              ))}
+            </SettingsSelect>
+
+            <SettingsSelect
+              label="Date format"
+              value={customization.dateFormat ?? DEFAULT_DOCUMENT_DATE_FORMAT}
+              onChange={(event) =>
+                updateCustomization({ dateFormat: event.target.value as DocumentDateFormat })
+              }
+            >
+              {DOCUMENT_DATE_FORMATS.map((format) => (
+                <option key={format} value={format}>
+                  {formatDocumentDate("2022-03", format)}
                 </option>
               ))}
             </SettingsSelect>
@@ -199,7 +227,12 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
 
             <Button
               className="w-full rounded-xl"
-              onClick={() => updateCustomization({ ...defaultResume.customization })}
+              onClick={() =>
+                updateCustomization({
+                  ...defaultResume.customization,
+                  dateFormat: customization.dateFormat,
+                })
+              }
               size="sm"
               variant="secondary"
             >
@@ -224,6 +257,52 @@ const EditorSettingsPanel = memo(function EditorSettingsPanel() {
               isTwoColumn={isTwoColumnTemplate}
               onUpdateSectionColumn={updateSectionColumn}
             />
+          </div>
+        </SectionAccordion>
+
+        <SectionAccordion
+          label="Headings & Language"
+          isOpen={openSection === "headings"}
+          id="headings"
+          onToggle={handleToggle}
+        >
+          <div className="text-foreground space-y-4">
+            <p className="text-muted text-xs">
+              Rename any heading, for example to write the resume in another language. Leave one
+              empty to print the default. Custom sections take their title from the Content tab.
+            </p>
+
+            <SettingsText
+              label="Document language"
+              hint="e.g. en, de, pt-BR"
+              placeholder="en"
+              value={language ?? ""}
+              error={isDocumentLanguage(language) ? undefined : LANGUAGE_TAG_ERROR}
+              onChange={(event) => updateLanguage(event.target.value)}
+            />
+
+            {sections
+              .filter(
+                (section) =>
+                  section.id !== "basics" && section.id !== "links" && section.id !== "custom",
+              )
+              .sort((left, right) => left.order - right.order)
+              .map((section) => {
+                const fallback =
+                  DEFAULT_SECTION_HEADINGS[section.id as keyof typeof DEFAULT_SECTION_HEADINGS];
+
+                return (
+                  <SettingsText
+                    key={section.id}
+                    label={`${fallback} heading`}
+                    placeholder={fallback}
+                    value={section.label}
+                    onChange={(event) =>
+                      setSectionHeading(getResumeSectionKey(section), event.target.value)
+                    }
+                  />
+                );
+              })}
           </div>
         </SectionAccordion>
       </div>

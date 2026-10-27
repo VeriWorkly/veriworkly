@@ -50,6 +50,6 @@ export function htmlLink(
 export function coverLetterHtmlDocument(state: CoverLetterState, css: string, body: string) {
   const { appearance, palette } = state;
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(getCoverLetterDocumentTitle(state))}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(getFontStylesheetHref(appearance.fontFamily))}"><style>
+  return `<!doctype html><html lang="${state.language}" dir="${state.direction}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(getCoverLetterDocumentTitle(state))}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(getFontStylesheetHref(appearance.fontFamily))}"><style>
 *{box-sizing:border-box}body{margin:0;padding:32px 16px;background:${palette.surface};color:${palette.text};font-family:${FONT_FAMILY_MAP[appearance.fontFamily]};overflow-wrap:anywhere}a.icon-link{display:flex;align-items:center;column-gap:4px}${css}</style></head><body>${body}</body></html>`;
 }

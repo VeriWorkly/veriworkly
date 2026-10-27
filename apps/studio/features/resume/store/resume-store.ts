@@ -52,6 +52,9 @@ interface ResumeStoreState {
   setSectionVisibility: (sectionKey: string, visible: boolean) => void;
   reorderSections: (fromIndex: number, toIndex: number) => void;
   updateSectionColumn: (sectionKey: string, column: "left" | "right") => void;
+  /** Renames a section heading; an empty label prints the default heading. */
+  setSectionHeading: (sectionKey: string, label: string) => void;
+  updateLanguage: (language: string) => void;
   setTemplateId: (templateId: string) => void;
   updateCustomization: (values: Partial<ResumeCustomization>) => void;
   updateBasics: (values: Partial<ResumeBasics>) => void;
@@ -109,8 +112,8 @@ interface ResumeStoreState {
 
 /**
  * Reset and "Empty fields" replace what the resume says, not how it looks or what it is
- * called: template, customization, section order and visibility, title and sync linkage all
- * carry over. The save result is returned so the caller can report a failed write.
+ * called: template, customization, section order, visibility and headings, title, language and
+ * sync linkage all carry over. The save result is returned so the caller can report a failed write.
  */
 function replaceResumeContent(
   set: (partial: Pick<ResumeStoreState, "resume">) => void,
@@ -122,6 +125,7 @@ function replaceResumeContent(
       ...next,
       id: current.id,
       title: current.title,
+      language: current.language,
       templateId: current.templateId,
       customization: current.customization,
       sections: current.sections,
@@ -207,6 +211,24 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
         sections: state.resume.sections.map((section) =>
           getResumeSectionKey(section) === sectionKey ? { ...section, column } : section,
         ),
+      }),
+    })),
+
+  setSectionHeading: (sectionKey, label) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        sections: state.resume.sections.map((section) =>
+          getResumeSectionKey(section) === sectionKey ? { ...section, label } : section,
+        ),
+      }),
+    })),
+
+  updateLanguage: (language) =>
+    set((state) => ({
+      resume: withTimestamp({
+        ...state.resume,
+        language,
       }),
     })),
 
