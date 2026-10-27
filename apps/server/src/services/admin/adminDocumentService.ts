@@ -7,7 +7,11 @@ import { bumpGeneration } from "#lib/cacheGeneration";
 import { assertDocumentNotPurged, PURGED_DOCUMENT_CONTENT } from "#jobs/retentionJob";
 import { cacheNamespaces, documentCacheNamespaces } from "#lib/cacheKeys";
 
-import { isModerationLocked, MODERATION_SUSPENSION_PREFIX } from "#services/portfolioService";
+import {
+  isModerationLocked,
+  MODERATION_SUSPENSION_PREFIX,
+  NOT_MODERATION_LOCKED,
+} from "#services/portfolioService";
 import { moderatorPrivateDocumentIds } from "#services/moderationRecord";
 import {
   invalidatePublicPortfolioCaches,
@@ -204,14 +208,16 @@ async function takeDownPortfolioPublication(documentId: string, reason: string) 
 
   if (!publication || isModerationLocked(publication)) return;
 
-  await prisma.portfolioPublication.update({
-    where: { id: publication.id },
+  // Conditional (V-226): a takedown that committed after the read keeps its own reason.
+  const { count } = await prisma.portfolioPublication.updateMany({
+    where: { id: publication.id, ...NOT_MODERATION_LOCKED },
     data: {
       status: "SUSPENDED",
       suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${reason}`,
       suspendedAt: new Date(),
     },
   });
+  if (count === 0) return;
 
   await invalidatePublicPortfolioCaches([publication.subdomain]);
   void revalidatePublicPortfolios([publication.subdomain]);
@@ -226,6 +232,7 @@ async function loadDocumentForMutation(documentId: string) {
       type: true,
       title: true,
       visibility: true,
+      moderatedPrivateAt: true,
       deletedAt: true,
       // For restoreDocument's purge check (assertDocumentNotPurged).
       content: true,
@@ -240,10 +247,9 @@ async function loadDocumentForMutation(documentId: string) {
 }
 
 /**
- * A moderator's visibility decision. The audit entry is written in the same transaction as the
- * change: it is the record that makes "Make private" a takedown the owner cannot undo
- * (`madePrivateByModerator`), and the record that a later "Make unlisted" lifted it, so a change
- * without it must not happen.
+ * A moderator's visibility decision. "Make private" sets `Document.moderatedPrivateAt`, the lock
+ * the owner cannot undo (`madePrivateByModerator`, V-207); "Make unlisted" clears it. The audit
+ * entry is written in the same transaction as the change, so a change without it must not happen.
  *
  * For a PORTFOLIO, only PRIVATE takes the publication down (a sticky moderation suspension).
  * UNLISTED never suspends a site (V-203): on a live portfolio it changes nothing public, and on
@@ -271,7 +277,12 @@ export async function updateDocumentVisibility(
   const updated = await prisma.$transaction(async (tx) => {
     const row = await tx.document.update({
       where: { id: documentId },
-      data: { visibility },
+      data: {
+        visibility,
+        // An earlier lock keeps its date; a second "Make private" is not a new takedown.
+        moderatedPrivateAt:
+          visibility === "PRIVATE" ? (document.moderatedPrivateAt ?? new Date()) : null,
+      },
       select: DOCUMENT_LIST_SELECT,
     });
     await writeAdminAudit(tx, {
@@ -494,5 +505,5 @@ export async function revokeShareLink(shareLinkId: string) {
 
   await bumpGeneration(cacheNamespaces.shareList(share.userId));
 
-  return { id: shareLinkId, slug: share.slug };
+  return { id: shareLinkId, slug: share.slug, documentId: share.documentId, ownerId: share.userId };
 }

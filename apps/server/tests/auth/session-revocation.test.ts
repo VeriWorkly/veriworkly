@@ -5,6 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findManyMock = vi.fn();
 const deleteSessionsMock = vi.fn();
 const cacheDelMock = vi.fn();
+/** A Redis MULTI that records what it was asked to do, or fails on exec like a dead Redis. */
+const multiCalls: { set: string[]; unlink: string[] } = { set: [], unlink: [] };
+const execMock = vi.fn();
+const multi = {
+  set: (key: string) => (multiCalls.set.push(key), multi),
+  unlink: (keys: string[]) => (multiCalls.unlink.push(...keys), multi),
+  exec: () => execMock(),
+};
 
 const AUTH_SECRET = "unit-test-auth-secret";
 
@@ -19,6 +27,7 @@ vi.mock("#lib/prisma", () => ({
 
 vi.mock("#lib/redis", () => ({
   cacheDel: cacheDelMock,
+  getRedis: () => ({ multi: () => multi }),
 }));
 
 vi.mock("#lib/logger", () => ({
@@ -57,6 +66,9 @@ describe("revokeAllSessionsForUser", () => {
     findManyMock.mockReset();
     deleteSessionsMock.mockReset();
     cacheDelMock.mockReset();
+    execMock.mockReset().mockResolvedValue([]);
+    multiCalls.set = [];
+    multiCalls.unlink = [];
   });
 
   it("clears better-auth secondary storage, the active-sessions index, and the app session cache", async () => {
@@ -69,12 +81,19 @@ describe("revokeAllSessionsForUser", () => {
     // 1. better-auth's per-token Redis entries + the DB rows.
     expect(deleteSessionsMock).toHaveBeenCalledWith(["token-a", "token-b"]);
 
-    // 2. The active-sessions index, which the *plural* deleteSessions does not prune itself.
-    expect(cacheDelMock).toHaveBeenCalledWith("active-sessions-user-1");
+    // 2. The active-sessions index, which the *plural* deleteSessions does not prune itself, and
+    //    better-auth's per-token entries again, strictly (its own delete swallows errors, V-259).
+    const deletedKeys = multiCalls.unlink;
+    expect(deletedKeys).toContain("active-sessions-user-1");
+    expect(deletedKeys).toEqual(expect.arrayContaining(["token-a", "token-b"]));
 
     // 3. This app's own auth:session:<token-hash> cache — the SAME key the request path builds
-    //    from the signed cookie, with the real signature check and hashing on both sides.
-    const deletedKeys = cacheDelMock.mock.calls.map(([key]) => key as string);
+    //    from the signed cookie, with the real signature check and hashing on both sides — with a
+    //    tombstone each so a lookup in flight cannot re-cache it (V-122).
+    expect(multiCalls.set).toEqual([
+      `${getSessionCacheKey(signedCookie("token-a"))}:revoked`,
+      `${getSessionCacheKey(signedCookie("token-b"))}:revoked`,
+    ]);
 
     expect(deletedKeys).toContain(getSessionCacheKey(signedCookie("token-a")));
     expect(deletedKeys).toContain(getSessionCacheKey(signedCookie("token-b")));
@@ -87,12 +106,20 @@ describe("revokeAllSessionsForUser", () => {
     await expect(revokeAllSessionsForUser("user-1")).resolves.toBe(0);
 
     expect(deleteSessionsMock).not.toHaveBeenCalled();
-    expect(cacheDelMock).not.toHaveBeenCalled();
+    expect(execMock).not.toHaveBeenCalled();
   });
 
   it("swallows failures in the safe variant so account deletion is never blocked", async () => {
     findManyMock.mockRejectedValue(new Error("redis down"));
 
+    await expect(revokeAllSessionsForUserSafely("user-1")).resolves.toBeUndefined();
+  });
+
+  it("fails when Redis does not confirm the deletes, though better-auth swallowed its own (V-259)", async () => {
+    findManyMock.mockResolvedValue([{ token: "token-a" }]);
+    execMock.mockRejectedValue(new Error("Redis client not ready"));
+
+    await expect(revokeAllSessionsForUser("user-1")).rejects.toThrow("Redis client not ready");
     await expect(revokeAllSessionsForUserSafely("user-1")).resolves.toBeUndefined();
   });
 

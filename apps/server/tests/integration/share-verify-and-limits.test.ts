@@ -572,6 +572,17 @@ describe("V-171 share links follow the document's visibility", () => {
     expect(await metadataOf(old.id)).toEqual({ subdomain: document.slug, documentId: document.id });
     expect((await metadataOf(ambiguous.id)).documentId).toBeUndefined();
 
+    // The lock now lives on the row (V-207); the next migration backfills it from these entries,
+    // as `migrate deploy` runs them in order.
+    const lockSql = readFileSync(
+      new URL(
+        "../../prisma/migrations/20261027100000_document_moderation_lock/migration.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    await prisma.$executeRawUnsafe(lockSql.slice(lockSql.indexOf("-- Backfill")));
+
     const reopen = await ownerPatchVisibility(user.cookie, document.id, "UNLISTED");
     expect(reopen.status).toBe(403);
   });

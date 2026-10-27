@@ -12,11 +12,7 @@ import {
   type AffiliateTierKey,
 } from "#services/affiliate/constants";
 import { invalidateAffiliate } from "#services/affiliate/cache";
-import {
-  ADMIN_AUDIT_ACTIONS,
-  writeAdminAudit,
-  type AdminAuditInput,
-} from "#services/admin/adminAuditService";
+import { writeAdminAudit, type AdminAuditInput } from "#services/admin/adminAuditService";
 
 export const SHARED_ADDRESS_REASON = "Shared address with affiliate; review before release";
 
@@ -59,7 +55,7 @@ export function cleanConversionsWhere(
  * - Promotes only: a tier is never lowered here, whatever the count says.
  * - Idempotent: the write is a compare-and-set on the tier it read, and a count that earns
  *   nothing new writes nothing.
- * - An admin's tier decision (the latest `affiliate.update` audit entry that set a tier) holds
+ * - An admin's tier decision (`User.affiliateTierDecidedAt`, on the row) holds
  *   until a threshold is crossed after it: promotion needs a tier above both the current one and
  *   the one the conversions at the time of that decision had earned. A demotion therefore sticks
  *   until the next milestone, and an early promotion still reaches Partner at 50.
@@ -67,7 +63,7 @@ export function cleanConversionsWhere(
 async function promoteForConversions(tx: Prisma.TransactionClient, affiliateId: string) {
   const affiliate = await tx.user.findUnique({
     where: { id: affiliateId },
-    select: { affiliateTier: true },
+    select: { affiliateTier: true, affiliateTierDecidedAt: true },
   });
   if (!affiliate) return null;
 
@@ -78,19 +74,10 @@ async function promoteForConversions(tx: Prisma.TransactionClient, affiliateId: 
   const earned = tierEarnedBy(conversions);
   if (affiliateTierRank(earned) <= affiliateTierRank(current)) return null;
 
-  // Filtered on the tier key in the query: any number of other edits may follow the decision.
-  const [decision] = await tx.$queryRaw<Array<{ createdAt: Date }>>`
-    SELECT "createdAt" FROM "AdminAuditEntry"
-    WHERE "action" = ${ADMIN_AUDIT_ACTIONS.affiliateUpdate}
-      AND "targetType" = 'User'
-      AND "targetId" = ${affiliateId}
-      AND jsonb_typeof("metadata" -> 'tier') = 'string'
-    ORDER BY "createdAt" DESC
-    LIMIT 1`;
-
-  if (decision) {
+  const decidedAt = affiliate.affiliateTierDecidedAt;
+  if (decidedAt) {
     const conversionsAtDecision = await tx.affiliateReferral.count({
-      where: cleanConversionsWhere(affiliateId, decision.createdAt),
+      where: cleanConversionsWhere(affiliateId, decidedAt),
     });
     if (affiliateTierRank(earned) <= affiliateTierRank(tierEarnedBy(conversionsAtDecision)))
       return null;

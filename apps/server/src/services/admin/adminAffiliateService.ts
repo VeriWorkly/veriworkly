@@ -227,7 +227,8 @@ export async function updateAffiliateStanding(
       where: { id: userId },
       data: {
         ...(input.status ? { affiliateStatus: input.status } : {}),
-        ...(input.tier ? { affiliateTier: input.tier } : {}),
+        // The decision promotion respects (`promoteForConversions`), kept on the row.
+        ...(input.tier ? { affiliateTier: input.tier, affiliateTierDecidedAt: new Date() } : {}),
       },
       select: AFFILIATE_SELECT,
     });

@@ -10,7 +10,7 @@ import {
   hasLegacyCompatibilitySections,
 } from "@veriworkly/profile-core";
 
-import { ShareService, madePrivateByModerator } from "#services/shareService";
+import { ShareService } from "#services/shareService";
 
 import { prisma } from "#lib/prisma";
 import { logger } from "#lib/logger";
@@ -25,7 +25,9 @@ import {
 } from "#utils/portfolioPublicationCache";
 
 import { assertFreeTierCapacity } from "#services/documentCapacity";
-import { isModerationLocked } from "#services/portfolioService";
+import { isModerationLocked, NOT_MODERATION_LOCKED } from "#services/portfolioService";
+
+const MODERATED_PRIVATE_MESSAGE = "This document was made private by a moderator.";
 
 const MAX_DOCUMENTS_PER_LIST = 500;
 
@@ -612,6 +614,7 @@ export class DocumentService {
         where: { id: documentId, userId, deletedAt: null },
         select: {
           visibility: true,
+          moderatedPrivateAt: true,
           user: { select: { username: true } },
           _count: { select: { shareLinks: true } },
         },
@@ -619,12 +622,8 @@ export class DocumentService {
 
       if (!current) throw new ApiError(404, "Document not found");
 
-      if (
-        current.visibility === "PRIVATE" &&
-        input.visibility !== "PRIVATE" &&
-        (await madePrivateByModerator(documentId))
-      )
-        throw new ApiError(403, "This document was made private by a moderator.");
+      if (input.visibility !== "PRIVATE" && current.moderatedPrivateAt)
+        throw new ApiError(403, MODERATED_PRIVATE_MESSAGE);
 
       if (input.visibility !== current.visibility && current._count.shareLinks > 0) {
         visibilityTouchesShares = true;
@@ -662,6 +661,10 @@ export class DocumentService {
             userId,
             revision: revision,
             deletedAt: null,
+            // Conditional (V-226): a "Make private" committed after the check above wins.
+            ...(input.visibility && input.visibility !== "PRIVATE"
+              ? { moderatedPrivateAt: null }
+              : {}),
           },
 
           data: {
@@ -703,6 +706,9 @@ export class DocumentService {
         });
 
         if (!current) throw new ApiError(404, "Document not found");
+
+        if (input.visibility && input.visibility !== "PRIVATE" && current.moderatedPrivateAt)
+          throw new ApiError(403, MODERATED_PRIVATE_MESSAGE);
 
         if (current.revision !== revision)
           throw new ApiError(
@@ -769,9 +775,10 @@ export class DocumentService {
           },
         });
 
+        // Conditional (V-226): a takedown committed after the read above keeps its reason.
         if (livePublication) {
-          await tx.portfolioPublication.update({
-            where: { id: livePublication.id },
+          await tx.portfolioPublication.updateMany({
+            where: { id: livePublication.id, ...NOT_MODERATION_LOCKED },
             data: {
               status: "SUSPENDED",
               suspensionReason: "user_unpublished",

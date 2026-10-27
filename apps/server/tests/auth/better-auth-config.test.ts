@@ -34,10 +34,15 @@ vi.mock("#services/mail", () => ({
 }));
 
 import { auth } from "#auth/index";
+import { betterAuthLogger } from "#auth/authLogger";
 
 describe("Better Auth configuration", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options = auth.options as any;
+
+  it("sends its own log lines through the masking app logger (V-255)", () => {
+    expect(options.logger).toBe(betterAuthLogger);
+  });
 
   it("has rate limiting enabled with correct settings and custom rules", () => {
     expect(options.rateLimit).toBeDefined();

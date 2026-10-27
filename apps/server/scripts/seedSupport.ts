@@ -1,6 +1,8 @@
 import { logger } from "#lib/logger";
 import { initRedis } from "#lib/redis";
 
+import { assertLocalDatabase, isLocalDatabaseUrl } from "#lib/databaseTarget";
+
 /**
  * Shared rules for the seed scripts (`seed:changelog`, `seed:roadmap`).
  *
@@ -8,7 +10,8 @@ import { initRedis } from "#lib/redis";
  *   written unless every item passes.
  * - Existing rows are never touched: an admin edit (or a sync's enriched PR refs) is not
  *   overwritten by the file. Only ids that are missing are created, in one transaction.
- * - Production needs `--allow-production`; `--wipe` (delete every row first) is refused there.
+ * - A non-local database or NODE_ENV=production needs `--allow-production`; `--wipe` (delete every
+ *   row first) is refused there (V-209).
  * - Read caches are invalidated through the services' own generation bump, never by deleting a
  *   key prefix (which also matched the sync locks, V-072).
  */
@@ -17,17 +20,30 @@ export const seedFlags = {
   allowProduction: process.argv.includes("--allow-production"),
 };
 
-export function assertSeedAllowed(name: string): void {
-  if (process.env.NODE_ENV !== "production") return;
+/**
+ * Local databases only, whatever NODE_ENV says (V-209): a `.env` with `NODE_ENV=development` can
+ * still point at production. A remote database needs `--allow-production`, and `--wipe` is refused
+ * there and in production in every case.
+ */
+export function assertSeedAllowed(
+  name: string,
+  env: NodeJS.ProcessEnv = process.env,
+  argv: readonly string[] = process.argv,
+): void {
+  const wipe = argv.includes("--wipe");
+  const urls = { DATABASE_URL: env.DATABASE_URL, DIRECT_DATABASE_URL: env.DIRECT_DATABASE_URL };
+  const remote = Object.values(urls).some((url) => url && !isLocalDatabaseUrl(url));
 
-  if (seedFlags.wipe) {
-    throw new Error(`${name}: --wipe is refused in production.`);
+  if (wipe && (remote || env.NODE_ENV === "production")) {
+    throw new Error(`${name}: --wipe is refused against production or any non-local database.`);
   }
-  if (!seedFlags.allowProduction) {
+  if (env.NODE_ENV === "production" && !argv.includes("--allow-production")) {
     throw new Error(
       `${name}: NODE_ENV=production. Re-run with --allow-production to create the missing rows (existing rows are never changed).`,
     );
   }
+
+  assertLocalDatabase(name, urls, argv);
 }
 
 /** Validates every item and throws once, listing each failing item, before anything is written. */

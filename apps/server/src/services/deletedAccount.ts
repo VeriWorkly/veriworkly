@@ -184,12 +184,16 @@ export async function redactBillingTextForUser(tx: Prisma.TransactionClient, use
     data: { reason: REDACTED_REASON },
   });
   // The admin log keeps what was done, by whom, to which row and when; the reason an admin typed
-  // about this person goes. An entry is about the user when it targets them or one of their rows,
-  // or names them as the user or owner in its metadata.
+  // about this person goes, and so do the identity fields an entry recorded (a renamed name or
+  // username, an email, V-231). An entry is about the user when it targets them or one of their
+  // rows, or names them as the user or owner in its metadata.
   await tx.$executeRaw`
     UPDATE "AdminAuditEntry"
-    SET "reason" = ${REDACTED_REASON}
-    WHERE "reason" IS NOT NULL
+    SET "reason" = CASE WHEN "reason" IS NULL THEN NULL ELSE ${REDACTED_REASON} END,
+        "metadata" = CASE WHEN jsonb_typeof("metadata") = 'object'
+          THEN "metadata" - ${AUDIT_IDENTITY_KEYS}::text[] ELSE "metadata" END
+    WHERE ("reason" IS NOT NULL
+        OR (jsonb_typeof("metadata") = 'object' AND "metadata" ?| ${AUDIT_IDENTITY_KEYS}::text[]))
       AND (
         "targetId" = ${userId}
         OR "metadata" ->> 'userId' = ${userId}
@@ -207,6 +211,9 @@ export async function redactBillingTextForUser(tx: Prisma.TransactionClient, use
 }
 
 const REDACTED_REASON = "Removed with the account";
+
+/** Audit metadata keys that name the person rather than describe the action. */
+const AUDIT_IDENTITY_KEYS = ["name", "username", "email", "confirmEmail", "previousEmail"];
 
 /**
  * Redacts one stored event that turned out to belong to a deleted account: the webhook applies

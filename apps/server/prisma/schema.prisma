@@ -21,6 +21,10 @@ model User {
   autoSyncEnabled       Boolean               @default(true)
   affiliateStatus       AffiliateStatus       @default(NOT_ENROLLED)
   affiliateTier         AffiliateTier         @default(TIER_1)
+  // When an admin last set the tier by hand. Automatic promotion needs a threshold crossed after
+  // it, so a demotion holds until the next milestone. On the row, not read from the admin audit
+  // log, so audit retention can never undo it.
+  affiliateTierDecidedAt DateTime?
   affiliateCode         String?               @unique
   affiliateEnrolledAt   DateTime?
   role                  Role                  @default(USER)
@@ -177,6 +181,12 @@ model Document {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime? // Soft delete
+
+  // When a moderator made this document private ("Make private", or a portfolio force-unpublish).
+  // While set, the owner cannot share, unlist or publish it; only a moderator lifts it ("Make
+  // unlisted", or setting its portfolio back to LIVE). Stored on the row, not read from the admin
+  // audit log, so audit retention can never lift a takedown (V-207).
+  moderatedPrivateAt DateTime?
 
   shareLinks           ShareLink[]
   portfolioPublication PortfolioPublication?

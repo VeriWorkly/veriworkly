@@ -232,7 +232,8 @@ describe("GET /profiles/master after account changes (V-031)", () => {
 });
 
 describe("affiliate leaderboard after a rename", () => {
-  it("shows the new name or username at once, from the user or an admin", async () => {
+  // Published as a display name only, "First L." (V-236): no username, image or id.
+  it("shows the new name at once, from the user or an admin", async () => {
     const affiliate = await createUserWithSession({ name: "Leader Old", username: "leader-old" });
     await prisma.user.update({
       where: { id: affiliate.id },
@@ -258,22 +259,22 @@ describe("affiliate leaderboard after a rename", () => {
         .get("/api/v1/affiliates/leaderboard?period=all_time")
         .set("Origin", STUDIO_ORIGIN);
       expect(response.status).toBe(200);
-      return response.body.data[0].user as { name: string; username: string };
+      return response.body.data[0].user as { name: string; username?: string };
     };
 
-    expect(await board()).toMatchObject({ name: "Leader Old", username: "leader-old" });
+    expect(await board()).toEqual({ name: "Leader O.", affiliateTier: expect.any(String) });
 
     const api = asUser(affiliate);
     expect((await api.put("/api/v1/users/me/name").send({ name: "Leader New" })).status).toBe(200);
-    expect((await board()).name).toBe("Leader New");
+    expect((await board()).name).toBe("Leader N.");
 
     const admin = await adminSession();
     const patched = await request(app)
       .patch(`/api/v1/admin/users/${affiliate.id}`)
       .set("Origin", STUDIO_ORIGIN)
       .set("Cookie", admin.cookie)
-      .send({ username: "leader-new", reason: "support ticket" });
+      .send({ name: "Renamed Byadmin", reason: "support ticket" });
     expect(patched.status).toBe(200);
-    expect((await board()).username).toBe("leader-new");
+    expect((await board()).name).toBe("Renamed B.");
   });
 });

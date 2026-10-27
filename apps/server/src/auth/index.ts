@@ -16,7 +16,13 @@ import { getRedis } from "#lib/redis";
 
 import { incrementFixedWindow } from "#middleware/rateLimit";
 
-import { invalidateSessionCache, invalidateCacheByToken } from "#utils/authCache";
+import { betterAuthLogger } from "#auth/authLogger";
+import {
+  invalidateCacheByToken,
+  isSignOutPath,
+  revokeSessionCacheForCookie,
+  revokeSessionCaches,
+} from "#utils/authCache";
 import { incrementUsageMetric } from "#services/analyticsService";
 
 import { sendAuthOtpEmail, sendWelcomeEmail, sendLoginAlertEmail } from "#services/mail/index";
@@ -118,6 +124,8 @@ export async function assertOtpRecipientQuotaAvailable(email: string): Promise<v
 }
 
 export const auth = betterAuth({
+  // Its log lines go through the app logger, which masks email addresses (V-255).
+  logger: betterAuthLogger,
   // better-auth's deprecated alias of `/email-otp/request-password-reset`, removed in its next
   // major (V-191). No app calls it; switching it off now means that bump cannot change anything.
   disabledPaths: ["/forget-password/email-otp"],
@@ -293,18 +301,14 @@ export const auth = betterAuth({
       const recipient = otpPrecheckRecipient(ctx.path, ctx.body);
       if (recipient) await assertOtpRecipientQuotaAvailable(recipient);
 
-      // Only endpoints that exist in this config: change-email and delete-user are disabled, and
-      // change-password needs a credential account, which OTP/OAuth sign-in never creates.
-      const pathsToInvalidate = ["/sign-out", "/revoke-session", "/revoke-sessions"];
-
-      const shouldInvalidate = pathsToInvalidate.some(
-        (p) => ctx.path === p || ctx.path.startsWith(p + "/"),
-      );
-
-      if (shouldInvalidate) {
+      // Sign-out only. The request's own cookie is the session being ended there; on
+      // /revoke-session(s) it is the caller's session, which stays valid, and the sessions that
+      // are revoked are tombstoned by `session.delete.after` instead.
+      if (isSignOutPath(ctx.path)) {
         const cookieHeader = ctx.headers?.get("cookie") || "";
 
-        if (cookieHeader) await invalidateSessionCache(cookieHeader);
+        // Tombstoned, not just deleted: a lookup in flight cannot re-cache it (V-122).
+        if (cookieHeader) await revokeSessionCacheForCookie(cookieHeader);
       }
     }),
   },
@@ -380,7 +384,7 @@ export const auth = betterAuth({
       delete: {
         after: async (session) => {
           try {
-            await invalidateCacheByToken(session.token);
+            await revokeSessionCaches([session.token]);
           } catch (error) {
             // Never block the delete, but a stale session cache must be visible (V-165).
             logger.warn("Session cache invalidation failed in session.delete.after", { error });

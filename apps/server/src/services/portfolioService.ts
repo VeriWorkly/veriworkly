@@ -11,7 +11,6 @@ import {
   USER_UNPUBLISHED_REASON,
 } from "#services/portfolioAssetService";
 import { ENTITLEMENT_KEYS } from "#services/productCatalog";
-import { madePrivateByModerator } from "#services/moderationRecord";
 import { notifyOnce } from "#services/billingNotifications";
 import { UNLOCK_PHRASES } from "#services/productNames";
 
@@ -96,6 +95,8 @@ const PUBLIC_LIST_MAX = 1000;
  */
 export const MODERATION_SUSPENSION_PREFIX = "moderation:";
 
+const MODERATED_MESSAGE = "This portfolio was taken down by a moderator.";
+
 export function isModerationLocked(publication: {
   status: string;
   suspensionReason: string | null;
@@ -110,6 +111,19 @@ export function isModerationLocked(publication: {
     !(BILLING_SUSPENSION_REASONS as readonly string[]).includes(reason)
   );
 }
+
+/**
+ * `isModerationLocked` as a write condition: a publication the caller may still change. Every
+ * owner write (publish, unpublish, delete) and the admin takedown use it in a conditional
+ * `updateMany`, so a takedown that commits after their read is never overwritten (V-226). A
+ * SUSPENDED row with no reason counts as locked, as above.
+ */
+export const NOT_MODERATION_LOCKED = {
+  OR: [
+    { status: { not: "SUSPENDED" as const } },
+    { suspensionReason: { in: [USER_UNPUBLISHED_REASON, ...BILLING_SUSPENSION_REASONS] } },
+  ],
+} satisfies Prisma.PortfolioPublicationWhereInput;
 
 /** Owner-facing: `keep` lists the names this user already holds (see `ownedSubdomains`). */
 function normalizeSubdomain(value: string, keep: Iterable<string> = []) {
@@ -639,9 +653,9 @@ export class PortfolioService {
     if (!document) throw new ApiError(404, "Portfolio draft not found.");
 
     // A force-unpublish deletes the publication row, so the row's moderation lock below cannot
-    // see it; the takedown's audit record can. Lifted only by a moderator unlisting the document.
-    if (await madePrivateByModerator(document.id))
-      throw new ApiError(403, "This portfolio was taken down by a moderator.");
+    // see it; the document's own lock can (V-207). Lifted only by a moderator. Checked again,
+    // conditionally, inside the transaction below (V-226).
+    if (document.moderatedPrivateAt) throw new ApiError(403, MODERATED_MESSAGE);
 
     if (isPremiumPortfolioTemplate(document.templateId) && !hasSubscription) {
       throw new ApiError(
@@ -707,7 +721,7 @@ export class PortfolioService {
     };
 
     if (existingPublication && isModerationLocked(existingPublication))
-      throw new ApiError(403, "This portfolio was taken down by a moderator.");
+      throw new ApiError(403, MODERATED_MESSAGE);
 
     try {
       const publication = await prisma.$transaction(async (tx) => {
@@ -718,22 +732,29 @@ export class PortfolioService {
           });
         }
 
-        await tx.document.update({
-          where: { id: document.id },
+        // Both writes are conditional on the moderation state (V-226): a "Make private" or a
+        // takedown that committed after the reads above wins, and nothing here commits.
+        const shown = await tx.document.updateMany({
+          where: { id: document.id, userId, deletedAt: null, moderatedPrivateAt: null },
           data: { visibility: "PUBLIC" },
         });
+        if (shown.count === 0) throw new ApiError(403, MODERATED_MESSAGE);
 
-        return tx.portfolioPublication.upsert({
-          where: { userId },
-          create: {
-            userId,
-            documentId: document.id,
-            subdomain,
-            templateId: document.templateId,
-            snapshot: snapshot as Prisma.InputJsonValue,
-            publishedRevision: document.revision,
-          },
-          update: {
+        if (!existingPublication)
+          return tx.portfolioPublication.create({
+            data: {
+              userId,
+              documentId: document.id,
+              subdomain,
+              templateId: document.templateId,
+              snapshot: snapshot as Prisma.InputJsonValue,
+              publishedRevision: document.revision,
+            },
+          });
+
+        const republished = await tx.portfolioPublication.updateMany({
+          where: { userId, ...NOT_MODERATION_LOCKED },
+          data: {
             documentId: document.id,
             subdomain,
             templateId: document.templateId,
@@ -745,6 +766,9 @@ export class PortfolioService {
             publishedAt: new Date(),
           },
         });
+        if (republished.count === 0) throw new ApiError(403, MODERATED_MESSAGE);
+
+        return tx.portfolioPublication.findUniqueOrThrow({ where: { userId } });
       });
 
       const subdomains = [subdomain, existingPublication?.subdomain ?? ""];
@@ -806,17 +830,20 @@ export class PortfolioService {
       });
 
       // A moderated row keeps its moderation reason: rewriting it as the user's own takedown
-      // would let the next Publish lift the lock.
+      // would let the next Publish lift the lock. Conditional, so a takedown committed after the
+      // read above is kept too (V-226).
       if (isModerationLocked(publication)) return publication;
 
-      return tx.portfolioPublication.update({
-        where: { userId },
+      await tx.portfolioPublication.updateMany({
+        where: { userId, ...NOT_MODERATION_LOCKED },
         data: {
           status: "SUSPENDED",
           suspensionReason: USER_UNPUBLISHED_REASON,
           suspendedAt: new Date(),
         },
       });
+
+      return tx.portfolioPublication.findUniqueOrThrow({ where: { userId } });
     });
 
     await Promise.all([
