@@ -390,6 +390,20 @@ function validateProduction(env: RawEnv, ctx: z.RefinementCtx): void {
       addIssue(ctx, variable, `must be at least ${MIN_INTERNAL_SECRET_LENGTH} characters when set`);
     }
   }
+
+  // The site refresh hook (utils/siteRevalidate.ts): optional, but a set secret must be strong
+  // and have a site to call.
+  const siteSecret = env.SITE_REVALIDATE_SECRET;
+  if (siteSecret !== undefined && siteSecret.length < MIN_INTERNAL_SECRET_LENGTH) {
+    addIssue(
+      ctx,
+      "SITE_REVALIDATE_SECRET",
+      `must be at least ${MIN_INTERNAL_SECRET_LENGTH} characters when set`,
+    );
+  }
+  if (siteSecret && !env.SITE_URL) {
+    addIssue(ctx, "SITE_URL", "is required when SITE_REVALIDATE_SECRET is set");
+  }
 }
 
 const environmentSchema = z

@@ -6,6 +6,7 @@ import { cacheGet, cacheSet } from "#lib/redis";
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
 
 import { MAX_CACHED_OFFSET } from "#utils/pagination";
+import { notifySiteContentChanged } from "#utils/siteRevalidate";
 
 /**
  * Generation namespaces for the public roadmap reads: one INCR each invalidates every variant,
@@ -19,6 +20,7 @@ export const ROADMAP_CACHE_NAMESPACES = {
 
 export async function invalidateRoadmapReadCaches(): Promise<void> {
   await bumpGeneration(...Object.values(ROADMAP_CACHE_NAMESPACES));
+  notifySiteContentChanged("roadmap");
 }
 
 export type RoadmapStatus = "todo" | "in-progress" | "done";

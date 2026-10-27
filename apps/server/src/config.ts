@@ -233,6 +233,12 @@ export const config = {
     ),
   },
 
+  // The marketing site's refresh hook (apps/site/app/api/revalidate). Both unset: off.
+  site: {
+    url: (process.env.SITE_URL || "").replace(/\/+$/, ""),
+    revalidateSecret: process.env.SITE_REVALIDATE_SECRET || "",
+  },
+
   portfolio: {
     graceDays: parseIntegerEnv(process.env.PORTFOLIO_GRACE_DAYS, 7),
     url: process.env.PORTFOLIO_URL || "http://localhost:3004",
