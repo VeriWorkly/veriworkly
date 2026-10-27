@@ -1,9 +1,16 @@
+import { isValidElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // `admin-server.ts` is a server module: it imports the `server-only` guard (which throws when
 // resolved outside a React Server Component) and reads request cookies. Both are stubbed so the
 // data-loading contract below can be exercised in a plain node environment.
 vi.mock("server-only", () => ({}));
+
+// The detail pages render through `@veriworkly/ui`, which loads its fonts from `next/font`.
+vi.mock("next/font/google", () => ({
+  Geist: () => ({ variable: "" }),
+  Geist_Mono: () => ({ variable: "" }),
+}));
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({ toString: () => "veriworkly-auth.session_token=test-session" }),
@@ -95,29 +102,27 @@ describe("admin detail loading contract", () => {
     );
   });
 
-  // The defect lived in the pages, not the service, so guard the call site too: any detail page
-  // that goes back to catching everything would pass the unit tests above while reintroducing
-  // exactly the reported symptom.
-  it("keeps every admin detail page routed through loadAdminDetail", async () => {
-    const { readFile } = await import("node:fs/promises");
-    const path = await import("node:path");
+  // The defect lived in the pages, not the service, so render the pages too: one that goes back
+  // to catching everything would pass the unit tests above while showing an outage as a missing
+  // record.
+  it("S-358: every admin detail page throws an outage and shows a missing record as gone", async () => {
+    const pages = {
+      users: await import("@/app/admin/users/[id]/page"),
+      affiliates: await import("@/app/admin/affiliates/[id]/page"),
+      portfolios: await import("@/app/admin/portfolios/[id]/page"),
+      ambassadors: await import("@/app/admin/ambassadors/[id]/page"),
+    };
+    const params = Promise.resolve({ id: "record-1" });
 
-    const pages = [
-      "app/admin/users/[id]/page.tsx",
-      "app/admin/affiliates/[id]/page.tsx",
-      "app/admin/portfolios/[id]/page.tsx",
-      "app/admin/ambassadors/[id]/page.tsx",
-    ];
+    for (const [name, { default: Page }] of Object.entries(pages)) {
+      respondWith(500, { success: false, message: "Database unavailable" });
+      await expect(Page({ params }), name).rejects.toMatchObject({ status: 500 });
 
-    for (const page of pages) {
-      const source = await readFile(path.join(process.cwd(), page), "utf8");
-
-      expect(source, `${page} must not swallow every fetch failure`).not.toMatch(
-        /\.catch\(\(\)\s*=>\s*null\)/,
-      );
-      expect(source, `${page} must load its record through loadAdminDetail`).toContain(
-        "loadAdminDetail(",
-      );
+      // A missing record renders its "gone" notice or the 404 page, never the error boundary.
+      respondWith(404, { success: false, message: "Not found" });
+      const missing: unknown = await Page({ params }).catch((error: unknown) => error);
+      const digest = (missing as { digest?: unknown } | null)?.digest;
+      expect(isValidElement(missing) || /404/.test(String(digest)), name).toBe(true);
     }
   });
 

@@ -1,5 +1,6 @@
-// Lists every environment variable the studio reads that `.env.example` does not document.
-// Run from apps/studio: `node scripts/check-env-example.mjs` (exit 1 when something is missing).
+// Lists every environment variable the studio reads that `.env.example` does not document, and
+// every variable `.env.example` documents that no studio code reads.
+// Run from apps/studio: `node scripts/check-env-example.mjs` (exit 1 when either list is not empty).
 // `tests/contracts/env-example.contract.test.ts` runs the same check in CI.
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -60,14 +61,27 @@ export function findUndocumentedEnvReads(studioDir) {
     .sort();
 }
 
+/** Names `.env.example` documents that no studio code reads: an operator would set them for nothing. */
+export function findUnreadEnvExampleEntries(studioDir) {
+  const reads = envReads(studioDir);
+
+  return [...documentedEnvNames(readFileSync(join(studioDir, ".env.example"), "utf8"))]
+    .filter((name) => !reads.has(name))
+    .sort();
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const studioDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const missing = findUndocumentedEnvReads(studioDir);
+  const unread = findUnreadEnvExampleEntries(studioDir);
 
   if (missing.length > 0) {
     console.error(`Read by the studio but missing from .env.example: ${missing.join(", ")}`);
-    process.exit(1);
   }
+  if (unread.length > 0) {
+    console.error(`In .env.example but read by no studio code: ${unread.join(", ")}`);
+  }
+  if (missing.length > 0 || unread.length > 0) process.exit(1);
 
-  console.log("Every variable the studio reads is in .env.example.");
+  console.log(".env.example lists exactly the variables the studio reads.");
 }

@@ -38,17 +38,14 @@ import { registerPdfTestFonts } from "@/tests/utils/pdf";
 const NOW = new Date("2026-10-01T00:00:00Z");
 
 /**
- * The shipped sample, with a real degree and phone number in place of its tongue-in-cheek
- * "Internet Degree" from "Self-Taught" and "0000000000" — which no ATS would file as education or
- * as a phone, however a template printed them.
+ * The shipped sample, with its phone number and education pinned here, so the scores below
+ * measure the templates and do not move when the sample's wording changes.
  */
 function sample(templateId: string, fontFamily: string, headline?: string): ResumeData {
   const resume = structuredClone(defaultResume);
   resume.templateId = templateId;
   resume.customization.fontFamily = fontFamily;
   if (headline !== undefined) resume.basics.headline = headline;
-  // The sample's "0000000000" is no number at all, and the engine — rightly — reads no phone
-  // from it. A real one shows the number survives the export.
   resume.basics.phone = "+1 415 555 0142";
   resume.education = [
     {

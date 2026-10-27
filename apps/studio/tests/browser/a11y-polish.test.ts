@@ -7,6 +7,8 @@ import type { ParityServer } from "../parity/server";
 import { launchParityBrowser } from "../parity/browser";
 import { startParityServer } from "../parity/server";
 
+import { screenshotFailures } from "./failure-screenshots";
+
 /**
  * Phase 8 accessibility behaviour that only exists in a browser: the login carousel's pause
  * and reduced-motion handling, the editor's announced save status, and wheel scrolling on
@@ -19,6 +21,8 @@ let server: ParityServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
+
+screenshotFailures(() => page);
 
 beforeAll(async () => {
   server = await startParityServer();

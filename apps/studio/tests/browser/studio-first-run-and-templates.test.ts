@@ -9,6 +9,11 @@ import type { ParityServer } from "../parity/server";
 import { launchParityBrowser } from "../parity/browser";
 import { startParityServer } from "../parity/server";
 
+import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
+import { resumeTemplateRegistry } from "@/templates/resume/registry";
+
+import { screenshotFailures } from "./failure-screenshots";
+
 /**
  * What a new guest meets outside the editor: the in-app template gallery, a create button
  * wherever the studio says "no documents yet" (phones have no sidebar), and the reminder that
@@ -22,6 +27,8 @@ let server: ParityServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
+
+screenshotFailures(() => page);
 
 beforeAll(async () => {
   server = await startParityServer();
@@ -59,16 +66,18 @@ describe("in-app template gallery (#131)", () => {
     await clearStorage();
   });
 
-  it("lists the 7 resume and 5 cover letter templates", async () => {
+  it("lists every registered resume and cover letter template", async () => {
     await page.goto(`${server.origin}/templates`, { waitUntil: "networkidle" });
 
     const visiblePanel = page.locator('[role="tabpanel"]:not([hidden])');
 
-    expect(await visiblePanel.locator("article").count()).toBe(7);
+    expect(await visiblePanel.locator("article").count()).toBe(resumeTemplateRegistry.ids.length);
 
     await page.getByRole("tab", { name: /Cover letters/ }).click();
 
-    expect(await visiblePanel.locator("article").count()).toBe(5);
+    expect(await visiblePanel.locator("article").count()).toBe(
+      coverLetterTemplateRegistry.ids.length,
+    );
     expect(
       await page.getByRole("tab", { name: /Cover letters/ }).getAttribute("aria-selected"),
     ).toBe("true");
@@ -93,6 +102,39 @@ describe("in-app template gallery (#131)", () => {
     const id = page.url().split("/").pop()!;
 
     expect((await storedResume(id))?.templateId).toBe("precision-ats");
+  });
+
+  it("S-360 a template link at the free limit asks before restyling the resume the guest has", async () => {
+    const link = `${server.origin}/editor?type=resume&template=bold-impact`;
+    const editorUrl = /\/editor\/resume\/(?!new)[^/?]+$/;
+
+    // The guest's one resume, on another template.
+    await clearStorage();
+    await page.goto(`${server.origin}/editor?type=resume&template=precision-ats`, {
+      waitUntil: "networkidle",
+    });
+    await page.waitForURL(editorUrl);
+
+    await page.goto(link, { waitUntil: "networkidle" });
+    const question = page.getByRole("heading", { name: /with Bold Impact\?$/ });
+    await question.waitFor();
+    // Focus lands on the question, so a screen reader reads it first.
+    await expect
+      .poll(() => question.evaluate((heading) => heading === document.activeElement))
+      .toBe(true);
+
+    await page.getByRole("button", { name: "Keep its current template" }).click();
+    await page.waitForURL(editorUrl);
+    const id = page.url().split("/").pop()!;
+
+    expect((await storedResume(id))?.templateId).toBe("precision-ats");
+
+    await page.goto(link, { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Use Bold Impact" }).click();
+    await page.waitForURL(editorUrl);
+
+    expect(page.url().split("/").pop()).toBe(id);
+    await expect.poll(async () => (await storedResume(id))?.templateId).toBe("bold-impact");
   });
 });
 
@@ -364,5 +406,83 @@ describe("document library pages (Part H)", () => {
     await pages.waitFor();
     expect(await pages.textContent()).toContain("1–20 of 21");
     expect(await shownTitles()).toEqual(firstPage);
+  });
+});
+
+describe("sign-in failures reach the person signing in (S-177)", () => {
+  const AUTH = "**/api/v1/auth/**";
+  const toastTexts = () => page.locator("[data-sonner-toast]").allInnerTexts();
+
+  /** Answers every auth call with `status` and the server's `{ message }` body. */
+  async function refuseAuth(status: number, message: string) {
+    await page.unroute(AUTH);
+    await page.route(AUTH, (route) =>
+      route.fulfill({
+        status,
+        contentType: "application/json",
+        body: JSON.stringify({ message }),
+      }),
+    );
+  }
+
+  async function openLogin() {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(`${server.origin}/login`, { waitUntil: "networkidle" });
+    await page.getByLabel("Email address").waitFor();
+  }
+
+  afterAll(async () => {
+    await page.unroute(AUTH);
+  });
+
+  it("S-177 a code that cannot be sent shows the server's reason and keeps the email form", async () => {
+    await refuseAuth(400, "This email address cannot receive codes.");
+    await openLogin();
+
+    await page.getByLabel("Email address").fill("ada@example.com");
+    await page.getByRole("button", { name: "Send Verification Code" }).click();
+
+    await expect
+      .poll(toastTexts)
+      .toContainEqual(expect.stringContaining("This email address cannot receive codes."));
+    expect(await page.getByRole("button", { name: "Send Verification Code" }).isEnabled()).toBe(
+      true,
+    );
+  });
+
+  it("S-177 a wrong code shows the server's reason and stays on the code form", async () => {
+    await page.unroute(AUTH);
+    await page.route(AUTH, (route) =>
+      route.request().url().includes("send-verification-otp")
+        ? route.fulfill({ status: 200, contentType: "application/json", body: '{"success":true}' })
+        : route.fulfill({
+            status: 400,
+            contentType: "application/json",
+            body: JSON.stringify({ message: "Invalid OTP" }),
+          }),
+    );
+    await openLogin();
+
+    await page.getByLabel("Email address").fill("ada@example.com");
+    await page.getByRole("button", { name: "Send Verification Code" }).click();
+    await page.getByLabel("Verification Code").fill("123456");
+
+    await expect.poll(toastTexts).toContainEqual(expect.stringContaining("Invalid OTP"));
+    expect(new URL(page.url()).pathname).toBe("/login");
+    expect(await page.getByLabel("Verification Code").isVisible()).toBe(true);
+  });
+
+  it("S-177 a social sign-in that cannot start says why and frees the buttons", async () => {
+    await refuseAuth(400, "Google sign-in is not configured.");
+    await openLogin();
+
+    await page.getByRole("button", { name: "Sign in with Google" }).click();
+
+    await expect
+      .poll(toastTexts)
+      .toContainEqual(expect.stringContaining("Google sign-in is not configured."));
+    await expect
+      .poll(() => page.getByRole("button", { name: "Sign in with Google" }).isEnabled())
+      .toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { useRouter } from "next/navigation";
 
 import type { EditorLoadState } from "./editor-load-status";
@@ -15,15 +15,24 @@ export function DocumentStateCard({
   title,
   message,
   children,
+  headingRef,
 }: {
   title: string;
   message: string;
   children?: ReactNode;
+  /** Given when the card asks something: the caller moves focus to the question. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <Card className="space-y-3 text-center">
-        <h1 className="text-foreground text-xl font-semibold">{title}</h1>
+        <h1
+          ref={headingRef}
+          tabIndex={headingRef ? -1 : undefined}
+          className="text-foreground text-xl font-semibold focus:outline-none"
+        >
+          {title}
+        </h1>
         <p className="text-muted text-sm">{message}</p>
         {children}
       </Card>

@@ -8,10 +8,7 @@ import type { DocumentLibraryItem } from "@/features/documents/services/document
 
 import { Modal, Input, Button, Checkbox } from "@veriworkly/ui";
 
-import {
-  saveDocument,
-  loadDocumentById,
-} from "@/features/documents/services/document-workspace-service";
+import { renameDocument } from "@/features/documents/services/document-workspace-service";
 import { syncDocumentNow } from "@/features/documents/services/document-sync";
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 
@@ -39,26 +36,13 @@ export default function RenameDocumentModal({
     setLoading(true);
 
     try {
-      const fullDoc = loadDocumentById(doc.type, doc.id);
-
-      if (!fullDoc) throw new Error("Local document not found");
-
-      const nextTitle = title.trim();
-      const updatedDoc = {
-        ...fullDoc,
-        title: nextTitle,
-        // A resume's envelope title is rebuilt from `content.title` on every editor save, so
-        // renaming only the envelope was undone the next time the resume was opened.
-        content:
-          doc.type === "RESUME"
-            ? { ...(fullDoc.content as Record<string, unknown>), title: nextTitle }
-            : fullDoc.content,
-        updatedAt: new Date().toISOString(),
-      };
-
       // Renamed locally; the sync worker pushes it like any other edit. A PATCH from here
       // would race the worker's own PATCH for the same revision and lose as a false conflict.
-      const saved = saveDocument(updatedDoc, { flush: true });
+      const renamed = renameDocument(doc.type, doc.id, title.trim());
+
+      if (!renamed) throw new Error("Local document not found");
+
+      const { document: fullDoc, saved } = renamed;
 
       if (!saved.ok) {
         throw new Error(

@@ -5,6 +5,7 @@ import {
   isProtectedStudioPath,
   SESSION_COOKIE_NAMES,
 } from "@/lib/auth-redirect";
+import { buildContentSecurityPolicy, createCspNonce } from "@/lib/content-security-policy";
 
 /**
  * Framework output and `public/` asset folders never reach the proxy. Everything else does,
@@ -50,10 +51,28 @@ function isPublicStudioPath(pathname: string) {
   );
 }
 
+/**
+ * Renders the page with a fresh CSP nonce. Next reads the nonce from the request's policy and
+ * stamps it on its scripts; the root layout reads `x-nonce` for the theme script.
+ */
+function nextWithNonce(request: NextRequest) {
+  const nonce = createCspNonce();
+  const policy = buildContentSecurityPolicy(nonce);
+  const headers = new Headers(request.headers);
+
+  headers.set("x-nonce", nonce);
+  headers.set("content-security-policy", policy);
+
+  const response = NextResponse.next({ request: { headers } });
+  response.headers.set("Content-Security-Policy", policy);
+
+  return response;
+}
+
 export default async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  if (isPublicStudioPath(pathname)) return NextResponse.next();
+  if (isPublicStudioPath(pathname)) return nextWithNonce(request);
 
   const isAuthenticated = SESSION_COOKIE_NAMES.some((name) => !!request.cookies.get(name)?.value);
   const hasGuestCookie = request.cookies.get(GUEST_COOKIE_NAME)?.value === "true";
@@ -70,7 +89,7 @@ export default async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(callbackURL, request.url));
     }
 
-    return NextResponse.next();
+    return nextWithNonce(request);
   }
 
   const isProtectedPath = isProtectedStudioPath(pathname);
@@ -82,5 +101,5 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return nextWithNonce(request);
 }

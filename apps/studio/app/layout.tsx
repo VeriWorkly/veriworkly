@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 import "./globals.css";
 
@@ -70,11 +71,14 @@ export const metadata: Metadata = {
   },
 };
 
-const RootLayout = ({
+const RootLayout = async ({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) => {
+  // Set by `proxy.ts`. Reading it renders every page per request, which a nonce needs anyway.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": ["WebApplication", "SoftwareApplication"],
@@ -139,7 +143,7 @@ const RootLayout = ({
       <body
         className={`${globalFontVariables} bg-background text-foreground flex min-h-screen flex-col font-sans antialiased`}
       >
-        <ThemeProvider>
+        <ThemeProvider nonce={nonce}>
           {children}
           <Toaster position="bottom-right" expand={false} richColors />
         </ThemeProvider>

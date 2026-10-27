@@ -44,15 +44,18 @@ export function registerPdfTestFonts() {
   fontsRegistered = true;
 }
 
-/** `@react-pdf/layout` is a transitive dependency; resolve it via the renderer. */
-function resolveLayoutEngine() {
+/**
+ * `@react-pdf/layout` is a transitive dependency; resolve it via the renderer. `N` is the slice
+ * of the node shape the caller reads.
+ */
+export function resolveLayoutEngine<N = LayoutNode>() {
   const fromHere = createRequire(import.meta.url);
   const fromRenderer = createRequire(fromHere.resolve("@react-pdf/renderer"));
 
   return fromRenderer("@react-pdf/layout").default as (
-    document: LayoutNode,
+    document: N,
     fontStore: unknown,
-  ) => Promise<LayoutNode>;
+  ) => Promise<N>;
 }
 
 export async function layoutPages<P extends object>(

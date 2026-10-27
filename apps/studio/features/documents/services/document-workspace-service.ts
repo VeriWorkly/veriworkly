@@ -344,6 +344,32 @@ export function saveDocument(
 }
 
 /**
+ * Renames a document on this device; the sync worker pushes it like any other edit. A resume's
+ * envelope title is rebuilt from `content.title` on every editor save, so the content takes the
+ * new title too, or the next open would undo the rename. `null` when the document is not here.
+ */
+export function renameDocument(
+  type: DocumentType,
+  id: string,
+  title: string,
+): { document: BaseDocument; saved: SaveDocumentResult } | null {
+  const stored = loadDocumentById(type, id);
+  if (!stored) return null;
+
+  const document: BaseDocument = {
+    ...stored,
+    title,
+    content:
+      type === "RESUME"
+        ? { ...(stored.content as Record<string, unknown>), title }
+        : stored.content,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return { document, saved: saveDocument(document, { flush: true }) };
+}
+
+/**
  * Persists every pending debounced save right now, synchronously.
  *
  * Autosave debounces at 300ms via a `setTimeout` held in {@link pendingSaves}. Without

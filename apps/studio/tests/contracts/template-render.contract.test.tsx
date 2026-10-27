@@ -293,7 +293,7 @@ describe("template render contract", () => {
     }
   });
 
-  it("exports professional and veriworkly cover-letter HTML with expected content", async () => {
+  it("exports every cover-letter template's HTML with its content", async () => {
     const content = createDefaultCoverLetter("cover-letter-contract").content;
 
     for (const templateId of COVER_LETTER_TEMPLATE_IDS) {

@@ -26,7 +26,7 @@ import {
 import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { PDF_GLYPH_COVERAGE } from "@/templates/pdf/glyph-coverage";
-import { layoutPages, registerPdfTestFonts } from "@/tests/utils/pdf";
+import { layoutPages, registerPdfTestFonts, resolveLayoutEngine } from "@/tests/utils/pdf";
 import { loadTemplatePdfComponentById } from "@/templates/resume/pdf";
 import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
 
@@ -47,7 +47,6 @@ import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
 
 const require_ = createRequire(import.meta.url);
 const fromRenderer = createRequire(require_.resolve("@react-pdf/renderer"));
-const layoutEngine = fromRenderer("@react-pdf/layout").default;
 const fontkit = fromRenderer("fontkit") as {
   openSync: (path: string) => { characterSet: number[] };
 };
@@ -131,7 +130,7 @@ async function blanksFor(fontId: FontFamilyId, text: string) {
   };
 
   await instance.toBuffer();
-  return countBlanks(await layoutEngine(instance.container.document, Font));
+  return countBlanks(await resolveLayoutEngine<Node>()(instance.container.document, Font));
 }
 
 describe("the PDF can draw every script the editor is meant to accept", () => {

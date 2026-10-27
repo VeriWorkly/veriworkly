@@ -7,6 +7,8 @@ import type { ParityServer } from "../parity/server";
 import { launchParityBrowser } from "../parity/browser";
 import { startParityServer } from "../parity/server";
 
+import { screenshotFailures } from "./failure-screenshots";
+
 /**
  * A new user's first minutes, mostly on a phone: the editor shows the document its URL names
  * (never the previous one), the page fits the screen, and creating a document makes one.
@@ -21,6 +23,8 @@ let server: ParityServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
+
+screenshotFailures(() => page);
 
 beforeAll(async () => {
   server = await startParityServer();

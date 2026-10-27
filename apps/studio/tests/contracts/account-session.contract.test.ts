@@ -715,8 +715,10 @@ describe("S-320: a clear in one tab reaches the others", () => {
     workspace.flushPendingSaves();
 
     expect(onCleared).toHaveBeenCalledOnce();
-    const stored = workspace.loadDocumentById("COVER_LETTER", document.id)?.content;
-    expect((stored as { senderName?: string }).senderName).not.toBe("Typed before sign-out");
+    // The stored copy is the one created before the edit; the pending edit never landed.
+    expect(workspace.loadDocumentById("COVER_LETTER", document.id)?.content).toEqual(
+      document.content,
+    );
   });
 
   it("S-320: a clear is announced to the other tabs, never to its own", async () => {

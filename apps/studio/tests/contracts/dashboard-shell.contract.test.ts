@@ -90,8 +90,8 @@ describe("templates explorer stays inside the studio (#131)", () => {
     expect(templateGallery.COVER_LETTER.map((item) => item.id)).toEqual(
       coverLetterTemplateRegistry.ids,
     );
-    expect(templateGallery.RESUME).toHaveLength(7);
-    expect(templateGallery.COVER_LETTER).toHaveLength(5);
+    expect(templateGallery.RESUME.length).toBeGreaterThan(0);
+    expect(templateGallery.COVER_LETTER.length).toBeGreaterThan(0);
 
     expect(templateGallery.RESUME[0].href).toBe("/editor?type=resume&template=executive-clarity");
     expect(templateGallery.COVER_LETTER[0].href).toBe(

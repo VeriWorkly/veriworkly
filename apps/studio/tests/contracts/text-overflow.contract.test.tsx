@@ -14,7 +14,7 @@ import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 import { loadTemplatePdfComponentById, pdfTemplateIds } from "@/templates/resume/pdf";
 import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
-import { registerPdfTestFonts } from "@/tests/utils/pdf";
+import { registerPdfTestFonts, resolveLayoutEngine } from "@/tests/utils/pdf";
 
 /**
  * Every paragraph must be broken into lines at the width of the box it ends up
@@ -122,14 +122,6 @@ function overflowingLines(node: Node, found: string[] = []): string[] {
   return found;
 }
 
-function resolveLayoutEngine() {
-  const fromRenderer = createRequire(require_.resolve("@react-pdf/renderer"));
-  return fromRenderer("@react-pdf/layout").default as (
-    document: Node,
-    fontStore: unknown,
-  ) => Promise<Node>;
-}
-
 async function layout<P extends object>(Component: ComponentType<P>, props: P): Promise<Node> {
   const instance = pdf(createElement(Component, props) as never) as unknown as {
     container: { document: Node };
@@ -137,7 +129,7 @@ async function layout<P extends object>(Component: ComponentType<P>, props: P): 
   };
 
   await instance.toBuffer();
-  return resolveLayoutEngine()(instance.container.document, Font);
+  return resolveLayoutEngine<Node>()(instance.container.document, Font);
 }
 
 /** Long enough to need wrapping in every column a template has. */
