@@ -890,6 +890,15 @@ model ChangelogEntry {
   @@index([type])
 }
 
+// A GitHub release an admin deleted from the changelog (V-289). The release sync creates any
+// release with no row, so without this the next sync brought a deleted entry back. Keyed by the
+// entry id the sync derives from the tag; an admin writing that entry again by hand removes it.
+model ChangelogReleaseTombstone {
+  id        String   @id
+  version   String
+  deletedAt DateTime @default(now())
+}
+
 // Daily aggregated usage metrics flushed from Redis counters
 model UsageMetricDaily {
   id        String   @id @default(cuid())

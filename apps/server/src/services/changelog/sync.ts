@@ -248,6 +248,15 @@ export async function syncChangelogFromGitHubReleases(
       },
     });
     const storedById = new Map(storedRows.map((row) => [row.id, row]));
+    // Releases an admin deleted from the changelog (V-289): never created again.
+    const deletedIds = new Set(
+      (
+        await prisma.changelogReleaseTombstone.findMany({
+          where: { id: { in: releaseIds } },
+          select: { id: true },
+        })
+      ).map((row) => row.id),
+    );
     const repoUrl = `https://github.com/${owner}/${repo}`;
 
     const parsedBodies = releases.map((release) => parseReleaseBody(release.body));
@@ -284,6 +293,11 @@ export async function syncChangelogFromGitHubReleases(
       );
 
       const stored = storedById.get(id);
+
+      if (!stored && deletedIds.has(id)) {
+        skipped++;
+        continue;
+      }
 
       if (stored) {
         const storedPrs = Array.isArray(stored.prRefs)
