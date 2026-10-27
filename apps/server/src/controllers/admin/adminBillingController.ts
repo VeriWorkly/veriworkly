@@ -82,12 +82,15 @@ export const AdminBillingController = {
       {
         actorId,
         idempotencyKey,
+        kind: input.kind,
+        customerNote: input.customerNote,
         audit: {
           actorId,
           action: ADMIN_AUDIT_ACTIONS.creditGrant,
           targetType: "User",
           targetId: input.userId,
           reason: input.reason,
+          metadata: { kind: input.kind, customerNote: input.customerNote ?? null },
         },
       },
     );

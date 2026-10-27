@@ -144,8 +144,9 @@ async function wallet(userId: string) {
 
 async function reservationStatus(requestId: string) {
   // Request ids are unique per user, not globally, so this is a scan by request id on purpose.
+  // The ledger stores a client id under the `ai:` prefix (V-228).
   const row = await prisma.creditReservation.findFirst({
-    where: { requestId },
+    where: { requestId: `ai:${requestId}` },
     select: { status: true },
   });
   return row?.status ?? null;

@@ -132,7 +132,24 @@ export class UserController {
     try {
       const user = requireAuthUser(req);
 
-      await UserService.deleteUserAccount(user.id);
+      // Owner decision 10 (V-234): the body flag (or `?confirmAffiliateForfeit=true`) confirms the
+      // user saw the 409 AFFILIATE_BALANCE_FORFEIT amount and still wants the account deleted.
+      const body = (req.body ?? {}) as {
+        confirmAffiliateForfeit?: unknown;
+        confirmedAffiliateForfeitCents?: unknown;
+      };
+      const confirmedCents = body.confirmedAffiliateForfeitCents;
+      await UserService.deleteUserAccount(user.id, {
+        confirmAffiliateForfeit:
+          body.confirmAffiliateForfeit === true || req.query?.confirmAffiliateForfeit === "true",
+        // The amount the user was shown, when the client sends it: more than that refuses again.
+        confirmedAffiliateForfeitCents:
+          typeof confirmedCents === "number" &&
+          Number.isSafeInteger(confirmedCents) &&
+          confirmedCents >= 0
+            ? confirmedCents
+            : undefined,
+      });
 
       const cookieHeader = req.headers.cookie || "";
       if (cookieHeader) {

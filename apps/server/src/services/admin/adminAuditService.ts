@@ -22,6 +22,8 @@ export const ADMIN_AUDIT_ACTIONS = {
   affiliateCommissionCreate: "affiliate.commission.create",
   affiliateCommissionUpdate: "affiliate.commission.update",
   affiliateWithdrawalUpdate: "affiliate.withdrawal.update",
+  // An unpaid affiliate balance lost with a deleted account (owner decision 10, V-234).
+  affiliateBalanceForfeit: "affiliate.balance.forfeit",
 
   ambassadorApprove: "ambassador.application.approve",
   ambassadorReject: "ambassador.application.reject",
@@ -60,6 +62,22 @@ export const ADMIN_AUDIT_ACTIONS = {
 } as const;
 
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[keyof typeof ADMIN_AUDIT_ACTIONS];
+
+/**
+ * Retention classes (owner decision 11, V-207):
+ * - money, by action prefix so an action added later falls into its family (credit adjustments,
+ *   entitlement grants and revokes, subscription status and cancel actions, webhook replays,
+ *   commission and withdrawal changes and payouts): kept 7 years;
+ * - takedown records, the moderation decisions that set or lift a takedown (`TAKEDOWN_RECORD`
+ *   in retentionJob: every visibility decision, every force-unpublish, and the portfolio status
+ *   changes into or out of SUSPENDED): never deleted;
+ * - everything else, other moderation entries included (delete, restore, share revoke): 365 days.
+ */
+export const MONEY_AUDIT_ACTION_PREFIXES = [
+  "billing.",
+  "affiliate.commission.",
+  "affiliate.withdrawal.",
+] as const;
 
 export interface AdminAuditInput {
   actorId: string;

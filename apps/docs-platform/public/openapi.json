@@ -2232,7 +2232,7 @@
         "operationId": "listDocuments",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "List Documents",
-        "description": "Lists the authenticated user's documents (resumes, cover letters, portfolios, link-in-bio\npages), optionally filtered by type. Soft-deleted documents are excluded. Results are\nordered by most recently updated and capped at 500 documents.\n\nDocument bodies are left out unless `includeContent=true`.\n",
+        "description": "Lists the authenticated user's documents (resumes, cover letters, portfolios, link-in-bio\npages), optionally filtered by type. Soft-deleted documents are excluded. Document bodies\nare left out unless `includeContent=true`.\n\n**Paging.** Send `limit` (and, after the first page, `cursor`) to read the list a page at a\ntime. Each page adds `nextCursor`, the value to send as `cursor` for the next page (`null`\non the last page), and `total`, the number of live documents of this type. Send the same\n`type`, `updatedSince` and `includeContent` on every page of one walk; a cursor that was\nnot issued for them is rejected with `400` and `details.code` `INVALID_DOCUMENT_CURSOR`.\n\n- The plain list goes newest first, by `updatedAt` then `id`.\n- A sync walk (`updatedSince` set, or `includeContent=true`) goes oldest first, by\n  `updatedAt` then `id`. A document edited during the walk comes back again on a later\n  page, so none is skipped; keep the copy you saw last.\n- With `updatedSince`, documents deleted since then come back in `deleted`, also paged\n  (up to `limit` per page, oldest deletion first) beside the documents. Keep following\n  `nextCursor` until it is `null`.\n- Every page of one walk repeats the first page's `serverTime`. Use it as the next\n  `updatedSince` only after the last page.\n\n**Without `limit` or `cursor`** the response is the older single list: up to 500\ndocuments, most recently updated first, with no `nextCursor` or `total`. It is kept while\nclients move to paging; a later release makes `limit` default to 20.\n",
         "parameters": [
           {
             "name": "type",
@@ -2257,6 +2257,20 @@
             "required": false,
             "schema": { "type": "string", "enum": ["true", "false"], "default": "false" },
             "description": "Set to `true` to include each document's `content`."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50 },
+            "description": "Documents per page, at most 50, or at most 20 with `includeContent=true` (a larger value is rejected with `400`). Sending it turns on paging; with `cursor` but no `limit`, pages hold 20."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 2048 },
+            "description": "The previous page's `nextCursor`, unchanged. Opaque; do not build or edit it."
           }
         ],
         "responses": {
@@ -2283,12 +2297,29 @@
                       "createdAt": "2026-04-01T10:00:00.000Z",
                       "updatedAt": "2026-04-20T10:00:00.000Z"
                     }
-                  ]
+                  ],
+                  "serverTime": "2026-04-20T10:05:00.000Z",
+                  "deleted": [],
+                  "nextCursor": "eyJ2IjoxLCJmaWx0ZXIiOnsidHlwZSI6bnVsbH19",
+                  "total": 37
                 }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
+          "400": {
+            "description": "Bad Request. An invalid parameter (including a `limit` over the cap) is\n`Validation failed` with `details` listing each field as `{ path, message }`. A\n`cursor` that is malformed or was issued for other filters is `Invalid cursor` with\n`details: { code: \"INVALID_DOCUMENT_CURSOR\" }`; start the walk again without it.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentListErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 400,
+                  "message": "Invalid cursor",
+                  "details": { "code": "INVALID_DOCUMENT_CURSOR" }
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/UnauthorizedError" }
         }
       },
@@ -5736,14 +5767,68 @@
       },
       "DocumentListResponse": {
         "type": "object",
-        "required": ["success", "message", "data"],
+        "description": "`nextCursor` and `total` are present only when the request sent `limit` or `cursor`. Without\nthem `data` is the older single list of up to 500 documents.\n",
+        "required": ["success", "message", "data", "serverTime", "deleted"],
         "properties": {
           "success": { "type": "boolean" },
           "message": { "type": "string" },
           "data": {
             "type": "array",
             "maxItems": 500,
+            "description": "This page's documents; at most `limit` when paging.",
             "items": { "$ref": "#/components/schemas/DocumentSummary" }
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The server's clock when the walk started, the same on every page of one walk. Send it as\nthe next `updatedSince` once the last page has been read.\n"
+          },
+          "deleted": {
+            "type": "array",
+            "description": "Documents deleted at or after `updatedSince` (empty without it). Paged like `data`.\n",
+            "items": {
+              "type": "object",
+              "required": ["id", "deletedAt"],
+              "properties": {
+                "id": { "type": "string" },
+                "deletedAt": { "type": "string", "format": "date-time" }
+              }
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Send as `cursor` for the next page; `null` on the last page."
+          },
+          "total": {
+            "type": "integer",
+            "description": "The user's live documents of the requested type, whatever `updatedSince` says."
+          }
+        }
+      },
+      "DocumentListErrorResponse": {
+        "type": "object",
+        "description": "A `400` from the document list: `details` is the failing fields for a validation error, or\n`{ code: \"INVALID_DOCUMENT_CURSOR\" }` for a bad cursor.\n",
+        "required": ["success", "message", "statusCode"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" },
+          "statusCode": { "type": "integer" },
+          "details": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": { "path": { "type": "string" }, "message": { "type": "string" } }
+                }
+              },
+              {
+                "type": "object",
+                "required": ["code"],
+                "properties": { "code": { "type": "string", "enum": ["INVALID_DOCUMENT_CURSOR"] } }
+              }
+            ]
           }
         }
       },

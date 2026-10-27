@@ -128,6 +128,8 @@ describe("the figures the ATS pages quote", () => {
   const shipped = [
     read("apps", "site", "features", "ats-engine", "data", "content.ts"),
     read("apps", "site", "features", "faq", "data", "faqItems.ts"),
+    read("apps", "site", "features", "ats-checker", "components", "hero", "AtsHero.tsx"),
+    read("apps", "site", "features", "ats-engine", "components", "EngineSections.tsx"),
   ].join("\n");
 
   it("35 rules is the rubric's size", async () => {

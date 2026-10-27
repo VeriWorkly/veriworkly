@@ -3,14 +3,21 @@
  * environment the server boots with. Imported by the global setup (main process) and by the
  * per-file setup (worker), so both see the same answer without passing state between them.
  *
- * Safety: this suite TRUNCATEs every table and FLUSHes the Redis db it is pointed at. It refuses
- * anything that is not loopback, and refuses Redis db 0, unless `INTEGRATION_ALLOW_REMOTE=1` is
- * set on purpose (CI service containers are loopback, so CI never needs it). The repo's `.env`
- * can hold a production `DATABASE_URL`; it is never consulted here because this runs before
- * `dotenv` and sets the variables first, and `dotenv` does not override what is already set.
+ * Safety: this suite TRUNCATEs every table and FLUSHes the Redis db it is pointed at, so the
+ * target has to say it is disposable (V-258):
+ * - the database comes from `INTEGRATION_DATABASE_URL` (`DATABASE_URL` only when CI=true, no default),
+ *   its name must end in `_test` (a local development database such as `veriworkly`
+ *   is refused even on localhost), and every host in the URL, including a `?host=` parameter or
+ *   a multi-host list, must be loopback;
+ * - Redis comes only from `INTEGRATION_REDIS_URL` (never the developer's `REDIS_URL`), must be
+ *   loopback and must not be db 0.
+ * `INTEGRATION_ALLOW_REMOTE=1` lifts only the loopback rule, never the `_test` name or db 0.
+ *
+ * `apps/server/.env` is never read: `config.ts` skips dotenv under Vitest (V-257), and every
+ * third-party credential is blanked below, so a run cannot reach a real AI, mail, OAuth, GitHub
+ * or R2 account whatever the developer's shell holds.
  */
 
-const DEFAULT_DATABASE_URL = "postgresql://veriworkly:veriworkly@localhost:5433/veriworkly_test";
 const DEFAULT_REDIS_URL = "redis://localhost:6379/15";
 
 type IntegrationEnv = {
@@ -19,9 +26,9 @@ type IntegrationEnv = {
   redisDbIndex: number;
 };
 
-function hostOf(url: string): string {
+function parseUrl(url: string): URL {
   try {
-    return new URL(url).hostname;
+    return new URL(url);
   } catch {
     throw new Error(`Integration suite: cannot parse URL "${redact(url)}"`);
   }
@@ -32,38 +39,111 @@ function redact(url: string): string {
 }
 
 function isLoopbackHost(host: string): boolean {
-  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+  const bare = host
+    .trim()
+    .toLowerCase()
+    .replace(/^\[(.*)\](:\d+)?$/, "$1")
+    .replace(/^([^:]+):\d+$/, "$1");
+  return bare === "localhost" || bare === "127.0.0.1" || bare === "::1";
 }
 
-function resolveIntegrationEnv(env: NodeJS.ProcessEnv = process.env): IntegrationEnv {
-  const databaseUrl = env.INTEGRATION_DATABASE_URL || env.DATABASE_URL || DEFAULT_DATABASE_URL;
-  const redisUrl = env.INTEGRATION_REDIS_URL || env.REDIS_URL || DEFAULT_REDIS_URL;
+/**
+ * Every host a Postgres client could connect to: the authority (which may be a comma-separated
+ * multi-host list the WHATWG parser does not split) plus any `host` query parameter, which
+ * libpq and node-postgres let override the authority.
+ */
+function postgresHosts(url: string, parsed: URL): string[] {
+  const authority = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").split(/[/?#]/)[0] ?? "";
+  const hostList = authority.slice(authority.lastIndexOf("@") + 1);
+  const hosts = hostList.split(",");
+
+  for (const value of parsed.searchParams.getAll("host")) hosts.push(...value.split(","));
+
+  return hosts;
+}
+
+export function resolveIntegrationEnv(env: NodeJS.ProcessEnv = process.env): IntegrationEnv {
+  // Named on purpose locally, never inferred from the developer's DATABASE_URL, and no default.
+  // GitHub Actions (CI=true) sets only DATABASE_URL for its throwaway service container; the
+  // loopback and _test rules below still apply to it.
+  const databaseUrl =
+    env.INTEGRATION_DATABASE_URL || (env.CI === "true" ? env.DATABASE_URL : undefined);
+  if (!databaseUrl)
+    throw new Error(
+      "Integration suite: set INTEGRATION_DATABASE_URL to a local Postgres database whose name " +
+        "ends in _test (it truncates every table). DATABASE_URL is used for this only in CI.",
+    );
+  const redisUrl = env.INTEGRATION_REDIS_URL || DEFAULT_REDIS_URL;
   const allowRemote = env.INTEGRATION_ALLOW_REMOTE === "1";
 
-  const dbHost = hostOf(databaseUrl);
-  const redisHost = hostOf(redisUrl);
-  const redisDbIndex = Number.parseInt(new URL(redisUrl).pathname.replace(/^\//, "") || "0", 10);
+  const db = parseUrl(databaseUrl);
+  const redis = parseUrl(redisUrl);
+  const databaseName = decodeURIComponent(db.pathname.replace(/^\//, ""));
+  const redisDbIndex = Number.parseInt(redis.pathname.replace(/^\//, "") || "0", 10);
+
+  if (!/_test$/.test(databaseName))
+    throw new Error(
+      `Integration suite refuses database "${databaseName}" (${redact(databaseUrl)}): it ` +
+        "truncates every table, so the database name must end in _test. Create one and point " +
+        "INTEGRATION_DATABASE_URL at it.",
+    );
+
+  if (!Number.isFinite(redisDbIndex) || redisDbIndex === 0)
+    throw new Error(
+      `Integration suite refuses Redis db 0 (${redact(redisUrl)}); the local dev server uses it. ` +
+        "Set INTEGRATION_REDIS_URL to a db index such as redis://localhost:6379/15.",
+    );
 
   if (!allowRemote) {
-    if (!isLoopbackHost(dbHost))
+    const remote = postgresHosts(databaseUrl, db).find((host) => !isLoopbackHost(host));
+    if (remote !== undefined)
       throw new Error(
-        `Integration suite refuses a non-local database (${redact(databaseUrl)}). ` +
+        `Integration suite refuses a non-local database host "${remote}" (${redact(databaseUrl)}). ` +
           "It truncates every table. Point INTEGRATION_DATABASE_URL at a local Postgres, " +
           "or set INTEGRATION_ALLOW_REMOTE=1 if you really mean it.",
       );
-    if (!isLoopbackHost(redisHost))
+    if (!isLoopbackHost(redis.hostname))
       throw new Error(
         `Integration suite refuses a non-local Redis (${redact(redisUrl)}). It flushes the db.`,
-      );
-    if (!Number.isFinite(redisDbIndex) || redisDbIndex === 0)
-      throw new Error(
-        `Integration suite refuses Redis db 0 (${redisUrl}); the local dev server uses it. ` +
-          "Use a db index such as redis://localhost:6379/15.",
       );
   }
 
   return { databaseUrl, redisUrl, redisDbIndex };
 }
+
+/**
+ * Third-party credentials and private policies the server reads. Blanked for the suite so
+ * nothing in the developer's shell can make a test call a real service (V-257); a test that
+ * needs one stubs the client instead.
+ */
+export const BLANKED_CREDENTIALS = [
+  "AI_API_KEY",
+  "AI_BASE_URL",
+  "AI_ACTIONS_POLICY_PATH",
+  "AI_ACTIONS_POLICY_JSON",
+  "ATS_AI_POLICY_PATH",
+  "ATS_AI_POLICY_JSON",
+  "ATS_ENGINE_POLICY_PATH",
+  "ATS_ENGINE_POLICY_JSON",
+  "RESEND_API_KEY",
+  "AUTH_SMTP_HOST",
+  "AUTH_SMTP_USER",
+  "AUTH_SMTP_PASS",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GITHUB_CLIENT_ID",
+  "GITHUB_CLIENT_SECRET",
+  "LINKEDIN_CLIENT_ID",
+  "LINKEDIN_CLIENT_SECRET",
+  "GITHUB_TOKEN",
+  "INTERNAL_SYNC_API_KEY",
+  "R2_ENDPOINT",
+  "R2_BUCKET",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_PUBLIC_BASE_URL",
+  "DIRECT_DATABASE_URL",
+] as const;
 
 /**
  * The server's own configuration for the suite. Applied with `process.env` assignment before any
@@ -114,6 +194,7 @@ export function applyServerEnv(target: NodeJS.ProcessEnv = process.env): Integra
     AMBASSADOR_PROGRAM_ENABLED: "true",
   };
 
+  for (const key of BLANKED_CREDENTIALS) target[key] = "";
   for (const [key, value] of Object.entries(serverEnv)) target[key] = value;
 
   return resolved;

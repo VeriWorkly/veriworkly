@@ -300,7 +300,7 @@ describe("billing records outlive the account (V-183, owner decision 5)", () => 
     expect(await prisma.creditTransaction.findUnique({ where: { id: debit.id } })).not.toBeNull();
   });
 
-  it("the credit sweep skips a deleted account's expired grant without failing", async () => {
+  it("the credit sweep expires a deleted account's grant without failing (V-252)", async () => {
     const target = await createUserWithSession();
     const { grant } = await seedLedger(target.id);
     await prisma.creditGrant.update({
@@ -312,7 +312,8 @@ describe("billing records outlive the account (V-183, owner decision 5)", () => 
     const totals = await sweepExpiredCredits();
 
     expect(totals.failed).toBe(0);
-    expect((await prisma.creditGrant.findUnique({ where: { id: grant.id } }))?.remaining).toBe(90);
+    // Detached credits still expire: the sweep reaches the wallet by id, not by user (V-252).
+    expect((await prisma.creditGrant.findUnique({ where: { id: grant.id } }))?.remaining).toBe(0);
   });
 
   it("a subscription webhook for a deleted account is recorded, not retried, and recreates nothing", async () => {

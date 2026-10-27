@@ -40,6 +40,11 @@ const Floating = ({
   }, []);
 
   useEffect(() => {
+    // A mouse only: on phones every scroll gesture would run a layout read and move blurred cards.
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!finePointer || reducedMotion) return;
+
     const pointer = { x: 0, y: 0 };
     let frame = 0;
 
@@ -74,17 +79,11 @@ const Floating = ({
       if (!frame) frame = requestAnimationFrame(step);
     };
     const onMouse = (event: MouseEvent) => moveTo(event.clientX, event.clientY);
-    const onTouch = (event: TouchEvent) => {
-      const touch = event.touches[0];
-      if (touch) moveTo(touch.clientX, touch.clientY);
-    };
 
     window.addEventListener("mousemove", onMouse, { passive: true });
-    window.addEventListener("touchmove", onTouch, { passive: true });
 
     return () => {
       window.removeEventListener("mousemove", onMouse);
-      window.removeEventListener("touchmove", onTouch);
       cancelAnimationFrame(frame);
     };
   }, [sensitivity, easingFactor]);

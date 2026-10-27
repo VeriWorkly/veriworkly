@@ -1,5 +1,8 @@
 import type { Competitor } from "../types";
 
+/** When every competitor price below was last checked against its public pricing page. Re-check, then update. */
+export const PRICES_CHECKED = { month: "October", year: 2026 } as const;
+
 export const COMPETITORS: Competitor[] = [
   {
     id: "rezi",

@@ -31,12 +31,18 @@ The backend engine for VeriWorkly — a Node/Express + TypeScript API covering a
 
    On servers run `npm run db:migrate:deploy -w @veriworkly/server` instead. The `db:push` script was removed because it bypasses migrations and leaves the migration history out of step with the database.
 
+   `db:migrate`, `db:drift`, the `seed:*` scripts, `smoke:boot` and the `backfill:*` scripts refuse any database URL whose host is not loopback, whatever `NODE_ENV` says; add `--allow-production` only when you really mean a remote database (`--wipe` is never allowed there).
+
 4. **Start development server**:
    ```bash
    npm run dev:server
    ```
 
 The API will be available at `http://localhost:8080`.
+
+## 🚚 Deploy order notes
+
+- **Document list paging (V-263)**: `GET /api/v1/documents` pages with `limit` and `cursor` and answers with `nextCursor` and `total`. A request with neither still gets the old single response (up to 500 documents) so studios already in browsers keep working. Deploy the server after the studio that sends `limit`; a later change makes `limit` default to 20 and drops the unpaged response.
 
 ## 🏗️ Architecture
 
@@ -87,19 +93,20 @@ Seven scheduled jobs (`src/jobs/`), each guarded by a Redis distributed lock and
 
 `src/jobs/retentionJob.ts` runs daily at 03:15 UTC (no run at startup) under the shared job lock. Each rule is one setting; `0` disables it. Every statement touches at most 5,000 rows picked through an indexed column, and a run stops starting new batches after about 4 minutes, so a large backlog drains over several nights. It logs one line per run with the rows affected per rule, plus any rule that ran out of time or failed (a failing rule never stops the others).
 
-| Rule                                                                                                                                                                 | Setting                                                               | Default                   |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------- |
-| Delete expired `Session` rows                                                                                                                                        | `RETENTION_EXPIRED_SESSION_DAYS`                                      | 1 day after `expiresAt`   |
-| Delete expired `Verification` rows                                                                                                                                   | `RETENTION_EXPIRED_VERIFICATION_DAYS`                                 | 1 day after `expiresAt`   |
-| Redact `BillingWebhookEvent.payload` to `{ "redacted": true, "type": … }` for PROCESSED rows (row, ids, status and error kept; FAILED and PROCESSING rows untouched) | `RETENTION_WEBHOOK_PAYLOAD_DAYS`                                      | 30 days                   |
-| Delete `AuditLog` (request log) rows                                                                                                                                 | `RETENTION_AUDIT_LOG_DAYS` (falls back to `AUDIT_LOG_RETENTION_DAYS`) | 90 days                   |
-| Delete `AdminAuditEntry` rows                                                                                                                                        | `RETENTION_ADMIN_AUDIT_DAYS`                                          | 365 days                  |
-| Delete COMMITTED, RELEASED and EXPIRED `CreditReservation` rows                                                                                                      | `RETENTION_CREDIT_RESERVATION_DAYS`                                   | 90 days after `updatedAt` |
-| Clear `CreditReservation.replay` (the stored AI result a retried request is answered from) on COMMITTED rows; a later retry answers 409                              | `RETENTION_CREDIT_REPLAY_DAYS`                                        | 1 day after `updatedAt`   |
-| Delete `ViewFlushBatch` and `UsageMetricFlushBatch` markers                                                                                                          | `RETENTION_FLUSH_BATCH_DAYS`                                          | 7 days                    |
-| Delete `AffiliateClick` rows                                                                                                                                         | `RETENTION_AFFILIATE_CLICK_DAYS`                                      | 0 (off)                   |
-| Delete `PortfolioViewDaily` rows                                                                                                                                     | `RETENTION_PORTFOLIO_VIEW_DAYS`                                       | 0 (off)                   |
-| Set `content` to the marker `{ "purged": true }` on soft-deleted `Document` rows                                                                                     | `RETENTION_DELETED_DOCUMENT_DAYS`                                     | 30 days after `deletedAt` |
+| Rule                                                                                                                                                                                                         | Setting                                                               | Default                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- | ------------------------- |
+| Delete expired `Session` rows                                                                                                                                                                                | `RETENTION_EXPIRED_SESSION_DAYS`                                      | 1 day after `expiresAt`   |
+| Delete expired `Verification` rows                                                                                                                                                                           | `RETENTION_EXPIRED_VERIFICATION_DAYS`                                 | 1 day after `expiresAt`   |
+| Redact `BillingWebhookEvent.payload` to `{ "redacted": true, "type": … }` for PROCESSED rows (row, ids, status and error kept; FAILED and PROCESSING rows untouched)                                         | `RETENTION_WEBHOOK_PAYLOAD_DAYS`                                      | 30 days                   |
+| Delete `AuditLog` (request log) rows                                                                                                                                                                         | `RETENTION_AUDIT_LOG_DAYS` (falls back to `AUDIT_LOG_RETENTION_DAYS`) | 90 days                   |
+| Delete `AdminAuditEntry` rows, except money actions and moderation records                                                                                                                                   | `RETENTION_ADMIN_AUDIT_DAYS`                                          | 365 days                  |
+| Delete money-action `AdminAuditEntry` rows (`billing.*`, affiliate commission and withdrawal changes); moderation records (`document.*`, `share_link.*`, `portfolio.*`) are never deleted                    | `RETENTION_ADMIN_MONEY_AUDIT_DAYS`                                    | 7 years (2555 days)       |
+| Delete COMMITTED, RELEASED and EXPIRED `CreditReservation` rows                                                                                                                                              | `RETENTION_CREDIT_RESERVATION_DAYS`                                   | 90 days after `updatedAt` |
+| Clear `CreditReservation.replay` (the stored AI result a retried request is answered from) on COMMITTED rows; a later retry answers 409                                                                      | `RETENTION_CREDIT_REPLAY_DAYS`                                        | 1 day after `updatedAt`   |
+| Delete `ViewFlushBatch` and `UsageMetricFlushBatch` markers                                                                                                                                                  | `RETENTION_FLUSH_BATCH_DAYS`                                          | 7 days                    |
+| Delete `AffiliateClick` rows                                                                                                                                                                                 | `RETENTION_AFFILIATE_CLICK_DAYS`                                      | 0 (off)                   |
+| Delete `PortfolioViewDaily` rows                                                                                                                                                                             | `RETENTION_PORTFOLIO_VIEW_DAYS`                                       | 0 (off)                   |
+| Set `content` to the marker `{ "purged": true }` on soft-deleted `Document` rows and blank their title, tags, metadata and slug; the same for their `ShareLink` and `PortfolioPublication` snapshots (V-206) | `RETENTION_DELETED_DOCUMENT_DAYS`                                     | 30 days after `deletedAt` |
 
 Soft-deleted documents keep their row: it is the sync tombstone that tells an offline device the document was deleted (and makes a re-create with that id a 409 instead of a resurrection), and deleting it would cascade away its share link and portfolio publication. A restore (owner or admin) of a document carrying the purge marker answers 410; only the marker decides that, so a document that was simply empty restores, and changing `RETENTION_DELETED_DOCUMENT_DAYS` later never makes a purged one restorable.
 

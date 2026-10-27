@@ -294,7 +294,7 @@ export class ShareService {
     const username = await UserService.requireUsernameForUser(userId);
     const document = await prisma.document.findFirst({
       where: { id: documentId, userId, deletedAt: null },
-      select: { id: true, slug: true, visibility: true, type: true },
+      select: { id: true, slug: true, visibility: true, type: true, moderatedPrivateAt: true },
     });
 
     if (!document) throw new ApiError(404, "Document not found");
@@ -308,13 +308,16 @@ export class ShareService {
     // unlists them here, unless a moderator made the document private: then sharing it again
     // would undo the takedown.
     if (document.visibility === "PRIVATE") {
-      if (await madePrivateByModerator(document.id))
+      if (document.moderatedPrivateAt)
         throw new ApiError(403, "This document was made private by a moderator.");
 
-      await prisma.document.update({
-        where: { id: document.id },
+      // Conditional (V-226): a "Make private" committed after the read above wins.
+      const unlisted = await prisma.document.updateMany({
+        where: { id: document.id, moderatedPrivateAt: null },
         data: { visibility: "UNLISTED" },
       });
+      if (unlisted.count === 0)
+        throw new ApiError(403, "This document was made private by a moderator.");
       await bumpGeneration(...documentCacheNamespaces(userId, document.id));
     }
 

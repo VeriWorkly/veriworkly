@@ -22,7 +22,10 @@ const { prismaMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("#lib/prisma", () => ({ prisma: prismaMock }));
+// `#auth/index` wraps the client with `$extends` at import (V-265).
+vi.mock("#lib/prisma", () => ({
+  prisma: Object.assign(prismaMock, { $extends: () => prismaMock }),
+}));
 
 vi.mock("#lib/redis", () => ({
   cacheGet: vi.fn(async () => null),

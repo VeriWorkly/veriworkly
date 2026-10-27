@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { m, type HTMLMotionProps, type Transition } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { m, type Transition } from "framer-motion";
 
 import { useMounted } from "@/hooks/use-mounted";
 
@@ -14,8 +14,6 @@ interface AnimatedDetailsProps {
   summaryClassName?: string;
   /** How the answer opens and closes. */
   panelTransition?: Transition;
-  /** Entrance, scroll-in and hover props for the card itself (framer `m.details` props). */
-  motionProps?: HTMLMotionProps<"details">;
 }
 
 /**
@@ -25,7 +23,8 @@ interface AnimatedDetailsProps {
  * structured data has to match the page) and works without JavaScript. Once interactive, the
  * open state is controlled, the panel springs between height 0 and auto, and the element keeps
  * its `open` attribute until the closing animation ends so the answer is not cut off.
- * Requires a <MotionIsland> above it.
+ * The same element renders in both passes, so hydration never remounts the card, and an answer
+ * opened before hydration stays open. Requires a <MotionIsland> above it.
  */
 export function AnimatedDetails({
   open,
@@ -35,9 +34,16 @@ export function AnimatedDetails({
   className,
   summaryClassName,
   panelTransition = { type: "spring", stiffness: 300, damping: 28 },
-  motionProps,
 }: AnimatedDetailsProps) {
   const hydrated = useMounted();
+  const ref = useRef<HTMLDetailsElement>(null);
+
+  // A visitor may open an answer before hydration; adopt that instead of closing it.
+  useEffect(() => {
+    if (ref.current?.open && !open) onOpenChange(true);
+    // Only on mount: afterwards `open` is the source of truth.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Keep the element open while its answer animates shut, whoever closed it (a click here or
   // another card opening in the same group).
@@ -48,19 +54,11 @@ export function AnimatedDetails({
     setClosing(!open);
   }
 
-  if (!hydrated) {
-    return (
-      <details className={className}>
-        <summary className={summaryClassName}>{summary}</summary>
-        {children}
-      </details>
-    );
-  }
-
   return (
     <m.details
-      {...motionProps}
-      open={open || closing}
+      ref={ref}
+      // Uncontrolled until hydrated, so the native disclosure works without JavaScript.
+      open={hydrated ? open || closing : undefined}
       className={className}
       // Find-in-page and other browser-initiated opens.
       onToggle={(event) => {
@@ -77,17 +75,21 @@ export function AnimatedDetails({
         {summary}
       </summary>
 
-      <m.div
-        initial={false}
-        animate={open ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
-        transition={panelTransition}
-        onAnimationComplete={() => {
-          if (!open) setClosing(false);
-        }}
-        className="overflow-hidden"
-      >
-        {children}
-      </m.div>
+      {hydrated ? (
+        <m.div
+          initial={false}
+          animate={open ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+          transition={panelTransition}
+          onAnimationComplete={() => {
+            if (!open) setClosing(false);
+          }}
+          className="overflow-hidden"
+        >
+          {children}
+        </m.div>
+      ) : (
+        <div>{children}</div>
+      )}
     </m.details>
   );
 }

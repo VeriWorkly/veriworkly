@@ -11,6 +11,19 @@ import {
 import { dashboardCacheKey } from "#services/affiliate/cache";
 import { cleanConversionsWhere } from "#services/affiliate/commissions";
 
+/** What an affiliate sees of each commission row. */
+const AFFILIATE_COMMISSION_FIELDS = {
+  id: true,
+  amountCents: true,
+  currency: true,
+  rateBps: true,
+  status: true,
+  availableAt: true,
+  paidAt: true,
+  reversedAt: true,
+  createdAt: true,
+} as const;
+
 async function buildDashboard(userId: string) {
   const [
     user,
@@ -44,8 +57,11 @@ async function buildDashboard(userId: string) {
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    // The affiliate's own earnings, not the customer behind them (V-235): no payment,
+    // subscription or referral ids, and no review reason (which can describe the customer).
     prisma.affiliateCommission.findMany({
       where: { affiliateId: userId },
+      select: AFFILIATE_COMMISSION_FIELDS,
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
@@ -67,7 +83,7 @@ async function buildDashboard(userId: string) {
     conversions: convertedReferrals,
     commissions,
     withdrawals,
-    wallet: wallet ?? { pendingCents: 0, availableCents: 0, paidCents: 0 },
+    wallet: wallet ?? { pendingCents: 0, availableCents: 0, paidCents: 0, clawbackCents: 0 },
     minimumWithdrawalCents: AFFILIATE_MINIMUM_WITHDRAWAL_CENTS,
     tierProgress: {
       currentConversions: tierConversions,

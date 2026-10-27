@@ -8,7 +8,7 @@ export function leaderboardCacheKey(period: "monthly" | "all_time") {
   return `affiliate:leaderboard:${period}`;
 }
 
-/** Both public leaderboards: they carry each listed affiliate's name, username and tier. */
+/** Both public leaderboards: they carry each listed affiliate's display name and tier. */
 export async function invalidateLeaderboards() {
   await Promise.all([
     cacheDel(leaderboardCacheKey("monthly")),

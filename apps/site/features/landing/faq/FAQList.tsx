@@ -23,13 +23,7 @@ const FAQCard = ({ index, isOpen, onOpenChange }: FAQCardProps) => {
     <AnimatedDetails
       open={isOpen}
       onOpenChange={onOpenChange}
-      motionProps={{
-        initial: { opacity: 0, y: 24 },
-        whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true, margin: "-40px" },
-        transition: { type: "spring", stiffness: 80, damping: 18, delay: (index % 2) * 0.05 },
-      }}
-      className={`group relative overflow-hidden rounded-[1.75rem] border transition-all duration-300 ${
+      className={`reveal group relative overflow-hidden rounded-[1.75rem] border transition-all duration-300 ${
         isOpen
           ? "border-blue-500/25 bg-blue-50/40 shadow-md dark:border-blue-500/20 dark:bg-blue-500/4"
           : "border-zinc-200 bg-white shadow-xs hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md dark:border-zinc-800/80 dark:bg-[#080808] dark:hover:border-zinc-700"

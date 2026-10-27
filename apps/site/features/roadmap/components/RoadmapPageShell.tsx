@@ -85,11 +85,11 @@ const RoadmapPageShell = ({
           <RoadmapHeader title={title} description={description} />
 
           <div className="border-border/40 bg-card/30 mb-10 flex flex-col gap-4 rounded-3xl border p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] sm:flex-row sm:items-center sm:justify-between">
-            <div className="scrollbar-none overflow-x-auto pb-1.5 sm:pb-0">
+            <div className="relative scrollbar-none overflow-x-auto pb-1.5 sm:pb-0">
               <RoadmapStatusFilters activeStatus={activeStatus} rootPath={normalizedRootPath} />
             </div>
 
-            <div className="scrollbar-none overflow-x-auto pb-1.5 sm:self-end sm:pb-0">
+            <div className="relative scrollbar-none overflow-x-auto pb-1.5 sm:self-end sm:pb-0">
               <RoadmapSortControls />
             </div>
           </div>

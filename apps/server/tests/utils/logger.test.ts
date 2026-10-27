@@ -123,3 +123,56 @@ describe("logger in production", () => {
     expect(plain.data).toEqual({ a: { b: [1, 2] } });
   });
 });
+
+/** V-255: customer email addresses never reach a log line, whatever the caller passes. */
+describe("logger masks recipients", () => {
+  it("masks an email in the message, in nested meta, in arrays and in an error message", () => {
+    const line = captureProductionLine(() =>
+      logger.error("send to jane.doe@example.com failed", {
+        to: "jane.doe@example.com",
+        nested: { list: ["bob+tag@mail.example.co.uk"] },
+        error: new Error("550 mailbox jane.doe@example.com unavailable"),
+      }),
+    );
+    const text = JSON.stringify(line);
+
+    expect(text).not.toContain("jane.doe");
+    expect(text).not.toContain("bob+tag");
+    expect(line.message).toBe("send to j***@e***.com failed");
+    expect(line.data.to).toBe("j***@e***.com");
+    expect(line.data.nested.list[0]).toBe("b***@m***.uk");
+    expect(line.data.error.message).toContain("j***@e***.com");
+  });
+
+  it("keeps only the origin of a referer", () => {
+    const line = captureProductionLine(() =>
+      logger.warn("rejected", {
+        referer: "https://evil.example/reset?email=jane@example.com&token=abc",
+      }),
+    );
+
+    expect(line.data.referer).toBe("https://evil.example");
+  });
+
+  it("masks in the development format too", () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    logger.info("Admin user created for auth", { email: "admin@veriworkly.com" });
+
+    expect(JSON.stringify(spy.mock.calls)).not.toContain("admin@veriworkly.com");
+  });
+});
+
+describe("better-auth's own logs (V-255)", () => {
+  it("go through the masking logger", async () => {
+    const { betterAuthLogger } = await import("#auth/authLogger");
+    const line = captureProductionLine(() =>
+      betterAuthLogger.log("error", "Failed to send OTP to jane.doe@example.com", {
+        email: "jane.doe@example.com",
+      }),
+    );
+
+    expect(JSON.stringify(line)).not.toContain("jane.doe");
+    expect(line.level).toBe("ERROR");
+    expect(line.message).toBe("[better-auth] Failed to send OTP to j***@e***.com");
+  });
+});

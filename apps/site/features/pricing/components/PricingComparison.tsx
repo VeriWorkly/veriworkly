@@ -35,7 +35,7 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
           tabIndex={0}
           role="group"
           aria-label="Feature and plan comparison, scrollable"
-          className="border-border bg-background focus-visible:ring-accent/40 mt-14 overflow-x-auto rounded-3xl border focus-visible:ring-2 focus-visible:outline-none"
+          className="border-border bg-background focus-visible:ring-accent/40 relative mt-14 overflow-x-auto rounded-3xl border focus-visible:ring-2 focus-visible:outline-none"
         >
           <div className="min-w-210" role="table" aria-label="Feature and plan comparison">
             <div

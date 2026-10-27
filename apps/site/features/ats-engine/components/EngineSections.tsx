@@ -39,7 +39,7 @@ export function EngineHero() {
     <PageHero
       title="Open-source"
       highlight="ATS engine."
-      lede="Reads a resume the way an applicant tracking system does, scores it with a published rubric and matches it to a job posting. Deterministic, and small enough to run in the browser."
+      lede="An open-source resume parser and ATS scoring library for Node, the browser and the edge. It reads a resume the way an applicant tracking system does, scores it with 35 published rules and matches it to a job posting. The VeriWorkly ATS scoring API runs the same engine."
       aside={
         <div className="space-y-6">
           <CopyCommand command={INSTALL_COMMAND} />
@@ -173,7 +173,7 @@ export function EngineRuntimes() {
         tabIndex={0}
         role="group"
         aria-label="Entry points and sizes, scrollable"
-        className="bg-card focus-visible:ring-accent/40 reveal overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
+        className="bg-card focus-visible:ring-accent/40 reveal relative overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
       >
         <table className="w-full min-w-xl text-left text-base">
           <thead>
@@ -293,7 +293,7 @@ export function EngineComparison() {
         tabIndex={0}
         role="group"
         aria-label="Comparison with other kinds of tool, scrollable"
-        className="bg-background focus-visible:ring-accent/40 reveal overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
+        className="bg-background focus-visible:ring-accent/40 reveal relative overflow-x-auto rounded-3xl focus-visible:ring-2 focus-visible:outline-none"
       >
         <table className="w-full min-w-2xl text-left text-base">
           <thead>

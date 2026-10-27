@@ -51,7 +51,7 @@ const AmbassadorFooter = () => {
               <div className="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-lg border border-zinc-200/50 bg-zinc-100 dark:border-white/10 dark:bg-white/5">
                 <Image
                   src="/veriworkly-logo.png"
-                  alt="VeriWorkly Logo"
+                  alt=""
                   width={16}
                   height={16}
                   className="object-contain"

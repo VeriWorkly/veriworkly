@@ -12,6 +12,7 @@ import {
 } from "#utils/portfolioPublicationCache";
 import { MODERATION_SUSPENSION_PREFIX } from "#services/portfolioService";
 import {
+  ADMIN_AUDIT_ACTIONS,
   writeAdminAudit,
   type AdminAuditInput,
   getAuditHistory,
@@ -212,6 +213,11 @@ async function propagatePublicationChange(subdomain: string, userId: string, doc
  * Publish/Unpublish and every billing reconciliation leave alone. Setting the status back to
  * LIVE (or GRACE) clears the reason and is the lift path. Either way the site moves on or off the
  * public internet, so the admin audit entry commits in the same transaction (V-074).
+ *
+ * The lift also lifts a "Make private" on the portfolio's document (V-208): otherwise the site is
+ * back online while the document stays locked, and the owner's next Unpublish leaves them unable
+ * to publish again. The document goes back to PUBLIC, as a publish leaves it, in the same
+ * transaction and with its own audit entry.
  */
 export async function updatePublicationStatus(
   publicationId: string,
@@ -251,6 +257,28 @@ export async function updatePublicationStatus(
       },
       select: PUBLICATION_LIST_SELECT,
     });
+
+    if (status !== "SUSPENDED") {
+      const lifted = await tx.document.updateMany({
+        where: { id: publication.documentId, moderatedPrivateAt: { not: null } },
+        data: { moderatedPrivateAt: null, visibility: "PUBLIC" },
+      });
+      if (lifted.count > 0 && audit)
+        await writeAdminAudit(tx, {
+          actorId: audit.actorId,
+          action: ADMIN_AUDIT_ACTIONS.documentVisibility,
+          targetType: "Document",
+          targetId: publication.documentId,
+          reason: audit.reason,
+          metadata: {
+            previousVisibility: "PRIVATE",
+            visibility: "PUBLIC",
+            liftedBy: ADMIN_AUDIT_ACTIONS.portfolioStatusChange,
+            publicationId,
+            ownerId: publication.userId,
+          },
+        });
+    }
     if (audit)
       await writeAdminAudit(tx, {
         ...audit,
@@ -287,15 +315,20 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
   if (!publication) throw new ApiError(404, "Portfolio publication not found.");
 
   await prisma.$transaction(async (tx) => {
-    await tx.document.update({
-      where: { id: publication.documentId },
+    // The lock on the row is what `madePrivateByModerator` reads (V-207): the owner cannot make
+    // the document visible again after a takedown. An earlier lock keeps its date.
+    await tx.document.updateMany({
+      where: { id: publication.documentId, moderatedPrivateAt: { not: null } },
       data: { visibility: "PRIVATE" },
+    });
+    await tx.document.updateMany({
+      where: { id: publication.documentId, moderatedPrivateAt: null },
+      data: { visibility: "PRIVATE", moderatedPrivateAt: new Date() },
     });
 
     await tx.portfolioPublication.delete({ where: { id: publicationId } });
 
-    // `documentId` is what `madePrivateByModerator` reads: the owner cannot make the document
-    // visible again after a takedown.
+    // `documentId` names the document in the takedown record, kept forever (decision 11).
     if (audit)
       await writeAdminAudit(tx, {
         ...audit,

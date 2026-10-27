@@ -94,7 +94,8 @@ describe("V-200 the user's credit history carries no admin metadata", () => {
     const adjusted = await asAdmin("post", "/admin/billing/credits").send({
       userId: user.id,
       amount: 15,
-      reason: "Goodwill credit",
+      reason: "Ticket 41: double charge, internal note",
+      customerNote: "Goodwill credit",
       idempotencyKey: "gw-1",
     });
     expect(adjusted.status).toBe(200);
@@ -112,6 +113,8 @@ describe("V-200 the user's credit history carries no admin metadata", () => {
     const rows = history.body.data as Array<Record<string, unknown>>;
     expect(rows).toHaveLength(2);
     expect(JSON.stringify(rows)).not.toContain(adminUser.id);
+    // The admin's internal reason stays in the audit log (V-229).
+    expect(JSON.stringify(rows)).not.toContain("internal note");
     const adjustment = rows.find((row) => row.reason === "Goodwill credit");
     expect(adjustment).toMatchObject({
       type: expect.any(String),

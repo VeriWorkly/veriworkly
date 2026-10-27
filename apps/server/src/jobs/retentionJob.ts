@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import cron, { type ScheduledTask } from "node-cron";
 
 import { config } from "#config";
@@ -6,6 +7,10 @@ import { ApiError } from "#lib/errors";
 import { createRunTracker, withJobLock } from "#lib/jobLock";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  MONEY_AUDIT_ACTION_PREFIXES,
+} from "#services/admin/adminAuditService";
 
 /**
  * Data retention (V-116, PERFORMANCE-AND-SCALING §6): one daily pass that deletes or redacts rows
@@ -14,7 +19,8 @@ import { prisma } from "#lib/prisma";
  * on an indexed column, so no statement holds locks on an unbounded set. A run stops starting new
  * batches once its time budget is spent; whatever is left is picked up by the next night's run.
  *
- * Soft-deleted documents have their content replaced by `PURGED_DOCUMENT_CONTENT`, never deleted:
+ * Soft-deleted documents have their content replaced by `PURGED_DOCUMENT_CONTENT` (and title, tags,
+ * metadata, slug, share and publication snapshots blanked, V-206), never deleted:
  * the row is the sync tombstone (`listDocuments` returns `{ id, deletedAt }` to a device whose
  * cursor predates the delete, and a create with that id answers 409 instead of resurrecting it),
  * and deleting it would also cascade away its ShareLink and PortfolioPublication. There is no
@@ -34,6 +40,7 @@ export type RetentionSetting =
   | "webhookPayloads"
   | "auditLogs"
   | "adminAuditEntries"
+  | "adminMoneyAuditEntries"
   | "creditReservations"
   | "creditReplays"
   | "flushBatches"
@@ -53,7 +60,10 @@ export function readRetentionSettings(env: NodeJS.ProcessEnv = process.env): Ret
     webhookPayloads: days("RETENTION_WEBHOOK_PAYLOAD_DAYS", 30),
     // Falls back to the older AUDIT_LOG_RETENTION_DAYS so an existing deployment keeps its window.
     auditLogs: days("RETENTION_AUDIT_LOG_DAYS", config.logging.auditRetentionDays),
+    // Owner decision 11 (V-207): general admin entries a year, money actions 7 years; moderation
+    // records (takedowns and their lifts) are never deleted, whatever the settings say.
     adminAuditEntries: days("RETENTION_ADMIN_AUDIT_DAYS", 365),
+    adminMoneyAuditEntries: days("RETENTION_ADMIN_MONEY_AUDIT_DAYS", 7 * 365),
     // A reservation row is reserve()'s idempotency record for its requestId: deleting a COMMITTED
     // one lets a late retry reserve again, run the AI call, and then fail the commit on the
     // CreditTransaction.requestId unique. 90 days is far past any client retry.
@@ -76,6 +86,10 @@ export function readRetentionSettings(env: NodeJS.ProcessEnv = process.env): Ret
 export const PURGED_DOCUMENT_CONTENT = Object.freeze({ purged: true });
 const PURGED_DOCUMENT_JSON = JSON.stringify(PURGED_DOCUMENT_CONTENT);
 
+/** A soft-deleted document still holding anything the purge removes. */
+const NOT_YET_PURGED = Prisma.sql`("content" <> ${PURGED_DOCUMENT_JSON}::jsonb OR "title" <> '' OR "tags" <> '{}'
+  OR "metadata" IS NOT NULL OR "slug" <> "id")`;
+
 /**
  * Throws 410 for a document the purge rule has already emptied, so a restore cannot bring back a
  * shell. Only the marker counts, never the current window: a document that was simply empty
@@ -93,6 +107,20 @@ export function assertDocumentNotPurged(document: { content: unknown }): void {
     "This document was deleted and its content has since been permanently removed.",
   );
 }
+
+/** `LIKE` patterns for an action prefix: `_` and `%` in the prefix are literal. */
+const likePrefix = (prefix: string) => `${prefix.replace(/[\\_%]/g, (char) => `\\${char}`)}%`;
+const MONEY_ACTION_PATTERNS = MONEY_AUDIT_ACTION_PREFIXES.map(likePrefix);
+
+/**
+ * A takedown record (decision 11), never deleted: every visibility decision, every
+ * force-unpublish, and a portfolio status change into or out of SUSPENDED. COALESCE, so a missing
+ * metadata field reads as "not a takedown" instead of a NULL that would keep the row forever.
+ */
+const TAKEDOWN_RECORD = Prisma.sql`COALESCE(
+  "action" IN (${ADMIN_AUDIT_ACTIONS.documentVisibility}, ${ADMIN_AUDIT_ACTIONS.portfolioUnpublish})
+  OR ("action" = ${ADMIN_AUDIT_ACTIONS.portfolioStatusChange}
+    AND 'SUSPENDED' IN ("metadata"->>'status', "metadata"->>'previousStatus')), FALSE)`;
 
 /** One batch: affect at most `limit` rows older than `cutoff`, return how many were affected. */
 type BatchStep = (cutoff: Date, limit: number) => Promise<number>;
@@ -139,7 +167,22 @@ const RULES: Array<{ name: string; setting: RetentionSetting; step: BatchStep }>
     setting: "adminAuditEntries",
     step: (cutoff, limit) => prisma.$executeRaw`
       DELETE FROM "AdminAuditEntry" WHERE "id" IN (
-        SELECT "id" FROM "AdminAuditEntry" WHERE "createdAt" < ${cutoff} LIMIT ${limit})`,
+        SELECT "id" FROM "AdminAuditEntry"
+        WHERE "createdAt" < ${cutoff}
+          AND NOT ("action" LIKE ANY(${MONEY_ACTION_PATTERNS}::text[]))
+          AND NOT ${TAKEDOWN_RECORD}
+        LIMIT ${limit})`,
+  },
+  {
+    name: "adminMoneyAuditEntries", // AdminAuditEntry(createdAt)
+    setting: "adminMoneyAuditEntries",
+    step: (cutoff, limit) => prisma.$executeRaw`
+      DELETE FROM "AdminAuditEntry" WHERE "id" IN (
+        SELECT "id" FROM "AdminAuditEntry"
+        WHERE "createdAt" < ${cutoff}
+          AND "action" LIKE ANY(${MONEY_ACTION_PATTERNS}::text[])
+          AND NOT ${TAKEDOWN_RECORD}
+        LIMIT ${limit})`,
   },
   {
     // `updatedAt` is when the reservation reached its terminal state; PENDING ones are the credit
@@ -201,15 +244,60 @@ const RULES: Array<{ name: string; setting: RetentionSetting; step: BatchStep }>
     // `updatedAt` is left alone: it is the sync cursor, and a purge is not an edit. The conditions
     // are repeated on the outer UPDATE: Postgres re-checks those (not the subselect) against the
     // latest row version, so a document restored after its id was selected is not purged.
+    // Everything the user wrote goes (V-206): content, title, tags, metadata, and the slug (made
+    // from the title) becomes the id. Rows purged before the other fields were added match on
+    // them and are finished on the next run.
     name: "deletedDocumentsPurged", // Document(deletedAt)
     setting: "deletedDocuments",
     step: (cutoff, limit) => prisma.$executeRaw`
-      UPDATE "Document" SET "content" = ${PURGED_DOCUMENT_JSON}::jsonb
+      UPDATE "Document" SET "content" = ${PURGED_DOCUMENT_JSON}::jsonb, "title" = '', "tags" = '{}',
+          "metadata" = NULL, "slug" = "id"
       WHERE "id" IN (
         SELECT "id" FROM "Document"
-        WHERE "deletedAt" < ${cutoff} AND "content" <> ${PURGED_DOCUMENT_JSON}::jsonb
+        WHERE "deletedAt" < ${cutoff} AND ${NOT_YET_PURGED}
         LIMIT ${limit})
-      AND "deletedAt" < ${cutoff} AND "content" <> ${PURGED_DOCUMENT_JSON}::jsonb`,
+      AND "deletedAt" < ${cutoff} AND ${NOT_YET_PURGED}`,
+  },
+  {
+    // A share's snapshot is the full printed document, and its slug comes from the title. Only
+    // shares of documents the rule above has already purged, which can no longer be restored.
+    name: "deletedShareSnapshotsPurged", // ShareLink(documentId) via Document(deletedAt)
+    setting: "deletedDocuments",
+    step: (cutoff, limit) => prisma.$executeRaw`
+      UPDATE "ShareLink" SET "snapshot" = ${PURGED_DOCUMENT_JSON}::jsonb, "slug" = "id"
+      WHERE "id" IN (
+        SELECT s."id" FROM "ShareLink" s JOIN "Document" d ON d."id" = s."documentId"
+        WHERE d."deletedAt" < ${cutoff} AND d."content" = ${PURGED_DOCUMENT_JSON}::jsonb
+          AND (s."snapshot" <> ${PURGED_DOCUMENT_JSON}::jsonb OR s."slug" <> s."id")
+        LIMIT ${limit})`,
+  },
+  {
+    // The published portfolio. The row stays (subdomain, status and any moderation state).
+    name: "deletedPublicationSnapshotsPurged", // PortfolioPublication(documentId)
+    setting: "deletedDocuments",
+    step: (cutoff, limit) => prisma.$executeRaw`
+      UPDATE "PortfolioPublication" SET "snapshot" = ${PURGED_DOCUMENT_JSON}::jsonb
+      WHERE "id" IN (
+        SELECT p."id" FROM "PortfolioPublication" p JOIN "Document" d ON d."id" = p."documentId"
+        WHERE d."deletedAt" < ${cutoff} AND d."content" = ${PURGED_DOCUMENT_JSON}::jsonb
+          AND p."snapshot" <> ${PURGED_DOCUMENT_JSON}::jsonb
+        LIMIT ${limit})`,
+  },
+  {
+    // Older admin entries named the document by title (delete, restore) or share slug (revoke).
+    // Once the document is purged those go too; the ids, action and reason stay.
+    name: "deletedDocumentAuditTitlesPurged", // AdminAuditEntry via Document(deletedAt)
+    setting: "deletedDocuments",
+    step: (cutoff, limit) => prisma.$executeRaw`
+      UPDATE "AdminAuditEntry" SET "metadata" = "metadata" - 'title' - 'slug'
+      WHERE "id" IN (
+        SELECT a."id" FROM "AdminAuditEntry" a
+        JOIN "Document" d ON d."id" = COALESCE(
+          a."metadata"->>'documentId',
+          CASE WHEN a."targetType" = 'Document' THEN a."targetId" END)
+        WHERE d."deletedAt" < ${cutoff} AND d."content" = ${PURGED_DOCUMENT_JSON}::jsonb
+          AND jsonb_typeof(a."metadata") = 'object' AND a."metadata" ?| ARRAY['title', 'slug']
+        LIMIT ${limit})`,
   },
 ];
 

@@ -21,6 +21,8 @@ vi.mock("#config", () => ({
   },
 }));
 
+// Made-up numbers (V-210, owner decision 12): never copy a value from the private policy here;
+// tests/ats/private-policy-guard.test.ts fails if one matches.
 const MINIMAL = {
   version: "ats-v2",
   rules: [
@@ -37,11 +39,11 @@ const MINIMAL = {
     },
   ],
   keywordMatch: {
-    requiredWeight: 1.5,
-    preferredWeight: 0.75,
-    responsibilitiesWeight: 0.6,
-    defaultWeight: 1,
-    generalTermWeight: 0.35,
+    requiredWeight: 3.07,
+    preferredWeight: 0.33,
+    responsibilitiesWeight: 0.71,
+    defaultWeight: 1.93,
+    generalTermWeight: 0.13,
     sections: { required: "a", preferred: "b", responsibilities: "c", excluded: "d" },
     stopwords: [],
     synonyms: {},

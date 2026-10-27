@@ -28,11 +28,14 @@ const prismaMock = {
     updateMany: vi.fn(),
     create: vi.fn(),
     count: vi.fn(),
+    findMany: vi.fn(),
   },
   entitlementGrant: {
     updateMany: vi.fn(),
     upsert: vi.fn(),
     findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
   },
   user: {
     update: vi.fn(),
@@ -148,6 +151,9 @@ describe("billing webhook processing and idempotency", () => {
     prismaMock.subscription.updateMany.mockReset();
     prismaMock.subscription.create.mockReset();
     prismaMock.subscription.count.mockReset().mockResolvedValue(0);
+    prismaMock.subscription.findMany.mockReset().mockResolvedValue([]);
+    prismaMock.entitlementGrant.findMany.mockReset().mockResolvedValue([]);
+    prismaMock.entitlementGrant.create.mockReset().mockResolvedValue({});
     loggerMock.warn.mockReset();
     loggerMock.error.mockReset();
     prismaMock.entitlementGrant.updateMany.mockReset();
@@ -676,16 +682,14 @@ describe("billing webhook processing and idempotency", () => {
         // Every bundle entitlement, SYSTEM-sourced on the payment id, flagged as a pass.
 
         const { productCatalog } = await import("../../src/services/productCatalog.js");
-        expect(prismaMock.entitlementGrant.upsert).toHaveBeenCalledTimes(
+        expect(prismaMock.entitlementGrant.create).toHaveBeenCalledTimes(
           productCatalog.bundle.entitlements.length,
         );
-        for (const [args] of prismaMock.entitlementGrant.upsert.mock.calls) {
-          expect(args.where.userId_key_source_sourceId).toMatchObject({
+        for (const [args] of prismaMock.entitlementGrant.create.mock.calls) {
+          expect(args.data).toMatchObject({
             userId: "user_123",
             source: "SYSTEM",
             sourceId: "pay_1",
-          });
-          expect(args.create).toMatchObject({
             startsAt: new Date(PAID_AT),
             endsAt,
             metadata: { productKey: "bundle", interval, pass: true },

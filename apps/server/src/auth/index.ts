@@ -16,7 +16,19 @@ import { getRedis } from "#lib/redis";
 
 import { incrementFixedWindow } from "#middleware/rateLimit";
 
-import { invalidateSessionCache, invalidateCacheByToken } from "#utils/authCache";
+import { betterAuthLogger } from "#auth/authLogger";
+import {
+  assertGithubUnlinkAllowed,
+  githubAccountRaceGuard,
+  refuseSecondGithubAccount,
+  surfaceRefusedGithubSignIn,
+} from "#auth/githubLinking";
+import {
+  invalidateCacheByToken,
+  isSignOutPath,
+  revokeSessionCacheForCookie,
+  revokeSessionCaches,
+} from "#utils/authCache";
 import { incrementUsageMetric } from "#services/analyticsService";
 
 import { sendAuthOtpEmail, sendWelcomeEmail, sendLoginAlertEmail } from "#services/mail/index";
@@ -118,11 +130,14 @@ export async function assertOtpRecipientQuotaAvailable(email: string): Promise<v
 }
 
 export const auth = betterAuth({
+  // Its log lines go through the app logger, which masks email addresses (V-255).
+  logger: betterAuthLogger,
   // better-auth's deprecated alias of `/email-otp/request-password-reset`, removed in its next
   // major (V-191). No app calls it; switching it off now means that bump cannot change anything.
   disabledPaths: ["/forget-password/email-otp"],
 
-  database: prismaAdapter(prisma, {
+  // The race guard maps a second GitHub that loses to the partial unique index (V-265).
+  database: prismaAdapter(prisma.$extends(githubAccountRaceGuard), {
     provider: "postgresql",
   }),
 
@@ -272,6 +287,10 @@ export const auth = betterAuth({
       // applies on the local side). Google only issues verified emails. Untrusted providers still
       // link when the provider itself says the email is verified.
       trustedProviders: ["google"],
+      // Owner decision (V-265): a GitHub account may be linked whatever email it reports, so a
+      // user whose GitHub address differs from their VeriWorkly one can still link it. The
+      // one-GitHub-per-account and never-unlink rules live in `#auth/githubLinking`.
+      allowDifferentEmails: true,
     },
   },
 
@@ -293,23 +312,36 @@ export const auth = betterAuth({
       const recipient = otpPrecheckRecipient(ctx.path, ctx.body);
       if (recipient) await assertOtpRecipientQuotaAvailable(recipient);
 
-      // Only endpoints that exist in this config: change-email and delete-user are disabled, and
-      // change-password needs a credential account, which OTP/OAuth sign-in never creates.
-      const pathsToInvalidate = ["/sign-out", "/revoke-session", "/revoke-sessions"];
+      // A linked GitHub is never removed (V-265).
+      assertGithubUnlinkAllowed(ctx.path, ctx.body);
 
-      const shouldInvalidate = pathsToInvalidate.some(
-        (p) => ctx.path === p || ctx.path.startsWith(p + "/"),
-      );
-
-      if (shouldInvalidate) {
+      // Sign-out only. The request's own cookie is the session being ended there; on
+      // /revoke-session(s) it is the caller's session, which stays valid, and the sessions that
+      // are revoked are tombstoned by `session.delete.after` instead.
+      if (isSignOutPath(ctx.path)) {
         const cookieHeader = ctx.headers?.get("cookie") || "";
 
-        if (cookieHeader) await invalidateSessionCache(cookieHeader);
+        // Tombstoned, not just deleted: a lookup in flight cannot re-cache it (V-122).
+        if (cookieHeader) await revokeSessionCacheForCookie(cookieHeader);
       }
+    }),
+
+    // A sign-in refused for a second GitHub reports GITHUB_ALREADY_LINKED (V-265).
+    after: createAuthMiddleware(async (ctx) => {
+      await surfaceRefusedGithubSignIn(ctx);
     }),
   },
 
   databaseHooks: {
+    account: {
+      create: {
+        // One GitHub per account: a second, different GitHub is refused (V-265).
+        before: async (account, context) => {
+          await refuseSecondGithubAccount(account, context);
+        },
+      },
+    },
+
     user: {
       create: {
         after: async (user) => {
@@ -380,7 +412,7 @@ export const auth = betterAuth({
       delete: {
         after: async (session) => {
           try {
-            await invalidateCacheByToken(session.token);
+            await revokeSessionCaches([session.token]);
           } catch (error) {
             // Never block the delete, but a stale session cache must be visible (V-165).
             logger.warn("Session cache invalidation failed in session.delete.after", { error });

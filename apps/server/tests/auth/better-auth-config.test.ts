@@ -23,7 +23,8 @@ vi.mock("#lib/redis", () => ({
 }));
 
 vi.mock("#lib/prisma", () => ({
-  prisma: mockPrisma,
+  // `#auth/index` wraps the client with `$extends` at import (V-265).
+  prisma: Object.assign(mockPrisma, { $extends: () => mockPrisma }),
 }));
 
 vi.mock("#services/mail", () => ({
@@ -34,10 +35,15 @@ vi.mock("#services/mail", () => ({
 }));
 
 import { auth } from "#auth/index";
+import { betterAuthLogger } from "#auth/authLogger";
 
 describe("Better Auth configuration", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options = auth.options as any;
+
+  it("sends its own log lines through the masking app logger (V-255)", () => {
+    expect(options.logger).toBe(betterAuthLogger);
+  });
 
   it("has rate limiting enabled with correct settings and custom rules", () => {
     expect(options.rateLimit).toBeDefined();
@@ -198,6 +204,12 @@ describe("Better Auth configuration", () => {
     expect(options.account?.accountLinking?.trustedProviders).toEqual(["google"]);
     expect(options.account?.accountLinking?.trustedProviders).not.toContain("github");
     expect(options.account?.accountLinking?.trustedProviders).not.toContain("linkedin");
+  });
+
+  it("links a GitHub whose email differs from the account's, and guards GitHub rows (V-265)", () => {
+    // Without this a link fails with email_doesn't_match whenever the two addresses differ.
+    expect(options.account?.accountLinking?.allowDifferentEmails).toBe(true);
+    expect(options.databaseHooks?.account?.create?.before).toEqual(expect.any(Function));
   });
 
   it("configures onAPIError with studioLoginUrl to redirect auth failures to studio login", () => {

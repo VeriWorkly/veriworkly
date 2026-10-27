@@ -8,9 +8,9 @@ import { type ProductKey, type BillingInterval } from "./data/pricingData";
 import PricingHero from "./components/PricingHero";
 import PricingAlaCarte from "./components/PricingAlaCarte";
 import PricingComparison from "./components/PricingComparison";
+import { CurrencyProvider } from "./context/CurrencyContext";
 
 // `paymentsBlocked` only disables the buttons; BillingController.assertPaymentsEnabled is the real gate.
-import { CurrencyProvider } from "./context/CurrencyContext";
 
 const PricingExperience = ({
   paymentsBlocked,

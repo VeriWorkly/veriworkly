@@ -15,7 +15,7 @@ export const FeatureMatrixTable = ({ competitor }: FeatureMatrixTableProps) => (
     tabIndex={0}
     role="region"
     aria-label={`VeriWorkly and ${competitor.name} feature comparison, scrollable`}
-    className="border-border bg-background focus-visible:ring-accent/40 overflow-x-auto rounded-3xl border focus-visible:ring-2 focus-visible:outline-none"
+    className="border-border bg-background focus-visible:ring-accent/40 relative overflow-x-auto rounded-3xl border focus-visible:ring-2 focus-visible:outline-none"
   >
     <table className="w-full min-w-180 border-collapse text-left">
       <caption className="sr-only">

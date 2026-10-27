@@ -60,24 +60,6 @@ const publicRoutes = [
   },
 
   {
-    url: `${siteConfig.url}/roadmap/todo`,
-    changeFrequency: "daily" as const,
-    priority: 0.75,
-  },
-
-  {
-    url: `${siteConfig.url}/roadmap/in-progress`,
-    changeFrequency: "daily" as const,
-    priority: 0.75,
-  },
-
-  {
-    url: `${siteConfig.url}/roadmap/done`,
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  },
-
-  {
     url: `${siteConfig.url}/stats`,
     changeFrequency: "daily" as const,
     priority: 0.6,

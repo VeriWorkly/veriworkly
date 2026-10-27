@@ -59,6 +59,7 @@ describe("copy stays free of the claims the audit found false", () => {
     [/two steps and a score/i, "ATS: the checker has three steps"],
     [/field accuracy, /i, "ATS: the tiles are regression figures"],
     [/maya okafor|daniel reyes|alex morgan/i, "ATS: samples use plainly invented names"],
+    [/zero paywalls •/i, "W-087: premium templates and AI credits are paid"],
   ];
 
   const SHIPPED_DIRS = ["app", "components", "config", "features", "public"];

@@ -347,7 +347,7 @@ export async function fetchRoadmapFromBackend(query: RoadmapQuery = {}): Promise
 /** One week - the sitemap's own cadence, kept apart from the page reads' cache entries. */
 const SITEMAP_REVALIDATE_SECONDS = 604800;
 
-/** Deliberately different from the pages' `limit=20` so this keeps its own Data Cache entry. */
+/** The backend's maximum. With the "newest" sort these are the pages' own URLs, so they share cache entries (same week, same "roadmap" tag). */
 const SITEMAP_PAGE_SIZE = 50;
 
 const SITEMAP_MAX_PAGES = 20;
@@ -357,7 +357,7 @@ export interface RoadmapSitemapEntry {
   updatedAt: string;
 }
 
-/** Next collapses a route's revalidate to its shortest fetch, so the sitemap uses its own URLs (limit=50) and cache entry. */
+/** Every status, newest first; a failed page throws so the last complete sitemap is kept. */
 export async function fetchRoadmapSitemapEntries(): Promise<RoadmapSitemapEntry[]> {
   const statuses: RoadmapStatus[] = ["todo", "in-progress", "done"];
 
