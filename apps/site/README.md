@@ -86,7 +86,7 @@ This site makes pricing, quota, and capability claims that are also enforced in 
 - **Paid GitHub import is capped** at `PAID_GITHUB_IMPORT_DAILY_LIMIT` (50/day) to protect the shared server token. Never write "unlimited" or "unmetered"; `claims-truth.contract.test.ts` fails on both.
 - **Payments are closed** (`PAYMENTS_BLOCKED` in `app/(marketing)/pricing/page.tsx`). `pricing.md` and `llms.txt` must say so while it is true; the claims test checks both directions.
 - **The free tier has zero AI writing credits.** Do not use "generate", "AI-tailored", or similar for free-tier copy. LinkedIn import is AI-parsed, so verify entitlements before describing features as free.
-- **Portfolio publishing is free on core templates, paid on premium ones.** Nimbus and Cipher require a subscription; Signal and Atelier publish free with a "Built with VeriWorkly" badge. Document exports (PDF/DOCX) never carry watermarks on any tier.
+- **Portfolio publishing is free on core templates, paid on premium ones.** Nimbus and Cipher need a paid plan or a 3-Day Sprint Pass / 7-Day Hunt Pass; Signal and Atelier publish free with a "Built with VeriWorkly" badge. Document exports (PDF/DOCX) never carry watermarks on any tier.
 - **AI model names are not hardcoded.** They resolve at runtime via `env:VAR` indirection (`apps/server/src/services/aiPrivateConfig.ts`). Prefer capability-based phrasing over specific model names that can become stale.
 - **Competitor comparison pricing claims.** `features/compare/data/competitors.ts` includes `PRICING_VERIFIED_AT`. Re-verify live vendor pricing before bumping this date.
 

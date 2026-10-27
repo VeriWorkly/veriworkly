@@ -42,7 +42,7 @@ export const faqs: FaqItem[] = [
     category: "general",
     question: "Where is my resume and personal career data stored?",
     answer:
-      "Your data stays on your own device by default. VeriWorkly uses a local-first system that saves your resume drafts directly in your browser local storage. Nothing is sent to our servers or stored in any database unless you sign up for cloud sync or publish a web portfolio.",
+      "Your documents stay on your own device by default: VeriWorkly saves your drafts in your browser's local storage, and keeps them in our database only if you turn on cloud sync or publish a web portfolio. A few features send content to our servers to do their job: an ATS scan reads your resume in memory and does not keep it, AI actions send the text you choose to our AI provider, and GitHub or LinkedIn imports read the profile you point them at. Our Privacy Policy lists each one.",
   },
   {
     id: "account-requirement",
@@ -228,7 +228,7 @@ export const faqs: FaqItem[] = [
     category: "ai",
     question: "What actions consume AI credits?",
     answer:
-      "AI credits are only used when you generate a new cover letter, tailor bullet points to a specific job description, or rewrite summary text with AI. Standard editing, typing, changing templates, and exporting files are always free and use zero credits.",
+      "Every AI feature draws on the same credits: writing, rewriting and tailoring in the editor, AI analysis in the ATS checker, converting or repairing a resume, the LinkedIn import, and the portfolio AI assistant. Each action shows its cost before it runs. Standard editing, typing, changing templates, and exporting files are always free and use zero credits.",
   },
   {
     id: "ai-credits-rollover",
