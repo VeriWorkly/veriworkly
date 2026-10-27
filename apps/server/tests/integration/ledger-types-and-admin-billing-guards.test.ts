@@ -171,5 +171,16 @@ describe("credit ledger LOWs", () => {
         where: { action: "billing.entitlement.revoke", targetId: grantId },
       }),
     ).toBe(1);
+    // V-418: the audit count says nothing about the grant. It is revoked, once, and the
+    // account no longer holds the entitlement through it.
+    const grant = await prisma.entitlementGrant.findUniqueOrThrow({ where: { id: grantId } });
+    expect(grant.revokedAt).not.toBeNull();
+    expect(
+      await prisma.entitlementGrant.count({
+        where: { userId: user.id, key: "ai_credits", revokedAt: null },
+      }),
+    ).toBe(0);
+    const winner = responses.find((response) => response.status === 200)!;
+    expect(new Date(winner.body.data.revokedAt).getTime()).toBe(grant.revokedAt!.getTime());
   });
 });

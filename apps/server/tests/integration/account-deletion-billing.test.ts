@@ -668,7 +668,12 @@ describe("billing records outlive the account (V-183, owner decision 5)", () => 
     const placeholder = { id: "deleted", email: "Deleted account", name: null, deleted: true };
     expect(listed.user).toMatchObject(placeholder);
     const credits = await api.get("/api/v1/admin/billing/credits");
-    expect(credits.body.data.items.every((item: { user: unknown }) => item.user !== null)).toBe(
+    // V-410: `every` is true for an empty list. The deleted account's own ledger rows must be
+    // listed, each with the placeholder, and no row may have a null user.
+    const creditItems = credits.body.data.items as Array<{ user: unknown }>;
+    expect(creditItems.length).toBeGreaterThan(0);
+    expect(creditItems.every((item) => item.user !== null)).toBe(true);
+    expect(creditItems.some((item) => (item.user as { deleted?: boolean }).deleted === true)).toBe(
       true,
     );
     const entitlements = await api.get("/api/v1/admin/billing/entitlements");
