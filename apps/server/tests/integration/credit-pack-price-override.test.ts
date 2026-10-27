@@ -9,10 +9,12 @@ import { createUserWithSession } from "./helpers/auth.js";
  * per-file setup already loaded `#config` with the defaults, so this file sets the variables and
  * boots a second copy of the app from a fresh module graph, the way a restart with the new
  * environment would. The helpers above stay on the first graph; both talk to the same stores.
+ * `#config` reads the variables at import, so the stubs only need to live until the import below;
+ * `unstubEnvs` removes them before the first test.
  */
 
-process.env.CREDIT_PACK_250_PRICE_CENTS = "349";
-process.env.CREDIT_PACK_500_PRICE_CENTS = "599";
+vi.stubEnv("CREDIT_PACK_250_PRICE_CENTS", "349");
+vi.stubEnv("CREDIT_PACK_500_PRICE_CENTS", "599");
 vi.resetModules();
 
 const { app } = await import("#app");
@@ -27,8 +29,6 @@ describe("credit pack prices from the environment", () => {
   });
 
   afterAll(async () => {
-    delete process.env.CREDIT_PACK_250_PRICE_CENTS;
-    delete process.env.CREDIT_PACK_500_PRICE_CENTS;
     await fresh.redis.closeRedis();
     await fresh.prisma.closePrisma();
   });

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // V-138: with no webhook secret the server used to accept unsigned JSON whenever NODE_ENV was
 // "development", which compose defaulted to. The bypass must now need an explicit opt-in, a
@@ -62,17 +62,10 @@ function expectRefused(remote?: string) {
 }
 
 describe("unsigned webhook bypass (V-138)", () => {
-  const originalFlag = process.env.ALLOW_UNSIGNED_WEBHOOKS;
-
   beforeEach(() => {
     configMock.nodeEnv = "development";
     configMock.dodo.webhookSecret = "";
-    delete process.env.ALLOW_UNSIGNED_WEBHOOKS;
-  });
-
-  afterEach(() => {
-    if (originalFlag === undefined) delete process.env.ALLOW_UNSIGNED_WEBHOOKS;
-    else process.env.ALLOW_UNSIGNED_WEBHOOKS = originalFlag;
+    vi.stubEnv("ALLOW_UNSIGNED_WEBHOOKS", undefined);
   });
 
   it("refuses an unsigned webhook in development when the opt-in flag is absent", () => {
@@ -80,20 +73,20 @@ describe("unsigned webhook bypass (V-138)", () => {
   });
 
   it("refuses an unsigned webhook from a non-loopback caller even with the flag", () => {
-    process.env.ALLOW_UNSIGNED_WEBHOOKS = "1";
+    vi.stubEnv("ALLOW_UNSIGNED_WEBHOOKS", "1");
     expectRefused("10.0.0.5");
     expectRefused("::ffff:172.18.0.1");
     expectRefused(undefined);
   });
 
   it("refuses an unsigned webhook in production even with the flag from loopback", () => {
-    process.env.ALLOW_UNSIGNED_WEBHOOKS = "1";
+    vi.stubEnv("ALLOW_UNSIGNED_WEBHOOKS", "1");
     configMock.nodeEnv = "production";
     expectRefused("127.0.0.1");
   });
 
   it("accepts an unsigned webhook only with the flag, outside production, from loopback", () => {
-    process.env.ALLOW_UNSIGNED_WEBHOOKS = "1";
+    vi.stubEnv("ALLOW_UNSIGNED_WEBHOOKS", "1");
     expect(BillingService.unwrapWebhook(body, headers, "127.0.0.1")).toEqual(JSON.parse(body));
     expect(BillingService.unwrapWebhook(body, headers, "::1")).toEqual(JSON.parse(body));
     expect(BillingService.unwrapWebhook(body, headers, "::ffff:127.0.0.1")).toEqual(
@@ -102,7 +95,7 @@ describe("unsigned webhook bypass (V-138)", () => {
   });
 
   it("reports a malformed body as 400 inside the bypass", () => {
-    process.env.ALLOW_UNSIGNED_WEBHOOKS = "1";
+    vi.stubEnv("ALLOW_UNSIGNED_WEBHOOKS", "1");
     expect(() => BillingService.unwrapWebhook("{not json", headers, "127.0.0.1")).toThrowError(
       /Invalid JSON body/,
     );

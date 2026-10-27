@@ -1,5 +1,5 @@
 import request from "supertest";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { config } from "#config";
@@ -167,13 +167,9 @@ describe("GET /api/v1/health/jobs", () => {
       "RETENTION_DELETED_DOCUMENT_DAYS",
     ];
 
-    afterEach(() => {
-      for (const name of RETENTION_VARS) delete process.env[name];
-    });
-
     it("are reported disabled, never stale, and do not make the report stale", async () => {
       // The suite runs with GITHUB_SYNC_ENABLED and CHANGELOG_RELEASE_SYNC_ENABLED false.
-      for (const name of RETENTION_VARS) process.env[name] = "0";
+      for (const name of RETENTION_VARS) vi.stubEnv(name, "0");
       await getRedis().del(JOB_LAST_SUCCESS_KEY);
       const now = Date.now();
       for (const name of [
