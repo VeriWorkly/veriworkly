@@ -194,10 +194,15 @@ function noPublishGrantWhere(now: Date) {
  * Only premium templates ride on paid access; a free-template row never earns a grace period
  * and is never moved here, whatever the user's billing history says.
  *
+ * A LIVE row whose access ended with no provider event (a pass or a time-boxed comp ran out)
+ * moves at once (V-222): a pass buys exactly its days, never a paid grace week on top, and the
+ * site is never hidden on the way. Not while the owner has a portfolio subscription that can
+ * still renew (ACTIVE or PAST_DUE): its late webhook decides, not this sweep.
+ *
  * The grace window comes from the subscription (`graceEndsAt`). A GRACE row whose user has
- * no portfolio subscription at all (an expired pass or comp grant, moved to GRACE by the job) has
- * no provider clock, so its window is `graceDays` from the transition: the row's `updatedAt`,
- * which that transition was the last write to. A row billing suspended (a cancellation or an
+ * no portfolio subscription at all (one an admin parked in GRACE, or one the job moved there
+ * before V-222) has no provider clock, so its window is `graceDays` from the transition: the
+ * row's `updatedAt`, which that transition was the last write to. A row billing suspended (a cancellation or an
  * expiry with no grace) is already past any window, but only one suspended within
  * `BILLING_RESTORE_WINDOW_DAYS` comes back on its own (owner decision: an older billing suspension
  * stays offline until the owner republishes; it was offline long enough that bringing it back
@@ -217,6 +222,20 @@ function lapsedForGoodWhere(now: Date) {
       subscriptions: { none: governingSubscriptionWhere(now) },
     },
     OR: [
+      {
+        status: "LIVE" as const,
+        // Only a pass or comp that ran out, never a subscription that can still renew: a renewal
+        // webhook a few minutes late must not drop a paying subscriber to the free template.
+        // Subscriptions lapse through billing (the webhook, or the GRACE window it sets).
+        user: {
+          subscriptions: {
+            none: {
+              productKey: { in: [...PORTFOLIO_PRODUCT_KEYS] },
+              status: { in: ["ACTIVE" as const, "PAST_DUE" as const] },
+            },
+          },
+        },
+      },
       {
         status: "GRACE" as const,
         OR: [
@@ -652,8 +671,8 @@ export class PortfolioService {
 
     if (!document) throw new ApiError(404, "Portfolio draft not found.");
 
-    // A force-unpublish deletes the publication row, so the row's moderation lock below cannot
-    // see it; the document's own lock can (V-207). Lifted only by a moderator. Checked again,
+    // A moderator's lock on the document (a "Make private" or a force-unpublish, V-207), checked
+    // before the publication's own lock below. Lifted only by a moderator. Checked again,
     // conditionally, inside the transaction below (V-226).
     if (document.moderatedPrivateAt) throw new ApiError(403, MODERATED_MESSAGE);
 
@@ -720,6 +739,9 @@ export class PortfolioService {
       seo: resolveSeo(publishable.data.seo, canControlSeo),
     };
 
+    // Intentional: a takedown (force-unpublish included, which now keeps the row, V-225) blocks
+    // publishing any portfolio document, not just the one taken down, until a moderator lifts it.
+    // Otherwise the owner could get round a takedown by publishing a copy from a new document.
     if (existingPublication && isModerationLocked(existingPublication))
       throw new ApiError(403, MODERATED_MESSAGE);
 
@@ -860,46 +882,18 @@ export class PortfolioService {
    * Settles premium publications whose paid access has lapsed. Takes no lock and throws on
    * failure: `jobs/portfolioAccessJob` runs it hourly under the portfolio-access lock.
    *
-   * 1. A LIVE premium publication whose publish grant ran out without a provider event (a pass or a
-   *    time-boxed comp) moves to GRACE: the same courtesy window a failed renewal gets.
-   * 2. When that window is over, or billing suspended the row outright, the publication does not go
-   *    offline: it drops to the free tier and stays LIVE (owner decision 6, see
-   *    `PortfolioService.dropToFreeTier`). Moderation takedowns and the user's own unpublish are
-   *    not billing's, so they are never touched here.
+   * A premium publication whose paid access is gone for good (`lapsedForGoodWhere`: a LIVE row
+   * whose pass or comp ran out, a GRACE window that is over, or a recent billing suspension) does
+   * not go offline: it drops to the free tier and stays LIVE (owner decision 6, see
+   * `PortfolioService.dropToFreeTier`). Only a failed subscription renewal earns a grace window,
+   * and billing sets that one; the job never moves a row into GRACE (V-222). Moderation takedowns
+   * and the user's own unpublish are not billing's, so they are never touched here.
    */
   static async settleLapsedPortfolios() {
-    const now = new Date();
-    const moved = await this.dropLapsedToFreeTier(lapsedForGoodWhere(now));
-
-    if (moved.length > 0)
-      logger.info("Moved lapsed premium portfolios to the free tier", { count: moved.length });
-
-    const lapsedLiveWhere = {
-      status: "LIVE" as const,
-      templateId: { in: [...PREMIUM_PORTFOLIO_TEMPLATE_IDS] },
-      user: {
-        entitlementGrants: noPublishGrantWhere(now),
-        subscriptions: { none: governingSubscriptionWhere(now) },
-      },
-    } satisfies Prisma.PortfolioPublicationWhereInput;
-
-    const lapsed = await prisma.portfolioPublication.findMany({
-      where: lapsedLiveWhere,
-      select: { id: true, subdomain: true },
-    });
-
-    if (lapsed.length > 0) {
-      await prisma.portfolioPublication.updateMany({
-        where: { id: { in: lapsed.map((publication) => publication.id) }, ...lapsedLiveWhere },
-        data: { status: "GRACE", suspensionReason: null, suspendedAt: null },
-      });
-
-      logger.info("Moved lapsed premium portfolios to grace", { count: lapsed.length });
-    }
-
-    const subdomains = [...moved, ...lapsed.map((publication) => publication.subdomain)];
+    const subdomains = await this.dropLapsedToFreeTier(lapsedForGoodWhere(new Date()));
 
     if (subdomains.length > 0) {
+      logger.info("Moved lapsed premium portfolios to the free tier", { count: subdomains.length });
       await invalidatePublicPortfolioCaches(subdomains);
       void revalidatePublicPortfolios(subdomains);
     }

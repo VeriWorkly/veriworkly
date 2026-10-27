@@ -259,10 +259,73 @@ describe("V-039 sticky moderation", () => {
 
     expect(publish.status, JSON.stringify(publish.body)).toBe(403);
     expect(publish.body.message ?? publish.body.error).toMatch(/taken down by a moderator/i);
-    expect(await prisma.portfolioPublication.count({ where: { userId: user.id } })).toBe(0);
+    // V-225: the row stays, as a moderation takedown, so its view history is kept.
+    const row = await publicationOf(user.id);
+    expect(row.status).toBe("SUSPENDED");
+    expect(row.suspensionReason).toBe("moderation:Phishing page");
     expect(
       (await prisma.document.findUniqueOrThrow({ where: { id: document.id } })).visibility,
     ).toBe("PRIVATE");
+  });
+
+  it("V-225: a force-unpublish keeps the portfolio's daily views and takes the site offline", async () => {
+    const user = await createUserWithSession();
+    const { publication } = await seedPublication(user.id, "signal");
+    await prisma.portfolioViewDaily.createMany({
+      data: [
+        { publicationId: publication.id, date: new Date(Date.now() - DAY_MS), count: 4 },
+        {
+          publicationId: publication.id,
+          date: new Date(Date.now() - 2 * DAY_MS),
+          referrerHost: "example.test",
+          count: 2,
+        },
+      ],
+    });
+
+    const takedown = await asUser(
+      await admin(),
+      request(app).delete(`/api/v1/admin/portfolios/${publication.id}`),
+    ).send({ reason: "Phishing page" });
+    expect(takedown.status, JSON.stringify(takedown.body)).toBe(200);
+    expect(takedown.body.data).toMatchObject({
+      id: publication.id,
+      subdomain: publication.subdomain,
+    });
+
+    expect(
+      await prisma.portfolioViewDaily.count({ where: { publicationId: publication.id } }),
+    ).toBe(2);
+    expect((await publicGet(`/api/v1/portfolios/public/${publication.subdomain}`)).status).toBe(
+      404,
+    );
+    const listed = await publicGet("/api/v1/portfolios/public");
+    expect(JSON.stringify(listed.body)).not.toContain(publication.subdomain);
+  });
+
+  it("V-248: the suspended-portfolio queue counts takedowns and billing suspensions, not the owner's own unpublish", async () => {
+    const owner = await createUserWithSession();
+    const billed = await createUserWithSession();
+    await seedPublication(owner.id, "signal", {
+      status: "SUSPENDED",
+      suspensionReason: "user_unpublished",
+    });
+    await seedPublication(billed.id, "nimbus", {
+      status: "SUSPENDED",
+      suspensionReason: "moderation:Spam",
+    });
+
+    const expected = await prisma.portfolioPublication.count({
+      where: { status: "SUSPENDED", NOT: { suspensionReason: "user_unpublished" } },
+    });
+
+    const queue = await asUser(await admin(), request(app).get("/api/v1/admin/overview/queue"));
+    expect(queue.status, JSON.stringify(queue.body)).toBe(200);
+    expect(queue.body.data.suspendedPortfolios).toBe(expected);
+
+    const overview = await asUser(await admin(), request(app).get("/api/v1/admin/overview"));
+    expect(overview.status).toBe(200);
+    expect(overview.body.data.actionQueue.suspendedPortfolios).toBe(expected);
   });
 
   it("is lifted by the admin setting LIVE, after which the user can publish again", async () => {
@@ -941,11 +1004,11 @@ describe("pass and comp expiry through the access job", () => {
     });
   }
 
-  it("an expired pass moves a premium publication to GRACE, then to the free tier after the grace days; a live pass and a free template are untouched", async () => {
+  it("V-222: an expired pass drops a premium publication straight to the free tier, with no paid grace; a live pass and a free template are untouched", async () => {
     const expired = await createUserWithSession();
     const live = await createUserWithSession();
     const free = await createUserWithSession();
-    const { publication } = await seedPublication(expired.id, "nimbus");
+    await seedPublication(expired.id, "nimbus");
     await seedPublication(live.id, "cipher");
     await seedPublication(free.id, "signal");
     await withGrant(expired.id, new Date(Date.now() - DAY_MS));
@@ -954,25 +1017,68 @@ describe("pass and comp expiry through the access job", () => {
 
     await settleLapsedPortfolios();
 
-    expect((await publicationOf(expired.id)).status).toBe("GRACE");
+    // One sweep: a 3-day pass buys 3 days of premium, not 3 plus a week of grace.
+    await expectDroppedToFree(expired.id, "atelier");
     expect((await publicationOf(live.id)).status).toBe("LIVE");
-    expect((await publicationOf(free.id)).status).toBe("LIVE");
+    expect((await publicationOf(live.id)).templateId).toBe("cipher");
+    await expectUntouchedSignal(free.id);
 
-    // Still inside the window: served, and as paid.
+    // It never went offline, so the email says it moved, not that it is back.
+    await vi.waitFor(() =>
+      expect(mailMock.sendPortfolioFreeTierEmail).toHaveBeenCalledWith(
+        expired.email,
+        expect.objectContaining({ wasOffline: false, freeTemplateName: "Atelier" }),
+      ),
+    );
+  });
+
+  it("V-222: a subscriber whose renewal webhook is late keeps the premium site, untouched and unannounced", async () => {
+    const user = await createUserWithSession();
+    const { publication } = await seedPublication(user.id, "nimbus");
+    await prisma.subscription.create({
+      data: {
+        userId: user.id,
+        provider: "dodo",
+        providerSubId: `sub_late_${randomUUID().slice(0, 8)}`,
+        productKey: "portfolio_pro",
+        status: "ACTIVE",
+        rawStatus: "active",
+        currentPeriodEnd: new Date(Date.now() - 60 * 60 * 1000),
+      },
+    });
+    mailMock.sendPortfolioFreeTierEmail.mockClear();
+
+    await settleLapsedPortfolios();
+
+    const row = await publicationOf(user.id);
+    expect(row.status).toBe("LIVE");
+    expect(row.templateId).toBe("nimbus");
+    expect(row.updatedAt.getTime()).toBe(publication.updatedAt.getTime());
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(mailMock.sendPortfolioFreeTierEmail).not.toHaveBeenCalled();
+  });
+
+  it("V-222: an expired pass for an owner with an old portfolio subscription is never hidden on the way to the free tier", async () => {
+    const user = await createUserWithSession();
+    const { publication } = await seedPublication(user.id, "cipher");
+    // A Creator Pro subscription that ended long ago: no clock of its own, but it exists.
+    await prisma.subscription.create({
+      data: {
+        userId: user.id,
+        provider: "dodo",
+        providerSubId: `sub_old_${randomUUID().slice(0, 8)}`,
+        productKey: "portfolio_pro",
+        status: "CANCELED",
+        currentPeriodEnd: new Date(Date.now() - 60 * DAY_MS),
+      },
+    });
+    await withGrant(user.id, new Date(Date.now() - DAY_MS));
+
+    await settleLapsedPortfolios();
+
     const served = await publicGet(`/api/v1/portfolios/public/${publication.subdomain}`);
     expect(served.status).toBe(200);
-    expect(served.body.data.isPremium).toBe(true);
-    expect(served.body.data.isPaid).toBe(true);
-
-    await settleLapsedPortfolios();
-    expect((await publicationOf(expired.id)).status).toBe("GRACE");
-
-    // The window is measured from the GRACE transition (no subscription clock exists).
-    await prisma.$executeRaw`UPDATE "PortfolioPublication" SET "updatedAt" = now() - interval '8 days' WHERE "id" = ${publication.id}`;
-    await settleLapsedPortfolios();
-
-    await expectDroppedToFree(expired.id, "atelier");
-    expect((await publicationOf(live.id)).templateId).toBe("cipher");
+    await expectDroppedToFree(user.id, "signal");
   });
 });
 
