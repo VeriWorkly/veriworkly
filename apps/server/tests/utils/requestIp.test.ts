@@ -29,7 +29,7 @@ describe("requestIp utility", () => {
     expect(details.resolvedIp).toBe("192.168.1.100");
   });
 
-  it("prioritizes headers in proper precedence order", () => {
+  it("without an Express app (no req.app), falls back to the headers in precedence order", () => {
     const mockReq = {
       ip: undefined,
       headers: {
@@ -105,5 +105,42 @@ describe("addressBucket", () => {
 
     expect(getRequestIpDetails(req)).toBe(first);
     expect(first.resolvedIp).toBe("203.0.113.7");
+  });
+});
+
+/**
+ * V-393: the cases above build requests with no `req.app`, a branch real Express requests never
+ * take. These go through a real `express()` app, as production does.
+ */
+describe("getRequestIpDetails on real Express requests", () => {
+  async function resolvedIpWith(trustProxy: boolean | number, headers: Record<string, string>) {
+    const { default: express } = await import("express");
+    const { default: request } = await import("supertest");
+    const app = express();
+    app.set("trust proxy", trustProxy);
+    app.get("/", (req, res) => {
+      res.json(getRequestIpDetails(req));
+    });
+    const call = request(app).get("/");
+    for (const [name, value] of Object.entries(headers)) call.set(name, value);
+    return (await call).body.resolvedIp as string;
+  }
+
+  const forged = {
+    "x-client-ip": "198.51.100.1",
+    "cf-connecting-ip": "198.51.100.2",
+    "x-real-ip": "198.51.100.3",
+  };
+
+  it("uses the socket address and ignores every forwarding header when trust proxy is off", async () => {
+    expect(await resolvedIpWith(false, { ...forged, "x-forwarded-for": "192.0.2.9" })).toBe(
+      "127.0.0.1",
+    );
+  });
+
+  it("uses the trusted proxy's X-Forwarded-For hop, never the client-set headers, when trust proxy is 1", async () => {
+    expect(
+      await resolvedIpWith(1, { ...forged, "x-forwarded-for": "203.0.113.50, 192.0.2.9" }),
+    ).toBe("192.0.2.9");
   });
 });

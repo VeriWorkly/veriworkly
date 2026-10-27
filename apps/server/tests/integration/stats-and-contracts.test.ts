@@ -62,14 +62,39 @@ describe("/stats/events callers (V-024, V-151)", () => {
       .send({ name: "stats key", scopes: ["user:read"] });
     expect(created.status).toBe(201);
 
-    const response = await request(app)
-      .post("/api/v1/stats/events")
-      .set("X-API-Key", created.body.data.key)
-      .send({ event: "custom_x" });
+    // Date frozen so the request and the read name the same day key (V-363).
+    await atFixedDate("2026-03-08T12:00:00.000Z", async () => {
+      const response = await request(app)
+        .post("/api/v1/stats/events")
+        .set("X-API-Key", created.body.data.key)
+        .send({ event: "custom_x" });
 
-    expect(response.status).toBe(400);
-    expect(await getRedis().hGet(`usage:daily:${today()}`, "custom_x")).toBeNull();
+      expect(response.status).toBe(400);
+      expect(await getRedis().hGet(`usage:daily:${today()}`, "custom_x")).toBeNull();
+    });
   });
+
+  // V-379: `auth_login_success` is allow-listed for the dashboard but only the server records
+  // it (the session hook). A public caller, with or without an API key, is refused and nothing
+  // is counted; the stats key may still send it.
+  it("refuses a server-only event from a public caller and counts nothing", () =>
+    atFixedDate("2026-03-07T12:00:00.000Z", async () => {
+      const response = await request(app)
+        .post("/api/v1/stats/events")
+        .set("Origin", STUDIO_ORIGIN)
+        .send({ event: "auth_login_success" });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain("cannot be reported directly");
+      expect(await getRedis().hGet(`usage:daily:${today()}`, "auth_login_success")).toBeNull();
+
+      const internal = await request(app)
+        .post("/api/v1/stats/events")
+        .set("x-internal-key", STATS_INTERNAL_KEY_VALUE)
+        .send({ event: "auth_login_success" });
+      expect(internal.status).toBe(202);
+      expect(await getRedis().hGet(`usage:daily:${today()}`, "auth_login_success")).toBe("1");
+    }));
 
   it("forces value to 1 for a public caller", async () => {
     await atFixedDate("2026-03-09T12:00:00.000Z", async () => {
