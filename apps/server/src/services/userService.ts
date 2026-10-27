@@ -14,6 +14,8 @@ import {
   revalidatePublicPortfolios,
 } from "#utils/portfolioPublicationCache";
 import { invalidateAffiliate, invalidateLeaderboards } from "#services/affiliate/cache";
+import { AFFILIATE_WALLET_CURRENCY } from "#services/affiliate/constants";
+import { ADMIN_AUDIT_ACTIONS } from "#services/admin/adminAuditService";
 import { ApiKeyService } from "#services/apiKeyService";
 import { CreditService } from "#services/creditService";
 import { redactBillingEventsForUser, redactBillingTextForUser } from "#services/deletedAccount";
@@ -52,16 +54,107 @@ const userProfileSelect = {
  * `reserved` total is cleared first; otherwise the detached wallet would hold credits against
  * reservations that no longer exist.
  */
-export async function deleteUserCascade(tx: Prisma.TransactionClient, userId: string) {
+export async function deleteUserCascade(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  options: {
+    /** The user has not confirmed losing an affiliate balance: refuse if there is one (V-234). */
+    requireAffiliateForfeitConfirmation?: boolean;
+    /**
+     * The balance the user saw and confirmed: a locked balance above it refuses the deletion again,
+     * so money that arrived after the warning is never lost unseen.
+     */
+    confirmedAffiliateForfeitCents?: number;
+    /** Who deletes: an admin, or null for the account owner. Recorded on the forfeit entry. */
+    actorId?: string | null;
+  } = {},
+) {
+  // The affiliate balance this deletion forfeits, read with the wallet row locked: a commission
+  // released after the pre-check is either in this amount or waits for the deletion to commit.
+  const [wallet] = await tx.$queryRaw<
+    Array<{ availableCents: number; pendingCents: number; clawbackCents: number }>
+  >`
+    SELECT "availableCents", "pendingCents", "clawbackCents" FROM "AffiliateWallet"
+    WHERE "userId" = ${userId} FOR UPDATE`;
+  const forfeit = affiliateForfeit(wallet);
+  if (forfeitRefused(forfeit, options)) throw affiliateForfeitError(forfeit);
+
   await tx.creditWallet.updateMany({ where: { userId }, data: { reserved: 0 } });
   // The kept billing events lose the personal data the provider sent in them (decision 5).
   await redactBillingEventsForUser(tx, userId);
   await redactBillingTextForUser(tx, userId);
+  // Commissions not yet paid go with the account (owner decision 10, V-234): marked REVERSED, so a
+  // detached row is never counted as money owed to someone who no longer exists.
+  const reversed = await tx.affiliateCommission.updateMany({
+    where: { affiliateId: userId, status: { in: ["PENDING", "AVAILABLE"] } },
+    data: { status: "REVERSED", reversedAt: new Date(), reason: AFFILIATE_FORFEIT_REASON },
+  });
 
   // Cascades to Document, MasterProfile, ShareLink, PortfolioPublication, CreditReservation,
   // ApiKey, Session, and the affiliate/ambassador records; detaches the billing rows above.
   await tx.user.delete({ where: { id: userId } });
+
+  // What was forfeited, kept as a money record (written after the delete, so the account's
+  // redaction does not touch it; the owner deleting their own account is recorded as no actor).
+  if (forfeit.amountCents > 0 || reversed.count > 0)
+    await tx.adminAuditEntry.create({
+      data: {
+        actorId: options.actorId ?? null,
+        action: ADMIN_AUDIT_ACTIONS.affiliateBalanceForfeit,
+        targetType: "User",
+        targetId: userId,
+        // The claw-back the affiliate still owed goes unrecovered with the account.
+        metadata: {
+          ...forfeit,
+          clawbackCents: Math.max(wallet?.clawbackCents ?? 0, 0),
+          commissionsReversed: reversed.count,
+        },
+      },
+    });
 }
+
+/** An affiliate wallet's unpaid balance, as the forfeit 409 and its audit entry state it. */
+function affiliateForfeit(
+  wallet: { availableCents: number; pendingCents: number } | undefined | null,
+) {
+  const availableCents = Math.max(wallet?.availableCents ?? 0, 0);
+  const pendingCents = Math.max(wallet?.pendingCents ?? 0, 0);
+  return {
+    amountCents: availableCents + pendingCents,
+    currency: AFFILIATE_WALLET_CURRENCY,
+    availableCents,
+    pendingCents,
+  };
+}
+
+/**
+ * Whether an unpaid balance stops the deletion: unconfirmed, or above the amount the user confirmed
+ * (a client that sends only the boolean confirms whatever is there, as before).
+ */
+function forfeitRefused(
+  forfeit: ReturnType<typeof affiliateForfeit>,
+  options: {
+    requireAffiliateForfeitConfirmation?: boolean;
+    confirmedAffiliateForfeitCents?: number;
+  },
+) {
+  if (forfeit.amountCents <= 0) return false;
+  if (options.requireAffiliateForfeitConfirmation) return true;
+  return (
+    options.confirmedAffiliateForfeitCents !== undefined &&
+    forfeit.amountCents > options.confirmedAffiliateForfeitCents
+  );
+}
+
+function affiliateForfeitError(forfeit: ReturnType<typeof affiliateForfeit>) {
+  return new ApiError(
+    409,
+    `You have ${(forfeit.amountCents / 100).toFixed(2)} USD in unpaid affiliate commissions. Deleting your account forfeits it. Confirm to delete anyway.`,
+    { code: "AFFILIATE_BALANCE_FORFEIT", ...forfeit },
+  );
+}
+
+const AFFILIATE_FORFEIT_REASON = "Forfeited when the account was deleted";
 
 /** Provider statuses under which Dodo can still charge the card. */
 const CHARGEABLE_RAW_STATUSES = ["active", "on_hold", "past_due", "paused"] as const;
@@ -339,7 +432,15 @@ export class UserService {
    * Satisfies GDPR / DPDP "Right to Erasure".
    * @param userId User ID to delete
    */
-  static async deleteUserAccount(userId: string) {
+  static async deleteUserAccount(
+    userId: string,
+    options: {
+      /** The user saw the unpaid affiliate balance and agreed to lose it (owner decision 10). */
+      confirmAffiliateForfeit?: boolean;
+      /** The amount the user was shown, in cents; optional for clients that send only the flag. */
+      confirmedAffiliateForfeitCents?: number;
+    } = {},
+  ) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true, name: true },
@@ -397,6 +498,24 @@ export class UserService {
       );
     }
 
+    /**
+     * An unpaid affiliate balance is forfeited with the account (owner decision 10, V-234): allowed,
+     * but only once the user has been told how much. Without the confirmation the request is refused
+     * with the amount, so the studio can show it and send the request again with
+     * `confirmAffiliateForfeit: true`.
+     */
+    const forfeit = affiliateForfeit(
+      await prisma.affiliateWallet.findUnique({
+        where: { userId },
+        select: { availableCents: true, pendingCents: true },
+      }),
+    );
+    const forfeitOptions = {
+      requireAffiliateForfeitConfirmation: !options.confirmAffiliateForfeit,
+      confirmedAffiliateForfeitCents: options.confirmedAffiliateForfeitCents,
+    };
+    if (forfeitRefused(forfeit, forfeitOptions)) throw affiliateForfeitError(forfeit);
+
     // The API-key auth cache (`apikey:auth:{hash}`, TTL 300 s) can only be found through the
     // ApiKey rows, so it has to be purged while they still exist; afterwards a deleted
     // account's keys would keep authenticating for five minutes. A plain DEL is not enough: a
@@ -420,7 +539,11 @@ export class UserService {
      * worst case is orphaned R2 objects — waste, not data loss for someone who still
      * has an account.
      */
-    await prisma.$transaction((tx) => deleteUserCascade(tx, userId));
+    // The forfeit is checked again under the wallet lock: a balance that appeared after the check
+    // above, unconfirmed, refuses the deletion rather than vanish with it.
+    await prisma.$transaction((tx) =>
+      deleteUserCascade(tx, userId, { ...forfeitOptions, actorId: null }),
+    );
 
     // Best-effort cleanup from here on. The account is already gone, so none of this
     // may throw back to the caller — a failed cache purge or a failed R2 delete must

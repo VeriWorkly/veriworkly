@@ -181,8 +181,9 @@ describe("account deletion keeps affiliate money history", () => {
       .set("Cookie", admin.cookie)
       .send({ status: "AVAILABLE", reason: "Matured" });
     expect(release.status).toBe(409);
+    // Forfeited with the account (owner decision 10, V-234): kept as history, never owed.
     expect(
       (await prisma.affiliateCommission.findUniqueOrThrow({ where: { id: pending.id } })).status,
-    ).toBe("PENDING");
+    ).toBe("REVERSED");
   });
 });

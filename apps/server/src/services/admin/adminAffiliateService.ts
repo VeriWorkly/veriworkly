@@ -68,7 +68,7 @@ export async function getAffiliateSummary() {
       _count: { _all: true },
     }),
     prisma.affiliateWallet.aggregate({
-      _sum: { pendingCents: true, availableCents: true, paidCents: true },
+      _sum: { pendingCents: true, availableCents: true, paidCents: true, clawbackCents: true },
     }),
     prisma.affiliateWithdrawal.aggregate({
       where: { status: "REQUESTED" },
@@ -96,6 +96,8 @@ export async function getAffiliateSummary() {
       pendingCents: walletTotals._sum.pendingCents ?? 0,
       availableCents: walletTotals._sum.availableCents ?? 0,
       paidCents: walletTotals._sum.paidCents ?? 0,
+      // Owed back by affiliates whose commissions were refunded after payout (V-205).
+      clawbackCents: walletTotals._sum.clawbackCents ?? 0,
     },
     pendingWithdrawals: {
       count: pendingWithdrawals._count._all,
@@ -326,7 +328,11 @@ export async function listWithdrawals(query: WithdrawalListQuery) {
             name: true,
             email: true,
             affiliateCode: true,
-            affiliateWallet: { select: { availableCents: true, paidCents: true } },
+            // A withdrawal from a SUSPENDED or PENDING affiliate cannot be approved or paid (V-204).
+            affiliateStatus: true,
+            affiliateWallet: {
+              select: { availableCents: true, paidCents: true, clawbackCents: true },
+            },
           },
         },
       },

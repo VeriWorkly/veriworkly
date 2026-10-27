@@ -83,7 +83,7 @@ async function buildDashboard(userId: string) {
     conversions: convertedReferrals,
     commissions,
     withdrawals,
-    wallet: wallet ?? { pendingCents: 0, availableCents: 0, paidCents: 0 },
+    wallet: wallet ?? { pendingCents: 0, availableCents: 0, paidCents: 0, clawbackCents: 0 },
     minimumWithdrawalCents: AFFILIATE_MINIMUM_WITHDRAWAL_CENTS,
     tierProgress: {
       currentConversions: tierConversions,

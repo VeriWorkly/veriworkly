@@ -22,6 +22,8 @@ export const ADMIN_AUDIT_ACTIONS = {
   affiliateCommissionCreate: "affiliate.commission.create",
   affiliateCommissionUpdate: "affiliate.commission.update",
   affiliateWithdrawalUpdate: "affiliate.withdrawal.update",
+  // An unpaid affiliate balance lost with a deleted account (owner decision 10, V-234).
+  affiliateBalanceForfeit: "affiliate.balance.forfeit",
 
   ambassadorApprove: "ambassador.application.approve",
   ambassadorReject: "ambassador.application.reject",
