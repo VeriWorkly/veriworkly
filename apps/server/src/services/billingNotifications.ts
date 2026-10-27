@@ -137,16 +137,35 @@ async function markSent(id: string) {
   });
 }
 
+/** Sends started by `notifyOnce` that have not finished, most of them fire-and-forget. */
+const inFlight = new Set<Promise<void>>();
+
+/**
+ * Resolves once every billing email started so far has been sent or has failed, including ones
+ * started while it waits. The webhooks start their emails without awaiting them, so this is how
+ * a caller (the integration tests, V-354) knows there is no send still to land.
+ */
+export async function settleBillingNotifications() {
+  while (inFlight.size > 0) await Promise.allSettled([...inFlight]);
+}
+
 /**
  * Sends a billing email at most once per (kind, reference). A failed send keeps its claim for the
  * retry job. Never throws: the payment is processed whether or not the mail goes out.
  */
-export async function notifyOnce(
+export function notifyOnce(
   kind: string,
   reference: string,
   userId: string,
   notice: BillingNotice,
-) {
+): Promise<void> {
+  const run = sendOnce(kind, reference, userId, notice);
+  inFlight.add(run);
+  void run.finally(() => inFlight.delete(run));
+  return run;
+}
+
+async function sendOnce(kind: string, reference: string, userId: string, notice: BillingNotice) {
   try {
     const user = await recipient(userId);
     if (!user) return;

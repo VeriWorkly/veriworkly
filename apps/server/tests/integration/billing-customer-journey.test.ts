@@ -7,6 +7,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
+import { settleBillingNotifications } from "#services/billingNotifications";
 
 import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession, type TestUser } from "./helpers/auth.js";
@@ -399,7 +400,7 @@ describe("V-172 dunning is visible", () => {
     expect((await deliver(event)).response.status).toBe(200);
 
     await vi.waitFor(() => expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1);
     expect(billingMailMock.sendPaymentFailedEmail.mock.calls[0]![1]).toMatchObject({
       productName: "AI Credits",
@@ -491,7 +492,7 @@ describe("V-177 purchase confirmation emails", () => {
     await vi.waitFor(() =>
       expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1),
     );
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1);
     const details = billingMailMock.sendPurchaseConfirmationEmail.mock.calls[0]![1];
     expect(details).toMatchObject({
@@ -535,7 +536,7 @@ describe("V-177 purchase confirmation emails", () => {
       nextBillingDate,
     };
     await deliver(subscriptionEvent({ ...base, status: "pending", at: eventTime(0) }));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPurchaseConfirmationEmail).not.toHaveBeenCalled();
 
     await deliver(subscriptionEvent({ ...base, status: "active", at: eventTime(1) }));
@@ -550,7 +551,7 @@ describe("V-177 purchase confirmation emails", () => {
     await vi.waitFor(() =>
       expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1),
     );
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1);
     const details = billingMailMock.sendPurchaseConfirmationEmail.mock.calls[0]![1];
     expect(details).toMatchObject({
@@ -1299,7 +1300,7 @@ describe("review fixes: admin status edits, dunning overlap and billing mail ret
       }),
     );
     await vi.waitFor(() => expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
 
     // The card went through on the provider's retry: the subscription is ACTIVE for a new period.
     await prisma.subscription.update({
@@ -1402,7 +1403,7 @@ describe("review fixes: admin status edits, dunning overlap and billing mail ret
       }),
     );
     await vi.waitFor(() => expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     const claim = await prisma.billingNotification.findUniqueOrThrow({
       where: { kind_reference: { kind: "payment_failed", reference: "pay_failed_retry" } },
     });
