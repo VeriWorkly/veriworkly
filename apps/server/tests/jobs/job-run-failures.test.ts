@@ -129,7 +129,27 @@ describe("usage metrics flush", () => {
     expect(mocks.recordJobSuccess).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
       "Job usage-metrics (usage:flush:lock) failed",
-      expect.objectContaining({ error: "timeout" }),
+      expect.objectContaining({ error: expect.stringContaining("2026-10-01") }),
+    );
+  });
+
+  it("V-335: still flushes the later days after one day fails, then reports the run failed", async () => {
+    mocks.analytics.getPendingUsageMetricDates.mockResolvedValue([
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+    ]);
+    mocks.analytics.flushUsageMetricsForDate.mockRejectedValueOnce(
+      new Error("value out of range for type integer"),
+    );
+
+    await expect(runUsageMetricsFlush("cron")).resolves.toBeUndefined();
+
+    expect(mocks.analytics.flushUsageMetricsForDate).toHaveBeenCalledTimes(3);
+    expect(mocks.recordJobSuccess).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      "Job usage-metrics (usage:flush:lock) failed",
+      expect.objectContaining({ error: expect.stringContaining("2026-10-01") }),
     );
   });
 });

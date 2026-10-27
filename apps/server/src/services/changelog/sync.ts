@@ -7,11 +7,13 @@ import { getRedis } from "#lib/redis";
 import { acquireJobLock, type JobLock } from "#lib/jobLock";
 import { recordJobSuccess } from "#lib/metrics";
 import { logger } from "#lib/logger";
+import { isDraining } from "#lib/shutdown";
 
 import {
   fetchAllGitHubReleases,
   parseReleaseBody,
   samePullRequests,
+  pruneReassignedPullRequests,
   unionPullRequests,
   listedPullRequests,
   reparseStoredRelease,
@@ -192,6 +194,10 @@ export async function syncChangelogFromGitHubReleases(
   // Checked after each fetch and before each write: a sync that lost its lock stops instead of
   // writing beside the runner that now holds it.
   const ensureStillOwner = async () => {
+    // A worker that is shutting down stops here, between releases (V-342), rather than lose its
+    // database and Redis connections in the middle of one when the job drain ends.
+    if (isDraining())
+      throw new ApiError(503, "Changelog release sync stopped: the server is shutting down");
     if (!(await lock.stillOwner()))
       throw new ApiError(
         409,
@@ -276,6 +282,14 @@ export async function syncChangelogFromGitHubReleases(
       pulls,
     );
 
+    // Which PRs each release's notes name, and how many releases name each PR (V-339).
+    const listedPerRelease = parsedBodies.map(
+      (body) => new Set(body.pullRequests.map((pr) => pr.number)),
+    );
+    const timesListed = new Map<number, number>();
+    for (const listed of listedPerRelease)
+      for (const number of listed) timesListed.set(number, (timesListed.get(number) ?? 0) + 1);
+
     let created = 0;
     let refreshed = 0;
     let skipped = duplicates;
@@ -313,7 +327,19 @@ export async function syncChangelogFromGitHubReleases(
             ? reparseStoredRelease(release.body, { ...stored, prRefs: storedPrs }, repoUrl)
             : null;
 
-        const prRefs = unionPullRequests(text?.prRefs ?? storedPrs, shippedPrs);
+        // A PR another release's notes name is that release's, whatever was guessed here before.
+        const listedHere = listedPerRelease[index]!;
+        const prRefs = unionPullRequests(
+          pruneReassignedPullRequests(text?.prRefs ?? storedPrs, {
+            listedHere,
+            listedElsewhere: new Set(
+              [...timesListed].flatMap(([number, count]) =>
+                count - (listedHere.has(number) ? 1 : 0) > 0 ? [number] : [],
+              ),
+            ),
+          }),
+          shippedPrs,
+        );
         const prsChanged = !samePullRequests(prRefs, storedPrs);
 
         if (text || prsChanged) {

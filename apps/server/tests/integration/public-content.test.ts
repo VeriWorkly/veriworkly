@@ -391,6 +391,11 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
       completedQuarter: "Q1 2026",
     });
     expect(explicit.status).toBe(200);
+
+    // V-341: a partial update that leaves the quarter out keeps the hand-set one.
+    const renamed = await admin.put(`${API}/admin/roadmap/quarter-a`).send({ title: "Renamed" });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body.data.completedQuarter).toBe("Q1 2026");
     expect(explicit.body.data.completedQuarter).toBe("Q1 2026");
   });
 

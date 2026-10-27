@@ -79,7 +79,7 @@ export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): stri
       <tr>
         <td valign="top" style="font-size:14px;line-height:1.5;color:#b91c1c;">
           <strong style="color:#7f1d1d;display:block;margin-bottom:4px;">Was this not you?</strong>
-          If you did not authorize this login, your account security could be compromised. Please reply to this alert immediately or reach out to security@veriworkly.com.
+          If you did not authorize this login, your account security could be compromised. Please reply to this alert immediately or reach out to grievance@veriworkly.com.
         </td>
       </tr>
     </table>

@@ -286,7 +286,7 @@ export async function flushUsageMetricsForDate(date: Date) {
     }
 
     await redis.del([processingKey, batchKey]);
-    await cacheDel("admin:dashboard:stats");
+    await cacheDel(ADMIN_DASHBOARD_TOTALS_CACHE_KEY);
 
     return { dateKey, flushedEvents: entries.length };
   } finally {
@@ -299,21 +299,32 @@ export async function flushUsageMetricsForDate(date: Date) {
  * * returns: A comprehensive snapshot of today's and all-time metrics.
  */
 
-export async function getAdminDashboardMetrics() {
-  const cacheKey = "admin:dashboard:stats";
-  const cached = await cacheGet(cacheKey);
+/**
+ * The Postgres side of the admin dashboard: the all-time sums of flushed days. Only this is
+ * cached (V-336); today's counters are one `HGETALL` read fresh on every request, so the "today"
+ * numbers move as events land instead of freezing for the cache's 30 minutes. Cleared by the
+ * daily flush, which is the only thing that changes these sums.
+ */
+export const ADMIN_DASHBOARD_TOTALS_CACHE_KEY = "admin:dashboard:totals";
 
+async function flushedTotals(): Promise<Record<string, number>> {
+  const cached = await cacheGet<Record<string, number>>(ADMIN_DASHBOARD_TOTALS_CACHE_KEY);
   if (cached) return cached;
 
-  const [todaySnapshot, totals] = await Promise.all([
-    getUsageSnapshotForDate(new Date()),
-    prisma.usageMetricDaily.groupBy({
-      by: ["event"],
-      _sum: { count: true },
-    }),
-  ]);
-
+  const totals = await prisma.usageMetricDaily.groupBy({
+    by: ["event"],
+    _sum: { count: true },
+  });
   const postgresTotals = Object.fromEntries(totals.map((row) => [row.event, row._sum.count ?? 0]));
+  await cacheSet(ADMIN_DASHBOARD_TOTALS_CACHE_KEY, postgresTotals, 1800);
+  return postgresTotals;
+}
+
+export async function getAdminDashboardMetrics() {
+  const [todaySnapshot, postgresTotals] = await Promise.all([
+    getUsageSnapshotForDate(new Date()),
+    flushedTotals(),
+  ]);
 
   const allEvents = new Set([...Object.keys(todaySnapshot), ...Object.keys(postgresTotals)]);
   const combinedTotals: Record<string, number> = {};
@@ -324,12 +335,9 @@ export async function getAdminDashboardMetrics() {
     combinedTotals[event] = todayCount + historicalCount;
   });
 
-  const response = {
+  return {
     generatedAt: new Date().toISOString(),
     today: todaySnapshot,
     totals: combinedTotals,
   };
-
-  await cacheSet(cacheKey, response, 1800);
-  return response;
 }
