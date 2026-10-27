@@ -47,18 +47,40 @@ export const adminSubscriptionUpdateSchema = z
     "At least one field must be provided",
   );
 
-export const adminCreditAdjustmentSchema = z.object({
-  userId: z.string().trim().min(1),
-  amount: z
-    .number()
-    .int()
-    .min(-1_000_000)
-    .max(1_000_000)
-    .refine((value) => value !== 0, "Amount must be non-zero"),
-  reason: adminReasonSchema,
-  /** Body alternative to the `Idempotency-Key` header; the header wins when both are sent. */
-  idempotencyKey: z.string().trim().min(1).max(128).optional(),
-});
+export const adminCreditAdjustmentSchema = z
+  .object({
+    userId: z.string().trim().min(1),
+    amount: z
+      .number()
+      .int()
+      .min(-1_000_000)
+      .max(1_000_000)
+      .refine((value) => value !== 0, "Amount must be non-zero"),
+    /** The admin's internal reason: kept in the admin audit log only, never shown to the user. */
+    reason: adminReasonSchema,
+    /**
+     * What the customer's credit history says about the adjustment (V-229). Optional: without it
+     * the history shows a plain label for the kind of adjustment.
+     */
+    customerNote: z.string().trim().min(1).max(200).optional(),
+    /**
+     * What the credits are (V-230): `goodwill` (never expire, not paid; the only kind that can
+     * remove credits), `pack` (a lost credit pack: paid, 90-day expiry), `subscription_month` (a
+     * lost month of a credits plan: paid, expires with the current credit month, replaced by the
+     * next month like any allowance; at most one month's 1,000).
+     */
+    kind: z.enum(["goodwill", "pack", "subscription_month"]).default("goodwill"),
+    /** Body alternative to the `Idempotency-Key` header; the header wins when both are sent. */
+    idempotencyKey: z.string().trim().min(1).max(128).optional(),
+  })
+  .refine((value) => value.kind === "goodwill" || value.amount > 0, {
+    message: "Only a goodwill adjustment can remove credits.",
+    path: ["amount"],
+  })
+  .refine((value) => value.kind !== "subscription_month" || value.amount <= 1_000, {
+    message: "A restored subscription month is at most 1,000 credits.",
+    path: ["amount"],
+  });
 
 export const adminCreditWalletListQuerySchema = adminPaginationSchema
   .merge(adminSearchSchema)

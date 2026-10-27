@@ -102,7 +102,7 @@ describe("credit ledger invariants against the real database", () => {
       100,
     );
     const stillExpired = await prisma.creditReservation.findFirstOrThrow({
-      where: { requestId },
+      where: { requestId: `ai:${requestId}` },
     });
     expect(stillExpired.status).toBe("EXPIRED");
     expect(
@@ -302,7 +302,9 @@ describe("credit ledger invariants against the real database", () => {
     ]);
     expect(outcomes.map(statusOf).sort()).toEqual([200, 409]);
 
-    expect(await prisma.creditReservation.count({ where: { requestId } })).toBe(1);
+    expect(await prisma.creditReservation.count({ where: { requestId: `ai:${requestId}` } })).toBe(
+      1,
+    );
     const ledger = await expectInvariant(user.id);
     expect(ledger).toMatchObject({ balance: 90, reserved: 10, unexpired: 100 });
   });
