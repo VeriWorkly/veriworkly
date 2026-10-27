@@ -21,7 +21,7 @@ const WITHDRAWAL_IN_PROGRESS = "A withdrawal is already in progress";
  */
 async function requireActiveAffiliate(tx: Prisma.TransactionClient, userId: string) {
   const [user] = await tx.$queryRaw<Array<{ affiliateStatus: string }>>`
-    SELECT "affiliateStatus" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    SELECT "affiliateStatus" FROM "User" WHERE "id" = ${userId} FOR NO KEY UPDATE`;
   if (user?.affiliateStatus !== "ACTIVE")
     throw new ApiError(
       403,
@@ -115,7 +115,10 @@ export async function updateWithdrawal(
     // Detached by an account deletion (only PAID or REJECTED rows can be): nothing to move.
     if (!withdrawal.userId)
       throw new ApiError(409, "This withdrawal belongs to a deleted account.");
+    // The affiliate's User row first, the lock order of every affiliate money path and of account
+    // deletion; `requireActiveAffiliate` takes it, and a rejection takes it on its own.
     if (status !== "REJECTED") await requireActiveAffiliate(tx, withdrawal.userId);
+    else await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${withdrawal.userId} FOR NO KEY UPDATE`;
 
     const transitioned = await tx.affiliateWithdrawal.updateMany({
       where: { id, status: { in: TRANSITION_FROM[status] } },

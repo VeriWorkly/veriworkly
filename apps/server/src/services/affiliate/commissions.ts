@@ -17,11 +17,14 @@ import { writeAdminAudit, type AdminAuditInput } from "#services/admin/adminAudi
 export const SHARED_ADDRESS_REASON = "Shared address with affiliate; review before release";
 
 /**
- * The conversions that count towards a tier: a converted referral with at least one clean
- * commission, meaning not REVERSED and not held for a shared address (a PENDING commission with
- * `SHARED_ADDRESS_REASON`; once an admin releases it, it counts). A refunded purchase or a
- * self-referral pattern therefore never promotes an affiliate. Migration
- * 20261026140000_promote_affiliates_to_earned_tiers applies the same rule in SQL.
+ * The conversions that count towards a tier: a converted referral with at least one released
+ * commission (AVAILABLE or PAID). A PENDING commission does not count (V-322): every webhook
+ * commission starts PENDING and can still be refunded, and promotion is permanent, so ten
+ * refundable purchases would buy a higher rate for good. A commission counts once an admin
+ * releases it (`updateCommission`, which runs the promotion); a reversed one never does, and one
+ * held for a shared address only once a human releases it. Migration
+ * 20261026140000_promote_affiliates_to_earned_tiers counted the older rule (pending commissions
+ * included) once; promotions it made stand.
  */
 export function cleanConversionsWhere(
   affiliateId: string,
@@ -31,25 +34,15 @@ export function cleanConversionsWhere(
     affiliateId,
     status: "CONVERTED",
     ...(convertedBefore ? { convertedAt: { lte: convertedBefore } } : {}),
-    commissions: {
-      some: {
-        OR: [
-          { status: { in: ["AVAILABLE", "PAID"] } },
-          {
-            status: "PENDING",
-            OR: [{ reason: null }, { reason: { not: SHARED_ADDRESS_REASON } }],
-          },
-        ],
-      },
-    },
+    commissions: { some: { status: { in: ["AVAILABLE", "PAID"] } } },
   };
 }
 
 /**
- * Tier auto-promotion (V-180): the studio and the site promise Growth at 10 conversions and
- * Partner at 50 (`AFFILIATE_TIERS`). Runs in the transaction that converts a referral, after
- * that transaction locked the affiliate's row: two conversions landing together count one after
- * the other, so neither misses the threshold the pair crosses.
+ * Tier auto-promotion (V-180, V-322): the studio and the site promise Growth at 10 conversions
+ * and Partner at 50 (`AFFILIATE_TIERS`). Runs in the transaction that converts a referral or
+ * releases a commission, after that transaction locked the affiliate's row: two conversions
+ * landing together count one after the other, so neither misses the threshold the pair crosses.
  *
  * - Counts clean conversions only (`cleanConversionsWhere`).
  * - Promotes only: a tier is never lowered here, whatever the count says.
@@ -91,6 +84,22 @@ async function promoteForConversions(tx: Prisma.TransactionClient, affiliateId: 
   return promoted.count === 1 ? { from: current, to: earned, conversions } : null;
 }
 
+/**
+ * Locks the User row of the affiliate a commission belongs to: the first lock in every affiliate
+ * money transaction and in account deletion (`deleteUserCascade`), so a release, a reversal, a
+ * withdrawal and a deletion never wait on each other in a cycle. The commission is read unlocked
+ * to find its affiliate; the caller locks the commission next and re-reads it, and a deletion
+ * that committed in between shows as `affiliateId: null`. FOR NO KEY UPDATE, like every lock in
+ * this order: a row inserted with a foreign key to the user (a credit grant) only needs KEY SHARE.
+ */
+async function lockAffiliateOfCommission(tx: Prisma.TransactionClient, where: { id: string }) {
+  const commission = await tx.affiliateCommission.findUnique({
+    where,
+    select: { affiliateId: true },
+  });
+  if (commission?.affiliateId)
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${commission.affiliateId} FOR NO KEY UPDATE`;
+}
 /**
  * Every credit to an affiliate's available balance goes through here (V-205): a claw-back the
  * affiliate still owes (a commission reversed after its money had left the wallet) is repaid
@@ -213,7 +222,7 @@ export async function createCommission(
   const { commission: result, promotion } = await prisma.$transaction(async (tx) => {
     // First, before anything is written: the tier count below must see every conversion that
     // committed before this one (see `promoteForConversions`).
-    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${referral.affiliateId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${referral.affiliateId} FOR NO KEY UPDATE`;
     const commission = await tx.affiliateCommission.create({
       data: {
         affiliateId: referral.affiliateId,
@@ -300,7 +309,10 @@ export async function updateCommission(
   audit?: AdminAuditInput,
 ) {
   const result = await prisma.$transaction(async (tx) => {
-    // Lock order as in the refund path: the commission row, then the wallet.
+    // Lock order, the same in every affiliate money path and in account deletion: the affiliate's
+    // User row, then the commission, then the wallet. A deletion running at the same time settles
+    // wholly before or after this.
+    await lockAffiliateOfCommission(tx, { id });
     await tx.$queryRaw`SELECT "id" FROM "AffiliateCommission" WHERE "id" = ${id} FOR UPDATE`;
     const commission = await tx.affiliateCommission.findUnique({ where: { id } });
     if (!commission) throw new ApiError(404, "Commission not found.");
@@ -356,6 +368,10 @@ export async function updateCommission(
           ? "Only pending, available or paid commissions can be reversed."
           : "Only pending commissions can be released.",
       );
+
+    // A released commission is what counts towards a tier (V-322); the affiliate row is already
+    // locked (above), so the count sees every release that committed before this one.
+    if (status === "AVAILABLE") await promoteForConversions(tx, affiliateId);
 
     // Non-USD commissions were never added to the wallet, so there is nothing to move.
     if (inWalletCurrency) {
@@ -515,9 +531,10 @@ export async function reverseCommissionForPayment(providerPaymentId: string, rea
       });
     if (!commission) return null;
 
-    // Lock order as in `updateCommission`: the commission row, then the wallet. A release or a
-    // withdrawal running at the same time settles before or after this, never in between, and
-    // the status is re-read under the lock.
+    // Lock order as in `updateCommission`: the affiliate's User row, the commission, then the
+    // wallet. A release, a deletion or a withdrawal running at the same time settles before or
+    // after this, never in between, and the status is re-read under the lock.
+    await lockAffiliateOfCommission(tx, { id: commission.id });
     await tx.$queryRaw`SELECT "id" FROM "AffiliateCommission" WHERE "id" = ${commission.id} FOR UPDATE`;
     commission = await tx.affiliateCommission.findUniqueOrThrow({ where: { id: commission.id } });
     if (commission.status === "REVERSED") return null;

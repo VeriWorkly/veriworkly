@@ -581,7 +581,13 @@ describe("tier auto-promotion (V-180)", () => {
           providerPaymentId: `pay_${randomUUID()}`,
           amountCents: 100,
           rateBps: 200,
-          status: commission === "reversed" ? "REVERSED" : "PENDING",
+          // A clean conversion counts once its commission is released (V-322).
+          status:
+            commission === "reversed"
+              ? "REVERSED"
+              : commission === "shared"
+                ? "PENDING"
+                : "AVAILABLE",
           reversedAt: commission === "reversed" ? at : null,
           reason: commission === "shared" ? SHARED_ADDRESS_REASON : null,
           createdAt: at,
@@ -596,7 +602,7 @@ describe("tier auto-promotion (V-180)", () => {
       referredUserId: referred.id,
       providerPaymentId: `pay_${randomUUID()}`,
       purchaseAmountCents: 10_000,
-      status: "PENDING",
+      status: "AVAILABLE",
     });
   }
 
@@ -685,7 +691,7 @@ describe("tier auto-promotion (V-180)", () => {
           referredUserId: referred!.id,
           providerPaymentId: `pay_${randomUUID()}`,
           purchaseAmountCents: 10_000,
-          status: "PENDING",
+          status: "AVAILABLE",
         }),
       ),
     );

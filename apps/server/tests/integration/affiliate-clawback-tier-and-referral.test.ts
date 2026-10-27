@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
 import { invalidateAffiliate } from "#services/affiliate/cache";
+import { AffiliateService } from "#services/affiliate/index";
+import { deleteUserCascade } from "#services/userService";
 
 import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession, type TestUser } from "./helpers/auth.js";
@@ -198,4 +200,148 @@ describe("V-321: money owed back can never be withdrawn", () => {
     expect(paid.status, JSON.stringify(paid.body)).toBe(200);
     expect(await wallet(user.id)).toMatchObject({ availableCents: 1_000, clawbackCents: 1_000 });
   });
+});
+
+describe("V-322: a tier is earned by released commissions, not refundable pending ones", () => {
+  async function pendingConversion(code: string) {
+    const referred = await createUserWithSession();
+    const applied = await asUser(referred).post(`${BASE}/referral`).send({ code });
+    expect(applied.status).toBe(200);
+    return AffiliateService.createCommission({
+      referredUserId: referred.id,
+      providerPaymentId: `pay_${randomUUID()}`,
+      purchaseAmountCents: 10_000,
+      status: "PENDING",
+      reason: "Dodo payment succeeded",
+    });
+  }
+
+  const tierOf = async (userId: string) =>
+    (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).affiliateTier;
+
+  it("ten pending purchases that are all refunded never promote", async () => {
+    const { user, code } = await enrolledAffiliate();
+    const commissions = [];
+    for (let i = 0; i < 10; i += 1) commissions.push(await pendingConversion(code));
+
+    expect(await tierOf(user.id)).toBe("TIER_1");
+    const me = await asUser(user).get(`${BASE}/me`);
+    expect(me.body.data.tierProgress.currentConversions).toBe(0);
+
+    for (const commission of commissions)
+      await deliver(refundEvent(commission.providerPaymentId!, { amount: 10_000 }));
+    expect(await tierOf(user.id)).toBe("TIER_1");
+  });
+
+  it("releasing the tenth commission is what promotes", async () => {
+    const { user, code } = await enrolledAffiliate();
+    const commissions = [];
+    for (let i = 0; i < 10; i += 1) commissions.push(await pendingConversion(code));
+
+    for (const commission of commissions.slice(0, 9))
+      await AffiliateService.updateCommission(commission.id, "AVAILABLE");
+    expect(await tierOf(user.id)).toBe("TIER_1");
+
+    await AffiliateService.updateCommission(commissions[9].id, "AVAILABLE");
+    expect(await tierOf(user.id)).toBe("TIER_2");
+  });
+});
+
+describe("lock order: releasing commissions while the affiliate deletes their account", () => {
+  it("never deadlocks: every release either lands before the deletion or finds the account gone", async () => {
+    for (let round = 0; round < 8; round += 1) {
+      const { user, code } = await enrolledAffiliate();
+      const commissions = [];
+      for (let i = 0; i < 3; i += 1) {
+        const referred = await createUserWithSession();
+        await asUser(referred).post(`${BASE}/referral`).send({ code });
+        commissions.push(
+          await AffiliateService.createCommission({
+            referredUserId: referred.id,
+            providerPaymentId: `pay_${randomUUID()}`,
+            purchaseAmountCents: 10_000,
+            status: "PENDING",
+          }),
+        );
+      }
+
+      const results = await Promise.allSettled([
+        ...commissions.map((commission) =>
+          AffiliateService.updateCommission(commission.id, "AVAILABLE"),
+        ),
+        prisma.$transaction((tx) => deleteUserCascade(tx, user.id), { timeout: 20_000 }),
+        ...commissions.map((commission) =>
+          AffiliateService.updateCommission(commission.id, "REVERSED", "test"),
+        ),
+      ]);
+
+      const deadlocks = results.filter(
+        (result) => result.status === "rejected" && /deadlock/i.test(String(result.reason)),
+      );
+      expect(deadlocks.map((result) => String((result as PromiseRejectedResult).reason))).toEqual(
+        [],
+      );
+    }
+  });
+});
+
+describe("lock order: a credit grant or AI reservation while the account is deleted", () => {
+  const isDeadlock = (result: PromiseSettledResult<unknown>) =>
+    result.status === "rejected" && /deadlock|40P01/i.test(String(result.reason));
+
+  /** Locks the wallet, waits, then writes a row whose foreign key points at the user. */
+  async function walletThenUserRow(userId: string, kind: "grant" | "reservation") {
+    return prisma.$transaction(
+      async (tx) => {
+        const [wallet] = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "CreditWallet" WHERE "userId" = ${userId} FOR UPDATE`;
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        if (kind === "grant")
+          await tx.creditGrant.create({
+            data: {
+              walletId: wallet.id,
+              userId,
+              amount: 10,
+              remaining: 10,
+              source: "admin_adjustment",
+              sourceId: randomUUID(),
+            },
+          });
+        else
+          await tx.creditReservation.create({
+            data: {
+              walletId: wallet.id,
+              userId,
+              requestId: randomUUID(),
+              action: "test",
+              cost: 1,
+              expiresAt: new Date(Date.now() + 60_000),
+            },
+          });
+      },
+      { timeout: 20_000 },
+    );
+  }
+
+  it.each(["grant", "reservation"] as const)(
+    "a %s that locked the wallet first finishes, and the deletion follows it",
+    async (kind) => {
+      const user = await createUserWithSession();
+      await prisma.creditWallet.create({ data: { userId: user.id } });
+
+      const writer = walletThenUserRow(user.id, kind);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const deletion = prisma.$transaction((tx) => deleteUserCascade(tx, user.id), {
+        timeout: 20_000,
+      });
+      const results = await Promise.allSettled([writer, deletion]);
+
+      expect(
+        results
+          .filter(isDeadlock)
+          .map((result) => String((result as PromiseRejectedResult).reason)),
+      ).toEqual([]);
+      expect(await prisma.user.count({ where: { id: user.id } })).toBe(0);
+    },
+  );
 });
