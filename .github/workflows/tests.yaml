@@ -14,7 +14,6 @@ env:
   SITE_URL: "http://localhost:3000"
   AUTH_SECRET: "dummy-secret-for-build-purposes-only"
   AUTH_BASE_URL: "http://localhost:8080"
-  JWT_SECRET: "dummy-jwt-secret"
   DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
 
 # @veriworkly/ats-engine is tested in its own repository (VeriWorkly/ats-engine) and installed here

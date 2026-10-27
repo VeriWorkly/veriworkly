@@ -13,9 +13,10 @@ env:
   BACKEND_INTERNAL_URL: "http://localhost:8080/api/v1"
   SITE_URL: "http://localhost:3000"
   NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
+  # The studio's own origin (metadata, sitemap, the Origin header on API calls).
+  NEXT_PUBLIC_APP_URL: "http://localhost:3001"
   AUTH_SECRET: "dummy-secret-for-build-purposes-only"
   AUTH_BASE_URL: "http://localhost:8080"
-  JWT_SECRET: "dummy-jwt-secret"
   DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
 
 jobs:
@@ -51,7 +52,9 @@ jobs:
       - name: Mock Portfolio Template Library
         run: node scripts/mock-template-library.mjs
 
+      # The studio and server build it in their own `prebuild`.
       - name: Build Shared Packages
+        if: matrix.workspace != '@veriworkly/studio' && matrix.workspace != '@veriworkly/server'
         run: npm run build -w @veriworkly/profile-core --if-present
 
       - name: Build Application

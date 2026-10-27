@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -343,6 +344,109 @@ describe("GitHub linking (owner decision A)", () => {
       "features/profile/components/ProfileDataPanel.tsx",
     ]) {
       expect(read(file), file).not.toMatch(/unlinkAccount|Disconnect GitHub/);
+    }
+  });
+});
+
+describe("S-355 S-096 security headers", () => {
+  /** The directives of a policy, by name. */
+  function directives(policy: string | null) {
+    return new Map(
+      (policy ?? "").split(";").map((part) => {
+        const [name, ...values] = part.trim().split(/\s+/);
+        return [name, values] as const;
+      }),
+    );
+  }
+
+  const guest = { headers: { cookie: "veriworkly-guest-mode=true" } };
+
+  it("S-355 every page gets its own nonce, and only that nonce runs inline scripts", async () => {
+    const first = await proxy(new NextRequest("https://app.veriworkly.com/documents", guest));
+    const second = await proxy(new NextRequest("https://app.veriworkly.com/documents", guest));
+    const scripts = directives(first.headers.get("content-security-policy")).get("script-src")!;
+    const nonce = scripts.find((value) => value.startsWith("'nonce-"));
+
+    expect(nonce).toMatch(/^'nonce-[A-Za-z0-9+/=]{24,}'$/);
+    expect(scripts).toContain("'strict-dynamic'");
+    expect(scripts).not.toContain("'unsafe-inline'");
+    expect(second.headers.get("content-security-policy")).not.toContain(nonce);
+
+    // Next reads the nonce from the request's policy; the root layout reads `x-nonce`.
+    expect(first.headers.get("x-middleware-request-x-nonce")).toBe(nonce!.slice(7, -1));
+    expect(first.headers.get("x-middleware-request-content-security-policy")).toBe(
+      first.headers.get("content-security-policy"),
+    );
+  });
+
+  it("S-355 public pages (shares, the parity harness) and the login form carry the policy too", async () => {
+    for (const path of ["/share/jane/cv", "/parity", "/login"]) {
+      const response = await proxy(new NextRequest(`https://app.veriworkly.com${path}`));
+      const policy = directives(response.headers.get("content-security-policy"));
+
+      expect(policy.get("script-src"), path).toContain("'strict-dynamic'");
+      expect(policy.get("frame-ancestors"), path).toEqual(["'none'"]);
+      expect(policy.get("object-src"), path).toEqual(["'none'"]);
+    }
+  });
+
+  it("S-096 next.config sets the other headers on every path, with no second policy", async () => {
+    const { default: nextConfig } = await import("@/next.config");
+    const [rule] = await nextConfig.headers!();
+    const byName = new Map(rule.headers.map((header) => [header.key, header.value]));
+
+    expect(rule.source).toBe("/:path*");
+    expect(byName.get("X-Frame-Options")).toBe("DENY");
+    expect(byName.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(byName.get("Strict-Transport-Security")).toMatch(/^max-age=\d{8,}/);
+    // `preload` only counts on the apex domain's own header; on app.veriworkly.com it does nothing.
+    expect(byName.get("Strict-Transport-Security")).not.toContain("preload");
+    expect(byName.has("Content-Security-Policy")).toBe(false);
+    expect(nextConfig.poweredByHeader).toBe(false);
+  });
+
+  it("S-355 the root layout's client providers turn off zod's eval probe, which the CSP refuses", async () => {
+    const { globalConfig } = await import("zod/v4/core");
+    await import("@/providers/theme-provider");
+
+    expect(globalConfig.jitless).toBe(true);
+  });
+
+  it("S-355 the asset folders the proxy skips get a script-free policy, and no proxied page does", async () => {
+    // The matcher Next itself applies to both `headers()` sources and the proxy's `matcher`.
+    const { pathToRegexp } = createRequire(import.meta.url)(
+      "next/dist/compiled/path-to-regexp",
+    ) as { pathToRegexp: (path: string) => RegExp };
+    const { default: nextConfig } = await import("@/next.config");
+    const { config } = await import("@/proxy");
+
+    const fallback = (await nextConfig.headers!()).filter((rule) =>
+      rule.headers.some((header) => header.key === "Content-Security-Policy"),
+    );
+    expect(fallback).toHaveLength(1);
+
+    const policy = directives(fallback[0].headers[0].value);
+    expect(policy.get("script-src")).toEqual(["'none'"]);
+    expect(policy.get("object-src")).toEqual(["'none'"]);
+    expect(policy.get("frame-ancestors")).toEqual(["'none'"]);
+
+    const staticRule = pathToRegexp(fallback[0].source);
+    const proxied = pathToRegexp(config.matcher[0]);
+
+    // Every path gets exactly one policy: the static one where the proxy does not run.
+    for (const path of [
+      "/icons/socials/github.svg",
+      "/images/x.png",
+      "/fonts/geist.ttf",
+      "/og/dashboard-page-og.png",
+      "/templates/cover-letter/ats-essential.svg",
+      "/templates/nope.html",
+      "/templates",
+      "/documents",
+      "/share/jane/cv",
+      "/",
+    ]) {
+      expect(staticRule.test(path) !== proxied.test(path), path).toBe(true);
     }
   });
 });
