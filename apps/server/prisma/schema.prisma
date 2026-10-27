@@ -644,6 +644,10 @@ model BillingWebhookEvent {
   // disputes find the payment they reverse through this indexed column, not a jsonb path, and it
   // survives the retention job's payload redaction. Null for subscription events.
   providerPaymentId String?
+  // The subscription a plan-change charge upgraded (V-372), null for every other event. Written
+  // when the event is stored, so a refund or chargeback still finds the upgrade it paid for after
+  // the retention job has redacted `payload`.
+  planChangeSubscriptionId String?
   status          BillingWebhookStatus @default(PROCESSING)
   error           String?
   processedAt     DateTime?
@@ -657,6 +661,7 @@ model BillingWebhookEvent {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@index([providerPaymentId, type])
+  @@index([planChangeSubscriptionId])
   // Also hand-written expression indexes for account deletion (V-237), migration 20261027140000:
   // "BillingWebhookEvent_payload_user_idx" (payload #>> '{data,metadata,veriworkly_user_id}') and
   // "BillingWebhookEvent_payload_subscription_idx" (payload #>> '{data,subscription_id}').

@@ -252,9 +252,70 @@ async function attributeEarlierReversals(paymentId: string, userId: string) {
 function findPaymentEvent(paymentId: string) {
   return prisma.billingWebhookEvent.findFirst({
     where: { providerPaymentId: paymentId, type: "payment.succeeded" },
-    select: { userId: true, productName: true, amountCents: true, currency: true, payload: true },
+    select: {
+      userId: true,
+      productName: true,
+      amountCents: true,
+      currency: true,
+      payload: true,
+      createdAt: true,
+      planChangeSubscriptionId: true,
+    },
     orderBy: { createdAt: "asc" },
   });
+}
+
+/**
+ * The subscription a `payment.succeeded` event's charge upgraded (V-372), or null when it is not
+ * a plan-change charge. Stored on the event row (`planChangeSubscriptionId`), so it outlives the
+ * retention job's payload redaction.
+ */
+function planChangeSubscriptionOf(event: { type: string; data: unknown }): string | null {
+  if (event.type !== "payment.succeeded") return null;
+  const data = event.data as Record<string, unknown> | null | undefined;
+  if (!data || typeof data !== "object") return null;
+  const metadata =
+    data.metadata && typeof data.metadata === "object"
+      ? (data.metadata as Record<string, string>)
+      : {};
+  const chargeType = typeof data.charge_type === "string" ? data.charge_type : null;
+  if (typeof data.subscription_id !== "string" || !data.subscription_id) return null;
+  return isPlanChangePayment({ metadata, charge_type: chargeType }) ? data.subscription_id : null;
+}
+
+/**
+ * The upgrade a plan-change charge paid for (V-372): the subscription, from the stored event's
+ * column, and when it was paid (the row's time). Null for any other payment.
+ */
+function planChangeOfPayment(
+  payment: { createdAt: Date; planChangeSubscriptionId: string | null } | null,
+): { subscriptionId: string; paidAt: Date } | null {
+  if (!payment?.planChangeSubscriptionId) return null;
+  return { subscriptionId: payment.planChangeSubscriptionId, paidAt: payment.createdAt };
+}
+
+/**
+ * Whether everything a payment bought has been taken back (V-372 review): a processed full
+ * refund, or refunds and lost disputes that together reach the amount paid.
+ */
+async function paymentFullyReversed(payment: {
+  providerPaymentId: string;
+  amountCents: number | null;
+  currency: string | null;
+}) {
+  const fullRefund = await prisma.billingWebhookEvent.findFirst({
+    where: {
+      providerPaymentId: payment.providerPaymentId,
+      type: "refund.succeeded",
+      status: "PROCESSED",
+      payload: { path: ["data", "is_partial"], equals: false },
+    },
+    select: { id: true },
+  });
+  if (fullRefund) return true;
+  if (payment.amountCents === null) return false;
+  const reversed = await reversedSoFar(payment.providerPaymentId, "", payment.currency);
+  return reversed > 0 && reversed >= payment.amountCents;
 }
 const BILLING_SUMMARY_TTL_SECONDS = 60;
 const BILLING_HISTORY_TTL_SECONDS = 60;
@@ -2176,6 +2237,93 @@ export class BillingService {
     periodStart: Date;
     periodEnd: Date;
   }) {
+    // The charge that paid for this upgrade, when it has landed (V-372 review). Granting under
+    // its payment lock means a refund or chargeback of it either ran first, and is seen here, or
+    // runs after and finds the credits to take back.
+    const charge = await prisma.billingWebhookEvent.findFirst({
+      where: {
+        type: "payment.succeeded",
+        planChangeSubscriptionId: input.providerSubId,
+        createdAt: { gte: input.periodStart },
+        providerPaymentId: { not: null },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { providerPaymentId: true, amountCents: true, currency: true },
+    });
+    const chargeId = charge?.providerPaymentId ?? null;
+    await withPaymentLock(chargeId, async () => {
+      if (
+        charge &&
+        chargeId &&
+        (await paymentFullyReversed({ ...charge, providerPaymentId: chargeId }))
+      ) {
+        logger.info("Plan-change credits not granted: the upgrade charge was fully reversed", {
+          providerSubId: input.providerSubId,
+          paymentId: chargeId,
+        });
+        return;
+      }
+      await this.grantPlanChangeCredits(input);
+    });
+  }
+
+  /**
+   * Whether a plan change paid at `paidAt` should have granted credits (V-372 review): the plan it
+   * moved to carries an allowance, and no month or schedule of the subscription's own (not one
+   * the change granted) already covered that moment, the case `grantPlanChangeCredits` skips.
+   */
+  private static async upgradeOwedCredits(
+    userId: string,
+    planChange: { subscriptionId: string; paidAt: Date },
+  ) {
+    const subscription = await prisma.subscription.findUnique({
+      where: { providerSubId: planChange.subscriptionId },
+      select: { productKey: true, interval: true },
+    });
+    if (!subscription || !isProductKey(subscription.productKey)) return false;
+    const interval = fromBillingInterval(subscription.interval);
+    if ((productCatalog[subscription.productKey].creditAllowance?.[interval] ?? 0) <= 0)
+      return false;
+
+    const [coveringGrant, coveringSchedule] = await Promise.all([
+      prisma.creditGrant.findFirst({
+        where: {
+          userId,
+          createdAt: { lte: planChange.paidAt },
+          expiresAt: { gt: planChange.paidAt },
+          NOT: { sourceId: { startsWith: `${planChange.subscriptionId}:plan-change:` } },
+          AND: [await subscriptionCreditGrantsWhere(planChange.subscriptionId)],
+        },
+        select: { id: true },
+      }),
+      prisma.subscriptionCreditSchedule.findFirst({
+        where: {
+          providerSubId: planChange.subscriptionId,
+          periodStart: { lte: planChange.paidAt },
+          periodEnd: { gt: planChange.paidAt },
+          OR: [
+            { openedByPaymentId: null },
+            {
+              NOT: {
+                openedByPaymentId: { startsWith: `plan-change:${planChange.subscriptionId}:` },
+              },
+            },
+          ],
+        },
+        select: { id: true },
+      }),
+    ]);
+    return !coveringGrant && !coveringSchedule;
+  }
+
+  private static async grantPlanChangeCredits(input: {
+    userId: string;
+    providerSubId: string;
+    productKey: ProductKey;
+    interval: CatalogInterval;
+    periodStart: Date;
+    periodEnd: Date;
+  }) {
     const allowance = productCatalog[input.productKey].creditAllowance?.[input.interval] ?? 0;
     if (allowance <= 0) return;
 
@@ -2424,6 +2572,7 @@ export class BillingService {
               ? (parsedEvent as unknown as Prisma.InputJsonValue)
               : redactBillingPayload(parsedEvent),
             providerPaymentId: eventPaymentId(parsedEvent),
+            planChangeSubscriptionId: planChangeSubscriptionOf(parsedEvent),
             ...(await summarizeStoredEvent(parsedEvent)),
             status: "PROCESSING",
             lastAttemptAt: new Date(),
@@ -3439,8 +3588,24 @@ export class BillingService {
       return { userId, note: null };
     }
 
+    // A plan-change charge opened nothing itself: the upgrade's month (monthly) or schedule
+    // (annual) was granted by the plan-change event, keyed on the subscription and the period
+    // the charge paid for (V-372).
+    const planChange = planChangeOfPayment(payment);
     const schedule = await prisma.subscriptionCreditSchedule.findFirst({
-      where: { openedByPaymentId: paymentId },
+      where: planChange
+        ? {
+            OR: [
+              { openedByPaymentId: paymentId },
+              {
+                providerSubId: planChange.subscriptionId,
+                openedByPaymentId: { startsWith: `plan-change:${planChange.subscriptionId}:` },
+                periodStart: { lte: planChange.paidAt },
+                periodEnd: { gt: planChange.paidAt },
+              },
+            ],
+          }
+        : { openedByPaymentId: paymentId },
       select: { id: true, userId: true, providerSubId: true },
     });
     if (schedule) {
@@ -3458,8 +3623,9 @@ export class BillingService {
     }
 
     const reason = `${payment?.productName ?? "Purchase"} ${reversal.cause === "refund" ? "refunded" : "charged back"}`;
+    let note: string | null = null;
     if (userId) {
-      const [ledgerGrants, scheduleGrants] = await Promise.all([
+      const [ledgerGrants, scheduleGrants, planChangeGrants] = await Promise.all([
         prisma.creditTransaction.findMany({
           where: {
             userId,
@@ -3478,13 +3644,25 @@ export class BillingService {
               select: { id: true },
             })
           : Promise.resolve([]),
+        planChange
+          ? prisma.creditGrant.findMany({
+              where: {
+                userId,
+                sourceId: { startsWith: `${planChange.subscriptionId}:plan-change:` },
+                expiresAt: { gt: planChange.paidAt },
+              },
+              orderBy: { expiresAt: "asc" },
+              take: 1,
+              select: { id: true },
+            })
+          : Promise.resolve([]),
       ]);
       const grantIds = new Set([
         ...ledgerGrants.flatMap((row) => (row.referenceId ? [row.referenceId] : [])),
         ...scheduleGrants.map((grant) => grant.id),
+        ...planChangeGrants.map((grant) => grant.id),
       ]);
       for (const grantId of grantIds) await CreditService.clawBackGrant(userId, grantId, reason);
-
       const revoked = await prisma.$transaction(
         (tx) => revokeReversedPass(tx, userId, paymentId),
         BILLING_TRANSACTION_OPTIONS,
@@ -3499,13 +3677,27 @@ export class BillingService {
         // A stacked pass's credits may have moved: the credit summary shows their expiry.
         await CreditService.invalidate(userId);
       } else await this.invalidateAfterBillingChange(userId);
+      // A known upgrade charge whose month or schedule is not found, although the upgrade owed
+      // one (the plan change has not landed, or the credits were already gone): a human checks it
+      // (V-372). An upgrade that owed nothing, such as AI Credits to the bundle whose month already
+      // covered the period, and any other payment that bought nothing reversible need nobody.
+      if (
+        planChange &&
+        planChangeGrants.length === 0 &&
+        !schedule &&
+        (await this.upgradeOwedCredits(userId, planChange))
+      )
+        note = `Reversed plan-change charge ${paymentId} for subscription ${planChange.subscriptionId}: no upgrade credits were found to take back. Check whether the upgrade granted any.`;
     }
 
     const commission = await AffiliateService.reverseCommissionForPayment(paymentId, reason);
-    const note =
-      commission && commission.pendingShortfallCents > 0
-        ? `Affiliate ledger: commission ${commission.id} was reversed, but the wallet held ${commission.pendingShortfallCents} cents less pending than it. Check the affiliate wallet.`
-        : null;
+    if (commission && commission.pendingShortfallCents > 0)
+      note = [
+        note,
+        `Affiliate ledger: commission ${commission.id} was reversed, but the wallet held ${commission.pendingShortfallCents} cents less pending than it. Check the affiliate wallet.`,
+      ]
+        .filter(Boolean)
+        .join(" ");
     return { userId, note };
   }
 

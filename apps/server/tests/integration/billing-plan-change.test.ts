@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
+import { settleBillingNotifications } from "#services/billingNotifications";
 import { getRedis } from "#lib/redis";
 
 import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession, type TestUser } from "./helpers/auth.js";
+import { refundEvent } from "./helpers/billing.js";
 import { signDodoWebhook } from "./helpers/webhook.js";
 
 /**
@@ -964,5 +966,211 @@ describe("V-202 review: portal downgrades keep the month already granted", () =>
     });
     expect(schedule.stoppedAt).not.toBeNull();
     await expectLedgerBalanced(user.id);
+  });
+});
+
+describe("V-372 refunding the upgrade charge", () => {
+  function upgradeCharge(user: TestUser, subscriptionId: string, productId: string) {
+    return paymentEvent({
+      userId: user.id,
+      paymentId: `pay_upgrade_${randomUUID()}`,
+      subscriptionId,
+      productId,
+      amount: 333,
+      metadata: {
+        veriworkly_user_id: user.id,
+        veriworkly_product: "bundle",
+        veriworkly_interval: productId.endsWith("annual") ? "annual" : "monthly",
+        veriworkly_plan_change: "1",
+      },
+    });
+  }
+
+  it("a full refund of a monthly upgrade takes back the month the upgrade granted", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_portfolio_pro_monthly");
+    await deliver(planChanged(user, subscription, "prod_bundle_monthly"));
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_monthly");
+    await deliver(charge);
+    expect((await CreditService.getWallet(user.id)).available).toBe(1000);
+
+    await deliver(refundEvent(charge.data.payment_id, { isPartial: false }));
+
+    expect((await CreditService.getWallet(user.id)).available).toBe(0);
+    expect((await creditGrants(user.id))[0]).toMatchObject({ amount: 1000, remaining: 0 });
+    await expectLedgerBalanced(user.id);
+  });
+
+  /** The nightly retention run, as it will look 31 days from now: payloads past 30 days redacted. */
+  async function redactPayloadsAsIn31Days() {
+    const { applyRetention, readRetentionSettings } = await import("#jobs/retentionJob");
+    const disabled = Object.fromEntries(
+      Object.keys(readRetentionSettings({})).map((key) => [key, 0]),
+    ) as ReturnType<typeof readRetentionSettings>;
+    await applyRetention({
+      settings: { ...disabled, webhookPayloads: 30 },
+      now: new Date(Date.now() + 31 * DAY_MS),
+    });
+  }
+
+  it("a refund 31 days later, after retention redacted the charge, still takes the month back", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_portfolio_pro_monthly");
+    await deliver(planChanged(user, subscription, "prod_bundle_monthly"));
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_monthly");
+    await deliver(charge);
+
+    await redactPayloadsAsIn31Days();
+    const stored = await prisma.billingWebhookEvent.findFirstOrThrow({
+      where: { providerPaymentId: charge.data.payment_id, type: "payment.succeeded" },
+    });
+    expect(stored.payload).toMatchObject({ redacted: true });
+
+    const refund = refundEvent(charge.data.payment_id, { isPartial: false });
+    await deliver(refund);
+
+    expect((await CreditService.getWallet(user.id)).available).toBe(0);
+    const refundRow = await prisma.billingWebhookEvent.findFirstOrThrow({
+      where: { providerPaymentId: charge.data.payment_id, type: "refund.succeeded" },
+    });
+    expect(refundRow.error).toBeNull();
+    await expectLedgerBalanced(user.id);
+  });
+
+  it("an old refund of a renewal that granted nothing writes no note and alerts nobody", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_portfolio_pro_monthly");
+    const renewal = paymentEvent({
+      userId: user.id,
+      paymentId: `pay_renewal_${randomUUID()}`,
+      subscriptionId: subscription.subscriptionId,
+      productId: "prod_portfolio_pro_monthly",
+      amount: 999,
+    });
+    await deliver(renewal);
+    await redactPayloadsAsIn31Days();
+
+    await deliver(refundEvent(renewal.data.payment_id, { isPartial: false }));
+    await settleBillingNotifications();
+
+    const refundRow = await prisma.billingWebhookEvent.findFirstOrThrow({
+      where: { providerPaymentId: renewal.data.payment_id, type: "refund.succeeded" },
+    });
+    expect(refundRow.error).toBeNull();
+    expect(
+      await prisma.billingNotification.count({ where: { kind: { startsWith: "operator_alert" } } }),
+    ).toBe(0);
+  });
+
+  it("a full refund that lands before the plan change leaves the upgrade without its month (review 10)", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_portfolio_pro_monthly");
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_monthly");
+    await deliver(charge);
+    await deliver(refundEvent(charge.data.payment_id, { isPartial: false }));
+
+    await deliver(planChanged(user, subscription, "prod_bundle_monthly"));
+
+    expect((await CreditService.getWallet(user.id)).available).toBe(0);
+    await expectLedgerBalanced(user.id);
+  });
+
+  it("refunding an AI Credits to Bundle upgrade, which granted no new credits, writes no note and alerts nobody", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_ai_credits_monthly");
+    // The AI Credits month already covers the period, so the upgrade adds no credits.
+    await deliver(
+      paymentEvent({
+        userId: user.id,
+        subscriptionId: subscription.subscriptionId,
+        productId: "prod_ai_credits_monthly",
+        amount: 599,
+        servicePeriod: {
+          startsAt: subscription.previousBillingDate,
+          endsAt: subscription.nextBillingDate,
+        },
+      }),
+    );
+    await deliver(planChanged(user, subscription, "prod_bundle_monthly"));
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_monthly");
+    await deliver(charge);
+    expect(await creditGrants(user.id)).toHaveLength(1);
+
+    await deliver(refundEvent(charge.data.payment_id, { isPartial: false }));
+    await settleBillingNotifications();
+
+    const refundRow = await prisma.billingWebhookEvent.findFirstOrThrow({
+      where: { providerPaymentId: charge.data.payment_id, type: "refund.succeeded" },
+    });
+    expect(refundRow.error).toBeNull();
+    expect(
+      await prisma.billingNotification.count({ where: { kind: { startsWith: "operator_alert" } } }),
+    ).toBe(0);
+  });
+
+  it("refunding an upgrade whose expected month is missing still writes a note for a person", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_portfolio_pro_monthly");
+    await deliver(planChanged(user, subscription, "prod_bundle_monthly"));
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_monthly");
+    await deliver(charge);
+    // The upgrade's month went missing (deleted by hand, say): credits were owed back but none are found.
+    await prisma.creditGrant.deleteMany({ where: { userId: user.id } });
+    await prisma.creditWallet.updateMany({ where: { userId: user.id }, data: { balance: 0 } });
+
+    await deliver(refundEvent(charge.data.payment_id, { isPartial: false }));
+
+    const refundRow = await prisma.billingWebhookEvent.findFirstOrThrow({
+      where: { providerPaymentId: charge.data.payment_id, type: "refund.succeeded" },
+    });
+    expect(refundRow.error).toMatch(/no upgrade credits were found/);
+  });
+
+  it("a partial refund before the plan change still lets the upgrade grant its month", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_portfolio_pro_monthly");
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_monthly");
+    await deliver(charge);
+    await deliver(refundEvent(charge.data.payment_id, { isPartial: true, amount: 100 }));
+
+    await deliver(planChanged(user, subscription, "prod_bundle_monthly"));
+
+    expect((await CreditService.getWallet(user.id)).available).toBe(1000);
+  });
+
+  it("a full refund of an annual upgrade stops its monthly schedule and takes back the month", async () => {
+    const user = await createUserWithSession();
+    const previous = new Date(Date.now() - 100 * DAY_MS);
+    const next = addMonthsUtc(previous, 12);
+    const subscription = await subscribe(user, "prod_portfolio_pro_annual", { previous, next });
+    await deliver(planChanged(user, subscription, "prod_bundle_annual"));
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_annual");
+    await deliver(charge);
+    expect((await CreditService.getWallet(user.id)).available).toBe(1000);
+
+    await deliver(refundEvent(charge.data.payment_id, { isPartial: false }));
+
+    expect((await CreditService.getWallet(user.id)).available).toBe(0);
+    const schedule = await prisma.subscriptionCreditSchedule.findFirstOrThrow({
+      where: { providerSubId: subscription.subscriptionId },
+    });
+    expect(schedule.stoppedAt).not.toBeNull();
+    let month = 0;
+    while (addMonthsUtc(previous, month + 1) <= new Date()) month += 1;
+    await runAnnualCreditGrants(new Date(addMonthsUtc(previous, month + 1).getTime() + 60_000));
+    expect((await CreditService.getWallet(user.id)).available).toBe(0);
+    await expectLedgerBalanced(user.id);
+  });
+
+  it("a partial refund of the upgrade charge leaves the month alone", async () => {
+    const user = await createUserWithSession();
+    const subscription = await subscribe(user, "prod_portfolio_pro_monthly");
+    await deliver(planChanged(user, subscription, "prod_bundle_monthly"));
+    const charge = upgradeCharge(user, subscription.subscriptionId, "prod_bundle_monthly");
+    await deliver(charge);
+
+    await deliver(refundEvent(charge.data.payment_id, { isPartial: true, amount: 100 }));
+
+    expect((await CreditService.getWallet(user.id)).available).toBe(1000);
   });
 });

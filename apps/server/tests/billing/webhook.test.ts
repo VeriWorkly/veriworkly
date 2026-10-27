@@ -20,6 +20,7 @@ vi.mock("#lib/logger", () => ({ logger: loggerMock }));
 const prismaMock = {
   billingWebhookEvent: {
     create: vi.fn(),
+    findFirst: vi.fn().mockResolvedValue(null),
     findMany: vi.fn().mockResolvedValue([]),
     findUnique: vi.fn(),
     update: vi.fn(),
