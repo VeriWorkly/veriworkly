@@ -7,7 +7,10 @@ import type { AdminTableColumn } from "@/components/admin/AdminTable";
 import AdminUserLink, { isDeletedAccount } from "@/components/admin/AdminUserLink";
 import { CommissionActions, CommissionCreateForm } from "@/app/admin/affiliates/AffiliateActions";
 
-import { fetchAdminCommissions } from "@/features/admin/services/admin-server";
+import {
+  fetchAdminAffiliates,
+  fetchAdminCommissions,
+} from "@/features/admin/services/admin-server";
 import type { AdminCommissionRow } from "@/features/admin/types/admin-types";
 import { formatCents, formatDateTime } from "@/features/admin/utils/admin-format";
 import {
@@ -35,7 +38,8 @@ const FILTERS = [
   },
 ];
 
-const columns: Array<AdminTableColumn<AdminCommissionRow>> = [
+/** The table, given which affiliates on this page are ACTIVE (only those can convert). */
+const columnsFor = (activeAffiliates: Set<string>): Array<AdminTableColumn<AdminCommissionRow>> => [
   {
     key: "affiliate",
     header: "Affiliate",
@@ -93,10 +97,38 @@ const columns: Array<AdminTableColumn<AdminCommissionRow>> = [
           status={row.status}
           amountCents={row.amountCents}
           currency={row.currency}
+          rateBps={row.rateBps}
+          referredUserId={row.referral?.referredUser.id ?? null}
+          providerPaymentId={row.providerPaymentId}
+          subscriptionId={row.subscriptionId}
+          affiliateActive={Boolean(row.affiliate && activeAffiliates.has(row.affiliate.id))}
         />
       ),
   },
 ];
+
+/**
+ * Which affiliates of this page's convertible rows (pending, not USD) are ACTIVE: the commission
+ * list does not say, and the server converts only for an active affiliate. One exact-id lookup
+ * per such affiliate; most pages have none.
+ */
+async function findActiveAffiliates(rows: AdminCommissionRow[]) {
+  const ids = new Set(
+    rows
+      .filter((row) => row.status === "PENDING" && row.currency !== "USD")
+      .filter((row) => !isDeletedAccount(row.affiliate))
+      .map((row) => row.affiliate!.id),
+  );
+
+  const active = await Promise.all(
+    [...ids].map(async (id) => {
+      const page = await fetchAdminAffiliates({ query: id, status: "ACTIVE" });
+      return page.items.some((affiliate) => affiliate.id === id) ? id : null;
+    }),
+  );
+
+  return new Set(active.filter((id): id is string => id !== null));
+}
 
 export default async function AdminCommissionsPage({
   searchParams,
@@ -105,6 +137,7 @@ export default async function AdminCommissionsPage({
 }) {
   const params = toSingleValueParams(await searchParams);
   const data = await fetchAdminCommissions(params);
+  const activeAffiliates = await findActiveAffiliates(data.items);
 
   return (
     <AdminListPage
@@ -126,10 +159,10 @@ export default async function AdminCommissionsPage({
       params={params}
       filters={FILTERS}
       page={data}
-      columns={columns}
+      columns={columnsFor(activeAffiliates)}
       rowKey={(row) => row.id}
       emptyMessage="No commissions match these filters."
-      caption={`${pluralize(data.total, "matching commission")}; ${formatCents(data.totalAmountCents)} of them in USD (other currencies are not added in).`}
+      caption={`${pluralize(data.total, "matching commission")}; ${formatCents(data.totalAmountCents)} of them in USD (other currencies are not added in${params.status ? "" : "; reversed ones are"}).`}
     />
   );
 }

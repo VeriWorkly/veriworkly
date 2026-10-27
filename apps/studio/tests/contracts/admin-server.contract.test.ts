@@ -39,20 +39,30 @@ vi.mock("@/components/admin/AdminActionDialog", () => ({
 // who is signed in without a backend.
 vi.mock("server-only", () => ({}));
 
-vi.mock("next/headers", () => ({
-  cookies: async () => ({ toString: () => "veriworkly-auth.session_token=test-session" }),
-  headers: async () => new Headers(),
-}));
-
 const session = vi.hoisted(() => ({
   user: { id: "admin-1", email: "admin@example.com" } as {
     id: string;
     email: string;
   } | null,
+  /** Thrown by the session lookup instead of answering: an API outage. */
+  error: null as Error | null,
+  /** Whether the browser sent a session cookie. */
+  cookie: true,
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    toString: () => (session.cookie ? "veriworkly-auth.session_token=test-session" : ""),
+    has: (name: string) => session.cookie && name === "veriworkly-auth.session_token",
+  }),
+  headers: async () => new Headers(),
 }));
 
 vi.mock("@/features/auth/services/current-user", () => ({
-  fetchCurrentUser: async () => session.user,
+  fetchCurrentUser: async () => {
+    if (session.error) throw session.error;
+    return session.user;
+  },
 }));
 
 const ORIGINAL_FETCH = globalThis.fetch;
@@ -91,6 +101,8 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_BACKEND_URL ||= "http://localhost:8080/api/v1";
   process.env.ADMIN_EMAIL = "admin@example.com";
   session.user = { id: "admin-1", email: "admin@example.com" };
+  session.error = null;
+  session.cookie = true;
 });
 
 afterEach(() => {
@@ -99,39 +111,33 @@ afterEach(() => {
 });
 
 describe("admin server contract", () => {
-  it("S-042: follows hasMore so a 25-item roadmap shows all 25", async () => {
-    const all = Array.from({ length: 25 }, (_, index) => roadmapItem(index));
+  it("S-042: a roadmap column reads one page of its own status and knows the total", async () => {
+    const all = Array.from({ length: 45 }, (_, index) => roadmapItem(index));
 
     const calls = mockFetch((url) => {
-      // Pages smaller than asked for, so only `hasMore` can tell the client there is more.
-      const limit = Math.min(Number(url.searchParams.get("limit")), 20);
+      const limit = Number(url.searchParams.get("limit"));
       const offset = Number(url.searchParams.get("offset"));
-      const items = all.slice(offset, offset + limit);
-      const hasMore = offset + limit < all.length;
 
       return {
         status: 200,
         body: {
           success: true,
           message: "ok",
-          data: {
-            items,
-            total: all.length,
-            limit,
-            offset,
-            hasMore,
-            pagination: { mode: "offset", nextOffset: hasMore ? offset + limit : null },
-          },
+          data: { items: all.slice(offset, offset + limit), total: all.length, limit, offset },
         },
       };
     });
 
-    const { fetchAdminRoadmapServer } = await import("@/features/admin/services/admin-server");
-    const items = await fetchAdminRoadmapServer();
+    const { fetchAdminRoadmapColumn } = await import("@/features/admin/services/admin-server");
+    const page = await fetchAdminRoadmapColumn("todo", 20);
 
-    expect(items).toHaveLength(25);
-    expect(new Set(items.map((item) => item.id)).size).toBe(25);
-    expect(calls.length).toBeGreaterThan(1);
+    expect(calls).toHaveLength(1);
+    const url = new URL(calls[0].url);
+    expect(url.searchParams.get("status")).toBe("todo");
+    expect(url.searchParams.get("limit")).toBe("20");
+    expect(url.searchParams.get("offset")).toBe("20");
+    expect(page.items.map((item) => item.id)).toEqual(all.slice(20, 40).map((item) => item.id));
+    expect(page.total).toBe(45);
   });
 
   it("S-049: a non-admin session 404s before any admin API request is made", async () => {
@@ -651,6 +657,7 @@ describe("admin copy says what the server does", () => {
         publicationId: "p1",
         subdomain: "jane",
         status: "LIVE",
+        templateId: "nimbus",
       }),
     );
     expect(portfolio).not.toMatch(/can publish again from their editor/);
@@ -758,13 +765,13 @@ describe("SV verification follow-ups", () => {
       }) as never;
 
     const cancelled = await renderAdminText(
-      createElement(UserAdminActions, { detail: detail(true) }),
+      createElement(UserAdminActions, { detail: detail(true), protectedAdmin: false }),
     );
     expect(cancelled).toMatch(/Renewal is already cancelled; delete is available after/);
     expect(cancelled).toContain("Dec 1, 2026");
 
     const renewing = await renderAdminText(
-      createElement(UserAdminActions, { detail: detail(false) }),
+      createElement(UserAdminActions, { detail: detail(false), protectedAdmin: false }),
     );
     expect(renewing).toMatch(/Cancel it at Dodo first/);
     expect(renewing).toContain("Dec 1, 2026");
@@ -920,4 +927,958 @@ describe("admin dashboard page", () => {
       vi.doUnmock("@/features/admin/services/admin-server");
     }
   }, 60_000); // imports the whole admin page fresh, slow on a cold, loaded run
+});
+
+/** Every element in a server-rendered tree, nested props included, for finding one by its props. */
+function findElements(node: unknown, match: (props: Record<string, unknown>) => boolean) {
+  const found: Array<Record<string, unknown>> = [];
+
+  const walk = (value: unknown) => {
+    if (Array.isArray(value)) return value.forEach(walk);
+    if (!isValidElement(value)) return;
+
+    const props = value.props as Record<string, unknown>;
+    if (match(props)) found.push(props);
+    Object.values(props).forEach(walk);
+  };
+
+  walk(node);
+  return found;
+}
+
+/** A page module imported fresh with \`admin-server\` replaced, so it renders canned data. */
+async function withAdminServer<T>(
+  mock: Record<string, unknown>,
+  run: () => Promise<T>,
+): Promise<T> {
+  vi.resetModules();
+  vi.doMock("@/features/admin/services/admin-server", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/features/admin/services/admin-server")>()),
+    ...mock,
+  }));
+
+  try {
+    return await run();
+  } finally {
+    vi.doUnmock("@/features/admin/services/admin-server");
+  }
+}
+
+function userDetail(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    user: {
+      id: "u1",
+      email: "jane@example.com",
+      name: "Jane",
+      username: null,
+      image: null,
+      role: "USER",
+      emailVerified: true,
+      ambassadorStatus: "NONE",
+      affiliateStatus: "NOT_ENROLLED",
+      affiliateTier: "TIER_1",
+      affiliateCode: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      creditBalance: 0,
+      subscription: null,
+      portfolioPublication: null,
+      autoSyncEnabled: false,
+      affiliateEnrolledAt: null,
+      lastGithubImportAt: null,
+      lastLinkedinImportAt: null,
+      _count: {
+        resumes: 40,
+        shareLinks: 0,
+        apiKeys: 0,
+        sessions: 12,
+        affiliateReferrals: 0,
+        portfolioAssets: 0,
+      },
+    },
+    subscriptions: [],
+    entitlements: [],
+    credits: { wallet: null, transactions: [] },
+    documents: [],
+    publication: null,
+    ambassadorApplication: null,
+    affiliate: { wallet: null, withdrawals: [] },
+    apiKeys: [],
+    sessions: [],
+    auditEntries: [],
+    ...overrides,
+  } as unknown as import("@/features/admin/types/admin-types").AdminUserDetail;
+}
+
+describe("Phase 9 Part E: admin console", () => {
+  it("S-339: a pass holder or a possible pack buyer never reads as Free", async () => {
+    const { describeAdminAccess } = await import("@/features/admin/utils/admin-access");
+    const now = Date.parse("2026-10-27T00:00:00Z");
+    const grant = (overrides: Record<string, unknown>) => ({
+      id: "g",
+      key: "portfolio_publish",
+      source: "SUBSCRIPTION",
+      startsAt: "2026-10-01T00:00:00Z",
+      endsAt: "2026-11-30T00:00:00Z",
+      revokedAt: null,
+      metadata: null,
+      ...overrides,
+    });
+
+    const pass = describeAdminAccess(
+      userDetail({
+        entitlements: [
+          grant({ source: "SYSTEM", metadata: { pass: true } }),
+          grant({ key: "ai_credits", source: "SYSTEM", metadata: { pass: true } }),
+        ],
+      }),
+      now,
+    );
+    expect(pass.label).toBe("Job Hunter pass");
+    expect(pass.details.join(" ")).toMatch(/Pass until Nov 30, 2026/);
+
+    const packBuyer = describeAdminAccess(
+      userDetail({
+        credits: {
+          wallet: { balance: 200, reserved: 0, lifetimeCredited: 300, lifetimeDebited: 100 },
+          transactions: [],
+        },
+      }),
+      now,
+    );
+    expect(packBuyer.label).not.toBe("Free");
+    expect(packBuyer.details.join(" ")).toMatch(/200 credits/);
+
+    expect(describeAdminAccess(userDetail(), now).label).toBe("Free");
+
+    expect(
+      describeAdminAccess(
+        userDetail({
+          entitlements: [grant({}), grant({ key: "ai_credits" })],
+        }),
+        now,
+      ).label,
+    ).toBe("Job Hunter Bundle");
+
+    // An expired subscription grant gives nothing.
+    expect(
+      describeAdminAccess(
+        userDetail({ entitlements: [grant({ endsAt: "2026-10-20T00:00:00Z" })] }),
+        now,
+      ).label,
+    ).toBe("Free");
+
+    // As the server's `buildSummary`: dunning only while the grace window runs, for a product.
+    const pastDue = (graceEndsAt: string | null, productKey = "portfolio_pro") =>
+      describeAdminAccess(
+        userDetail({
+          subscriptions: [{ id: "s1", productKey, status: "PAST_DUE", graceEndsAt }],
+          credits: {
+            wallet: { balance: 0, reserved: 0, lifetimeCredited: 0, lifetimeDebited: 0 },
+            transactions: [],
+          },
+        }),
+        now,
+      );
+
+    const dunning = pastDue("2026-11-03T00:00:00Z");
+    expect(dunning.label).toBe("Creator Pro (payment issue)");
+    expect(dunning.details.join(" ")).toMatch(/retried until Nov 3, 2026/);
+
+    const graceOver = pastDue("2026-10-20T00:00:00Z");
+    expect(graceOver.label).toBe("No plan or pass");
+    expect(graceOver.details.join(" ")).not.toMatch(/Payment issue/);
+
+    expect(pastDue(null).label).toBe("No plan or pass");
+    expect(pastDue("2026-11-03T00:00:00Z", "legacy_plan").label).toBe("No plan or pass");
+  });
+
+  it("S-339: the users list does not call a row without a subscription Free", async () => {
+    await withAdminServer(
+      {
+        fetchAdminUsers: async () => ({
+          items: [userDetail().user],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        }),
+      },
+      async () => {
+        const { default: Page } = await import("@/app/admin/users/page");
+        const tree = await Page({ searchParams: Promise.resolve({}) });
+        const props = (
+          tree as {
+            props: {
+              columns: Array<{ key: string; render: (row: unknown) => ReactNode }>;
+              page: { items: unknown[] };
+            };
+          }
+        ).props;
+        const column = props.columns.find((item) => item.key === "subscription")!;
+        const { renderToStaticMarkup } = await import("react-dom/server");
+
+        expect(
+          renderToStaticMarkup(column.render(props.page.items[0]) as ReactElement),
+        ).not.toMatch(/Free/);
+      },
+    );
+  });
+
+  it("S-339 S-341 LOW: the user page shows access, record history links, counts and honest dates", async () => {
+    const detail = userDetail({
+      subscriptions: [
+        {
+          id: "sub_9",
+          productKey: "portfolio_pro",
+          status: "CANCELED",
+          interval: "monthly",
+          currentPeriodEnd: "2026-09-01T00:00:00.000Z",
+          cancelAtPeriodEnd: false,
+          provider: "dodo",
+          rawStatus: "cancelled",
+          lastWebhookAt: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-09-01T00:00:00.000Z",
+        },
+      ],
+      documents: Array.from({ length: 25 }, (_, index) => ({
+        id: `d${index}`,
+        title: `Doc ${index}`,
+        type: "RESUME",
+        slug: `doc-${index}`,
+        visibility: "PRIVATE",
+        updatedAt: "2026-10-01T00:00:00.000Z",
+        deletedAt: null,
+      })),
+      sessions: [
+        {
+          id: "sess1",
+          ipAddress: "10.0.0.1",
+          userAgent: "Chrome",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          expiresAt: "2026-02-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const html = await withAdminServer({ fetchAdminUserDetail: async () => detail }, async () => {
+      const { default: Page } = await import("@/app/admin/users/[id]/page");
+      const { renderToStaticMarkup } = await import("react-dom/server");
+      return renderToStaticMarkup(
+        (await Page({ params: Promise.resolve({ id: "u1" }) })) as ReactElement,
+      ).replace(/&amp;/g, "&");
+    });
+
+    expect(html).toMatch(/>Access</);
+    expect(html).toContain("/admin/audit?targetType=Subscription&targetId=sub_9");
+    expect(html).toContain("/admin/audit?targetType=Document&targetId=d0");
+    expect(html).toMatch(/ended Sep 1, 2026/);
+    expect(html).not.toMatch(/renews Sep 1, 2026/);
+    expect(html).toMatch(/Latest 25 of 40 documents/);
+    expect(html).toMatch(/expired [^<]*ago/);
+    expect(html).toMatch(/Latest 1 of 12 sessions/);
+    expect(html).toMatch(/deleted ones included/);
+  });
+
+  it("S-340: the dashboard's commission figure is USD without reversed rows", async () => {
+    const tree = await withAdminServer(
+      {
+        fetchAdminOverview: async () => ({
+          generatedAt: "2026-10-26T00:00:00Z",
+          windowDays: 30,
+          ...Object.fromEntries(
+            [
+              "users",
+              "billing",
+              "portfolios",
+              "documents",
+              "ambassadors",
+              "apiKeys",
+              "jobs",
+              "health",
+              "recentActivity",
+            ].map((section) => [section, { error: true }]),
+          ),
+          affiliates: {
+            affiliatesByStatus: {},
+            commissionsByStatus: {
+              PENDING: { count: 1, amountCents: 100 },
+              AVAILABLE: { count: 1, amountCents: 200 },
+              PAID: { count: 1, amountCents: 300 },
+              REVERSED: { count: 1, amountCents: 10_000 },
+            },
+            wallets: { pendingCents: 100, availableCents: 200, paidCents: 300 },
+            pendingWithdrawals: { count: 0, amountCents: 0 },
+            referralsByStatus: {},
+            totalClicks: 0,
+            commissionsAwaitingConversion: 2,
+          },
+          actionQueue: {
+            failedWebhooks: 0,
+            pendingWithdrawals: 0,
+            pendingAmbassadorApplications: 0,
+            pendingCommissions: 0,
+            suspendedPortfolios: 0,
+            pendingPortfolioAssets: 0,
+          },
+        }),
+        fetchAdminRecentActivity: async () => ({
+          signups: [],
+          publications: [],
+          subscriptions: [],
+          applications: [],
+        }),
+        // Every currency's cents, reversed ones included: never an amount to show.
+        fetchAdminTimeSeries: async () => ({
+          buckets: ["2026-10-25", "2026-10-26"],
+          series: new Proxy({}, { get: () => [5_000, 7_000] }),
+        }),
+      },
+      async () => {
+        const { default: AdminPage } = await import("@/app/admin/page");
+        return AdminPage({ searchParams: Promise.resolve({}) });
+      },
+    );
+
+    const [card] = findElements(
+      tree,
+      (props) => props.label === "Commission earned · USD, all time",
+    );
+    expect(card.value).toBe("$6.00");
+    expect(card.hint).toMatch(/2 in other currencies/);
+    // The series mixes currencies and windows: no trend line, no delta from it.
+    expect(card.delta).toBeUndefined();
+    expect(card.trend).toBeUndefined();
+  }, 60_000);
+
+  it("S-341: the audit log links targets, shows metadata and sends a whole-day UTC range", async () => {
+    const { adminAuditTargetHref, formatAuditMetadata } =
+      await import("@/components/admin/AdminAuditList");
+
+    expect(
+      adminAuditTargetHref({ action: "user.role.change", targetType: "User", targetId: "u/1" }),
+    ).toBe("/admin/users/u%2F1");
+    expect(
+      adminAuditTargetHref({ action: "user.delete", targetType: "User", targetId: "u1" }),
+    ).toBe(null);
+    expect(
+      adminAuditTargetHref({ action: "api_key.update", targetType: "ApiKey", targetId: "k1" }),
+    ).toBe(null);
+    expect(formatAuditMetadata({ previousRole: "USER", nextRole: "AMBASSADOR" })).toBe(
+      "previousRole: USER · nextRole: AMBASSADOR",
+    );
+
+    const sent: Array<Record<string, unknown>> = [];
+
+    await withAdminServer(
+      {
+        fetchAdminAuditFilters: async () => ({ actions: [], targetTypes: [], actors: [] }),
+        fetchAdminAuditEntries: async (params: Record<string, unknown>) => {
+          sent.push(params);
+          return { items: [], total: 0, limit: 20, offset: 0 };
+        },
+      },
+      async () => {
+        const { default: Page } = await import("@/app/admin/audit/page");
+        const tree = await Page({
+          searchParams: Promise.resolve({ from: "2026-10-01", to: "2026-10-02", action: "x" }),
+        });
+        const props = (tree as { props: Record<string, unknown> }).props;
+
+        expect((props.dateFilters as Array<{ name: string }>).map((item) => item.name)).toEqual([
+          "from",
+          "to",
+        ]);
+        expect((props.columns as Array<{ key: string }>).map((item) => item.key)).toContain(
+          "details",
+        );
+      },
+    );
+
+    expect(sent[0]).toMatchObject({
+      action: "x",
+      from: "2026-10-01T00:00:00.000Z",
+      to: "2026-10-02T23:59:59.999Z",
+    });
+  });
+
+  it("S-343: the overview and its series wait longer than the default 5 s server fetch", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const calls = mockFetch(() => ({ status: 200, body: { data: {} } }));
+    const { fetchAdminOverview, fetchAdminTimeSeries, ADMIN_REPORT_TIMEOUT_MS } =
+      await import("@/features/admin/services/admin-server");
+
+    await fetchAdminOverview(30);
+    await fetchAdminTimeSeries(30);
+
+    expect(ADMIN_REPORT_TIMEOUT_MS).toBeGreaterThanOrEqual(40_000);
+    const reportSignals = timeout.mock.results
+      .filter((_, index) => timeout.mock.calls[index][0] === ADMIN_REPORT_TIMEOUT_MS)
+      .map((result) => result.value);
+    expect(calls.map((call) => call.init.signal)).toEqual(reportSignals);
+    expect(reportSignals).toHaveLength(2);
+  });
+
+  it("S-140: an expired admin session goes to sign in again, not to a 404", async () => {
+    session.user = null;
+    const { requireAdminUser } = await import("@/features/admin/services/admin-server");
+    const error = (await requireAdminUser().catch((thrown: unknown) => thrown)) as {
+      digest?: string;
+    };
+
+    expect(error?.digest).toMatch(/NEXT_REDIRECT.*\/auth\/session-expired\?callbackURL=%2Fadmin/);
+
+    session.cookie = false;
+    const signedOut = (await requireAdminUser().catch((thrown: unknown) => thrown)) as {
+      digest?: string;
+    };
+    expect(signedOut?.digest).toMatch(/404/);
+  });
+
+  it("S-140: an outage during the admin gate shows a generic outage panel, no error text", async () => {
+    session.error = new Error("Auth service unavailable at 10.0.0.5");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { default: AdminLayout } = await import("@/app/admin/layout");
+    const { default: AdminOutage } = await import("@/components/admin/AdminOutage");
+    const tree = (await AdminLayout({ children: null })) as ReactElement;
+
+    expect(tree.type).toBe(AdminOutage);
+    const html = await renderAdminText(tree);
+    expect(html).toMatch(/This page could not load/);
+    expect(html).not.toMatch(/10\.0\.0\.5|admin/i);
+
+    // A non-admin still gets the 404, whatever else is going on.
+    session.error = null;
+    session.user = { id: "u2", email: "someone@example.com" };
+    const error = (await AdminLayout({ children: null }).catch((thrown: unknown) => thrown)) as {
+      digest?: string;
+    };
+    expect(error?.digest).toMatch(/404/);
+  });
+
+  it("S-344: an approved withdrawal can still be rejected; a released commission says why it cannot be reversed", async () => {
+    const { WithdrawalActions, CommissionActions } =
+      await import("@/app/admin/affiliates/AffiliateActions");
+
+    const approved = await renderAdminText(
+      createElement(WithdrawalActions, {
+        id: "w1",
+        status: "APPROVED",
+        amountCents: 5000,
+        currency: "USD",
+        email: "ann@example.com",
+      }),
+    );
+    expect(approved).toMatch(/Mark paid/);
+    expect(approved).toMatch(/Reject this withdrawal/);
+    expect(approved).toMatch(/\$50\.00 is returned to ann@example\.com's available balance/);
+
+    const released = await renderAdminText(
+      createElement(CommissionActions, {
+        id: "c1",
+        status: "AVAILABLE",
+        amountCents: 500,
+        currency: "USD",
+        rateBps: 2000,
+        referredUserId: "u9",
+        providerPaymentId: "pay_1",
+        subscriptionId: null,
+        affiliateActive: true,
+      }),
+    );
+    expect(released).toMatch(/cannot be reversed from the console/);
+  });
+
+  it("S-256: a pending non-USD commission offers Convert only for an active affiliate", async () => {
+    // The browser suite drives the dialog's confirm (admin-console.test.ts, S-256).
+    const { CommissionActions, commissionConversion } =
+      await import("@/app/admin/affiliates/AffiliateActions");
+    const row = {
+      id: "c1",
+      status: "PENDING",
+      amountCents: 900,
+      currency: "EUR",
+      rateBps: 2000,
+      referredUserId: "u9",
+      providerPaymentId: "pay_1",
+      subscriptionId: "sub_1",
+    };
+
+    const active = await renderAdminText(
+      createElement(CommissionActions, { ...row, affiliateActive: true }),
+    );
+    expect(active).toMatch(/Convert to USD/);
+    expect(active).toMatch(/current tier rate, which may differ from the 20\.0%/);
+    expect(active).not.toMatch(/Release commission/);
+
+    const inactive = await renderAdminText(
+      createElement(CommissionActions, { ...row, affiliateActive: false }),
+    );
+    expect(inactive).not.toMatch(/Convert to USD/);
+    expect(inactive).toMatch(/affiliate is not active/);
+
+    expect(
+      commissionConversion({
+        commissionId: "c1",
+        referredUserId: "u9",
+        providerPaymentId: null,
+        subscriptionId: null,
+        purchaseUsd: "12.555",
+        reference: "",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("S-256: the commissions page looks up which affiliates can convert, by exact id", async () => {
+    const lookups: Array<Record<string, unknown>> = [];
+    const eurRow = (id: string, affiliateId: string) => ({
+      id,
+      amountCents: 900,
+      currency: "EUR",
+      rateBps: 2000,
+      status: "PENDING",
+      reason: null,
+      providerPaymentId: null,
+      subscriptionId: null,
+      createdAt: "2026-10-01T00:00:00.000Z",
+      affiliate: {
+        id: affiliateId,
+        name: null,
+        email: `${affiliateId}@x.com`,
+        affiliateCode: null,
+      },
+      referral: { id: "r", referredUser: { id: "u9", email: "u9@x.com" } },
+    });
+
+    const html = await withAdminServer(
+      {
+        fetchAdminCommissions: async () => ({
+          items: [eurRow("c1", "a-active"), eurRow("c2", "a-suspended")],
+          total: 2,
+          limit: 20,
+          offset: 0,
+          totalAmountCents: 0,
+        }),
+        fetchAdminAffiliates: async (params: Record<string, unknown>) => {
+          lookups.push(params);
+          return {
+            items: params.query === "a-active" ? [{ id: "a-active" }] : [],
+            total: 0,
+            limit: 20,
+            offset: 0,
+          };
+        },
+      },
+      async () => {
+        const { default: Page } = await import("@/app/admin/affiliates/commissions/page");
+        const tree = await Page({ searchParams: Promise.resolve({}) });
+        const props = (
+          tree as {
+            props: {
+              columns: Array<{ key: string; render: (row: unknown) => ReactNode }>;
+              page: { items: unknown[] };
+            };
+          }
+        ).props;
+        const actions = props.columns.find((column) => column.key === "actions")!;
+
+        return Promise.all(
+          props.page.items.map((item) => renderAdminText(actions.render(item) as ReactElement)),
+        );
+      },
+    );
+
+    expect(lookups).toEqual([
+      { query: "a-active", status: "ACTIVE" },
+      { query: "a-suspended", status: "ACTIVE" },
+    ]);
+    expect(html[0]).toMatch(/Convert to USD/);
+    expect(html[1]).toMatch(/affiliate is not active/);
+  });
+
+  it("brief: every admin list asks the server for 20 rows, whatever the URL says", async () => {
+    const calls = mockFetch(() => ({ status: 200, body: { data: { items: [] } } }));
+    const admin = await import("@/features/admin/services/admin-server");
+
+    await admin.fetchAdminUsers({ limit: "100", offset: "40" });
+    await admin.fetchAdminAuditEntries({});
+    await admin.fetchAdminWebhooks({ status: "FAILED" });
+
+    for (const call of calls) {
+      expect(new URL(call.url).searchParams.get("limit"), call.url).toBe("20");
+    }
+    expect(new URL(calls[0].url).searchParams.get("offset")).toBe("40");
+  });
+
+  it("LOW: record ids are encoded into request paths", async () => {
+    const calls = mockFetch(() => ({ status: 200, body: { data: {} } }));
+    const { fetchAdminUserDetail } = await import("@/features/admin/services/admin-server");
+    const { updateAdminUser, revokeAdminEntitlement } =
+      await import("@/features/admin/services/admin-actions");
+
+    await fetchAdminUserDetail("a/b?c");
+    await updateAdminUser("a/b", { reason: "fix" });
+    await revokeAdminEntitlement("g#1", "fix");
+
+    expect(new URL(calls[0].url).pathname).toBe("/api/v1/admin/users/a%2Fb%3Fc");
+    expect(new URL(calls[1].url).pathname).toBe("/api/v1/admin/users/a%2Fb");
+    expect(new URL(calls[2].url).pathname).toBe("/api/v1/admin/billing/entitlements/g%231");
+  });
+
+  it("LOW: paging past the end says so and goes back to the last page", async () => {
+    const { default: AdminPagination } = await import("@/components/admin/AdminPagination");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const html = renderToStaticMarkup(
+      createElement(AdminPagination, {
+        total: 50,
+        limit: 20,
+        offset: 60,
+        basePath: "/admin/users",
+      }),
+    );
+
+    expect(html).not.toMatch(/61/);
+    expect(html).toMatch(/Past the last page/);
+    expect(html).toContain('href="/admin/users?offset=40"');
+  });
+
+  it("LOW: an admin table has a real caption and names its action column", async () => {
+    const { default: AdminTable } = await import("@/components/admin/AdminTable");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const html = renderToStaticMarkup(
+      createElement(AdminTable<{ id: string }>, {
+        columns: [
+          { key: "id", header: "Id", render: (row) => row.id },
+          { key: "actions", header: "", render: () => "x" },
+        ],
+        rows: [{ id: "r1" }],
+        rowKey: (row) => row.id,
+        caption: "3 rows",
+      }),
+    );
+
+    expect(html).toMatch(/<caption[^>]*>3 rows<\/caption>/);
+    expect(html).toMatch(/<th[^>]*><span class="sr-only">Actions<\/span><\/th>/);
+  });
+
+  it("LOW: chart axes never repeat a label", async () => {
+    const { gridSteps, niceMax } = await import("@/components/admin/charts/geometry");
+
+    for (const peak of [1, 2, 3, 7, 10, 18, 45, 99, 250, 1_000]) {
+      const max = niceMax(peak);
+      const steps = gridSteps(max);
+      const ticks = Array.from({ length: steps + 1 }, (_, step) => (max / steps) * step);
+
+      expect(ticks.every(Number.isInteger), String(max)).toBe(true);
+      expect(new Set(ticks).size, String(max)).toBe(ticks.length);
+    }
+  });
+
+  it("LOW: the trend chart's daily values are readable without hovering", async () => {
+    const { default: TrendChart } = await import("@/components/admin/charts/TrendChart");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const html = renderToStaticMarkup(
+      createElement(TrendChart, {
+        buckets: ["2026-10-25", "2026-10-26"],
+        datasets: [{ label: "Signups", values: [3, 4], series: 1 }],
+      }),
+    );
+
+    expect(html).toMatch(/<table class="sr-only">/);
+    expect(html).toMatch(/<th scope="row">Oct 26<\/th><td>4<\/td>/);
+  });
+
+  it("LOW: a roadmap item's dates are editable only where the server keeps them", async () => {
+    const { default: RoadmapFeatureForm, roadmapDateFields } =
+      await import("@/app/admin/roadmap/components/RoadmapFeatureForm");
+
+    expect(roadmapDateFields("todo")).toEqual({
+      startedAt: false,
+      completedAt: false,
+      completedQuarter: false,
+    });
+    expect(roadmapDateFields("in-progress").completedAt).toBe(false);
+    expect(roadmapDateFields("done")).toEqual({
+      startedAt: true,
+      completedAt: true,
+      completedQuarter: true,
+    });
+
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const html = renderToStaticMarkup(
+      createElement(RoadmapFeatureForm, {
+        mode: "edit",
+        feature: {
+          id: "f1",
+          title: "T",
+          description: "D",
+          status: "todo",
+          startedAt: "2026-01-01T00:00:00.000Z",
+          completedAt: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        } as never,
+      }),
+    );
+
+    expect(html).toMatch(/<input[^>]*id="startedAt"[^>]*disabled=""[^>]*value=""/);
+    expect(html).not.toMatch(/#0f172a|py-\.5|text-muted-foreground/);
+  });
+
+  it("LOW: a roadmap item's breadcrumb neither links to a missing page nor spells out its UUID", async () => {
+    const { buildAdminBreadcrumbs } = await import("@/features/admin/config/admin-nav");
+    const crumbs = buildAdminBreadcrumbs(
+      "/admin/roadmap/3f2504e0-4f89-41d3-9a0c-0305e82c3301/edit",
+    );
+
+    expect(crumbs.map((crumb) => [crumb.label, crumb.href])).toEqual([
+      ["Admin", "/admin"],
+      ["Roadmap", "/admin/roadmap"],
+      ["Detail", null],
+      ["Edit", "/admin/roadmap/3f2504e0-4f89-41d3-9a0c-0305e82c3301/edit"],
+    ]);
+  });
+
+  it("LOW: a control's staged value follows the server after a refresh", async () => {
+    const { resolveServerDraft } = await import("@/features/admin/utils/use-server-draft");
+
+    // Staged CANCELED from ACTIVE; the refresh brings PAST_DUE: the control shows the server.
+    expect(resolveServerDraft({ base: "ACTIVE", value: "CANCELED" }, "PAST_DUE")).toBe("PAST_DUE");
+    expect(resolveServerDraft({ base: "ACTIVE", value: "CANCELED" }, "ACTIVE")).toBe("CANCELED");
+  });
+
+  it("LOW: Grace is offered only for a premium portfolio template", async () => {
+    const { default: PortfolioModerationActions } =
+      await import("@/app/admin/portfolios/PortfolioModerationActions");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const render = (templateId: string) =>
+      renderToStaticMarkup(
+        createElement(PortfolioModerationActions, {
+          publicationId: "p1",
+          subdomain: "jane",
+          status: "LIVE",
+          templateId,
+          compact: true,
+        }),
+      );
+
+    expect(render("signal")).not.toMatch(/value="GRACE"/);
+    expect(render("atelier")).not.toMatch(/value="GRACE"/);
+    expect(render("nimbus")).toMatch(/value="GRACE"/);
+  });
+
+  it("LOW: the role select offers no Admin role, and the admin account's role is locked", async () => {
+    const { default: UserAdminActions } = await import("@/app/admin/users/[id]/UserAdminActions");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+
+    const user = renderToStaticMarkup(
+      createElement(UserAdminActions, { detail: userDetail(), protectedAdmin: false }),
+    );
+    expect(user).not.toMatch(/value="ADMIN"/);
+    expect(user).not.toMatch(/active session/);
+    expect(user).toMatch(/expired ones included/);
+
+    const admin = renderToStaticMarkup(
+      createElement(UserAdminActions, { detail: userDetail(), protectedAdmin: true }),
+    );
+    expect(admin).toMatch(/<select[^>]*id="admin-user-role"[^>]*disabled=""/);
+  });
+
+  it("LOW: an entitlement ends at the end of the chosen local day, never in the past", async () => {
+    const { parseEntitlementEnd } = await import("@/app/admin/billing/entitlement-end");
+    const now = new Date(2026, 9, 27, 12).getTime();
+
+    expect(parseEntitlementEnd("", now)).toEqual({ ok: true, endsAt: null });
+    expect(parseEntitlementEnd("2026-10-26", now).ok).toBe(false);
+    expect(parseEntitlementEnd("2026-10-27", now)).toEqual({
+      ok: true,
+      endsAt: new Date(2026, 9, 27, 23, 59, 59, 999).toISOString(),
+    });
+    expect(parseEntitlementEnd("not-a-day", now).ok).toBe(false);
+  });
+
+  it("LOW: a stored webhook payload can be read", async () => {
+    const html = await withAdminServer(
+      {
+        fetchAdminWebhookDetail: async () => ({
+          id: "e1",
+          providerEventId: "evt_1",
+          type: "subscription.active",
+          status: "FAILED",
+          error: "boom",
+          retryCount: 2,
+          lastAttemptAt: null,
+          processedAt: null,
+          createdAt: "2026-10-01T00:00:00.000Z",
+          user: null,
+          payload: { data: { subscription_id: "sub_77" } },
+        }),
+      },
+      async () => {
+        const { default: Page } = await import("@/app/admin/billing/webhooks/[id]/page");
+        const { renderToStaticMarkup } = await import("react-dom/server");
+        return renderToStaticMarkup(
+          (await Page({ params: Promise.resolve({ id: "e1" }) })) as ReactElement,
+        );
+      },
+    );
+
+    expect(html).toContain("sub_77");
+    expect(html).toContain("Deleted or unmatched account");
+  });
+
+  it("LOW: the affiliate page says how many of each list it shows", async () => {
+    const referrals = Array.from({ length: 30 }, (_, index) => ({
+      id: `r${index}`,
+      status: "SIGNED_UP",
+      createdAt: "2026-10-01T00:00:00.000Z",
+      referredUser: { id: `u${index}`, email: `u${index}@example.com` },
+    }));
+
+    const html = await withAdminServer(
+      {
+        fetchAdminAffiliateDetail: async () => ({
+          affiliate: {
+            id: "a1",
+            name: "Ann",
+            email: "ann@example.com",
+            image: null,
+            affiliateCode: "ANN",
+            affiliateStatus: "ACTIVE",
+            affiliateTier: "TIER_1",
+            affiliateEnrolledAt: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            affiliateWallet: null,
+            _count: { affiliateReferrals: 30, affiliateClicks: 0 },
+          },
+          referrals,
+          commissions: [],
+          withdrawals: [],
+          topReferrerHosts: [],
+        }),
+      },
+      async () => {
+        const { default: Page } = await import("@/app/admin/affiliates/[id]/page");
+        const { renderToStaticMarkup } = await import("react-dom/server");
+        return renderToStaticMarkup(
+          (await Page({ params: Promise.resolve({ id: "a1" }) })) as ReactElement,
+        );
+      },
+    );
+
+    expect(html).toMatch(/20 of 30 referrals shown/);
+  });
+
+  it("LOW: the API keys page does not call expired keys active", async () => {
+    const tree = await withAdminServer(
+      {
+        fetchAdminApiKeySummary: async () => ({
+          total: 3,
+          active: 2,
+          revoked: 0,
+          expired: 1,
+          usedLast7Days: 0,
+        }),
+        fetchAdminApiKeys: async () => ({ items: [], total: 0, limit: 20, offset: 0 }),
+      },
+      async () => {
+        const { default: Page } = await import("@/app/admin/api-keys/page");
+        return Page({ searchParams: Promise.resolve({}) });
+      },
+    );
+
+    const labels = findElements(tree, (props) => typeof props.label === "string").map(
+      (props) => props.label,
+    );
+    expect(labels).not.toContain("Active");
+    expect(labels).toContain("Enabled");
+  });
+});
+
+describe("Phase 9 Part E review fixes", () => {
+  it("S-140: signing in again after an expired admin session returns to the admin", async () => {
+    mockFetch(() => ({ status: 401, body: { message: "Session expired" } }));
+    const { NextRequest } = await import("next/server");
+    const { GET } = await import("@/app/auth/session-expired/route");
+
+    const response = await GET(
+      new NextRequest("http://localhost:4311/auth/session-expired?callbackURL=%2Fadmin", {
+        headers: { cookie: "veriworkly-auth.session_token=dead" },
+      }),
+    );
+    const location = new URL(response.headers.get("location")!);
+
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("session")).toBe("expired");
+    expect(location.searchParams.get("callbackURL")).toBe("/admin");
+
+    const offsite = await GET(
+      new NextRequest(
+        "http://localhost:4311/auth/session-expired?callbackURL=https%3A%2F%2Fevil.com",
+        { headers: { cookie: "veriworkly-auth.session_token=dead" } },
+      ),
+    );
+    expect(new URL(offsite.headers.get("location")!).searchParams.has("callbackURL")).toBe(false);
+  });
+
+  it("audit links: a deleted account, portfolio or roadmap item shows a 'no longer exists' page with its history", async () => {
+    mockFetch(() => ({ status: 404, body: { message: "Not found" } }));
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const render = async (element: unknown) =>
+      renderToStaticMarkup((await element) as ReactElement).replace(/&amp;/g, "&");
+
+    const { default: UserPage } = await import("@/app/admin/users/[id]/page");
+    const { default: PortfolioPage } = await import("@/app/admin/portfolios/[id]/page");
+    const { default: RoadmapEditPage } = await import("@/app/admin/roadmap/[id]/edit/page");
+
+    const pages = [
+      [await render(UserPage({ params: Promise.resolve({ id: "u-gone" }) })), "User", "u-gone"],
+      [
+        await render(PortfolioPage({ params: Promise.resolve({ id: "p-gone" }) })),
+        "PortfolioPublication",
+        "p-gone",
+      ],
+      [
+        await render(RoadmapEditPage({ params: Promise.resolve({ id: "f-gone" }) })),
+        "RoadmapFeature",
+        "f-gone",
+      ],
+    ] as const;
+
+    for (const [html, targetType, id] of pages) {
+      expect(html, targetType).toContain("This record no longer exists");
+      expect(html, targetType).toContain(`/admin/audit?targetType=${targetType}&targetId=${id}`);
+    }
+  });
+
+  it("LOW: an offset past an empty result goes back to page 1, with no 'page 3 of 1'", async () => {
+    const { default: AdminPagination } = await import("@/components/admin/AdminPagination");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const html = renderToStaticMarkup(
+      createElement(AdminPagination, { total: 0, limit: 20, offset: 40, basePath: "/admin/users" }),
+    );
+
+    expect(html).not.toMatch(/page \d+ of/);
+    expect(html).toMatch(/Past the last page/);
+    expect(html).toContain('href="/admin/users"');
+  });
+
+  it("the admin shell test harness does not exist in a production build", async () => {
+    const { default: Harness } = await import("@/app/parity/admin-shell/page");
+
+    vi.stubEnv("NODE_ENV", "production");
+    const error = (() => {
+      try {
+        Harness();
+        return null;
+      } catch (thrown) {
+        return thrown as { digest?: string };
+      }
+    })();
+    expect(error?.digest).toMatch(/404/);
+
+    vi.stubEnv("NODE_ENV", "development");
+    expect(isValidElement(Harness())).toBe(true);
+  });
 });

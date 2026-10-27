@@ -20,6 +20,8 @@ import {
 import type { AdminUserDetail, Role } from "@/features/admin/types/admin-types";
 
 import { parseCreditAmount } from "@/app/admin/billing/credit-amount";
+import { parseEntitlementEnd } from "@/app/admin/billing/entitlement-end";
+import { useServerDraft } from "@/features/admin/utils/use-server-draft";
 import { pluralize } from "@/lib/pluralize";
 import { LocalDate } from "@/components/LocalDate";
 
@@ -59,12 +61,22 @@ export function chargeableSubscription<
  * Every control on this panel writes to the admin audit log, so each one is wrapped in the
  * shared confirmation dialog rather than firing on a bare click. The role select is the one
  * exception to "no local state": it needs a staged value before the dialog opens.
+ *
+ * `protectedAdmin` is the `ADMIN_EMAIL` account, the only one the console is for: the server
+ * refuses to delete it or change its role. The ADMIN role itself grants nothing (the console
+ * checks the email), so it is not offered.
  */
-const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
+const UserAdminActions = ({
+  detail,
+  protectedAdmin,
+}: {
+  detail: AdminUserDetail;
+  protectedAdmin: boolean;
+}) => {
   const router = useRouter();
   const { user } = detail;
 
-  const [role, setRole] = useState<Role>(user.role);
+  const [role, setRole] = useServerDraft<Role>(user.role);
   const [creditAmount, setCreditAmount] = useState("100");
   const [entitlementKey, setEntitlementKey] = useState<AdminEntitlementKey>(
     ADMIN_ENTITLEMENT_KEYS[0],
@@ -72,8 +84,8 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
   const [entitlementEndsAt, setEntitlementEndsAt] = useState("");
 
   const credits = parseCreditAmount(creditAmount);
+  const entitlementEnd = parseEntitlementEnd(entitlementEndsAt);
 
-  const isProtectedAdmin = user.role === "ADMIN";
   // The server refuses the delete (409) while this holds; deleting cancels nothing at Dodo.
   const liveSubscription = chargeableSubscription(detail.subscriptions);
   const hasLiveSubscription = Boolean(liveSubscription);
@@ -97,16 +109,17 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
             id="admin-user-role"
             className="h-9 w-40 text-xs"
             value={role}
+            disabled={protectedAdmin}
             onChange={(event) => setRole(event.target.value as Role)}
           >
             <option value="USER">User</option>
             <option value="AMBASSADOR">Ambassador</option>
-            <option value="ADMIN">Admin</option>
+            {user.role === "ADMIN" ? <option value="ADMIN">Admin (grants nothing)</option> : null}
           </Select>
 
           <AdminActionDialog
             trigger="Save role"
-            disabled={role === user.role}
+            disabled={protectedAdmin || role === user.role}
             title="Change this user's role"
             description={`Moving ${user.email} from ${user.role} to ${role}. All of their sessions will be revoked so the new role takes effect immediately.`}
             confirmLabel="Change role"
@@ -153,7 +166,7 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
         </div>
 
         {!credits.ok && (
-          <p id="admin-user-credits-error" role="alert" className="text-xs text-red-600">
+          <p id="admin-user-credits-error" role="alert" className="text-destructive text-xs">
             {credits.message}
           </p>
         )}
@@ -189,29 +202,34 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
 
           <AdminActionDialog
             trigger="Grant"
+            disabled={!entitlementEnd.ok}
             title="Grant an entitlement"
-            description={`Granting "${entitlementKey}" to ${user.email}${entitlementEndsAt ? ` until ${entitlementEndsAt}` : " with no expiry"}.`}
+            description={`Granting "${entitlementKey}" to ${user.email}${entitlementEndsAt ? ` until the end of ${entitlementEndsAt}, your time` : " with no expiry"}.`}
             confirmLabel="Grant entitlement"
             onConfirm={async (reason) => {
+              if (!entitlementEnd.ok) throw new Error(entitlementEnd.message);
               await grantAdminEntitlement({
                 userId: user.id,
                 key: entitlementKey,
-                // The API takes a full ISO timestamp; a date input yields a bare date.
-                endsAt: entitlementEndsAt
-                  ? new Date(`${entitlementEndsAt}T23:59:59.000Z`).toISOString()
-                  : null,
+                endsAt: entitlementEnd.endsAt,
                 reason,
               });
             }}
           />
         </div>
+
+        {!entitlementEnd.ok ? (
+          <p role="alert" className="text-destructive text-xs">
+            {entitlementEnd.message}
+          </p>
+        ) : null}
       </div>
 
       <div className="border-border/60 flex flex-wrap items-center gap-2 border-t pt-4">
         <AdminActionDialog
           trigger="Revoke all sessions"
           title="Sign this user out everywhere"
-          description={`${pluralize(user._count.sessions, "active session")} will be deleted. The user will need to sign in again.`}
+          description={`Every session of this account is deleted (${pluralize(user._count.sessions, "session")} on record, expired ones included). The user will need to sign in again.`}
           confirmLabel="Revoke sessions"
           onConfirm={async (reason) => {
             await revokeAdminUserSessions(user.id, reason);
@@ -222,7 +240,7 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
           trigger="Delete account"
           triggerVariant="secondary"
           triggerClassName="text-destructive"
-          disabled={isProtectedAdmin || hasLiveSubscription}
+          disabled={protectedAdmin || hasLiveSubscription}
           title="Permanently delete this account"
           description="This cannot be undone. Documents, portfolios, share links, wallets, and API keys are all deleted with the account."
           confirmLabel="Delete permanently"
@@ -234,8 +252,8 @@ const UserAdminActions = ({ detail }: { detail: AdminUserDetail }) => {
           }}
         >
           <p className="text-destructive text-xs">
-            {isProtectedAdmin
-              ? "Admin accounts cannot be deleted from this panel."
+            {protectedAdmin
+              ? "The admin account cannot be deleted from this panel."
               : "There is no restore path for a deleted account."}
           </p>
         </AdminActionDialog>

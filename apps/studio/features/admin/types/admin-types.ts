@@ -234,6 +234,8 @@ export interface AdminUserDetail {
     provider: string;
     /** The provider's own status; `null` on a row made by hand. */
     rawStatus: string | null;
+    /** End of the dunning grace window while a PAST_DUE subscription is retried. */
+    graceEndsAt: string | null;
     lastWebhookAt: string | null;
     createdAt: string;
     updatedAt: string;
@@ -245,6 +247,8 @@ export interface AdminUserDetail {
     startsAt: string;
     endsAt: string | null;
     revokedAt: string | null;
+    /** `{ pass: true }` on a pass's SYSTEM grant. */
+    metadata: Record<string, unknown> | null;
   }>;
   credits: {
     wallet: {
@@ -331,6 +335,8 @@ export interface AdminAffiliateSummary {
   pendingWithdrawals: { count: number; amountCents: number };
   referralsByStatus: Record<string, number>;
   totalClicks: number;
+  /** Pending commissions in another currency, waiting to be converted to USD by hand. */
+  commissionsAwaitingConversion: number;
 }
 
 export interface AdminAffiliateRow extends AdminUserRef {
@@ -350,6 +356,9 @@ export interface AdminCommissionRow {
   currency: string;
   /** True for a non-USD commission: it stays PENDING until an admin records it in USD. */
   requiresManualConversion?: boolean;
+  /** Unique per commission; a conversion records the purchase again under a new one. */
+  providerPaymentId: string | null;
+  subscriptionId: string | null;
   rateBps: number;
   status: CommissionStatus;
   reason: string | null;

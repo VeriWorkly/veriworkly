@@ -1,12 +1,13 @@
 import "server-only";
 
 import { cache } from "react";
-import { notFound, unstable_rethrow } from "next/navigation";
+import { notFound, redirect, unstable_rethrow } from "next/navigation";
 
-import { serverFetch } from "@/lib/server-fetch";
+import { SESSION_EXPIRED_PATH } from "@/lib/auth-redirect";
+import { hasSessionCookie, serverFetch } from "@/lib/server-fetch";
 import { fetchCurrentUser } from "@/features/auth/services/current-user";
 
-import type { RoadmapFeature } from "@/features/roadmap/services/roadmap-backend";
+import type { RoadmapFeature, RoadmapStatus } from "@/features/roadmap/services/roadmap-backend";
 import type { ApiSuccessResponse } from "@/utils/fetchApiData";
 
 import type {
@@ -60,6 +61,9 @@ import type {
  * session lookup. Each read awaits it first, so a page's own fetches cannot start before the
  * gate has passed: layouts and pages render in parallel, and a client navigation inside
  * `/admin` does not re-run the layout at all.
+ *
+ * A session cookie the API rejected (an expired admin session) goes to sign in again, as the
+ * studio does, instead of a 404 that reads as "the admin is gone". An outage throws.
  */
 export const requireAdminUser = cache(async () => {
   const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
@@ -70,6 +74,11 @@ export const requireAdminUser = cache(async () => {
   }
 
   const user = await fetchCurrentUser();
+
+  // Back to the admin once signed in again; only the admin's own session can open it anyway.
+  if (!user && (await hasSessionCookie())) {
+    redirect(`${SESSION_EXPIRED_PATH}?callbackURL=${encodeURIComponent("/admin")}`);
+  }
 
   if (!user?.email || user.email.toLowerCase() !== adminEmail) {
     notFound();
@@ -82,6 +91,19 @@ function fetchWithSession(path: string, options?: RequestInit) {
   return serverFetch(path, options);
 }
 
+/** A record id inside a request path; an id with `/` or `?` must not change the route. */
+const segment = encodeURIComponent;
+
+/** Rows per admin list page: an operator pages through about 20 at a time, never the whole table. */
+export const ADMIN_PAGE_SIZE = 20;
+
+/**
+ * The overview and its daily series build cold through the server's 6-slot query limiter, which
+ * can take tens of seconds; the default 5 s server-fetch timeout would turn that wait into an
+ * error page.
+ */
+export const ADMIN_REPORT_TIMEOUT_MS = 45_000;
+
 /** Drops empty/undefined params so `?status=` never reaches a strict enum validator. */
 function buildAdminQuery(params: Record<string, string | number | boolean | undefined>) {
   const search = new URLSearchParams();
@@ -93,6 +115,11 @@ function buildAdminQuery(params: Record<string, string | number | boolean | unde
 
   const query = search.toString();
   return query ? `?${query}` : "";
+}
+
+/** A list page's query: the URL's filters and offset, at the admin page size whatever the URL asks. */
+function buildAdminListQuery(params: Record<string, string | number | undefined>) {
+  return buildAdminQuery({ ...params, limit: ADMIN_PAGE_SIZE });
 }
 
 /**
@@ -155,7 +182,9 @@ export async function loadAdminDetail<T>(request: Promise<T>): Promise<T | null>
 /* ── Overview ─────────────────────────────────────────────────────────────────────── */
 
 export function fetchAdminOverview(days = 30) {
-  return fetchAdmin<AdminOverview>(`/overview${buildAdminQuery({ days })}`);
+  return fetchAdmin<AdminOverview>(`/overview${buildAdminQuery({ days })}`, {
+    signal: AbortSignal.timeout(ADMIN_REPORT_TIMEOUT_MS),
+  });
 }
 
 export function fetchAdminRecentActivity() {
@@ -163,7 +192,9 @@ export function fetchAdminRecentActivity() {
 }
 
 export function fetchAdminTimeSeries(days = 30) {
-  return fetchAdmin<AdminTimeSeries>(`/overview/series${buildAdminQuery({ days })}`);
+  return fetchAdmin<AdminTimeSeries>(`/overview/series${buildAdminQuery({ days })}`, {
+    signal: AbortSignal.timeout(ADMIN_REPORT_TIMEOUT_MS),
+  });
 }
 
 /**
@@ -198,11 +229,11 @@ export async function fetchAdminActionQueue(): Promise<AdminActionQueue> {
 /* ── Users ────────────────────────────────────────────────────────────────────────── */
 
 export function fetchAdminUsers(params: Record<string, string | number | undefined> = {}) {
-  return fetchAdmin<AdminPaginatedResponse<AdminUserRow>>(`/users${buildAdminQuery(params)}`);
+  return fetchAdmin<AdminPaginatedResponse<AdminUserRow>>(`/users${buildAdminListQuery(params)}`);
 }
 
 export function fetchAdminUserDetail(id: string) {
-  return fetchAdmin<AdminUserDetail>(`/users/${id}`);
+  return fetchAdmin<AdminUserDetail>(`/users/${segment(id)}`);
 }
 
 /* ── Affiliates ───────────────────────────────────────────────────────────────────── */
@@ -213,7 +244,7 @@ export function fetchAdminAffiliateSummary() {
 
 export function fetchAdminAffiliates(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminAffiliateRow>>(
-    `/affiliates${buildAdminQuery(params)}`,
+    `/affiliates${buildAdminListQuery(params)}`,
   );
 }
 
@@ -230,24 +261,24 @@ export function fetchAdminAffiliateDetail(userId: string) {
     commissions: AdminCommissionRow[];
     withdrawals: AdminWithdrawalRow[];
     topReferrerHosts: Array<{ host: string; clicks: number }>;
-  }>(`/affiliates/${userId}`);
+  }>(`/affiliates/${segment(userId)}`);
 }
 
 export function fetchAdminCommissions(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminCommissionRow> & { totalAmountCents: number }>(
-    `/affiliates/commissions${buildAdminQuery(params)}`,
+    `/affiliates/commissions${buildAdminListQuery(params)}`,
   );
 }
 
 export function fetchAdminWithdrawals(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminWithdrawalRow> & { totalAmountCents: number }>(
-    `/affiliates/withdrawals${buildAdminQuery(params)}`,
+    `/affiliates/withdrawals${buildAdminListQuery(params)}`,
   );
 }
 
 export function fetchAdminReferrals(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminReferralRow>>(
-    `/affiliates/referrals${buildAdminQuery(params)}`,
+    `/affiliates/referrals${buildAdminListQuery(params)}`,
   );
 }
 
@@ -261,7 +292,7 @@ export function fetchAdminAmbassadorApplications(
   params: Record<string, string | number | undefined> = {},
 ) {
   return fetchAdmin<AdminPaginatedResponse<AdminAmbassadorRow>>(
-    `/ambassadors${buildAdminQuery(params)}`,
+    `/ambassadors${buildAdminListQuery(params)}`,
   );
 }
 
@@ -269,7 +300,7 @@ export function fetchAdminAmbassadorRoster(
   params: Record<string, string | number | undefined> = {},
 ) {
   return fetchAdmin<AdminPaginatedResponse<AdminAmbassadorRosterRow>>(
-    `/ambassadors/roster${buildAdminQuery(params)}`,
+    `/ambassadors/roster${buildAdminListQuery(params)}`,
   );
 }
 
@@ -278,14 +309,14 @@ export function fetchAdminAmbassadorApplication(id: string) {
     application: AdminAmbassadorRow;
     reviewer: AdminUserRef | null;
     auditEntries: AdminAuditEntry[];
-  }>(`/ambassadors/${id}`);
+  }>(`/ambassadors/${segment(id)}`);
 }
 
 /* ── Portfolios ───────────────────────────────────────────────────────────────────── */
 
 export function fetchAdminPortfolios(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminPortfolioRow>>(
-    `/portfolios${buildAdminQuery(params)}`,
+    `/portfolios${buildAdminListQuery(params)}`,
   );
 }
 
@@ -294,7 +325,7 @@ export function fetchAdminPortfolioSummary() {
 }
 
 export function fetchAdminPortfolioDetail(id: string, days = 30) {
-  return fetchAdmin<AdminPortfolioDetail>(`/portfolios/${id}${buildAdminQuery({ days })}`);
+  return fetchAdmin<AdminPortfolioDetail>(`/portfolios/${segment(id)}${buildAdminQuery({ days })}`);
 }
 
 /* ── Documents & share links ──────────────────────────────────────────────────────── */
@@ -305,13 +336,13 @@ export function fetchAdminDocumentSummary() {
 
 export function fetchAdminDocuments(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminDocumentRow>>(
-    `/documents${buildAdminQuery(params)}`,
+    `/documents${buildAdminListQuery(params)}`,
   );
 }
 
 export function fetchAdminShareLinks(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminShareLinkRow>>(
-    `/share-links${buildAdminQuery(params)}`,
+    `/share-links${buildAdminListQuery(params)}`,
   );
 }
 
@@ -323,32 +354,39 @@ export function fetchAdminBillingSummary() {
 
 export function fetchAdminSubscriptions(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminSubscriptionRow>>(
-    `/billing/subscriptions${buildAdminQuery(params)}`,
+    `/billing/subscriptions${buildAdminListQuery(params)}`,
   );
 }
 
 export function fetchAdminCreditWallets(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminCreditWalletRow>>(
-    `/billing/credits${buildAdminQuery(params)}`,
+    `/billing/credits${buildAdminListQuery(params)}`,
   );
 }
 
 export function fetchAdminEntitlements(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminEntitlementRow>>(
-    `/billing/entitlements${buildAdminQuery(params)}`,
+    `/billing/entitlements${buildAdminListQuery(params)}`,
   );
+}
+
+/** One provider event with its stored payload, which the list leaves out for size. */
+export function fetchAdminWebhookDetail(id: string) {
+  return fetchAdmin<AdminWebhookRow & { payload: unknown }>(`/billing/webhooks/${segment(id)}`);
 }
 
 export function fetchAdminWebhooks(params: Record<string, string | number | undefined> = {}) {
   return fetchAdmin<AdminPaginatedResponse<AdminWebhookRow>>(
-    `/billing/webhooks${buildAdminQuery(params)}`,
+    `/billing/webhooks${buildAdminListQuery(params)}`,
   );
 }
 
 /* ── Audit ────────────────────────────────────────────────────────────────────────── */
 
 export function fetchAdminAuditEntries(params: Record<string, string | number | undefined> = {}) {
-  return fetchAdmin<AdminPaginatedResponse<AdminAuditEntry>>(`/audit${buildAdminQuery(params)}`);
+  return fetchAdmin<AdminPaginatedResponse<AdminAuditEntry>>(
+    `/audit${buildAdminListQuery(params)}`,
+  );
 }
 
 export function fetchAdminAuditFilters() {
@@ -362,7 +400,9 @@ export function fetchAdminApiKeySummary() {
 }
 
 export function fetchAdminApiKeys(params: Record<string, string | number | undefined> = {}) {
-  return fetchAdmin<AdminPaginatedResponse<AdminApiKeyRow>>(`/api-keys${buildAdminQuery(params)}`);
+  return fetchAdmin<AdminPaginatedResponse<AdminApiKeyRow>>(
+    `/api-keys${buildAdminListQuery(params)}`,
+  );
 }
 
 /* ── System ───────────────────────────────────────────────────────────────────────── */
@@ -389,42 +429,32 @@ export function fetchAdminRequestLogs(params: Record<string, string | number | u
 
 /* ── Roadmap (reads come from the public router) ──────────────────────────────────── */
 
-/** Every roadmap item: the public list is paged (at most 50 a request), so read to the end. */
-export async function fetchAdminRoadmapServer(sort = "newest") {
+/**
+ * One page of one kanban column. The public list pages (20 by default), so each column reads its
+ * own status at the admin page size and pages on its own, rather than the board reading every
+ * item ever written.
+ */
+export async function fetchAdminRoadmapColumn(status: RoadmapStatus, offset = 0) {
   await requireAdminUser();
 
-  const items = new Map<string, RoadmapFeature>();
-  let offset = 0;
+  const query = buildAdminQuery({ status, sort: "newest", limit: ADMIN_PAGE_SIZE, offset });
+  const response = await fetchWithSession(`/roadmap${query}`, { method: "GET" });
 
-  while (true) {
-    const query = buildAdminQuery({ sort, limit: 50, offset });
-    const response = await fetchWithSession(`/roadmap${query}`, { method: "GET" });
-
-    if (!response.ok) {
-      throw new Error(`Roadmap request failed (${response.status})`);
-    }
-
-    const payload = (await response.json()) as ApiSuccessResponse<{
-      items: RoadmapFeature[];
-      hasMore: boolean;
-      pagination: { nextOffset: number | null };
-    }>;
-
-    for (const item of payload.data.items) {
-      if (!items.has(item.id)) items.set(item.id, item);
-    }
-
-    if (!payload.data.hasMore || payload.data.pagination.nextOffset === null) break;
-    offset = payload.data.pagination.nextOffset;
+  if (!response.ok) {
+    throw new Error(`Roadmap request failed (${response.status})`);
   }
 
-  return Array.from(items.values());
+  const { data } = (await response.json()) as ApiSuccessResponse<
+    AdminPaginatedResponse<RoadmapFeature>
+  >;
+
+  return { items: data.items, total: data.total, limit: data.limit, offset: data.offset };
 }
 
 export async function fetchAdminRoadmapFeatureServer(id: string) {
   await requireAdminUser();
 
-  const response = await fetchWithSession(`/roadmap/${id}`, {
+  const response = await fetchWithSession(`/roadmap/${segment(id)}`, {
     method: "GET",
   });
 

@@ -64,7 +64,7 @@ const columns: Array<AdminTableColumn<AdminApiKeyRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/users/${row.user.id}`}
+          href={`/admin/users/${encodeURIComponent(row.user.id)}`}
           className="text-foreground text-sm hover:underline"
         >
           {row.user.name || row.user.email}
@@ -136,7 +136,13 @@ export default async function AdminApiKeysPage({
       summary={
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <AdminStatCard label="Total" value={formatNumber(summary.total)} />
-          <AdminStatCard label="Active" value={formatNumber(summary.active)} tone="positive" />
+          {/* The server counts every enabled, unrevoked key here, expired ones included. */}
+          <AdminStatCard
+            label="Enabled"
+            value={formatNumber(summary.active)}
+            hint="expired ones included"
+            tone="positive"
+          />
           <AdminStatCard label="Revoked" value={formatNumber(summary.revoked)} />
           <AdminStatCard
             label="Expired"

@@ -4,12 +4,15 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, LogOut, Menu, RefreshCw, Search } from "lucide-react";
+import { toast } from "sonner";
 
 import { cn } from "@veriworkly/ui";
 
 import { ShortcutKey } from "@/components/ShortcutKey";
-import { fetchApiData } from "@/utils/fetchApiData";
+import { signOutCurrentUser } from "@/features/auth/services/current-user";
+import { listDocuments } from "@/features/documents/services/document-workspace-service";
 import { buildAdminBreadcrumbs } from "@/features/admin/config/admin-nav";
+import { pluralize } from "@/lib/pluralize";
 
 interface AdminTopbarProps {
   adminEmail: string;
@@ -26,15 +29,31 @@ const AdminTopbar = ({ adminEmail, onOpenSidebar, onOpenPalette }: AdminTopbarPr
 
   const crumbs = buildAdminBreadcrumbs(pathname);
 
+  /**
+   * The studio's own sign-out: it ends the server session and clears this device's account
+   * data. Signing out deletes this device's document copies, so with unsynced documents here it
+   * stops and sends the operator to the studio, whose sign-out offers a backup first.
+   */
   const signOut = async () => {
     setSigningOut(true);
 
     try {
-      await fetchApiData("/auth/sign-out", { method: "POST" });
-      router.push("/");
-    } catch {
-      // Leaving the button enabled is the useful failure mode here — the operator can retry,
-      // and there is nowhere on a chrome bar to surface an error without displacing the nav.
+      const unsynced = listDocuments().filter((item) => item.sync.status !== "synced").length;
+
+      if (unsynced > 0) {
+        toast.error(
+          `This device has ${pluralize(unsynced, "unsynced document")}. Sign out from the studio's account menu, which offers a backup first.`,
+          { action: { label: "Open the studio", onClick: () => router.push("/") } },
+        );
+        setSigningOut(false);
+        return;
+      }
+
+      await signOutCurrentUser();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Sign-out failed. Please try again.");
       setSigningOut(false);
     }
   };
@@ -60,7 +79,7 @@ const AdminTopbar = ({ adminEmail, onOpenSidebar, onOpenPalette }: AdminTopbarPr
 
             return (
               <li
-                key={crumb.href}
+                key={crumb.path}
                 className={cn("min-w-0 items-center gap-1", last ? "flex" : "hidden sm:flex")}
               >
                 {index > 0 ? (
@@ -74,6 +93,8 @@ const AdminTopbar = ({ adminEmail, onOpenSidebar, onOpenPalette }: AdminTopbarPr
                   <span aria-current="page" className="text-foreground truncate font-medium">
                     {crumb.label}
                   </span>
+                ) : crumb.href === null ? (
+                  <span className="text-muted truncate">{crumb.label}</span>
                 ) : (
                   <Link
                     href={crumb.href}

@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
-import AdminFilterBar, { type AdminFilterSelect } from "@/components/admin/AdminFilterBar";
+import AdminFilterBar, {
+  type AdminFilterDate,
+  type AdminFilterSelect,
+} from "@/components/admin/AdminFilterBar";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import AdminPagination from "@/components/admin/AdminPagination";
 import AdminTable, { type AdminTableColumn } from "@/components/admin/AdminTable";
@@ -21,6 +24,7 @@ interface AdminListPageProps<T> {
   params: Record<string, string>;
   searchPlaceholder?: string;
   filters?: AdminFilterSelect[];
+  dateFilters?: AdminFilterDate[];
   page: { items: T[]; total: number; limit: number; offset: number };
   columns: Array<AdminTableColumn<T>>;
   rowKey: (row: T) => string;
@@ -40,6 +44,7 @@ export default function AdminListPage<T>({
   params,
   searchPlaceholder,
   filters,
+  dateFilters,
   page,
   columns,
   rowKey,
@@ -48,7 +53,12 @@ export default function AdminListPage<T>({
 }: AdminListPageProps<T>) {
   const list = (
     <>
-      <AdminFilterBar basePath={basePath} searchPlaceholder={searchPlaceholder} selects={filters} />
+      <AdminFilterBar
+        basePath={basePath}
+        searchPlaceholder={searchPlaceholder}
+        selects={filters}
+        dates={dateFilters}
+      />
 
       <AdminTable
         columns={columns}

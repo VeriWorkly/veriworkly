@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 
+import { Modal } from "@veriworkly/ui";
+
 import AdminCommandPalette from "@/components/admin/shell/AdminCommandPalette";
 import AdminSidebar from "@/components/admin/shell/AdminSidebar";
 import AdminTopbar from "@/components/admin/shell/AdminTopbar";
@@ -41,6 +43,18 @@ const AdminShell = ({ adminEmail, queue, children }: AdminShellProps) => {
   const openDrawer = () => setDrawer({ open: true, path: pathname });
   const closeDrawer = () => setDrawer({ open: false, path: pathname });
 
+  // The drawer is the phone and tablet nav. Widening to the desktop layout (lg) shows the rail,
+  // so an open drawer would leave only its overlay and scroll lock over the page: close it.
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onChange = (event: MediaQueryListEvent) => {
+      if (event.matches) setDrawer((current) => ({ ...current, open: false }));
+    };
+
+    desktop.addEventListener("change", onChange);
+    return () => desktop.removeEventListener("change", onChange);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
@@ -62,34 +76,33 @@ const AdminShell = ({ adminEmail, queue, children }: AdminShellProps) => {
         <AdminSidebar queue={queue} />
       </aside>
 
-      {drawerOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+      {/*
+        The shared Modal, slid in from the left: it traps focus, closes on Escape and returns
+        focus to the menu button, which a hand-rolled overlay did not.
+      */}
+      <Modal open={drawerOpen} onClose={closeDrawer}>
+        <Modal.Content
+          aria-label="Admin navigation"
+          className={
+            "bg-admin-chrome border-border absolute inset-y-0 left-0 h-full w-72 max-w-[85vw] rounded-none border-0 border-r p-0 pb-0 " +
+            "md:max-w-72 md:rounded-none " +
+            "transition-[opacity,transform,translate] starting:-translate-x-full starting:translate-y-0 " +
+            "md:starting:-translate-x-full md:starting:scale-100 md:starting:opacity-100 " +
+            "[&>div[aria-hidden]:first-child]:hidden"
+          }
+        >
           <button
             type="button"
-            aria-label="Close navigation"
-            className="bg-foreground/25 absolute inset-0 cursor-default backdrop-blur-[2px]"
             onClick={() => closeDrawer()}
-          />
-
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-label="Admin navigation"
-            className="border-border bg-admin-chrome absolute inset-y-0 left-0 w-72 border-r shadow-2xl"
+            aria-label="Close navigation"
+            className="text-muted hover:text-foreground focus-visible:ring-accent absolute top-3.5 right-3 z-10 rounded-lg p-1.5 transition focus-visible:ring-2 focus-visible:outline-none"
           >
-            <button
-              type="button"
-              onClick={() => closeDrawer()}
-              aria-label="Close navigation"
-              className="text-muted hover:text-foreground focus-visible:ring-accent absolute top-3.5 right-3 z-10 rounded-lg p-1.5 transition focus-visible:ring-2 focus-visible:outline-none"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <X className="h-4 w-4" />
+          </button>
 
-            <AdminSidebar queue={queue} onNavigate={() => closeDrawer()} />
-          </aside>
-        </div>
-      ) : null}
+          <AdminSidebar queue={queue} onNavigate={() => closeDrawer()} />
+        </Modal.Content>
+      </Modal>
 
       <div className="flex min-h-screen flex-col lg:pl-60">
         <AdminTopbar

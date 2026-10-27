@@ -144,3 +144,28 @@ export function apiKeyState(key: {
 export function formatQueueCount(value: number | null) {
   return value === null ? "—" : formatNumber(value);
 }
+
+/** Where the last page of a list starts: "Previous" from past the end goes there, not to a gap. */
+export function lastPageOffset(total: number, limit: number) {
+  return total > 0 ? Math.floor((total - 1) / limit) * limit : 0;
+}
+
+/**
+ * The period end of a subscription in words that match its state: only a live, renewing
+ * subscription "renews"; a cancelling one "ends"; a finished one "ended".
+ */
+export function formatPeriodEnd(subscription: {
+  status: string;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+}) {
+  if (!subscription.currentPeriodEnd) return "no period end";
+
+  const date = formatDate(subscription.currentPeriodEnd);
+
+  if (subscription.status === "CANCELED" || subscription.status === "INACTIVE") {
+    return `ended ${date}`;
+  }
+
+  return subscription.cancelAtPeriodEnd ? `ends ${date}` : `renews ${date}`;
+}

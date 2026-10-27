@@ -41,6 +41,15 @@ export function niceMax(value: number) {
   return step * magnitude;
 }
 
+/**
+ * How many grid bands split `0..max` into whole-number steps: four where they divide evenly,
+ * else five, two or one. A count axis split in four at a max of 1 or 2 printed "0, 0, 1, 1, 1".
+ * `max` is a `niceMax` result (1, 2 or 5 times a power of ten), so one of these always fits.
+ */
+export function gridSteps(max: number) {
+  return [4, 5, 2, 1].find((steps) => Number.isInteger(max / steps)) ?? 1;
+}
+
 /** Maps a series onto pixel coordinates inside `width` x `height`. */
 export function toPoints(values: number[], width: number, height: number, scale: Scale): Point[] {
   if (values.length === 0) return [];

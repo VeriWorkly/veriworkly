@@ -140,7 +140,14 @@ export default async function AdminPage({
   );
   const hasUnknownQueue = openQueues.some((item) => overview.actionQueue[item.key] === null);
 
-  const commissionInWindow = series.commissionCents.reduce((sum, value) => sum + value, 0);
+  // USD only, reversed rows left out, all time. The daily series adds every currency's cents and
+  // counts reversed commissions, so it is neither the amount nor its trend: the card has no line.
+  const commissionEarnedUsd = affiliates
+    ? (["PENDING", "AVAILABLE", "PAID"] as const).reduce(
+        (sum, status) => sum + (affiliates.commissionsByStatus[status]?.amountCents ?? 0),
+        0,
+      )
+    : null;
 
   return (
     // Section gap is deliberately double the gap inside a grid row (24px vs 12px), so the page
@@ -276,16 +283,13 @@ export default async function AdminPage({
         />
 
         <MetricCard
-          label={`Commission earned · ${days}d`}
-          value={formatCents(commissionInWindow)}
-          delta={trendFromSeries(series.commissionCents)}
+          label="Commission earned · USD, all time"
+          value={commissionEarnedUsd === null ? UNAVAILABLE : formatCents(commissionEarnedUsd)}
           hint={
             affiliates
-              ? `${formatCents(affiliates.wallets.pendingCents + affiliates.wallets.availableCents)} owed to affiliates`
+              ? `${formatCents(affiliates.wallets.pendingCents + affiliates.wallets.availableCents)} owed to affiliates${affiliates.commissionsAwaitingConversion > 0 ? ` · ${formatNumber(affiliates.commissionsAwaitingConversion)} in other currencies` : ""}`
               : `Amount owed to affiliates ${UNAVAILABLE.toLowerCase()}`
           }
-          trend={series.commissionCents}
-          series={4}
           href="/admin/affiliates"
         />
       </section>
@@ -407,9 +411,13 @@ export default async function AdminPage({
         />
 
         <AdminStatCard
-          label="Active API keys"
+          label="Enabled API keys"
           value={apiKeys ? formatNumber(apiKeys.active) : UNAVAILABLE}
-          hint={apiKeys ? `${formatNumber(apiKeys.usedLast7Days)} used in 7 days` : undefined}
+          hint={
+            apiKeys
+              ? `${formatNumber(apiKeys.usedLast7Days)} used in 7 days · expired ones included`
+              : undefined
+          }
           href="/admin/api-keys"
         />
       </section>
@@ -623,7 +631,7 @@ export default async function AdminPage({
               activity.signups.slice(0, 6).map((signup) => (
                 <li key={signup.id}>
                   <Link
-                    href={`/admin/users/${signup.id}`}
+                    href={`/admin/users/${encodeURIComponent(signup.id)}`}
                     className="hover:bg-admin-inset flex items-center justify-between gap-3 px-4 py-2.5 transition"
                   >
                     <span className="min-w-0">
@@ -665,7 +673,7 @@ export default async function AdminPage({
               activity.publications.slice(0, 6).map((publication) => (
                 <li key={publication.id}>
                   <Link
-                    href={`/admin/portfolios/${publication.id}`}
+                    href={`/admin/portfolios/${encodeURIComponent(publication.id)}`}
                     className="hover:bg-admin-inset flex items-center justify-between gap-3 px-4 py-2.5 transition"
                   >
                     <span className="min-w-0">

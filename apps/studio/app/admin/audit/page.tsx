@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import AdminListPage from "@/components/admin/AdminListPage";
+import { adminAuditTargetHref, formatAuditMetadata } from "@/components/admin/AdminAuditList";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
 
 import {
@@ -10,6 +12,7 @@ import {
 import type { AdminAuditEntry } from "@/features/admin/types/admin-types";
 import { formatDateTime, humanizeKey, truncate } from "@/features/admin/utils/admin-format";
 import {
+  auditRangeBound,
   toSingleValueParams,
   type AdminSearchParams,
 } from "@/features/admin/utils/admin-search-params";
@@ -33,12 +36,22 @@ const columns: Array<AdminTableColumn<AdminAuditEntry>> = [
   {
     key: "target",
     header: "Target",
-    render: (entry) => (
-      <div className="min-w-0">
-        <p className="text-foreground text-sm">{entry.targetType}</p>
-        <p className="text-muted truncate font-mono text-xs">{entry.targetId ?? "—"}</p>
-      </div>
-    ),
+    render: (entry) => {
+      const href = adminAuditTargetHref(entry);
+
+      return (
+        <div className="min-w-0">
+          {href ? (
+            <Link href={href} className="text-foreground text-sm hover:underline">
+              {entry.targetType}
+            </Link>
+          ) : (
+            <p className="text-foreground text-sm">{entry.targetType}</p>
+          )}
+          <p className="text-muted truncate font-mono text-xs">{entry.targetId ?? "—"}</p>
+        </div>
+      );
+    },
   },
   {
     key: "actor",
@@ -51,6 +64,17 @@ const columns: Array<AdminTableColumn<AdminAuditEntry>> = [
     hideOnMobile: true,
     className: "max-w-sm",
     render: (entry) => <span className="text-muted text-xs">{truncate(entry.reason, 90)}</span>,
+  },
+  {
+    key: "details",
+    header: "Details",
+    hideOnMobile: true,
+    className: "max-w-sm",
+    render: (entry) => (
+      <span className="text-muted font-mono text-[11px] break-words">
+        {formatAuditMetadata(entry.metadata) || "—"}
+      </span>
+    ),
   },
   {
     key: "when",
@@ -72,7 +96,11 @@ export default async function AdminAuditPage({
 
   const [filters, data] = await Promise.all([
     fetchAdminAuditFilters(),
-    fetchAdminAuditEntries(params),
+    fetchAdminAuditEntries({
+      ...params,
+      from: auditRangeBound(params.from, "start"),
+      to: auditRangeBound(params.to, "end"),
+    }),
   ]);
 
   // Filter options come from the server so the dropdown lists exactly the actions and target
@@ -113,7 +141,16 @@ export default async function AdminAuditPage({
       params={params}
       searchPlaceholder="Action, target id, or reason text"
       filters={selects}
+      dateFilters={[
+        { name: "from", label: "From (UTC)" },
+        { name: "to", label: "To (UTC)" },
+      ]}
       page={data}
+      caption={
+        params.targetId
+          ? `Actions on ${params.targetType ?? "record"} ${params.targetId}.`
+          : undefined
+      }
       columns={columns}
       rowKey={(entry) => entry.id}
       emptyMessage="No audit entries match these filters."

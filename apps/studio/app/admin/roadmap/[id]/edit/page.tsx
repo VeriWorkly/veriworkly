@@ -1,7 +1,7 @@
 import Panel from "@/components/admin/Panel";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import AdminRecordGone from "@/components/admin/AdminRecordGone";
 
 import { Badge, Button } from "@veriworkly/ui";
 
@@ -33,7 +33,15 @@ export default async function AdminRoadmapEditPage({
   const feature = await fetchAdminRoadmapFeatureServer(id);
 
   if (!feature) {
-    notFound();
+    return (
+      <AdminRecordGone
+        noun="roadmap item"
+        targetType="RoadmapFeature"
+        targetId={id}
+        backHref="/admin/roadmap"
+        backLabel="Back to the roadmap"
+      />
+    );
   }
 
   return (

@@ -62,7 +62,7 @@ const columns: Array<AdminTableColumn<AdminAffiliateRow>> = [
     render: (row) => (
       <div className="min-w-0">
         <Link
-          href={`/admin/affiliates/${row.id}`}
+          href={`/admin/affiliates/${encodeURIComponent(row.id)}`}
           className="text-foreground font-medium hover:underline"
         >
           {row.name || row.email}

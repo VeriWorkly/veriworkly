@@ -43,7 +43,12 @@ const columns: Array<AdminTableColumn<AdminWebhookRow>> = [
     header: "Event",
     render: (row) => (
       <div className="min-w-0">
-        <p className="text-foreground truncate font-medium">{row.type}</p>
+        <Link
+          href={`/admin/billing/webhooks/${encodeURIComponent(row.id)}`}
+          className="text-foreground block truncate font-medium hover:underline"
+        >
+          {row.type}
+        </Link>
         <p className="text-muted truncate font-mono text-xs">{row.providerEventId}</p>
       </div>
     ),

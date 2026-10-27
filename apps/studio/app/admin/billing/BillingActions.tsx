@@ -20,7 +20,10 @@ import { useAdminAccount, type AdminAccountLookup } from "@/features/admin/utils
 
 import type { SubscriptionStatus } from "@/features/admin/types/admin-types";
 
+import { useServerDraft } from "@/features/admin/utils/use-server-draft";
+
 import { parseCreditAmount } from "./credit-amount";
+import { parseEntitlementEnd } from "./entitlement-end";
 
 /**
  * Support's controls for one subscription (`adminBillingService.updateSubscription`).
@@ -44,7 +47,7 @@ export function SubscriptionActions({
   /** Kept as a billing record after the account was deleted; the server refuses every edit. */
   deleted: boolean;
 }) {
-  const [nextStatus, setNextStatus] = useState<SubscriptionStatus>(status);
+  const [nextStatus, setNextStatus] = useServerDraft<SubscriptionStatus>(status);
 
   if (deleted) return <span className="text-muted text-xs">Read-only</span>;
 
@@ -161,7 +164,7 @@ export function CreditAdjustmentForm() {
       />
 
       {!parsed.ok && (
-        <p id="credit-adjustment-error" role="alert" className="text-xs text-red-600">
+        <p id="credit-adjustment-error" role="alert" className="text-destructive text-xs">
           {parsed.message}
         </p>
       )}
@@ -195,6 +198,7 @@ export function EntitlementGrantForm() {
   const [key, setKey] = useState<AdminEntitlementKey>(ADMIN_ENTITLEMENT_KEYS[0]);
   const [endsAt, setEndsAt] = useState("");
   const account = useAdminAccount(userId);
+  const end = parseEntitlementEnd(endsAt);
 
   return (
     <div className="space-y-3">
@@ -227,19 +231,25 @@ export function EntitlementGrantForm() {
         value={endsAt}
         onChange={(event) => setEndsAt(event.target.value)}
       />
+      {!end.ok ? (
+        <p role="alert" className="text-destructive text-xs">
+          {end.message}
+        </p>
+      ) : null}
 
       <AdminActionDialog
         trigger="Grant entitlement"
         triggerVariant="primary"
-        disabled={account.state !== "found"}
+        disabled={account.state !== "found" || !end.ok}
         title="Grant an entitlement"
-        description={`Granting "${key}" to ${account.state === "found" ? account.email : "this account"}${endsAt ? ` until ${endsAt}` : " with no expiry"}.`}
+        description={`Granting "${key}" to ${account.state === "found" ? account.email : "this account"}${endsAt ? ` until the end of ${endsAt}, your time` : " with no expiry"}.`}
         confirmLabel="Grant"
         onConfirm={async (reason) => {
+          if (!end.ok) throw new Error(end.message);
           await grantAdminEntitlement({
             userId: userId.trim(),
             key,
-            endsAt: endsAt ? new Date(`${endsAt}T23:59:59.000Z`).toISOString() : null,
+            endsAt: end.endsAt,
             reason,
           });
 

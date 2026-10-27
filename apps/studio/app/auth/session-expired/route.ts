@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { SESSION_COOKIE_NAMES } from "@/lib/auth-redirect";
+import { getSafeAuthCallback, SESSION_COOKIE_NAMES } from "@/lib/auth-redirect";
 import { serverFetch } from "@/lib/server-fetch";
 import { isCorsRejection } from "@/lib/server-fetch-core";
 
@@ -50,7 +50,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  const expired = NextResponse.redirect(new URL("/login?session=expired", request.url));
+  // Where the user was headed (`?callbackURL=`), so signing in again returns them there.
+  const login = new URL("/login?session=expired", request.url);
+  const callback = getSafeAuthCallback(request.nextUrl.searchParams.get("callbackURL"), "");
+  if (callback) login.searchParams.set("callbackURL", callback);
+
+  const expired = NextResponse.redirect(login);
 
   for (const name of SESSION_COOKIE_NAMES) {
     expired.headers.append("Set-Cookie", expiredCookie(name));

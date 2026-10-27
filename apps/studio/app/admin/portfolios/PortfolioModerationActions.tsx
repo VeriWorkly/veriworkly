@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Select } from "@veriworkly/ui";
@@ -12,11 +11,20 @@ import {
 } from "@/features/admin/services/admin-actions";
 
 import type { PublicationStatus } from "@/features/admin/types/admin-types";
+import { useServerDraft } from "@/features/admin/utils/use-server-draft";
+
+/**
+ * The server's `PREMIUM_PORTFOLIO_TEMPLATE_IDS`. GRACE is the courtesy window after a premium
+ * plan lapses; the server refuses it for a free template (Signal, Atelier), which has nothing
+ * to lapse.
+ */
+const PREMIUM_PORTFOLIO_TEMPLATES = new Set(["nimbus", "cipher"]);
 
 interface PortfolioModerationActionsProps {
   publicationId: string;
   subdomain: string;
   status: PublicationStatus;
+  templateId: string;
   /** Hides the hard-takedown control on the compact list rows. */
   compact?: boolean;
 }
@@ -30,10 +38,12 @@ const PortfolioModerationActions = ({
   publicationId,
   subdomain,
   status,
+  templateId,
   compact = false,
 }: PortfolioModerationActionsProps) => {
   const router = useRouter();
-  const [nextStatus, setNextStatus] = useState<PublicationStatus>(status);
+  const [nextStatus, setNextStatus] = useServerDraft<PublicationStatus>(status);
+  const offersGrace = PREMIUM_PORTFOLIO_TEMPLATES.has(templateId) || status === "GRACE";
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -44,7 +54,7 @@ const PortfolioModerationActions = ({
         onChange={(event) => setNextStatus(event.target.value as PublicationStatus)}
       >
         <option value="LIVE">Live</option>
-        <option value="GRACE">Grace</option>
+        {offersGrace ? <option value="GRACE">Grace</option> : null}
         <option value="SUSPENDED">Suspended</option>
       </Select>
 

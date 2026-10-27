@@ -23,6 +23,9 @@ import type {
  * and ambassador reviews take an optional one, which may be blank but not shorter than three.
  */
 
+/** A record id inside a request path; an id with `/` or `?` must not change the route. */
+const segment = encodeURIComponent;
+
 function adminRequest<T>(path: string, method: string, body?: unknown) {
   return fetchApiData<T>(`/admin${path}`, {
     method,
@@ -43,23 +46,22 @@ export interface AdminUserUpdatePayload {
 
 /** The email of the account a pasted user id names, for a confirmation to show. */
 export async function fetchAdminAccountEmail(id: string) {
-  const detail = await adminRequest<{ user: { email: string } }>(
-    `/users/${encodeURIComponent(id)}`,
-    "GET",
-  );
+  const detail = await adminRequest<{ user: { email: string } }>(`/users/${segment(id)}`, "GET");
   return detail.user.email;
 }
 
 export function updateAdminUser(id: string, payload: AdminUserUpdatePayload) {
-  return adminRequest<AdminUserRow>(`/users/${id}`, "PATCH", payload);
+  return adminRequest<AdminUserRow>(`/users/${segment(id)}`, "PATCH", payload);
 }
 
 export function revokeAdminUserSessions(id: string, reason: string) {
-  return adminRequest<{ revoked: number }>(`/users/${id}/revoke-sessions`, "POST", { reason });
+  return adminRequest<{ revoked: number }>(`/users/${segment(id)}/revoke-sessions`, "POST", {
+    reason,
+  });
 }
 
 export function deleteAdminUser(id: string, confirmEmail: string, reason: string) {
-  return adminRequest<{ id: string; email: string }>(`/users/${id}`, "DELETE", {
+  return adminRequest<{ id: string; email: string }>(`/users/${segment(id)}`, "DELETE", {
     confirmEmail,
     reason,
   });
@@ -75,7 +77,7 @@ export function updateAdminAffiliate(
     reason?: string;
   },
 ) {
-  return adminRequest(`/affiliates/${userId}`, "PATCH", payload);
+  return adminRequest(`/affiliates/${segment(userId)}`, "PATCH", payload);
 }
 
 export function createAdminCommission(payload: {
@@ -85,6 +87,10 @@ export function createAdminCommission(payload: {
   subscriptionId?: string;
   status?: "PENDING" | "AVAILABLE";
   reason?: string;
+  /** ISO 4217 code of `purchaseAmountCents`; the server assumes USD. */
+  currency?: string;
+  /** Converting: the pending non-USD commission this USD one replaces (marked REVERSED with it). */
+  convertedFromId?: string;
 }) {
   return adminRequest<AdminCommissionRow>("/affiliates/commissions", "POST", payload);
 }
@@ -94,7 +100,7 @@ export function updateAdminCommission(
   status: "AVAILABLE" | "REVERSED",
   reason?: string,
 ) {
-  return adminRequest<AdminCommissionRow>(`/affiliates/commissions/${id}`, "PATCH", {
+  return adminRequest<AdminCommissionRow>(`/affiliates/commissions/${segment(id)}`, "PATCH", {
     status,
     reason,
   });
@@ -105,7 +111,7 @@ export function updateAdminWithdrawal(
   status: "APPROVED" | "REJECTED" | "PAID",
   payoutNote?: string,
 ) {
-  return adminRequest<AdminWithdrawalRow>(`/affiliates/withdrawals/${id}`, "PATCH", {
+  return adminRequest<AdminWithdrawalRow>(`/affiliates/withdrawals/${segment(id)}`, "PATCH", {
     status,
     payoutNote,
   });
@@ -118,7 +124,10 @@ export function reviewAdminAmbassadorApplication(
   action: "APPROVE" | "REJECT",
   reviewNote?: string,
 ) {
-  return adminRequest<AdminAmbassadorRow>(`/ambassadors/${id}`, "PATCH", { action, reviewNote });
+  return adminRequest<AdminAmbassadorRow>(`/ambassadors/${segment(id)}`, "PATCH", {
+    action,
+    reviewNote,
+  });
 }
 
 /* ── Portfolios ───────────────────────────────────────────────────────────────────── */
@@ -128,11 +137,13 @@ export function updateAdminPortfolioStatus(
   status: "LIVE" | "GRACE" | "SUSPENDED",
   reason: string,
 ) {
-  return adminRequest<AdminPortfolioRow>(`/portfolios/${id}`, "PATCH", { status, reason });
+  return adminRequest<AdminPortfolioRow>(`/portfolios/${segment(id)}`, "PATCH", { status, reason });
 }
 
 export function unpublishAdminPortfolio(id: string, reason: string) {
-  return adminRequest<{ id: string; subdomain: string }>(`/portfolios/${id}`, "DELETE", { reason });
+  return adminRequest<{ id: string; subdomain: string }>(`/portfolios/${segment(id)}`, "DELETE", {
+    reason,
+  });
 }
 
 /* ── Documents & share links ──────────────────────────────────────────────────────── */
@@ -142,19 +153,24 @@ export function updateAdminDocumentVisibility(
   visibility: "PRIVATE" | "UNLISTED",
   reason: string,
 ) {
-  return adminRequest<AdminDocumentRow>(`/documents/${id}`, "PATCH", { visibility, reason });
+  return adminRequest<AdminDocumentRow>(`/documents/${segment(id)}`, "PATCH", {
+    visibility,
+    reason,
+  });
 }
 
 export function deleteAdminDocument(id: string, reason: string) {
-  return adminRequest<AdminDocumentRow>(`/documents/${id}`, "DELETE", { reason });
+  return adminRequest<AdminDocumentRow>(`/documents/${segment(id)}`, "DELETE", { reason });
 }
 
 export function restoreAdminDocument(id: string, reason: string) {
-  return adminRequest<AdminDocumentRow>(`/documents/${id}/restore`, "POST", { reason });
+  return adminRequest<AdminDocumentRow>(`/documents/${segment(id)}/restore`, "POST", { reason });
 }
 
 export function revokeAdminShareLink(id: string, reason: string) {
-  return adminRequest<{ id: string; slug: string }>(`/share-links/${id}`, "DELETE", { reason });
+  return adminRequest<{ id: string; slug: string }>(`/share-links/${segment(id)}`, "DELETE", {
+    reason,
+  });
 }
 
 /* ── Billing ──────────────────────────────────────────────────────────────────────── */
@@ -169,7 +185,11 @@ export function updateAdminSubscription(
     reason: string;
   },
 ) {
-  return adminRequest<AdminSubscriptionRow>(`/billing/subscriptions/${id}`, "PATCH", payload);
+  return adminRequest<AdminSubscriptionRow>(
+    `/billing/subscriptions/${segment(id)}`,
+    "PATCH",
+    payload,
+  );
 }
 
 /**
@@ -211,12 +231,14 @@ export function grantAdminEntitlement(payload: {
 }
 
 export function revokeAdminEntitlement(id: string, reason: string) {
-  return adminRequest<AdminEntitlementRow>(`/billing/entitlements/${id}`, "DELETE", { reason });
+  return adminRequest<AdminEntitlementRow>(`/billing/entitlements/${segment(id)}`, "DELETE", {
+    reason,
+  });
 }
 
 export function replayAdminWebhook(id: string, reason: string) {
   return adminRequest<{ id: string; providerEventId: string; duplicate: boolean }>(
-    `/billing/webhooks/${id}/replay`,
+    `/billing/webhooks/${segment(id)}/replay`,
     "POST",
     { reason },
   );
@@ -228,11 +250,11 @@ export function updateAdminApiKey(
   id: string,
   payload: { isActive?: boolean; rateLimit?: number; reason: string },
 ) {
-  return adminRequest<AdminApiKeyRow>(`/api-keys/${id}`, "PATCH", payload);
+  return adminRequest<AdminApiKeyRow>(`/api-keys/${segment(id)}`, "PATCH", payload);
 }
 
 export function revokeAdminApiKey(id: string, reason: string) {
-  return adminRequest<AdminApiKeyRow>(`/api-keys/${id}`, "DELETE", { reason });
+  return adminRequest<AdminApiKeyRow>(`/api-keys/${segment(id)}`, "DELETE", { reason });
 }
 
 /* ── System ───────────────────────────────────────────────────────────────────────── */
@@ -263,5 +285,3 @@ export function flushAdminCache(prefix: AdminCachePrefix, reason: string) {
     reason,
   });
 }
-
-/* ── Roadmap & changelog ──────────────────────────────────────────────────────────── */

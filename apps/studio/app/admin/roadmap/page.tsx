@@ -9,7 +9,12 @@ import type { ChartSeries } from "@/components/admin/charts/ChartDefs";
 import { chartColor } from "@/components/admin/charts/ChartDefs";
 
 import type { RoadmapStatus } from "@/features/roadmap/services/roadmap-backend";
-import { fetchAdminRoadmapServer } from "@/features/admin/services/admin-server";
+import { fetchAdminRoadmapColumn } from "@/features/admin/services/admin-server";
+import { formatNumber, lastPageOffset } from "@/features/admin/utils/admin-format";
+import {
+  toSingleValueParams,
+  type AdminSearchParams,
+} from "@/features/admin/utils/admin-search-params";
 
 import DeleteRoadmapButton from "@/app/admin/roadmap/components/DeleteRoadmapButton";
 
@@ -26,18 +31,33 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const AdminRoadmapPage = async () => {
-  const items = await fetchAdminRoadmapServer();
+const STATUSES: RoadmapStatus[] = ["todo", "in-progress", "done"];
 
-  const grouped: Record<RoadmapStatus, typeof items> = {
-    todo: [],
-    "in-progress": [],
-    done: [],
-  };
+/** A column's offset from the URL (`?todo=20`); each column pages on its own. */
+function columnOffset(value: string | undefined) {
+  const offset = Number(value);
+  return Number.isInteger(offset) && offset > 0 ? offset : 0;
+}
 
-  items.forEach((item) => {
-    if (grouped[item.status]) grouped[item.status].push(item);
-  });
+function columnHref(params: Record<string, string>, status: RoadmapStatus, offset: number) {
+  const search = new URLSearchParams(params);
+
+  if (offset > 0) search.set(status, String(offset));
+  else search.delete(status);
+
+  const query = search.toString();
+  return query ? `/admin/roadmap?${query}` : "/admin/roadmap";
+}
+
+const AdminRoadmapPage = async ({ searchParams }: { searchParams: Promise<AdminSearchParams> }) => {
+  const params = toSingleValueParams(await searchParams);
+
+  const pages = await Promise.all(
+    STATUSES.map((status) => fetchAdminRoadmapColumn(status, columnOffset(params[status]))),
+  );
+  const grouped = Object.fromEntries(
+    STATUSES.map((status, index) => [status, pages[index]]),
+  ) as Record<RoadmapStatus, (typeof pages)[number]>;
 
   return (
     <div className="space-y-5">
@@ -56,8 +76,16 @@ const AdminRoadmapPage = async () => {
       />
 
       <section className="grid gap-3 lg:grid-cols-3">
-        {(Object.keys(grouped) as RoadmapStatus[]).map((status) => {
+        {STATUSES.map((status) => {
           const column = statusConfig[status];
+          const page = grouped[status];
+          const hasPrevious = page.offset > 0;
+          const hasNext = page.offset + page.items.length < page.total;
+          // Past the end (a stale link after deletions), "Previous" goes to the last real page.
+          const previousOffset =
+            page.items.length === 0
+              ? lastPageOffset(page.total, page.limit)
+              : Math.max(0, page.offset - page.limit);
 
           return (
             <div key={status} className="flex flex-col gap-2.5">
@@ -72,17 +100,17 @@ const AdminRoadmapPage = async () => {
                   <h2 className="admin-label text-foreground">{column.label}</h2>
                 </div>
 
-                <span className="text-muted admin-numeric text-xs">{grouped[status].length}</span>
+                <span className="text-muted admin-numeric text-xs">{formatNumber(page.total)}</span>
               </div>
 
               <div className="border-border bg-admin-inset min-h-96 flex-1 rounded-xl border border-dashed p-2">
-                {grouped[status].length === 0 ? (
+                {page.items.length === 0 ? (
                   <div className="flex h-32 items-center justify-center">
                     <p className="text-muted text-xs">Nothing in this column.</p>
                   </div>
                 ) : (
                   <ul className="flex flex-col gap-2">
-                    {grouped[status].map((item) => (
+                    {page.items.map((item) => (
                       <li
                         key={item.id}
                         className="group border-border bg-card rounded-lg border p-3 transition hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
@@ -117,7 +145,9 @@ const AdminRoadmapPage = async () => {
 
                         <div className="border-border mt-2.5 flex items-center justify-end gap-1 border-t pt-2">
                           <Button size="sm" asChild variant="ghost" className="h-7 text-xs">
-                            <Link href={`/admin/roadmap/${item.id}/edit`}>Edit</Link>
+                            <Link href={`/admin/roadmap/${encodeURIComponent(item.id)}/edit`}>
+                              Edit
+                            </Link>
                           </Button>
 
                           <DeleteRoadmapButton id={item.id} title={item.title} />
@@ -127,6 +157,38 @@ const AdminRoadmapPage = async () => {
                   </ul>
                 )}
               </div>
+
+              {hasPrevious || hasNext ? (
+                <nav
+                  aria-label={`${column.label} pages`}
+                  className="text-muted admin-numeric flex items-center justify-between px-1 text-xs"
+                >
+                  <span>
+                    {page.items.length > 0
+                      ? `${page.offset + 1}–${page.offset + page.items.length} of ${formatNumber(page.total)}`
+                      : `Past the end of ${formatNumber(page.total)}`}
+                  </span>
+
+                  <span className="flex gap-3">
+                    {hasPrevious ? (
+                      <Link
+                        href={columnHref(params, status, previousOffset)}
+                        className="text-accent font-medium"
+                      >
+                        Previous
+                      </Link>
+                    ) : null}
+                    {hasNext ? (
+                      <Link
+                        href={columnHref(params, status, page.offset + page.limit)}
+                        className="text-accent font-medium"
+                      >
+                        Next
+                      </Link>
+                    ) : null}
+                  </span>
+                </nav>
+              ) : null}
             </div>
           );
         })}

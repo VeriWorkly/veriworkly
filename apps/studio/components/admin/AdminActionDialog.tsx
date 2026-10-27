@@ -8,6 +8,7 @@ import { Button, Input, Modal, TextArea } from "@veriworkly/ui";
 import type { ButtonVariant } from "@veriworkly/ui";
 
 import { isAdminReasonValid } from "@/components/admin/admin-reason";
+import { createRequestId } from "@/features/ai/ai-api";
 
 interface AdminActionDialogProps {
   /** Label on the button that opens the dialog. */
@@ -128,7 +129,8 @@ const AdminActionDialog = ({
         className={triggerClassName}
         disabled={disabled}
         onClick={() => {
-          setAttemptKey(crypto.randomUUID());
+          // Not `crypto.randomUUID`: it does not exist on a plain-HTTP origin (LAN, self-host).
+          setAttemptKey(createRequestId());
           setOpen(true);
         }}
       >
