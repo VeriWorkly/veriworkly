@@ -530,15 +530,16 @@ describe("review: payouts never mark a commission paid with a claw-back's money"
     const withdrawalId = requested.body.data.id as string;
     // Refunded while its money sits in the withdrawal: a 4,000 claw-back.
     await deliver(refundEvent(first.data.payment_id, { amount: 200_000 }));
-    const second = packPayment(buyer.id, 150_000);
+    // Large enough to repay the whole claw-back: a payout is refused while any is owed (V-321).
+    const second = packPayment(buyer.id, 250_000);
     await deliver(second);
     await AffiliateService.updateCommission(
       (await commissionFor(second.data.payment_id)).id,
       "AVAILABLE",
     );
     expect(await affiliateWallet(affiliate.id)).toMatchObject({
-      availableCents: 0,
-      clawbackCents: 1_000,
+      availableCents: 1_000,
+      clawbackCents: 0,
     });
 
     await AffiliateService.updateWithdrawal(withdrawalId, "APPROVED");

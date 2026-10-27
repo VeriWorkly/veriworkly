@@ -30,6 +30,28 @@ async function requireActiveAffiliate(tx: Prisma.TransactionClient, userId: stri
     );
 }
 
+/**
+ * A withdrawal is not approved while the balance left after its reservation cannot cover what the
+ * affiliate owes back (V-321): a commission reversed after the balance was reserved left its
+ * whole amount as a claw-back, and approving would send that money out. A request that was
+ * already netted (`requestWithdrawal`) leaves enough behind and is approved as usual. Rejecting
+ * (which returns the reservation and repays the claw-back first) stays open. Marking an approved
+ * withdrawal PAID is never refused for this: the money has already been sent by hand, and the
+ * claw-back stays owed, netted against later credits and requests. Read with the wallet row
+ * locked, so a reversal that commits first wins.
+ */
+async function refuseApprovalOverClawback(tx: Prisma.TransactionClient, userId: string) {
+  const [wallet] = await tx.$queryRaw<Array<{ availableCents: number; clawbackCents: number }>>`
+    SELECT "availableCents", "clawbackCents" FROM "AffiliateWallet"
+    WHERE "userId" = ${userId} FOR UPDATE`;
+  if (wallet && wallet.clawbackCents > wallet.availableCents)
+    throw new ApiError(
+      409,
+      "This affiliate owes a claw-back from a refunded commission that the rest of the balance does not cover. Reject this withdrawal so the reserved balance repays it, then the affiliate can request the rest.",
+      { code: "AFFILIATE_CLAWBACK_OUTSTANDING", clawbackCents: wallet.clawbackCents },
+    );
+}
+
 export async function requestWithdrawal(userId: string, amountCents: number) {
   let result;
   try {
@@ -41,11 +63,13 @@ export async function requestWithdrawal(userId: string, amountCents: number) {
       });
       if (active) throw new ApiError(409, WITHDRAWAL_IN_PROGRESS);
 
-      const reserved = await tx.affiliateWallet.updateMany({
-        where: { userId, availableCents: { gte: amountCents } },
-        data: { availableCents: { decrement: amountCents } },
-      });
-      if (reserved.count === 0) throw new ApiError(400, "Available balance is too low.");
+      // Money the affiliate owes back (`clawbackCents`, V-321) is netted against the available
+      // balance: only what is left after the debt can be reserved, in one conditional write.
+      const reserved = await tx.$executeRaw`
+        UPDATE "AffiliateWallet"
+        SET "availableCents" = "availableCents" - ${amountCents}, "updatedAt" = now()
+        WHERE "userId" = ${userId} AND "availableCents" - "clawbackCents" >= ${amountCents}`;
+      if (reserved === 0) throw new ApiError(400, "Available balance is too low.");
 
       // `currency` defaults to USD: the wallet this draws from is a USD balance.
       return tx.affiliateWithdrawal.create({ data: { userId, amountCents } });
@@ -118,6 +142,10 @@ export async function updateWithdrawal(
         throw new ApiError(409, "Approve the withdrawal before marking it paid.");
       throw new ApiError(409, "Withdrawal is already approved.");
     }
+
+    // After the write above locked the withdrawal row: the same order the REJECTED path takes
+    // (withdrawal, then wallet), so a concurrent approval and rejection cannot deadlock.
+    if (status === "APPROVED") await refuseApprovalOverClawback(tx, withdrawal.userId);
 
     if (status === "REJECTED" || status === "PAID") {
       // Credits need no balance guard, but a missing wallet row must roll the transition back
