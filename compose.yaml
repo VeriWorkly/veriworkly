@@ -90,7 +90,7 @@ services:
       # Auth OTP & Admin
       AUTH_OTP_TTL_SECONDS: ${AUTH_OTP_TTL_SECONDS:-300}
       AUTH_OTP_ALLOWED_ATTEMPTS: ${AUTH_OTP_ALLOWED_ATTEMPTS:-3}
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL is required (the operator account email)}
 
       # Email / SMTP. "console" writes OTP codes into the logs and is refused in production.
       AUTH_EMAIL_PROVIDER: ${AUTH_EMAIL_PROVIDER:-resend}
@@ -132,7 +132,6 @@ services:
       DODO_PAYMENTS_CHECKOUT_RETURN_URL: ${DODO_PAYMENTS_CHECKOUT_RETURN_URL:?DODO_PAYMENTS_CHECKOUT_RETURN_URL is required (public https URL)}
       DODO_PAYMENTS_CHECKOUT_CANCEL_URL: ${DODO_PAYMENTS_CHECKOUT_CANCEL_URL:?DODO_PAYMENTS_CHECKOUT_CANCEL_URL is required (public https URL)}
       DODO_PAYMENTS_PORTAL_RETURN_URL: ${DODO_PAYMENTS_PORTAL_RETURN_URL:?DODO_PAYMENTS_PORTAL_RETURN_URL is required (public https URL)}
-      DODO_PAYMENTS_PORTFOLIO_PRO_SEVEN_DAY_PRODUCT_ID: ${DODO_PAYMENTS_PORTFOLIO_PRO_SEVEN_DAY_PRODUCT_ID}
       DODO_PAYMENTS_PORTFOLIO_PRO_MONTHLY_PRODUCT_ID: ${DODO_PAYMENTS_PORTFOLIO_PRO_MONTHLY_PRODUCT_ID}
       DODO_PAYMENTS_PORTFOLIO_PRO_ANNUAL_PRODUCT_ID: ${DODO_PAYMENTS_PORTFOLIO_PRO_ANNUAL_PRODUCT_ID}
       DODO_PAYMENTS_BUNDLE_ONE_DAY_PRODUCT_ID: ${DODO_PAYMENTS_BUNDLE_ONE_DAY_PRODUCT_ID}
@@ -168,6 +167,81 @@ services:
       # Internal server-to-server keys (x-internal-key); optional, 32+ chars in production
       STATS_INTERNAL_KEY: ${STATS_INTERNAL_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+
+      # Everything else the server reads (V-347). A bare key passes the variable from the shell
+      # or the root .env when it is set and leaves it unset otherwise, so the server default
+      # applies. tests/config/compose-api-env.test.ts keeps this list complete.
+      # Sign-in providers: without these, Google, GitHub and LinkedIn sign-in are off.
+      GOOGLE_CLIENT_ID:
+      GOOGLE_CLIENT_SECRET:
+      GITHUB_CLIENT_ID:
+      GITHUB_CLIENT_SECRET:
+      LINKEDIN_CLIENT_ID:
+      LINKEDIN_CLIENT_SECRET:
+      # Programs: keep equal to the web service flags above.
+      AFFILIATE_PROGRAM_ENABLED:
+      AMBASSADOR_PROGRAM_ENABLED:
+      AFFILIATE_ATTRIBUTION_DAYS:
+      # Site cache revalidation (changelog and roadmap pages).
+      SITE_REVALIDATE_SECRET:
+      # Process model, logging and Redis/Postgres tuning.
+      CLUSTERING_ENABLED:
+      CRON_ROLE:
+      LOG_LEVEL:
+      MAX_MEMORY_ENTRIES:
+      AUTH_IP_ADDRESS_HEADERS:
+      REDIS_BOOT_TIMEOUT_MS:
+      REDIS_COMMAND_TIMEOUT_MS:
+      DB_POOL_MAX:
+      DB_POOL_IDLE_TIMEOUT_MS:
+      DB_POOL_CONNECTION_TIMEOUT_MS:
+      DB_POOL_STATEMENT_TIMEOUT_MS:
+      # Rate limits.
+      GLOBAL_RATE_LIMIT_WINDOW_MS:
+      GLOBAL_RATE_LIMIT_MAX_REQUESTS:
+      AUTH_RATE_LIMIT_WINDOW_MS:
+      AUTH_RATE_LIMIT_MAX_REQUESTS:
+      AI_RATE_LIMIT_WINDOW_MS:
+      AI_RATE_LIMIT_MAX_REQUESTS:
+      RATE_LIMIT_REDIS_TIMEOUT_MS:
+      # AI and ATS.
+      AI_TIMEOUT_MS:
+      ATS_EXTRACT_MAX_RSS_MB:
+      # API keys.
+      API_KEY_AUTH_CACHE_TTL_SECONDS:
+      API_KEY_DEFAULT_LIFETIME_DAYS:
+      API_KEY_DEFAULT_RATE_LIMIT:
+      API_KEY_MAX_RATE_LIMIT:
+      API_KEY_DEFAULT_SCOPES:
+      API_KEY_LAST_USED_TOUCH_INTERVAL_SECONDS:
+      # Credit pack price overrides (cents).
+      CREDIT_PACK_250_PRICE_CENTS:
+      CREDIT_PACK_500_PRICE_CENTS:
+      CREDIT_PACK_1200_PRICE_CENTS:
+      # Changelog, roadmap and GitHub caches and sync.
+      CHANGELOG_RELEASE_SYNC_ENABLED:
+      CHANGELOG_RELEASE_SYNC_CRON:
+      CHANGELOG_RELEASE_SYNC_TIMEZONE:
+      CHANGELOG_RELEASE_SYNC_MIN_INTERVAL_SECONDS:
+      CHANGELOG_CACHE_TTL_SECONDS:
+      ROADMAP_CACHE_TTL_SECONDS:
+      ROADMAP_STATS_CACHE_TTL_SECONDS:
+      GITHUB_STATS_CACHE_TTL_SECONDS:
+      GITHUB_SYNC_TIMEZONE:
+      USAGE_METRICS_REDIS_RETENTION_DAYS:
+      # Data retention windows in days (0 turns a rule off); defaults are the owner decisions.
+      RETENTION_EXPIRED_SESSION_DAYS:
+      RETENTION_EXPIRED_VERIFICATION_DAYS:
+      RETENTION_WEBHOOK_PAYLOAD_DAYS:
+      RETENTION_AUDIT_LOG_DAYS:
+      RETENTION_ADMIN_AUDIT_DAYS:
+      RETENTION_ADMIN_MONEY_AUDIT_DAYS:
+      RETENTION_CREDIT_RESERVATION_DAYS:
+      RETENTION_CREDIT_REPLAY_DAYS:
+      RETENTION_FLUSH_BATCH_DAYS:
+      RETENTION_AFFILIATE_CLICK_DAYS:
+      RETENTION_PORTFOLIO_VIEW_DAYS:
+      RETENTION_DELETED_DOCUMENT_DAYS:
     depends_on:
       redis:
         condition: service_healthy
@@ -188,8 +262,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Graceful shutdown drains HTTP and running jobs for up to 20 s, and the cluster master
-    # force-kills workers at 35 s; Compose's default 10 s would SIGKILL a run mid-flush.
+    # Graceful shutdown drains HTTP for up to 25 s and running jobs for up to 20 s, and the
+    # cluster master force-kills workers at 35 s; Compose's default 10 s would SIGKILL a run
+    # mid-flush (SHUTDOWN_TIMINGS in apps/server/src/lib/shutdown.ts).
     stop_grace_period: 40s
     restart: unless-stopped
 
