@@ -60,26 +60,27 @@ expire rather than renew. Nothing converts from free to paid on its own.
 
 ### 5. Job Hunter Bundle, annual
 
-- **Price**: $11.99 / month ($143.88 billed annually)
+- **Price**: $143.88 / year, which is $11.99 / month (save 20%)
 - **Includes**:
-  - Everything in the monthly Job Hunter Bundle, with a 20% annual discount.
+  - Everything in the monthly Job Hunter Bundle.
   - Credits are granted 1,000 a month for 12 months, not all at once; unused credits do not
     roll over, the same as the monthly plan.
 
 ### 6. Creator Pro (portfolio only)
 
-- **Price**: $9.99 / month or $7.99 / month ($95.88 billed annually)
+- **Price**: $9.99 / month, or $95.88 / year, which is $7.99 / month (save 20%)
 - **Includes**: Premium portfolio templates (Nimbus, Cipher), multi-page portfolios, portfolio badge removal, visitor analytics, and SEO controls on your `username.veriworkly.com` subdomain (no AI credits). The subdomain itself is free on every plan.
 
 ### 7. AI Credits (writing only)
 
-- **Price**: $5.99 / month or $4.99 / month ($59.90 billed annually)
+- **Price**: $5.99 / month, or $59.88 / year, which is $4.99 / month (save 17%)
 - **Includes**: 1,000 AI writing credits/month for resume tailoring and rewriting (no Creator Pro portfolio features).
 
 ## Credit Packs (One-Time Top-Ups)
 
-- **250 AI Credits**: $2.99 (valid for 90 days)
-- **500 AI Credits**: $4.99 (valid for 90 days)
+- **250 extra credits**: $2.99 one time (valid for 90 days)
+- **500 extra credits**: $4.99 one time (valid for 90 days)
+- **1,200 extra credits**: $9.99 one time (valid for 90 days)
 
 ## AI Action Costs
 

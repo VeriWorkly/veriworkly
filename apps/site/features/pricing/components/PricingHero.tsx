@@ -5,6 +5,7 @@ import IntervalToggle from "./IntervalToggle";
 import CurrencyToggle from "./CurrencyToggle";
 import { useCurrency } from "../context/CurrencyContext";
 import { type ProductKey, type BillingInterval } from "../data/pricingData";
+import { PASS_PRICES, PLAN_PRICES, annualPerMonth, annualSavingsPercent } from "../data/offers";
 
 interface PricingHeroProps {
   bundleInterval: "monthly" | "annual";
@@ -28,13 +29,13 @@ const PricingHero = ({
   const bundlePrice =
     bundleInterval === "annual"
       ? {
-          amount: formatPrice(11.99),
+          amount: formatPrice(annualPerMonth("bundle")),
           cadence: "/ month",
-          note: `${formatPrice(143.88)} billed yearly`,
-          savings: "Save 20%",
+          note: `${formatPrice(PLAN_PRICES.bundle.annual)} billed yearly`,
+          savings: `Save ${annualSavingsPercent("bundle")}%`,
         }
       : {
-          amount: formatPrice(14.99),
+          amount: formatPrice(PLAN_PRICES.bundle.monthly),
           cadence: "/ month",
           note: "Billed monthly",
           savings: "Recommended",
@@ -96,7 +97,7 @@ const PricingHero = ({
           <PriceCard
             marker="03"
             title="3-Day Sprint Pass"
-            price={formatPrice(2.99)}
+            price={formatPrice(PASS_PRICES.one_day)}
             cadence="one-time purchase"
             description="A quick pass to publish your portfolio and tailor resumes for a specific application."
             features={[
@@ -113,7 +114,7 @@ const PricingHero = ({
           <PriceCard
             marker="07"
             title="7-Day Hunt Pass"
-            price={formatPrice(5.99)}
+            price={formatPrice(PASS_PRICES.seven_day)}
             cadence="one-time purchase"
             description="Runway to update your story, apply broadly, and publish with full confidence."
             features={[
@@ -145,7 +146,13 @@ const PricingHero = ({
             loading={loading === `bundle:${bundleInterval}`}
             disabled={paymentsBlocked || Boolean(loading && loading !== `bundle:${bundleInterval}`)}
             onCheckout={() => void onCheckout("bundle", bundleInterval)}
-            toggle={<IntervalToggle value={bundleInterval} onChange={setBundleInterval} />}
+            toggle={
+              <IntervalToggle
+                value={bundleInterval}
+                onChange={setBundleInterval}
+                savings={annualSavingsPercent("bundle")}
+              />
+            }
           />
         </div>
       </div>

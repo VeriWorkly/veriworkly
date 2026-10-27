@@ -21,7 +21,6 @@ export const customPlans = {
   portfolio_pro: {
     eyebrow: "Publish and grow",
     title: "Creator Pro",
-    price: "$9.99",
     description: "For builders who want a polished public portfolio without the AI bundle.",
     icon: Crown,
     features: [
@@ -34,7 +33,6 @@ export const customPlans = {
   ai_credits: {
     eyebrow: "Write with momentum",
     title: "AI Credits",
-    price: "$5.99",
     description: "For focused writing help across resumes, cover letters, and portfolio content.",
     icon: WandSparkles,
     features: [

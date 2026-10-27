@@ -268,7 +268,7 @@ export const faqs: FaqItem[] = [
     category: "billing",
     question: "What paid plans and passes are available?",
     answer:
-      "We offer the 3-Day Sprint Pass ($2.99 one-time) and 7-Day Hunt Pass ($5.99 one-time). For ongoing searches, we offer the Job Hunter Bundle ($14.99/month, or $11.99/month billed annually with 1,000 monthly AI credits), Creator Pro ($9.99/month, or $7.99/month billed annually), and AI Credits ($5.99/month).",
+      "We offer the 3-Day Sprint Pass ($2.99 one-time) and 7-Day Hunt Pass ($5.99 one-time). For ongoing searches, we offer the Job Hunter Bundle ($14.99/month, or $143.88/year, which is $11.99/month, with 1,000 monthly AI credits), Creator Pro ($9.99/month, or $95.88/year, which is $7.99/month), and AI Credits ($5.99/month, or $59.88/year, which is $4.99/month). For AI on its own there are one-time credit packs: 250 credits for $2.99, 500 for $4.99 and 1,200 for $9.99, each valid for 90 days.",
   },
   {
     id: "payment-security",
