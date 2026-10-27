@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../../src/config.js";
 
 import { corsMiddleware, isWildcardPortfolioOrigin } from "../../src/middleware/cors.js";
+import { errorHandler } from "../../src/middleware/errorHandler.js";
 
 describe("CORS wildcard portfolio origin detection", () => {
   const allowedOrigins = [
@@ -58,5 +59,28 @@ describe("CORS preflight", () => {
       .map((header) => header.trim().toLowerCase());
     expect(allowed).toContain("idempotency-key");
     expect(allowed).toContain("content-type");
+  });
+});
+
+describe("CORS rejection", () => {
+  it("keeps its message and carries a stable code the studio can match on (V-264)", async () => {
+    const app = express();
+    app.use(corsMiddleware);
+    app.get("/documents", (_req, res) => {
+      res.json({ ok: true });
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get("/documents")
+      .set("Origin", "https://not-allowed.example.com");
+
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({
+      success: false,
+      statusCode: 403,
+      message: "Not allowed by CORS",
+      details: { code: "CORS_REJECTED" },
+    });
   });
 });

@@ -31,7 +31,10 @@ export const corsMiddleware = cors((req, callback) => {
       if (config.allowedOrigins.includes(requestOrigin) || trustedPortfolioOrigin) {
         originCallback(null, true);
       } else {
-        originCallback(new ApiError(403, "Not allowed by CORS"));
+        // The code lets the studio tell a misconfigured ALLOWED_ORIGINS from a dead session's
+        // 403, so a config mistake does not sign every user out (V-264). Keep the message too:
+        // studios already deployed still match on it.
+        originCallback(new ApiError(403, "Not allowed by CORS", { code: "CORS_REJECTED" }));
       }
     },
     credentials: explicitlyAllowedOrigin,
