@@ -9,6 +9,7 @@ import { getRedis } from "#lib/redis";
 import { syncChangelogFromGitHubReleases } from "#services/changelog/index";
 import { syncGitHubStatsFromGitHub } from "#services/github/index";
 import { runGitHubSync } from "#jobs/githubSyncJob";
+import { beginDrain, resetShutdownSignalForTests } from "#lib/shutdown";
 
 import { STUDIO_ORIGIN } from "./env.js";
 
@@ -165,6 +166,66 @@ describe("GitHub issue sync lost lock", () => {
     fetchSpy.mockImplementation(async () => json({ message: "Not Found" }, 404));
     await expect(syncGitHubStatsFromGitHub()).rejects.toThrow(/GitHub API communication failed/);
     expect((await prisma.gitHubSync.findFirstOrThrow()).lastSyncStatus).toBe("error");
+  });
+});
+
+describe("GitHub issue sync and a worker that is shutting down (V-342)", () => {
+  it("stops between pages without writing an error over the sync row", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => json([issue(1)]));
+    await syncGitHubStatsFromGitHub();
+    const before = await prisma.gitHubSync.findFirstOrThrow();
+
+    // A full first page, so the sync asks for a second one; the drain starts meanwhile.
+    fetchSpy.mockImplementation(async () => {
+      beginDrain();
+      return json(Array.from({ length: 100 }, (_, index) => issue(index + 10)));
+    });
+    try {
+      await expect(syncGitHubStatsFromGitHub(true)).rejects.toMatchObject({ statusCode: 503 });
+    } finally {
+      resetShutdownSignalForTests();
+    }
+
+    const after = await prisma.gitHubSync.findFirstOrThrow();
+    expect(after.lastSyncStatus).toBe("ok");
+    expect(after.etag).toBe(before.etag);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("GitHub issue sync completion (V-338)", () => {
+  const closed = (id: number, extra: Record<string, unknown>) => ({
+    ...issue(id),
+    state: "closed",
+    ...extra,
+  });
+
+  it("does not count issues closed as not planned or pull requests closed unmerged as done", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () =>
+        json([
+          issue(1),
+          closed(2, { state_reason: "completed" }),
+          closed(3, { state_reason: "not_planned" }),
+          closed(4, { pull_request: { merged_at: null } }),
+          closed(5, { pull_request: { merged_at: "2026-01-02T00:00:00Z" } }),
+        ]),
+      );
+    await syncGitHubStatsFromGitHub(true);
+
+    const ids = async () =>
+      (await prisma.gitHubSyncItem.findMany({ orderBy: { number: "asc" } })).map(
+        (item) => item.number,
+      );
+    expect(await ids()).toEqual([1, 2, 5]);
+    const sync = await prisma.gitHubSync.findFirstOrThrow();
+    expect({ total: sync.issueCount, done: sync.doneCount }).toEqual({ total: 3, done: 2 });
+
+    // Closed as not planned later: an incremental sync drops the item it already stored.
+    fetchSpy.mockImplementation(async () => json([closed(1, { state_reason: "not_planned" })]));
+    await syncGitHubStatsFromGitHub(false);
+    expect(await ids()).toEqual([2, 5]);
   });
 });
 

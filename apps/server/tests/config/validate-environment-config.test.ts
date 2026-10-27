@@ -420,6 +420,16 @@ describe("validateEnvironmentConfig", () => {
       ]);
     });
 
+    it("V-318: checks the Redis timeouts, where 0 would make every Redis command time out", () => {
+      expect(
+        failingVariables({
+          ...devEnv,
+          REDIS_COMMAND_TIMEOUT_MS: "0",
+          REDIS_BOOT_TIMEOUT_MS: "15s",
+        }).sort(),
+      ).toEqual(["REDIS_BOOT_TIMEOUT_MS", "REDIS_COMMAND_TIMEOUT_MS"]);
+    });
+
     it.each(["development", "test", "production"])(
       "refuses a missing or blank ADMIN_EMAIL in %s",
       (nodeEnv) => {

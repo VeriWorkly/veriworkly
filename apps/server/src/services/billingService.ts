@@ -322,6 +322,18 @@ async function paymentFullyReversed(payment: {
   const reversed = await reversedSoFar(payment.providerPaymentId, "", payment.currency);
   return reversed > 0 && reversed >= payment.amountCents;
 }
+/** `paymentFullyReversed` for a payment known only by its id, priced from its stored event. */
+async function providerPaymentReversed(paymentId: string) {
+  const paid = await prisma.billingWebhookEvent.findFirst({
+    where: { providerPaymentId: paymentId, type: "payment.succeeded" },
+    select: { amountCents: true, currency: true },
+  });
+  return paymentFullyReversed({
+    providerPaymentId: paymentId,
+    amountCents: paid?.amountCents ?? null,
+    currency: paid?.currency ?? null,
+  });
+}
 const BILLING_SUMMARY_TTL_SECONDS = 60;
 const BILLING_HISTORY_TTL_SECONDS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -484,11 +496,45 @@ function parseCheckoutRecord(raw: string | null): CheckoutRecord | null {
 }
 
 /**
+ * The user's open credit-pack checkout sessions (V-278), apart from the one subscription or pass
+ * record: packs do not overlap, so several may be open at once. A hash of session id to
+ * `{ packKey, createdAt }`, kept for the provider's session lifetime from the newest one; an
+ * entry older than that can no longer be paid and is ignored (and dropped by `cancelCheckout`).
+ * A pack's `payment.succeeded` removes its session.
+ */
+function packCheckoutKey(userId: string) {
+  return `billing:checkout:packs:${userId}`;
+}
+
+type PackCheckoutRecord = { packKey: CreditPackKey; createdAt: string };
+
+/** The pack sessions that can still be paid, by session id, with the raw hash entries. */
+async function openPackCheckouts(userId: string) {
+  const entries = await getRedis().hGetAll(packCheckoutKey(userId));
+  const open: Array<{ sessionId: string; record: PackCheckoutRecord }> = [];
+  const stale: string[] = [];
+  for (const [sessionId, raw] of Object.entries(entries)) {
+    let record: PackCheckoutRecord | null = null;
+    try {
+      const parsed = JSON.parse(raw) as PackCheckoutRecord;
+      if (parsed && isCreditPackKey(parsed.packKey) && !Number.isNaN(Date.parse(parsed.createdAt)))
+        record = parsed;
+    } catch {
+      record = null;
+    }
+    if (record && Date.parse(record.createdAt) > Date.now() - CHECKOUT_RECORD_TTL_SECONDS * 1000)
+      open.push({ sessionId, record });
+    else stale.push(sessionId);
+  }
+  return { open, stale };
+}
+
+/**
  * Whether the user has a checkout session that can still be paid, or one being created right now
  * (V-238): account deletion refuses while one is, or the customer could delete the account and
  * then pay the open tab, leaving a charge with no account to reconcile it against. Reads the
- * legacy per-product keys too (`legacyCheckoutRecordKey`). Throws when Redis cannot answer, so a
- * caller fails closed.
+ * legacy per-product keys and the credit-pack sessions (V-278) too. Throws when Redis cannot
+ * answer, so a caller fails closed.
  */
 export async function hasOpenCheckout(userId: string): Promise<boolean> {
   const redis = getRedis();
@@ -497,7 +543,8 @@ export async function hasOpenCheckout(userId: string): Promise<boolean> {
     ...PRODUCT_KEYS.map((productKey) => legacyCheckoutRecordKey(userId, productKey)),
   ];
   const values = await redis.mGet(keys);
-  return values.some((raw) => parseCheckoutRecord(raw) !== null);
+  if (values.some((raw) => parseCheckoutRecord(raw) !== null)) return true;
+  return (await openPackCheckouts(userId)).open.length > 0;
 }
 
 /**
@@ -665,18 +712,62 @@ async function readPlanChangeReplay(
   return { ...replay, replayed: true };
 }
 
+/**
+ * Which way a plan change went, by catalog price per month (V-279): only an upgrade is charged
+ * the difference at once (owner decision 8); a downgrade's lower price starts at the renewal.
+ * Undefined when the interval changed or either price is unknown, so the email claims neither.
+ */
+function planChangeDirection(
+  from: { productKey: ProductKey; interval: CatalogInterval },
+  to: { productKey: ProductKey; interval: CatalogInterval },
+): "upgrade" | "downgrade" | undefined {
+  // A change of billing interval (monthly to annual, or back) is neither: a year paid up front
+  // is cheaper per month but is no downgrade, and what it cost depends on the proration.
+  if (from.interval !== to.interval) return undefined;
+  const perMonth = ({ productKey, interval }: typeof from) => {
+    const price = productCatalog[productKey].prices[interval];
+    if (price === undefined) return null;
+    return interval === "annual" ? price / 12 : price;
+  };
+  const before = perMonth(from);
+  const after = perMonth(to);
+  if (before === null || after === null) return undefined;
+  return after > before ? "upgrade" : "downgrade";
+}
+
 /** A refused plan change: 409 with `details.code`, the way the checkout overlaps answer. */
 function planChangeError(code: string, message: string) {
   return new ApiError(409, message, { code });
 }
 
+/**
+ * A failed provider call as the client sees it (V-280): a stable `details.code` and our own
+ * message. The provider's text (status, its response body, request ids, internal codes) goes to
+ * the log only.
+ */
+function providerFailure(
+  status: number,
+  message: string,
+  error: unknown,
+  context: Record<string, unknown> = {},
+) {
+  if (error instanceof ApiError) return error;
+  logger.warn("Billing provider call failed", {
+    ...context,
+    status,
+    error: error instanceof Error ? error.message : String(error),
+  });
+  return new ApiError(status, message, { code: "PROVIDER_UNAVAILABLE" });
+}
+
 /** A provider refusal: nothing was changed, and the caller may try again. */
 function providerPlanChangeError(error: unknown, what: string) {
-  if (error instanceof ApiError) return error;
-  return new ApiError(502, `The billing provider ${what}, so nothing was changed. Try again.`, {
-    code: "PROVIDER_UNAVAILABLE",
-    reason: error instanceof Error ? error.message : "provider unavailable",
-  });
+  return providerFailure(
+    502,
+    `The billing provider ${what}, so nothing was changed. Try again.`,
+    error,
+    { during: "plan change" },
+  );
 }
 
 /** `instanceof` against an SDK error class, safe where a test double of the SDK leaves it out. */
@@ -1850,15 +1941,46 @@ export class BillingService {
   }
 
   /**
-   * Forgets the user's open checkout sessions, but only those the provider confirms are not
-   * being paid. A session whose payment succeeded or is processing stays until its webhook
-   * settles it: dropping it would let a second session for the same product be opened and paid.
+   * Forgets the user's open checkout sessions, credit packs included (V-278), but only those the
+   * provider confirms are not being paid. A session whose payment succeeded or is processing stays
+   * until its webhook settles it: dropping it would let a second session for the same product be
+   * opened and paid, or the account be deleted under a payment about to land.
    */
   static async cancelCheckout(userId: string) {
     const redis = getRedis();
     const cleared: ProductKey[] = [];
-    const paying: ProductKey[] = [];
+    const paying: string[] = [];
+    // Credit packs are separate purchases: one still being paid is reported, never a reason to
+    // refuse clearing a subscription or pass session (V-278 review).
+    const packsCleared: CreditPackKey[] = [];
+    const packsProcessing: string[] = [];
     let preparing = false;
+
+    const askProvider = async (sessionId: string) => {
+      try {
+        return (await getDodoClient().checkoutSessions.retrieve(sessionId)).payment_status;
+      } catch (error) {
+        throw providerFailure(
+          503,
+          "Could not confirm the checkout with the billing provider. Try again in a moment.",
+          error,
+          { userId, sessionId },
+        );
+      }
+    };
+
+    // Credit-pack sessions (V-278): each one asked about on its own, the same rule as below.
+    const packs = await openPackCheckouts(userId);
+    if (packs.stale.length > 0) await redis.hDel(packCheckoutKey(userId), packs.stale);
+    for (const { sessionId, record } of packs.open) {
+      const paymentStatus = await askProvider(sessionId);
+      if (paymentStatus && PAYMENT_IN_FLIGHT_STATUSES.has(paymentStatus)) {
+        packsProcessing.push(creditPackCatalog[record.packKey].name);
+        continue;
+      }
+      await redis.hDel(packCheckoutKey(userId), sessionId);
+      packsCleared.push(record.packKey);
+    }
 
     // The user's record, then any per-product record left from before V-218.
     const keys = [
@@ -1879,21 +2001,10 @@ export class BillingService {
       const productKey = record.productKey ?? legacyProduct;
       if (!productKey) continue;
 
-      let paymentStatus: string | null | undefined;
-      try {
-        paymentStatus = (await getDodoClient().checkoutSessions.retrieve(record.sessionId))
-          .payment_status;
-      } catch (error) {
-        if (error instanceof ApiError) throw error;
-        throw new ApiError(
-          503,
-          "Could not confirm the checkout with the billing provider. Try again in a moment.",
-          { reason: error instanceof Error ? error.message : "provider unavailable" },
-        );
-      }
+      const paymentStatus = await askProvider(record.sessionId);
 
       if (paymentStatus && PAYMENT_IN_FLIGHT_STATUSES.has(paymentStatus)) {
-        paying.push(productKey);
+        paying.push(productCatalog[productKey].name);
         continue;
       }
 
@@ -1905,12 +2016,17 @@ export class BillingService {
     if (paying.length > 0)
       throw new ApiError(
         409,
-        `A payment for ${paying.map((key) => productCatalog[key].name).join(", ")} is still being processed. Wait for the confirmation before starting another checkout.`,
+        `A payment for ${paying.join(", ")} is still being processed. Wait for the confirmation before starting another checkout.`,
       );
     if (preparing && cleared.length === 0)
       throw new ApiError(409, "A checkout is still being prepared. Try again in a moment.");
 
-    return { success: true, cleared };
+    return {
+      success: true,
+      cleared: [...packsCleared, ...cleared],
+      // Pack payments still landing: kept, and they still block account deletion meanwhile.
+      ...(packsProcessing.length > 0 ? { stillProcessing: packsProcessing } : {}),
+    };
   }
 
   /**
@@ -2343,6 +2459,7 @@ export class BillingService {
         periodStart: input.periodStart,
         periodEnd: input.periodEnd,
         servicePeriodKnown: true,
+        isPaymentReversed: providerPaymentReversed,
       });
       if (schedule) await grantDueMonths(schedule.id);
       return;
@@ -2414,11 +2531,11 @@ export class BillingService {
         cancel_at_next_billing_date: cancelAtPeriodEnd,
       });
     } catch (error) {
-      if (error instanceof ApiError) throw error;
-      throw new ApiError(
+      throw providerFailure(
         502,
         "The billing provider did not confirm the change, so nothing was changed. Try again.",
-        { reason: error instanceof Error ? error.message : "provider unavailable" },
+        error,
+        { providerSubId },
       );
     }
 
@@ -2439,10 +2556,11 @@ export class BillingService {
     try {
       result = await getDodoClient().subscriptions.retrieve(providerSubId);
     } catch (error) {
-      throw new ApiError(
+      throw providerFailure(
         502,
         "The billing provider could not be asked about this subscription, so nothing was changed. Try again.",
-        { reason: error instanceof Error ? error.message : "provider unavailable" },
+        error,
+        { providerSubId },
       );
     }
 
@@ -2484,7 +2602,57 @@ export class BillingService {
     });
     if (!checkout.checkout_url)
       throw new ApiError(502, "Billing provider did not return a checkout URL.");
+
+    // Recorded before the URL is handed out (V-278): an open pack session blocks account deletion
+    // like any other checkout. Not recorded, the URL is not returned, so it is never paid.
+    try {
+      const record: PackCheckoutRecord = { packKey, createdAt: new Date().toISOString() };
+      await getRedis()
+        .multi()
+        .hSet(packCheckoutKey(userId), checkout.session_id, JSON.stringify(record))
+        .expire(packCheckoutKey(userId), CHECKOUT_RECORD_TTL_SECONDS)
+        .exec();
+    } catch (error) {
+      logger.warn("Could not record a credit-pack checkout session", {
+        userId,
+        packKey,
+        sessionId: checkout.session_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new ApiError(503, "Extra credit checkout is temporarily unavailable. Try again.");
+    }
+
     return { url: checkout.checkout_url };
+  }
+
+  /**
+   * A paid pack's checkout session is spent (V-278). The session the payment names; without one,
+   * every recorded session for that pack opened before the payment. Best effort: an entry left
+   * behind only blocks account deletion until `cancelCheckout` or its expiry clears it.
+   */
+  private static async settlePackCheckout(
+    userId: string,
+    packKey: CreditPackKey,
+    payment: { checkoutSessionId?: string | null; createdAt?: string | null },
+  ) {
+    try {
+      if (payment.checkoutSessionId) {
+        await getRedis().hDel(packCheckoutKey(userId), payment.checkoutSessionId);
+        return;
+      }
+      const paidAt = payment.createdAt ? Date.parse(payment.createdAt) : Date.now();
+      const { open } = await openPackCheckouts(userId);
+      const spent = open
+        .filter(
+          ({ record }) =>
+            record.packKey === packKey &&
+            Date.parse(record.createdAt) <= paidAt + CHECKOUT_SETTLE_CLOCK_SLACK_MS,
+        )
+        .map(({ sessionId }) => sessionId);
+      if (spent.length > 0) await getRedis().hDel(packCheckoutKey(userId), spent);
+    } catch (error) {
+      logger.warn("Failed to clear a settled credit-pack checkout", { userId, error });
+    }
   }
 
   /**
@@ -3134,6 +3302,10 @@ export class BillingService {
               fromBillingInterval(existing.interval),
             ),
             productName: purchaseName(productKey, rawInterval),
+            direction: planChangeDirection(
+              { productKey: existing.productKey, interval: fromBillingInterval(existing.interval) },
+              { productKey, interval: rawInterval },
+            ),
             amountCents:
               amountFromProvider ?? productCatalog[productKey].prices[rawInterval] ?? null,
             currency: (amountFromProvider !== null && subscription.currency) || "USD",
@@ -3273,6 +3445,10 @@ export class BillingService {
         sourceId: payment.payment_id,
         expiresAt,
         reason: pack.name,
+      });
+      await this.settlePackCheckout(userId, packKey, {
+        checkoutSessionId: payment.checkout_session_id,
+        createdAt: payment.created_at,
       });
       void notifyOnce("purchase_payment", payment.payment_id, userId, {
         template: "purchase_confirmation",
@@ -3437,6 +3613,7 @@ export class BillingService {
           periodStart: servicePeriod ? new Date(servicePeriod.starts_at) : paidAt,
           periodEnd: servicePeriod ? new Date(servicePeriod.ends_at) : periodEndGuess,
           servicePeriodKnown: Boolean(servicePeriod),
+          isPaymentReversed: providerPaymentReversed,
         });
         // Month one arrives with the payment, or with its period when that starts within a day
         // (a renewal charged just ahead of it); a period further out is the job's to start.

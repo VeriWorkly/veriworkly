@@ -136,6 +136,16 @@ async function resolveContext(userId: string | undefined, ip: string): Promise<Q
   };
 }
 
+/** The scan counter of a tier for this caller, the key `resolveContext` builds for that tier. */
+async function scanKeyForTier(
+  tier: AtsQuotaSummary["tier"],
+  userId: string | undefined,
+  ip: string,
+): Promise<string> {
+  if (tier === "subscriber" && userId) return (await paidPeriod(userId)).key;
+  return `ats:quota:${tier}:${userId ?? anonymousId(addressBucket(ip))}`;
+}
+
 /**
  * Builds the wire summary from an already-resolved context.
  *
@@ -248,10 +258,19 @@ export class AtsQuotaService {
    * runs before the outbound job-page fetch precisely so quota bounds server-initiated egress,
    * and refunding on a failed fetch would hand that budget straight back.
    */
-  static async refund(userId: string | undefined, ip: string) {
-    const ctx = await resolveContext(userId, ip);
-    await getRedis().eval(DECREMENT_SCRIPT, { keys: [ctx.key], arguments: [] });
-    return summarize(ctx);
+  static async refund(
+    userId: string | undefined,
+    ip: string,
+    /** What `consume` returned: the scan goes back to the counter of the tier it was taken from. */
+    spent: Pick<AtsQuotaSummary, "tier">,
+  ) {
+    // Not the tier the caller has now (V-326): it follows the live balance, so a subscriber whose
+    // credits are held by a concurrent reservation would be refunded on the free counter.
+    await getRedis().eval(DECREMENT_SCRIPT, {
+      keys: [await scanKeyForTier(spent.tier, userId, ip)],
+      arguments: [],
+    });
+    return summarize(await resolveContext(userId, ip));
   }
 
   /**

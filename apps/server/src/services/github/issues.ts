@@ -10,6 +10,7 @@ import { acquireJobLock, type JobLock } from "#lib/jobLock";
 import { recordJobSuccess } from "#lib/metrics";
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
 import { logger } from "#lib/logger";
+import { isDraining } from "#lib/shutdown";
 
 import { MAX_CACHED_OFFSET } from "#utils/pagination";
 
@@ -71,9 +72,23 @@ function classifyIssue(issue: GitHubIssuePayload): GitHubStatus {
 }
 
 /**
- * Convert raw GitHub issues into normalized snapshot format.
+ * Closed without the work being done (V-338): an issue closed as not planned (or as a
+ * duplicate), or a pull request closed without merging. Neither is done nor still to do, so it is
+ * left off the board and out of the public completion rate, which counted it as done.
  */
-function buildGitHubIssuesSnapshot(issues: GitHubIssuePayload[]) {
+function closedUndone(issue: GitHubIssuePayload): boolean {
+  if (issue.state !== "closed") return false;
+  if (issue.pull_request) return !issue.pull_request.merged_at;
+  return issue.state_reason === "not_planned" || issue.state_reason === "duplicate";
+}
+
+/**
+ * Convert raw GitHub issues into normalized snapshot format. `dropped` are the GitHub ids of
+ * fetched items `closedUndone` leaves out, so a sync can remove ones it stored earlier.
+ */
+function buildGitHubIssuesSnapshot(fetched: GitHubIssuePayload[]) {
+  const issues = fetched.filter((issue) => !closedUndone(issue));
+  const dropped = fetched.filter(closedUndone).map((issue) => String(issue.id));
   const snapshots = issues.map<GitHubItemSnapshot>((issue) => ({
     id: `gh-${issue.id}`,
     number: issue.number,
@@ -88,6 +103,7 @@ function buildGitHubIssuesSnapshot(issues: GitHubIssuePayload[]) {
 
   return {
     issues: snapshots,
+    dropped,
     todoIssues: snapshots.filter((item) => item.status === "todo"),
     inProgressIssues: snapshots.filter((item) => item.status === "in-progress"),
     doneIssues: snapshots.filter((item) => item.status === "done"),
@@ -400,6 +416,13 @@ export async function syncGitHubStatsFromGitHub(
   // real failure: losing the lock must not write an error over the other runner's result.
   let lostLockError: ApiError | null = null;
   const ensureStillOwner = async () => {
+    // A worker that is shutting down stops between pages too (V-342), before the job drain ends
+    // and its connections close under the sync. Not a failure of the sync: the row is left as it
+    // was, and the next run starts again from the same cursor.
+    if (isDraining()) {
+      lostLockError = new ApiError(503, "GitHub sync stopped: the server is shutting down");
+      throw lostLockError;
+    }
     if (!(await lock.stillOwner())) {
       lostLockError = new ApiError(
         409,
@@ -565,7 +588,15 @@ export async function syncGitHubStatsFromGitHub(
           );
         }
 
-        // 4. If full sync, reconcile deleted items
+        // 4. Items closed as not planned, or PRs closed unmerged, since an earlier sync stored them
+        //    (V-338): an incremental fetch returns them, so they are removed here too.
+        if (snapshot.dropped.length > 0) {
+          await tx.gitHubSyncItem.deleteMany({
+            where: { syncId: sync.id, githubId: { in: snapshot.dropped } },
+          });
+        }
+
+        // 5. If full sync, reconcile deleted items
         if (!sinceDate) {
           const fetchedGithubIds = snapshot.issues.map((i) => i.id.replace("gh-", ""));
           await tx.gitHubSyncItem.deleteMany({
@@ -634,7 +665,9 @@ export async function syncGitHubStatsFromGitHub(
     return syncRecord;
   } catch (error) {
     if (error === lostLockError) {
-      logger.debug("GitHub issue sync stopped: lock lost to another runner; sync row left as is");
+      logger.debug(
+        "GitHub issue sync stopped (lock lost, or the worker is shutting down); sync row left as is",
+      );
     } else {
       await recordSyncFailure(error);
     }

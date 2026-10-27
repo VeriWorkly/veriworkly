@@ -4114,7 +4114,12 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Cancel In-Flight Checkout
-      description: Releases the Redis lock created by `POST /billing/checkout`, allowing a new checkout to be started. Session-authenticated only.
+      description: |
+        Forgets the open checkout sessions created by `POST /billing/checkout` and
+        `POST /billing/credits/checkout`, allowing a new checkout to be started (and an account with
+        no other open session to be deleted). Each session is checked with the billing provider
+        first: one whose payment succeeded or is processing stays until its webhook settles it.
+        Session-authenticated only.
       responses:
         "200":
           description: Checkout cancelled successfully
@@ -4124,6 +4129,18 @@ paths:
                 $ref: "#/components/schemas/CancelCheckoutResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "409":
+          description: The subscription or pass session's payment is still processing, or a checkout is still being prepared. A credit pack still being paid does not cause this; it is reported in `stillProcessing`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodedErrorResponse"
   /api/v1/billing/portal:
     post:
       tags:
@@ -4170,8 +4187,10 @@ paths:
       summary: Create Extra Credit Pack Checkout
       description: |
         Creates a one-time Dodo Payments checkout session for an extra AI credit pack, on top of any
-        subscription. Session-authenticated only; blocked for non-admins in production during the
-        current rollout phase.
+        subscription. While the session can still be paid (24 hours, or until its payment lands or
+        `POST /billing/checkout/cancel` clears it), the account cannot be deleted.
+        Session-authenticated only; blocked for non-admins in production during the current rollout
+        phase.
       requestBody:
         required: true
         content:
@@ -8906,7 +8925,14 @@ components:
             type: string
         status:
           type: string
-          description: Subscription status (e.g. ACTIVE, TRIALING, INACTIVE).
+          enum:
+            - INACTIVE
+            - ACTIVE
+            - PAST_DUE
+            - CANCELED
+          description: |
+            Status of the subscription in effect today. `INACTIVE` when none is (no plan, or one that
+            has ended); `PAST_DUE` while a failed renewal's grace runs. There are no trials.
         interval:
           type: string
           nullable: true
@@ -9128,6 +9154,18 @@ components:
           properties:
             success:
               type: boolean
+            cleared:
+              type: array
+              description: The products (`productKey`) and credit packs (`packKey`) whose open sessions were cleared.
+              items:
+                type: string
+            stillProcessing:
+              type: array
+              description: Present when a credit pack's payment is still processing. Those sessions are kept (and still block account deletion) until the payment lands; they never stop the rest from being cleared.
+              items:
+                type: string
+              example:
+                - 500 extra credits
     BillingPortalResponse:
       type: object
       required:
@@ -9659,9 +9697,39 @@ components:
             additionalProperties: true
         withdrawals:
           type: array
+          description: The 25 most recent withdrawals, newest first.
           items:
             type: object
-            additionalProperties: true
+            properties:
+              id:
+                type: string
+              amountCents:
+                type: integer
+              currency:
+                type: string
+                example: USD
+              status:
+                type: string
+                enum:
+                  - REQUESTED
+                  - APPROVED
+                  - REJECTED
+                  - PAID
+              payoutNote:
+                type: string
+                nullable: true
+                description: Visible to the affiliate. The note the admin writes when approving, rejecting or paying the withdrawal (the payout reference, or the reason for a rejection), shown on the affiliate's payouts page as written.
+              reviewedAt:
+                type: string
+                format: date-time
+                nullable: true
+              paidAt:
+                type: string
+                format: date-time
+                nullable: true
+              createdAt:
+                type: string
+                format: date-time
         wallet:
           type: object
           properties:

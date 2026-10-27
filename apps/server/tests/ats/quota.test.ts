@@ -281,3 +281,33 @@ describe("ATS quota when Redis answers late", () => {
     expect((await AtsQuotaService.summary(undefined, "203.0.113.8")).used).toBe(1);
   });
 });
+
+/**
+ * V-326: a refund decrements the counter the scan was taken from. The tier is chosen by the
+ * wallet's current balance, so re-deriving the key at refund time could land on another counter.
+ */
+describe("ATS quota refunds the counter the scan was spent on", () => {
+  beforeEach(() => {
+    store.clear();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-25T12:00:00Z"));
+    findActiveGrant.mockResolvedValue(null);
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it("returns a subscriber's scan even when their balance is held by a reservation by then", async () => {
+    const { AtsQuotaService } = await import("../../src/services/ats/quota.js");
+    getWallet.mockResolvedValue({ available: 10 });
+    const spent = await AtsQuotaService.consume("racer", "203.0.113.70");
+    expect(spent.tier).toBe("subscriber");
+    expect(store.get("ats:quota:subscriber:racer:2026-10")).toBe(1);
+
+    // A concurrent analysis reserved the credits: the caller now reads as free.
+    getWallet.mockResolvedValue({ available: 0 });
+    await AtsQuotaService.refund("racer", "203.0.113.70", spent);
+
+    expect(store.get("ats:quota:subscriber:racer:2026-10")).toBe(0);
+    expect(store.get("ats:quota:free:racer") ?? 0).toBe(0);
+  });
+});

@@ -1,5 +1,6 @@
 import { auth } from "#auth/index";
 
+import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { revokeSessionCaches } from "#utils/authCache";
@@ -38,10 +39,10 @@ export async function revokeAllSessionsForUser(userId: string): Promise<number> 
   const context = await auth.$context;
 
   await context.internalAdapter.deleteSessions(tokens);
-  // better-auth's secondary storage logs and swallows Redis errors, so its deletes above can
-  // fail silently. Strict (V-259): its per-token entries and the active-sessions index are
-  // deleted again here, with our own cache, and anything Redis does not confirm throws, so a
-  // caller never reports a revocation that did not happen.
+  // better-auth's secondary-storage delete is strict since V-315, so a Redis failure above already
+  // throws. `deleteSessions` leaves the `active-sessions-{userId}` index behind, so it and the
+  // per-token entries are deleted here with our own cache (V-259), and anything Redis does not
+  // confirm throws: a caller never reports a revocation that did not happen.
   await revokeSessionCaches(tokens, {
     strict: true,
     extraKeys: [...tokens, `active-sessions-${userId}`],
@@ -51,18 +52,20 @@ export async function revokeAllSessionsForUser(userId: string): Promise<number> 
 }
 
 /**
- * Same as revokeAllSessionsForUser, but tolerates failure. Used on paths where the primary
- * action (deleting a user) must not be blocked by a cache-eviction problem — the rows are gone
- * from Postgres via cascade either way, so the worst case is a stale Redis entry rather than a
- * failed delete.
+ * The revocation account deletion runs before its cascade (V-315 review). Strict, like the admin
+ * "revoke sessions": the cascade removes the Session rows, after which nothing can find the
+ * tokens again, so a token left in Redis would keep authenticating a deleted account for up to
+ * the session lifetime (30 days). When Redis cannot confirm the deletes the deletion stops here
+ * with a 503, the account intact, and the user or admin retries.
  */
-export async function revokeAllSessionsForUserSafely(userId: string): Promise<void> {
+export async function revokeSessionsBeforeAccountDeletion(userId: string): Promise<void> {
   try {
     await revokeAllSessionsForUser(userId);
   } catch (error) {
-    logger.error("Failed to revoke sessions during user teardown", {
+    logger.error("Could not revoke sessions before an account deletion", {
       userId,
       error: error instanceof Error ? error.message : String(error),
     });
+    throw new ApiError(503, "Account deletion is temporarily unavailable. Try again shortly.");
   }
 }

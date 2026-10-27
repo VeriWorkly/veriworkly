@@ -18,6 +18,7 @@ import { isShuttingDown } from "#lib/shutdown";
 import { publicAtsPolicy } from "#services/ats/aiPolicy";
 import { AtsJobFetchService } from "#services/ats/jobFetch";
 import { AtsQuotaService } from "#services/ats/quota";
+import type { AtsQuotaSummary } from "#services/ats/types";
 import { AtsScoringService } from "#services/ats/scoring";
 import { AtsRepairService, type RepairOutcome } from "#services/ats/repair";
 import { CreditService, replayFingerprint } from "#services/creditService";
@@ -66,9 +67,14 @@ async function requireAnalysisCredits(userId: string, online: boolean, repair: b
 }
 
 /** A refund from an error path must not replace the error it follows. */
-async function refundScanQuietly(userId: string, address: string, requestId: string) {
+async function refundScanQuietly(
+  userId: string,
+  address: string,
+  requestId: string,
+  spent: Pick<AtsQuotaSummary, "tier">,
+) {
   try {
-    await AtsQuotaService.refund(userId, address);
+    await AtsQuotaService.refund(userId, address, spent);
   } catch (error) {
     logger.error("ATS scan refund failed", {
       requestId,
@@ -144,18 +150,22 @@ export class AtsAiController {
             jobDescription = await AtsJobFetchService.fetch(input.jobUrl, signal);
           } catch (error) {
             // Cut off by a restart, not by the page: the scan goes back (V-313 review).
-            if (isShuttingDown()) await refundScanQuietly(user.id, ip(req), input.requestId);
+            if (isShuttingDown()) await refundScanQuietly(user.id, ip(req), input.requestId, quota);
             throw error;
           }
         }
 
         // From here on a failure is ours, not the caller's, so the scan goes back. The job
         // fetch above is deliberately outside this: refunding a failed fetch would make
-        // fetching free. Once a page was fetched the scan also stays spent on a 402 (the wallet
-        // changed under the check above and the fetch was made on the strength of it, V-035),
-        // and on the client leaving or the deadline passing (V-241): refunding those made a job
-        // fetch free to anyone who disconnected after it, or whose page was slow. With no fetch
-        // behind it, any failure cost the server nothing and the scan is returned.
+        // fetching free. Once a page was fetched the scan also stays spent on any 402: the
+        // wallet changed under the check above (V-035), or the page routed to a dearer bucket
+        // than the check can price, which it only prices at its cheapest (V-327). The second is
+        // not the caller's fault, but refunding it would make the fetch free and repeatable: the
+        // same long posting gets the same 402 every time, and each attempt would make the server
+        // fetch it again for nothing. The scan also stays spent on the client leaving or the
+        // deadline passing (V-241): refunding those made a job fetch free to anyone who
+        // disconnected after it, or whose page was slow. With no fetch behind it, any failure
+        // cost the server nothing and the scan is returned.
         try {
           // Gone during the fetch: nothing is reserved for a client that is not there.
           if (signal.aborted) throw aiTimeoutError();
@@ -183,7 +193,7 @@ export class AtsAiController {
             (signal.aborted ||
               (error instanceof ApiError &&
                 (error.statusCode === 402 || error.statusCode === 504)));
-          if (!scanSpent) await refundScanQuietly(user.id, ip(req), input.requestId);
+          if (!scanSpent) await refundScanQuietly(user.id, ip(req), input.requestId, quota);
           throw error;
         }
       });
@@ -339,7 +349,7 @@ export class AtsAiController {
 
     return {
       ...delivered,
-      quota: routed ? quota : await AtsQuotaService.refund(userId, ip(req)),
+      quota: routed ? quota : await AtsQuotaService.refund(userId, ip(req), quota),
     };
   }
 

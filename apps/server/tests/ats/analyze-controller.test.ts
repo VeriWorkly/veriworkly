@@ -242,7 +242,11 @@ describe("POST /ats/analyze — quota gates outbound egress", () => {
       vi.fn(),
     );
 
-    expect(refund).toHaveBeenCalledWith("user-1", "203.0.113.9");
+    expect(refund).toHaveBeenCalledWith(
+      "user-1",
+      "203.0.113.9",
+      expect.objectContaining({ tier: "free" }),
+    );
     expect(json.mock.calls[0][0].data).toMatchObject({
       aiStatus: "unavailable",
       quota: { remaining: 2 },
@@ -301,13 +305,31 @@ describe("POST /ats/analyze — the balance gate comes before the fetch", () => 
     expect(fetchJobPage).not.toHaveBeenCalled();
   });
 
-  it("keeps the scan spent when the reservation itself answers 402 after the page was fetched", async () => {
+  it("keeps the scan spent when the reservation answers 402 because the wallet changed after the fetch", async () => {
     analyze.mockRejectedValue(new ApiError(402, "Not enough AI credits."));
+    // Enough at the gate; spent elsewhere by the time the analysis reserved.
+    getWallet.mockResolvedValueOnce({ available: 100 }).mockResolvedValue({ available: 3 });
     const next = vi.fn() as unknown as NextFunction;
 
     await AtsAiController.analyze(requestFor(baseBody), responseSpy().res, next);
 
     expect(fetchJobPage).toHaveBeenCalledTimes(1);
+    expect(refund).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 402 }));
+  });
+
+  it("V-327: keeps the scan spent on a 402 from a dearer bucket too, so a fetch is never free to repeat", async () => {
+    analyze.mockRejectedValue(new ApiError(402, "Not enough AI credits."));
+    // Covers the online minimum (10) but not the bucket a long posting routed to (up to 50), and
+    // the wallet did not change. Refunding would let the same request fetch the page forever.
+    getWallet.mockResolvedValue({ available: 30 });
+    const next = vi.fn() as unknown as NextFunction;
+
+    await AtsAiController.analyze(requestFor(baseBody), responseSpy().res, next);
+    await AtsAiController.analyze(requestFor(baseBody), responseSpy().res, next);
+
+    expect(fetchJobPage).toHaveBeenCalledTimes(2);
+    expect(consume).toHaveBeenCalledTimes(2);
     expect(refund).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 402 }));
   });

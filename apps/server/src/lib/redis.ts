@@ -245,6 +245,22 @@ export async function cacheSet<T>(
   }
 }
 
+/**
+ * `cacheSet` for a cache-aside read: writes only when the key is empty (`SET NX`), so a slow read
+ * never replaces the value a write stored after the read loaded its row.
+ */
+export async function cacheSetIfAbsent<T>(
+  key: string,
+  value: T,
+  expirationSeconds: number = 3600,
+): Promise<void> {
+  try {
+    await getRedis().set(key, JSON.stringify(value), { NX: true, EX: expirationSeconds });
+  } catch (error) {
+    logger.error("Cache set error", error);
+  }
+}
+
 export async function cacheDel(key: string): Promise<void> {
   try {
     const redis = getRedis();

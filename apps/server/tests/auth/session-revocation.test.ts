@@ -46,7 +46,8 @@ vi.mock("#auth/index", () => ({
 // revocation path deletes is the key the request path reads. Mocking it made the suite pass
 // while the two hashed different strings and revoked sessions stayed authenticated.
 const { getSessionCacheKey } = await import("#utils/authCache");
-const { revokeAllSessionsForUser, revokeAllSessionsForUserSafely } = await import("#auth/sessions");
+const { revokeAllSessionsForUser, revokeSessionsBeforeAccountDeletion } =
+  await import("#auth/sessions");
 
 /** The cookie a browser actually sends: better-call's `encodeURIComponent(token.base64(HMAC))`. */
 function signedCookie(token: string, name = "veriworkly-auth.session_token") {
@@ -109,18 +110,22 @@ describe("revokeAllSessionsForUser", () => {
     expect(execMock).not.toHaveBeenCalled();
   });
 
-  it("swallows failures in the safe variant so account deletion is never blocked", async () => {
+  it("stops an account deletion with a 503 when the revocation fails (V-315 review)", async () => {
     findManyMock.mockRejectedValue(new Error("redis down"));
 
-    await expect(revokeAllSessionsForUserSafely("user-1")).resolves.toBeUndefined();
+    await expect(revokeSessionsBeforeAccountDeletion("user-1")).rejects.toMatchObject({
+      statusCode: 503,
+    });
   });
 
-  it("fails when Redis does not confirm the deletes, though better-auth swallowed its own (V-259)", async () => {
+  it("fails when Redis does not confirm the deletes (V-259)", async () => {
     findManyMock.mockResolvedValue([{ token: "token-a" }]);
     execMock.mockRejectedValue(new Error("Redis client not ready"));
 
     await expect(revokeAllSessionsForUser("user-1")).rejects.toThrow("Redis client not ready");
-    await expect(revokeAllSessionsForUserSafely("user-1")).resolves.toBeUndefined();
+    await expect(revokeSessionsBeforeAccountDeletion("user-1")).rejects.toMatchObject({
+      statusCode: 503,
+    });
   });
 
   it("propagates failures in the strict variant so an admin sees a failed revocation", async () => {

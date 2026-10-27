@@ -303,8 +303,11 @@ const DEFAULT_BRANCHES = new Set(["master", "main"]);
 
 /**
  * Which pull requests shipped in which release. A PR a release's notes name belongs to that
- * release; every other merged PR belongs to the first release published after it merged.
- * "Sync dev from master" PRs only move code that already shipped, so they are left out.
+ * release; every other PR merged into the default branch belongs to the first release published
+ * after it merged. A PR merged into any other branch (a long-lived feature branch) is only placed
+ * when notes name it (V-339): it shipped when its branch reached the default branch, which its
+ * own merge date says nothing about. "Sync dev from master" PRs only move code that already
+ * shipped, so they are left out.
  */
 export function assignPullRequestsToReleases(
   releases: Array<{ id: string; publishedAt: string; listed: number[] }>,
@@ -325,7 +328,9 @@ export function assignPullRequestsToReleases(
     const merged = Date.parse(pr.mergedAt);
     const id =
       listedBy.get(pr.number) ??
-      ordered.find((release) => Date.parse(release.publishedAt) >= merged)?.id;
+      (DEFAULT_BRANCHES.has(pr.baseRef)
+        ? ordered.find((release) => Date.parse(release.publishedAt) >= merged)?.id
+        : undefined);
 
     if (id)
       assigned
@@ -336,6 +341,21 @@ export function assignPullRequestsToReleases(
   for (const refs of assigned.values()) refs.sort((x, y) => y.number - x.number);
 
   return assigned;
+}
+
+/**
+ * A release's stored PRs without the ones another release's notes now name (V-339). Stored lists
+ * are otherwise only ever unioned, so a PR the merge-date guess gave to an earlier release stayed
+ * there for good once the release that shipped it listed it too. A PR this release names itself
+ * stays.
+ */
+export function pruneReassignedPullRequests<T extends { number: number }>(
+  stored: T[],
+  listed: { listedHere: ReadonlySet<number>; listedElsewhere: ReadonlySet<number> },
+): T[] {
+  return stored.filter(
+    (ref) => listed.listedHere.has(ref.number) || !listed.listedElsewhere.has(ref.number),
+  );
 }
 
 type StoredReleaseFields = Pick<

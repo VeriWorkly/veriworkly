@@ -36,7 +36,24 @@ export function abortInFlightWork() {
   if (!controller.signal.aborted) controller.abort(new Error("The server is restarting."));
 }
 
+let draining = false;
+
+/**
+ * Marks the worker as draining, at the very start of the drain (V-342). Long background jobs
+ * (retention, the GitHub and changelog syncs) check it between batches and pages and stop
+ * cleanly, so they are not cut off mid-statement when the pools close at the job drain cap.
+ */
+export function beginDrain() {
+  draining = true;
+}
+
+/** True from the start of the drain, before in-flight requests are aborted. */
+export function isDraining(): boolean {
+  return draining || isShuttingDown();
+}
+
 /** Integration tests only: a worker never comes back from a drain. */
 export function resetShutdownSignalForTests() {
   controller = new AbortController();
+  draining = false;
 }

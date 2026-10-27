@@ -1,7 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
+import { detectResumeFormat } from "@veriworkly/ats-engine/node";
 
 import { AtsQuotaService } from "#services/ats/quota";
-import { AtsResumeExtractService } from "#services/ats/resumeExtract";
+
+import { AtsResumeExtractService, UNSUPPORTED_RESUME_FORMAT } from "#services/ats/resumeExtract";
 import { createSuccessResponse, ApiError } from "#lib/errors";
 import { getRequestIpDetails } from "#utils/requestIp";
 
@@ -19,6 +21,10 @@ export class AtsExtractController {
   static async extract(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.file) throw new ApiError(400, "Provide a resume file.");
+      // A type the server cannot read at all is refused before an upload is spent (V-328), as
+      // `/ats/check` validates before it meters. The service checks it again for its other callers.
+      if (!detectResumeFormat(req.file.originalname, req.file.mimetype))
+        throw new ApiError(400, UNSUPPORTED_RESUME_FORMAT);
 
       const quota = await AtsQuotaService.consumeExtract(req.authUser?.id, ip(req));
       // `layout` carries the page geometry measured during parsing. The client echoes it back

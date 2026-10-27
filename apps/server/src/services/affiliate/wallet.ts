@@ -15,9 +15,10 @@ const WITHDRAWAL_IN_PROGRESS = "A withdrawal is already in progress";
 
 /**
  * Only an ACTIVE affiliate's money moves out (V-204, studio S-092): a SUSPENDED (for example
- * fraud-flagged) or PENDING affiliate can neither request a withdrawal nor have one approved or
- * paid. Rejecting one, which returns the money to the wallet, stays open. Read with the user row
- * locked inside the transaction that moves the money, so a suspension that commits first wins.
+ * fraud-flagged) or PENDING affiliate can neither request a withdrawal nor have one approved.
+ * Rejecting one (the money goes back to the wallet) stays open, and so does recording an approved
+ * one PAID, whose money has already been sent (V-325). Read with the user row locked inside the
+ * transaction that moves the money, so a suspension that commits first wins.
  */
 async function requireActiveAffiliate(tx: Prisma.TransactionClient, userId: string) {
   const [user] = await tx.$queryRaw<Array<{ affiliateStatus: string }>>`
@@ -116,8 +117,11 @@ export async function updateWithdrawal(
     if (!withdrawal.userId)
       throw new ApiError(409, "This withdrawal belongs to a deleted account.");
     // The affiliate's User row first, the lock order of every affiliate money path and of account
-    // deletion; `requireActiveAffiliate` takes it, and a rejection takes it on its own.
-    if (status !== "REJECTED") await requireActiveAffiliate(tx, withdrawal.userId);
+    // deletion; `requireActiveAffiliate` takes it, and the other transitions take it on their own.
+    // Only approving sends money that has not left yet, so only approving needs an ACTIVE
+    // affiliate. PAID records a transfer an admin already made by hand (V-325): a suspension after
+    // that cannot undo it, and REJECTED would return to the wallet money that is already gone.
+    if (status === "APPROVED") await requireActiveAffiliate(tx, withdrawal.userId);
     else
       await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${withdrawal.userId} FOR NO KEY UPDATE`;
 

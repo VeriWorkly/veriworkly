@@ -129,7 +129,7 @@ export async function createRoadmapFeature(input: RoadmapAdminCreateInput) {
 export async function updateRoadmapFeature(id: string, input: RoadmapAdminUpdateInput) {
   const existing = await prisma.roadmapFeature.findUnique({
     where: { id },
-    select: { status: true, startedAt: true, completedAt: true },
+    select: { status: true, startedAt: true, completedAt: true, completedQuarter: true },
   });
 
   if (!existing) {
@@ -138,11 +138,20 @@ export async function updateRoadmapFeature(id: string, input: RoadmapAdminUpdate
 
   const targetStatus = input.status ?? existing.status;
 
+  // A partial update that leaves the quarter and the completion date alone keeps the stored
+  // quarter of an item that stays done (V-341); left out, it used to be re-derived from
+  // completedAt, replacing a hand-set one. The studio always sends the field, so it is unaffected.
+  const keepsQuarter =
+    input.completedQuarter === undefined &&
+    input.completedAt === undefined &&
+    existing.status === "done" &&
+    targetStatus === "done";
+
   const { startedAt, completedAt, completedQuarter } = resolveStatusTimestamps(
     targetStatus as RoadmapStatus,
     input.startedAt !== undefined ? input.startedAt : existing.startedAt,
     input.completedAt !== undefined ? input.completedAt : existing.completedAt,
-    input.completedQuarter,
+    keepsQuarter ? existing.completedQuarter : input.completedQuarter,
   );
 
   const feature = await prisma.roadmapFeature.update({

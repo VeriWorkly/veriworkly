@@ -15,6 +15,12 @@ import {
 } from "#validators/userValidator";
 import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
+/**
+ * better-auth's cookies after the `veriworkly-auth` prefix: the session, the cookie-cache copy
+ * (off since V-312, still held by older browsers) and the "do not remember me" marker.
+ */
+const AUTH_COOKIE_NAMES = ["session_token", "session_data", "dont_remember"] as const;
+
 export class UserController {
   /**
    * Get the current authenticated user's information.
@@ -156,10 +162,14 @@ export class UserController {
         await invalidateSessionCache(cookieHeader);
       }
 
-      // A cookie set with a Domain attribute is only cleared by a clear that repeats it.
+      // Every cookie better-auth sets, under both prefixes. A cookie set with a Domain attribute is
+      // only cleared by a clear that repeats it, and a browser ignores a `Set-Cookie` for a
+      // `__Secure-` name without `Secure` (V-314), so the production clears carry it.
       const cookieOptions = { path: "/", domain: config.auth.cookieDomain };
-      res.clearCookie("veriworkly-auth.session_token", cookieOptions);
-      res.clearCookie("__Secure-veriworkly-auth.session_token", cookieOptions);
+      for (const name of AUTH_COOKIE_NAMES) {
+        res.clearCookie(`veriworkly-auth.${name}`, cookieOptions);
+        res.clearCookie(`__Secure-veriworkly-auth.${name}`, { ...cookieOptions, secure: true });
+      }
 
       res.json(
         createSuccessResponse(

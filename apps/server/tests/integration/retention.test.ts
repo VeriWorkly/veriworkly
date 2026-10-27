@@ -9,6 +9,7 @@ import {
   type RetentionSettings,
 } from "#jobs/retentionJob";
 import { pool, prisma } from "#lib/prisma";
+import { beginDrain, resetShutdownSignalForTests } from "#lib/shutdown";
 import {
   ADMIN_AUDIT_ACTIONS,
   MONEY_AUDIT_ACTION_PREFIXES,
@@ -70,6 +71,7 @@ describe("retention defaults", () => {
       expiredSessions: 1,
       expiredVerifications: 1,
       webhookPayloads: 30,
+      unprocessedWebhookPayloads: 180,
       auditLogs: 90,
       adminAuditEntries: 365,
       adminMoneyAuditEntries: 2555,
@@ -151,6 +153,80 @@ describe("retention rules (V-116)", () => {
     expect(byId.get(freshProcessed)?.payload).toEqual(payload);
     expect(byId.get(oldFailed)).toMatchObject({ payload, status: "FAILED", error: "boom" });
     expect(byId.get(oldProcessing)).toMatchObject({ payload, status: "PROCESSING" });
+  });
+
+  it("V-340: redacts FAILED and stuck PROCESSING payloads after 180 days, keeping the summary columns", async () => {
+    const payload = { data: { customer: { email: "buyer@example.test", name: "Buyer" } } };
+    const make = async (status: "FAILED" | "PROCESSING", side: "old" | "fresh") => {
+      const row = await prisma.billingWebhookEvent.create({
+        data: {
+          providerEventId: randomUUID(),
+          type: "payment.succeeded",
+          payload,
+          status,
+          error: status === "FAILED" ? "unknown product" : null,
+          productName: "Credit pack (500)",
+          amountCents: 499,
+          providerPaymentId: `pay_${randomUUID()}`,
+        },
+      });
+      await setTimestamp("BillingWebhookEvent", "createdAt", row.id, at(180, side));
+      return row.id;
+    };
+    const oldFailed = await make("FAILED", "old");
+    const oldProcessing = await make("PROCESSING", "old");
+    const freshFailed = await make("FAILED", "fresh");
+
+    const first = await applyRetention({ settings: only("unprocessedWebhookPayloads"), now });
+    const second = await applyRetention({ settings: only("unprocessedWebhookPayloads"), now });
+
+    expect(first.affected).toEqual({ unprocessedWebhookPayloadsRedacted: 2 });
+    expect(second.affected).toEqual({ unprocessedWebhookPayloadsRedacted: 0 });
+    const byId = new Map((await prisma.billingWebhookEvent.findMany()).map((row) => [row.id, row]));
+    expect(byId.get(oldFailed)).toMatchObject({
+      payload: { redacted: true, type: "payment.succeeded" },
+      status: "FAILED",
+      error: "unknown product",
+      productName: "Credit pack (500)",
+      amountCents: 499,
+    });
+    expect(byId.get(oldFailed)?.providerPaymentId).toMatch(/^pay_/);
+    expect(byId.get(oldProcessing)?.payload).toEqual({
+      redacted: true,
+      type: "payment.succeeded",
+    });
+    expect(byId.get(freshFailed)?.payload).toEqual(payload);
+  });
+
+  it("V-342: a worker that is shutting down stops between batches and leaves the rest", async () => {
+    const user = await createUserWithSession();
+    await prisma.session.deleteMany({});
+    for (let index = 0; index < 3; index += 1)
+      await prisma.session.create({
+        data: { userId: user.id, token: randomUUID(), expiresAt: at(1, "old") },
+      });
+
+    try {
+      const summary = await applyRetention({
+        settings: { ...disabled, expiredSessions: 1, expiredVerifications: 1 },
+        batchSize: 1,
+        now,
+        // The drain starts while the first batch runs.
+        stillOwner: async () => {
+          beginDrain();
+          return true;
+        },
+      });
+      // The batch in flight finishes and the run stops there. Nothing is reported as failed; the
+      // later rule is not started and is listed as incomplete with the interrupted one.
+      expect(summary.affected).toEqual({ expiredSessions: 2 });
+      expect(summary.incomplete).toEqual(["expiredSessions", "expiredVerifications"]);
+      expect(summary.failed).toEqual([]);
+      expect(summary.stoppedForShutdown).toBe(true);
+    } finally {
+      resetShutdownSignalForTests();
+    }
+    expect(await prisma.session.count()).toBe(1);
   });
 
   it("deletes request and admin audit rows past 90 days and 1 year", async () => {

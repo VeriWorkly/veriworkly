@@ -156,6 +156,7 @@ describe("GET /api/v1/health/jobs", () => {
       "RETENTION_EXPIRED_SESSION_DAYS",
       "RETENTION_EXPIRED_VERIFICATION_DAYS",
       "RETENTION_WEBHOOK_PAYLOAD_DAYS",
+      "RETENTION_UNPROCESSED_WEBHOOK_PAYLOAD_DAYS",
       "RETENTION_AUDIT_LOG_DAYS",
       "RETENTION_ADMIN_AUDIT_DAYS",
       "RETENTION_ADMIN_MONEY_AUDIT_DAYS",
@@ -234,5 +235,27 @@ describe("pooled connection settings (V-115)", () => {
     } finally {
       client.release();
     }
+  });
+});
+
+/**
+ * V-336: the admin dashboard's "today" is today's live Redis counters. Only the Postgres totals
+ * are cached; caching the whole response froze today's numbers for 30 minutes.
+ */
+describe("admin dashboard metrics", () => {
+  it("shows an event recorded after the last read at once", async () => {
+    const { getAdminDashboardMetrics, incrementUsageMetric } =
+      await import("#services/analyticsService");
+    await incrementUsageMetric({ event: "resume_exported" });
+    const first = (await getAdminDashboardMetrics()) as { today: Record<string, string> };
+    const before = Number(first.today.resume_exported ?? 0);
+
+    await incrementUsageMetric({ event: "resume_exported" });
+    const second = (await getAdminDashboardMetrics()) as {
+      today: Record<string, string>;
+      totals: Record<string, number>;
+    };
+    expect(Number(second.today.resume_exported)).toBe(before + 1);
+    expect(second.totals.resume_exported).toBeGreaterThanOrEqual(before + 1);
   });
 });

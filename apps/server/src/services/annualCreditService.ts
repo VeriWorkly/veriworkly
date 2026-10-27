@@ -125,6 +125,31 @@ export async function subscriptionCreditGrantsWhere(
  * is an early renewal and pays for the period that follows; any other payment inside a running
  * schedule (a mid-year plan-change proration) is that schedule's.
  */
+/**
+ * Whether a legacy up-front year was taken back (V-281): a refund claw-back recorded against the
+ * grant (`CreditService.clawBackGrant`, even one the wallet's balance limited), or, when nothing
+ * was left to claw back, the payment that granted it reversed in full.
+ */
+async function legacyYearReversed(
+  tx: Prisma.TransactionClient,
+  grantId: string,
+  isPaymentReversed?: (paymentId: string) => Promise<boolean>,
+) {
+  const clawback = await tx.creditTransaction.findFirst({
+    where: { requestId: `refund-clawback:${grantId}` },
+    select: { id: true },
+  });
+  if (clawback) return true;
+  if (!isPaymentReversed) return false;
+
+  const granted = await tx.creditTransaction.findFirst({
+    where: { referenceId: grantId, requestId: { startsWith: "subscription-credit:" } },
+    select: { requestId: true },
+  });
+  const paymentId = granted?.requestId?.slice("subscription-credit:".length);
+  return paymentId ? isPaymentReversed(paymentId) : false;
+}
+
 /** `null` when a legacy up-front annual allowance still covers the payment's period. */
 export async function openAnnualCreditSchedule(input: {
   userId: string;
@@ -135,6 +160,11 @@ export async function openAnnualCreditSchedule(input: {
   periodEnd: Date;
   /** False when the payment named no service period and the period was derived from its date. */
   servicePeriodKnown: boolean;
+  /**
+   * Whether a provider payment was reversed in full (refunds and lost disputes). Billing passes
+   * its own rule; without it only a recorded claw-back counts as a reversal.
+   */
+  isPaymentReversed?: (paymentId: string) => Promise<boolean>;
 }) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.userId}))`;
@@ -147,18 +177,28 @@ export async function openAnnualCreditSchedule(input: {
     // A legacy holder's up-front year (12,000 at once, before monthly delivery) that is still
     // running covers this payment: a mid-year plan change opens no monthly schedule on top of it.
     // The renewal for the period after it does (the legacy grant has expired by then).
-    const legacyYear = await tx.creditGrant.findFirst({
+    const legacyYears = await tx.creditGrant.findMany({
       where: {
-        // By owner, not by sourceId: the oldest legacy grants are keyed on a bare payment id
-        // that names no subscription. Since monthly delivery no subscription grant exceeds 1,000.
+        // By owner: the oldest legacy grants are keyed on a bare payment id that names no
+        // subscription. Since monthly delivery no subscription grant exceeds 1,000.
         userId: input.userId,
         source: CREDIT_SOURCES.subscriptionPayment,
         amount: { gt: ANNUAL_MONTHLY_CREDITS },
         expiresAt: { gt: new Date(input.periodStart.getTime() + COVERED_MARGIN_MS) },
+        // A grant that names a subscription covers only that one: a year left over from a
+        // cancelled plan does not hold back a new annual plan's monthly credits (V-281).
+        OR: [
+          { sourceId: { startsWith: `${input.providerSubId}:` } },
+          { NOT: { sourceId: { contains: ":" } } },
+        ],
       },
       select: { id: true },
     });
-    if (legacyYear) return null;
+    // Spent or not, a year the customer received still covers it; only a reversed one does not
+    // (V-281). `remaining` cannot tell the two apart: a spent year is at 0 too, and a claw-back
+    // limited by the wallet's balance leaves some behind.
+    for (const grant of legacyYears)
+      if (!(await legacyYearReversed(tx, grant.id, input.isPaymentReversed))) return null;
 
     const coveringAt = (start: Date) =>
       tx.subscriptionCreditSchedule.findFirst({

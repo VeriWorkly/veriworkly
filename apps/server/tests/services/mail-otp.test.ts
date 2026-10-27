@@ -40,3 +40,20 @@ describe("OTP mail rendering", () => {
     expect(html).toContain("333 444");
   });
 });
+
+/**
+ * V-337: the login alert sends a user who did not sign in to an address we publish (security.txt
+ * lists grievance@), not to a security@ mailbox that may not exist.
+ */
+describe("login alert mail", () => {
+  it("points to the published security contact", async () => {
+    const { renderLoginAlertEmail } = await import("../../src/mail/auth/loginAlert.js");
+    const html = renderLoginAlertEmail("user@example.test", {
+      ip: "203.0.113.5",
+      device: "Firefox on Linux",
+      timestamp: "2026-10-28T10:00:00.000Z",
+    });
+    expect(html).toContain("grievance@veriworkly.com");
+    expect(html).not.toContain("security@veriworkly.com");
+  });
+});

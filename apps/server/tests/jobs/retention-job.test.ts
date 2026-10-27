@@ -21,6 +21,7 @@ vi.mock("#lib/jobLock", () => ({
   createRunTracker: () => ({ track: vi.fn(), idle: async () => undefined }),
 }));
 
+const { beginDrain, resetShutdownSignalForTests } = await import("#lib/shutdown");
 const { applyRetention, readRetentionSettings, runRetention, startRetentionJob, stopRetentionJob } =
   await import("#jobs/retentionJob");
 
@@ -44,6 +45,7 @@ describe("retention job", () => {
       "RETENTION_EXPIRED_SESSION_DAYS",
       "RETENTION_EXPIRED_VERIFICATION_DAYS",
       "RETENTION_WEBHOOK_PAYLOAD_DAYS",
+      "RETENTION_UNPROCESSED_WEBHOOK_PAYLOAD_DAYS",
       "RETENTION_AUDIT_LOG_DAYS",
       "RETENTION_ADMIN_AUDIT_DAYS",
       "RETENTION_ADMIN_MONEY_AUDIT_DAYS",
@@ -72,10 +74,10 @@ describe("retention job", () => {
 
     expect(summary.failed).toEqual(["expiredSessions"]);
     expect(summary.affected.expiredSessions).toBe(0);
-    // Every other enabled rule still ran: 14 statements (portfolio views and affiliate clicks are
+    // Every other enabled rule still ran: 15 statements (portfolio views and affiliate clicks are
     // off by default; admin audit has a money class, V-207; the purge has share and publication
-    // snapshot rules and the audit title rule, V-206).
-    expect(mocks.executeRaw).toHaveBeenCalledTimes(14);
+    // snapshot rules and the audit title rule, V-206; unprocessed webhook payloads, V-340).
+    expect(mocks.executeRaw).toHaveBeenCalledTimes(15);
     expect(mocks.logger.error).toHaveBeenCalledWith(
       "Retention rule expiredSessions failed",
       expect.objectContaining({ error: "deadlock" }),
@@ -113,6 +115,36 @@ describe("retention job", () => {
 
     expect(outcome).toEqual(
       expect.objectContaining({ message: expect.stringMatching(/expiredSessions/) }),
+    );
+  });
+
+  it("V-342: a run the drain stopped names every rule it skipped and is not a success", async () => {
+    mocks.executeRaw.mockResolvedValue(0);
+    let outcome: unknown = "resolved";
+    mocks.withJobLock.mockImplementationOnce(async (_name, _options, fn) => {
+      try {
+        await fn(async () => true);
+      } catch (error) {
+        outcome = error;
+      }
+    });
+
+    beginDrain();
+    try {
+      await runRetention("cron");
+    } finally {
+      resetShutdownSignalForTests();
+    }
+
+    expect(mocks.executeRaw).not.toHaveBeenCalled();
+    expect(outcome).toEqual(
+      expect.objectContaining({ message: expect.stringMatching(/shutting down/) }),
+    );
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      "Retention run (cron) completed",
+      expect.objectContaining({
+        incomplete: expect.arrayContaining(["expiredSessions", "deletedDocumentsPurged"]),
+      }),
     );
   });
 

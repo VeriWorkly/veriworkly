@@ -8,6 +8,8 @@ import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
 import { extractInChildProcess } from "#services/ats/extractPool";
 
+export const UNSUPPORTED_RESUME_FORMAT = "Upload a PDF, DOCX, TXT, Markdown, or JSON resume.";
+
 /** Below this much text there is no resume to score: a scan, an image, or an empty file. */
 const MIN_TEXT_CHARS = 50;
 
@@ -34,7 +36,7 @@ export class AtsResumeExtractService {
    */
   static async extract(file: Express.Multer.File): Promise<AtsExtraction> {
     const format = detectResumeFormat(file.originalname, file.mimetype);
-    if (!format) throw new ApiError(400, "Upload a PDF, DOCX, TXT, Markdown, or JSON resume.");
+    if (!format) throw new ApiError(400, UNSUPPORTED_RESUME_FORMAT);
 
     // Plain text needs no parser, so it skips the IPC round trip entirely.
     if (format === "text") return { text: readable(file.buffer.toString("utf8"), format) };

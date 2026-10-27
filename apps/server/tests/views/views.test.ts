@@ -222,7 +222,7 @@ vi.mock("#services/apiKeyService", () => ({
 // full config. This suite does not exercise auth, so the revocation module is stubbed.
 vi.mock("#auth/sessions", () => ({
   revokeAllSessionsForUser: vi.fn().mockResolvedValue(0),
-  revokeAllSessionsForUserSafely: vi.fn().mockResolvedValue(undefined),
+  revokeSessionsBeforeAccountDeletion: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("#config", () => ({

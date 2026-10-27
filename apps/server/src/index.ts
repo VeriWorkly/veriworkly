@@ -7,7 +7,7 @@ import { config, isDevelopment } from "#config";
 
 import { logger } from "#lib/logger";
 import { closePrisma } from "#lib/prisma";
-import { abortInFlightWork, SHUTDOWN_TIMINGS } from "#lib/shutdown";
+import { abortInFlightWork, beginDrain, SHUTDOWN_TIMINGS } from "#lib/shutdown";
 import { initRedis, closeRedis, RedisConfigError } from "#lib/redis";
 import { FATAL_CONFIG_EXIT_CODE, installWorkerRespawn } from "#lib/workerRespawn";
 import { markJobsBaseline } from "#lib/metrics";
@@ -46,6 +46,8 @@ async function shutdownWorker(id: number, disconnect: () => void) {
   isShuttingDown = true;
 
   logger.info(`Worker ${id}: Shutting down gracefully...`);
+  // Long jobs stop between batches from now on (V-342), well inside the job drain cap.
+  beginDrain();
 
   // Stop scheduling first so no new run starts, and let a run already in progress finish while
   // HTTP drains (Phase 4 item 1). Every worker may have scheduled jobs (CRON_ROLE=all); the stop

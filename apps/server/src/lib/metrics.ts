@@ -104,6 +104,11 @@ export type JobName = keyof typeof JOB_SCHEDULES;
 
 /** Redis hash: job name to the epoch ms of its last success, shared by every worker and replica. */
 export const JOB_LAST_SUCCESS_KEY = "jobs:last-success";
+/**
+ * Every key expires (V-320), this one too: refreshed on each success, so it only lapses when no
+ * job has succeeded for a month, which `/health/jobs` reports as stale anyway.
+ */
+const JOB_LAST_SUCCESS_TTL_SECONDS = 30 * 24 * 3600;
 
 const jobSuccesses = new Map<string, number>();
 
@@ -115,7 +120,10 @@ export function recordJobSuccess(name: string, at: number = Date.now()) {
   jobSuccesses.set(name, Math.max(at, jobSuccesses.get(name) ?? 0));
   try {
     getRedis()
+      .multi()
       .hSet(JOB_LAST_SUCCESS_KEY, name, String(at))
+      .expire(JOB_LAST_SUCCESS_KEY, JOB_LAST_SUCCESS_TTL_SECONDS)
+      .exec()
       .catch(() => undefined);
   } catch {
     // Redis not ready: the in-memory value still covers this worker.

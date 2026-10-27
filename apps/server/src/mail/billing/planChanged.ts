@@ -3,12 +3,19 @@ import { getBaseLayout, escapeHtml } from "../shared/layout.js";
 import { formatDate, formatMoney, summaryTable } from "./billingFormat.js";
 
 /**
- * A plan change that took effect (V-219): what changed, that the difference for the current
- * period was charged at once (owner decision 8), and the price and date of the next renewal.
+ * A plan change that took effect (V-219): what changed, what the change cost now, and the price
+ * and date of the next renewal. An upgrade's difference for the current period is charged at once
+ * (owner decision 8); a downgrade (portal only) is not charged, its lower price applies from the
+ * renewal (V-279).
  */
 export type PlanChangedNotice = {
   fromProductName: string;
   productName: string;
+  /**
+   * By catalog price. Missing on a notice queued before V-279: the wording then says neither
+   * that the customer was charged nor that they were not.
+   */
+  direction?: "upgrade" | "downgrade";
   /** The new plan's recurring price, in the currency's minor unit; null when not reported. */
   amountCents: number | null;
   currency: string | null;
@@ -25,8 +32,14 @@ function newPrice(details: PlanChangedNotice) {
 
 export function planChangedParagraphs(details: PlanChangedNotice): string[] {
   const price = newPrice(details);
+  const cost =
+    details.direction === "upgrade"
+      ? "The difference for the rest of the current billing period was charged when the change was made."
+      : details.direction === "downgrade"
+        ? "Nothing extra was charged for this change; the new price applies from your next renewal."
+        : "Any difference for the rest of the current billing period was settled when the change was made.";
   return [
-    `Your plan changed from ${details.fromProductName} to ${details.productName}. The difference for the rest of the current billing period was charged when the change was made.`,
+    `Your plan changed from ${details.fromProductName} to ${details.productName}. ${cost}`,
     details.renewsAt
       ? `From ${formatDate(details.renewsAt)} your plan renews${price ? ` at ${price}` : ""} until you cancel.`
       : `Your plan renews${price ? ` at ${price}` : ""} until you cancel.`,
