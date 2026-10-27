@@ -7,6 +7,7 @@ import { app } from "#app";
 import { prisma } from "#lib/prisma";
 import { settleLapsedPortfolios } from "#jobs/portfolioAccessJob";
 import { PortfolioAssetService } from "#services/portfolioAssetService";
+import { settleBillingNotifications } from "#services/billingNotifications";
 import { PortfolioService } from "#services/portfolioService";
 
 import { STUDIO_ORIGIN } from "./env.js";
@@ -1054,7 +1055,8 @@ describe("pass and comp expiry through the access job", () => {
     expect(row.status).toBe("LIVE");
     expect(row.templateId).toBe("nimbus");
     expect(row.updatedAt.getTime()).toBe(publication.updatedAt.getTime());
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Every free-tier email the settle started has been sent or failed (V-359): none was.
+    await settleBillingNotifications();
     expect(mailMock.sendPortfolioFreeTierEmail).not.toHaveBeenCalled();
   });
 
@@ -1457,7 +1459,8 @@ describe("final review: deleted portfolios stay down, restores are bounded and a
 
     await settleLapsedPortfolios();
     await PortfolioService.settleLapsedPortfolioFor(user.id);
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // The repeat settles started no second email, once every send in flight has landed (V-359).
+    await settleBillingNotifications();
     expect(sentToUser().length).toBe(1);
   });
 
