@@ -33,6 +33,12 @@ type PublicShareLinkView = Omit<PublicShareLink, "passwordHash"> & { hasPassword
 /** Cached in place of a share that does not exist, so repeated misses skip Postgres. */
 const MISSING_SHARE = { missing: true } as const;
 const MISSING_SHARE_TTL_SECONDS = 60;
+/**
+ * How long a public share snapshot is cached. Short on purpose (V-370): a revoke, password change or
+ * "Make private" bumps the cache generation, and if Redis loses that bump the stale copy is
+ * served for at most this long.
+ */
+const PUBLIC_SHARE_TTL_SECONDS = 300;
 
 /**
  * Strips the scrypt password hash before this record is cached. Nothing downstream of the
@@ -290,13 +296,13 @@ export class ShareController {
         }
 
         shareLink = toPublicShareLinkView(fresh);
-        let ttl = 3600;
+        let ttl = PUBLIC_SHARE_TTL_SECONDS;
 
         if (shareLink.expiresAt) {
           const msLeft = new Date(shareLink.expiresAt).getTime() - Date.now();
 
           if (msLeft > 0) {
-            ttl = Math.min(3600, Math.ceil(msLeft / 1000));
+            ttl = Math.min(PUBLIC_SHARE_TTL_SECONDS, Math.ceil(msLeft / 1000));
           } else {
             ttl = 0;
           }
