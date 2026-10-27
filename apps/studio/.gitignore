@@ -56,3 +56,6 @@ next-env.d.ts
 # parity harness output
 tests/parity/.report.log
 tests/parity/shots/
+
+# failed browser tests leave a screenshot here (CI uploads it)
+tests/browser/.failures/

@@ -78,29 +78,37 @@ describe("cover letter pdf export contract", () => {
     return { ...base, appearance: { ...base.appearance, ...overrides } };
   }
 
-  for (const templateId of coverLetterTemplateRegistry.ids) {
-    it(`renders a real PDF for ${templateId}`, async () => {
-      const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
-      const buffer = await renderToBuffer(pdfElement(CoverLetterPdf, { content: createContent() }));
+  /** The PDF's text, read back: a template that renders nothing, or blank glyphs, fails here. */
+  async function renderedText(templateId: string, content: CoverLetterContent) {
+    const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
+    const buffer = await renderToBuffer(pdfElement(CoverLetterPdf, { content }));
 
-      expect(buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
-      expect(buffer.byteLength).toBeGreaterThan(5_000);
+    expect(buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    return (await extractResume(buffer, "pdf")).text.replace(/\s+/g, " ");
+  }
+
+  for (const templateId of coverLetterTemplateRegistry.ids) {
+    it(`S-037: renders a real PDF for ${templateId}, the letter's text included`, async () => {
+      const content = createContent();
+      const text = await renderedText(templateId, content);
+
+      expect(text).toContain(content.senderName);
+      expect(text).toContain(content.recipientName);
+      expect(text).toContain(content.subject);
+      expect(text).toContain("Built React and TypeScript document workflows");
     }, 30_000);
 
-    it(`renders ${templateId} with an inverted colour scheme`, async () => {
-      const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(templateId);
-      const buffer = await renderToBuffer(
-        pdfElement(CoverLetterPdf, {
-          content: createContent({
-            textColor: "#f8fafc",
-            pageColor: "#0b1220",
-            sidebarColor: "#020617",
-            accentColor: "#f97316",
-          }),
-        }),
-      );
+    it(`S-037: renders ${templateId} with an inverted colour scheme, text included`, async () => {
+      const content = createContent({
+        textColor: "#f8fafc",
+        pageColor: "#0b1220",
+        sidebarColor: "#020617",
+        accentColor: "#f97316",
+      });
+      const text = await renderedText(templateId, content);
 
-      expect(buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+      expect(text).toContain(content.senderName);
+      expect(text).toContain(content.subject);
     }, 30_000);
   }
 });

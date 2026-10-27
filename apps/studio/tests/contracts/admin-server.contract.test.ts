@@ -22,10 +22,11 @@ vi.mock("@/components/admin/AdminActionDialog", () => ({
     description?: ReactNode;
     children?: ReactNode;
     confirmLabel: string;
+    minReasonLength?: number;
   }) =>
     createElement(
       "div",
-      null,
+      { "data-min-reason": props.minReasonLength },
       createElement("button", null, props.trigger),
       createElement("h2", null, props.title),
       createElement("p", null, props.description),
@@ -277,13 +278,27 @@ describe("admin mutation contract", () => {
     expect(isAdminReasonValid("long enough", { required: true, minLength: 10 })).toBe(true);
   });
 
-  it("S-090: suspending a portfolio asks for the server's 10-character minimum", async () => {
-    const source = await readFile(
-      path.join(process.cwd(), "app/admin/portfolios/PortfolioModerationActions.tsx"),
-      "utf8",
-    );
+  it("S-090 S-358: suspending a portfolio asks for the server's 10-character minimum", async () => {
+    const { default: PortfolioModerationActions } =
+      await import("@/app/admin/portfolios/PortfolioModerationActions");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const statusDialogMinimum = (status: "LIVE" | "SUSPENDED") => {
+      const html = renderToStaticMarkup(
+        createElement(PortfolioModerationActions, {
+          publicationId: "p1",
+          subdomain: "jane",
+          status,
+          templateId: "signal",
+          compact: true,
+        }),
+      );
 
-    expect(source).toMatch(/minReasonLength=\{nextStatus === "SUSPENDED" \? 10 : 3\}/);
+      return html.match(/data-min-reason="(\d+)"/)?.[1];
+    };
+
+    // The status dialog opens on the status already picked, the current one before any change.
+    expect(statusDialogMinimum("SUSPENDED")).toBe("10");
+    expect(statusDialogMinimum("LIVE")).toBe("3");
   });
 
   it("S-186: suspension reasons are shown without the internal moderation prefix", async () => {
@@ -416,23 +431,32 @@ describe("admin route boundaries", () => {
   it("gives each list and detail page a skeleton with its own stat row and side form", async () => {
     const { resolveAdminRoute } = await import("@/features/admin/config/admin-routes");
 
-    for (const page of await adminFiles("page.tsx")) {
+    // A redirect-only page never renders, so it needs no skeleton.
+    const pages = (await adminFiles("page.tsx")).filter((page) => page !== "monetization/page.tsx");
+    let measured = 0;
+
+    for (const page of pages) {
       const { skeleton, path: route } = resolveAdminRoute(routeOf(page).replaceAll("[id]", "x"));
-      if (route !== routeOf(page)) continue;
+      expect(route, page).toBe(routeOf(page));
 
       const source = await readFile(path.join(process.cwd(), "app/admin", page), "utf8");
       const statRow = source.match(/<section className="grid gap-3[^"]*">([\s\S]*?)<\/section>/);
-      const statCount = statRow?.[1].match(/<AdminStatCard\b/g)?.length;
+      const statCount = statRow?.[1].match(/<AdminStatCard\b/g)?.length ?? 0;
+
+      if (skeleton.kind === "list" || skeleton.kind === "detail") {
+        // A stat card outside the matched row means the pattern missed the row, not that the
+        // page has none.
+        expect(source.match(/<AdminStatCard\b/g)?.length ?? 0, page).toBe(statCount);
+        expect(skeleton.stats ?? 0, page).toBe(statCount);
+        measured += 1;
+      }
 
       if (skeleton.kind === "list") {
-        expect(skeleton.stats, page).toBe(statCount);
         expect(Boolean(skeleton.aside), page).toBe(source.includes("aside={"));
       }
-
-      if (skeleton.kind === "detail") {
-        expect(skeleton.stats, page).toBe(statCount);
-      }
     }
+
+    expect(measured).toBeGreaterThan(20);
 
     expect(resolveAdminRoute("/admin/roadmap").skeleton.kind).toBe("kanban");
   });

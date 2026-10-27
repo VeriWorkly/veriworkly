@@ -42,6 +42,8 @@ vi.mock("@/features/api-keys/hooks/useApiKeyActions", async (importOriginal) => 
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const TZ_AT_LOAD = process.env.TZ;
+
 function detailRecord(overrides: Partial<ApiKeyDetailRecord> = {}): ApiKeyDetailRecord {
   return {
     id: "key_old",
@@ -137,14 +139,8 @@ describe("S-082 S-084 S-181 rotate keeps what the user did not change", () => {
 });
 
 describe("S-084 S-181 expiry is the end of the chosen local day", () => {
-  const originalTz = process.env.TZ;
-
-  afterEach(() => {
-    process.env.TZ = originalTz;
-  });
-
   it("S-084 under America/Los_Angeles a picked date expires at local midnight, not UTC", async () => {
-    process.env.TZ = "America/Los_Angeles";
+    vi.stubEnv("TZ", "America/Los_Angeles");
     const { buildCreateApiKeyPayload } = await import("@/features/api-keys/api-key-service");
 
     const payload = buildCreateApiKeyPayload({
@@ -158,22 +154,31 @@ describe("S-084 S-181 expiry is the end of the chosen local day", () => {
   });
 
   it("S-181 the picker's earliest day is tomorrow in the user's time zone", async () => {
-    process.env.TZ = "America/Los_Angeles";
-    const { tomorrowLocalDateInput, toLocalDateInput } = await import("@/lib/local-date");
+    vi.stubEnv("TZ", "America/Los_Angeles");
+    // 23:30 on 2 November in Los Angeles is already 3 November in UTC.
+    vi.useFakeTimers({ now: new Date("2026-11-03T07:30:00.000Z"), toFake: ["Date"] });
+    const { tomorrowLocalDateInput } = await import("@/lib/local-date");
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    expect(tomorrowLocalDateInput()).toBe(toLocalDateInput(tomorrow));
+    try {
+      expect(tomorrowLocalDateInput()).toBe("2026-11-03");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("S-084 the rotate form shows the stored expiry as its local calendar day", async () => {
-    process.env.TZ = "America/Los_Angeles";
+    vi.stubEnv("TZ", "America/Los_Angeles");
     const { expiryDateInputValue } = await import("@/features/api-keys/api-key-service");
 
     // 03:00 UTC on 2 March is still 1 March in Los Angeles.
     expect(expiryDateInputValue("2027-03-02T03:00:00.000Z")).toBe("2027-03-01");
     expect(expiryDateInputValue(null)).toBe("");
+  });
+});
+
+describe("S-356 the time-zone tests leave TZ as they found it", () => {
+  it('S-356 TZ is back to its value when the file loaded, not the string "undefined"', () => {
+    expect(process.env.TZ).toBe(TZ_AT_LOAD);
   });
 });
 
@@ -196,36 +201,63 @@ describe("S-086 S-262 a key's status follows expiry, revocation and admin disabl
   });
 
   it("S-086 the list renders Expired for a past expiresAt and offers no Rotate", async () => {
-    const { default: ApiKeyList } = await import("@/features/api-keys/components/ApiKeyList");
+    // The row menu renders its items only while open; render it open so the actions show.
+    vi.resetModules();
+    vi.doMock("@veriworkly/ui", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("@veriworkly/ui")>();
+      const open = { open: true, close: () => {}, toggle: () => {}, menuId: "menu" };
 
-    const html = renderToStaticMarkup(
-      <ApiKeyList
-        keys={[
-          {
-            id: "key_expired",
-            name: "Old CI",
-            keyPrefix: "vw_aaaaa",
-            isActive: true,
-            createdAt: "2025-01-01T00:00:00.000Z",
-            lastUsed: null,
-            expiresAt: new Date(Date.now() - DAY_MS).toISOString(),
-            revokedAt: null,
-          },
-        ]}
-        page={1}
-        totalPages={1}
-        hasMore={false}
-        loading={false}
-        onPrevPage={() => {}}
-        onNextPage={() => {}}
-        onRotate={() => {}}
-        onDelete={() => {}}
-        onRevoke={() => {}}
-      />,
+      return {
+        ...actual,
+        Menu: ({ trigger, children }: Parameters<typeof actual.Menu>[0]) => (
+          <>
+            {trigger(open)}
+            {children(open)}
+          </>
+        ),
+      };
+    });
+    const { default: ApiKeyList } = await import("@/features/api-keys/components/ApiKeyList");
+    vi.doUnmock("@veriworkly/ui");
+    vi.resetModules();
+
+    const row = (id: string, expiresAt: string) => ({
+      id,
+      name: id,
+      keyPrefix: "vw_aaaaa",
+      isActive: true,
+      createdAt: "2025-01-01T00:00:00.000Z",
+      lastUsed: null,
+      expiresAt,
+      revokedAt: null,
+    });
+    const listHtml = (key: ReturnType<typeof row>) =>
+      renderToStaticMarkup(
+        <ApiKeyList
+          keys={[key]}
+          page={1}
+          totalPages={1}
+          hasMore={false}
+          loading={false}
+          onPrevPage={() => {}}
+          onNextPage={() => {}}
+          onRotate={() => {}}
+          onDelete={() => {}}
+          onRevoke={() => {}}
+        />,
+      );
+
+    // The control: a live key does offer Rotate, so its absence below means something.
+    expect(listHtml(row("key_live", new Date(Date.now() + DAY_MS).toISOString()))).toContain(
+      "Rotate",
     );
+
+    const html = listHtml(row("key_expired", new Date(Date.now() - DAY_MS).toISOString()));
 
     expect(html).toContain("Expired");
     expect(html).not.toMatch(/>Active</);
+    expect(html).not.toContain("Rotate");
+    expect(html).toContain("Revoke");
   });
 
   it("S-277 V-195 a revoked or rotated-out key in the list reads Revoked, never admin-disabled", async () => {

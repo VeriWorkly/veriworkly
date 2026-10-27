@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { Browser, BrowserContext, Page } from "playwright";
 
@@ -6,6 +6,8 @@ import type { ParityServer } from "../parity/server";
 
 import { launchParityBrowser } from "../parity/browser";
 import { startParityServer } from "../parity/server";
+
+import { screenshotFailures } from "./failure-screenshots";
 
 /**
  * Editor defects that only reproduce in a browser, so nothing in `tests/contracts` could
@@ -37,6 +39,8 @@ let server: ParityServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
+
+screenshotFailures(() => page);
 
 beforeAll(async () => {
   server = await startParityServer();
@@ -84,6 +88,21 @@ async function storedDocumentExists(id: string) {
 /** Creates a document through the app itself, so the stored shape is never hand-written. */
 async function seedDocument(path: string): Promise<string> {
   await page.goto(`${server.origin}${path}`, { waitUntil: "networkidle" });
+
+  // A guest at the free limit gets their existing document; when the link names another
+  // template, they are asked first whether to restyle it (S-360). These tests want the template.
+  const useTemplate = page.getByRole("button", { name: /^Use / });
+  await page.waitForFunction(
+    () =>
+      !location.pathname.endsWith("/new") ||
+      [...document.querySelectorAll("button")].some((button) =>
+        button.textContent?.startsWith("Use "),
+      ),
+    undefined,
+    { timeout: 30_000 },
+  );
+  if (new URL(page.url()).pathname.endsWith("/new")) await useTemplate.click();
+
   await page.waitForFunction(() => !location.pathname.endsWith("/new"), undefined, {
     timeout: 30_000,
   });
@@ -150,12 +169,16 @@ async function openTab(label: string) {
   await page.waitForTimeout(300);
 }
 
-/** Makes every local storage write throw the quota error browsers actually throw. */
+/**
+ * Makes every local storage write throw the quota error browsers actually throw. Calling it again
+ * while broken keeps the real `setItem` saved, so a repair always restores it.
+ */
 async function breakLocalStorage() {
   await page.evaluate(() => {
     const proto = Object.getPrototypeOf(window.localStorage);
+    const saved = window as unknown as { __originalSetItem?: unknown };
 
-    (window as unknown as { __originalSetItem: unknown }).__originalSetItem = proto.setItem;
+    saved.__originalSetItem ??= proto.setItem;
 
     proto.setItem = function throwQuota() {
       // `safe-local-storage.ts` classifies by `DOMException`; a plain Error would be
@@ -165,10 +188,56 @@ async function breakLocalStorage() {
   });
 }
 
+/** Undoes `breakLocalStorage`; a no-op when storage is not broken, or the page was replaced. */
 async function repairLocalStorage() {
   await page.evaluate(() => {
-    const proto = Object.getPrototypeOf(window.localStorage);
-    proto.setItem = (window as unknown as { __originalSetItem: unknown }).__originalSetItem;
+    const saved = window as unknown as { __originalSetItem?: unknown };
+    if (!saved.__originalSetItem) return;
+
+    Object.getPrototypeOf(window.localStorage).setItem = saved.__originalSetItem;
+    delete saved.__originalSetItem;
+  });
+}
+
+/**
+ * From now on, records each text the status line shows. "Saving..." lasts only the 300 ms
+ * debounce, so reading it once after typing races the save.
+ */
+type StatusRecorder = { __statusSeen?: string[]; __statusObserver?: MutationObserver };
+
+async function recordStatusLine() {
+  await page.evaluate(() => {
+    const recorder = window as unknown as StatusRecorder;
+    const read = () =>
+      document.querySelector('[data-testid="editor-status"]')?.textContent?.trim() ?? "";
+    const seen = [read()];
+
+    recorder.__statusObserver?.disconnect();
+    recorder.__statusSeen = seen;
+    recorder.__statusObserver = new MutationObserver(() => {
+      if (seen.at(-1) !== read()) seen.push(read());
+    });
+    recorder.__statusObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  });
+}
+
+/** What the status line showed since `recordStatusLine`, recording still on. */
+function statusLineHistory(): Promise<string[]> {
+  return page.evaluate(() => (window as unknown as StatusRecorder).__statusSeen ?? []);
+}
+
+/** Stops recording and returns what the status line showed. */
+function stopRecordingStatusLine(): Promise<string[]> {
+  return page.evaluate(() => {
+    const recorder = window as unknown as StatusRecorder;
+
+    recorder.__statusObserver?.disconnect();
+    delete recorder.__statusObserver;
+    return recorder.__statusSeen ?? [];
   });
 }
 
@@ -371,19 +440,24 @@ describe("resume hydration by route id (VW-02)", () => {
 });
 
 describe("autosave failure reporting (VW-03)", () => {
+  const status = () => page.getByTestId("editor-status");
+
   beforeAll(async () => {
     await page.setViewportSize(DESKTOP);
     await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
+    await editorReady();
   });
+
+  // Repaired even when an assertion failed, so one failure cannot break every later test.
+  afterEach(repairLocalStorage);
 
   it("says nothing when the save succeeds", async () => {
     const field = page.getByLabel(/full name/i).first();
 
     await field.fill("Healthy Save");
-    await page.waitForTimeout(1_000);
+    await expect.poll(() => status().innerText()).toBe("Saved on this device");
 
     expect(await page.locator("body").innerText()).not.toContain("Storage is full");
   });
@@ -397,40 +471,39 @@ describe("autosave failure reporting (VW-03)", () => {
       .getByLabel(/full name/i)
       .first()
       .fill("Quota Failure");
-    await page.waitForTimeout(1_500);
 
+    await expect.poll(() => status().innerText()).toBe(QUOTA_MESSAGE);
     expect(await page.locator("[data-sonner-toast]").innerText()).toContain(QUOTA_MESSAGE);
-    expect(await page.locator("body").innerText()).toContain(QUOTA_MESSAGE);
   });
 
   it("does not fire a toast per keystroke while the failure persists", async () => {
+    await breakLocalStorage();
+    await recordStatusLine();
     const before = await page.locator("[data-sonner-toast]").count();
 
     await page
       .getByLabel(/full name/i)
       .first()
       .pressSequentially("ABCDEF", { delay: 120 });
-    await page.waitForTimeout(1_500);
+    // The last keystroke's save has run and failed again.
+    await expect.poll(async () => (await statusLineHistory()).slice(1)).toContain(QUOTA_MESSAGE);
+    await expect.poll(() => status().innerText()).toBe(QUOTA_MESSAGE);
+    await stopRecordingStatusLine();
 
     expect(await page.locator("[data-sonner-toast]").count()).toBeLessThanOrEqual(before);
-
-    await repairLocalStorage();
   });
 
   it("uses the same wording in the cover letter editor", async () => {
     await page.goto(`${server.origin}/editor/cover-letter/${await seedCoverLetter()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
+    const field = page.locator("aside input:visible, aside textarea:visible").first();
+    await field.waitFor();
 
     await breakLocalStorage();
+    await field.fill("Quota Parity");
 
-    await page.locator("aside input:visible, aside textarea:visible").first().fill("Quota Parity");
-    await page.waitForTimeout(1_500);
-
-    expect(await page.locator("body").innerText()).toContain(QUOTA_MESSAGE);
-
-    await repairLocalStorage();
+    await expect.poll(() => status().innerText()).toBe(QUOTA_MESSAGE);
   });
 });
 
@@ -445,7 +518,7 @@ describe("HTML export carries no hidden duplicate (VW-04)", () => {
     await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
+    await editorReady();
 
     await page
       .getByLabel(/full name/i)
@@ -545,52 +618,57 @@ describe("toolbar status line reflects autosave (VW-06)", () => {
     await page.setViewportSize(DESKTOP);
   });
 
+  /** After the edit the line said "Saving...", then "Saved on this device", and rests there. */
+  async function expectQueuedThenSaved() {
+    await expect.poll(() => status().innerText()).toBe("Saved on this device");
+
+    const seen = await stopRecordingStatusLine();
+    const queued = seen.lastIndexOf("Saving...");
+
+    expect(queued, seen.join(" -> ")).toBeGreaterThanOrEqual(0);
+    expect(seen.slice(queued + 1), seen.join(" -> ")).toEqual(["Saved on this device"]);
+  }
+
   it("reports autosaves instead of sitting on the mount-time placeholder", async () => {
     await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
+    await editorReady();
 
     await page
       .getByLabel(/full name/i)
       .first()
       .fill("Status Line");
-    await page.waitForTimeout(1_500);
 
     // Before the fix this state lived inside `ResumeToolbar` while autosave ran in
     // `ResumeEditor`, so the line read "Autosave ready" from mount until the user clicked
     // Save — no matter how much had actually been persisted.
-    expect(await status().innerText()).toBe("Saved on this device");
+    await expect.poll(() => status().innerText()).toBe("Saved on this device");
   });
 
   it("words a queued save differently from a persisted one", async () => {
     // The debounced write lands 300ms after the keystroke, so the status line must not
     // claim "Saved on this device" the moment the save is merely queued.
+    await recordStatusLine();
     await page
       .getByLabel(/full name/i)
       .first()
       .fill("Queued Wording");
 
-    expect(await status().innerText()).toBe("Saving...");
-
-    await page.waitForTimeout(1_500);
-
-    expect(await status().innerText()).toBe("Saved on this device");
+    await expectQueuedThenSaved();
   });
 
   it("does the same in the cover letter editor", async () => {
     await page.goto(`${server.origin}/editor/cover-letter/${await seedCoverLetter()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
+    const field = page.locator("aside input:visible, aside textarea:visible").first();
+    await field.waitFor();
 
-    await page.locator("aside input:visible, aside textarea:visible").first().fill("Status Parity");
+    await recordStatusLine();
+    await field.fill("Status Parity");
 
-    expect(await status().innerText()).toBe("Saving...");
-
-    await page.waitForTimeout(1_500);
-
-    expect(await status().innerText()).toBe("Saved on this device");
+    await expectQueuedThenSaved();
   });
 });
 
@@ -621,20 +699,22 @@ async function openSection(id: string) {
   await page.waitForTimeout(250);
 }
 
-/** Opens the experience section and adds entries until at least `count` exist. */
-async function ensureExperienceEntries(count: number) {
-  await openSection("experience");
+/** Opens a list section and adds entries until at least `count` exist. */
+async function ensureEntries(section: string, count: number) {
+  await openSection(section);
 
-  const options = page
-    .locator('[id="section-accordion-panel-experience"]')
-    .getByRole("combobox")
-    .first()
-    .locator("option");
+  const panel = page.locator(`[id="section-accordion-panel-${section}"]`);
+  const options = panel.getByRole("combobox").first().locator("option");
 
   while ((await options.count()) < count) {
-    await page.getByRole("region").getByRole("button", { name: /^add$/i }).click();
-    await page.waitForTimeout(250);
+    const before = await options.count();
+    await panel.getByRole("button", { name: /^add$/i }).click();
+    await expect.poll(() => options.count()).toBeGreaterThan(before);
   }
+}
+
+function ensureExperienceEntries(count: number) {
+  return ensureEntries("experience", count);
 }
 
 describe("editor input (Phase 2)", () => {
@@ -647,7 +727,7 @@ describe("editor input (Phase 2)", () => {
     await page.setViewportSize(DESKTOP);
     resumeId = await seedResume();
     await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
+    await editorReady();
   });
 
   it("imports the same JSON file twice, without a page error (S-057, S-307)", async () => {
@@ -658,8 +738,6 @@ describe("editor input (Phase 2)", () => {
       buffer: Buffer.from(JSON.stringify(stored)),
     };
     const status = page.getByTestId("editor-status");
-
-    pageErrors.length = 0;
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       // An edit resets the status line, so the second import has to answer again.
@@ -687,7 +765,7 @@ describe("editor input (Phase 2)", () => {
 
   it("accepts a typed comma in interest keywords (S-059)", async () => {
     await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
+    await editorReady();
 
     await openSection("interests");
     await page.getByRole("button", { name: /^add interest$/i }).click();
@@ -696,13 +774,11 @@ describe("editor input (Phase 2)", () => {
     const keywords = page.getByLabel("Keywords (comma separated)");
 
     await keywords.pressSequentially("a, b", { delay: 60 });
-    await page.waitForTimeout(1_000);
 
+    await expect
+      .poll(async () => (await readStoredDocument(resumeId))?.content.interests.at(-1)?.keywords)
+      .toEqual(["a", "b"]);
     expect(await keywords.inputValue()).toBe("a, b");
-    expect((await readStoredDocument(resumeId))?.content.interests.at(-1)?.keywords).toEqual([
-      "a",
-      "b",
-    ]);
   });
 
   it("keeps a highlight that contains a comma as one item, also after a keystroke (S-058)", async () => {
@@ -711,22 +787,23 @@ describe("editor input (Phase 2)", () => {
     const highlights = page.getByLabel("Highlights (one per line)");
 
     await highlights.fill("x, y");
-    await page.waitForTimeout(1_000);
+    await expect
+      .poll(async () => (await readStoredDocument(resumeId))?.content.experience[0].highlights)
+      .toEqual(["x, y"]);
 
     // Reloaded, so the field starts from the stored list rather than from typed text.
     await page.reload({ waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
+    await editorReady();
     await openSection("experience");
 
     await highlights.click();
     await page.keyboard.press("End");
     await page.keyboard.type(" z");
-    await page.waitForTimeout(1_000);
 
+    await expect
+      .poll(async () => (await readStoredDocument(resumeId))?.content.experience[0].highlights)
+      .toEqual(["x, y z"]);
     expect(await highlights.inputValue()).toBe("x, y z");
-    expect((await readStoredDocument(resumeId))?.content.experience[0].highlights).toEqual([
-      "x, y z",
-    ]);
   });
 
   it("starts a new highlight on Enter (S-058, S-079)", async () => {
@@ -736,13 +813,11 @@ describe("editor input (Phase 2)", () => {
     await highlights.pressSequentially("a", { delay: 60 });
     await page.keyboard.press("Enter");
     await highlights.pressSequentially("b", { delay: 60 });
-    await page.waitForTimeout(1_000);
 
+    await expect
+      .poll(async () => (await readStoredDocument(resumeId))?.content.experience[0].highlights)
+      .toEqual(["a", "b"]);
     expect(await highlights.inputValue()).toBe("a\nb");
-    expect((await readStoredDocument(resumeId))?.content.experience[0].highlights).toEqual([
-      "a",
-      "b",
-    ]);
   });
 
   // Guest throughout, like the rest of this file: a signed-in session comes from the
@@ -786,7 +861,23 @@ describe("editor input (Phase 2)", () => {
       expect(new URL(page.url()).searchParams.get("callbackURL")).toBe(editorPath);
 
       await page.goto(`${server.origin}${editorPath}`, { waitUntil: "networkidle" });
-      await page.waitForTimeout(1_000);
+      await editorReady();
+    });
+
+    it("closes the assistant when switching to another project too (S-060)", async () => {
+      await ensureEntries("projects", 2);
+
+      const panel = page.locator('[id="section-accordion-panel-projects"]');
+      const assist = () => panel.getByRole("button", { name: /(improve|write) with ai/i });
+      const picker = panel.getByRole("combobox").first();
+
+      await picker.selectOption({ index: 0 });
+      await assist().click();
+      await expect.poll(() => signIn().count()).toBe(1);
+
+      await picker.selectOption({ index: 1 });
+      await expect.poll(() => signIn().count()).toBe(0);
+      expect(await assist().count()).toBe(1);
     });
   });
 
@@ -1069,7 +1160,7 @@ describe("editors (Phase 9)", () => {
     await page.setViewportSize(DESKTOP);
     resumeId = await seedResume();
     await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
+    await editorReady();
   });
 
   it("S-292: moves an experience entry with the keyboard, and says where it went", async () => {
@@ -1085,13 +1176,14 @@ describe("editors (Phase 9)", () => {
     await picker.selectOption({ index: 0 });
     await experiencePanel().getByRole("button", { name: 'Move "First role" down' }).focus();
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(1_000);
 
-    const roles = (await readStoredDocument(resumeId))?.content.experience.map(
-      (item) => (item as unknown as { role: string }).role,
-    );
-
-    expect(roles?.slice(0, 2)).toEqual(["Second role", "First role"]);
+    await expect
+      .poll(async () =>
+        (await readStoredDocument(resumeId))?.content.experience
+          .slice(0, 2)
+          .map((item) => (item as unknown as { role: string }).role),
+      )
+      .toEqual(["Second role", "First role"]);
     // The selection follows the entry, and a screen reader hears the new position.
     expect(await picker.inputValue()).toBe("1");
     expect(
@@ -1285,7 +1377,7 @@ describe("a scaled preview still shows every line on exactly one page (S-287)", 
     const resumeId = await seedResume();
 
     await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(1_000);
+    await editorReady();
     await openSection("summary");
     await page.getByLabel("Professional summary").fill(LONG_TEXT);
 
@@ -1428,7 +1520,7 @@ describe("exports (Phase 9: S-285, S-288)", () => {
     await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
+    await editorReady();
     await page
       .getByLabel(/full name/i)
       .first()

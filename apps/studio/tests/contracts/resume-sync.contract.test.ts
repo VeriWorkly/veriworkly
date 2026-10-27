@@ -1,99 +1,120 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ResumeData } from "@/types/resume";
-import type { BaseDocument } from "@/features/documents/core/types";
+
 import { defaultResume } from "@/features/resume/constants/default-resume";
-import { saveResume } from "@/features/resume/services/resume-core";
+import { useResumeStore } from "@/features/resume/store/resume-store";
+import {
+  readResumeById,
+  saveResume,
+  toResumeDocument,
+} from "@/features/resume/services/resume-core";
+import {
+  flushPendingSaves,
+  getWorkspaceStorage,
+  loadDocumentById,
+  renameDocument,
+} from "@/features/documents/services/document-workspace-service";
+import { createLocalStorageMock } from "@/tests/utils/local-storage";
 
-const state = {
-  byId: new Map<string, BaseDocument>(),
-  lastSaveOptions: undefined as { debounceMs?: number; flush?: boolean } | undefined,
-  nextSaveResult: { ok: true, queued: false } as
-    { ok: true; queued: boolean } | { ok: false; reason: "quota-exceeded" | "unknown" },
-};
+/**
+ * What the resume editor's own save path does to the stored copy: the rename made in the
+ * library, the cloud link the sync worker recorded, and a failed write. Real storage throughout
+ * (over the in-memory `localStorage`), so these fail when the editor would lose either.
+ */
 
-function cloneResume(input: ResumeData): ResumeData {
-  return JSON.parse(JSON.stringify(input)) as ResumeData;
-}
+const RESUME_ID = "resume-sync";
 
-function cloneDoc(input: BaseDocument): BaseDocument {
-  return JSON.parse(JSON.stringify(input)) as BaseDocument;
-}
-
-function wrapResume(resume: ResumeData): BaseDocument {
+function storedResume(overrides: Partial<ResumeData> = {}): ResumeData {
   return {
-    id: resume.id,
-    type: "RESUME",
-    title: resume.basics.fullName || "Resume",
-    templateId: resume.templateId,
-    content: resume,
-    updatedAt: resume.updatedAt,
-    sync: resume.sync,
+    ...structuredClone(defaultResume),
+    id: RESUME_ID,
+    title: "Old name",
+    sync: { ...defaultResume.sync, enabled: true, status: "pending" },
+    ...overrides,
   };
 }
 
-vi.mock("@/features/documents/services/document-workspace-service", () => {
-  return {
-    saveDocument: vi.fn((doc: BaseDocument, options?: { debounceMs?: number; flush?: boolean }) => {
-      state.byId.set(doc.id, cloneDoc(doc));
-      state.lastSaveOptions = options;
-      return state.nextSaveResult;
-    }),
-    loadDocumentById: vi.fn((_type: string, id: string) => {
-      return state.byId.get(id) ?? null;
-    }),
-  };
-});
+/** What the editor does on open: load the stored resume into the store and save it back. */
+function openInEditor() {
+  const resume = readResumeById(RESUME_ID);
+  expect(resume).not.toBeNull();
 
-vi.mock("@/features/documents/services/workspace-settings", () => ({
-  loadWorkspaceSettingsFromLocalStorage: vi.fn(() => ({
-    autoSyncEnabled: false,
-  })),
-}));
+  useResumeStore.getState().setResume(resume!);
+  return useResumeStore.getState().saveToStorage({ flush: true });
+}
 
-vi.mock("@/features/resume/services/master-profile", () => ({
-  deriveResumeFromMasterProfile: vi.fn((id: string) => ({
-    ...cloneResume(defaultResume),
-    id,
-  })),
-  loadMasterProfileFromLocalStorage: vi.fn(() => ({
-    updatedAt: defaultResume.updatedAt,
-    profile: cloneResume(defaultResume),
-  })),
-  getMasterProfileForNewDocument: vi.fn(async () => undefined),
-}));
+describe("resume editor saves against the stored copy", () => {
+  let localStorageMock: ReturnType<typeof createLocalStorageMock>;
 
-describe("resume sync contract", () => {
   beforeEach(() => {
-    state.byId.clear();
-    state.lastSaveOptions = undefined;
-    state.nextSaveResult = { ok: true, queued: false };
+    localStorageMock = createLocalStorageMock();
 
-    const first = cloneResume(defaultResume);
-    const second = cloneResume(defaultResume);
+    vi.stubGlobal("localStorage", localStorageMock);
+    vi.stubGlobal("window", {
+      localStorage: localStorageMock,
+      setTimeout: globalThis.setTimeout,
+      clearTimeout: globalThis.clearTimeout,
+      dispatchEvent: vi.fn(),
+    });
 
-    first.id = "resume-1";
-    second.id = "resume-2";
-
-    state.byId.set(first.id, wrapResume(first));
-    state.byId.set(second.id, wrapResume(second));
+    getWorkspaceStorage("RESUME").persistMany([toResumeDocument(storedResume())]);
   });
 
-  it("passes save options and storage failures through saveResume", () => {
-    const resume = cloneResume(defaultResume);
-    resume.id = "resume-options";
-    state.nextSaveResult = { ok: true, queued: true };
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
-    const debounced = saveResume(resume, { debounceMs: 300 });
+  it("S-157 S-170: a resume renamed in the library keeps the new name once the editor opens it", () => {
+    expect(renameDocument("RESUME", RESUME_ID, "New name")?.saved.ok).toBe(true);
 
-    expect(debounced).toEqual({ ok: true, queued: true });
-    expect(state.lastSaveOptions).toEqual({ debounceMs: 300 });
+    expect(openInEditor().ok).toBe(true);
 
-    state.nextSaveResult = { ok: false, reason: "quota-exceeded" };
+    // The next keystroke's autosave rebuilds the envelope from the editor's copy again.
+    useResumeStore.getState().updateBasics({ headline: "Typed after opening" });
+    useResumeStore.getState().saveToStorage({ debounceMs: 300 });
+    flushPendingSaves("RESUME");
 
-    const failed = saveResume(resume, { flush: true });
+    const stored = loadDocumentById("RESUME", RESUME_ID);
+    expect(stored?.title).toBe("New name");
+    expect((stored?.content as ResumeData).title).toBe("New name");
+    expect((stored?.content as ResumeData).basics.headline).toBe("Typed after opening");
+  });
 
-    expect(failed).toEqual({ ok: false, reason: "quota-exceeded" });
-    expect(state.lastSaveOptions).toEqual({ flush: true });
+  it("S-170 S-002: the editor's save keeps the cloud link the sync recorded after it opened", () => {
+    openInEditor();
+
+    // The worker finishes the first upload while the editor still holds the unlinked copy.
+    getWorkspaceStorage("RESUME").patchSync(RESUME_ID, {
+      cloudDocumentId: "cloud-9",
+      revision: 4,
+      status: "synced",
+    });
+    expect(useResumeStore.getState().resume.sync.cloudDocumentId).toBeFalsy();
+
+    useResumeStore.getState().updateBasics({ headline: "Typed after the sync" });
+    useResumeStore.getState().saveToStorage({ flush: true });
+
+    expect(loadDocumentById("RESUME", RESUME_ID)?.sync).toMatchObject({
+      cloudDocumentId: "cloud-9",
+      revision: 4,
+      status: "pending",
+    });
+  });
+
+  it("reports a queued autosave as queued, and a failed write with its reason", () => {
+    const resume = storedResume();
+    resume.basics = { ...resume.basics, headline: "An edit worth writing" };
+
+    expect(saveResume(resume, { debounceMs: 300 })).toEqual({ ok: true, queued: true });
+
+    localStorageMock.setItem.mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError");
+    });
+
+    expect(saveResume(resume, { flush: true })).toMatchObject({
+      ok: false,
+      reason: "quota-exceeded",
+    });
   });
 });

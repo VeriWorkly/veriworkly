@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MasterProfileData } from "@/types/resume";
@@ -194,23 +191,6 @@ describe("AI pricing failure is retryable (S-066)", () => {
     await expect(getAiActions()).rejects.toThrow("AI service is down");
     await expect(getAiActions()).resolves.toEqual({ rewrite_section: { costs } });
     expect(fetchApiDataMock).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe("AI assist state belongs to one list entry (S-060)", () => {
-  // A source-level contract: the panel's open state, draft and in-flight request reset only
-  // because each indexed-list editor remounts it per entry. Signed-in behaviour cannot be
-  // driven in the browser suite (the session comes from a server-side fetch).
-  const sectionsDir = join(process.cwd(), "features/resume/editor/content/sections");
-
-  it.each([
-    ["ExperienceSection.tsx", "activeExperience"],
-    ["ProjectsSection.tsx", "activeProject"],
-  ])("%s keys AiFieldAssist by the active entry id", (file, active) => {
-    const source = readFileSync(join(sectionsDir, file), "utf8");
-    const usage = source.slice(source.indexOf("<AiFieldAssist"));
-
-    expect(usage.slice(0, usage.indexOf(">"))).toContain(`key={${active}.id}`);
   });
 });
 

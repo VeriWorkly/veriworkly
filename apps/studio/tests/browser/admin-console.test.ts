@@ -7,6 +7,8 @@ import type { ParityServer } from "../parity/server";
 import { launchParityBrowser } from "../parity/browser";
 import { startParityServer } from "../parity/server";
 
+import { screenshotFailures } from "./failure-screenshots";
+
 /**
  * The admin chrome's browser-only behaviour, on the dev-only `/parity/admin-shell` harness: the
  * real `/admin` needs the configured admin's session and a live API, so the API calls these
@@ -23,6 +25,8 @@ let browser: Browser;
 let context: BrowserContext;
 let page: Page;
 let pageErrors: string[];
+
+screenshotFailures(() => page);
 
 /** The API is another origin: a credentialed request needs these, and its preflight an answer. */
 function corsHeaders(route: Route) {

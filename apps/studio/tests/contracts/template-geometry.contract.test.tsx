@@ -17,13 +17,7 @@ import { createResumePdfStyles } from "@/templates/resume/shared/pdf";
 import { createResumeTokens } from "@/templates/resume/shared/tokens";
 import { pdfText } from "@/templates/shared/text-tokens";
 
-import { boldImpactScale } from "@/templates/resume/bold-impact/skin";
-import { corporateBriefScale } from "@/templates/resume/corporate-brief/skin";
-import { executiveClarityScale } from "@/templates/resume/executive-clarity/skin";
-import { modernMinimalScale } from "@/templates/resume/modern-minimal/skin";
-import { precisionAtsScale } from "@/templates/resume/precision-ats/skin";
-import { timelineFocusScale } from "@/templates/resume/timeline-focus/skin";
-import { veriworklySpecialScale } from "@/templates/resume/veriworkly-special/skin";
+import { resumeTemplateRegistry } from "@/templates/resume/registry";
 import { layoutPages, registerPdfTestFonts } from "@/tests/utils/pdf";
 
 /**
@@ -40,15 +34,21 @@ import { layoutPages, registerPdfTestFonts } from "@/tests/utils/pdf";
  *    does not fit, which CSS never does;
  *  - a `Text` with an explicit width is still sized by its measured content.
  */
-const SCALES: Record<string, ResumeTypeScale> = {
-  "executive-clarity": executiveClarityScale,
-  "precision-ats": precisionAtsScale,
-  "modern-minimal": modernMinimalScale,
-  "timeline-focus": timelineFocusScale,
-  "corporate-brief": corporateBriefScale,
-  "bold-impact": boldImpactScale,
-  "veriworkly-special": veriworklySpecialScale,
-};
+/** Every registered template's scale, read from its skin, so a new one is measured too (S-035). */
+const SCALES: Record<string, ResumeTypeScale> = Object.fromEntries(
+  await Promise.all(
+    resumeTemplateRegistry.ids.map(async (id) => {
+      const skin = (await import(`../../templates/resume/${id}/skin.ts`)) as Record<
+        string,
+        unknown
+      >;
+      const scale = Object.entries(skin).find(([name]) => name.endsWith("Scale"))?.[1];
+
+      if (!scale) throw new Error(`templates/resume/${id}/skin.ts exports no ...Scale`);
+      return [id, scale as ResumeTypeScale];
+    }),
+  ),
+);
 
 const PAGE_PADDING: Record<string, (padding: number) => number> = {
   "precision-ats": (p) => Math.max(24, p * 0.85),
