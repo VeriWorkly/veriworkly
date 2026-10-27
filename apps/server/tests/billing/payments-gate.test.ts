@@ -56,6 +56,16 @@ describe("payments gate", () => {
     expect(mocks.createCheckout).not.toHaveBeenCalled();
   });
 
+  // V-378: the credit-pack checkout is a purchase too.
+  it("blocks credit-pack checkout for non-admins in production", async () => {
+    const { next } = await call(BillingController.creditPackCheckout, {
+      packKey: "credit_pack_250",
+    });
+
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403 }));
+    expect(mocks.createCreditPackCheckout).not.toHaveBeenCalled();
+  });
+
   it("V-202: blocks the plan-change preview and the plan change for non-admins in production", async () => {
     const body = { productKey: "bundle", interval: "monthly", idempotencyKey: "change-1" };
 

@@ -397,8 +397,24 @@ describe("V-202 change", () => {
       next: new Date(Date.now() + 335 * DAY_MS),
     });
     const freeUser = await createUserWithSession();
+    // V-408: a subscription in dunning, or paused, is never upgraded: the customer is sent to
+    // Manage billing first. Both read as PAST_DUE; the provider's raw status tells them apart.
+    const dunningUser = await createUserWithSession();
+    const dunning = await subscribe(dunningUser, "prod_portfolio_pro_monthly");
+    await prisma.subscription.update({
+      where: { providerSubId: dunning.subscriptionId },
+      data: { status: "PAST_DUE", rawStatus: "on_hold" },
+    });
+    const pausedUser = await createUserWithSession();
+    const paused = await subscribe(pausedUser, "prod_portfolio_pro_monthly");
+    await prisma.subscription.update({
+      where: { providerSubId: paused.subscriptionId },
+      data: { status: "PAST_DUE", rawStatus: "paused" },
+    });
 
     const cases: Array<[TestUser, Record<string, string>, string]> = [
+      [dunningUser, { productKey: "bundle", interval: "monthly" }, "PAYMENT_OUTSTANDING"],
+      [pausedUser, { productKey: "bundle", interval: "monthly" }, "SUBSCRIPTION_PAUSED"],
       [bundleUser, { productKey: "portfolio_pro", interval: "monthly" }, "PLAN_CHANGE_NOT_UPGRADE"],
       [bundleUser, { productKey: "bundle", interval: "monthly" }, "ALREADY_SUBSCRIBED"],
       [proUser, { productKey: "ai_credits", interval: "monthly" }, "PLAN_CHANGE_NOT_UPGRADE"],
@@ -874,7 +890,8 @@ describe("V-202 review: untagged plan-change charges (portal changes)", () => {
       type: "payment.failed",
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // V-359: wait for every billing send started so far, not a fixed time a late send can miss.
+    await settleBillingNotifications();
     expect(billingMailMock.sendPaymentFailedEmail).not.toHaveBeenCalled();
   });
 });

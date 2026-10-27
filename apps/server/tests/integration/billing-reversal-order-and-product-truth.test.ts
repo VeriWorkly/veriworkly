@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
+import { settleBillingNotifications } from "#services/billingNotifications";
 import { CreditService } from "#services/creditService";
 import { PAYMENT_LOCK_TIMEOUT_MS } from "#services/billingService";
 
@@ -289,7 +290,9 @@ describe("V-275: a declined card update is not a failed renewal", () => {
     });
     expect(row.status).toBe("ACTIVE");
     expect(row.graceEndsAt).toBeNull();
-    await new Promise((resolve) => setImmediate(resolve));
+    // V-404, V-359: one setImmediate is not long enough for a send that needs a database read
+    // first; wait for every billing send started so far instead.
+    await settleBillingNotifications();
     expect(billingMailMock.sendPaymentFailedEmail).not.toHaveBeenCalled();
   });
 });

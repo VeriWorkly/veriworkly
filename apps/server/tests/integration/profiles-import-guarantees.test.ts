@@ -135,10 +135,21 @@ describe("V-239 LinkedIn import keeps the AI guarantees", () => {
           .send({ profileText: PROFILE_TEXT, replaceMaster: false, requestId })
       ).status,
     ).toBe(200);
+    const before = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     const reused = await asUser(user)
       .post("/api/v1/profiles/import/linkedin")
       .send({ profileText: `${PROFILE_TEXT} More.`, replaceMaster: false, requestId });
     expect(reused.status).toBe(409);
+    // V-417: the refusal charged nothing, held nothing, made nothing and stamped nothing.
+    expect(convertResume).toHaveBeenCalledTimes(1);
+    expect(await balance(user.id)).toBe(50 - CONVERSION_CREDITS);
+    expect(
+      (await prisma.creditWallet.findUniqueOrThrow({ where: { userId: user.id } })).reserved,
+    ).toBe(0);
+    expect(await prisma.creditReservation.count({ where: { userId: user.id } })).toBe(1);
+    expect(await prisma.document.count({ where: { userId: user.id } })).toBe(1);
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(after.lastLinkedinImportAt).toEqual(before.lastLinkedinImportAt);
   });
 
   it("hands the model call an abort signal", async () => {
@@ -167,6 +178,15 @@ describe("V-239 LinkedIn import keeps the AI guarantees", () => {
 
     expect(response.status).toBe(429);
     expect(convertResume).not.toHaveBeenCalled();
+    // V-417: refused before anything was charged, held, created or stamped.
+    expect(await balance(user.id)).toBe(50);
+    expect(await prisma.creditReservation.count({ where: { userId: user.id } })).toBe(0);
+    expect(await prisma.document.count({ where: { userId: user.id } })).toBe(0);
+    expect(
+      (await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).lastLinkedinImportAt,
+    ).toBeNull();
+    // The slot counter is back where the two other calls left it.
+    expect(await getRedis().get(slotKey)).toBe("2");
   });
 });
 
@@ -226,6 +246,8 @@ describe("V-240 / V-243 GitHub failures say what happened", () => {
     const response = await importGithub(user);
     expect(response.status).toBe(502);
     expect(response.body.details?.code).toBe("GITHUB_UNAVAILABLE");
+    // V-420: the loop passes when it runs zero times, so the call is asserted first.
+    expect(fetchSpy).toHaveBeenCalled();
     for (const [, init] of fetchSpy.mock.calls) expect(init?.signal).toBeInstanceOf(AbortSignal);
 
     const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
