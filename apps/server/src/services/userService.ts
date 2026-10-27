@@ -83,6 +83,19 @@ export async function deleteUserCascade(
   // must still be able to insert its row (its foreign key takes KEY SHARE on this row), or the two
   // deadlock on the wallet below. The final `user.delete` takes the full lock.
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR NO KEY UPDATE`;
+  // The open-withdrawal refusal again, now under that lock (V-374): `requestWithdrawal` locks the
+  // User row first too, so one requested after the callers' check either committed before this
+  // read (and is seen) or waits for the deletion. Without it the cascade detached a REQUESTED
+  // withdrawal from a deleted account, which an admin can neither pay nor reject.
+  const [openWithdrawal] = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+    SELECT "id", "status"::text AS "status" FROM "AffiliateWithdrawal"
+    WHERE "userId" = ${userId} AND "status" IN ('REQUESTED', 'APPROVED')
+    LIMIT 1`;
+  if (openWithdrawal)
+    throw new ApiError(
+      409,
+      `This account has an affiliate withdrawal in progress (${openWithdrawal.id}, ${openWithdrawal.status}). It must be paid or rejected before the account is deleted.`,
+    );
   // The affiliate balance this deletion forfeits, read with the wallet row locked: a commission
   // released after the pre-check is either in this amount or waits for the deletion to commit.
   const [wallet] = await tx.$queryRaw<
