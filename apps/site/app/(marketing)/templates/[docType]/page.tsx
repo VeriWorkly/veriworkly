@@ -17,6 +17,7 @@ import { FRAME, PageHero, TYPE } from "@/components/marketing/PageLayout";
 import TemplateExplorer from "@/features/templates/TemplateExplorer";
 import { toCardData } from "@/features/templates/cardFields";
 import { templatesHeading } from "@/features/templates/utils";
+import { ogPageImage } from "@/features/og/cards";
 
 type PageProps = {
   params: Promise<{ docType: string }>;
@@ -45,9 +46,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     });
   }
 
-  const ogImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-    docTypeData.pluralLabel,
-  )}&description=${encodeURIComponent(docTypeData.description)}`;
+  const ogImage = ogPageImage(`templates:${docType}`);
 
   return buildPageMetadata({
     path: `/templates/${docType}`,

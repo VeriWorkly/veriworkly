@@ -1,5 +1,6 @@
 import { fetchApiData, ApiRequestError } from "@/utils/fetchApiData";
 
+/** One week as a backstop: the API calls /api/revalidate with the "roadmap" tag after every change. */
 const ROADMAP_REVALIDATE_SECONDS = 604800;
 
 export type RoadmapSort = "newest" | "oldest" | "recently-completed";
@@ -253,7 +254,9 @@ async function fetchRoadmapStatusItems(
   sort: RoadmapSort,
 ): Promise<RoadmapFeature[]> {
   // Always cached; manual refresh goes through refreshRoadmapPath, never a per-request no-store bypass.
-  const cacheOptions: RequestInit = { next: { revalidate: ROADMAP_REVALIDATE_SECONDS } };
+  const cacheOptions: RequestInit = {
+    next: { revalidate: ROADMAP_REVALIDATE_SECONDS, tags: ["roadmap"] },
+  };
 
   const page = (offset: number) =>
     fetchApiData<RoadmapListPayload>(
@@ -373,7 +376,7 @@ export async function fetchRoadmapSitemapEntries(): Promise<RoadmapSitemapEntry[
         });
 
         const listData = await fetchApiData<RoadmapListPayload>(`/roadmap?${query.toString()}`, {
-          next: { revalidate: SITEMAP_REVALIDATE_SECONDS },
+          next: { revalidate: SITEMAP_REVALIDATE_SECONDS, tags: ["roadmap"] },
         });
 
         entries.push(...listData.items.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
@@ -391,13 +394,18 @@ export async function fetchRoadmapSitemapEntries(): Promise<RoadmapSitemapEntry[
   return perStatus.flat();
 }
 
+/** Feature ids are slugs; `/roadmap/stats` is another backend route, so a payload without a title is not a feature either. */
+const ROADMAP_ID = /^[a-z0-9][a-z0-9-]{0,120}$/i;
+
 export async function fetchRoadmapFeatureById(id: string): Promise<RoadmapFeature | null> {
+  if (!ROADMAP_ID.test(id)) return null;
+
   try {
-    const feature = await fetchApiData<RoadmapFeature>(`/roadmap/${id}`, {
-      next: { revalidate: ROADMAP_REVALIDATE_SECONDS },
+    const feature = await fetchApiData<RoadmapFeature>(`/roadmap/${encodeURIComponent(id)}`, {
+      next: { revalidate: ROADMAP_REVALIDATE_SECONDS, tags: ["roadmap"] },
     });
 
-    return normalizeFeature(feature);
+    return typeof feature?.title === "string" ? normalizeFeature(feature) : null;
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 404) {
       return null;
@@ -419,7 +427,7 @@ export async function fetchSuggestedRoadmapItems(
     });
 
     const listData = await fetchApiData<RoadmapListPayload>(`/roadmap?${query.toString()}`, {
-      next: { revalidate: ROADMAP_REVALIDATE_SECONDS },
+      next: { revalidate: ROADMAP_REVALIDATE_SECONDS, tags: ["roadmap"] },
     });
 
     return listData.items.map(normalizeFeature);

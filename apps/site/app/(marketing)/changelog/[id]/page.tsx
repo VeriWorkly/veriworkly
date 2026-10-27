@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { organizationRef, webSiteRef } from "@/utils/schema";
-import { buildPageMetadata, fitDescription, fitTitle } from "@/utils/metadata";
+import { buildPageMetadata, fitTitle } from "@/utils/metadata";
 
 import {
   fetchChangelogIndex,
@@ -15,9 +15,10 @@ import ChangelogEntryNav from "@/features/changelog/components/detail/ChangelogE
 import ChangelogEntryDetail from "@/features/changelog/components/detail/ChangelogEntryDetail";
 import {
   categoriesFor,
+  describeRelease,
   releaseHeadline,
-  releaseSummary,
 } from "@/features/changelog/utils/changelog-utils";
+import { ogPageImage, ogReleaseImage } from "@/features/og/cards";
 
 interface ChangelogDetailPageProps {
   params: Promise<{ id: string }>;
@@ -34,13 +35,6 @@ export async function generateStaticParams() {
 
     return [];
   }
-}
-
-function describe(title: string, version: string, summary: string | null) {
-  return fitDescription(
-    releaseSummary(summary) ??
-      `Everything that shipped in VeriWorkly v${version} - ${releaseHeadline(title)}: new features, improvements, fixes, and the pull requests behind them.`,
-  );
 }
 
 export async function generateMetadata({ params }: ChangelogDetailPageProps): Promise<Metadata> {
@@ -61,7 +55,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
       twitterTitle: "Release Not Found",
       twitterDescription: "This release does not exist in the VeriWorkly changelog.",
 
-      image: "/api/og?title=Changelog&showDesc=false",
+      image: ogPageImage("changelog-missing"),
 
       noIndex: true,
     });
@@ -69,12 +63,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
 
   const { entry } = detail;
 
-  const description = describe(entry.title, entry.version, entry.summary);
-
-  const ogUrl = new URL("/api/og", siteConfig.url);
-
-  ogUrl.searchParams.set("title", `v${entry.version} - ${entry.title}`);
-  ogUrl.searchParams.set("description", description);
+  const description = describeRelease(entry);
 
   return buildPageMetadata({
     path: `/changelog/${entry.id}`,
@@ -88,7 +77,7 @@ export async function generateMetadata({ params }: ChangelogDetailPageProps): Pr
     twitterTitle: `VeriWorkly v${entry.version} - ${entry.title}`,
     twitterDescription: description,
 
-    image: ogUrl.toString(),
+    image: ogReleaseImage(entry.id),
     imageAlt: `VeriWorkly v${entry.version} release notes`,
 
     type: "article",
@@ -112,7 +101,7 @@ const ChangelogDetailPage = async ({ params }: ChangelogDetailPageProps) => {
   const { entry, older, newer, isLatest } = detail;
 
   const entryUrl = `${siteConfig.url}/changelog/${entry.id}`;
-  const description = describe(entry.title, entry.version, entry.summary);
+  const description = describeRelease(entry);
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",

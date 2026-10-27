@@ -12,10 +12,9 @@ import SocialSection from "./_components/SocialSection";
 import BrandKitHeader from "./_components/BrandKitHeader";
 import BoilerplateSection from "./_components/BoilerplateSection";
 import BrandTypographySection from "./_components/BrandTypographySection";
+import { ogPageImage } from "@/features/og/cards";
 
-const ogImage = `/api/og?title=${encodeURIComponent("Brand Kit")}&description=${encodeURIComponent(
-  "Logos, colors, typography, and voice guidelines for VeriWorkly.",
-)}`;
+const ogImage = ogPageImage("brand-kit");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/brand-kit",

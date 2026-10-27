@@ -18,16 +18,13 @@ import AffiliateFooter from "@/features/affiliate/AffiliateFooter";
 import AffiliateResources from "@/features/affiliate/AffiliateResources";
 import AffiliateComparison from "@/features/affiliate/AffiliateComparison";
 import { MotionIsland } from "@/providers/motion-island";
+import { ogPageImage } from "@/features/og/cards";
 
 const AffiliateCalculator = dynamic(() => import("@/features/affiliate/AffiliateCalculator"));
 
 const pageUrl = `${siteConfig.url}/affiliate`;
 
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Partner Affiliate Program",
-)}&description=${encodeURIComponent(
-  "Earn recurring commissions of 2%, 3%, or 5% referring VeriWorkly.",
-)}`;
+const pageOgImage = ogPageImage("affiliate");
 
 // Flags come from the runtime env (the build does not pass them), so re-read them every 5 minutes.
 export const revalidate = 300;

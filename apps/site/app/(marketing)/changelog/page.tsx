@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
+import { firstParam, type SearchParamValue } from "@/lib/search-params";
 
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { buildPageMetadata } from "@/utils/metadata";
@@ -13,12 +14,11 @@ import {
 
 import ChangelogPageShell from "@/features/changelog/components/list/ChangelogPageShell";
 import ChangelogSEOContent from "@/features/changelog/components/list/ChangelogSEOContent";
+import { ogPageImage } from "@/features/og/cards";
 
 const pageUrl = `${siteConfig.url}/changelog`;
 
-const ogImage = `/api/og?title=${encodeURIComponent("Changelog")}&description=${encodeURIComponent(
-  "Every VeriWorkly release, generated straight from our public GitHub history.",
-)}`;
+const ogImage = ogPageImage("changelog");
 
 const changelogMetadata = {
   path: "/changelog",
@@ -60,18 +60,25 @@ function parsePage(raw: string | undefined): number {
 
 interface ChangelogPageProps {
   searchParams: Promise<{
-    type?: string;
-    search?: string;
-    page?: string;
+    type?: SearchParamValue;
+    search?: SearchParamValue;
+    page?: SearchParamValue;
   }>;
 }
 
-export async function generateMetadata({ searchParams }: ChangelogPageProps): Promise<Metadata> {
+async function readParams(searchParams: ChangelogPageProps["searchParams"]) {
   const params = await searchParams;
+  return {
+    type: parseType(firstParam(params.type)),
+    search: firstParam(params.search)?.trim() || undefined,
+    page: parsePage(firstParam(params.page)),
+  };
+}
 
-  const page = parsePage(params.page);
+export async function generateMetadata({ searchParams }: ChangelogPageProps): Promise<Metadata> {
+  const { type, search, page } = await readParams(searchParams);
 
-  const isFiltered = Boolean(parseType(params.type) || params.search?.trim());
+  const isFiltered = Boolean(type || search);
 
   return buildPageMetadata({
     ...changelogMetadata,
@@ -88,12 +95,7 @@ export async function generateMetadata({ searchParams }: ChangelogPageProps): Pr
 }
 
 const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
-  const params = await searchParams;
-
-  const type = parseType(params.type);
-  const search = params.search?.trim() || undefined;
-
-  const page = parsePage(params.page);
+  const { type, search, page } = await readParams(searchParams);
 
   const data = await fetchChangelogFromBackend({ type, search }, page);
 

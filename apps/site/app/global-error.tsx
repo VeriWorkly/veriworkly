@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
+import { reportClientError } from "@/utils/report-client-error";
+
 const GlobalError = ({
   error,
   retry,
@@ -12,6 +14,7 @@ const GlobalError = ({
 }) => {
   useEffect(() => {
     console.error("Global error boundary caught error:", error);
+    reportClientError(error, "global");
   }, [error]);
 
   return (

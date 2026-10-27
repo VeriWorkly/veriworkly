@@ -21,6 +21,7 @@ import { compareDescription, compareTitle } from "@/features/compare/data/metada
 
 import { LandingButton } from "@/components/marketing/LandingButton";
 import { PageHero, PageSection } from "@/components/marketing/PageLayout";
+import { ogPageImage } from "@/features/og/cards";
 
 interface PageProps {
   params: Promise<{ tool: string }>;
@@ -49,15 +50,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       twitterTitle: "Comparison Not Found",
       twitterDescription: "This comparison is not available on VeriWorkly yet.",
 
-      image: "/api/og?title=Not%20Found",
+      image: ogPageImage("compare-missing"),
 
       noIndex: true,
     });
   }
 
-  const ogImage = `/api/og?title=${encodeURIComponent(
-    `VeriWorkly vs ${competitor.name}`,
-  )}&description=${encodeURIComponent(competitor.positioning)}`;
+  const ogImage = ogPageImage(`compare:${competitor.id}`);
 
   return buildPageMetadata({
     path: `/compare/${competitor.id}`,

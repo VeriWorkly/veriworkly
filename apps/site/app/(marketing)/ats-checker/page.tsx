@@ -18,17 +18,14 @@ import {
 import { faqs } from "@/features/faq/data/faqItems";
 import { PageClosing } from "@/components/marketing/PageLayout";
 import { MotionIsland } from "@/providers/motion-island";
+import { ogPageImage } from "@/features/og/cards";
 
 export const revalidate = false;
 export const dynamic = "force-static";
 
 const pageUrl = `${siteConfig.url}/ats-checker`;
 const scanUrl = `${pageUrl}/scan`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Free ATS Resume Checker",
-)}&description=${encodeURIComponent(
-  "Score your resume against a job description with our deterministic, rules-based engine.",
-)}`;
+const pageOgImage = ogPageImage("ats-checker");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/ats-checker",

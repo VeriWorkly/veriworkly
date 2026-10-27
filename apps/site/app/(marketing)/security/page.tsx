@@ -15,16 +15,13 @@ import {
   ResponsibleDisclosureSection,
 } from "@/features/security";
 import { PageClosing, PageSection } from "@/components/marketing/PageLayout";
+import { ogPageImage } from "@/features/og/cards";
 
 export const revalidate = false;
 export const dynamic = "force-static";
 
 const pageUrl = `${siteConfig.url}/security`;
-const pageOgImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(
-  "Security Architecture & Disclosure Policy",
-)}&description=${encodeURIComponent(
-  "Local-first browser sandboxes, Better Auth OTP verification, minimal OAuth scopes, and a 24 to 48 hour acknowledgement on every report.",
-)}`;
+const pageOgImage = ogPageImage("security");
 
 export const metadata: Metadata = buildPageMetadata({
   path: "/security",
