@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
@@ -27,13 +27,39 @@ export function sessionCookieHeader(all: { name: string; value: string }[]) {
     .join("; ");
 }
 
+/**
+ * The browser's address as nginx reports it: `X-Real-IP`, else the last `X-Forwarded-For` hop
+ * (the one nginx appended). Same rule as the studio's server-fetch-core.ts.
+ */
+export function clientIpFrom(requestHeaders: Headers) {
+  const realIp = requestHeaders.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  return requestHeaders.get("x-forwarded-for")?.split(",").at(-1)?.trim() || undefined;
+}
+
+/**
+ * With INTERNAL_API_KEY the API rate-limits this call as the visitor, not as the site's one
+ * server IP that every visitor would otherwise share (W-088). The API trusts the IP header only
+ * alongside that key.
+ */
+export function visitorHeaders(requestHeaders: Headers): Record<string, string> {
+  const internalKey = process.env.INTERNAL_API_KEY;
+  const clientIp = clientIpFrom(requestHeaders);
+  return internalKey && clientIp
+    ? { "x-internal-key": internalKey, "x-forwarded-client-ip": clientIp }
+    : {};
+}
+
 export const fetchServerApiResult = cache(async function fetchServerApiResult<T>(
   path: string,
 ): Promise<ServerApiResult<T>> {
   let cookieHeader = "";
+  let forwarded: Record<string, string> = {};
 
   try {
     cookieHeader = sessionCookieHeader((await cookies()).getAll());
+    forwarded = visitorHeaders(await headers());
   } catch {
     return { ok: false, reason: "unavailable" };
   }
@@ -42,7 +68,7 @@ export const fetchServerApiResult = cache(async function fetchServerApiResult<T>
 
   try {
     const data = await fetchApiData<T>(path, {
-      headers: { Cookie: cookieHeader },
+      headers: { Cookie: cookieHeader, ...forwarded },
       cache: "no-store",
     });
 
