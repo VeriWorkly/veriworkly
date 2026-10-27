@@ -616,12 +616,17 @@ model PortfolioPublication {
   // The owner's or billing's own suspension reason a moderation lock covers, restored when the
   // lock lifts; null when the site was online as the lock went on (V-285).
   reasonBeforeModeration String?
+  // The latest publish: moves on every republish.
   publishedAt       DateTime                   @default(now())
+  // When the site first went online: set once on create, never updated (V-288). The admin
+  // dashboard's publication counts use this, so a republish does not re-date a site.
+  firstPublishedAt  DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   views             PortfolioViewDaily[]
 
   @@index([status, updatedAt])
   @@index([publishedAt])
+  @@index([firstPublishedAt])
 }
 
 enum BillingWebhookStatus {

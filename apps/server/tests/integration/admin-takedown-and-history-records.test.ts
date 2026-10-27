@@ -675,3 +675,56 @@ describe("V-287 a forfeited affiliate balance is a money record", () => {
     expect(left).toEqual(["forfeit-1y"]);
   });
 });
+
+describe("V-288 the publications chart and 30-day count follow a site's first publish", () => {
+  /** Moves every timestamp on the publication `days` into the past: "it was published then". */
+  async function ageEveryTimestamp(publicationId: string, days: number) {
+    const columns = await prisma.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'PortfolioPublication' AND data_type LIKE 'timestamp%'`;
+    const sets = columns
+      .map(({ column_name }) => `"${column_name}" = "${column_name}" - interval '${days} days'`)
+      .join(", ");
+    await prisma.$executeRawUnsafe(
+      `UPDATE "PortfolioPublication" SET ${sets} WHERE "id" = $1`,
+      publicationId,
+    );
+  }
+
+  async function republish(userId: string, cookie: string, documentId: string, subdomain: string) {
+    const { revision } = await prisma.document.findUniqueOrThrow({ where: { id: documentId } });
+    const response = await request(app)
+      .post("/api/v1/portfolios/publish")
+      .set("Origin", STUDIO_ORIGIN)
+      .set("Cookie", cookie)
+      .send({ documentId, subdomain, revision });
+    expect(response.status, `${userId} ${JSON.stringify(response.body)}`).toBe(201);
+  }
+
+  it("does not move a site to the day it was republished", async () => {
+    await prisma.portfolioPublication.deleteMany({});
+    const recent = await createUserWithSession();
+    const old = await createUserWithSession();
+    const recentSite = await seedLivePortfolio(recent.id);
+    const oldSite = await seedLivePortfolio(old.id);
+    await ageEveryTimestamp(recentSite.publication.id, 3);
+    await ageEveryTimestamp(oldSite.publication.id, 40);
+
+    await republish(
+      recent.id,
+      recent.cookie,
+      recentSite.document.id,
+      recentSite.publication.subdomain,
+    );
+    await republish(old.id, old.cookie, oldSite.document.id, oldSite.publication.subdomain);
+
+    const series = await admin.request("get", "/admin/overview/series?days=7");
+    expect(series.status).toBe(200);
+    // Oldest first, ending today: the recent site stays on its day, nothing lands on today.
+    expect(series.body.data.series.publications).toEqual([0, 0, 0, 1, 0, 0, 0]);
+
+    const summary = await admin.request("get", "/admin/portfolios/summary");
+    expect(summary.status).toBe(200);
+    expect(summary.body.data.publishedLast30Days).toBe(1);
+  });
+});

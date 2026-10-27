@@ -73,7 +73,7 @@ export async function getPortfolioSummary() {
         orderBy: { _count: { templateId: "desc" } },
         take: 10,
       }),
-      prisma.portfolioPublication.count({ where: { publishedAt: { gte: since30 } } }),
+      prisma.portfolioPublication.count({ where: { firstPublishedAt: { gte: since30 } } }),
       prisma.portfolioViewDaily.aggregate({
         where: { date: { gte: since30 } },
         _sum: { count: true },
