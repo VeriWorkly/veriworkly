@@ -223,6 +223,11 @@ async function takeDownPortfolioPublication(documentId: string, reason: string) 
   void revalidatePublicPortfolios([publication.subdomain]);
 }
 
+/** The audit entry of a delete or restore: ids only, a title outlives the purge otherwise (V-206). */
+function ownerAudit(audit: AdminAuditInput, ownerId: string): AdminAuditInput {
+  return { ...audit, metadata: { ...audit.metadata, ownerId } };
+}
+
 async function loadDocumentForMutation(documentId: string) {
   const document = await prisma.document.findUnique({
     where: { id: documentId },
@@ -364,15 +369,29 @@ export async function updateDocumentVisibility(
   return { document: updated, previousVisibility: document.visibility };
 }
 
-export async function softDeleteDocument(documentId: string) {
+/**
+ * Soft delete, reversible via `restoreDocument`. Conditional on the document not being deleted
+ * already, and the admin audit entry commits in the same transaction (V-249): two racing deletes
+ * leave one change and one entry, and a change without its entry cannot happen.
+ */
+export async function softDeleteDocument(documentId: string, audit?: AdminAuditInput) {
   const document = await loadDocumentForMutation(documentId);
 
   if (document.deletedAt) throw new ApiError(409, "Document is already deleted.");
 
-  const updated = await prisma.document.update({
-    where: { id: documentId },
-    data: { deletedAt: new Date() },
-    select: DOCUMENT_LIST_SELECT,
+  const updated = await prisma.$transaction(async (tx) => {
+    const deleted = await tx.document.updateMany({
+      where: { id: documentId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (deleted.count === 0) throw new ApiError(409, "Document is already deleted.");
+
+    if (audit) await writeAdminAudit(tx, ownerAudit(audit, document.userId));
+
+    return tx.document.findUniqueOrThrow({
+      where: { id: documentId },
+      select: DOCUMENT_LIST_SELECT,
+    });
   });
 
   if (document.type === "PORTFOLIO")
@@ -389,7 +408,8 @@ export async function softDeleteDocument(documentId: string) {
   return updated;
 }
 
-export async function restoreDocument(documentId: string) {
+/** Restores a soft-deleted document; the audit entry commits with the change (V-249). */
+export async function restoreDocument(documentId: string, audit?: AdminAuditInput) {
   const document = await loadDocumentForMutation(documentId);
 
   if (!document.deletedAt) throw new ApiError(409, "Document is not deleted.");
@@ -397,13 +417,17 @@ export async function restoreDocument(documentId: string) {
   assertDocumentNotPurged(document);
 
   // Conditional, so a purge that lands between the read above and this write wins (410).
-  const restored = await prisma.document.updateMany({
-    where: {
-      id: documentId,
-      deletedAt: { not: null },
-      NOT: { content: { equals: PURGED_DOCUMENT_CONTENT as Prisma.InputJsonObject } },
-    },
-    data: { deletedAt: null },
+  const restored = await prisma.$transaction(async (tx) => {
+    const result = await tx.document.updateMany({
+      where: {
+        id: documentId,
+        deletedAt: { not: null },
+        NOT: { content: { equals: PURGED_DOCUMENT_CONTENT as Prisma.InputJsonObject } },
+      },
+      data: { deletedAt: null },
+    });
+    if (result.count > 0 && audit) await writeAdminAudit(tx, ownerAudit(audit, document.userId));
+    return result;
   });
 
   if (restored.count === 0) {
