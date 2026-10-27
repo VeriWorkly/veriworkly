@@ -142,14 +142,19 @@ function isIdOrVersionConflict(error: Prisma.PrismaClientKnownRequestError): boo
 function deriveTitle(release: GitHubReleasePayload, version: string): string {
   if (!release.name) return `Release v${version}`;
 
-  return release.name.replace(/^v?[\d.]+(?:-[\w.]+)?\s*[–-]\s*/i, "").trim() || release.name;
+  // "v3.32.0 – Title", "v3.32.0 - Title" and "v3.32.0 — Title" (em dash) all become "Title".
+  return release.name.replace(/^v?[\d.]+(?:-[\w.]+)?\s*[–—-]\s*/i, "").trim() || release.name;
 }
 
 /**
  * Syncs GitHub releases into the changelog. New releases get a row. Every stored release has its
  * pull request list completed from GitHub, adding PRs and authors but never removing any. A
  * synced row no admin has edited (`editedAt` null) is also parsed again on every run, so parser
- * fixes reach old entries; hand-curated and admin-edited text is never modified. Safe to re-run.
+ * fixes reach it; hand-curated and admin-edited text is never modified. Safe to re-run.
+ * Not every old entry qualifies (V-066): the 20261025210000 backfill marked every row whose
+ * `updatedAt` had moved, including rows only the old sync's prRefs write touched, because a
+ * hand edit made before changelog writes were audited cannot be told apart from it. Those rows
+ * keep their text until an admin clears `editedAt` on them.
  *
  * `options.lock` is a lock the caller already took with `acquireChangelogSyncLock` (the admin
  * trigger, which then runs this in the background); it is released here either way.
@@ -286,7 +291,8 @@ export async function syncChangelogFromGitHubReleases(
           : [];
 
         // A synced entry no admin has edited holds only what the parser produced, so its text is
-        // parsed again and parser fixes reach it. `editedAt` is set by admin writes alone; the
+        // parsed again and parser fixes reach it. `editedAt` is set by admin writes (and, for rows
+        // stored before 2026-10-25, by the backfill: see the function comment, V-066); the
         // updatedAt-createdAt test this replaced counted the sync's own prRefs write as an edit.
         const text =
           stored.tags.includes("auto-synced") && !stored.editedAt

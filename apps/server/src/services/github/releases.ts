@@ -37,7 +37,7 @@ export async function fetchPullRequestSummary(
 }
 
 /**
- * Fetch every non-draft release for a repo, oldest to newest.
+ * Fetch every published release for a repo (no drafts, no prereleases), oldest to newest.
  */
 export async function fetchAllGitHubReleases(
   owner: string,
@@ -61,7 +61,8 @@ export async function fetchAllGitHubReleases(
       continue;
     }
 
-    collected.push(...payload.filter((release) => !release.draft));
+    // Drafts and prereleases are not shipped: neither becomes a public changelog entry.
+    collected.push(...payload.filter((release) => !release.draft && !release.prerelease));
     hasNextPage = payload.length === perPage;
     page += 1;
   }

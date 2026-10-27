@@ -5,7 +5,7 @@ import { app } from "#app";
 import { config } from "#config";
 import { prisma } from "#lib/prisma";
 import { getRedis } from "#lib/redis";
-import { fetchGitHubApi } from "#services/github/index";
+import { fetchGitHubApi, GITHUB_PROJECT_URL } from "#services/github/index";
 import { syncChangelogFromGitHubReleases } from "#services/changelog/index";
 
 import { STUDIO_ORIGIN } from "./env.js";
@@ -61,12 +61,17 @@ afterEach(async () => {
 });
 
 describe("GET /github/stats and /github/issues (V-054, V-064, V-062)", () => {
+  it("keeps the legacy project key when GITHUB_PROJECT_URL is unset, so stored stats still serve", () => {
+    expect(GITHUB_PROJECT_URL).toBe("");
+  });
+
   async function seedSync() {
     const nextSyncAt = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const sync = await prisma.gitHubSync.create({
       data: {
         projectName: "VeriWorkly/veriworkly",
-        projectUrl: config.github.projectUrl,
+        // GITHUB_PROJECT_URL is unset in this suite: the row production already holds under "".
+        projectUrl: "",
         issueCount: 3,
         onlyIssueCount: 2,
         prCount: 1,
@@ -547,5 +552,24 @@ describe("GitHub client and changelog sync at the fetch boundary (V-057, V-158, 
     } finally {
       Object.assign(config.github, original);
     }
+  });
+});
+
+describe("offset paging has an upper bound (V-064)", () => {
+  it("answers 400, not 500, to a page or offset past the last row a list serves", async () => {
+    for (const query of ["page=1e300", "offset=1e300", "page=99999999"]) {
+      const response = await request(app)
+        .get(`${API}/roadmap?${query}`)
+        .set("Origin", STUDIO_ORIGIN);
+      expect(response.status, query).toBe(400);
+    }
+
+    const user = await createUserWithSession();
+    const keys = await request(app)
+      .get(`${API}/api-keys?page=1e300`)
+      .set("Origin", STUDIO_ORIGIN)
+      .set("Cookie", user.cookie);
+    expect(keys.status).toBe(400);
+    expect(keys.body.details).toEqual([expect.objectContaining({ path: "page" })]);
   });
 });

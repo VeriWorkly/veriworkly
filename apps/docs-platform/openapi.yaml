@@ -644,6 +644,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
+            maximum: 1000000
           required: false
           description: Number of items to skip. An alternative to `page`; sending both is rejected with `400`.
         - name: page
@@ -652,6 +653,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
+            maximum: 1000000
           required: false
           description: 1-based page index. An alternative to `offset`.
         - name: pageSize
@@ -871,6 +873,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
+            maximum: 1000000
           description: Number of items to skip. An alternative to `page`; sending both is rejected with `400`.
         - name: page
           in: query
@@ -879,6 +882,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
+            maximum: 1000000
           description: 1-based page index. An alternative to `offset`.
         - name: pageSize
           in: query
@@ -1161,6 +1165,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
+            maximum: 1000000
           required: false
         - in: query
           name: page
@@ -1168,6 +1173,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
+            maximum: 1000000
           description: 1-based page index. An alternative to `offset`.
           required: false
         - in: query

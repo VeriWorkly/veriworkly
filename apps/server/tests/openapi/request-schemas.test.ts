@@ -51,7 +51,11 @@ describe("OpenAPI request schemas generated from zod", () => {
   });
 
   it("documents what a client sends, not what transforms produce", () => {
-    expect(toRequestJsonSchema(publicPageParam)).toEqual({ type: "integer", minimum: 1 });
+    expect(toRequestJsonSchema(publicPageParam)).toEqual({
+      type: "integer",
+      minimum: 1,
+      maximum: 1_000_000,
+    });
     expect(toRequestJsonSchema(z.date())).toEqual({ type: "string", format: "date-time" });
     expect(
       toRequestJsonSchema(

@@ -568,14 +568,14 @@
           {
             "name": "offset",
             "in": "query",
-            "schema": { "type": "integer", "minimum": 0, "default": 0 },
+            "schema": { "type": "integer", "minimum": 0, "default": 0, "maximum": 1000000 },
             "required": false,
             "description": "Number of items to skip. An alternative to `page`; sending both is rejected with `400`."
           },
           {
             "name": "page",
             "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "schema": { "type": "integer", "minimum": 1, "default": 1, "maximum": 1000000 },
             "required": false,
             "description": "1-based page index. An alternative to `offset`."
           },
@@ -791,14 +791,14 @@
             "name": "offset",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 0, "default": 0 },
+            "schema": { "type": "integer", "minimum": 0, "default": 0, "maximum": 1000000 },
             "description": "Number of items to skip. An alternative to `page`; sending both is rejected with `400`."
           },
           {
             "name": "page",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "schema": { "type": "integer", "minimum": 1, "default": 1, "maximum": 1000000 },
             "description": "1-based page index. An alternative to `offset`."
           },
           {
@@ -1073,13 +1073,13 @@
           {
             "in": "query",
             "name": "offset",
-            "schema": { "type": "integer", "minimum": 0, "default": 0 },
+            "schema": { "type": "integer", "minimum": 0, "default": 0, "maximum": 1000000 },
             "required": false
           },
           {
             "in": "query",
             "name": "page",
-            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "schema": { "type": "integer", "minimum": 1, "default": 1, "maximum": 1000000 },
             "description": "1-based page index. An alternative to `offset`.",
             "required": false
           },
