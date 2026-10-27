@@ -89,6 +89,8 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   CHANGELOG_RELEASE_SYNC_MIN_INTERVAL_SECONDS: { min: 0 },
 
   PORTFOLIO_GRACE_DAYS: { min: 0 },
+  // Days after sign-up a referral code can still be applied (services/affiliate/constants.ts).
+  AFFILIATE_ATTRIBUTION_DAYS: { min: 1, max: 365 },
 
   // Credit pack display prices in USD cents; a free or negative pack price is a typo.
   CREDIT_PACK_250_PRICE_CENTS: { min: 1 },
@@ -126,6 +128,9 @@ const MIN_INTERNAL_SECRET_LENGTH = 32;
 /** Names `proxy-addr` (Express `trust proxy`) understands in addition to IPs and CIDRs. */
 const TRUST_PROXY_NAMED_RANGES = new Set(["loopback", "linklocal", "uniquelocal"]);
 const BOOLEAN_WORDS = new Set(["true", "false", "yes", "no", "on", "off"]);
+
+/** One address, no display name and no list: `config.admin.email` is compared to it as is. */
+const SINGLE_EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 
 /** Maps an IPv4-mapped IPv6 address (`::ffff:127.0.0.1` or `::ffff:7f00:1`) to its IPv4 form. */
 function unmapIpv4(host: string): string {
@@ -460,6 +465,15 @@ const environmentSchema = z
   })
   .passthrough()
   .superRefine((env, ctx) => {
+    // ADMIN_EMAIL: the admin panel, the admin-only production gates and the contact form all key
+    // on it, and unset it leaves nobody able to operate the service, so every environment needs it.
+    const adminEmail = (env as RawEnv).ADMIN_EMAIL;
+    if (adminEmail === undefined) {
+      addIssue(ctx, "ADMIN_EMAIL", "is required (the email address of the operator account)");
+    } else if (!SINGLE_EMAIL.test(adminEmail.trim())) {
+      addIssue(ctx, "ADMIN_EMAIL", "must be a single email address, e.g. admin@example.com");
+    }
+
     const ipHeaders = (env as RawEnv).AUTH_IP_ADDRESS_HEADERS;
     if (
       ipHeaders !== undefined &&
@@ -499,8 +513,8 @@ function formatEnvironmentIssues(issues: z.ZodIssue[]): string {
 
 /**
  * Validates the raw environment and throws one Error listing every failing variable.
- * Production-only rules apply when NODE_ENV=production; NODE_ENV and integer formats are checked
- * in every environment.
+ * Production-only rules apply when NODE_ENV=production; NODE_ENV, ADMIN_EMAIL and integer formats
+ * are checked in every environment.
  */
 export function validateEnvironmentConfig(env: RawEnv = process.env): void {
   const result = environmentSchema.safeParse(normalizeEnv(env));

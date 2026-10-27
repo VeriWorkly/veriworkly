@@ -13,8 +13,12 @@ function getCpuCount(): number {
   return os.cpus().length || 1;
 }
 
+/**
+ * A blank value counts as unset, as it does in the boot schema: `.env.example` ships flags as
+ * `NAME=` and compose turns `${NAME}` with NAME unset into "", and neither means "off".
+ */
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
-  if (value == null) return fallback;
+  if (value == null || value.trim() === "") return fallback;
 
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
@@ -152,6 +156,7 @@ export const config = {
   },
 
   admin: {
+    // Trimmed too: a padded value would match no sign-in and lock the operator out.
     email: (process.env.ADMIN_EMAIL || "").trim().toLowerCase(),
   },
 

@@ -9,9 +9,10 @@ export const AFFILIATE_MINIMUM_WITHDRAWAL_CENTS = 2_500;
 export const AFFILIATE_WALLET_CURRENCY = "USD";
 
 /**
- * Days after sign-up during which a referral code can still be applied (V-016). Read from
- * `process.env` here rather than `#config` because the config module is owned elsewhere this
- * round; a missing, non-integer or non-positive value falls back to 30.
+ * Days after sign-up during which a referral code can still be applied (V-016), from
+ * `AFFILIATE_ATTRIBUTION_DAYS`, default 30. The boot schema (`config/environmentSchema.ts`)
+ * refuses a set value that is not an integer from 1 to 365, so the fallback only covers an unset
+ * variable.
  */
 export const AFFILIATE_ATTRIBUTION_DAYS = (() => {
   const parsed = Number.parseInt(process.env.AFFILIATE_ATTRIBUTION_DAYS ?? "", 10);
