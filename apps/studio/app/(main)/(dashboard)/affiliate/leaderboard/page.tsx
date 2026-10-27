@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
+
 import { AffiliateNav } from "@/features/affiliate/AffiliateNav";
 import type { LeaderboardEntry } from "@/features/affiliate/types";
 import { getProgramServerData, PROGRAM_UNAVAILABLE } from "@/features/billing/billing-server";
 import { ProgramUnavailable } from "@/features/billing/ProgramUnavailable";
 import { formatCents } from "@/features/admin/utils/admin-format";
+export const metadata: Metadata = {
+  title: "Affiliate leaderboard",
+  robots: { index: false, follow: false },
+};
+
 export default async function AffiliateLeaderboardPage() {
   const [monthly, allTime] = await Promise.all([
     getProgramServerData<LeaderboardEntry[]>("/affiliates/leaderboard?period=monthly"),

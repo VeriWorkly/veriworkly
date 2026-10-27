@@ -200,8 +200,12 @@ export function DocumentActionsMenu({
               className="h-8 rounded-lg text-xs"
               onClick={() => {
                 close();
-                void navigator.clipboard.writeText(`${window.location.origin}${editorPath}`);
-                toast.success("Editor Link Copied");
+                navigator.clipboard
+                  .writeText(`${window.location.origin}${editorPath}`)
+                  .then(() => toast.success("Editor link copied"))
+                  .catch(() =>
+                    toast.error("Could not copy the link. Copy it from the address bar."),
+                  );
               }}
             >
               <Copy className="h-4 w-4" />

@@ -393,3 +393,93 @@ describe("S-094 the ambassador page offers no edit the server refuses", () => {
     expect(await renderAmbassador("REJECTED")).toContain(">Update<");
   });
 });
+
+describe("account and key pages say what is true (O7 LOW)", () => {
+  it("a new key shows when it expires and links to its own page", async () => {
+    const { default: GeneratedApiKeyCard } =
+      await import("@/features/api-keys/components/GeneratedApiKeyCard");
+
+    const html = renderToStaticMarkup(
+      <GeneratedApiKeyCard
+        generatedKey="vw_secret"
+        keyId="key 1"
+        expiresAt="2027-10-27T00:00:00.000Z"
+        copied={false}
+        onCopy={() => undefined}
+        onDismiss={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('href="/api-keys/key%201"');
+    expect(html).toContain("Expires");
+  });
+
+  it("the create form states the default lifetime in plain words", async () => {
+    const { ApiKeyDetailsForm } =
+      await import("@/features/api-keys/components/create/ApiKeyDetailsForm");
+
+    const html = renderToStaticMarkup(
+      <ApiKeyDetailsForm
+        name=""
+        rateLimit={20}
+        expiresAt=""
+        disabled={false}
+        onNameChange={() => undefined}
+        onRateLimitChange={() => undefined}
+        onExpiresAtChange={() => undefined}
+      />,
+    );
+
+    expect(html).not.toContain("Midnight your time");
+    expect(html).toContain("standard lifetime of one year");
+  });
+
+  it("an unverified email is not shown with a green check, and the name field is not the email", async () => {
+    const { default: ProfileDataPanel } =
+      await import("@/features/profile/components/ProfileDataPanel");
+    const profile = {
+      id: "u1",
+      name: null,
+      username: null,
+      email: "jane@example.com",
+      emailVerified: false,
+      autoSyncEnabled: true,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    };
+
+    const html = renderToStaticMarkup(<ProfileDataPanel profile={profile} />);
+
+    expect(html).toContain("Email not verified");
+    expect(html).not.toContain("Verified email");
+  });
+
+  it("roadmap admin calls encode the feature id", async () => {
+    const spy = vi.spyOn(await import("@/utils/fetchApiData"), "fetchApiData");
+    spy.mockResolvedValue({} as never);
+    const { updateRoadmapFeature, deleteRoadmapFeature } =
+      await import("@/features/roadmap/services/admin-roadmap");
+
+    await updateRoadmapFeature("a/b", {});
+    await deleteRoadmapFeature("a/b");
+
+    expect(spy.mock.calls.map((call) => call[0])).toEqual([
+      "/admin/roadmap/a%2Fb",
+      "/admin/roadmap/a%2Fb",
+    ]);
+  });
+
+  it("the ambassador kit claims no offline mode and no opt-in sync", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("features/ambassador/ShareToolkit.tsx", "utf8");
+
+    expect(source).not.toMatch(/works offline|unless I choose to sync/);
+  });
+
+  it("the locked-username dialog links to a way to reach us", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("features/profile/components/UsernameLockedModal.tsx", "utf8");
+
+    expect(source).toContain("/contact");
+  });
+});

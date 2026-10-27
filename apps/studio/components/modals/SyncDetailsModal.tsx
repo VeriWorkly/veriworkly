@@ -94,7 +94,12 @@ const SyncDetailsModal = ({
 
     pending: {
       label: "Pending",
-      description: "Waiting for a network connection.",
+      description:
+        failureReason === "network"
+          ? "Waiting for a network connection."
+          : failureReason
+            ? "The last attempt failed; it will be tried again."
+            : "Waiting to back up.",
       color: "text-zinc-400",
       ring: "ring-zinc-400/10",
       bg: "md:bg-zinc-500/10",
@@ -177,7 +182,7 @@ const SyncDetailsModal = ({
             </div>
 
             <div>
-              <h2 className="text-sm font-bold tracking-tight">Sync Status</h2>
+              <Modal.Title className="text-sm font-bold tracking-tight">Backup status</Modal.Title>
 
               <div className="flex items-center">
                 <p
@@ -201,9 +206,7 @@ const SyncDetailsModal = ({
 
         <Modal.Body className="space-y-5 p-4">
           <div className="space-y-1.5">
-            <label className="text-muted text-[10px] font-bold tracking-widest uppercase">
-              Target Document
-            </label>
+            <p className="text-muted text-[10px] font-bold tracking-widest uppercase">Document</p>
 
             <div className="bg-muted/5 group hover:bg-muted/10 flex items-center justify-between rounded-xl border px-4 py-3 transition-colors">
               <span className="text-sm font-bold">{document.title}</span>
@@ -224,7 +227,7 @@ const SyncDetailsModal = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card space-y-1 rounded-xl border p-3">
               <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-bold tracking-tight uppercase">
-                <Cloud className="-mt-px h-3.5 w-3.5 opacity-60" /> Last Synced
+                <Cloud className="-mt-px h-3.5 w-3.5 opacity-60" /> Last backed up
               </p>
 
               <p className="text-xs font-bold">

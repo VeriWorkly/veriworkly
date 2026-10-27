@@ -15,7 +15,7 @@ import {
 import { Button, cn } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
-import { useUserStore } from "@/store/useUserStore";
+import { useSessionUser } from "@/store/session-user";
 import { buyCreditPack, openBillingPortal, cancelCheckout } from "@/features/billing/billing-api";
 import type { BillingActivity, BillingSummary } from "@/features/billing/types";
 import {
@@ -124,7 +124,7 @@ export function BillingPage({
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const { user } = useUserStore();
+  const user = useSessionUser();
 
   // Whether payments are actually blocked for this user is decided authoritatively by
   // the backend (BillingController.assertPaymentsEnabled), whose 403 shows as the

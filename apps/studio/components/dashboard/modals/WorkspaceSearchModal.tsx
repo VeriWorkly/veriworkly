@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, Mail, Search, X } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { Modal } from "@veriworkly/ui";
 
@@ -30,9 +30,10 @@ export function WorkspaceSearchModal({
   const inputId = useId();
 
   const [query, setQuery] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => {
-    if (!open) return [];
+  const { results, libraryEmpty } = useMemo(() => {
+    if (!open) return { results: [], libraryEmpty: false };
 
     const documents: SearchResult[] = getDocumentLibrarySnapshot().docs.map(
       (document: DocumentLibraryItem) => ({
@@ -46,15 +47,35 @@ export function WorkspaceSearchModal({
 
     const needle = query.trim().toLowerCase();
 
-    return documents
-      .filter((doc) => !needle || `${doc.title} ${doc.subtitle}`.toLowerCase().includes(needle))
-      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
-      .slice(0, 10);
+    return {
+      libraryEmpty: documents.length === 0,
+      results: documents
+        .filter((doc) => !needle || `${doc.title} ${doc.subtitle}`.toLowerCase().includes(needle))
+        .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
+        .slice(0, 10),
+    };
   }, [open, query]);
+
+  /** Up and down move between the field and the results, as in any search list. */
+  const handleArrowKeys = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+    const items = [
+      document.getElementById(inputId),
+      ...(listRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []),
+    ].filter((item): item is HTMLElement => item !== null);
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const next = event.key === "ArrowDown" ? current + 1 : current - 1;
+
+    if (next < 0 || next >= items.length) return;
+
+    event.preventDefault();
+    items[next].focus();
+  };
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Modal.Content className="overflow-hidden p-0 md:max-w-2xl">
+      <Modal.Content className="overflow-hidden p-0 md:max-w-2xl" onKeyDown={handleArrowKeys}>
         <div className="border-border/70 border-b p-3">
           <Modal.Title className="sr-only">Search workspace</Modal.Title>
 
@@ -87,7 +108,7 @@ export function WorkspaceSearchModal({
           </div>
         </div>
 
-        <div className="max-h-104 overflow-y-auto p-2">
+        <div ref={listRef} className="max-h-104 overflow-y-auto p-2">
           {results.length > 0 ? (
             results.map((doc) => (
               <button
@@ -111,8 +132,14 @@ export function WorkspaceSearchModal({
             ))
           ) : (
             <div className="p-8 text-center">
-              <p className="font-bold">No documents found</p>
-              <p className="text-muted mt-1 text-sm">Try another document title.</p>
+              <p className="font-bold">
+                {libraryEmpty ? "No documents yet" : "No documents found"}
+              </p>
+              <p className="text-muted mt-1 text-sm">
+                {libraryEmpty
+                  ? "Create a resume or cover letter and it will show up here."
+                  : "Try another document title."}
+              </p>
             </div>
           )}
         </div>

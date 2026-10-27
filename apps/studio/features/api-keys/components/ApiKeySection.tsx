@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, LockKeyhole } from "lucide-react";
-import { useUserStore } from "@/store/useUserStore";
+import { useSessionUser } from "@/store/session-user";
 
 import type { ApiKeyRecord } from "./ApiKeyTypes";
 import type { OffsetPaginationPayload } from "@/utils/fetchApiData";
@@ -30,7 +30,7 @@ export default function ApiKeySection({
   initialKeysLoaded,
 }: ApiKeySectionProps) {
   const router = useRouter();
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const isLoggedIn = Boolean(useSessionUser()?.email);
   const apiKeys = useApiKeys({ initialKeys, initialPagination, initialKeysLoaded });
   const { generatedKey } = apiKeys;
 
@@ -62,6 +62,8 @@ export default function ApiKeySection({
         {generatedKey && (
           <GeneratedApiKeyCard
             generatedKey={generatedKey.key}
+            keyId={generatedKey.id}
+            expiresAt={generatedKey.expiresAt}
             onDismiss={() => apiKeys.setGeneratedKey(null)}
             copied={apiKeys.copiedId === generatedKey.id}
             onCopy={() => void apiKeys.copyToClipboard(generatedKey.key, generatedKey.id)}

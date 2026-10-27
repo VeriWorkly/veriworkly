@@ -5,7 +5,7 @@ import { siteConfig } from "@/config/site";
 import { getProgramServerData, PROGRAM_UNAVAILABLE } from "@/features/billing/billing-server";
 import { ProgramUnavailable } from "@/features/billing/ProgramUnavailable";
 import { AmbassadorPage } from "@/features/ambassador/AmbassadorPage";
-import type { AmbassadorStatus } from "@/features/ambassador/types";
+import { isApprovedAmbassador, type AmbassadorStatus } from "@/features/ambassador/types";
 
 export const metadata: Metadata = { title: "Ambassador", robots: { index: false, follow: false } };
 
@@ -14,7 +14,7 @@ export default async function AmbassadorRoute() {
   const status = await getProgramServerData<AmbassadorStatus>("/ambassador/me");
   if (status === PROGRAM_UNAVAILABLE) return <ProgramUnavailable program="ambassador" />;
 
-  const isAmbassador = status?.role === "AMBASSADOR";
+  const isAmbassador = isApprovedAmbassador(status);
   const isPending = status?.ambassadorStatus === "PENDING";
   // Rejected applicants get the dashboard too — it carries the reviewer's note and the
   // re-apply link, which is more useful than being bounced back to the marketing page.

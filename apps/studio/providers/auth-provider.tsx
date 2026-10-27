@@ -1,8 +1,9 @@
 "use client";
 
 import { toast } from "sonner";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
+import { InitialUserContext } from "../store/session-user";
 import { useUserStore } from "../store/useUserStore";
 
 import type { SessionUser } from "@/features/auth/services/current-user";
@@ -83,6 +84,17 @@ function startSettling(user: SessionUser, onUnclaimed: (found: UnclaimedDocument
   });
 
   return settler;
+}
+
+/** Hands the server's user to `useSessionUser`, for the render before the store has it. */
+export function InitialUserProvider({
+  user,
+  children,
+}: {
+  user: SessionUser | null;
+  children: ReactNode;
+}) {
+  return <InitialUserContext value={user}>{children}</InitialUserContext>;
 }
 
 export function AuthInitializer({ initialUser }: { initialUser: SessionUser | null }) {

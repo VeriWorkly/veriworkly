@@ -1,9 +1,15 @@
+import Link from "next/link";
 import { AlertCircle, Check, Copy } from "lucide-react";
 
 import { Button, Card } from "@veriworkly/ui";
 
+import { LocalDate } from "@/components/LocalDate";
+
 type GeneratedApiKeyCardProps = {
   generatedKey: string;
+  /** The new key's id and expiry, for a link to its page; left out on that page itself. */
+  keyId?: string;
+  expiresAt?: string | null;
   copied: boolean;
   onCopy: () => void;
   onDismiss: () => void;
@@ -11,6 +17,8 @@ type GeneratedApiKeyCardProps = {
 
 export default function GeneratedApiKeyCard({
   generatedKey,
+  keyId,
+  expiresAt,
   copied,
   onCopy,
   onDismiss,
@@ -34,6 +42,22 @@ export default function GeneratedApiKeyCard({
             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
           </Button>
         </div>
+
+        {keyId ? (
+          <p className="text-muted-foreground text-xs">
+            {expiresAt ? (
+              <>
+                Expires <LocalDate value={expiresAt} />.{" "}
+              </>
+            ) : null}
+            <Link
+              href={`/api-keys/${encodeURIComponent(keyId)}`}
+              className="text-foreground font-semibold underline"
+            >
+              View this key
+            </Link>
+          </p>
+        ) : null}
 
         <Button size="sm" onClick={onDismiss} className="w-full">
           I have saved the key

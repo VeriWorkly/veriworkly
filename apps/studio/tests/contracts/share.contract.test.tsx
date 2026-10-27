@@ -249,6 +249,85 @@ describe("share contract", () => {
       expect(metadata.title).toEqual({ absolute: "Jane Doe CV | VeriWorkly" });
       expect(metadata.robots).toEqual({ index: false, follow: false });
     });
+
+    it("S-325 S-176 link previews name the shared document and its own address, not the dashboard", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        jsonResponse(200, {
+          data: { passwordRequired: false, documentTitle: "Jane Doe CV", expiresAt: null },
+        }),
+      );
+      const { generateMetadata } = await import("@/app/share/[username]/[slug]/page");
+
+      const metadata = await generateMetadata({
+        params: Promise.resolve({ username: "jane", slug: "cv-og" }),
+      });
+
+      expect(metadata.openGraph).toMatchObject({ url: "/share/jane/cv-og", title: "Jane Doe CV" });
+      expect(JSON.stringify(metadata.openGraph)).not.toContain("dashboard-page-og");
+      expect(metadata.twitter).toMatchObject({ card: "summary", title: "Jane Doe CV" });
+    });
+
+    it("S-325 a password-protected link does not name its document in previews", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        jsonResponse(200, {
+          data: { passwordRequired: true, documentTitle: "Jane Doe CV", expiresAt: null },
+        }),
+      );
+      const { generateMetadata } = await import("@/app/share/[username]/[slug]/page");
+
+      const metadata = await generateMetadata({
+        params: Promise.resolve({ username: "jane", slug: "cv-locked" }),
+      });
+
+      expect(JSON.stringify(metadata)).not.toContain("Jane Doe CV");
+    });
+  });
+
+  describe("the recruiter's page (S-322, S-227)", () => {
+    it("S-322 the resume is scaled to fit a phone, never enlarged", async () => {
+      const { fitToWidthScale } = await import("@/app/share/components/ResumeCanvas");
+
+      expect(fitToWidthScale(375, 796)).toBeCloseTo(375 / 796);
+      expect(fitToWidthScale(1200, 796)).toBe(1);
+    });
+
+    it("S-322 O6 LOW the header asks for no session and does not stick on phones", async () => {
+      const { ShareHeaderBar } = await import("@/app/share/components/ShareHeaderBar");
+      const { authClient } = await import("@/lib/auth-client");
+      const useSession = vi.spyOn(authClient, "useSession");
+
+      const html = renderToStaticMarkup(<ShareHeaderBar title="CV" expiresAt={null} />);
+
+      expect(useSession).not.toHaveBeenCalled();
+      expect(html).toContain("md:sticky");
+      expect(html).not.toMatch(/class="sticky/);
+    });
+
+    it("S-227 recruiters are not offered the editable JSON source", () => {
+      const source = readFileSync(
+        join(__dirname, "..", "..", "app/share/components/DownloadActions.tsx"),
+        "utf8",
+      );
+
+      expect(source).not.toMatch(/export-json|>\s*JSON\s*</);
+    });
+
+    it("S-322 before the scale is measured the page scrolls sideways, and a print drops the scale", async () => {
+      const { ResumeCanvas } = await import("@/app/share/components/ResumeCanvas");
+
+      const html = renderToStaticMarkup(
+        <ResumeCanvas
+          sharePreviewId="share-page"
+          resume={defaultResume}
+          templateComponent={() => <p>page</p>}
+        />,
+      );
+
+      expect(html).toContain("overflow-x-auto");
+      expect(html).not.toMatch(/class="mx-auto[^"]*overflow-hidden/);
+      expect(html).toContain("print:transform-none!");
+      expect(html).toContain("print:w-auto!");
+    });
   });
 
   it("S-180 share verify shows the server's 429 text, not 'Invalid password'", async () => {
@@ -323,5 +402,55 @@ describe("S-143 UI copy makes no encryption claims", () => {
       .map((file) => relative(studioRoot, file));
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("share-link expiry (owner decision B)", () => {
+  const now = new Date("2026-10-27T12:00:00.000Z");
+  const inDaysFrom = (days: number) =>
+    new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+
+  it("offers 7, 14, 30 and 90 days and Never, with 7 days first for a new link", async () => {
+    const { SHARE_EXPIRY_OPTIONS } = await import("@/features/documents/services/share-expiry");
+    const source = readFileSync(
+      join(__dirname, "..", "..", "components/modals/ShareDocumentModal.tsx"),
+      "utf8",
+    );
+
+    expect(SHARE_EXPIRY_OPTIONS.map((option) => option.label)).toEqual([
+      "7 days",
+      "14 days",
+      "30 days",
+      "90 days",
+      "Never",
+    ]);
+    expect(source).toContain('useState<ShareExpiryChoice>("7")');
+    expect(source).toContain('setExpiryChoice(links.length > 0 ? "keep" : "7")');
+  });
+
+  it("each period becomes an expiresAt that many days from now; Never sends null", async () => {
+    const { shareExpiryPayload } = await import("@/features/documents/services/share-expiry");
+
+    for (const days of [7, 14, 30, 90]) {
+      expect(shareExpiryPayload(String(days) as "7", null, now)).toEqual({
+        expiresAt: inDaysFrom(days),
+        noExpiry: false,
+      });
+    }
+
+    expect(shareExpiryPayload("never", inDaysFrom(3), now)).toEqual({
+      expiresAt: null,
+      noExpiry: true,
+    });
+  });
+
+  it("an existing link keeps its stored expiry, including none", async () => {
+    const { shareExpiryPayload } = await import("@/features/documents/services/share-expiry");
+
+    expect(shareExpiryPayload("keep", "2026-12-01T00:00:00.000Z", now)).toEqual({
+      expiresAt: "2026-12-01T00:00:00.000Z",
+      noExpiry: false,
+    });
+    expect(shareExpiryPayload("keep", null, now)).toEqual({ expiresAt: null, noExpiry: true });
   });
 });

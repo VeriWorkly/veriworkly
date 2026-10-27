@@ -59,6 +59,8 @@ export default function AppearanceSection() {
           return (
             <button
               key={opt.key}
+              type="button"
+              aria-pressed={isActive}
               onClick={() => setTheme(opt.key)}
               className={cn(
                 "group relative flex cursor-pointer flex-col rounded-3xl border-2 p-5 text-left transition-all duration-300 active:scale-[0.97]",

@@ -64,7 +64,12 @@ const ApiKeysPage = async () => {
 
         <div className="border-border/70 grid gap-3 border-t p-5 sm:grid-cols-2 lg:border-t-0 lg:border-l">
           <Metric icon={KeyRound} label="Total keys" value={total.toString()} />
-          <Metric icon={ShieldCheck} label="Active keys" value={active.toString()} />
+          {/* Statuses come one page at a time, so past the first page the count says so. */}
+          <Metric
+            icon={ShieldCheck}
+            label={initialApiKeys.pagination?.hasMore ? "Active on first page" : "Active keys"}
+            value={active.toString()}
+          />
         </div>
       </section>
 

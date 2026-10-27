@@ -92,6 +92,8 @@ export function DocumentEditorShell({
 
   const [dragStart, setDragStart] = useState<{
     pointerId: number;
+    /** A finger on a phone pans sideways only: up and down is the browser's own scroll. */
+    touch: boolean;
     x: number;
     y: number;
     panX: number;
@@ -100,6 +102,8 @@ export function DocumentEditorShell({
 
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  // The page's unscaled height, so the scroll area on a touch screen ends where the page does.
+  const [pageHeight, setPageHeight] = useState(0);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -116,6 +120,8 @@ export function DocumentEditorShell({
     // Observes both: the canvas is display:none on a hidden mobile tab, and the page has no
     // width until the template has loaded.
     const observer = new ResizeObserver(() => {
+      setPageHeight(page.offsetHeight);
+
       if (zoomedByUserRef.current) return;
 
       const fit = measureFitZoom(canvas, page);
@@ -151,8 +157,11 @@ export function DocumentEditorShell({
   const previewTransform = useMemo(
     () => ({
       transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom / 100})`,
+      // A transform leaves the layout box at full size; this trims it to the drawn height so a
+      // touch screen's native scroll does not run on past the page.
+      marginBottom: pageHeight * (zoom / 100 - 1),
     }),
-    [pan.x, pan.y, zoom],
+    [pan.x, pan.y, zoom, pageHeight],
   );
 
   function updateZoom(nextZoom: number) {
@@ -183,6 +192,9 @@ export function DocumentEditorShell({
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragStart({
       pointerId: event.pointerId,
+      // Only where the canvas scrolls natively (a coarse primary pointer): on a touch laptop
+      // the canvas does not scroll, so a finger still pans both ways.
+      touch: event.pointerType === "touch" && window.matchMedia("(pointer: coarse)").matches,
       x: event.clientX,
       y: event.clientY,
       panX: pan.x,
@@ -195,7 +207,7 @@ export function DocumentEditorShell({
 
     setPan({
       x: dragStart.panX + event.clientX - dragStart.x,
-      y: dragStart.panY + event.clientY - dragStart.y,
+      y: dragStart.touch ? dragStart.panY : dragStart.panY + event.clientY - dragStart.y,
     });
   }
 
@@ -217,9 +229,16 @@ export function DocumentEditorShell({
 
     const canvas = canvasRef.current;
     const page = pageRef.current;
+    // Where the canvas scrolls natively (a coarse primary pointer, even with a trackpad or mouse
+    // attached), the browser already scrolls it up and down; panning too would move it twice.
+    const nativeScroll = window.matchMedia("(pointer: coarse)").matches;
+    const scrollTop = canvas?.scrollTop ?? 0;
 
     setPan((current) => {
-      const next = { x: current.x - event.deltaX * scale, y: current.y - event.deltaY * scale };
+      const next = {
+        x: current.x - event.deltaX * scale,
+        y: nativeScroll ? current.y : current.y - event.deltaY * scale,
+      };
       if (!canvas || !page) return next;
 
       // Keep at least PAN_VISIBLE_PX of the page inside the canvas: a trackpad flick adds up
@@ -230,9 +249,10 @@ export function DocumentEditorShell({
       const maxX = Math.max(0, (canvas.clientWidth + pageWidth) / 2 - PAN_VISIBLE_PX);
       const maxY = Math.max(0, pageHeight - PAN_VISIBLE_PX);
 
+      // The page's place in view is its pan less how far the canvas has scrolled.
       return {
         x: Math.min(maxX, Math.max(-maxX, next.x)),
-        y: Math.min(PAN_VISIBLE_PX, Math.max(-maxY, next.y)),
+        y: Math.min(scrollTop + PAN_VISIBLE_PX, Math.max(scrollTop - maxY, next.y)),
       };
     });
   }
@@ -424,9 +444,10 @@ export function DocumentEditorShell({
             role="group"
             aria-label="Document preview canvas. Arrow keys pan, Shift for larger steps, Home resets."
             className={cn(
-              // `touch-pinch-zoom`, not `touch-none`: a one-finger drag still pans through the
-              // handlers below, and two fingers can zoom in to read the page.
-              "focus-visible:ring-accent/40 h-full min-h-0 cursor-grab touch-pinch-zoom overflow-hidden focus-visible:ring-2 focus-visible:outline-none active:cursor-grabbing",
+              // `touch-pinch-zoom`, not `touch-none`: two fingers can zoom in to read the page.
+              // On a phone a finger scrolls up and down natively, with momentum; sideways, and on
+              // other touch screens in every direction, it pans through the handlers below.
+              "focus-visible:ring-accent/40 h-full min-h-0 cursor-grab touch-pinch-zoom overflow-hidden focus-visible:ring-2 focus-visible:outline-none active:cursor-grabbing pointer-coarse:touch-pan-y",
               dragStart ? "select-none" : "",
             )}
             onKeyDown={handleCanvasKeyDown}
@@ -439,13 +460,16 @@ export function DocumentEditorShell({
             <div className="relative h-full w-full overflow-hidden bg-[linear-gradient(to_right,color-mix(in_oklab,var(--border)_42%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--border)_42%,transparent)_1px,transparent_1px)] bg-size-[28px_28px]">
               <div
                 ref={canvasRef}
-                className="absolute inset-0 flex items-start justify-center overflow-hidden px-3 pt-20 pb-12 md:px-6"
+                className="absolute inset-0 flex items-start justify-center overflow-hidden px-3 pt-20 pb-12 md:px-6 pointer-coarse:overflow-y-auto pointer-coarse:overscroll-contain"
               >
                 {/* `motion-reduce:transition-none`: the pan/zoom transform is the largest
                     motion in the editor and arrow-key panning fires it repeatedly. */}
+                {/* On a phone the preview scrolls, and the paged preview's hidden measuring copy
+                    (taller than the pages) would add blank scroll below them; clipping keeps it
+                    out of the scroll area without changing what it measures. */}
                 <div
                   ref={pageRef}
-                  className="origin-top transform-gpu transition-transform duration-150 ease-out motion-reduce:transition-none"
+                  className="origin-top transform-gpu transition-transform duration-150 ease-out motion-reduce:transition-none pointer-coarse:overflow-clip pointer-coarse:[overflow-clip-margin:24px]"
                   id={previewId}
                   style={previewTransform}
                 >

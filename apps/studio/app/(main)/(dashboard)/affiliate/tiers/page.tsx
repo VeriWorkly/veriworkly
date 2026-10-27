@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
+
 import { AffiliateNav } from "@/features/affiliate/AffiliateNav";
 import type { AffiliateDashboard } from "@/features/affiliate/types";
 import { getProgramServerData, PROGRAM_UNAVAILABLE } from "@/features/billing/billing-server";
 import { ProgramUnavailable } from "@/features/billing/ProgramUnavailable";
+export const metadata: Metadata = {
+  title: "Affiliate tiers",
+  robots: { index: false, follow: false },
+};
+
 export default async function AffiliateTiersPage() {
   const data = await getProgramServerData<AffiliateDashboard>("/affiliates/me");
   if (data === PROGRAM_UNAVAILABLE) return <ProgramUnavailable program="affiliate" />;

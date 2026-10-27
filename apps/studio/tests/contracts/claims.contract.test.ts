@@ -168,3 +168,21 @@ describe("llms.txt and agent.json claim only what the studio does", () => {
     expect(agentJson.llms_txt).toBe(`${appOrigin}/llms.txt`);
   });
 });
+
+describe("agent-facing and login claims match the product (O6 LOW, S-248, S-264)", () => {
+  it("llms.txt claims no tag filtering and sends agents to no session-only endpoint as if keys worked", () => {
+    expect(llmsTxt).not.toMatch(/tag filtering/i);
+    expect(llmsTxt).not.toMatch(/Check credit balances \(`\/api\/v1\/billing\/credits`\)/);
+  });
+
+  it("agent.json advertises no duplicate endpoint and no closed programs", () => {
+    expect(agentJsonText).not.toMatch(/duplicate/i);
+    expect(agentJsonText).not.toMatch(/affiliate|ambassador/i);
+  });
+
+  it("the login showcase does not say publishing needs a paid plan", () => {
+    const showcase = readFileSync(join(studioDir, "app/login/component/ShowcaseCards.tsx"), "utf8");
+
+    expect(showcase).not.toMatch(/needs a paid plan/);
+  });
+});

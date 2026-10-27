@@ -10,6 +10,7 @@ import { Button } from "@veriworkly/ui";
 
 import { downloadWorkspaceBackup } from "@/features/auth/services/current-user";
 import { listDocuments } from "@/features/documents/services/document-workspace-service";
+import { signInHref } from "@/lib/sign-in";
 import {
   DOCUMENT_LIBRARY_SERVER_SNAPSHOT,
   getDocumentLibrarySnapshot,
@@ -76,45 +77,50 @@ export function GuestBackupBanner() {
   };
 
   return (
-    <section
-      aria-label="Backup reminder"
-      className="border-border bg-card fixed inset-x-3 bottom-3 z-40 mx-auto max-w-xl rounded-2xl border p-4 shadow-lg sm:bottom-5"
-    >
-      <div className="flex items-start gap-3">
-        <span className="bg-accent/10 text-accent hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:flex">
-          <HardDrive className="h-4 w-4" aria-hidden="true" />
-        </span>
+    <>
+      {/* Room at the end of the page content, so the fixed reminder never covers its last row. */}
+      <div aria-hidden="true" className="h-40 sm:h-32" />
 
-        <p className="min-w-0 flex-1 text-sm leading-6 font-semibold">
-          Your documents are saved only in this browser. Sign in to back them up, or download a
-          copy.
-        </p>
+      <section
+        aria-label="Backup reminder"
+        className="border-border bg-card fixed inset-x-3 bottom-3 z-40 mx-auto max-w-xl rounded-2xl border p-4 shadow-lg sm:bottom-5"
+      >
+        <div className="flex items-start gap-3">
+          <span className="bg-accent/10 text-accent hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:flex">
+            <HardDrive className="h-4 w-4" aria-hidden="true" />
+          </span>
 
-        <button
-          type="button"
-          onClick={handleDismiss}
-          aria-label="Dismiss backup reminder"
-          className="text-muted hover:bg-background hover:text-foreground -mt-1 -mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition"
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
+          <p className="min-w-0 flex-1 text-sm leading-6 font-semibold">
+            Your documents are saved only in this browser. Sign in to back them up, or download a
+            copy.
+          </p>
 
-      <div className="mt-3 flex flex-wrap gap-2 sm:pl-12">
-        <Button asChild size="sm" variant="primary" className="h-9 rounded-lg px-4">
-          <Link href={`/login?callbackURL=${encodeURIComponent(pathname)}`}>Sign in</Link>
-        </Button>
+          <button
+            type="button"
+            onClick={handleDismiss}
+            aria-label="Dismiss backup reminder"
+            className="text-muted hover:bg-background hover:text-foreground -mt-1 -mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
 
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={handleDownload}
-          className="border-border h-9 gap-2 rounded-lg border px-4 shadow-none"
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          Download backup
-        </Button>
-      </div>
-    </section>
+        <div className="mt-3 flex flex-wrap gap-2 sm:pl-12">
+          <Button asChild size="sm" variant="primary" className="h-9 rounded-lg px-4">
+            <Link href={signInHref()}>Sign in</Link>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleDownload}
+            className="border-border h-9 gap-2 rounded-lg border px-4 shadow-none"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            Download backup
+          </Button>
+        </div>
+      </section>
+    </>
   );
 }

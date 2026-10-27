@@ -11,18 +11,31 @@ import {
   HelpCircle,
   PanelsTopLeft,
   ScanSearch,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@veriworkly/ui";
 import { siteConfig } from "@/config/site";
+import { useSessionUser } from "@/store/session-user";
 
 export interface StudioNavItem {
   href: string;
   label: string;
   icon: LucideIcon;
   external?: boolean;
+  /** Pages the proxy sends a guest to sign in for, or that hold nothing without an account. */
+  signedInOnly?: boolean;
   match: (pathname: string) => boolean;
+}
+
+/** A guest is not offered pages that would only bounce them to the sign-in page. */
+export function visibleNavItems(items: StudioNavItem[], signedIn: boolean) {
+  return signedIn ? items : items.filter((item) => !item.signedInOnly);
+}
+
+export function useVisibleNavItems(items: StudioNavItem[]) {
+  return visibleNavItems(items, Boolean(useSessionUser()?.email));
 }
 
 export const mainNav: StudioNavItem[] = [
@@ -44,6 +57,7 @@ export const mainNav: StudioNavItem[] = [
     href: "/profile/master",
     label: "Master Profile",
     icon: UserRound,
+    signedInOnly: true,
     match: (pathname) => pathname.startsWith("/profile/master"),
   },
 
@@ -101,6 +115,7 @@ export const bottomNav: StudioNavItem[] = [
     href: "/api-keys",
     label: "API keys",
     icon: KeyRound,
+    signedInOnly: true,
     match: (pathname) => pathname.startsWith("/api-keys"),
   },
 ];
@@ -124,7 +139,7 @@ export function NavGroup({
         </p>
       ) : null}
 
-      {items.map((item) => (
+      {useVisibleNavItems(items).map((item) => (
         <StudioNavLink
           item={item}
           key={item.href}
@@ -167,6 +182,10 @@ export function StudioNavLink({
     >
       <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden="true" />
       {!collapsed ? <span className="truncate">{item.label}</span> : null}
+      {item.external && !collapsed ? (
+        <ExternalLink className="text-muted ml-auto h-3 w-3 shrink-0" aria-hidden="true" />
+      ) : null}
+      {item.external ? <span className="sr-only"> (opens in a new tab)</span> : null}
     </Link>
   );
 }

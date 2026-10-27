@@ -112,8 +112,8 @@ const OverviewHome = () => {
           <div className="border-border/70 border-b p-5 sm:p-6 lg:border-r lg:border-b-0">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-black">Recently opened</h2>
-                <p className="text-muted text-sm">Compact view of your recent documents.</p>
+                <h2 className="text-lg font-black">Recently edited</h2>
+                <p className="text-muted text-sm">Pick up where you left off.</p>
               </div>
 
               <Link href="/documents" className="text-accent text-sm font-bold">
@@ -152,13 +152,13 @@ const OverviewHome = () => {
             <div>
               <h2 className="text-sm font-black">Workspace shortcuts</h2>
               <p className="text-muted mt-1 text-xs">
-                Profile data, roadmap, and document library.
+                Your profile, your documents, and what is coming next.
               </p>
             </div>
 
             <div className="grid gap-2">
-              <MiniLink href="/profile" icon={BriefcaseBusiness} label="Profile workspace" />
-              <MiniLink href="/documents" icon={FolderOpen} label="Document library" />
+              <MiniLink href="/profile" icon={BriefcaseBusiness} label="Your profile" />
+              <MiniLink href="/documents" icon={FolderOpen} label="Documents" />
               <MiniLink href={`${siteConfig.links.main}/roadmap`} icon={BookOpen} label="Roadmap" />
             </div>
           </aside>

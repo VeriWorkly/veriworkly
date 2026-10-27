@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Menu, MenuItem, cn } from "@veriworkly/ui";
 
 import type { DocumentMeta } from "@/features/documents/core/types";
+import type { BillingSummary } from "@/features/billing/types";
 
 import ConfirmDialog from "@/components/modals/ConfirmDialog";
 import { downloadWorkspaceBackup, signOutCurrentUser } from "@/features/auth/services/current-user";
@@ -29,8 +30,43 @@ import {
   listDocuments,
 } from "@/features/documents/services/document-workspace-service";
 import { siteConfig } from "@/config/site";
-import { useUserStore } from "@/store/useUserStore";
+import { useSessionUser } from "@/store/session-user";
 import { pluralize } from "@/lib/pluralize";
+import { signInHref } from "@/lib/sign-in";
+import { accessTierLabel } from "@/features/billing/checkout-rules";
+import { fetchApiData } from "@/utils/fetchApiData";
+
+type PlanSummary = { label: string; credits: number } | "error";
+
+/** The plan and credit balance, shown in the account menu so they are one click from anywhere. */
+function usePlanSummary(isLoggedIn: boolean) {
+  const [plan, setPlan] = useState<PlanSummary | null>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let active = true;
+
+    fetchApiData<BillingSummary>("/billing/me")
+      .then((billing) => {
+        if (active) {
+          setPlan({
+            label: accessTierLabel(billing.access.tier),
+            credits: billing.credits.available,
+          });
+        }
+      })
+      .catch(() => {
+        if (active) setPlan("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isLoggedIn]);
+
+  return isLoggedIn ? plan : null;
+}
 
 interface AccountMenuProps {
   collapsed: boolean;
@@ -43,7 +79,8 @@ export function AccountMenu({ collapsed, displayName, email, version }: AccountM
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
 
-  const { isLoggedIn } = useUserStore();
+  const isLoggedIn = Boolean(useSessionUser()?.email);
+  const plan = usePlanSummary(isLoggedIn);
 
   const [unsyncedDocuments, setUnsyncedDocuments] = useState<DocumentMeta[] | null>(null);
   const [backupFailure, setBackupFailure] = useState<string | null>(null);
@@ -182,6 +219,13 @@ export function AccountMenu({ collapsed, displayName, email, version }: AccountM
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-bold">{displayName}</span>
                   <span className="text-muted block truncate text-xs">{email}</span>
+                  {plan ? (
+                    <span className="text-foreground mt-0.5 block truncate text-xs font-semibold">
+                      {plan === "error"
+                        ? "Plan could not be loaded"
+                        : `${plan.label} · ${pluralize(plan.credits, "credit")}`}
+                    </span>
+                  ) : null}
                 </span>
               </div>
 
@@ -200,7 +244,7 @@ export function AccountMenu({ collapsed, displayName, email, version }: AccountM
 
               {isLoggedIn
                 ? item(LogOut, "Sign out", handleLogout, true)
-                : item(LogIn, "Sign in", () => router.push("/login"))}
+                : item(LogIn, "Sign in", () => router.push(signInHref()))}
 
               <div className="text-muted border-border/70 mt-1 border-t px-3 pt-2 text-[11px]">
                 {version} -{" "}

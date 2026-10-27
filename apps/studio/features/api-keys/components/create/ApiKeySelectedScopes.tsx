@@ -57,6 +57,8 @@ export function ApiKeySelectedScopes({
           copied={copied}
           onCopy={onCopyGeneratedKey}
           generatedKey={generatedKey.key}
+          keyId={generatedKey.id}
+          expiresAt={generatedKey.expiresAt}
           onDismiss={onDismissGeneratedKey}
         />
       ) : null}

@@ -2,7 +2,13 @@ import { X } from "lucide-react";
 
 import { Modal } from "@veriworkly/ui";
 
-import { mainNav, supportNav, bottomNav, StudioNavLink } from "../sidebar/StudioNavigation";
+import {
+  mainNav,
+  supportNav,
+  bottomNav,
+  StudioNavLink,
+  useVisibleNavItems,
+} from "../sidebar/StudioNavigation";
 import { AccountMenu } from "../account-menu/AccountMenu";
 import { ThemeToggle } from "../ThemeToggle";
 
@@ -21,6 +27,8 @@ export function MobileNavDrawer({
   displayName,
   version,
 }: MobileNavDrawerProps) {
+  const navItems = useVisibleNavItems([...mainNav, ...supportNav, ...bottomNav]);
+
   // Mounted only while open; the kit Modal supplies the focus trap, Escape and scroll lock.
   return (
     <Modal open onClose={onClose}>
@@ -39,7 +47,7 @@ export function MobileNavDrawer({
         </div>
 
         <nav className="grid gap-1" aria-label="Mobile studio navigation">
-          {[...mainNav, ...supportNav, ...bottomNav].map((item) => (
+          {navItems.map((item) => (
             <StudioNavLink
               item={item}
               key={item.href}

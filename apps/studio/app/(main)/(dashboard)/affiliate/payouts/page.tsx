@@ -1,9 +1,18 @@
+import type { Metadata } from "next";
+
+import { LocalDate } from "@/components/LocalDate";
 import { AffiliateNav } from "@/features/affiliate/AffiliateNav";
+import { withdrawalStatusLabel } from "@/features/affiliate/labels";
 import { AffiliatePayoutForm } from "@/features/affiliate/AffiliatePayoutForm";
 import type { AffiliateDashboard } from "@/features/affiliate/types";
 import { getProgramServerData, PROGRAM_UNAVAILABLE } from "@/features/billing/billing-server";
 import { ProgramUnavailable } from "@/features/billing/ProgramUnavailable";
 import { formatCents } from "@/features/admin/utils/admin-format";
+export const metadata: Metadata = {
+  title: "Affiliate payouts",
+  robots: { index: false, follow: false },
+};
+
 export default async function AffiliatePayoutsPage() {
   const data = await getProgramServerData<AffiliateDashboard>("/affiliates/me");
   if (data === PROGRAM_UNAVAILABLE) return <ProgramUnavailable program="affiliate" />;
@@ -54,9 +63,9 @@ export default async function AffiliatePayoutsPage() {
               data.withdrawals.map((item) => (
                 <div className="flex justify-between gap-4 py-4 text-sm" key={item.id}>
                   <div>
-                    <p className="font-bold">{item.status}</p>
+                    <p className="font-bold">{withdrawalStatusLabel(item.status)}</p>
                     <p className="text-muted text-xs">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      <LocalDate value={item.createdAt} />
                     </p>
                     {item.payoutNote ? (
                       <p className="text-muted mt-1 text-xs">Note: {item.payoutNote}</p>

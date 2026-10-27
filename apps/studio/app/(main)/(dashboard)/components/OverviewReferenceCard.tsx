@@ -15,15 +15,15 @@ const referenceCards = [
 
   {
     href: "/documents",
-    title: "Resume library",
-    text: "Open saved resumes with sync, sharing, and list view.",
+    title: "Documents",
+    text: "Open, share and back up your resumes and cover letters.",
     icon: FolderOpen,
   },
 
   {
     href: `${siteConfig.links.main}/faq`,
     title: "FAQ",
-    text: "Fast answers for account and document workflow.",
+    text: "Quick answers about your account and documents.",
     icon: HelpCircle,
   },
 ];

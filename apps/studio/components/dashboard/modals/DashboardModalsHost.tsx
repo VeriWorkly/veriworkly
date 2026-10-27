@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { DocumentType } from "@/features/documents/core/document-types";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
+import type { NewDocumentSource } from "@/features/documents/services/document-limit";
 
 const WorkspaceSearchModal = dynamic(
   () => import("./WorkspaceSearchModal").then((mod) => mod.WorkspaceSearchModal),
@@ -26,7 +27,7 @@ interface DashboardModalsHostProps {
   onCloseSearch: () => void;
   newDocumentOpen: boolean;
   onCloseNewDocument: () => void;
-  onCreateNewDocument: (type: DocumentType) => void;
+  onCreateNewDocument: (type: DocumentType, source?: NewDocumentSource) => Promise<void>;
   importModalOpen: boolean;
   onCloseImportModal: () => void;
   importProvider: "linkedin" | "github";

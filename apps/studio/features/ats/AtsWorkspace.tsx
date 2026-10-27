@@ -35,12 +35,13 @@ import {
 } from "@veriworkly/ats-engine/format";
 import { toast } from "sonner";
 
-import { useUserStore } from "@/store/useUserStore";
+import { useSessionUser } from "@/store/session-user";
 import {
   convertResumeWithAi,
   describeAtsError,
   extractResumeFile,
   getAtsQuota,
+  conversionUnavailableReason,
   runAtsAnalysis,
   runAtsCheck,
   type AtsFileInfo,
@@ -96,7 +97,7 @@ export async function conversionLimitMessage(): Promise<string | null> {
 
 export function AtsWorkspace() {
   const router = useRouter();
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const isLoggedIn = Boolean(useSessionUser()?.email);
   const [resume, setResume] = useState("");
   // Set only while the text above is the untouched rendering of a saved resume. The scan then
   // sends the structure, so the ATS record is read from typed fields rather than re-parsed; any
@@ -176,6 +177,8 @@ export function AtsWorkspace() {
   const hasTarget = Boolean(useJobUrl ? jobUrl.trim() : jobDescription.trim());
   const urlOnlyTarget = useJobUrl && Boolean(jobUrl.trim());
   const canRepair = typeof pricing?.parseRepairCredits === "number" && quota?.canRepair !== false;
+  // Both scans spend one from the allowance, so at zero neither is offered.
+  const outOfScans = quota?.remaining === 0;
 
   async function run(withAi: boolean) {
     if (!isLoggedIn) {
@@ -464,12 +467,14 @@ export function AtsWorkspace() {
                 title="Run core ATS scan"
                 description="Fast rule-based scoring with prioritized fixes. No AI credits."
                 detail={
-                  urlOnlyTarget
-                    ? "Paste the job description for a job match score"
-                    : "Best for a quick readiness check"
+                  outOfScans
+                    ? "No scans left in this period"
+                    : urlOnlyTarget
+                      ? "Paste the job description for a job match score"
+                      : "Best for a quick readiness check"
                 }
                 icon={ScanSearch}
-                disabled={!hasResume || Boolean(busy) || urlOnlyTarget}
+                disabled={!hasResume || Boolean(busy) || urlOnlyTarget || outOfScans}
                 busy={busy === "check"}
                 onClick={() => void run(false)}
               />
@@ -477,15 +482,19 @@ export function AtsWorkspace() {
                 title="Add AI interpretation"
                 description="Explains missing evidence, keyword opportunities, and the best next edits."
                 detail={
-                  useJobUrl && !jobUrl.trim()
-                    ? "Enter the job URL to review it"
-                    : pricing
-                      ? `Uses ${creditRange(useJobUrl ? pricing.jobUrlAnalysisCredits : pricing.analysisCredits)}${available === null ? "" : ` · you have ${available}`}`
-                      : "Price range loads before analysis"
+                  outOfScans
+                    ? "No scans left in this period"
+                    : useJobUrl && !jobUrl.trim()
+                      ? "Enter the job URL to review it"
+                      : pricing
+                        ? `Uses ${creditRange(useJobUrl ? pricing.jobUrlAnalysisCredits : pricing.analysisCredits)}${available === null ? "" : ` · you have ${available}`}`
+                        : "Price range loads before analysis"
                 }
                 icon={Sparkles}
                 accent
-                disabled={!hasResume || Boolean(busy) || (useJobUrl && !jobUrl.trim())}
+                disabled={
+                  !hasResume || Boolean(busy) || (useJobUrl && !jobUrl.trim()) || outOfScans
+                }
                 busy={busy === "ai"}
                 onClick={() => void run(true)}
               />
@@ -571,10 +580,12 @@ export function AtsWorkspace() {
             </p>
             {quota?.canConvertResume === false ? (
               <p className="text-background/80 mt-2 text-xs">
-                Conversion isn&apos;t available on this account yet.{" "}
-                <Link className="font-bold underline" href="/billing">
-                  See plans and credits
-                </Link>
+                {conversionUnavailableReason(pricing, available)}{" "}
+                {pricing ? (
+                  <Link className="font-bold underline" href="/billing">
+                    Get credits
+                  </Link>
+                ) : null}
               </p>
             ) : null}
           </section>
@@ -825,13 +836,6 @@ function EmptyResults() {
   );
 }
 
-/**
- * The record an applicant tracking system would build from this document.
- *
- * Shown as the table it becomes, because that is what a recruiter searches. A blank employer or
- * a missing date range is not a presentation problem — it is a column their filter cannot match
- * on, and seeing the gap is more use than any score.
- */
 /** Marks a value a model recovered, so it is never shown as though the parser read it. */
 function AiFilled() {
   return (
@@ -841,6 +845,13 @@ function AiFilled() {
   );
 }
 
+/**
+ * The record an applicant tracking system would build from this document.
+ *
+ * Shown as the table it becomes, because that is what a recruiter searches. A blank employer or
+ * a missing date range is not a presentation problem — it is a column their filter cannot match
+ * on, and seeing the gap is more use than any score.
+ */
 function ParsedRecord({ parsed, repair }: { parsed: AtsParsedResume; repair?: AtsRepairSummary }) {
   const missing = <span className="text-amber-600 dark:text-amber-400">not found</span>;
   const filled = new Set(repair?.applied ? repair.fields : []);

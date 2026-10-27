@@ -11,7 +11,7 @@ VeriWorkly Studio (`app.veriworkly.com`) is engineered around a **local-first st
 - **API Reference**: `https://docs.veriworkly.com/docs/api-reference`
 
 ## Application Modules & Key Routes
-- **Document Dashboard** (`https://app.veriworkly.com/` & `/documents`): List and grid views of resumes and cover letters with recency sorting, tag filtering, sync status indicators (local/pending/synced/conflicted), and global `Cmd/Ctrl+K` command palette.
+- **Document Dashboard** (`https://app.veriworkly.com/` & `/documents`): List and grid views of resumes and cover letters with type filtering, sorting by last edit or title, sync status indicators (local/pending/synced/conflicted), and global `Cmd/Ctrl+K` command palette.
 - **Resume Editor** (`https://app.veriworkly.com/editor/resume/[id]`): Section-based document canvas with live paged PDF preview. Supports 7 templates:
   - `executive-clarity` (Executive Clarity)
   - `precision-ats` (Precision ATS)
@@ -32,5 +32,5 @@ VeriWorkly Studio (`app.veriworkly.com`) is engineered around a **local-first st
 ## Guidance for AI Agents & Assistants
 1. **Master Profile Operations**: Read `/api/v1/profiles/master` to retrieve baseline user career data before generating documents.
 2. **ATS Rules Engine**: Use the deterministic rules engine (`/api/v1/ats/check`) for fast, zero-credit structural scoring.
-3. **Credit Awareness**: Check credit balances (`/api/v1/billing/credits`) before invoking AI generation endpoints.
+3. **Credit Awareness**: AI endpoints answer 402 when credits run out. The balance (`/api/v1/billing/credits`) needs a signed-in browser session; an API key cannot read it.
 4. **Document Scoping**: Do not attempt to generate formal letters or invoices — resumes and cover letters are the two document types currently supported.

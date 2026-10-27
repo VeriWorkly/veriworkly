@@ -13,8 +13,7 @@ const NotFound = () => {
         </h1>
 
         <p className="text-muted mt-6 max-w-md text-base leading-7">
-          Sorry, we could not find the page you are looking for. It may have moved, or URL may be
-          incorrect.
+          We could not find that page. It may have moved, or the address may be mistyped.
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-x-6">

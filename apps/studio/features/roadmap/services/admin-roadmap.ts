@@ -28,14 +28,14 @@ export async function createRoadmapFeature(payload: AdminRoadmapPayload) {
 }
 
 export async function updateRoadmapFeature(id: string, payload: Partial<AdminRoadmapPayload>) {
-  return fetchApiData<RoadmapFeature>(`/admin/roadmap/${id}`, {
+  return fetchApiData<RoadmapFeature>(`/admin/roadmap/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
 }
 
 export async function deleteRoadmapFeature(id: string) {
-  return fetchApiData<{ id: string }>(`/admin/roadmap/${id}`, {
+  return fetchApiData<{ id: string }>(`/admin/roadmap/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }

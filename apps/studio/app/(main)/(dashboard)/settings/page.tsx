@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 const settingsNav = [
   ["Appearance", "#appearance", Palette],
-  ["Sync", "#sync", Cloud],
+  ["Backup", "#sync", Cloud],
 ] satisfies Array<[string, string, LucideIcon]>;
 
 function SettingsPanel({
@@ -123,8 +123,8 @@ const SettingsPage = async () => {
           <SettingsPanel
             id="sync"
             icon={Cloud}
-            title="Sync"
-            text="Cloud behavior and local-first controls."
+            title="Backup"
+            text="Your documents stay on this device; backup keeps a copy in your account."
           >
             <SyncSection />
           </SettingsPanel>

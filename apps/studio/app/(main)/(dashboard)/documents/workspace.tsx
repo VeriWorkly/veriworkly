@@ -63,7 +63,7 @@ export default function DocumentsWorkspace() {
 
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Document library</h1>
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Documents</h1>
 
             <p className="text-muted mt-2 max-w-2xl text-base">Saved resumes and cover letters.</p>
           </div>
@@ -81,7 +81,11 @@ export default function DocumentsWorkspace() {
       <Card className="overflow-visible rounded-2xl p-0">
         <div className="border-border/70 flex flex-col gap-4 border-b p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-foreground text-sm font-semibold">Recently opened</span>
+            <span className="text-foreground text-sm font-semibold">
+              {activeType === "ALL"
+                ? "All documents"
+                : `${getDocumentDefinition(activeType).label}s`}
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -123,7 +127,7 @@ export default function DocumentsWorkspace() {
               onChange={(event) => setSortMode(event.target.value as SortMode)}
               className="h-10 w-auto min-w-32 rounded-xl px-3 shadow-none"
             >
-              <option value="updated">Last viewed</option>
+              <option value="updated">Last edited</option>
               <option value="title">Title</option>
             </Select>
 
@@ -181,6 +185,16 @@ export default function DocumentsWorkspace() {
               ))}
             </div>
           )
+        ) : totalCount > 0 && activeType !== "ALL" ? (
+          // The filter hides everything; the library itself is not empty.
+          <div className="flex min-h-48 flex-col items-center justify-center gap-3 p-8 text-center">
+            <p className="text-muted text-sm">
+              No {getDocumentDefinition(activeType).label.toLowerCase()}s yet.
+            </p>
+            <Button size="sm" variant="secondary" onClick={() => setActiveType("ALL")}>
+              Show all documents
+            </Button>
+          </div>
         ) : isPullingFromCloud && totalCount === 0 ? (
           // A returning user on a new device: their documents are still on the way.
           <p className="text-muted p-6 text-sm" role="status">
