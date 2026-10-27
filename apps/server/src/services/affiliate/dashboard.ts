@@ -84,6 +84,8 @@ async function buildDashboard(userId: string) {
     commissions,
     withdrawals,
     wallet: wallet ?? { pendingCents: 0, availableCents: 0, paidCents: 0, clawbackCents: 0 },
+    // What a withdrawal may request: the available balance less what is owed back (V-321).
+    withdrawableCents: Math.max(0, (wallet?.availableCents ?? 0) - (wallet?.clawbackCents ?? 0)),
     minimumWithdrawalCents: AFFILIATE_MINIMUM_WITHDRAWAL_CENTS,
     tierProgress: {
       currentConversions: tierConversions,

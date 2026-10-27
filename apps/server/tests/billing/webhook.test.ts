@@ -20,6 +20,7 @@ vi.mock("#lib/logger", () => ({ logger: loggerMock }));
 const prismaMock = {
   billingWebhookEvent: {
     create: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
     findUnique: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
@@ -54,6 +55,7 @@ const prismaMock = {
     findMany: vi.fn().mockResolvedValue([]),
   },
   $executeRaw: vi.fn().mockResolvedValue(1),
+  $queryRaw: vi.fn().mockResolvedValue([]),
   $transaction: vi.fn((cb) => cb(prismaMock)),
 };
 
@@ -737,7 +739,8 @@ describe("billing webhook processing and idempotency", () => {
             metadata: { productKey: "bundle", interval, pass: true },
           });
         }
-        expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
+        // The payment lock (V-273) and the per-user billing lock.
+        expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(2);
         expect(creditMock.grant).toHaveBeenCalledWith(
           "user_123",
           credits,
@@ -752,6 +755,8 @@ describe("billing webhook processing and idempotency", () => {
       await BillingService.processWebhook(
         "evt_pack",
         payment({
+          // A one-time payment carries its product (V-274: metadata alone never names a pack).
+          product_cart: [{ product_id: "prod_pack_250", quantity: 1 }],
           metadata: { veriworkly_user_id: "user_123", veriworkly_product: "credit_pack_250" },
         }),
       );

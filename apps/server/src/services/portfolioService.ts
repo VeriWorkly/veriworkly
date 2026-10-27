@@ -159,26 +159,19 @@ function normalizeSubdomain(value: string, keep: Iterable<string> = []) {
 }
 
 /**
- * The subdomains a user already holds: their publication's and their draft's stored slug.
- * Re-saving or re-publishing one of these skips the new-name rules (reserved list, punycode,
- * trailing dash), so a site published before a name was reserved keeps working for its owner.
+ * The subdomain a user already holds: their publication's. Re-saving or re-publishing it skips
+ * the new-name rules (reserved list, punycode, trailing dash), so a site published before a name
+ * was reserved keeps working for its owner. A draft's `Document.slug` is NOT a held name (V-300):
+ * any client can set a PORTFOLIO document's slug through the generic document routes, which made
+ * `login`, `billing`, `admin`... claimable.
  */
-async function ownedSubdomains(userId: string, documentId?: string) {
-  const [publication, document] = await Promise.all([
-    prisma.portfolioPublication.findUnique({ where: { userId }, select: { subdomain: true } }),
-    prisma.document.findFirst({
-      where: {
-        userId,
-        type: "PORTFOLIO",
-        deletedAt: null,
-        ...(documentId ? { id: documentId } : {}),
-      },
-      orderBy: { updatedAt: "desc" },
-      select: { slug: true },
-    }),
-  ]);
+async function ownedSubdomains(userId: string) {
+  const publication = await prisma.portfolioPublication.findUnique({
+    where: { userId },
+    select: { subdomain: true },
+  });
 
-  return [publication?.subdomain, document?.slug].filter((name): name is string => Boolean(name));
+  return publication ? [publication.subdomain] : [];
 }
 
 /** The subscription products that carry premium publishing. */
@@ -325,6 +318,13 @@ function publicPortfolioUrl(subdomain: string) {
   return config.nodeEnv === "development"
     ? `http://${subdomain}.localhost:3004`
     : `https://${subdomain}.veriworkly.com`;
+}
+
+/** The `templateId` a document's content names, which is what the public page renders (V-299). */
+function contentTemplateId(content: Prisma.JsonValue): string | undefined {
+  if (!content || typeof content !== "object" || Array.isArray(content)) return undefined;
+  const templateId = (content as Record<string, unknown>).templateId;
+  return typeof templateId === "string" ? templateId : undefined;
 }
 
 /** A template id as the template picker names it ("atelier" → "Atelier"). */
@@ -596,10 +596,7 @@ export class PortfolioService {
       snapshot: PortfolioContentInput;
     },
   ) {
-    const subdomain = normalizeSubdomain(
-      input.subdomain,
-      await ownedSubdomains(userId, input.documentId),
-    );
+    const subdomain = normalizeSubdomain(input.subdomain, await ownedSubdomains(userId));
 
     // `content` too: the images the body being replaced referenced are released after the save.
     const existing = input.documentId
@@ -702,10 +699,17 @@ export class PortfolioService {
     // conditionally, inside the transaction below (V-226).
     if (document.moderatedPrivateAt) throw new ApiError(403, MODERATED_MESSAGE);
 
-    if (isPremiumPortfolioTemplate(document.templateId) && !hasSubscription) {
+    // Both the column and the content's own `templateId` are checked (V-299): the public page
+    // renders the snapshot's, so a premium template in either is refused without a plan. The
+    // publication row and the snapshot both take the content's below.
+    const premiumTemplate = [contentTemplateId(document.content), document.templateId].find(
+      (templateId): templateId is string =>
+        typeof templateId === "string" && isPremiumPortfolioTemplate(templateId),
+    );
+    if (premiumTemplate && !hasSubscription) {
       throw new ApiError(
         402,
-        `Publishing the premium template "${templateName(document.templateId)}" requires ${UNLOCK_PHRASES.portfolioPro}.`,
+        `Publishing the premium template "${templateName(premiumTemplate)}" requires ${UNLOCK_PHRASES.portfolioPro}.`,
       );
     }
 
@@ -727,9 +731,8 @@ export class PortfolioService {
 
     const subdomain = normalizeSubdomain(
       input.subdomain,
-      [existingPublication?.subdomain, document.slug].filter((name): name is string =>
-        Boolean(name),
-      ),
+      // Only the published name is grandfathered, never the draft slug (V-300).
+      existingPublication ? [existingPublication.subdomain] : [],
     );
 
     const publishable = portfolioContentSchema.safeParse(document.content);
@@ -804,7 +807,7 @@ export class PortfolioService {
               userId,
               documentId: document.id,
               subdomain,
-              templateId: document.templateId,
+              templateId: publishable.data.templateId,
               snapshot: snapshot as Prisma.InputJsonValue,
               publishedRevision: document.revision,
             },
@@ -815,7 +818,7 @@ export class PortfolioService {
           data: {
             documentId: document.id,
             subdomain,
-            templateId: document.templateId,
+            templateId: publishable.data.templateId,
             snapshot: snapshot as Prisma.InputJsonValue,
             publishedRevision: document.revision,
             status: "LIVE",

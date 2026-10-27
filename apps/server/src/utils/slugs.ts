@@ -70,9 +70,9 @@ export function portfolioSubdomainLookupKey(value: string): string {
 
 /**
  * The canonical form of a subdomain the user is claiming, or `null` when it cannot be one.
- * A name in `keep` (the user's current publication subdomain and draft slug) is returned as
- * stored, so an existing site survives the rules tightening under it. A NEW name gets the
- * strict rules: trailing dash stripped after the 63-character cut, reserved list, punycode.
+ * A name in `keep` (the user's current publication subdomain only, never a draft slug, V-300) is
+ * returned as stored, so an existing site survives the rules tightening under it. A NEW name gets
+ * the strict rules: trailing dash stripped after the 63-character cut, reserved list, punycode.
  */
 export function normalizePortfolioSubdomain(
   value: string,

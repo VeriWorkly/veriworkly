@@ -15,7 +15,7 @@ import { ShareService } from "#services/shareService";
 import { prisma } from "#lib/prisma";
 import { logger } from "#lib/logger";
 import { ApiError } from "#lib/errors";
-import { buildUniqueSlugHelper } from "#utils/slugs";
+import { buildUniqueSlugHelper, RESERVED_SUBDOMAINS } from "#utils/slugs";
 import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
 import { cacheNamespaces, documentCacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
@@ -167,13 +167,20 @@ function keysetAfter(
 }
 
 export class DocumentService {
+  /**
+   * A PORTFOLIO document never gets a reserved subdomain as its slug (V-300): a draft's slug is
+   * its subdomain, so `login`, `billing`, `admin`... are skipped like a taken name ("login-2").
+   */
   private static async buildUniqueSlug(
     userId: string,
     title: string,
     documentId?: string,
     client: Prisma.TransactionClient = prisma,
+    type?: DocumentType,
   ) {
     return buildUniqueSlugHelper(title, async (candidate) => {
+      if (type === "PORTFOLIO" && RESERVED_SUBDOMAINS.has(candidate)) return true;
+
       const existing = await client.document.findFirst({
         where: {
           userId,
@@ -618,7 +625,13 @@ export class DocumentService {
 
     await this.assertFreeTierCapacity(userId, input.type, client);
 
-    const slug = await this.buildUniqueSlug(userId, prepared.slugSource, undefined, client);
+    const slug = await this.buildUniqueSlug(
+      userId,
+      prepared.slugSource,
+      undefined,
+      client,
+      input.type,
+    );
 
     const document = await client.document.create({
       data: {
@@ -763,14 +776,16 @@ export class DocumentService {
      * had set by hand (and, with `updateShareSlug`, the public share URL) on every keystroke.
      */
     let nextSlugSource: string | undefined;
+    let documentType: DocumentType | undefined;
 
     if (input.slug || input.title) {
       const current = await prisma.document.findFirst({
         where: { id: documentId, userId, deletedAt: null },
-        select: { title: true, slug: true },
+        select: { title: true, slug: true, type: true },
       });
 
       if (!current) throw new ApiError(404, "Document not found");
+      documentType = current.type;
 
       if (input.slug) {
         if (input.slug !== current.slug) nextSlugSource = input.slug;
@@ -785,7 +800,13 @@ export class DocumentService {
         select: { username: true },
       });
 
-      updateData.slug = await this.buildUniqueSlug(userId, nextSlugSource, documentId);
+      updateData.slug = await this.buildUniqueSlug(
+        userId,
+        nextSlugSource,
+        documentId,
+        prisma,
+        documentType,
+      );
 
       if (user?.username && updateData.slug && updateShareSlug) {
         const shareLink = await prisma.shareLink.findUnique({
@@ -842,6 +863,25 @@ export class DocumentService {
 
     if (incomingTemplateId) {
       updateData.templateId = incomingTemplateId;
+    }
+
+    /*
+     * A PORTFOLIO document's public page renders `content.templateId`, so a `templateId`-only
+     * PATCH moves the content with the column (V-299). Read at the expected revision: the update
+     * below is conditional on it, so a write in between still fails as a conflict.
+     */
+    if (input.templateId && !updateData.content) {
+      const current = await prisma.document.findFirst({
+        where: { id: documentId, userId, deletedAt: null, revision, type: "PORTFOLIO" },
+        select: { content: true },
+      });
+
+      if (
+        current?.content &&
+        typeof current.content === "object" &&
+        !Array.isArray(current.content)
+      )
+        updateData.content = current.content as Prisma.InputJsonValue;
     }
 
     if (

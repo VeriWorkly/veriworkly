@@ -29,7 +29,11 @@ import { AffiliateService } from "#services/affiliate/index";
 import { AFFILIATE_TIER_RATE_BPS } from "#services/affiliate/constants";
 import { CreditService, paidCreditsIn, spendableCredits } from "#services/creditService";
 import { CREDIT_SOURCES } from "#services/creditSources";
-import { isDeletedAccount, redactIfForDeletedAccount } from "#services/deletedAccount";
+import {
+  isDeletedAccount,
+  redactBillingPayload,
+  redactIfForDeletedAccount,
+} from "#services/deletedAccount";
 import {
   addMonthsUtc,
   grantDueMonths,
@@ -41,6 +45,7 @@ import type { PurchaseConfirmation } from "#services/mail/billingMail";
 import { PRODUCT_NAMES, PASS_NAMES, purchaseName } from "#services/productNames";
 import {
   creditPackCatalog,
+  creditPackForProductId,
   isCreditPackKey,
   ENTITLEMENT_KEYS,
   getProductFromProviderId,
@@ -90,6 +95,17 @@ const disputeEventSchema = z.object({
  */
 const LOST_DISPUTE_EVENTS = new Set(["dispute.lost", "dispute.accepted"]);
 
+/** The event types `processWebhook` acts on; every other type is stored redacted (V-277). */
+function isProcessedEventType(type: string) {
+  return (
+    type.startsWith("subscription.") ||
+    type.startsWith("dispute.") ||
+    type === "payment.succeeded" ||
+    type === "payment.failed" ||
+    type === "refund.succeeded"
+  );
+}
+
 /** The provider payment a payment, refund or dispute event is about (V-216); null otherwise. */
 function eventPaymentId(event: { type: string; data: unknown }) {
   if (!/^(payment|refund|dispute)\./.test(event.type)) return null;
@@ -121,6 +137,115 @@ async function reversedSoFar(paymentId: string, eventId: string, currency: strin
       ORDER BY key, "createdAt" ASC
     ) AS once`;
   return Number(row?.total ?? 0);
+}
+
+/**
+ * When a payment was reversed in full by the refunds and lost disputes processed so far, or null
+ * when it was not (V-273, V-276). The same rules as `applyPaymentReversal`: a refund the provider
+ * marks `is_partial: false` and a lost dispute without a usable amount are full on their own;
+ * otherwise everything reversed (each refund or dispute counted once) must reach the amount paid.
+ */
+async function fullReversalAt(
+  paymentId: string,
+  paid: { amountCents: number | null; currency: string | null },
+): Promise<Date | null> {
+  const reversals = await prisma.billingWebhookEvent.findMany({
+    where: {
+      providerPaymentId: paymentId,
+      type: { in: ["refund.succeeded", ...LOST_DISPUTE_EVENTS] },
+      status: "PROCESSED",
+    },
+    select: { type: true, amountCents: true, payload: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (reversals.length === 0) return null;
+
+  for (const reversal of reversals) {
+    const data = (reversal.payload as { data?: { is_partial?: unknown } } | null)?.data;
+    if (reversal.type === "refund.succeeded" && data?.is_partial === false)
+      return reversal.createdAt;
+    if (reversal.type !== "refund.succeeded" && reversal.amountCents === null)
+      return reversal.createdAt;
+  }
+
+  if (!paid.amountCents || paid.amountCents <= 0) return null;
+  const total = await reversedSoFar(paymentId, "", paid.currency);
+  return total >= paid.amountCents ? reversals[reversals.length - 1].createdAt : null;
+}
+
+/**
+ * The provider payment that paid a subscription's current period (V-276), among its applied,
+ * non-zero `payment.succeeded` events (the `payload #>> '{data,subscription_id}'` expression
+ * index): the one whose service period for this subscription covers `at` when Dodo names it,
+ * otherwise the latest. A plan-change proration charge (`isPlanChangePayment`) never counts: it
+ * pays a price difference, not the period.
+ */
+async function latestSubscriptionPayment(providerSubId: string, at = new Date()) {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      providerPaymentId: string;
+      amountCents: number | null;
+      currency: string | null;
+      data: {
+        charge_type?: string | null;
+        metadata?: Record<string, string> | null;
+        service_periods?: Array<{ subscription_id?: string; starts_at?: string; ends_at?: string }>;
+      } | null;
+    }>
+  >`
+    SELECT "providerPaymentId", "amountCents", "currency", "payload" -> 'data' AS data
+    FROM "BillingWebhookEvent"
+    WHERE ("payload" #>> '{data,subscription_id}') = ${providerSubId}
+      AND "type" = 'payment.succeeded'
+      AND "status" = 'PROCESSED'
+      AND "providerPaymentId" IS NOT NULL
+      AND COALESCE("amountCents", 0) > 0
+    ORDER BY "createdAt" DESC
+    LIMIT 50`;
+
+  const renewals = rows.filter(
+    (row) =>
+      !isPlanChangePayment({
+        charge_type: row.data?.charge_type ?? null,
+        metadata: row.data?.metadata ?? {},
+      }),
+  );
+  const covering = renewals.find((row) =>
+    (row.data?.service_periods ?? []).some(
+      (period) =>
+        period.subscription_id === providerSubId &&
+        typeof period.starts_at === "string" &&
+        typeof period.ends_at === "string" &&
+        new Date(period.starts_at) <= at &&
+        new Date(period.ends_at) > at,
+    ),
+  );
+  const chosen = covering ?? renewals[0];
+  return chosen
+    ? {
+        providerPaymentId: chosen.providerPaymentId,
+        amountCents: chosen.amountCents,
+        currency: chosen.currency,
+      }
+    : null;
+}
+
+/** When the payment that paid a subscription's current period was reversed in full, or null. */
+async function periodReversedAt(providerSubId: string) {
+  const latest = await latestSubscriptionPayment(providerSubId);
+  return latest ? fullReversalAt(latest.providerPaymentId, latest) : null;
+}
+
+/** Gives a payment's unattributed refunds and lost disputes to the customer it was applied to. */
+async function attributeEarlierReversals(paymentId: string, userId: string) {
+  await prisma.billingWebhookEvent.updateMany({
+    where: {
+      providerPaymentId: paymentId,
+      type: { in: ["refund.succeeded", ...LOST_DISPUTE_EVENTS] },
+      userId: null,
+    },
+    data: { userId },
+  });
 }
 
 /** The stored `payment.succeeded` event for a payment: who paid, what, and how much. */
@@ -191,6 +316,31 @@ const WEBHOOK_LOCK_WAIT_ATTEMPTS = 10;
 const WEBHOOK_LOCK_WAIT_MS = 300;
 const WEBHOOK_IN_FLIGHT_MESSAGE =
   "This webhook event is already being processed by a concurrent request. Please retry.";
+
+/**
+ * How long the payment lock's transaction may stay open (V-273): generous, well past any webhook's
+ * work (a few seconds), so the lock is never dropped while the work still runs. If it ever were,
+ * the work has committed on its own connections and `processWebhook` keeps the row PROCESSED.
+ */
+export const PAYMENT_LOCK_TIMEOUT_MS = 5 * 60_000;
+
+/**
+ * Runs `work` holding a transaction-scoped advisory lock on a provider payment (V-273), or
+ * without one when the event names no payment. The lock's transaction writes nothing; `work` uses
+ * its own connections, and the lock is released when it settles. Billing webhooks are few, so the
+ * extra pooled connection each one holds while it runs is affordable.
+ */
+async function withPaymentLock(paymentId: string | null, work: () => Promise<void>) {
+  if (!paymentId) return work();
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`billing:payment:${paymentId}`}))`;
+      await work();
+    },
+    { timeout: PAYMENT_LOCK_TIMEOUT_MS, maxWait: 10_000 },
+  );
+}
+
 /**
  * The only `suspensionReason` values billing is allowed to overwrite: the ones billing itself
  * writes (`applySubscriptionEvent` stores the normalised subscription status) and the grace
@@ -607,6 +757,36 @@ const UNKNOWN_EVENT_SUMMARY: BillingEventSummary = {
 };
 
 /**
+ * The credit pack a payment paid for, by product truth (V-274): checkout metadata can be set by
+ * whoever opens a payment link. A subscription charge is never a pack (it carries no product_cart,
+ * so its product id is absent), and metadata only names the pack when the payment does carry a
+ * product id the catalog does not know at all. Shared by `applyPaymentEvent` (what is granted,
+ * and the mismatch note) and `summarizeBillingEvent` (what history calls it).
+ */
+function paidCreditPack(
+  payment: {
+    product_cart?: Array<{ product_id: string }> | null;
+    product_id?: string | null;
+    metadata: { veriworkly_product?: string };
+  },
+  subscriptionCharge: boolean,
+) {
+  const paidProductId = payment.product_cart?.[0]?.product_id ?? payment.product_id ?? null;
+  const metadataPack =
+    payment.metadata.veriworkly_product && isCreditPackKey(payment.metadata.veriworkly_product)
+      ? payment.metadata.veriworkly_product
+      : null;
+  const productPack =
+    paidProductId && !subscriptionCharge ? creditPackForProductId(paidProductId) : null;
+  const unknownProduct = Boolean(
+    paidProductId &&
+    !creditPackForProductId(paidProductId) &&
+    !getProductFromProviderId(paidProductId),
+  );
+  const packKey = productPack ?? (!subscriptionCharge && unknownProduct ? metadataPack : null);
+  return { packKey, metadataPack, paidProductId };
+}
+/**
  * What a billing event was for, as the customer's billing history names it (V-197): the product
  * from the shared naming table and the amount the event carries. Reads a stored event (`{ type,
  * data }`); anything it cannot read, a redacted payload included, is unknown rather than an error.
@@ -631,20 +811,20 @@ function summarizeBillingEvent(event: unknown): BillingEventSummary {
     const payment = dodoPaymentSchema.safeParse(data);
     if (!payment.success) return UNKNOWN_EVENT_SUMMARY;
     const { metadata } = payment.data;
-    const packKey = metadata.veriworkly_product;
-    // Same order as `applyPaymentEvent`: a pack names itself in metadata, anything else is the
-    // catalog product its cart names.
+    // The same product-truth rule as `applyPaymentEvent` (`paidCreditPack`): the pack paid for,
+    // otherwise the catalog product its cart names. The stored row is not on hand here, so only
+    // the payload's `subscription_id` marks a subscription charge.
+    const { packKey } = paidCreditPack(payment.data, Boolean(payment.data.subscription_id));
     const product = resolveCatalogProduct(
       payment.data.product_cart?.[0]?.product_id ?? payment.data.product_id,
       metadata,
     );
     return {
-      productName:
-        packKey && isCreditPackKey(packKey)
-          ? creditPackCatalog[packKey].name
-          : product
-            ? purchaseName(product.productKey, product.interval)
-            : null,
+      productName: packKey
+        ? creditPackCatalog[packKey].name
+        : product
+          ? purchaseName(product.productKey, product.interval)
+          : null,
       amountCents: payment.data.total_amount ?? null,
       currency: payment.data.currency?.toUpperCase() ?? null,
     };
@@ -2238,7 +2418,11 @@ export class BillingService {
           data: {
             providerEventId,
             type: parsedEvent.type,
-            payload: parsedEvent as unknown as Prisma.InputJsonValue,
+            // An event type nothing here processes keeps only the redacted shape (V-277): its
+            // customer name, email and phone would otherwise outlive any deletion pass.
+            payload: isProcessedEventType(parsedEvent.type)
+              ? (parsedEvent as unknown as Prisma.InputJsonValue)
+              : redactBillingPayload(parsedEvent),
             providerPaymentId: eventPaymentId(parsedEvent),
             ...(await summarizeStoredEvent(parsedEvent)),
             status: "PROCESSING",
@@ -2298,76 +2482,93 @@ export class BillingService {
       try {
         let attributedUserId: string | null = null;
         let note: string | null = null;
-        if (parsedEvent.type.startsWith("subscription.")) {
-          const subscriptionData = dodoSubscriptionSchema.parse(parsedEvent.data);
-          const userId = await this.applySubscriptionEvent(
-            subscriptionData,
-            new Date(parsedEvent.timestamp),
-            parsedEvent.type,
-          );
+        // One event about a payment at a time (V-273): a refund or dispute that arrives while the
+        // payment is still being granted waits for it, and a payment applied while its reversal
+        // is running waits for that reversal to be recorded, so each sees the other.
+        await withPaymentLock(eventPaymentId(parsedEvent), async () => {
+          if (parsedEvent.type.startsWith("subscription.")) {
+            const subscriptionData = dodoSubscriptionSchema.parse(parsedEvent.data);
+            const userId = await this.applySubscriptionEvent(
+              subscriptionData,
+              new Date(parsedEvent.timestamp),
+              parsedEvent.type,
+            );
+            await prisma.billingWebhookEvent.update({
+              where: { id: stored.id },
+              data: { userId },
+            });
+            attributedUserId = userId;
+          }
+          if (parsedEvent.type === "payment.succeeded") {
+            const payment = dodoPaymentSchema.parse(parsedEvent.data);
+            const applied = await this.applyPaymentEvent(payment, new Date(parsedEvent.timestamp));
+            const userId = applied.userId;
+            await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
+            attributedUserId = userId;
+            // Applied to nobody: the account is gone, but the money was taken.
+            if (!userId) note = refundNeededNote(payment);
+            else note = applied.note;
+          }
+          if (parsedEvent.type === "refund.succeeded") {
+            const refund = refundEventSchema.parse(parsedEvent.data);
+            const reversed = await this.applyPaymentReversal(refund.payment_id, {
+              cause: "refund",
+              isPartial: refund.is_partial ?? null,
+              amount: refund.amount ?? null,
+              currency: refund.currency ?? null,
+              eventId: stored.id,
+            });
+            const userId = reversed.userId;
+            note = reversed.note;
+            if (userId)
+              await prisma.billingWebhookEvent.update({
+                where: { id: stored.id },
+                data: { userId },
+              });
+            attributedUserId = userId;
+          }
+          if (parsedEvent.type.startsWith("dispute.")) {
+            const dispute = disputeEventSchema.parse(parsedEvent.data);
+            // Every dispute event belongs to the customer whose payment it is about (admin search,
+            // history); only a lost one takes anything back.
+            const reversed = LOST_DISPUTE_EVENTS.has(parsedEvent.type)
+              ? await this.applyPaymentReversal(dispute.payment_id, {
+                  cause: "dispute",
+                  isPartial: null,
+                  amount: dispute.amount,
+                  currency: dispute.currency ?? null,
+                  eventId: stored.id,
+                })
+              : { userId: await this.paymentOwner(dispute.payment_id), note: null };
+            const userId = reversed.userId;
+            note = reversed.note;
+            if (userId)
+              await prisma.billingWebhookEvent.update({
+                where: { id: stored.id },
+                data: { userId },
+              });
+            attributedUserId = userId;
+          }
+          if (parsedEvent.type === "payment.failed") {
+            const payment = dodoPaymentSchema.parse(parsedEvent.data);
+            const userId = await this.applyPaymentFailed(payment, new Date(parsedEvent.timestamp));
+            await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
+            attributedUserId = userId;
+          }
+
+          // Decision 5: an event for a deleted account is kept without the personal data in it.
+          if (!attributedUserId) await redactIfForDeletedAccount(stored.id, parsedEvent.data);
+
+          // The note rides on the event's `error` field, which the admin webhook list shows and
+          // searches: a processed event with a note is one a human still has to act on.
           await prisma.billingWebhookEvent.update({
             where: { id: stored.id },
-            data: { userId },
+            data: {
+              status: "PROCESSED",
+              processedAt: new Date(),
+              ...(note ? { error: note } : {}),
+            },
           });
-          attributedUserId = userId;
-        }
-        if (parsedEvent.type === "payment.succeeded") {
-          const payment = dodoPaymentSchema.parse(parsedEvent.data);
-          const userId = await this.applyPaymentEvent(payment, new Date(parsedEvent.timestamp));
-          await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
-          attributedUserId = userId;
-          // Applied to nobody: the account is gone, but the money was taken.
-          if (!userId) note = refundNeededNote(payment);
-        }
-        if (parsedEvent.type === "refund.succeeded") {
-          const refund = refundEventSchema.parse(parsedEvent.data);
-          const reversed = await this.applyPaymentReversal(refund.payment_id, {
-            cause: "refund",
-            isPartial: refund.is_partial ?? null,
-            amount: refund.amount ?? null,
-            currency: refund.currency ?? null,
-            eventId: stored.id,
-          });
-          const userId = reversed.userId;
-          note = reversed.note;
-          if (userId)
-            await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
-          attributedUserId = userId;
-        }
-        if (parsedEvent.type.startsWith("dispute.")) {
-          const dispute = disputeEventSchema.parse(parsedEvent.data);
-          // Every dispute event belongs to the customer whose payment it is about (admin search,
-          // history); only a lost one takes anything back.
-          const reversed = LOST_DISPUTE_EVENTS.has(parsedEvent.type)
-            ? await this.applyPaymentReversal(dispute.payment_id, {
-                cause: "dispute",
-                isPartial: null,
-                amount: dispute.amount,
-                currency: dispute.currency ?? null,
-                eventId: stored.id,
-              })
-            : { userId: await this.paymentOwner(dispute.payment_id), note: null };
-          const userId = reversed.userId;
-          note = reversed.note;
-          if (userId)
-            await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
-          attributedUserId = userId;
-        }
-        if (parsedEvent.type === "payment.failed") {
-          const payment = dodoPaymentSchema.parse(parsedEvent.data);
-          const userId = await this.applyPaymentFailed(payment, new Date(parsedEvent.timestamp));
-          await prisma.billingWebhookEvent.update({ where: { id: stored.id }, data: { userId } });
-          attributedUserId = userId;
-        }
-
-        // Decision 5: an event for a deleted account is kept without the personal data in it.
-        if (!attributedUserId) await redactIfForDeletedAccount(stored.id, parsedEvent.data);
-
-        // The note rides on the event's `error` field, which the admin webhook list shows and
-        // searches: a processed event with a note is one a human still has to act on.
-        await prisma.billingWebhookEvent.update({
-          where: { id: stored.id },
-          data: { status: "PROCESSED", processedAt: new Date(), ...(note ? { error: note } : {}) },
         });
         // History lists PROCESSED rows only: one cached before this line would miss the event.
         if (attributedUserId) await cacheDel(billingHistoryCacheKey(attributedUserId));
@@ -2375,6 +2576,21 @@ export class BillingService {
         return { duplicate: false };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        // The work commits on its own connections, so the payment lock's transaction can still
+        // fail after the PROCESSED write (it outlived its timeout): the event is done, and a
+        // FAILED row would only make the provider apply it again.
+        const current = await prisma.billingWebhookEvent.findUnique({
+          where: { id: stored.id },
+          select: { status: true, userId: true },
+        });
+        if (current?.status === "PROCESSED") {
+          logger.warn("Billing webhook processed, but its payment lock ended with an error", {
+            providerEventId,
+            error: errorMessage,
+          });
+          if (current.userId) await cacheDel(billingHistoryCacheKey(current.userId));
+          return { duplicate: false };
+        }
         const updatedEvent = await prisma.billingWebhookEvent.update({
           where: { id: stored.id },
           data: { status: "FAILED", error: errorMessage },
@@ -2512,11 +2728,17 @@ export class BillingService {
     // Without a `next_billing_date` only an ACTIVE subscription earns a fresh period from the
     // event; a cancellation, expiry or failure keeps the period the row already holds (or ends
     // now), so no event can hand out access that was never paid for.
-    const currentPeriodEnd = subscription.next_billing_date
+    let currentPeriodEnd = subscription.next_billing_date
       ? new Date(subscription.next_billing_date)
       : normalizedStatus === "ACTIVE"
         ? addCatalogInterval(eventTime, rawInterval)
         : (existing?.currentPeriodEnd ?? eventTime);
+    // Payment is what buys the period (V-276): a cancelled subscription whose current period was
+    // refunded or charged back in full keeps no paid time, whatever `next_billing_date` says.
+    if (normalizedStatus === "CANCELED" && currentPeriodEnd > eventTime) {
+      const reversedAt = await periodReversedAt(subscription.subscription_id);
+      if (reversedAt && reversedAt < currentPeriodEnd) currentPeriodEnd = reversedAt;
+    }
     // `pending` is unpaid: it grants nothing and must not revoke a period already paid for.
     const touchesGrants = subscription.status !== "pending";
 
@@ -2781,13 +3003,31 @@ export class BillingService {
       : null;
     const userId = payment.metadata.veriworkly_user_id || subscription?.userId;
     if (await isDeletedAccount(userId, subscription, { paymentId: payment.payment_id }))
-      return null;
+      return { userId: null, note: null };
     if (!userId) {
       logger.error("Payment webhook cannot be attributed to a user", {
         paymentId: payment.payment_id,
         subscriptionId: payment.subscription_id ?? null,
       });
       throw new ApiError(400, "Payment webhook is missing VeriWorkly user metadata.");
+    }
+
+    // A refund or lost dispute that was processed while this payment was still failing (support
+    // refunded the customer who "paid and got nothing") had nobody to take anything back from
+    // (V-273). A payment already reversed in full grants nothing now; the earlier reversals are
+    // attributed to the customer so their history shows them. Events about one payment run one at
+    // a time (`withPaymentLock`), so a reversal still in flight is seen here or sees the grants.
+    if (
+      await fullReversalAt(payment.payment_id, {
+        amountCents: payment.total_amount ?? null,
+        currency: payment.currency ?? null,
+      })
+    ) {
+      await attributeEarlierReversals(payment.payment_id, userId);
+      const note = `Payment ${payment.payment_id} was reversed in full before it was applied; nothing was granted.`;
+      logger.warn(note, { paymentId: payment.payment_id, userId });
+      await this.invalidateAfterBillingChange(userId);
+      return { userId, note };
     }
 
     // The billing portal needs a Dodo customer; a pass or pack buyer has no subscription row to
@@ -2834,9 +3074,18 @@ export class BillingService {
         data: { graceEndsAt: null },
       });
 
-    const purchasedProduct = payment.metadata.veriworkly_product;
-    if (purchasedProduct && isCreditPackKey(purchasedProduct)) {
-      const pack = creditPackCatalog[purchasedProduct];
+    const { packKey, metadataPack, paidProductId } = paidCreditPack(
+      payment,
+      Boolean(payment.subscription_id || subscription),
+    );
+    let note: string | null = null;
+    if (metadataPack && metadataPack !== packKey) {
+      note = `Payment ${payment.payment_id}: checkout metadata names ${metadataPack}, which does not match the paid product ${paidProductId ?? "(none)"}; granted what was paid for.`;
+      logger.error(note, { paymentId: payment.payment_id, userId, paidProductId, metadataPack });
+    }
+
+    if (packKey) {
+      const pack = creditPackCatalog[packKey];
       const expiresAt = addDays(paidAt, pack.expiresInDays);
       await CreditService.grant(userId, pack.credits, {
         requestId: `payment-credit:${payment.payment_id}`,
@@ -3083,8 +3332,11 @@ export class BillingService {
     }
 
     await this.recordAffiliateCommission(userId, payment);
+    // Partial reversals that landed first took nothing back, and still take nothing (a partial
+    // reversal never does); they are attributed now so the customer's history shows them.
+    await attributeEarlierReversals(payment.payment_id, userId);
     await this.invalidateAfterBillingChange(userId);
-    return userId;
+    return { userId, note };
   }
 
   /**
@@ -3237,8 +3489,10 @@ export class BillingService {
         (tx) => revokeReversedPass(tx, userId, paymentId),
         BILLING_TRANSACTION_OPTIONS,
       );
-      if (revoked.count) {
-        logger.info("Pass revoked: its payment was reversed", { paymentId, userId });
+      const periodEnded = await this.endReversedCancelledPeriod(userId, paymentId, payment);
+      if (revoked.count || periodEnded) {
+        if (revoked.count)
+          logger.info("Pass revoked: its payment was reversed", { paymentId, userId });
         // The publication follows the grants left, and a lapsed premium site moves to a free
         // template (decision 6); `reconcileAccess` clears every billing cache as well.
         await this.reconcileAccess(userId);
@@ -3253,6 +3507,63 @@ export class BillingService {
         ? `Affiliate ledger: commission ${commission.id} was reversed, but the wallet held ${commission.pendingShortfallCents} cents less pending than it. Check the affiliate wallet.`
         : null;
     return { userId, note };
+  }
+
+  /**
+   * A full reversal of the payment that paid a cancelled subscription's current period ends that
+   * period now (V-276): payment is what buys the period, and a cancelled row otherwise keeps
+   * access until `currentPeriodEnd`. A subscription that is still active is left to the
+   * provider's events (a refund does not cancel it); if it is cancelled later,
+   * `applySubscriptionEvent` applies the same cap. True when the period was ended.
+   */
+  private static async endReversedCancelledPeriod(
+    userId: string,
+    paymentId: string,
+    payment: { payload: Prisma.JsonValue } | null,
+  ) {
+    const data = (payment?.payload as { data?: { subscription_id?: unknown } } | null)?.data;
+    const providerSubId = typeof data?.subscription_id === "string" ? data.subscription_id : null;
+    if (!providerSubId) return false;
+
+    const now = new Date();
+    const row = await prisma.subscription.findUnique({ where: { providerSubId } });
+    if (
+      !row ||
+      row.userId !== userId ||
+      row.status !== "CANCELED" ||
+      !row.currentPeriodEnd ||
+      row.currentPeriodEnd <= now ||
+      !isProductKey(row.productKey)
+    )
+      return false;
+    if ((await latestSubscriptionPayment(providerSubId))?.providerPaymentId !== paymentId)
+      return false;
+    const productKey = row.productKey;
+
+    await prisma.$transaction(async (tx) => {
+      await lockUserForBilling(tx, userId);
+      const capped = await tx.subscription.updateMany({
+        where: { id: row.id, status: "CANCELED", currentPeriodEnd: { gt: now } },
+        data: { currentPeriodEnd: now },
+      });
+      if (capped.count === 0) return;
+      await syncSubscriptionGrants(tx, {
+        userId,
+        sourceId: providerSubId,
+        productKey,
+        status: "CANCELED",
+        currentPeriodEnd: now,
+        graceEndsAt: row.graceEndsAt,
+        at: now,
+      });
+    }, BILLING_TRANSACTION_OPTIONS);
+
+    logger.info("Cancelled subscription's period ended: its payment was reversed in full", {
+      paymentId,
+      providerSubId,
+      userId,
+    });
+    return true;
   }
 
   /**
@@ -3283,6 +3594,10 @@ export class BillingService {
     if (await isDeletedAccount(userId, subscription, { paymentId: payment.payment_id }))
       return null;
     if (!userId || !subscription) return userId ?? null;
+
+    // A declined card update (or any zero-amount charge) owes nothing (V-275): the subscription
+    // is still paid, so no dunning email and no grace date, the same rule the success path keeps.
+    if (payment.is_update_payment_method || payment.total_amount === 0) return userId;
 
     // A declined plan-change charge (V-202) leaves the subscription as it was (`prevent_change`, or
     // a portal change that never applied):

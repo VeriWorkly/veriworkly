@@ -3,7 +3,11 @@ import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
+import { signJWT } from "better-auth/crypto";
+
 import { app } from "#app";
+import { auth } from "#auth/index";
+import { config } from "#config";
 import { prisma } from "#lib/prisma";
 import { cacheGet, cacheSet, getRedis } from "#lib/redis";
 import { getGeneration } from "#lib/cacheGeneration";
@@ -302,5 +306,64 @@ describe("admin account deletion (V-119 / V-102)", () => {
     expect((await request(app).get("/api/v1/users/me").set("X-API-Key", created.key)).status).toBe(
       401,
     );
+  });
+});
+
+/**
+ * A signed `session_data` cookie exactly as better-auth's cookie cache (strategy "jwt") writes it.
+ * A browser that signed in while the cache was on still holds one; it must never outlive a
+ * revocation (V-369 / V-312).
+ */
+async function cookieCacheCookie(user: TestUser): Promise<string> {
+  const session = await prisma.session.findFirstOrThrow({ where: { token: user.sessionToken } });
+  const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+  const jwt = await signJWT(
+    { session, user: row, updatedAt: Date.now(), version: "1" },
+    config.auth.secret,
+    900,
+  );
+  return `${user.cookie}; veriworkly-auth.session_data=${jwt}`;
+}
+
+describe("revocation takes effect on the very next request (V-369 / V-312)", () => {
+  it("better-auth's cookie cache is off, so only the session store can authenticate", () => {
+    const cookieCache = (auth.options.session as { cookieCache?: { enabled?: boolean } })
+      .cookieCache;
+    expect(cookieCache?.enabled ?? false).toBe(false);
+  });
+
+  it("admin 'revoke sessions': a client still holding a cookie-cache JWT gets 401 at once", async () => {
+    const adminUser = await admin();
+    const target = await createUserWithSession();
+    await seedBetterAuthSessionEntries(target.id, [target.sessionToken]);
+    const cookie = await cookieCacheCookie(target);
+
+    expect((await withCookie(cookie).get("/api/v1/users/me")).status).toBe(200);
+
+    const revoke = await request(app)
+      .post(`/api/v1/admin/users/${target.id}/revoke-sessions`)
+      .set("Origin", STUDIO_ORIGIN)
+      .set("Cookie", adminUser.cookie)
+      .send({ reason: "integration test revoke" });
+    expect(revoke.status, JSON.stringify(revoke.body)).toBe(200);
+
+    expect((await withCookie(cookie).get("/api/v1/users/me")).status).toBe(401);
+  });
+
+  it("sign-out: the signed-out cookie and its cookie-cache JWT get 401 at once", async () => {
+    const user = await createUserWithSession();
+    await seedBetterAuthSessionEntries(user.id, [user.sessionToken]);
+    const cookie = await cookieCacheCookie(user);
+
+    expect((await withCookie(cookie).get("/api/v1/users/me")).status).toBe(200);
+
+    const signOut = await request(app)
+      .post("/api/v1/auth/sign-out")
+      .set("Origin", STUDIO_ORIGIN)
+      .set("Cookie", user.cookie)
+      .send({});
+    expect(signOut.status, JSON.stringify(signOut.body)).toBe(200);
+
+    expect((await withCookie(cookie).get("/api/v1/users/me")).status).toBe(401);
   });
 });

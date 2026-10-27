@@ -103,7 +103,6 @@ export const config = {
       .filter((header) => Boolean(header) && header !== "x-forwarded-client-ip"),
     sessionTtlSeconds: parseIntegerEnv(process.env.AUTH_SESSION_TTL_SECONDS, 2592000),
     sessionResetTtlOnUse: parseIntegerEnv(process.env.AUTH_SESSION_RESET_TTL_ON_USE, 86400),
-    sessionCacheEnabled: parseBoolean(process.env.AUTH_SESSION_CACHE_ENABLED, isProduction),
     sessionCacheMaxAgeSeconds: parseIntegerEnv(process.env.AUTH_SESSION_CACHE_MAX_AGE_SECONDS, 900),
     otpTtlSeconds: parseIntegerEnv(process.env.AUTH_OTP_TTL_SECONDS, 300),
     otpAllowedAttempts: parseIntegerEnv(process.env.AUTH_OTP_ALLOWED_ATTEMPTS, 3),

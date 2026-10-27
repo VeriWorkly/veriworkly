@@ -243,11 +243,16 @@ export const auth = betterAuth({
     storeSessionInDatabase: true,
     expiresIn: config.auth.sessionTtlSeconds,
     updateAge: config.auth.sessionResetTtlOnUse,
-    cookieCache: {
-      enabled: config.auth.sessionCacheEnabled,
-      maxAge: config.auth.sessionCacheMaxAgeSeconds,
-      strategy: "jwt",
-    },
+    // Off, always (V-369 / V-312). better-auth's cookie cache answers from a signed cookie the
+    // client holds and never asks the store, so a revoked session (sign-out, "sign out other
+    // devices", admin revoke, account deletion) kept working until that cookie expired. The
+    // server has its own token-keyed Redis cache with revocation tombstones (utils/authCache.ts)
+    // in front of better-auth's Redis secondary storage, so a lookup that misses it costs one
+    // Redis read, not a Postgres query.
+    // `strategy` stays "jwt": better-auth still parses a `session_data` cookie it finds, with the
+    // configured strategy, even when the cache is off. Browsers that signed in before this change
+    // hold a JWT one, and the default "compact" parser throws on it (every request a 503).
+    cookieCache: { enabled: false, strategy: "jwt" },
   },
 
   socialProviders: {
@@ -427,7 +432,9 @@ export const auth = betterAuth({
 export const authNodeHandler = toNodeHandler(auth);
 
 export async function getSessionFromRequestHeaders(headers: Headers) {
-  return auth.api.getSession({ headers });
+  // Belt and braces with `cookieCache.enabled: false`: a `session_data` cookie must never stand in
+  // for the session store on an API request (V-369).
+  return auth.api.getSession({ headers, query: { disableCookieCache: true } });
 }
 
 export function convertNodeHeadersToWebHeaders(rawHeaders: IncomingHttpHeaders) {

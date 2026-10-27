@@ -77,6 +77,12 @@ export async function deleteUserCascade(
     actorId?: string | null;
   } = {},
 ) {
+  // The User row first: the lock every affiliate money path takes first too (commission release
+  // and reversal, withdrawals), so a deletion and any of them never wait on each other in a cycle.
+  // NO KEY UPDATE, not UPDATE: a credit grant or AI reservation that already locked the wallet
+  // must still be able to insert its row (its foreign key takes KEY SHARE on this row), or the two
+  // deadlock on the wallet below. The final `user.delete` takes the full lock.
+  await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR NO KEY UPDATE`;
   // The affiliate balance this deletion forfeits, read with the wallet row locked: a commission
   // released after the pre-check is either in this amount or waits for the deletion to commit.
   const [wallet] = await tx.$queryRaw<
