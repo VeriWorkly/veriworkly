@@ -711,20 +711,41 @@ describe("V-202 review: provider outcomes and double clicks", () => {
     expect(response.body.details).toMatchObject({ code: "PLAN_CHANGE_PENDING" });
   });
 
+  /**
+   * A provider call that signals when the first request reaches it and answers only when the test
+   * says so (V-355).
+   */
+  function heldProviderCall(paymentId: string) {
+    let reached!: () => void;
+    let answer!: () => void;
+    const reachedPromise = new Promise<void>((resolve) => (reached = resolve));
+    const answered = new Promise<{ payment_id: string }>(
+      (resolve) => (answer = () => resolve({ payment_id: paymentId })),
+    );
+    dodoMock.changePlan.mockImplementation(() => {
+      reached();
+      return answered;
+    });
+    return { reached: reachedPromise, answer: () => answer() };
+  }
+
   it("a double click with one key waits for the first answer and replays it", async () => {
     const user = await createUserWithSession();
     await subscribe(user, "prod_portfolio_pro_monthly");
-    dodoMock.changePlan.mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ payment_id: "pay_slow" }), 400)),
-    );
+    const provider = heldProviderCall("pay_slow");
     const body = { productKey: "bundle", interval: "monthly" };
 
-    const [first, second] = await Promise.all([
-      asUser(user, CHANGE_PATH, "double-click").send(body),
-      new Promise((resolve) => setTimeout(resolve, 50)).then(() =>
-        asUser(user, CHANGE_PATH, "double-click").send(body),
-      ),
-    ]);
+    // The second click is sent only once the first holds the claim and is inside the provider
+    // call, so which request is the original never depends on scheduling (V-355).
+    const firstResponse = asUser(user, CHANGE_PATH, "double-click")
+      .send(body)
+      .then((r) => r);
+    await provider.reached;
+    const secondResponse = asUser(user, CHANGE_PATH, "double-click")
+      .send(body)
+      .then((r) => r);
+    setTimeout(provider.answer, 400);
+    const [first, second] = await Promise.all([firstResponse, secondResponse]);
 
     expect(first.status, JSON.stringify(first.body)).toBe(200);
     expect(second.status, JSON.stringify(second.body)).toBe(200);
@@ -735,18 +756,18 @@ describe("V-202 review: provider outcomes and double clicks", () => {
   it("the second click keeps waiting while a slow provider call is still within its timeout", async () => {
     const user = await createUserWithSession();
     await subscribe(user, "prod_portfolio_pro_monthly");
-    dodoMock.changePlan.mockImplementation(
-      () =>
-        new Promise((resolve) => setTimeout(() => resolve({ payment_id: "pay_slower" }), 5_000)),
-    );
+    const provider = heldProviderCall("pay_slower");
     const body = { productKey: "bundle", interval: "monthly" };
 
-    const [first, second] = await Promise.all([
-      asUser(user, CHANGE_PATH, "slow-double-click").send(body),
-      new Promise((resolve) => setTimeout(resolve, 50)).then(() =>
-        asUser(user, CHANGE_PATH, "slow-double-click").send(body),
-      ),
-    ]);
+    const firstResponse = asUser(user, CHANGE_PATH, "slow-double-click")
+      .send(body)
+      .then((r) => r);
+    await provider.reached;
+    const secondResponse = asUser(user, CHANGE_PATH, "slow-double-click")
+      .send(body)
+      .then((r) => r);
+    setTimeout(provider.answer, 5_000);
+    const [first, second] = await Promise.all([firstResponse, secondResponse]);
 
     expect(first.status, JSON.stringify(first.body)).toBe(200);
     expect(second.status, JSON.stringify(second.body)).toBe(200);
