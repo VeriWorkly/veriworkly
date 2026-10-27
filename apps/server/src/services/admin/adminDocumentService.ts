@@ -319,18 +319,49 @@ export async function updateDocumentVisibility(
   const takeDown = publication !== null && visibility === "PRIVATE" && !locked;
   const lift = publication !== null && visibility !== "PRIVATE" && locked;
 
+  // Admins only pull a document toward private (V-286). UNLISTED on a PRIVATE document is a lift
+  // of a moderator's own decision, nothing else: on a document its owner made private it would
+  // switch the owner's old share links back on.
+  if (
+    visibility === "UNLISTED" &&
+    document.visibility === "PRIVATE" &&
+    !document.moderatedPrivateAt &&
+    !lift
+  )
+    throw new ApiError(
+      409,
+      "The owner made this document private. A moderator cannot make it visible again.",
+    );
+
+  // Lifting a portfolio's moderation lock from a document its owner made private leaves the
+  // document PRIVATE: only the publication's lock goes.
+  const nextVisibility =
+    visibility === "UNLISTED" && document.visibility === "PRIVATE" && !document.moderatedPrivateAt
+      ? document.visibility
+      : visibility;
   // A lock put over the owner's or billing's own suspension lifts back to it (V-285).
   const liftedReason = publication?.reasonBeforeModeration ?? USER_UNPUBLISHED_REASON;
 
   const updated = await prisma.$transaction(async (tx) => {
-    const row = await tx.document.update({
-      where: { id: documentId },
+    // Conditional on the visibility and lock read above, so the owner's own "make private" that
+    // commits in between is not turned into an unlist on a stale read.
+    const { count } = await tx.document.updateMany({
+      where: {
+        id: documentId,
+        visibility: document.visibility,
+        moderatedPrivateAt: document.moderatedPrivateAt,
+      },
       data: {
-        visibility,
+        visibility: nextVisibility,
         // An earlier lock keeps its date; a second "Make private" is not a new takedown.
         moderatedPrivateAt:
           visibility === "PRIVATE" ? (document.moderatedPrivateAt ?? new Date()) : null,
       },
+    });
+    if (count === 0)
+      throw new ApiError(409, "The document changed while this was being saved. Try again.");
+    const row = await tx.document.findUniqueOrThrow({
+      where: { id: documentId },
       select: DOCUMENT_LIST_SELECT,
     });
     await writeAdminAudit(tx, {
@@ -338,7 +369,7 @@ export async function updateDocumentVisibility(
       metadata: {
         ...audit.metadata,
         previousVisibility: document.visibility,
-        visibility,
+        visibility: nextVisibility,
         ownerId: document.userId,
       },
     });

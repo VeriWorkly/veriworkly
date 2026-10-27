@@ -568,3 +568,71 @@ describe("V-285 an admin LIVE or GRACE only lifts a moderation lock", () => {
     expect(after.templateId).not.toBe("nimbus");
   });
 });
+
+describe("V-286 an admin never moves an owner-private document away from PRIVATE", () => {
+  async function seedResume(userId: string, visibility: "PRIVATE" | "PUBLIC" | "UNLISTED") {
+    return prisma.document.create({
+      data: {
+        userId,
+        type: "RESUME",
+        title: "Resume",
+        slug: `resume-${randomUUID().slice(0, 8)}`,
+        content: {},
+        visibility,
+      },
+    });
+  }
+
+  function setVisibility(documentId: string, visibility: string) {
+    return admin
+      .request("patch", `/admin/documents/${documentId}`)
+      .send({ visibility, reason: "Reviewed" });
+  }
+
+  it("refuses UNLISTED on a document its owner made private", async () => {
+    const owner = await createUserWithSession();
+    const resume = await seedResume(owner.id, "PRIVATE");
+
+    const response = await setVisibility(resume.id, "UNLISTED");
+    expect(response.status).toBe(409);
+    expect((await prisma.document.findUniqueOrThrow({ where: { id: resume.id } })).visibility).toBe(
+      "PRIVATE",
+    );
+    expect(await prisma.adminAuditEntry.count({ where: { targetId: resume.id } })).toBe(0);
+  });
+
+  it("still lifts a moderator's Make private, and still pulls a public document to unlisted", async () => {
+    const owner = await createUserWithSession();
+    const moderated = await seedResume(owner.id, "PUBLIC");
+    expect((await setVisibility(moderated.id, "PRIVATE")).status).toBe(200);
+    const lifted = await setVisibility(moderated.id, "UNLISTED");
+    expect(lifted.status, JSON.stringify(lifted.body)).toBe(200);
+    expect(await prisma.document.findUniqueOrThrow({ where: { id: moderated.id } })).toMatchObject({
+      visibility: "UNLISTED",
+      moderatedPrivateAt: null,
+    });
+
+    const open = await seedResume(owner.id, "PUBLIC");
+    expect((await setVisibility(open.id, "UNLISTED")).status).toBe(200);
+  });
+
+  it("lifting a portfolio's lock leaves a document its owner made private PRIVATE", async () => {
+    const owner = await createUserWithSession();
+    const { document, publication } = await seedLivePortfolio(owner.id);
+    await prisma.document.update({ where: { id: document.id }, data: { visibility: "PRIVATE" } });
+    await prisma.portfolioPublication.update({
+      where: { id: publication.id },
+      data: { status: "SUSPENDED", suspensionReason: "moderation:spam", suspendedAt: new Date() },
+    });
+
+    const response = await setVisibility(document.id, "UNLISTED");
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(
+      (await prisma.document.findUniqueOrThrow({ where: { id: document.id } })).visibility,
+    ).toBe("PRIVATE");
+    expect(
+      (await prisma.portfolioPublication.findUniqueOrThrow({ where: { id: publication.id } }))
+        .suspensionReason,
+    ).toBe("user_unpublished");
+  });
+});
