@@ -27,6 +27,29 @@ const SHARE_VIEW_RETENTION_DAYS = 30;
 const SHARE_VIEW_PRUNE_BATCH_SIZE = 5_000;
 const SHARE_VIEW_PRUNE_BUDGET_MS = 20_000;
 
+/**
+ * One share view, buffered (V-029): the raw row and the link's counter move together. Past the
+ * buffer cap (a flush that has not run, or a flood) the view is neither listed nor counted, and
+ * only a drop counter grows, which the flush reports; before, the row was trimmed away while the
+ * count kept growing, so `viewCount` and the `ShareView` rows disagreed.
+ * KEYS: buffer, counts, last-viewed, dropped. ARGV: record, link id, timestamp, cap, ttl.
+ */
+const RECORD_SHARE_VIEW_SCRIPT = `
+  if redis.call("LLEN", KEYS[1]) >= tonumber(ARGV[4]) then
+    redis.call("INCR", KEYS[4])
+    redis.call("EXPIRE", KEYS[4], ARGV[5])
+    return 0
+  end
+  redis.call("LPUSH", KEYS[1], ARGV[1])
+  redis.call("HINCRBY", KEYS[2], ARGV[2], 1)
+  redis.call("HSET", KEYS[3], ARGV[2], ARGV[3])
+  redis.call("EXPIRE", KEYS[1], ARGV[5])
+  redis.call("EXPIRE", KEYS[2], ARGV[5])
+  redis.call("EXPIRE", KEYS[3], ARGV[5])
+  return 1
+`;
+const DROPPED_SHARE_VIEWS_KEY = "share:views:dropped";
+
 /** Documents a share link can point at: a portfolio is published, never shared by link. */
 const SHAREABLE_DOCUMENT_TYPES = new Set(["RESUME", "COVER_LETTER"]);
 
@@ -70,17 +93,22 @@ export class ShareService {
       timestamp,
     });
 
-    // V-114: one MULTI, so a view is one round trip and never half-recorded.
-    await redis
-      .multi()
-      .lPush("share:views:buffer", viewRecord)
-      .lTrim("share:views:buffer", 0, MAX_BUFFERED_SHARE_VIEWS - 1)
-      .hIncrBy("share:links:view_count", shareLinkId, 1)
-      .hSet("share:links:last_viewed", shareLinkId, String(timestamp))
-      .expire("share:views:buffer", VIEW_BUFFER_TTL_SECONDS)
-      .expire("share:links:view_count", VIEW_BUFFER_TTL_SECONDS)
-      .expire("share:links:last_viewed", VIEW_BUFFER_TTL_SECONDS)
-      .exec();
+    // V-114: one script, so a view is one round trip and never half-recorded.
+    await redis.eval(RECORD_SHARE_VIEW_SCRIPT, {
+      keys: [
+        "share:views:buffer",
+        "share:links:view_count",
+        "share:links:last_viewed",
+        DROPPED_SHARE_VIEWS_KEY,
+      ],
+      arguments: [
+        viewRecord,
+        shareLinkId,
+        String(timestamp),
+        String(MAX_BUFFERED_SHARE_VIEWS),
+        String(VIEW_BUFFER_TTL_SECONDS),
+      ],
+    });
   }
 
   static async flushShareViews() {
@@ -220,6 +248,12 @@ export class ShareService {
 
       const staleCount = shareLinkIds.length - survivingShareLinks.size;
       if (staleCount > 0) logger.warn("Discarded share views for deleted links", { staleCount });
+      const dropped = Number(await redis.getDel(DROPPED_SHARE_VIEWS_KEY)) || 0;
+      if (dropped > 0)
+        logger.warn("Share views were dropped at the buffer cap since the last flush", {
+          dropped,
+          cap: MAX_BUFFERED_SHARE_VIEWS,
+        });
 
       // Committed. A runner that took the lock over meanwhile may be reading the processing
       // keys; deleting them and the batch id under it would let it commit these views again
