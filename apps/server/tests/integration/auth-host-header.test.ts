@@ -40,6 +40,18 @@ describe("auth route hardening against malformed Host / X-Forwarded-Proto (V-155
     }
   });
 
+  it("refuses a Host that names neither this API nor loopback (Host allow-list)", async () => {
+    const forged = await request(app).get("/api/v1/auth/ok").set("Host", "evil.example");
+    expect(forged.status).toBe(400);
+    expect(forged.body.details).toMatchObject({ code: "HOST_NOT_ALLOWED" });
+
+    // AUTH_BASE_URL's host (localhost:8080 here) and any loopback host are answered.
+    for (const host of ["localhost:8080", "127.0.0.1:7042", "[::1]:8080"]) {
+      const response = await request(app).get("/api/v1/auth/ok").set("Host", host);
+      expect(response.status, host).toBe(200);
+    }
+  });
+
   it("returns 400 for a non-http X-Forwarded-Proto", async () => {
     const capture = captureUnhandledRejections();
     try {

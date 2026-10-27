@@ -63,7 +63,7 @@ describe("stats events endpoint validation and auth", () => {
       json: vi.fn().mockReturnThis(),
     };
     next = vi.fn();
-    process.env.NODE_ENV = "production"; // ensures metric recording runs (not skipped in dev mode check)
+    vi.stubEnv("NODE_ENV", "production"); // ensures metric recording runs (not skipped in dev mode check)
   });
 
   it("allows allowlisted events for public requests", async () => {

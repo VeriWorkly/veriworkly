@@ -1,7 +1,7 @@
 import { adminHandler } from "#controllers/admin/adminRequestHandler";
 
 import * as AdminAmbassadorService from "#services/admin/adminAmbassadorService";
-import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
+import { ADMIN_AUDIT_ACTIONS } from "#services/admin/adminAuditService";
 
 import { adminIdParamSchema } from "#validators/admin/adminCommonValidator";
 import {
@@ -46,25 +46,15 @@ export const AdminAmbassadorController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminAmbassadorReviewSchema.parse(req.body);
 
-    const application = await AdminAmbassadorService.reviewApplication(
-      id,
-      input.action,
-      actorId,
-      input.reviewNote,
-    );
-
-    await recordAdminAudit({
+    return AdminAmbassadorService.reviewApplication(id, input.action, actorId, input.reviewNote, {
       actorId,
       action:
         input.action === "APPROVE"
           ? ADMIN_AUDIT_ACTIONS.ambassadorApprove
           : ADMIN_AUDIT_ACTIONS.ambassadorReject,
       targetType: "AmbassadorApplication",
-      targetId: application.id,
+      targetId: id,
       reason: input.reviewNote,
-      metadata: { userId: application.userId, status: application.status },
     });
-
-    return application;
   }, "Ambassador application reviewed successfully"),
 };

@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { logger } from "#lib/logger";
 
-const previousEnv = process.env.NODE_ENV;
-
 function captureProductionLine(write: () => void) {
   const chunks: string[] = [];
   const capture = (chunk: unknown) => {
@@ -13,11 +11,11 @@ function captureProductionLine(write: () => void) {
   vi.spyOn(process.stdout, "write").mockImplementation(capture);
   vi.spyOn(process.stderr, "write").mockImplementation(capture);
 
-  process.env.NODE_ENV = "production";
+  vi.stubEnv("NODE_ENV", "production");
   try {
     write();
   } finally {
-    process.env.NODE_ENV = previousEnv;
+    vi.unstubAllEnvs();
   }
   return JSON.parse(chunks.join(""));
 }

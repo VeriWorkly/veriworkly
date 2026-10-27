@@ -83,6 +83,28 @@ const BUFFER_PORTFOLIO_VIEW_SCRIPT = `
   return 1
 `;
 
+/**
+ * Takes a flushed day's counts off each publication's pending hash (V-113) and marks the batch
+ * adjusted, in one step. A field that reaches zero is deleted: decremented and left in place, an
+ * active portfolio gained one field per day forever. KEYS: the adjusted marker, then one pending
+ * hash per count in ARGV[2..].
+ */
+const SETTLE_PENDING_VIEWS_SCRIPT = `
+  if redis.call("EXISTS", KEYS[1]) == 1 then
+    return 0
+  end
+  for i = 2, #KEYS do
+    if redis.call("HINCRBY", KEYS[i], ARGV[1], -tonumber(ARGV[i])) <= 0 then
+      redis.call("HDEL", KEYS[i], ARGV[1])
+    end
+  end
+  redis.call("SET", KEYS[1], "1")
+  return 1
+`;
+
+/** How long the view beacon trusts a subdomain → publication id lookup (V-052). */
+const VIEW_TARGET_TTL_SECONDS = 60;
+
 // The sitemap asks for everything; a bound keeps one unparameterised GET from streaming the table.
 const PUBLIC_LIST_MAX = 1000;
 
@@ -1067,11 +1089,35 @@ export class PortfolioService {
   }
 
   static async recordView(subdomain: string, referrer?: string, ipAddress?: string) {
-    const publication = await this.getPublicPortfolio(subdomain);
+    const publicationId = await this.servedPublicationId(subdomain);
 
-    if (!publication) throw new ApiError(404, "Portfolio not found");
+    if (!publicationId) throw new ApiError(404, "Portfolio not found");
 
-    await this.bufferView(publication.id, normalizeReferrerHost(referrer), ipAddress);
+    await this.bufferView(publicationId, normalizeReferrerHost(referrer), ipAddress);
+  }
+
+  /**
+   * The id of the publication a subdomain serves, for the view beacon (V-052): a small cached id,
+   * not the public page (up to a few MB of snapshot) that `getPublicPortfolio` reads. Same rows as
+   * the public read (`servedPublicationWhere`). Cached for a minute, so a site taken down can
+   * still count views for that long; the flush keeps them only while the publication exists.
+   */
+  private static async servedPublicationId(subdomain: string) {
+    const normalized = portfolioSubdomainLookupKey(subdomain);
+    if (!normalized) return null;
+
+    const cacheKey = `portfolio:view-target:${normalized}`;
+    const cached = await cacheGet<string>(cacheKey);
+    if (cached) return cached;
+
+    const publication = await prisma.portfolioPublication.findFirst({
+      where: { subdomain: normalized, ...servedPublicationWhere(new Date()) },
+      select: { id: true },
+    });
+    if (!publication) return null;
+
+    await cacheSet(cacheKey, publication.id, VIEW_TARGET_TTL_SECONDS);
+    return publication.id;
   }
 
   /**
@@ -1253,14 +1299,11 @@ export class PortfolioService {
         return { dateKey, flushedCount };
       }
 
-      if (!(await redis.exists(pendingAdjustedKey))) {
-        const adjustment = redis.multi();
-        for (const [pendingKey, count] of pendingAdjustments) {
-          adjustment.hIncrBy(pendingKey, dateKey, -count);
-        }
-        adjustment.set(pendingAdjustedKey, "1");
-        await adjustment.exec();
-      }
+      const pendingKeys = [...pendingAdjustments.keys()];
+      await redis.eval(SETTLE_PENDING_VIEWS_SCRIPT, {
+        keys: [pendingAdjustedKey, ...pendingKeys],
+        arguments: [dateKey, ...pendingKeys.map((key) => String(pendingAdjustments.get(key)))],
+      });
 
       await redis.del([processingKey, batchKey, pendingAdjustedKey]);
       return { dateKey, flushedCount };

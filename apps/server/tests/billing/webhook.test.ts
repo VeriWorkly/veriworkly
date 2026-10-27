@@ -22,6 +22,7 @@ const prismaMock = {
     create: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
   subscription: {
     findUnique: vi.fn(),
@@ -110,7 +111,6 @@ vi.mock("#config", () => ({
     },
     dodo: {
       webhookSecret: "secret",
-      portfolioProSevenDayProductId: "prod_seven_day",
       portfolioProMonthlyProductId: "prod_monthly",
       portfolioProAnnualProductId: "prod_annual",
       aiCreditsMonthlyProductId: "prod_ai_monthly",
@@ -149,6 +149,7 @@ describe("billing webhook processing and idempotency", () => {
     prismaMock.billingWebhookEvent.findUnique.mockReset();
     prismaMock.billingWebhookEvent.update.mockReset();
     prismaMock.billingWebhookEvent.update.mockResolvedValue({ retryCount: 0 });
+    prismaMock.billingWebhookEvent.updateMany.mockReset().mockResolvedValue({ count: 1 });
     prismaMock.subscription.findUnique.mockReset();
     prismaMock.subscription.updateMany.mockReset();
     prismaMock.subscription.create.mockReset();
@@ -231,13 +232,6 @@ describe("billing webhook processing and idempotency", () => {
       retryCount: 1,
     });
 
-    // Mock updating retry parameters
-    prismaMock.billingWebhookEvent.update.mockResolvedValue({
-      id: "evt_1",
-      status: "PROCESSING",
-      retryCount: 2,
-    });
-
     prismaMock.subscription.findUnique.mockResolvedValue(null);
     prismaMock.subscription.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.portfolioPublication.updateMany.mockResolvedValue({ count: 1 });
@@ -250,14 +244,58 @@ describe("billing webhook processing and idempotency", () => {
     expect(prismaMock.billingWebhookEvent.findUnique).toHaveBeenCalledWith({
       where: { providerEventId: "evt_123" },
     });
-    expect(prismaMock.billingWebhookEvent.update).toHaveBeenCalledWith({
-      where: { id: "evt_1" },
+    // Claimed by a conditional update (V-014): only while no live attempt holds the row.
+    expect(prismaMock.billingWebhookEvent.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "evt_1", status: { not: "PROCESSED" } }),
       data: {
         status: "PROCESSING",
         retryCount: { increment: 1 },
         lastAttemptAt: expect.any(Date),
       },
     });
+  });
+
+  it("still processes the event when the Redis lock cannot be taken (V-014)", async () => {
+    const { BillingService } = await import("../../src/services/billingService.js");
+
+    mockRedis.set.mockRejectedValue(new Error("Redis is not ready"));
+    prismaMock.billingWebhookEvent.create.mockResolvedValue({
+      id: "evt_1",
+      status: "PROCESSING",
+      retryCount: 0,
+    });
+    prismaMock.subscription.findUnique.mockResolvedValue(null);
+    prismaMock.subscription.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.portfolioPublication.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.portfolioPublication.findUnique.mockResolvedValue(null);
+
+    await expect(BillingService.processWebhook("evt_no_redis", validEvent)).resolves.toEqual({
+      duplicate: false,
+    });
+    expect(prismaMock.billingWebhookEvent.update).toHaveBeenCalledWith({
+      where: { id: "evt_1" },
+      data: { status: "PROCESSED", processedAt: expect.any(Date) },
+    });
+  });
+
+  it("answers 503 when another attempt claimed the retried row first (V-014)", async () => {
+    const { BillingService } = await import("../../src/services/billingService.js");
+
+    prismaMock.billingWebhookEvent.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint", {
+        code: "P2002",
+        clientVersion: "x.y.z",
+      }),
+    );
+    prismaMock.billingWebhookEvent.findUnique
+      .mockResolvedValueOnce({ id: "evt_1", providerEventId: "evt_123", status: "FAILED" })
+      .mockResolvedValueOnce({ status: "PROCESSING" });
+    prismaMock.billingWebhookEvent.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(BillingService.processWebhook("evt_123", validEvent)).rejects.toMatchObject({
+      statusCode: 503,
+    });
+    expect(prismaMock.subscription.updateMany).not.toHaveBeenCalled();
   });
 
   it("returns duplicate: true and skips processing if existing event is PROCESSED", async () => {
@@ -392,6 +430,8 @@ describe("billing webhook processing and idempotency", () => {
       retryCount: 0,
       lastAttemptAt: new Date(Date.now() - 5_000),
     });
+    // The conditional claim matches no row: the live attempt still holds it.
+    prismaMock.billingWebhookEvent.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(BillingService.processWebhook("evt_123", validEvent)).rejects.toMatchObject({
       statusCode: 503,

@@ -20,7 +20,9 @@ COPY apps/server/prisma ./apps/server/prisma
 
 # Build with repository root as context:
 # docker build -f apps/server/Dockerfile .
-RUN npm ci --workspace=@veriworkly/server --workspace=@veriworkly/profile-core --include=dev
+# --legacy-peer-deps, as every CI job installs (V-161): without it a peer conflict CI tolerates
+# would break only the image build.
+RUN npm ci --legacy-peer-deps --workspace=@veriworkly/server --workspace=@veriworkly/profile-core --include=dev
 
 COPY packages/profile-core/tsconfig.json ./packages/profile-core/tsconfig.json
 COPY packages/profile-core/src ./packages/profile-core/src
@@ -35,7 +37,7 @@ RUN npm run build --workspace=@veriworkly/server
 # Dev dependencies are dropped in a separate stage so the `build` stage keeps the Prisma CLI:
 # compose runs `prisma migrate deploy` from it (service `migrate`) before the API starts.
 FROM build AS pruned
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev --legacy-peer-deps
 
 FROM node:${NODE_VERSION}-alpine AS runner
 WORKDIR /app/apps/server
@@ -50,9 +52,9 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=pruned /app/package*.json /app/
 COPY --from=pruned /app/node_modules /app/node_modules
 # Whole directories, not just package.json and dist: npm nests a dependency inside a workspace
-# when its version conflicts with the root copy (better-auth and zod 3 under apps/server, zod
-# under each package), and the runtime must find them where the lockfile put them. The packages
-# are also the targets of the workspace symlinks in node_modules/@veriworkly.
+# when its version conflicts with the root copy (nothing is nested today; every workspace is on
+# one zod and one better-auth), and the runtime must find it where the lockfile put it. The
+# packages are also the targets of the workspace symlinks in node_modules/@veriworkly.
 COPY --from=pruned /app/packages /app/packages
 COPY --from=pruned /app/apps/server ./
 

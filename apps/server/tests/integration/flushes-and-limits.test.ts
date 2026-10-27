@@ -71,7 +71,8 @@ describe("portfolio views flush (V-103, V-124)", () => {
     });
     expect(rows._count).toBe(2000);
     expect(rows._sum.count).toBe(4000);
-    expect(await redis.hGet(`portfolio:views:pending:${publication.id}`, dateKey)).toBe("0");
+    // A day's pending count that reaches zero is deleted, not kept as "0" forever (V-113).
+    expect(await redis.hGet(`portfolio:views:pending:${publication.id}`, dateKey)).toBeNull();
 
     // A second flush of the same day adds to the rows instead of failing on the unique key.
     await redis.hSet(`portfolio:views:buffer:${dateKey}`, `${publication.id}:ref0.example`, "3");
@@ -106,7 +107,7 @@ describe("portfolio views flush (V-103, V-124)", () => {
     await PortfolioService.flushViewsForDate(dateKey);
 
     expect(await redis.exists(processingKey)).toBe(0);
-    expect(await redis.hGet(`portfolio:views:pending:${publication.id}`, dateKey)).toBe("0");
+    expect(await redis.hGet(`portfolio:views:pending:${publication.id}`, dateKey)).toBeNull();
     const row = await prisma.portfolioViewDaily.findFirstOrThrow({
       where: { publicationId: publication.id },
     });
@@ -221,6 +222,22 @@ describe("share views flush (V-110, V-029)", () => {
     expect(await prisma.shareView.count({ where: { shareLinkId: id! } })).toBe(1);
   });
 
+  it("keeps rows and counts together at the buffer cap: a view past it is neither (V-029)", async () => {
+    const [id] = await seedShareLinks(1);
+    const redis = getRedis();
+    await redis.lPush(
+      "share:views:buffer",
+      Array.from({ length: 10_000 }, () => JSON.stringify({ shareLinkId: id, timestamp: 1 })),
+    );
+
+    await ShareService.recordShareView(id!, "203.0.113.9", "agent");
+
+    expect(await redis.lLen("share:views:buffer")).toBe(10_000);
+    expect(await redis.hGet("share:links:view_count", id!)).toBeNull();
+    expect(await redis.get("share:views:dropped")).toBe("1");
+    await redis.del(["share:views:buffer", "share:views:dropped"]);
+  });
+
   it("records a share view in one round trip with a TTL on every key", async () => {
     const [id] = await seedShareLinks(1);
     await ShareService.recordShareView(id!, "203.0.113.9", "agent");
@@ -326,5 +343,23 @@ describe("autosave limiter class (V-130)", () => {
     for (let i = 0; i < 101; i += 1) last = await api.get("/api/v1/documents");
     expect(last!.status).toBe(429);
     expect(Number(last!.headers["retry-after"])).toBeGreaterThan(0);
+  });
+});
+
+describe("portfolio view beacon (V-052)", () => {
+  it("counts a view without reading the published page, and 404s a subdomain that serves nothing", async () => {
+    const publication = await seedPublication();
+    const pageRead = vi.spyOn(PortfolioService, "getPublicPortfolio");
+
+    await PortfolioService.recordView(publication.subdomain, "https://www.google.com/");
+
+    expect(pageRead).not.toHaveBeenCalled();
+    pageRead.mockRestore();
+    const dateKey = new Date().toISOString().slice(0, 10);
+    expect(await getRedis().hGet(`portfolio:views:pending:${publication.id}`, dateKey)).toBe("1");
+
+    await expect(
+      PortfolioService.recordView(`missing${randomUUID().slice(0, 6)}`),
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

@@ -204,7 +204,6 @@ async function startWorker(id: number, disconnect: () => void) {
   }
 }
 
-// Master process configuration check and bootstrap
 /**
  * The cluster primary serves no requests and holds no locks, so a fault there exits at once.
  * Registered from throng's `master` hook, which runs in the primary only: `main()` itself runs in
@@ -227,10 +226,11 @@ function installPrimaryFaultHandlers() {
 
 function main() {
   try {
-    // Validate runtime environment configs in master process first (fail-fast). The raw-env
-    // schema runs before the others: it reports every bad variable in one message, and in
-    // production refuses localhost URLs, example secrets, a missing TRUST_PROXY/WEB_CONCURRENCY
-    // and non-integer numbers (V-090, V-091, V-097).
+    // Validate the environment before anything starts (fail fast). `main()` runs in the cluster
+    // primary and again in every worker, so each process checks it before it forks or serves.
+    // The raw-env schema runs first: it reports every bad variable in one message, requires
+    // ADMIN_EMAIL everywhere, and in production refuses localhost URLs, example secrets, a
+    // missing TRUST_PROXY/WEB_CONCURRENCY and non-integer numbers (V-090, V-091, V-097).
     validateEnvironmentConfig();
     validateAuthRuntimeConfig();
     validateAiRuntimeConfig();

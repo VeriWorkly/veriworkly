@@ -68,6 +68,8 @@ model User {
   // Admin user search is `contains` + `mode: insensitive` (leading-wildcard ILIKE), which only a
   // trigram index can serve. Needs the `pg_trgm` extension, created by hand in migration
   // 20261025160000_admin_query_indexes (Prisma does not manage extensions here).
+  // The admin overview's users-by-role count and the role filter (V-070).
+  @@index([role])
   @@index([email(ops: raw("gin_trgm_ops"))], map: "User_email_trgm_idx", type: Gin)
   @@index([name(ops: raw("gin_trgm_ops"))], map: "User_name_trgm_idx", type: Gin)
   @@index([username(ops: raw("gin_trgm_ops"))], map: "User_username_trgm_idx", type: Gin)
@@ -140,8 +142,6 @@ model Verification {
   @@index([expiresAt])
 }
 
-// ... (Rest of the schema)
-
 enum DocumentType {
   RESUME
   COVER_LETTER
@@ -196,6 +196,10 @@ model Document {
   @@index([userId, deletedAt, updatedAt])
   @@index([createdAt])
   @@index([deletedAt])
+  // The admin document list: default sort, and its title/slug search (V-070, V-111).
+  @@index([updatedAt])
+  @@index([title(ops: raw("gin_trgm_ops"))], map: "Document_title_trgm_idx", type: Gin)
+  @@index([slug(ops: raw("gin_trgm_ops"))], map: "Document_slug_trgm_idx", type: Gin)
 }
 
 // No TRIALING. VeriWorkly does not offer a free trial on any plan, and never had a
@@ -270,6 +274,8 @@ model EntitlementGrant {
   @@unique([userId, key, source, sourceId])
   @@index([userId, key, startsAt, endsAt, revokedAt])
   @@index([source, sourceId])
+  // The admin's global count of active grants (V-105): not revoked, started, not ended.
+  @@index([revokedAt, endsAt, startsAt])
 }
 
 enum CreditTransactionType {
@@ -783,6 +789,10 @@ model ShareLink {
   @@unique([userId, documentId])
   @@unique([userId, slug])
   @@index([documentId])
+  // The admin share list: both sorts and the slug search (V-070, V-111).
+  @@index([createdAt])
+  @@index([viewCount])
+  @@index([slug(ops: raw("gin_trgm_ops"))], map: "ShareLink_slug_trgm_idx", type: Gin)
 }
 
 model ShareView {
@@ -913,7 +923,7 @@ model GitHubSync {
   /// Not an HTTP ETag: holds the ISO time the previous GitHub fetch started, used as the next
   /// sync's `since` cursor (see syncGitHubStatsFromGitHub). Column reused, not renamed.
   etag            String?
-  lastSyncStatus  String? // "success", "failed", "not-modified"
+  lastSyncStatus  String? // "ok" or "error" (services/github/issues.ts); detail in lastError
   lastError       String?
   nextSyncAt      DateTime?
   syncedAt        DateTime         @updatedAt

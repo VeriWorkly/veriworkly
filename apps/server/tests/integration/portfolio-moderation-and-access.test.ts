@@ -633,7 +633,7 @@ describe("V-075 admin billing edits reconcile access", () => {
     expect(wallet?.balance).toBe(50);
 
     const tx = await prisma.creditTransaction.findFirst({
-      where: { userId: user.id, type: "GRANT" },
+      where: { userId: user.id, type: "ADJUSTMENT" },
     });
     expect((tx?.metadata as { actorId?: string } | null)?.actorId).toBe((await admin()).id);
 

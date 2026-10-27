@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 /**
+ * The deepest row any offset list serves (V-064). Past it a page is refused with a 400: an
+ * unbounded `page=1e300` overflowed the query's OFFSET and answered 500.
+ */
+export const MAX_LIST_OFFSET = 1_000_000;
+
+/**
  * `page`/`offset` for the public list schemas. A blank value (`?offset=`) counts as absent, so it
  * neither coerces to 0 nor trips the both-sent rule below.
  */
@@ -8,11 +14,11 @@ const blankAsAbsent = (value: unknown) => (value === "" ? undefined : value);
 
 export const publicPageParam = z.preprocess(
   blankAsAbsent,
-  z.coerce.number().int().min(1).optional(),
+  z.coerce.number().int().min(1).max(MAX_LIST_OFFSET).optional(),
 );
 export const publicOffsetParam = z.preprocess(
   blankAsAbsent,
-  z.coerce.number().int().min(0).optional(),
+  z.coerce.number().int().min(0).max(MAX_LIST_OFFSET).optional(),
 );
 
 /**
@@ -85,6 +91,18 @@ export function parseOffsetPagination(
 
   const limit = pageSize;
   const offset = parsedOffset ?? (page - 1) * pageSize;
+
+  // A validation error (400 with the field named), like the public params' `.max()`. Not an
+  // ApiError: the studio's contract tests load this module with only zod available.
+  if (offset > MAX_LIST_OFFSET)
+    throw new z.ZodError([
+      {
+        code: "custom",
+        path: [parsedOffset != null ? "offset" : "page"],
+        message: `Must not reach past row ${MAX_LIST_OFFSET}`,
+        input: parsedOffset ?? parsedPage,
+      },
+    ]);
 
   return { page, pageSize, limit, offset };
 }

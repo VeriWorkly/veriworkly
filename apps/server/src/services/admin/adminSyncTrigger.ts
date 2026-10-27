@@ -41,7 +41,10 @@ async function takeLock(acquire: () => Promise<JobLock>): Promise<JobLock> {
 /** The outcome lands on the GitHubSync row (`lastSyncStatus`, `lastError`). */
 export async function startGitHubSync(force: boolean): Promise<SyncStarted> {
   if (!isGitHubIssueSyncConfigured())
-    throw new ApiError(503, "GitHub sync is not configured (GITHUB_OWNER/GITHUB_REPO)");
+    throw new ApiError(
+      503,
+      "GitHub sync is not configured (GITHUB_OWNER/GITHUB_REPO/GITHUB_TOKEN)",
+    );
 
   const lock = await takeLock(acquireGitHubSyncLock);
   runGitHubSyncInBackground(lock, force);

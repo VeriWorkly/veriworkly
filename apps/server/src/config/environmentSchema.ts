@@ -74,7 +74,10 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   RETENTION_PORTFOLIO_VIEW_DAYS: { min: 0 },
   RETENTION_DELETED_DOCUMENT_DAYS: { min: 0 },
 
-  AI_TIMEOUT_MS: { min: 1 },
+  // Past Cloudflare's 100 s an answer can never reach the client anyway.
+  AI_TIMEOUT_MS: { min: 1, max: 100_000 },
+  // Below this the extraction child cannot start; the watchdog would kill every extraction.
+  ATS_EXTRACT_MAX_RSS_MB: { min: 64 },
   AI_RATE_LIMIT_WINDOW_MS: { min: 1 },
   AI_RATE_LIMIT_MAX_REQUESTS: { min: 1 },
 
@@ -86,6 +89,8 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   CHANGELOG_RELEASE_SYNC_MIN_INTERVAL_SECONDS: { min: 0 },
 
   PORTFOLIO_GRACE_DAYS: { min: 0 },
+  // Days after sign-up a referral code can still be applied (services/affiliate/constants.ts).
+  AFFILIATE_ATTRIBUTION_DAYS: { min: 1, max: 365 },
 
   // Credit pack display prices in USD cents; a free or negative pack price is a typo.
   CREDIT_PACK_250_PRICE_CENTS: { min: 1 },
@@ -102,7 +107,13 @@ const REQUIRED_PUBLIC_URLS = [
 ] as const;
 
 /** Same rule, but unset is fine because the `config.ts` production default is already https. */
-const OPTIONAL_PUBLIC_URLS = ["STUDIO_URL", "STUDIO_LOGIN_URL", "SITE_URL"] as const;
+// NEXT_PUBLIC_APP_URL is STUDIO_URL's fallback (`config.ts`), so it is held to the same rule (V-097).
+const OPTIONAL_PUBLIC_URLS = [
+  "STUDIO_URL",
+  "STUDIO_LOGIN_URL",
+  "SITE_URL",
+  "NEXT_PUBLIC_APP_URL",
+] as const;
 
 /** Example/development values that ship in `.env.example` or as `config.ts` fallbacks. */
 const EXAMPLE_AUTH_SECRETS = new Set(["dev-auth-secret", "dev-auth-secret-1234567890"]);
@@ -117,6 +128,9 @@ const MIN_INTERNAL_SECRET_LENGTH = 32;
 /** Names `proxy-addr` (Express `trust proxy`) understands in addition to IPs and CIDRs. */
 const TRUST_PROXY_NAMED_RANGES = new Set(["loopback", "linklocal", "uniquelocal"]);
 const BOOLEAN_WORDS = new Set(["true", "false", "yes", "no", "on", "off"]);
+
+/** One address, no display name and no list: `config.admin.email` is compared to it as is. */
+const SINGLE_EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 
 /** Maps an IPv4-mapped IPv6 address (`::ffff:127.0.0.1` or `::ffff:7f00:1`) to its IPv4 form. */
 function unmapIpv4(host: string): string {
@@ -179,6 +193,27 @@ function publicHttpsUrlProblem(value: string): string | null {
   if (isLocalHostname(canonicalHostname(url))) return "must not point at localhost in production";
 
   return null;
+}
+
+/**
+ * A browser's Origin is scheme://host[:port] with nothing after it, so an entry with a path or a
+ * trailing slash ("https://veriworkly.com/") never matches and silently blocks that site.
+ */
+function bareOriginProblem(value: string): string | null {
+  try {
+    return new URL(value).origin === value
+      ? null
+      : "must be a bare origin (scheme://host[:port], no path or trailing slash)";
+  } catch {
+    return "is not a valid URL";
+  }
+}
+
+/** A cookie Domain attribute is a host name, never a URL, a path or a port. */
+function cookieDomainProblem(value: string): string | null {
+  return /^\.?[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(value)
+    ? null
+    : "must be a host name such as .veriworkly.com (no scheme, path or port)";
 }
 
 function isTrustProxyEntry(entry: string): boolean {
@@ -322,7 +357,7 @@ function validateProduction(env: RawEnv, ctx: z.RefinementCtx): void {
       .map((origin) => origin.trim())
       .filter(Boolean)
       .map((origin) => {
-        const problem = publicHttpsUrlProblem(origin);
+        const problem = publicHttpsUrlProblem(origin) ?? bareOriginProblem(origin);
         return problem ? `"${origin}" ${problem}` : null;
       })
       .filter((problem): problem is string => problem !== null);
@@ -335,6 +370,12 @@ function validateProduction(env: RawEnv, ctx: z.RefinementCtx): void {
     if (value === undefined) continue;
     const problem = publicHttpsUrlProblem(value);
     if (problem) addIssue(ctx, variable, problem);
+  }
+
+  const cookieDomain = env.AUTH_COOKIE_DOMAIN;
+  if (cookieDomain) {
+    const problem = cookieDomainProblem(cookieDomain);
+    if (problem) addIssue(ctx, "AUTH_COOKIE_DOMAIN", problem);
   }
 
   for (const variable of OPTIONAL_PUBLIC_URLS) {
@@ -424,6 +465,15 @@ const environmentSchema = z
   })
   .passthrough()
   .superRefine((env, ctx) => {
+    // ADMIN_EMAIL: the admin panel, the admin-only production gates and the contact form all key
+    // on it, and unset it leaves nobody able to operate the service, so every environment needs it.
+    const adminEmail = (env as RawEnv).ADMIN_EMAIL;
+    if (adminEmail === undefined) {
+      addIssue(ctx, "ADMIN_EMAIL", "is required (the email address of the operator account)");
+    } else if (!SINGLE_EMAIL.test(adminEmail.trim())) {
+      addIssue(ctx, "ADMIN_EMAIL", "must be a single email address, e.g. admin@example.com");
+    }
+
     const ipHeaders = (env as RawEnv).AUTH_IP_ADDRESS_HEADERS;
     if (
       ipHeaders !== undefined &&
@@ -463,8 +513,8 @@ function formatEnvironmentIssues(issues: z.ZodIssue[]): string {
 
 /**
  * Validates the raw environment and throws one Error listing every failing variable.
- * Production-only rules apply when NODE_ENV=production; NODE_ENV and integer formats are checked
- * in every environment.
+ * Production-only rules apply when NODE_ENV=production; NODE_ENV, ADMIN_EMAIL and integer formats
+ * are checked in every environment.
  */
 export function validateEnvironmentConfig(env: RawEnv = process.env): void {
   const result = environmentSchema.safeParse(normalizeEnv(env));

@@ -6,7 +6,7 @@ export interface GitHubStatsResponse {
   projectUrl: string;
   stats: {
     totalItems: number;
-    /** @deprecated Same value as `totalItems`; kept until the site reads `totalItems` only. */
+    /** Same as `totalItems`. Kept: the site reads `total` (owner decision 2026-10-25). */
     total: number;
     issues: number;
     pullRequests: number;

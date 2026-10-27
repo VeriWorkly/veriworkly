@@ -5,8 +5,9 @@
  * No imports on purpose: any service (documents, imports, ATS, portfolio) can use it without
  * pulling in config or the billing service.
  *
- * The names match the public pricing pages (site `features/pricing/data/offers.ts`, portfolio
- * pricing): keep them in step when either side is renamed.
+ * The site's pricing data (`apps/site/features/pricing/data/offers.ts`) uses these names. The
+ * portfolio pricing page still writes some labels of its own ("AI Credits Standalone",
+ * "VeriWorkly Creator Pro", "Creator Pro (Monthly)"), so check both apps when a name changes.
  */
 
 export const PRODUCT_NAMES = {

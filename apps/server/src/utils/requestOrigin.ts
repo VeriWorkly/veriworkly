@@ -24,6 +24,42 @@ export function hasWellFormedHostAndProto(headers: IncomingHttpHeaders): boolean
   }
 }
 
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * Whether the request's `Host` names this API (V-155): the host of `AUTH_BASE_URL`, any loopback
+ * host (health checks, the smoke boot, same-machine SSR), or one listed in `ALLOWED_HOSTS`
+ * (comma-separated, with or without a port). better-auth builds its request URL from the raw
+ * Host, so a forged one (Host header poisoning) is refused before it reaches the handler.
+ */
+export function isAllowedHost(
+  headers: IncomingHttpHeaders,
+  allowed: { baseUrl: string; extraHosts: readonly string[] },
+): boolean {
+  const host = firstHeaderValue(headers.host)?.toLowerCase();
+  if (!host) return false;
+
+  let hostname: string;
+  try {
+    hostname = new URL(`http://${host}/`).hostname;
+  } catch {
+    return false;
+  }
+  if (LOOPBACK_HOSTNAMES.has(hostname)) return true;
+
+  const accepted = new Set<string>();
+  try {
+    const base = new URL(allowed.baseUrl);
+    accepted.add(base.host.toLowerCase());
+    accepted.add(base.hostname.toLowerCase());
+  } catch {
+    // An unparsable base URL accepts nothing beyond loopback and the explicit list.
+  }
+  for (const extra of allowed.extraHosts) accepted.add(extra.trim().toLowerCase());
+
+  return accepted.has(host) || accepted.has(hostname);
+}
+
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw == null) return undefined;

@@ -51,7 +51,7 @@
           "name": "page",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 1 }
+          "schema": { "type": "integer", "minimum": 1, "maximum": 1000000 }
         },
         {
           "name": "pageSize",
@@ -69,7 +69,7 @@
           "name": "offset",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 0 }
+          "schema": { "type": "integer", "minimum": 0, "maximum": 1000000 }
         },
         {
           "name": "excludeId",
@@ -103,7 +103,7 @@
           "name": "page",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 1 }
+          "schema": { "type": "integer", "minimum": 1, "maximum": 1000000 }
         },
         {
           "name": "pageSize",
@@ -121,7 +121,7 @@
           "name": "offset",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 0 }
+          "schema": { "type": "integer", "minimum": 0, "maximum": 1000000 }
         }
       ]
     },
@@ -143,7 +143,7 @@
           "name": "page",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 1 }
+          "schema": { "type": "integer", "minimum": 1, "maximum": 1000000 }
         },
         {
           "name": "pageSize",
@@ -161,7 +161,7 @@
           "name": "offset",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 0 }
+          "schema": { "type": "integer", "minimum": 0, "maximum": 1000000 }
         },
         {
           "name": "createdFrom",
@@ -1250,7 +1250,7 @@
               "enum": ["ai_credits", "portfolio_pro", "bundle"]
             },
             "interval": { "type": "string", "enum": ["one_day", "seven_day", "monthly", "annual"] },
-            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)" }
+            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)[^\\\\\\s]*$" }
           },
           "required": ["interval"]
         }
@@ -1262,7 +1262,7 @@
           "type": "object",
           "properties": {
             "packKey": { "type": "string", "enum": ["credit_pack_250", "credit_pack_500"] },
-            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)" }
+            "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)[^\\\\\\s]*$" }
           },
           "required": ["packKey"]
         }

@@ -15,10 +15,10 @@ const CREDIT_HISTORY_TTL_SECONDS = 60;
 const CREDIT_HISTORY_LIMIT = 50;
 /**
  * Must outlive the slowest AI run that holds a reservation open, or a concurrent wallet read
- * expires the reservation and the commit 409s after the provider was paid. Worst case today:
- * `(retries + 1) × AI_TIMEOUT_MS` with retries ≤ 2 (`ats/aiPolicy.ts`) and `AI_TIMEOUT_MS` 120 s
- * (`config.ts`) = 360 s, plus 1 s + 2 s backoff and up to two honoured 60 s `retry-after` waits
- * = 483 s. 900 s keeps a margin above that; lowering the AI timeout only widens the margin.
+ * expires the reservation and the commit 409s after the provider was paid. Every billed AI call
+ * on a request shares the `AI_REQUEST_DEADLINE_MS` budget (85 s, `ats/aiDeadline.ts`) and is cut
+ * off there, so a run ends long before 900 s; the margin covers a commit delayed by a slow
+ * database. (`AI_TIMEOUT_MS`, per provider attempt, defaults to 45 s.)
  */
 const CREDIT_RESERVATION_TTL_MS = 15 * 60 * 1000;
 
@@ -45,6 +45,11 @@ type CreditContext = {
    * entry here so it commits with the adjustment or not at all (V-074).
    */
   onWrite?: (tx: Prisma.TransactionClient, transaction: CreditTransaction) => Promise<void>;
+  /**
+   * The ledger row's type when it is not a plain GRANT or DEBIT (V-011): an admin adjustment is
+   * written as ADJUSTMENT, so money reports never count goodwill as paid credit or as AI spend.
+   */
+  ledgerType?: "ADJUSTMENT";
 };
 
 type CreditGrantContext = CreditContext & {
@@ -109,9 +114,9 @@ function summaryCacheKey(userId: string) {
 }
 
 function historyCacheKey(userId: string) {
-  // v2: rows are the user-facing shape (V-200). A list cached as v1 still carries the admin's
-  // id in its metadata and must never be served after the deploy.
-  return `credits:history:v2:${userId}`;
+  // v3: rows are the user-facing shape (V-200). A list cached as v1 still carries the admin's
+  // id in its metadata, and one cached as v2 the internal reference ids; neither is served.
+  return `credits:history:v3:${userId}`;
 }
 
 /** Metadata keys that name an admin: an adjustment records who made it (`withActor`). */
@@ -120,7 +125,8 @@ const ADMIN_METADATA_KEY = /actor/i;
 /**
  * A ledger row as its owner sees it (V-200): what the credits page shows, without the admin who
  * made an adjustment. The request id is left out as well (an admin adjustment's embeds the admin's
- * id), and so are the wallet and user ids the owner has no use for.
+ * id), and so are the wallet and user ids the owner has no use for, and the reference id (a grant
+ * id or the AI provider's completion id: internal keys the credits page never shows).
  */
 function toUserHistoryRow(row: CreditTransaction) {
   const metadata =
@@ -136,7 +142,6 @@ function toUserHistoryRow(row: CreditTransaction) {
     balanceAfter: row.balanceAfter,
     action: row.action,
     documentId: row.documentId,
-    referenceId: row.referenceId,
     reason: row.reason,
     metadata: metadata && Object.keys(metadata).length > 0 ? metadata : null,
     createdAt: row.createdAt,
@@ -679,22 +684,14 @@ export class CreditService {
     }
     const rows = await prisma.creditTransaction.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      // The id breaks ties: rows written in one transaction share a timestamp.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: Math.min(Math.max(take, 1), 100),
     });
     const result = rows.map(toUserHistoryRow);
     if (take === CREDIT_HISTORY_LIMIT)
       await cacheSet(historyCacheKey(userId), result, CREDIT_HISTORY_TTL_SECONDS);
     return result;
-  }
-
-  static async consumeAction(
-    userId: string,
-    action: AiActionKey,
-    context: Omit<CreditContext, "action">,
-    mode: AiMode = "standard",
-  ) {
-    return this.consume(userId, this.costFor(action, mode), { ...context, action });
   }
 
   static async consume(userId: string, cost: number, context: CreditContext) {
@@ -704,70 +701,84 @@ export class CreditService {
     await this.releaseExpiredReservations(userId);
     await this.expireCredits(userId);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.creditTransaction.findUnique({
-        where: { userId_requestId: { userId, requestId: context.requestId } },
-      });
-      if (existing) {
+    const result = await prisma
+      .$transaction(async (tx) => {
+        const existing = await tx.creditTransaction.findUnique({
+          where: { userId_requestId: { userId, requestId: context.requestId } },
+        });
+        if (existing) {
+          if (existing.amount !== -cost)
+            throw new ApiError(409, "Credit request id was already used for another operation.");
+          return existing;
+        }
+
+        const wallet = await tx.creditWallet.upsert({
+          where: { userId },
+          create: { userId },
+          update: {},
+        });
+        if (wallet.balance < cost) throw new ApiError(402, "Not enough AI credits.");
+
+        // Credits held by pending reservations are not ours to take: an admin debit must leave
+        // every PENDING reservation able to commit.
+        const locked = await lockWallet(tx, userId);
+        const now = new Date();
+        if ((await availableCredits(tx, locked, now)) < cost)
+          throw new ApiError(402, "Not enough AI credits outside pending AI requests.");
+
+        const grants = await lockGrants(tx, wallet.id, now);
+        let outstanding = cost;
+        const allocations: Array<{ grantId: string; amount: number }> = [];
+        for (const grant of grants) {
+          if (!outstanding) break;
+          const amount = Math.min(grant.remaining, outstanding);
+          const changed = await tx.creditGrant.updateMany({
+            where: { id: grant.id, remaining: { gte: amount } },
+            data: { remaining: { decrement: amount } },
+          });
+          if (!changed.count) throw new ApiError(409, "Credit balance changed. Retry the action.");
+          allocations.push({ grantId: grant.id, amount });
+          outstanding -= amount;
+        }
+        if (outstanding) throw new ApiError(402, "Not enough unexpired AI credits.");
+
+        const updated = await tx.creditWallet.updateMany({
+          where: { id: wallet.id, balance: { gte: cost } },
+          data: { balance: { decrement: cost }, lifetimeDebited: { increment: cost } },
+        });
+        if (!updated.count)
+          throw new ApiError(409, "Credit ledger is out of balance for this wallet.");
+        const { actorId, metadata, onWrite, ledgerType, ...rest } = context;
+        const transaction = await tx.creditTransaction.create({
+          data: {
+            walletId: wallet.id,
+            userId,
+            type: ledgerType ?? "DEBIT",
+            amount: -cost,
+            balanceAfter: locked.balance - cost,
+            ...rest,
+            metadata: withActor(metadata, actorId),
+          },
+        });
+        await tx.creditUsageAllocation.createMany({
+          data: allocations.map((item) => ({ transactionId: transaction.id, ...item })),
+        });
+        if (onWrite) await onWrite(tx, transaction);
+        return transaction;
+      }, CREDIT_TRANSACTION_OPTIONS)
+      .catch(async (error: unknown) => {
+        // The same request id committed by a concurrent call between the lookup above and the
+        // insert: that call's row is the answer (a replay), not a raw unique-constraint 500.
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"))
+          throw error;
+        const existing = await prisma.creditTransaction.findUnique({
+          where: { userId_requestId: { userId, requestId: context.requestId } },
+        });
+        if (!existing) throw error;
         if (existing.amount !== -cost)
           throw new ApiError(409, "Credit request id was already used for another operation.");
         return existing;
-      }
-
-      const wallet = await tx.creditWallet.upsert({
-        where: { userId },
-        create: { userId },
-        update: {},
       });
-      if (wallet.balance < cost) throw new ApiError(402, "Not enough AI credits.");
-
-      // Credits held by pending reservations are not ours to take: an admin debit must leave
-      // every PENDING reservation able to commit.
-      const locked = await lockWallet(tx, userId);
-      const now = new Date();
-      if ((await availableCredits(tx, locked, now)) < cost)
-        throw new ApiError(402, "Not enough AI credits outside pending AI requests.");
-
-      const grants = await lockGrants(tx, wallet.id, now);
-      let outstanding = cost;
-      const allocations: Array<{ grantId: string; amount: number }> = [];
-      for (const grant of grants) {
-        if (!outstanding) break;
-        const amount = Math.min(grant.remaining, outstanding);
-        const changed = await tx.creditGrant.updateMany({
-          where: { id: grant.id, remaining: { gte: amount } },
-          data: { remaining: { decrement: amount } },
-        });
-        if (!changed.count) throw new ApiError(409, "Credit balance changed. Retry the action.");
-        allocations.push({ grantId: grant.id, amount });
-        outstanding -= amount;
-      }
-      if (outstanding) throw new ApiError(402, "Not enough unexpired AI credits.");
-
-      const updated = await tx.creditWallet.updateMany({
-        where: { id: wallet.id, balance: { gte: cost } },
-        data: { balance: { decrement: cost }, lifetimeDebited: { increment: cost } },
-      });
-      if (!updated.count)
-        throw new ApiError(409, "Credit ledger is out of balance for this wallet.");
-      const { actorId, metadata, onWrite, ...rest } = context;
-      const transaction = await tx.creditTransaction.create({
-        data: {
-          walletId: wallet.id,
-          userId,
-          type: "DEBIT",
-          amount: -cost,
-          balanceAfter: locked.balance - cost,
-          ...rest,
-          metadata: withActor(metadata, actorId),
-        },
-      });
-      await tx.creditUsageAllocation.createMany({
-        data: allocations.map((item) => ({ transactionId: transaction.id, ...item })),
-      });
-      if (onWrite) await onWrite(tx, transaction);
-      return transaction;
-    }, CREDIT_TRANSACTION_OPTIONS);
     await this.invalidate(userId);
     return result;
   }
@@ -817,7 +828,7 @@ export class CreditService {
           data: {
             walletId: wallet.id,
             userId,
-            type: "GRANT",
+            type: context.ledgerType ?? "GRANT",
             amount,
             balanceAfter: wallet.balance,
             referenceId: grant.id,
@@ -922,11 +933,18 @@ export class CreditService {
     if (amount > 0)
       return this.grant(userId, amount, {
         ...context,
+        // Goodwill is an ADJUSTMENT (V-011). A restored pack or subscription month is the paid
+        // credit it replaces: a GRANT with that source, counted with paid grants (V-230).
+        ...(grant ? {} : { ledgerType: "ADJUSTMENT" as const }),
         source: grant?.source ?? CREDIT_SOURCES.adminAdjustment,
         sourceId: grant?.sourceId ?? context.requestId,
         expiresAt: grant?.expiresAt ?? null,
       });
-    return this.consume(userId, Math.abs(amount), { ...context, action: "admin_adjustment" });
+    return this.consume(userId, Math.abs(amount), {
+      ...context,
+      ledgerType: "ADJUSTMENT",
+      action: "admin_adjustment",
+    });
   }
 }
 
