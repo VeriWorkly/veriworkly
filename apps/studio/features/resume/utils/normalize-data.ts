@@ -183,26 +183,6 @@ export function normalizeMonthDate(value: string | undefined) {
   return trimmed;
 }
 
-/**
- * A custom section stored without an id gets one from its position before the shared
- * migration runs, which would mint a random one on every read. Order and visibility are
- * keyed by that id, so a new one on each read lost both.
- */
-function withStableCustomSectionIds(value: Partial<ResumeData> | null | undefined) {
-  const sections: unknown = value?.customSections;
-
-  if (!value || !Array.isArray(sections)) return value;
-
-  return {
-    ...value,
-    customSections: sections.map((section, index) =>
-      section && typeof section === "object" && !(section as { id?: unknown }).id
-        ? { ...section, id: `custom-${index + 1}` }
-        : section,
-    ),
-  };
-}
-
 export function normalizeResumeData(value: Partial<ResumeData> | null | undefined): ResumeData {
   const incomingCustomization = value?.customization;
   const incomingFontFamily = (incomingCustomization as { fontFamily?: string } | undefined)
@@ -219,7 +199,7 @@ export function normalizeResumeData(value: Partial<ResumeData> | null | undefine
    * array wins and the pass is a no-op — and the migrated shape is written back by the next
    * save, since every save normalises first.
    */
-  const typed = unflattenLegacySections(withStableCustomSectionIds(value));
+  const typed = unflattenLegacySections(value);
   const customSections = normalizeCustomSections(typed.customSections);
 
   return {
