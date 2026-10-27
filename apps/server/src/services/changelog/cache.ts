@@ -1,5 +1,6 @@
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
 import { logger } from "#lib/logger";
+import { notifySiteContentChanged } from "#utils/siteRevalidate";
 
 /**
  * The read caches are generation namespaces (`#lib/cacheGeneration`): invalidation is an INCR,
@@ -54,4 +55,5 @@ export async function invalidateChangelogReadCaches(): Promise<void> {
   } catch (err) {
     logger.warn("Changelog read cache invalidation failed (best-effort)", err);
   }
+  notifySiteContentChanged("changelog");
 }
