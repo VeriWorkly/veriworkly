@@ -1662,7 +1662,10 @@ Document:
 
 DocumentListResponse:
   type: object
-  required: [success, message, data]
+  description: |
+    `nextCursor` and `total` are present only when the request sent `limit` or `cursor`. Without
+    them `data` is the older single list of up to 500 documents.
+  required: [success, message, data, serverTime, deleted]
   properties:
     success:
       type: boolean
@@ -1671,8 +1674,68 @@ DocumentListResponse:
     data:
       type: array
       maxItems: 500
+      description: This page's documents; at most `limit` when paging.
       items:
         $ref: "#/DocumentSummary"
+    serverTime:
+      type: string
+      format: date-time
+      description: |
+        The server's clock when the walk started, the same on every page of one walk. Send it as
+        the next `updatedSince` once the last page has been read.
+    deleted:
+      type: array
+      description: |
+        Documents deleted at or after `updatedSince` (empty without it). Paged like `data`.
+      items:
+        type: object
+        required: [id, deletedAt]
+        properties:
+          id:
+            type: string
+          deletedAt:
+            type: string
+            format: date-time
+    nextCursor:
+      type: string
+      nullable: true
+      description: Send as `cursor` for the next page; `null` on the last page.
+    total:
+      type: integer
+      description: The user's live documents of the requested type, whatever `updatedSince` says.
+
+DocumentListErrorResponse:
+  type: object
+  description: |
+    A `400` from the document list: `details` is the failing fields for a validation error, or
+    `{ code: "INVALID_DOCUMENT_CURSOR" }` for a bad cursor.
+  required:
+    - success
+    - message
+    - statusCode
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    statusCode:
+      type: integer
+    details:
+      oneOf:
+        - type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              message:
+                type: string
+        - type: object
+          required: [code]
+          properties:
+            code:
+              type: string
+              enum: [INVALID_DOCUMENT_CURSOR]
 
 DocumentSummary:
   type: object

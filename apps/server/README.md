@@ -40,6 +40,10 @@ The backend engine for VeriWorkly — a Node/Express + TypeScript API covering a
 
 The API will be available at `http://localhost:8080`.
 
+## 🚚 Deploy order notes
+
+- **Document list paging (V-263)**: `GET /api/v1/documents` pages with `limit` and `cursor` and answers with `nextCursor` and `total`. A request with neither still gets the old single response (up to 500 documents) so studios already in browsers keep working. Deploy the server after the studio that sends `limit`; a later change makes `limit` default to 20 and drops the unpaged response.
+
 ## 🏗️ Architecture
 
 - **Express.js**: Core API framework, clustered across CPU cores in production via `throng`, with graceful shutdown handling per worker.
