@@ -1,3 +1,4 @@
+import { BLOG_GUIDES, type BlogGuide } from "@/config/blog-guides";
 import {
   Code,
   Globe,
@@ -27,6 +28,8 @@ export interface FaqItem {
   category: (typeof categories)[number]["id"];
   question: string;
   answer: string;
+  /** A blog guide that goes deeper, linked under the answer. */
+  readMore?: BlogGuide;
 }
 
 export const faqs: FaqItem[] = [
@@ -85,7 +88,8 @@ export const faqs: FaqItem[] = [
     category: "documents",
     question: "How long should a resume be?",
     answer:
-      "One page for students and early-career candidates, two pages for most people with several years of relevant experience. The best available experiment found recruiters preferred two-page resumes 2.3 to 1, more so for senior roles. Cut anything that does not earn its space; the page count matters less. The evidence: blog.veriworkly.com/how-long-should-a-resume-be",
+      "One page for students and early-career candidates, two pages for most people with several years of relevant experience. The best available experiment found recruiters preferred two-page resumes 2.3 to 1, more so for senior roles. Cut anything that does not earn its space; the page count matters less.",
+    readMore: BLOG_GUIDES.resumeLength,
   },
   {
     id: "ats-friendly-templates",

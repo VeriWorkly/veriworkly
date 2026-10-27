@@ -1,4 +1,6 @@
 import { PageSection, TYPE } from "@/components/marketing/PageLayout";
+import { BLOG_GUIDES } from "@/config/blog-guides";
+import { FurtherReading } from "@/components/marketing/FurtherReading";
 
 const ANSWERS = [
   {
@@ -33,6 +35,11 @@ export function AtsDirectAnswer() {
           </div>
         ))}
       </dl>
+
+      <FurtherReading
+        className="mt-12"
+        guides={[BLOG_GUIDES.atsFormat, BLOG_GUIDES.tailoring, BLOG_GUIDES.blankPdf]}
+      />
     </PageSection>
   );
 }

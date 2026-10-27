@@ -1,6 +1,8 @@
 import { MessageCircleQuestion } from "lucide-react";
 
 import FAQList from "@/features/landing/faq/FAQList";
+import { BLOG_GUIDES } from "@/config/blog-guides";
+import { FurtherReading } from "@/components/marketing/FurtherReading";
 
 const PremiumFAQ = () => {
   return (
@@ -20,6 +22,11 @@ const PremiumFAQ = () => {
       </div>
 
       <FAQList />
+
+      <FurtherReading
+        className="mt-12 text-center"
+        guides={[BLOG_GUIDES.resumeLength, BLOG_GUIDES.atsFormat, BLOG_GUIDES.tailoring]}
+      />
     </section>
   );
 };

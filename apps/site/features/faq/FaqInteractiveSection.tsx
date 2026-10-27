@@ -1,5 +1,6 @@
 "use client";
 
+import { blogGuideUrl } from "@/config/blog-guides";
 import { Search, X } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 
@@ -178,6 +179,16 @@ const FaqInteractiveSection = () => {
 
                         <AccordionContent className="text-foreground/80 max-w-3xl border-t-0 px-5 pt-0 pb-6 text-base leading-7 text-pretty sm:px-7">
                           <p>{faq.answer}</p>
+                          {faq.readMore ? (
+                            <p className="mt-3">
+                              <a
+                                href={blogGuideUrl(faq.readMore)}
+                                className="text-accent font-medium underline-offset-4 hover:underline"
+                              >
+                                Read the full guide: {faq.readMore.title}
+                              </a>
+                            </p>
+                          ) : null}
                         </AccordionContent>
                       </AccordionItem>
                     ))}
