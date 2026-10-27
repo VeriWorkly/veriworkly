@@ -4,7 +4,11 @@ import type { JobLock } from "#lib/jobLock";
 
 import { runChangelogSyncInBackground } from "#jobs/changelogSyncJob";
 import { runGitHubSyncInBackground } from "#jobs/githubSyncJob";
-import { acquireChangelogSyncLock } from "#services/changelog/index";
+import {
+  acquireChangelogSyncLock,
+  CHANGELOG_SYNC_NOT_CONFIGURED,
+  isChangelogSyncConfigured,
+} from "#services/changelog/index";
 import { acquireGitHubSyncLock, isGitHubIssueSyncConfigured } from "#services/github/index";
 
 /**
@@ -47,6 +51,9 @@ export async function startGitHubSync(force: boolean): Promise<SyncStarted> {
 
 /** The outcome is recorded for `GET /admin/changelog/sync`. */
 export async function startChangelogSync(): Promise<SyncStarted> {
+  // Like the GitHub trigger: a 202 for a sync that cannot run would be a lie (V-260).
+  if (!isChangelogSyncConfigured()) throw new ApiError(503, CHANGELOG_SYNC_NOT_CONFIGURED);
+
   const lock = await takeLock(acquireChangelogSyncLock);
   runChangelogSyncInBackground(lock);
 
