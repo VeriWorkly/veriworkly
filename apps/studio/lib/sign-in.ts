@@ -102,6 +102,8 @@ const SIGN_IN_ERRORS: Record<string, string> = {
     "Your account is already linked to a different GitHub account. It can't be changed.",
   different_github_account:
     "Your account is already linked to a different GitHub account. It can't be changed.",
+  // The server's codes (`auth/githubLinking.ts`) are upper case; codes are matched lower-cased.
+  github_unlink_forbidden: "A linked GitHub account can't be removed.",
   unlink_not_allowed: "A linked GitHub account can't be removed.",
   unlinking_not_allowed: "A linked GitHub account can't be removed.",
   account_already_linked_to_different_user:
@@ -122,7 +124,10 @@ export function describeSignInError(code: string): { tone: "info" | "error"; mes
     return { tone: "info", message: "Sign in was cancelled." };
   }
 
-  return { tone: "error", message: SIGN_IN_ERRORS[code] ?? "Sign in failed. Please try again." };
+  return {
+    tone: "error",
+    message: SIGN_IN_ERRORS[code.toLowerCase()] ?? "Sign in failed. Please try again.",
+  };
 }
 
 /** The failed sign-in a redirect reports in its query, read from the `error` code alone. */

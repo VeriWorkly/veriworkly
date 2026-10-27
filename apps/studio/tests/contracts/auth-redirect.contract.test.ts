@@ -299,6 +299,26 @@ describe("GitHub linking (owner decision A)", () => {
     expect(describeSignInError("some_new_code").message).toBe("Sign in failed. Please try again.");
   });
 
+  it("the server's own GitHub codes, as its redirect sends them, read as plain text", () => {
+    const server = readFileSync(
+      join(__dirname, "..", "..", "..", "server", "src", "auth", "githubLinking.ts"),
+      "utf8",
+    );
+    const code = (name: string) =>
+      server.match(new RegExp(`export const ${name} = "([^"]+)"`))?.[1] ?? "";
+
+    expect(code("GITHUB_ALREADY_LINKED")).not.toBe("");
+    expect(code("GITHUB_UNLINK_FORBIDDEN")).not.toBe("");
+
+    const alreadyLinked = signInFailureFromQuery(
+      new URLSearchParams({ error: code("GITHUB_ALREADY_LINKED") }),
+    );
+    expect(alreadyLinked?.message).toMatch(/already linked to a different GitHub account/);
+    expect(describeSignInError(code("GITHUB_UNLINK_FORBIDDEN")).message).toBe(
+      "A linked GitHub account can't be removed.",
+    );
+  });
+
   it("a code the link call returns is mapped; without one its message is shown", async () => {
     const linkSocial = vi
       .fn()
