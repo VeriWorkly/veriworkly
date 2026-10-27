@@ -6,8 +6,9 @@ import { X, Upload, Loader2, Lock, AlertCircle } from "lucide-react";
 import { Button, Modal, Input, TextArea, Checkbox, Badge } from "@veriworkly/ui";
 import { toast } from "sonner";
 
-import { useUserStore } from "@/store/useUserStore";
+import { useSessionUser } from "@/store/session-user";
 import { fetchApiData } from "@/utils/fetchApiData";
+import { linkGithubAccount, signInHref } from "@/lib/sign-in";
 import { extractResumeFile, getAtsQuota } from "@/features/ats/ats-api";
 import { describePaidActionError } from "@/features/credits/credit-errors";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
@@ -17,6 +18,11 @@ import {
   freeLimitMessage,
 } from "@/features/documents/services/document-limit";
 import type { BillingSummary } from "@/features/billing/types";
+import ConfirmDialog from "@/components/modals/ConfirmDialog";
+
+/** Said under the "Replace" option and again before it runs: the curated profile is overwritten. */
+export const REPLACE_MASTER_NOTICE =
+  "Overwrites your current Master Profile with what the import reads. This cannot be undone.";
 
 const LinkedinIcon = ({ className }: { className?: string }) => (
   <svg
@@ -60,6 +66,17 @@ interface QuotaDetails {
   connectedUsername: string | null;
   /** GitHub only: whether a GitHub login is linked, whatever GitHub answers about its token. */
   hasGithubAccount?: boolean;
+}
+
+/** Said before linking: the server keeps one GitHub account per user, for good. */
+export const GITHUB_LINK_NOTICE =
+  "You can link one GitHub account. It can't be changed or removed later.";
+
+/** What the GitHub import reads, by plan, as `importFromGithub` enforces it. */
+export function githubImportNote(isPaid: boolean) {
+  return isPaid
+    ? "You can import any public GitHub profile by username."
+    : "Free accounts import from the GitHub account linked to them.";
 }
 
 /**
@@ -113,10 +130,12 @@ export function ImportProfileModal({
   initialProvider?: "linkedin" | "github";
 }) {
   const router = useRouter();
-  const { isLoggedIn } = useUserStore();
+  const isLoggedIn = Boolean(useSessionUser()?.email);
 
   const [activeTab, setActiveTab] = useState<"linkedin" | "github">(initialProvider);
   const [replaceMaster, setReplaceMaster] = useState(false);
+  // Which import waits for the user to confirm replacing their Master Profile.
+  const [confirmReplace, setConfirmReplace] = useState<"linkedin" | "github" | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
 
@@ -245,13 +264,18 @@ export function ImportProfileModal({
   };
 
   // Submit GitHub Import
-  const handleGithubSubmit = async (e: React.FormEvent) => {
+  const handleGithubSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!githubInput.trim()) {
       toast.error("Please enter a GitHub username or profile link.");
       return;
     }
 
+    if (replaceMaster) setConfirmReplace("github");
+    else void runGithubImport();
+  };
+
+  const runGithubImport = async () => {
     setLoading(true);
     setLoadingStep("Fetching your GitHub profile...");
     try {
@@ -277,13 +301,18 @@ export function ImportProfileModal({
   };
 
   // Submit LinkedIn Import
-  const handleLinkedinSubmit = async (e: React.FormEvent) => {
+  const handleLinkedinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!linkedinText.trim()) {
       toast.error("Please paste profile text or upload a LinkedIn PDF.");
       return;
     }
 
+    if (replaceMaster) setConfirmReplace("linkedin");
+    else void runLinkedinImport();
+  };
+
+  const runLinkedinImport = async () => {
     setLoading(true);
     setLoadingStep("Parsing LinkedIn details via AI...");
     try {
@@ -345,7 +374,7 @@ export function ImportProfileModal({
               Import from Profile
             </h2>
             <p id="import-profile-description" className="text-muted mt-1 text-xs">
-              Convert your profile page or experience history directly to a premium resume.
+              Turn your LinkedIn or GitHub profile into a new resume you can edit.
             </p>
           </div>
 
@@ -372,7 +401,7 @@ export function ImportProfileModal({
               profile.
             </p>
             <div className="pt-2">
-              <Button size="sm" variant="primary" onClick={() => router.push("/login")}>
+              <Button size="sm" variant="primary" onClick={() => router.push(signInHref())}>
                 Sign in to VeriWorkly
               </Button>
             </div>
@@ -591,6 +620,7 @@ export function ImportProfileModal({
                           label="Replace my Master Profile with this data"
                           disabled={loading || uploadingPdf}
                         />
+                        <span className="sr-only">{REPLACE_MASTER_NOTICE}</span>
 
                         <Button
                           type="submit"
@@ -650,12 +680,15 @@ export function ImportProfileModal({
                             <div>
                               {githubImportState(currentTabQuota) === "needs-sign-in" ? (
                                 <>
-                                  <p className="font-bold">GitHub import needs a GitHub sign-in</p>
+                                  <p className="font-bold">Link your GitHub account</p>
                                   <p className="text-muted-foreground mt-0.5 text-[11px]">
-                                    You didn&apos;t sign in with GitHub, so there is no GitHub
-                                    profile of yours to read. Sign in with GitHub to import your own
-                                    profile, use LinkedIn import, or get a subscription or pass to
-                                    import any public GitHub profile.
+                                    Your account has no GitHub login, so there is no GitHub profile
+                                    of yours to read. Link GitHub to import your own profile, use
+                                    LinkedIn import, or get a subscription or pass to import any
+                                    public GitHub profile.
+                                  </p>
+                                  <p className="mt-1 text-[11px] font-semibold">
+                                    {GITHUB_LINK_NOTICE}
                                   </p>
                                 </>
                               ) : (
@@ -663,13 +696,29 @@ export function ImportProfileModal({
                                   <p className="font-bold">Your GitHub account could not be read</p>
                                   <p className="text-muted-foreground mt-0.5 text-[11px]">
                                     Your account is linked to GitHub, but GitHub did not let us read
-                                    your profile. Sign out and sign in with GitHub again, use
-                                    LinkedIn import, or get a subscription or pass to import any
-                                    public GitHub profile.
+                                    your profile. Reconnect GitHub, use LinkedIn import, or get a
+                                    subscription or pass to import any public GitHub profile.
                                   </p>
                                 </>
                               )}
                               <div className="mt-2 flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() =>
+                                    void linkGithubAccount().catch((error: unknown) =>
+                                      toast.error(
+                                        error instanceof Error
+                                          ? error.message
+                                          : "Linking GitHub could not start.",
+                                      ),
+                                    )
+                                  }
+                                >
+                                  {githubImportState(currentTabQuota) === "needs-sign-in"
+                                    ? "Link GitHub"
+                                    : "Reconnect GitHub"}
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="secondary"
@@ -687,13 +736,13 @@ export function ImportProfileModal({
                               </div>
                             </div>
                           </div>
-                        ) : !isPaidUser ? (
+                        ) : (
                           <p className="text-muted-foreground text-[11px] leading-5">
-                            {currentTabQuota
-                              ? `Imports your own GitHub profile (${currentTabQuota.connectedUsername}). A subscription or pass lets you import any public profile.`
+                            {currentTabQuota || isPaidUser
+                              ? githubImportNote(isPaidUser)
                               : "Checking your GitHub sign-in..."}
                           </p>
-                        ) : null}
+                        )}
                       </div>
 
                       <div className="border-border/60 flex items-center justify-between gap-4 border-t pt-2">
@@ -704,6 +753,7 @@ export function ImportProfileModal({
                           label="Replace my Master Profile with this data"
                           disabled={loading}
                         />
+                        <span className="sr-only">{REPLACE_MASTER_NOTICE}</span>
 
                         <Button
                           type="submit"
@@ -730,6 +780,22 @@ export function ImportProfileModal({
           </>
         )}
       </Modal.Content>
+
+      <ConfirmDialog
+        tone="warning"
+        open={confirmReplace !== null}
+        title="Replace your Master Profile?"
+        description={REPLACE_MASTER_NOTICE}
+        confirmLabel="Replace and import"
+        onClose={() => setConfirmReplace(null)}
+        onConfirm={() => {
+          const target = confirmReplace;
+
+          setConfirmReplace(null);
+          if (target === "linkedin") void runLinkedinImport();
+          if (target === "github") void runGithubImport();
+        }}
+      />
     </Modal>
   );
 }

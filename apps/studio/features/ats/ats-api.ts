@@ -90,3 +90,20 @@ export function describeAtsError(
 
   return describePaidActionError(error, fallback);
 }
+
+/**
+ * Why the conversion is not offered, from what the server's `canConvertResume` checks: a price
+ * (none while the AI policy is unavailable) and enough credits to pay it.
+ */
+export function conversionUnavailableReason(
+  pricing: AtsQuota["pricing"] | undefined,
+  available: number | null,
+) {
+  if (!pricing) return "AI conversion is unavailable right now. Try again later.";
+
+  const cost = pricing.resumeConversionCredits;
+
+  return available === null
+    ? `Needs ${cost} credits.`
+    : `Needs ${cost} credits, you have ${available}.`;
+}

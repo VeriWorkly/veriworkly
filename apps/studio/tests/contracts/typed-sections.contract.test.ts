@@ -428,6 +428,71 @@ describe("experience dates typed in other forms (S-306)", () => {
   });
 });
 
+describe("profile-core: unflattenLegacySections is deterministic", () => {
+  it("gives an id-less custom section and its items the same ids on every read", () => {
+    const stored = {
+      customSections: [
+        { kind: "awards", items: [{ name: "Prize" }] },
+        { kind: "custom", title: "Talks", items: [{ name: "Keynote" }] },
+      ],
+    };
+
+    const first = unflattenLegacySections(structuredClone(stored));
+    const second = unflattenLegacySections(structuredClone(stored));
+
+    expect(first.customSections[0].id).toBe("custom-2");
+    expect(second.customSections).toEqual(first.customSections);
+    expect(second.awards).toEqual(first.awards);
+  });
+
+  it("never gives an id-less section an id another section already has", () => {
+    const typed = unflattenLegacySections({
+      customSections: [
+        { kind: "custom", title: "Talks", items: [] },
+        { kind: "custom", id: "custom-1", title: "Patents", items: [] },
+      ],
+    });
+
+    const ids = typed.customSections.map((section) => section.id);
+
+    expect(new Set(ids).size).toBe(2);
+    expect(ids).toEqual(["custom-1-2", "custom-1"]);
+  });
+
+  it("keeps the first of two stored sections that share an id and renames the second", () => {
+    const typed = unflattenLegacySections({
+      customSections: [
+        { kind: "custom", id: "talks", title: "Talks", items: [] },
+        { kind: "custom", id: "talks", title: "More talks", items: [] },
+      ],
+    });
+
+    expect(typed.customSections.map((section) => section.id)).toEqual(["talks", "talks-2"]);
+  });
+
+  it("never gives an id-less item an id another item of the section stores", () => {
+    const typed = unflattenLegacySections({
+      customSections: [
+        {
+          kind: "custom",
+          id: "talks",
+          title: "Talks",
+          items: [
+            { name: "Keynote" },
+            { id: "talks-1", name: "Panel" },
+            { id: "talks-1", name: "Copy" },
+          ],
+        },
+      ],
+    });
+
+    const ids = typed.customSections[0].items.map((item) => item.id);
+
+    expect(new Set(ids).size).toBe(3);
+    expect(ids[1]).toBe("talks-1");
+  });
+});
+
 describe("legacy custom sections without an id (O4 LOW)", () => {
   it("gets the same id on every read, so its order and visibility stick", () => {
     const stored = {

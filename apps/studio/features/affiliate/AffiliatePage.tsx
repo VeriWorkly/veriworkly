@@ -43,9 +43,7 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
           {isPending ? (
             <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-amber-500">
               <div className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-              <span className="text-xs font-bold tracking-wider uppercase">
-                Application Under Review
-              </span>
+              <span className="text-xs font-bold tracking-wider uppercase">Account on hold</span>
             </div>
           ) : isSuspended ? (
             <div className="border-destructive/20 bg-destructive/10 text-destructive flex items-center gap-2 rounded-2xl border px-4 py-3">

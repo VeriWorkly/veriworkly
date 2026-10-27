@@ -16,9 +16,15 @@ import type {
   ResumeExperienceItem,
 } from "@/types/resume";
 
-import { createId, fluencySchema } from "@veriworkly/profile-core";
+import {
+  createId,
+  fluencySchema,
+  sanitizeMasterProfileForSave,
+  validateMasterProfileForSave,
+} from "@veriworkly/profile-core";
 
 import { fontOptions } from "@/features/documents/constants/fonts";
+import { normalizeMonthDate } from "@/features/resume/utils/normalize-data";
 
 /*
  * The master editor UI: the option lists the selects render and the empty-item factories the
@@ -298,4 +304,95 @@ export function withCustomSectionRows(profile: MasterProfileData): MasterProfile
   if (!changed && added.length === 0) return profile;
 
   return { ...profile, sections: [...kept, ...added] };
+}
+
+const ONGOING = /^(present|current|now)$/i;
+
+/**
+ * A hand-typed month read into `YYYY-MM`. "Present" is only an end date: anywhere else it is
+ * kept as typed, so the save refuses it with the date's own message instead of blanking it.
+ */
+function readMonthDate(value: string) {
+  return ONGOING.test(value.trim()) ? value : normalizeMonthDate(value);
+}
+
+/** "Present" typed as an end date means the entry is current, as the editor's checkbox says. */
+function withMonthDates<T extends { startDate: string; endDate: string; current: boolean }>(
+  item: T,
+): T {
+  const current = item.current || ONGOING.test(item.endDate.trim());
+
+  return {
+    ...item,
+    current,
+    startDate: readMonthDate(item.startDate),
+    endDate: current ? "" : readMonthDate(item.endDate),
+  };
+}
+
+/**
+ * The profile as the server will store it, or the reasons it cannot be. Dates are free text
+ * in the editor, so the common hand-typed month forms ("Mar 2022", "03/2022") are read into
+ * `YYYY-MM` first instead of being refused. Both the guided and the JSON editor save through
+ * this, so neither stores a profile the other would refuse.
+ */
+export function prepareMasterProfileForSave(
+  profile: MasterProfileData,
+): { ok: true; profile: MasterProfileData } | { ok: false; issues: string[] } {
+  const sanitized = sanitizeMasterProfileForSave({
+    ...profile,
+    experience: profile.experience.map(withMonthDates),
+    volunteer: profile.volunteer.map(withMonthDates),
+    awards: profile.awards.map((item) => ({ ...item, date: readMonthDate(item.date) })),
+    certificates: profile.certificates.map((item) => ({ ...item, date: readMonthDate(item.date) })),
+    publications: profile.publications.map((item) => ({ ...item, date: readMonthDate(item.date) })),
+  });
+  const validation = validateMasterProfileForSave(sanitized);
+
+  return validation.ok
+    ? { ok: true, profile: sanitized }
+    : { ok: false, issues: validation.issues.length > 0 ? validation.issues : ["Check fields."] };
+}
+
+/**
+ * What the editor holds once a save returns. A profile that arrives while the editor still
+ * holds exactly what was submitted replaces it; text typed while the save ran is kept.
+ */
+export function rebaseAfterSave(
+  current: MasterProfileData,
+  submitted: MasterProfileData | null,
+  incoming: MasterProfileData,
+): MasterProfileData {
+  if (submitted && current !== submitted) return current;
+
+  return incoming;
+}
+
+/**
+ * Whether a click would take the user to another studio page in this tab: a plain left click
+ * on a same-origin link to another page. New tabs, downloads, other sites and a jump within this
+ * page (a skip link) leave the editor where it is.
+ */
+export function isInAppNavigation(
+  event: Pick<MouseEvent, "button" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">,
+  anchor: Pick<HTMLAnchorElement, "href" | "target"> & { hasAttribute(name: string): boolean },
+  here: Pick<Location, "origin" | "pathname" | "search">,
+) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return false;
+  }
+
+  if ((anchor.target && anchor.target !== "_self") || anchor.hasAttribute("download")) {
+    return false;
+  }
+
+  try {
+    const url = new URL(anchor.href, here.origin);
+
+    return (
+      url.origin === here.origin && (url.pathname !== here.pathname || url.search !== here.search)
+    );
+  } catch {
+    return false;
+  }
 }

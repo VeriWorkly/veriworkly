@@ -9,7 +9,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type { MasterProfile } from "@/types/resume";
 
@@ -22,7 +22,9 @@ import { resolveConflictUpdatedAt } from "@/features/resume/services/master-prof
 import {
   stringifyProfile,
   buildProfileExportName,
+  checkMasterProfileJson,
   parseMasterProfileJson,
+  prepareMasterProfileJsonForSave,
 } from "./advanced-profile-utils";
 
 type ProfileAdvancedProps = {
@@ -30,11 +32,11 @@ type ProfileAdvancedProps = {
   /** `expectedUpdatedAt` overrides the loaded cursor, to overwrite after a conflict. */
   onSave: (profile: MasterProfile, expectedUpdatedAt?: string) => Promise<void>;
   isSaving?: boolean;
+  /** Shown on arrival: a save remounts this editor on the new profile. */
+  initialStatus?: string | null;
 };
 
-const ProfileAdvanced = ({ profile, onSave, isSaving }: ProfileAdvancedProps) => {
-  let isJsonValid = true;
-
+const ProfileAdvanced = ({ profile, onSave, isSaving, initialStatus }: ProfileAdvancedProps) => {
   const baseJsonValue = stringifyProfile(profile);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -45,17 +47,15 @@ const ProfileAdvanced = ({ profile, onSave, isSaving }: ProfileAdvancedProps) =>
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(initialStatus ?? null);
   /** Set after a 409: the stored profile's cursor, which "Save my version" overwrites. */
   const [conflictUpdatedAt, setConflictUpdatedAt] = useState<string | null>(null);
 
   const hasChanges = jsonValue !== baseJsonValue;
 
-  try {
-    parseMasterProfileJson(jsonValue);
-  } catch {
-    isJsonValid = false;
-  }
+  // Parsed once per edit, not on every render.
+  const jsonCheck = useMemo(() => checkMasterProfileJson(jsonValue), [jsonValue]);
+  const isJsonValid = jsonCheck.ok;
 
   /*
    * The draft stays in the text area whatever happens. On a 409 the server's message says
@@ -64,15 +64,7 @@ const ProfileAdvanced = ({ profile, onSave, isSaving }: ProfileAdvancedProps) =>
    */
   const handleSave = async (expectedUpdatedAt?: string) => {
     try {
-      const parsed = parseMasterProfileJson(jsonValue);
-
-      await onSave(parsed, expectedUpdatedAt);
-
-      setStatusMessage("Profile updated successfully!");
-      setErrorMessage(null);
-      setConflictUpdatedAt(null);
-
-      setTimeout(() => setStatusMessage(null), 3000);
+      await onSave(prepareMasterProfileJsonForSave(jsonValue), expectedUpdatedAt);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Save failed");
       setConflictUpdatedAt(await resolveConflictUpdatedAt(error));
@@ -103,7 +95,8 @@ const ProfileAdvanced = ({ profile, onSave, isSaving }: ProfileAdvancedProps) =>
       a.download = buildProfileExportName();
       a.click();
 
-      URL.revokeObjectURL(url);
+      // Some browsers start reading the URL only after the click handler returns.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
 
       setStatusMessage("Backup file generated.");
     } finally {
@@ -130,7 +123,11 @@ const ProfileAdvanced = ({ profile, onSave, isSaving }: ProfileAdvancedProps) =>
           </div>
 
           <Badge className="h-5 px-2 text-[10px]">
-            {isJsonValid ? "Valid JSON" : "Invalid Syntax"}
+            {jsonCheck.ok
+              ? "Valid profile"
+              : jsonCheck.kind === "syntax"
+                ? "Invalid JSON"
+                : "Not a valid profile"}
           </Badge>
         </div>
 
@@ -149,6 +146,10 @@ const ProfileAdvanced = ({ profile, onSave, isSaving }: ProfileAdvancedProps) =>
               !isJsonValid && "border-red-500/50 focus:ring-red-500/50",
             )}
           />
+
+          {!jsonCheck.ok && !errorMessage ? (
+            <p className="text-xs leading-normal font-medium text-red-600">{jsonCheck.message}</p>
+          ) : null}
 
           {errorMessage && (
             <div className="animate-in slide-in-from-top-2 flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
@@ -235,14 +236,14 @@ const ProfileAdvanced = ({ profile, onSave, isSaving }: ProfileAdvancedProps) =>
           if (!file) return;
 
           try {
-            const text = await file.text();
-
-            parseMasterProfileJson(text);
-
-            setJsonValue(text);
+            // A backup file shows only the Master Profile it carries.
+            setJsonValue(stringifyProfile(parseMasterProfileJson(await file.text())));
+            setErrorMessage(null);
             setStatusMessage("JSON imported successfully. Review before committing.");
-          } catch {
-            setErrorMessage("Import failed: The file is not a valid JSON.");
+          } catch (error) {
+            setErrorMessage(
+              `Import failed: ${error instanceof Error ? error.message : "the file could not be read."}`,
+            );
           } finally {
             e.target.value = "";
           }

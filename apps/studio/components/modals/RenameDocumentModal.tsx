@@ -140,11 +140,11 @@ export default function RenameDocumentModal({
                       htmlFor="update-share-slug"
                       className="text-foreground text-xs font-bold"
                     >
-                      Sync Public Share Link Slug
+                      Update share link address
                     </label>
 
                     <p className="text-muted-foreground text-[11px]">
-                      Update the shared URL path to match the new title.
+                      If this document has a share link, its address can follow the new title.
                     </p>
                   </div>
 
@@ -165,8 +165,8 @@ export default function RenameDocumentModal({
                       </p>
 
                       <p className="text-muted-foreground text-[11px] leading-relaxed">
-                        Selecting this option will update your public share link slug. Anyone
-                        visiting the previous URL will get a 404 error.
+                        The link&apos;s address changes to match the new title. Anyone opening the
+                        old address will see &quot;not found&quot;.
                       </p>
                     </div>
                   </div>
@@ -175,11 +175,10 @@ export default function RenameDocumentModal({
                     <Info className="h-5 w-5 shrink-0 text-blue-500" />
 
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-blue-500">Public link unchanged</p>
+                      <p className="text-xs font-bold text-blue-500">Share link unchanged</p>
 
                       <p className="text-muted-foreground text-[11px] leading-relaxed">
-                        Your public link slug remains unchanged. Your existing shared links will
-                        continue to function normally.
+                        If this document has a share link, it keeps its current address.
                       </p>
                     </div>
                   </div>

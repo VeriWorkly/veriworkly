@@ -85,7 +85,8 @@ export function ApiKeyDetailsForm({
           />
 
           <span className="text-muted block text-xs">
-            Midnight your time. Empty uses the default lifetime.
+            The key stops working when this day ends in your time zone. Leave it empty for the
+            standard lifetime of one year.
           </span>
         </label>
       </div>

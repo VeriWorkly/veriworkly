@@ -13,8 +13,8 @@ import SocialAuth from "./component/SocialAuth";
 
 import { siteConfig } from "@/config/site";
 import { authClient } from "@/lib/auth-client";
-import { rememberReferralCode } from "@/lib/sign-in";
-import { getSafeAuthCallback } from "@/lib/auth-redirect";
+import { rememberReferralCode, signInFailureFromQuery } from "@/lib/sign-in";
+import { getGuestLandingPath, getSafeAuthCallback } from "@/lib/auth-redirect";
 
 import { fetchApiData } from "@/utils/fetchApiData";
 
@@ -56,15 +56,10 @@ const LoginSearchParamEffects = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    const error = searchParams.get("error");
-    const errorDescription = searchParams.get("error_description");
+    const failure = signInFailureFromQuery(searchParams);
 
-    if (error) {
-      if (error === "access_denied" || error === "cancelled") {
-        toast.info(errorDescription || "Sign in was cancelled.");
-      } else {
-        toast.error(errorDescription || "Sign in failed. Please try again.");
-      }
+    if (failure) {
+      (failure.tone === "info" ? toast.info : toast.error)(failure.message);
 
       // Clean up the error query parameters from URL without reloading
       const url = new URL(window.location.href);
@@ -97,7 +92,11 @@ const LoginForm = () => {
 
   const handleGuestAccess = () => {
     const callbackURL = new URLSearchParams(window.location.search).get("callbackURL");
-    const target = getSafeAuthCallback(callbackURL);
+    const target = getGuestLandingPath(callbackURL);
+
+    if (target !== getSafeAuthCallback(callbackURL)) {
+      toast.info("That page needs an account, so you are on the overview instead.");
+    }
 
     const maxAge = 60 * 60 * 24 * 30; // 30 days
     const isSecure = window.location.protocol === "https:";

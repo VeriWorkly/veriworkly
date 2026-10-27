@@ -222,7 +222,7 @@ describe("new document flow (S-069, S-211)", () => {
   });
 
   it("offers a guest Blank and Sample, and no Master Profile they do not have", async () => {
-    await page.getByRole("button", { name: "Create document" }).first().click();
+    await page.getByRole("button", { name: "New Document" }).first().click();
     await page.getByRole("radio", { name: /^Blank/ }).waitFor();
 
     expect(await page.getByRole("radio", { name: /^Sample/ }).count()).toBe(1);
@@ -251,7 +251,7 @@ describe("new document flow (S-069, S-211)", () => {
 
   it("a second resume on the free plan is refused with a way to upgrade", async () => {
     await page.goto(`${server.origin}/documents`, { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "Create document" }).first().click();
+    await page.getByRole("button", { name: "New Document" }).first().click();
     await page
       .getByRole("dialog")
       .getByRole("button", { name: /^Resume/ })

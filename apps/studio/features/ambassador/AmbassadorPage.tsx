@@ -14,7 +14,7 @@ import { Button } from "@veriworkly/ui";
 
 import { siteConfig } from "@/config/site";
 import { ShareToolkit } from "@/features/ambassador/ShareToolkit";
-import type { AmbassadorStatus } from "@/features/ambassador/types";
+import { isApprovedAmbassador, type AmbassadorStatus } from "@/features/ambassador/types";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -30,7 +30,7 @@ function formatDate(value: string | null | undefined) {
 }
 
 export function AmbassadorPage({ status }: { status: AmbassadorStatus | null }) {
-  const isAmbassador = status?.role === "AMBASSADOR";
+  const isAmbassador = isApprovedAmbassador(status);
   const application = status?.application ?? null;
   const isRejected = application?.status === "REJECTED";
   const isPending = !isAmbassador && !isRejected;

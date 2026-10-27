@@ -4,6 +4,8 @@ import { Lock } from "lucide-react";
 
 import { Modal, Button } from "@veriworkly/ui";
 
+import { siteConfig } from "@/config/site";
+
 interface UsernameLockedModalProps {
   open: boolean;
   onClose: () => void;
@@ -40,7 +42,16 @@ const UsernameLockedModal = ({ open, onClose }: UsernameLockedModalProps) => {
           </p>
           <p className="text-muted-foreground text-xs leading-relaxed font-medium">
             To prevent broken links, usernames are locked once set and cannot be changed. If you
-            have an exceptional reason to update it, please contact our support team.
+            have an exceptional reason to update it,{" "}
+            <a
+              href={`${siteConfig.links.main}/contact`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground underline"
+            >
+              contact us
+            </a>
+            .
           </p>
         </Modal.Body>
 

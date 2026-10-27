@@ -42,7 +42,8 @@ const AdvancedProfilePage = () => {
             </h1>
 
             <p className="text-muted mt-2 max-w-2xl text-base">
-              Import, export, and validate master career data without touching user account data.
+              Import, export, and check your Master Profile as JSON. Your account details are not
+              changed here.
             </p>
           </div>
 

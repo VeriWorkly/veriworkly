@@ -8,11 +8,12 @@ import { StudioSidebar } from "./sidebar/StudioSidebar";
 import { MobileHeader } from "./header/MobileHeader";
 import { MobileNavDrawer } from "./header/MobileNavDrawer";
 import { DashboardModalsHost } from "./modals/DashboardModalsHost";
+import { GuestBackupBanner } from "./guest-backup/GuestBackupBanner";
 import { useCreateDocument } from "./hooks/useCreateDocument";
 import { useStudioShortcuts } from "./hooks/useStudioShortcuts";
 
 import { cn } from "@veriworkly/ui";
-import { useUserStore } from "@/store/useUserStore";
+import { useSessionUser } from "@/store/session-user";
 
 interface StudioShellProps {
   children: ReactNode;
@@ -23,7 +24,7 @@ const STUDIO_VERSION = `v${process.env.STUDIO_VERSION}`;
 
 function StudioShell({ children, mainClassName }: StudioShellProps) {
   const pathname = usePathname();
-  const { user } = useUserStore();
+  const user = useSessionUser();
 
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -57,6 +58,13 @@ function StudioShell({ children, mainClassName }: StudioShellProps) {
         collapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[16.5rem_minmax(0,1fr)]",
       )}
     >
+      <a
+        href="#studio-content"
+        className="bg-background text-foreground ring-accent sr-only z-50 rounded-lg px-4 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2"
+      >
+        Skip to content
+      </a>
+
       <StudioSidebar
         email={email}
         pathname={pathname}
@@ -103,7 +111,15 @@ function StudioShell({ children, mainClassName }: StudioShellProps) {
             mainClassName,
           )}
         >
-          <div className="mx-auto h-full w-full max-w-7xl">{children}</div>
+          <div
+            id="studio-content"
+            tabIndex={-1}
+            className="mx-auto h-full w-full max-w-7xl outline-none"
+          >
+            {children}
+            {/* Inside the page, so the room it keeps below the content is the page's own. */}
+            <GuestBackupBanner />
+          </div>
         </div>
       </div>
     </div>

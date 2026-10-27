@@ -42,18 +42,13 @@
       "name": "Credits & Wallet Ledger",
       "url": "https://app.veriworkly.com/credits",
       "description": "AI credit wallet balance, FIFO grant allocation details, and complete usage history."
-    },
-    {
-      "name": "Affiliate & Ambassador Dashboards",
-      "url": "https://app.veriworkly.com/affiliate",
-      "description": "Referral tracking, 3-tier commission management, and campus ambassador application tracking."
     }
   ],
 
   "capabilities": [
     {
       "name": "Document Management",
-      "description": "Create, edit, list, tags, duplicate, and soft-delete resume and cover letter documents.",
+      "description": "Create, edit, list, tag, and soft-delete resume and cover letter documents.",
       "endpoints": ["/api/v1/documents", "/api/v1/documents/{id}"]
     },
     {

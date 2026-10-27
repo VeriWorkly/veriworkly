@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button, Modal, cn } from "@veriworkly/ui";
 
@@ -99,7 +100,8 @@ export function NewDocumentButton({
       size="sm"
       variant="primary"
       onClick={onClick}
-      aria-label="Create document"
+      // Collapsed, the button is only an icon; expanded, its visible text is its name.
+      aria-label={collapsed ? "New document" : undefined}
       className="h-9 w-full gap-2 rounded-lg"
     >
       <Plus className="h-4 w-4" />
@@ -116,7 +118,7 @@ export function NewDocumentModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (type: DocumentType, source: NewDocumentSource) => void;
+  onCreate: (type: DocumentType, source: NewDocumentSource) => Promise<void>;
   onImportAction?: (provider: "linkedin" | "github") => void;
 }) {
   const { sources, defaultSource } = useNewDocumentSources();
@@ -196,7 +198,12 @@ export function NewDocumentModal({
                 className="border-border bg-background/70 hover:border-accent/50 hover:bg-card focus-visible:border-accent focus-visible:ring-accent/25 group rounded-xl border p-4 text-left transition outline-none focus-visible:ring-2"
                 onClick={() => {
                   onClose();
-                  onCreate(type, source);
+                  // Expected failures are reported by `onCreate`; this catches the unexpected.
+                  onCreate(type, source).catch((error: unknown) =>
+                    toast.error(
+                      `Could not create the document: ${error instanceof Error ? error.message : String(error)}`,
+                    ),
+                  );
                 }}
               >
                 <span className="flex items-start justify-between gap-4">

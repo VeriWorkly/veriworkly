@@ -1518,3 +1518,67 @@ describe("exports (Phase 9: S-285, S-288)", () => {
     expect(await railOverflows()).toBe(true);
   });
 });
+
+describe("a phone scrolls the preview natively (S-351)", () => {
+  let touchContext: BrowserContext;
+  let touchPage: Page;
+
+  beforeAll(async () => {
+    // `isMobile` + `hasTouch` make `(pointer: coarse)` match, as on a real phone.
+    touchContext = await browser.newContext({ viewport: MOBILE, isMobile: true, hasTouch: true });
+    await touchContext.addCookies([
+      { name: "veriworkly-guest-mode", value: "true", url: server.origin },
+    ]);
+    touchPage = await touchContext.newPage();
+  });
+
+  afterAll(async () => {
+    await touchContext?.close();
+  });
+
+  it("S-351: the preview is a native scroll area that ends where the drawn page ends", async () => {
+    await touchPage.goto(`${server.origin}/editor/resume/new?template=executive-clarity`, {
+      waitUntil: "networkidle",
+    });
+    await touchPage.waitForFunction(() => !location.pathname.endsWith("/new"), undefined, {
+      timeout: 30_000,
+    });
+    await touchPage.getByRole("tab", { name: /^Preview$/ }).click();
+    await touchPage.waitForTimeout(1_500);
+
+    const scroll = await touchPage.evaluate(() => {
+      // The scaled page: the only element the shell transforms with translate3d and scale.
+      const page = document.querySelector<HTMLElement>("[style*='translate3d']");
+      const area = page?.parentElement;
+
+      if (!page || !area) return null;
+
+      return {
+        overflowY: getComputedStyle(area).overflowY,
+        scrollHeight: area.scrollHeight,
+        clientHeight: area.clientHeight,
+        drawnBottom: page.getBoundingClientRect().bottom - area.getBoundingClientRect().top,
+      };
+    });
+
+    expect(scroll).not.toBeNull();
+    expect(scroll!.overflowY).toBe("auto");
+    // The page plus the area's bottom padding, not the unscaled page or its measuring copy.
+    expect(scroll!.scrollHeight).toBeLessThanOrEqual(
+      Math.max(scroll!.clientHeight, scroll!.drawnBottom + 80),
+    );
+  });
+
+  it("S-351: a wheel or trackpad on a phone scrolls natively and does not also pan the page", async () => {
+    const canvas = touchPage.getByRole("group", { name: /Document preview canvas/ });
+    await canvas.hover();
+    await touchPage.mouse.wheel(0, 400);
+    await touchPage.waitForTimeout(500);
+
+    const transform = await touchPage.evaluate(
+      () => document.querySelector<HTMLElement>("[style*='translate3d']")!.style.transform,
+    );
+
+    expect(transform).toContain("translate3d(0px, 0px, 0px)");
+  });
+});

@@ -22,12 +22,12 @@ export function ShareToolkit({ siteUrl }: { siteUrl: string }) {
     {
       id: "group-chat",
       channel: "Group chat",
-      body: `ok genuinely stop paying for resume builders — ${siteUrl} is free, works offline, and doesn't hold your PDF hostage behind a subscription`,
+      body: `ok genuinely stop paying for resume builders — ${siteUrl} is free, runs in your browser, and doesn't hold your PDF hostage behind a subscription`,
     },
     {
       id: "linkedin",
       channel: "LinkedIn",
-      body: `Career docs shouldn't live on someone else's server.\n\nI've been using VeriWorkly to build resumes, cover letters and a portfolio site — local-first, so the data stays on my machine unless I choose to sync it.\n\nFree to use: ${siteUrl}`,
+      body: `Career docs shouldn't live on someone else's server.\n\nI've been using VeriWorkly to build resumes, cover letters and a portfolio site — local-first, so nothing leaves my browser until I sign in to back it up.\n\nFree to use: ${siteUrl}`,
     },
     {
       id: "story",

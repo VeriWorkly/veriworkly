@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
+
+import { LocalDate } from "@/components/LocalDate";
 import { AffiliateNav } from "@/features/affiliate/AffiliateNav";
+import { commissionStatusLabel } from "@/features/affiliate/labels";
 import type { AffiliateDashboard } from "@/features/affiliate/types";
 import { getProgramServerData, PROGRAM_UNAVAILABLE } from "@/features/billing/billing-server";
 import { ProgramUnavailable } from "@/features/billing/ProgramUnavailable";
 import { formatCents } from "@/features/admin/utils/admin-format";
+export const metadata: Metadata = {
+  title: "Affiliate commissions",
+  robots: { index: false, follow: false },
+};
+
 export default async function AffiliateCommissionsPage() {
   const data = await getProgramServerData<AffiliateDashboard>("/affiliates/me");
   if (data === PROGRAM_UNAVAILABLE) return <ProgramUnavailable program="affiliate" />;
@@ -23,9 +32,9 @@ export default async function AffiliateCommissionsPage() {
             data.commissions.map((item) => (
               <div className="grid gap-2 py-4 text-sm sm:grid-cols-[1fr_auto_auto]" key={item.id}>
                 <div>
-                  <p className="font-bold">{item.status}</p>
+                  <p className="font-bold">{commissionStatusLabel(item.status)}</p>
                   <p className="text-muted text-xs">
-                    {new Date(item.createdAt).toLocaleDateString()}
+                    <LocalDate value={item.createdAt} />
                   </p>
                 </div>
                 <span>{item.rateBps / 100}% rate</span>

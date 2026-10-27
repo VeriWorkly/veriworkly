@@ -106,7 +106,7 @@ const ConfirmDialogContent = ({
               config.color,
             )}
           >
-            {confirmPhrase ? "Irreversible Action" : "Attention Required"}
+            {confirmPhrase ? "Type to confirm" : "Please confirm"}
           </p>
         </div>
       </div>

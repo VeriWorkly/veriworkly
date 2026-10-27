@@ -1,5 +1,4 @@
-import { hasSessionCookie, serverFetchData } from "@/lib/server-fetch";
-import { ApiRequestError } from "@/utils/fetchApiData";
+import { fetchServerAccount } from "@/features/auth/services/current-user";
 
 export type AccountProfile = {
   id: string;
@@ -17,14 +16,10 @@ export type AccountProfile = {
   };
 };
 
-/** `null` for a guest or a rejected session; an outage throws to the error boundary. */
+/**
+ * `null` for a guest or a rejected session (401 or 403, as everywhere else); an outage throws to
+ * the error boundary. The same read as the layout's, so the page costs no second request.
+ */
 export async function fetchAccountProfile(): Promise<AccountProfile | null> {
-  if (!(await hasSessionCookie())) return null;
-
-  try {
-    return await serverFetchData<AccountProfile>("/users/me");
-  } catch (error) {
-    if (error instanceof ApiRequestError && error.status === 401) return null;
-    throw error;
-  }
+  return (await fetchServerAccount()) as AccountProfile | null;
 }

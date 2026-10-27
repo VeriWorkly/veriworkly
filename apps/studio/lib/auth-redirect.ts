@@ -9,6 +9,15 @@ export const SESSION_COOKIE_NAMES = [
 /** Where a session the server no longer accepts is cleared before signing in again. */
 export const SESSION_EXPIRED_PATH = "/auth/session-expired";
 
+/** Pages only an account can open: the proxy sends anyone else to sign in. */
+const PROTECTED_PATH_PREFIXES = ["/admin", "/profile/master", "/profile/advanced"];
+
+export function isProtectedStudioPath(pathname: string) {
+  return PROTECTED_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 const APP_ORIGIN = new URL(siteConfig.links.app).origin;
 
 const TRUSTED_ORIGINS = new Set<string>([
@@ -61,4 +70,17 @@ export function getSafeAuthCallback(rawCallback: string | null, fallback = "/") 
   } catch {
     return fallback;
   }
+}
+
+/**
+ * Where "Continue as Guest" lands: the page the visitor came from, unless only an account can
+ * open it. The proxy would send a guest straight back to sign in, which reads as a loop.
+ */
+export function getGuestLandingPath(rawCallback: string | null) {
+  const target = getSafeAuthCallback(rawCallback);
+  // A full URL on the studio's own origin is checked like a path; other trusted origins are not
+  // the studio's to guard.
+  const url = new URL(target, APP_ORIGIN);
+
+  return url.origin === APP_ORIGIN && isProtectedStudioPath(url.pathname) ? "/" : target;
 }

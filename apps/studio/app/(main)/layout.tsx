@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 
 import { redirect } from "next/navigation";
 
-import { AuthInitializer } from "@/providers/auth-provider";
-import { GuestBackupBanner } from "@/components/dashboard/guest-backup/GuestBackupBanner";
+import { AuthInitializer, InitialUserProvider } from "@/providers/auth-provider";
 
 import { SESSION_EXPIRED_PATH } from "@/lib/auth-redirect";
 import { hasSessionCookie } from "@/lib/server-fetch";
@@ -17,11 +16,10 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
   if (!user && (await hasSessionCookie())) redirect(SESSION_EXPIRED_PATH);
 
   return (
-    <>
+    <InitialUserProvider user={user}>
       <AuthInitializer initialUser={user} />
       {children}
-      <GuestBackupBanner />
-    </>
+    </InitialUserProvider>
   );
 };
 

@@ -10,20 +10,14 @@ import {
   Loader2,
   Calendar,
   UserRound,
+  ExternalLink,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-import {
-  endOfLocalDay,
-  isPastLocalDate,
-  toLocalDateInput,
-  todayLocalDateInput,
-} from "@/lib/local-date";
-
-import { Badge, Modal, Input, Button, Checkbox, cn } from "@veriworkly/ui";
+import { Badge, Modal, Input, Button, Checkbox, Select, cn } from "@veriworkly/ui";
 
 import type { DocumentType } from "@/features/documents/core/document-types";
 import type { DocumentLibraryItem } from "@/features/documents/services/document-library";
@@ -41,10 +35,17 @@ import { prepareShareSnapshot } from "@/features/documents/services/prepare-shar
 import { loadDocumentById } from "@/features/documents/services/document-workspace-service";
 import EditProfileUsernameModal from "@/features/profile/components/EditProfileUsernameModal";
 
+import { useSessionUser } from "@/store/session-user";
 import { useUserStore } from "@/store/useUserStore";
 
 import ConfirmDialog from "./ConfirmDialog";
+import {
+  SHARE_EXPIRY_OPTIONS,
+  shareExpiryPayload,
+  type ShareExpiryChoice,
+} from "@/features/documents/services/share-expiry";
 import { pluralize } from "@/lib/pluralize";
+import { signInHref } from "@/lib/sign-in";
 
 interface ShareDocumentModalProps {
   documentId: string | null;
@@ -151,6 +152,14 @@ const ActiveLinkRow = ({
       </div>
 
       <div className="ml-3 flex items-center gap-1.5">
+        {/* What a recruiter sees, opened the way they would open it. */}
+        <Button asChild size="sm" variant="ghost" className="h-8 w-8 rounded-lg p-0">
+          <a href={url} target="_blank" rel="noopener noreferrer" title="Open link">
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span className="sr-only">Open link (opens in a new tab)</span>
+          </a>
+        </Button>
+
         <Button
           size="sm"
           variant="ghost"
@@ -185,7 +194,8 @@ const ShareDocumentModal = ({
   document,
   onClose,
 }: ShareDocumentModalProps) => {
-  const user = useUserStore((state) => state.user);
+  const router = useRouter();
+  const user = useSessionUser();
   const setUser = useUserStore((state) => state.setUser);
   const isMissingUsername = !user?.username;
   const [usernameModalOpen, setUsernameModalOpen] = useState(false);
@@ -194,9 +204,9 @@ const ShareDocumentModal = ({
     localOnly: boolean;
   } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [expiry, setExpiry] = useState("");
   const [password, setPassword] = useState("");
-  const [noExpiry, setNoExpiry] = useState(false);
+  // A new link lasts 7 days unless the user picks otherwise; an existing one keeps its expiry.
+  const [expiryChoice, setExpiryChoice] = useState<ShareExpiryChoice>("7");
   const [updateSlug, setUpdateSlug] = useState(false);
   const [removePassword, setRemovePassword] = useState(false);
 
@@ -245,20 +255,7 @@ const ShareDocumentModal = ({
 
       setShareLinks(links);
 
-      if (links.length > 0) {
-        const link = links[0];
-
-        if (link.expiresAt) {
-          setExpiry(toLocalDateInput(new Date(link.expiresAt)));
-          setNoExpiry(false);
-        } else {
-          setExpiry("");
-          setNoExpiry(true);
-        }
-      } else {
-        setExpiry("");
-        setNoExpiry(false);
-      }
+      setExpiryChoice(links.length > 0 ? "keep" : "7");
 
       setRemovePassword(false);
       setUpdateSlug(false);
@@ -285,11 +282,6 @@ const ShareDocumentModal = ({
   const handleCreate = async (options: { backUp?: boolean } = {}) => {
     if (!documentId || !documentType || busy) return;
 
-    if (!noExpiry && expiry && isPastLocalDate(expiry)) {
-      toast.error("That date has passed. Choose today or a later date.");
-      return;
-    }
-
     setBusy(true);
     setBackupNotice(null);
 
@@ -303,8 +295,7 @@ const ShareDocumentModal = ({
 
       const shareLink = await createShareLink(prepared.document, {
         password: password.trim() || undefined,
-        expiresAt: noExpiry || !expiry ? null : endOfLocalDay(expiry).toISOString(),
-        noExpiry,
+        ...shareExpiryPayload(expiryChoice, activeLink?.expiresAt ?? null),
         updateSlug,
         removePassword,
       });
@@ -325,7 +316,6 @@ const ShareDocumentModal = ({
       void refreshShareLinks(documentId);
 
       setPassword("");
-      setExpiry("");
       setRemovePassword(false);
       setUpdateSlug(false);
     } catch (err) {
@@ -398,8 +388,8 @@ const ShareDocumentModal = ({
                 share it.
               </p>
 
-              <Button asChild size="sm" className="w-full">
-                <Link href="/login">Sign in to share</Link>
+              <Button size="sm" className="w-full" onClick={() => router.push(signInHref())}>
+                Sign in to share
               </Button>
             </div>
           ) : isMissingUsername ? (
@@ -531,8 +521,8 @@ const ShareDocumentModal = ({
 
                   {updateSlug && (
                     <p className="mt-1 text-[10px] leading-tight font-medium text-orange-500">
-                      ⚠️ Warning: Syncing will update the link slug. Anyone visiting the old URL
-                      will get a 404 error.
+                      Updating the link address breaks the old one: anyone opening it will see
+                      &quot;not found&quot;.
                     </p>
                   )}
                 </div>
@@ -592,33 +582,32 @@ const ShareDocumentModal = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label
-                      htmlFor="share-expiry-input"
-                      className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase"
-                    >
-                      <Calendar className="h-3.5 w-3.5 opacity-70" /> Expiry
-                    </label>
+                  <label
+                    htmlFor="share-expiry-input"
+                    className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase"
+                  >
+                    <Calendar className="h-3.5 w-3.5 opacity-70" /> Expires after
+                  </label>
 
-                    <Checkbox
-                      label="Never"
-                      id="no-expiry"
-                      checked={noExpiry}
-                      className="scale-90"
-                      onCheckedChange={setNoExpiry}
-                    />
-                  </div>
-
-                  <Input
+                  <Select
                     id="share-expiry-input"
-                    type="date"
-                    min={todayLocalDateInput()}
-                    inputSize="sm"
-                    value={expiry}
-                    disabled={noExpiry}
-                    onChange={(e) => setExpiry(e.target.value)}
-                    className="disabled:bg-muted/50 disabled:opacity-50"
-                  />
+                    value={expiryChoice}
+                    onChange={(event) => setExpiryChoice(event.target.value as ShareExpiryChoice)}
+                    className="h-9"
+                  >
+                    {hasActiveLink && activeLink ? (
+                      <option value="keep">
+                        {activeLink.expiresAt
+                          ? `Keep: until ${new Date(activeLink.expiresAt).toLocaleDateString()}`
+                          : "Keep: never expires"}
+                      </option>
+                    ) : null}
+                    {SHARE_EXPIRY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
               </div>
 
@@ -643,7 +632,7 @@ const ShareDocumentModal = ({
                   </h4>
                 </div>
 
-                <div className="max-h-64 scrollbar-thin scrollbar-thumb-zinc-200 space-y-3 overflow-y-auto pr-1 transition-all dark:scrollbar-thumb-zinc-800">
+                <div className="max-h-64 space-y-3 overflow-y-auto pr-1 transition-all">
                   {linksLoading ? (
                     <div className="flex flex-col items-center justify-center py-8">
                       <Loader2 className="text-accent h-6 w-6 animate-spin opacity-40" />

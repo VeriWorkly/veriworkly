@@ -19,6 +19,7 @@ import {
   runAtsCheck,
 } from "@/features/ats/ats-api";
 import { freeLimitMessage } from "@/features/documents/services/document-limit";
+import { InitialUserContext } from "@/store/session-user";
 import { useUserStore } from "@/store/useUserStore";
 import { ApiRequestError } from "@/utils/fetchApiData";
 
@@ -1060,5 +1061,107 @@ describe("plan names and limits", () => {
       productName: "3-Day Sprint pass",
       priceLabel: "$2.99 for 3 days",
     });
+  });
+});
+
+describe("signed-in first paint (S-329)", () => {
+  beforeEach(() => {
+    // The store before `AuthInitializer` has run: what the server HTML and first paint see.
+    useUserStore.setState({ user: null, isLoggedIn: false, loading: true });
+  });
+
+  function renderFirstPaint(initialUser: { id: string; email: string } | null) {
+    return text(
+      renderToStaticMarkup(
+        <InitialUserContext value={initialUser as never}>
+          <BillingPage billing={null} history={[]} />
+        </InitialUserContext>,
+      ),
+    );
+  }
+
+  it("S-329: a signed-in user's billing page is not rendered behind the sign-in overlay", () => {
+    expect(renderFirstPaint({ id: "u1", email: "jane@example.com" })).not.toContain(
+      "Sign in to view subscriptions",
+    );
+  });
+
+  it("S-329: a guest still gets the sign-in overlay", () => {
+    expect(renderFirstPaint(null)).toContain("Sign in to view subscriptions");
+  });
+});
+
+describe("accounts, ATS and programs (Phase 9 Part D)", () => {
+  it("S-328 a conversion short of credits says how many it needs and how many there are", async () => {
+    const { conversionUnavailableReason } = await import("@/features/ats/ats-api");
+    const pricing = { resumeConversionCredits: 25 } as never;
+
+    expect(conversionUnavailableReason(pricing, 10)).toBe("Needs 25 credits, you have 10.");
+    expect(conversionUnavailableReason(undefined, 10)).toMatch(/unavailable right now/);
+  });
+
+  it("S-331 replacing the Master Profile from an import is announced and confirmed", async () => {
+    const { REPLACE_MASTER_NOTICE } =
+      await import("@/components/dashboard/modals/ImportProfileModal");
+    // The modal renders through a portal, so its wiring is read from the source.
+    const source = readFileSync(
+      join(process.cwd(), "components/dashboard/modals/ImportProfileModal.tsx"),
+      "utf8",
+    );
+
+    expect(REPLACE_MASTER_NOTICE).toMatch(/cannot be undone/);
+    expect(source).toContain('if (replaceMaster) setConfirmReplace("linkedin");');
+    expect(source).toContain('if (replaceMaster) setConfirmReplace("github");');
+    expect(source).toMatch(/<ConfirmDialog[\s\S]*description=\{REPLACE_MASTER_NOTICE\}/);
+  });
+
+  it("S-349 the account menu names a paying customer's plan, never Free", async () => {
+    const { accessTierLabel } = await import("@/features/billing/checkout-rules");
+
+    expect(accessTierLabel("credits")).toBe("Credits customer");
+    expect(accessTierLabel("bundle")).toBe("Job Hunter Bundle");
+    expect(accessTierLabel("free")).toBe("Free");
+  });
+
+  it("O7 LOW an approved ambassador who is also an admin is not 'under review'", async () => {
+    const { isApprovedAmbassador } = await import("@/features/ambassador/types");
+
+    expect(isApprovedAmbassador({ role: "ADMIN", ambassadorStatus: "APPROVED" } as never)).toBe(
+      true,
+    );
+    expect(isApprovedAmbassador({ role: "USER", ambassadorStatus: "PENDING" } as never)).toBe(
+      false,
+    );
+  });
+
+  it("O6 LOW affiliate pages show readable statuses and are titled", async () => {
+    const { commissionStatusLabel, referralStatusLabel } =
+      await import("@/features/affiliate/labels");
+    const payouts = await import("@/app/(main)/(dashboard)/affiliate/payouts/page");
+
+    expect(commissionStatusLabel("AVAILABLE")).toBe("Available");
+    expect(referralStatusLabel("SIGNED_UP")).toBe("Signed up");
+    expect(payouts.metadata).toMatchObject({ title: "Affiliate payouts" });
+  });
+});
+
+describe("GitHub import copy (owner decision A)", () => {
+  it("the import tab says what a plan can import, and that one GitHub account is for good", async () => {
+    const { githubImportNote, GITHUB_LINK_NOTICE } =
+      await import("@/components/dashboard/modals/ImportProfileModal");
+
+    expect(githubImportNote(false)).toBe(
+      "Free accounts import from the GitHub account linked to them.",
+    );
+    expect(githubImportNote(true)).toBe("You can import any public GitHub profile by username.");
+    expect(GITHUB_LINK_NOTICE).toBe(
+      "You can link one GitHub account. It can't be changed or removed later.",
+    );
+    expect(
+      readFileSync(
+        join(process.cwd(), "components/dashboard/modals/ImportProfileModal.tsx"),
+        "utf8",
+      ),
+    ).not.toMatch(/must match/);
   });
 });

@@ -179,6 +179,47 @@ describe("server fetch contract", () => {
     await expect(fetchCurrentUser()).rejects.toMatchObject({ status: 429 });
   });
 
+  it("O6 LOW: the profile page reads a 403 session as signed out, like the layout does", async () => {
+    const { fetchAccountProfile } = await import("@/features/profile/services/account-profile");
+
+    respondWith(403, { message: "Forbidden" });
+    await expect(fetchAccountProfile()).resolves.toBeNull();
+
+    respondWith(200, { data: { id: "u1", email: "a@b.co", updatedAt: "2026-10-01T00:00:00Z" } });
+    await expect(fetchAccountProfile()).resolves.toMatchObject({
+      id: "u1",
+      updatedAt: "2026-10-01T00:00:00Z",
+    });
+  });
+
+  it("the CORS refusal studio recognises is the one the server sends", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { isCorsRejection } = await import("@/lib/server-fetch-core");
+    const source = readFileSync(
+      join(process.cwd(), "..", "server", "src", "middleware", "cors.ts"),
+      "utf8",
+    );
+    const [, message] = /new ApiError\(403, "([^"]+)"\)/.exec(source) ?? [];
+
+    expect(message).toBeTruthy();
+    expect(isCorsRejection(403, message)).toBe(true);
+  });
+
+  it("a CORS refusal (403 'Not allowed by CORS') is an outage, not a signed-out user", async () => {
+    respondWith(403, { message: "Not allowed by CORS" });
+    await expect(fetchCurrentUser()).rejects.toMatchObject({ status: 403 });
+
+    const response = await clearExpiredSession(
+      new NextRequest("https://app.veriworkly.com/auth/session-expired", {
+        headers: { cookie: SESSION },
+      }),
+    );
+
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(response.headers.get("location")).toBe("https://app.veriworkly.com/");
+  });
+
   it("S-139: a visitor without a session cookie is a guest without asking the server", async () => {
     respondWith(500, {});
     request.cookie = "veriworkly-guest-mode=true";

@@ -1,4 +1,4 @@
-import type { CatalogProduct, ProductKey } from "@/features/billing/types";
+import type { BillingSummary, CatalogProduct, ProductKey } from "@/features/billing/types";
 import { ApiRequestError } from "@/utils/fetchApiData";
 import { formatCents } from "@/features/admin/utils/admin-format";
 
@@ -8,6 +8,15 @@ export const PLAN_NAMES: Record<ProductKey, string> = {
   portfolio_pro: "Creator Pro",
   bundle: "Job Hunter Bundle",
 };
+
+/** The plan in a few words, for places without room for the billing page's detail. */
+export function accessTierLabel(tier: BillingSummary["access"]["tier"]) {
+  if (tier === "pass") return "Job Hunter pass";
+  if (tier === "credits") return "Credits customer";
+  if (tier === "free") return "Free";
+
+  return PLAN_NAMES[tier];
+}
 
 export const PAYMENTS_OPEN_SOON =
   "Payments open soon. Purchases are not available yet; nothing has been charged.";

@@ -50,7 +50,7 @@ export function BasicsAndSummarySections({
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Template</label>
+            <p className="text-sm font-medium">Template</p>
             <Select
               aria-label="Template"
               value={localProfile.templateId}
@@ -70,7 +70,7 @@ export function BasicsAndSummarySections({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Display Mode</label>
+            <p className="text-sm font-medium">Display Mode</p>
             <Select
               aria-label="Display Mode"
               value={localProfile.links.displayMode}
@@ -85,7 +85,7 @@ export function BasicsAndSummarySections({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Full Name</label>
+            <p className="text-sm font-medium">Full Name</p>
             <Input
               aria-label="Full Name"
               value={localProfile.basics.fullName}
@@ -94,7 +94,7 @@ export function BasicsAndSummarySections({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Role</label>
+            <p className="text-sm font-medium">Role</p>
             <Input
               aria-label="Role"
               value={localProfile.basics.role}
@@ -103,7 +103,7 @@ export function BasicsAndSummarySections({
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Headline</label>
+            <p className="text-sm font-medium">Headline</p>
             <Input
               aria-label="Headline"
               value={localProfile.basics.headline}
@@ -112,7 +112,7 @@ export function BasicsAndSummarySections({
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Email</label>
+            <p className="text-sm font-medium">Email</p>
             <Input
               aria-label="Email"
               type="email"
@@ -128,7 +128,7 @@ export function BasicsAndSummarySections({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Phone</label>
+            <p className="text-sm font-medium">Phone</p>
             <Input
               aria-label="Phone"
               value={localProfile.basics.phone}
@@ -137,7 +137,7 @@ export function BasicsAndSummarySections({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Location</label>
+            <p className="text-sm font-medium">Location</p>
             <Input
               aria-label="Location"
               value={localProfile.basics.location}
@@ -153,7 +153,7 @@ export function BasicsAndSummarySections({
               checked={localProfile.basics.linkEmail}
               onChange={(event) => setBasicField("linkEmail", event.target.checked)}
             />
-            Show email
+            Email opens mail app
           </label>
           <label className="border-border/60 bg-card/40 flex items-center gap-3 rounded-xl border px-3 py-2 text-sm">
             <input
@@ -161,7 +161,7 @@ export function BasicsAndSummarySections({
               checked={localProfile.basics.linkPhone}
               onChange={(event) => setBasicField("linkPhone", event.target.checked)}
             />
-            Show phone
+            Phone opens call
           </label>
           <label className="border-border/60 bg-card/40 flex items-center gap-3 rounded-xl border px-3 py-2 text-sm">
             <input
@@ -169,9 +169,14 @@ export function BasicsAndSummarySections({
               checked={localProfile.basics.linkLocation}
               onChange={(event) => setBasicField("linkLocation", event.target.checked)}
             />
-            Show location
+            Location opens Google search
           </label>
         </div>
+
+        <p className="text-muted text-xs">
+          New documents print every detail filled in here. To keep your phone or location off them,
+          leave it empty here, or clear it in one document&apos;s editor.
+        </p>
       </SectionCard>
 
       <SectionCard
@@ -184,8 +189,9 @@ export function BasicsAndSummarySections({
         }}
       >
         <div className="space-y-2">
-          <label className="text-sm font-medium">Summary</label>
+          <p className="text-sm font-medium">Summary</p>
           <TextArea
+            aria-label="Summary"
             value={localProfile.summary}
             onChange={(event) =>
               updateProfile((prev) => ({

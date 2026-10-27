@@ -100,6 +100,48 @@
   animation: admin-draw 0.4s ease-out both;
 }
 
+/*
+ * The entry animations a few panels ask for (`animate-in fade-in zoom-in-95`,
+ * `slide-in-from-top-2`). No plugin defines them, so they are defined here; the length follows
+ * the element's `duration-*` class.
+ */
+@keyframes studio-enter {
+  from {
+    opacity: var(--studio-enter-opacity, 1);
+    transform: translateY(var(--studio-enter-y, 0)) scale(var(--studio-enter-scale, 1));
+  }
+}
+
+.animate-in {
+  animation: studio-enter var(--tw-duration, 200ms) ease-out;
+}
+
+.fade-in {
+  --studio-enter-opacity: 0;
+}
+
+.zoom-in {
+  --studio-enter-scale: 0.9;
+}
+
+.zoom-in-95 {
+  --studio-enter-scale: 0.95;
+}
+
+.slide-in-from-top-2 {
+  --studio-enter-y: -0.5rem;
+}
+
+.slide-in-from-top-4 {
+  --studio-enter-y: -1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

@@ -2,6 +2,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -17,6 +19,8 @@ import {
   shouldShowGuestBackupBanner,
 } from "@/components/dashboard/guest-backup/guest-backup-banner-state";
 import { templateGallery } from "@/app/(main)/(dashboard)/templates/template-gallery";
+import { getGuestLandingPath } from "@/lib/auth-redirect";
+import { InitialUserContext } from "@/store/session-user";
 import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
 import { resumeTemplateRegistry } from "@/templates/resume/registry";
 
@@ -164,5 +168,108 @@ describe("guest backup reminder (S-214)", () => {
 
     expect(readGuestBackupDismissed(blocked)).toBe(false);
     expect(() => rememberGuestBackupDismissed(blocked)).not.toThrow();
+  });
+});
+
+describe("the studio shell for guests and screen readers (Phase 9 Part D)", () => {
+  function renderNav(user: { id: string; email: string } | null) {
+    return renderToStaticMarkup(
+      createElement(
+        InitialUserContext,
+        { value: user as never },
+        createElement(NavGroup, {
+          items: [...mainNav, ...bottomNav],
+          pathname: "/",
+          collapsed: false,
+        }),
+      ),
+    );
+  }
+
+  it("S-321: a guest is not offered pages that only bounce them to sign in", () => {
+    const guest = renderNav(null);
+
+    expect(guest).not.toContain('href="/profile/master"');
+    expect(guest).not.toContain('href="/api-keys"');
+    expect(renderNav({ id: "u1", email: "a@b.co" })).toContain('href="/profile/master"');
+  });
+
+  it("S-321: Continue as Guest never lands on a page that needs an account", () => {
+    expect(getGuestLandingPath("/profile/master")).toBe("/");
+    expect(getGuestLandingPath("/profile/advanced?tab=1")).toBe("/");
+    expect(getGuestLandingPath("/documents")).toBe("/documents");
+  });
+
+  it("S-226: external nav links say they open a new tab", () => {
+    expect(renderNav(null)).toContain("(opens in a new tab)");
+  });
+
+  it("S-348: the shell has a skip link to the page content", () => {
+    const source = readFileSync(join(studioDir, "components/dashboard/StudioShell.tsx"), "utf8");
+
+    expect(source).toContain('href="#studio-content"');
+    expect(source).toContain('id="studio-content"');
+  });
+});
+
+describe("library, search and shell copy (Phase 9 Part D)", () => {
+  const read = (file: string) => readFileSync(join(studioDir, file), "utf8");
+
+  it("S-326 a type filter with nothing in it is not 'No documents yet'", () => {
+    const source = read("app/(main)/(dashboard)/documents/workspace.tsx");
+
+    expect(source).toMatch(/totalCount > 0 && activeType !== "ALL"/);
+    expect(source).toContain("Show all documents");
+  });
+
+  it("S-226 S-349 one name for the library and no developer copy on the overview", () => {
+    const pages = [
+      "app/(main)/(dashboard)/documents/page.tsx",
+      "app/(main)/(dashboard)/documents/workspace.tsx",
+      "app/(main)/(dashboard)/components/OverviewHome.tsx",
+      "app/(main)/(dashboard)/components/OverviewHomeHeader.tsx",
+      "app/(main)/(dashboard)/components/OverviewReferenceCard.tsx",
+    ]
+      .map(read)
+      .join("\n");
+
+    expect(pages).not.toMatch(
+      /Resume library|Document library|"Resumes",|Recently opened|duplicating|Compact view|Last viewed/,
+    );
+  });
+
+  it("O6 LOW the guest reminder sits inside the page content and signs in back to this page", () => {
+    expect(read("components/dashboard/StudioShell.tsx")).toContain("<GuestBackupBanner />");
+    expect(read("app/(main)/layout.tsx")).not.toContain("GuestBackupBanner");
+    expect(read("components/dashboard/guest-backup/GuestBackupBanner.tsx")).toContain(
+      "href={signInHref()}",
+    );
+  });
+
+  it("O6 LOW search tells an empty library from a search with no match", () => {
+    const source = read("components/dashboard/modals/WorkspaceSearchModal.tsx");
+
+    expect(source).toContain("No documents yet");
+    expect(source).toContain('event.key !== "ArrowDown"');
+  });
+
+  it("O6 LOW the theme icon is chosen by CSS, so the server and a dark-mode client agree", () => {
+    const source = read("components/dashboard/ThemeToggle.tsx");
+
+    expect(source).not.toMatch(/resolvedTheme === "dark" \?\s*\(/);
+    expect(source).toContain("dark:hidden");
+  });
+
+  it("O6 LOW entry-animation classes in use are defined", () => {
+    const css = read("app/globals.css");
+
+    for (const name of ["animate-in", "fade-in", "zoom-in-95", "slide-in-from-top-2"]) {
+      expect(css, name).toContain(`.${name} {`);
+    }
+  });
+
+  it("O6 LOW the share error page uses Next 16's retry, and the proxy no longer lists a deleted file", () => {
+    expect(read("app/share/error.tsx")).toContain("retry()");
+    expect(read("proxy.ts")).not.toContain("/icon0.svg");
   });
 });

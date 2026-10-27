@@ -55,15 +55,21 @@ export async function generateMetadata({ params }: ShareParams): Promise<Metadat
   const { username, slug } = await params;
   const share = await loadShare(username, slug);
 
+  // A password-protected link does not name its document to anyone without the password.
   const title =
-    share.kind === "found" && share.data.documentTitle
+    share.kind === "found" && share.data.documentTitle && !share.data.passwordRequired
       ? share.data.documentTitle
       : "Shared document";
+  const description = "A document shared with VeriWorkly.";
+  const url = `/share/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`;
 
+  // Chat apps unfurl from these; without them a shared link previews as the studio dashboard.
   return {
     title: { absolute: `${title} | VeriWorkly` },
-    description: "A document shared with VeriWorkly.",
+    description,
     robots: { index: false, follow: false },
+    openGraph: { type: "website", url, title, description, siteName: "VeriWorkly" },
+    twitter: { card: "summary", title, description },
   };
 }
 

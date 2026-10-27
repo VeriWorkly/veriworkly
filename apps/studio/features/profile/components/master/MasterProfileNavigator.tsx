@@ -49,7 +49,7 @@ export function MasterProfileNavigator({
             <StatRow label="Progress" value={`${activeSectionIndex + 1} / ${sections.length}`} />
           </div>
 
-          <nav className="custom-scrollbar max-h-[50vh] space-y-1 overflow-y-auto pr-1">
+          <nav className="max-h-[50vh] space-y-1 overflow-y-auto pr-1">
             {sections.map((section) => (
               <NavButton
                 key={section.id}

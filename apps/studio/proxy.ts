@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getSafeAuthCallback, SESSION_COOKIE_NAMES } from "@/lib/auth-redirect";
+import {
+  getSafeAuthCallback,
+  isProtectedStudioPath,
+  SESSION_COOKIE_NAMES,
+} from "@/lib/auth-redirect";
 
 /**
  * Framework output and `public/` asset folders never reach the proxy. Everything else does,
@@ -10,7 +14,6 @@ export const config = {
   matcher: ["/((?!_next/|icons/|images/|fonts/|og/|templates/).*)"],
 };
 
-const PROTECTED_PATH_PREFIXES = ["/admin", "/profile/master", "/profile/advanced"];
 const GUEST_COOKIE_NAME = "veriworkly-guest-mode";
 
 /** Routes that answer the same to everyone: API handlers, public shares, the parity harness. */
@@ -26,7 +29,6 @@ const PUBLIC_FILES = new Set([
   "/sitemap.xml",
   "/manifest.json",
   "/favicon.ico",
-  "/icon0.svg",
   "/icon1.png",
   "/apple-icon.png",
   "/veriworkly-logo.png",
@@ -39,10 +41,6 @@ const SESSION_EXPIRED_PARAM = "session";
 
 function matchesPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
-}
-
-export function isProtectedStudioPath(pathname: string) {
-  return PROTECTED_PATH_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
 }
 
 function isPublicStudioPath(pathname: string) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Save, RotateCcw } from "lucide-react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type RefObject } from "react";
 
 import type {
   UpdateProfile,
@@ -24,11 +24,13 @@ import {
   removeItem,
   sectionRowKey,
   setLinkByType,
+  rebaseAfterSave,
+  isInAppNavigation,
   normalizeProfileIds,
   withCustomSectionRows,
-  sanitizeMasterProfileForSave,
-  validateMasterProfileForSave,
+  prepareMasterProfileForSave,
 } from "./master-utils";
+import { dismissMasterSaveFailure, retryLatestSave, type SaveLatest } from "./master-save-failure";
 
 /** Every profile the editor holds or compares against has one visibility row per custom section. */
 function prepareProfile(profile: MasterProfileData) {
@@ -37,19 +39,33 @@ function prepareProfile(profile: MasterProfileData) {
 
 type ProfileMasterProps = {
   profile: MasterProfileData;
-  onSave: (profile: MasterProfileData) => Promise<void>;
+  /** `expectedUpdatedAt` overrides the loaded cursor, to overwrite after a conflict. */
+  onSave: (profile: MasterProfileData, expectedUpdatedAt?: string) => Promise<void>;
   isSaving?: boolean;
+  /** Filled with a save of whatever the editor holds when it is called, for a toast's retry. */
+  saveLatestRef?: RefObject<SaveLatest | null>;
+  /** Nothing is stored for this account yet: the profile on screen is a blank start. */
+  neverSaved?: boolean;
 };
 
-const ProfileMaster = ({ profile, onSave, isSaving }: ProfileMasterProps) => {
+const ProfileMaster = ({
+  profile,
+  onSave,
+  isSaving,
+  neverSaved,
+  saveLatestRef,
+}: ProfileMasterProps) => {
   const [localProfile, setLocalProfile] = useState<MasterProfileData>(() =>
     prepareProfile(profile),
   );
+  // The editor's state at the moment a save was sent, to tell a reply apart from new typing.
+  const submittedRef = useRef<MasterProfileData | null>(null);
 
   const [status, setStatus] = useState<{
     type: "success" | "error";
     msg: string;
   } | null>(null);
+  const [issues, setIssues] = useState<string[]>([]);
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -66,13 +82,43 @@ const ProfileMaster = ({ profile, onSave, isSaving }: ProfileMasterProps) => {
   }, [localProfile, initialFingerprint]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalProfile(prepareProfile(profile));
+    const submitted = submittedRef.current;
+    submittedRef.current = null;
+
+    setLocalProfile((current) => rebaseAfterSave(current, submitted, prepareProfile(profile)));
   }, [profile]);
+
+  // While there are unsaved changes, reloading or closing the tab makes the browser ask first,
+  // and a link to another studio page asks before leaving. The link check runs in the capture
+  // phase, ahead of the client router's own click handler.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    const guardLinks = (event: MouseEvent) => {
+      const anchor = (event.target as Element | null)?.closest?.("a[href]") as
+        HTMLAnchorElement | null | undefined;
+
+      if (!anchor || !isInAppNavigation(event, anchor, window.location)) return;
+      if (window.confirm("You have unsaved changes to your Master Profile. Leave anyway?")) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    window.addEventListener("beforeunload", warn);
+    document.addEventListener("click", guardLinks, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guardLinks, true);
+    };
+  }, [hasUnsavedChanges]);
 
   const updateProfile: UpdateProfile = useCallback((updater) => {
     setLocalProfile((prev) => withCustomSectionRows(updater(prev)));
     setStatus(null);
+    setIssues([]);
   }, []);
 
   // Shared by both CoreSections and AdditionalSections. Typed against the
@@ -115,31 +161,79 @@ const ProfileMaster = ({ profile, onSave, isSaving }: ProfileMasterProps) => {
     [updateProfile],
   );
 
-  const handleSave = useCallback(async () => {
-    if (!hasUnsavedChanges || isSaving) return;
-    try {
-      const sanitized = sanitizeMasterProfileForSave(localProfile);
-      const validation = validateMasterProfileForSave(sanitized);
+  /** A retry after a failure passes the cursor to overwrite and saves even if nothing changed since. */
+  const save = useCallback(
+    async (expectedUpdatedAt?: string) => {
+      if (isSaving) return;
+      try {
+        const prepared = prepareMasterProfileForSave(localProfile);
 
-      if (!validation.ok) {
-        setStatus({
-          type: "error",
-          msg: validation.issues.length > 0 ? validation.issues.join(" · ") : "Check fields.",
-        });
+        if (!prepared.ok) {
+          setIssues(prepared.issues);
+          setStatus({ type: "error", msg: "Not saved: fix the fields listed above." });
 
-        return;
+          return;
+        }
+
+        setIssues([]);
+        submittedRef.current = localProfile;
+        await onSave(prepared.profile, expectedUpdatedAt);
+        dismissMasterSaveFailure();
+        setStatus({ type: "success", msg: "Saved to your account." });
+
+        setTimeout(() => setStatus(null), 3000);
+      } catch (error) {
+        submittedRef.current = null;
+        setStatus({ type: "error", msg: error instanceof Error ? error.message : "Save failed." });
       }
+    },
+    [isSaving, localProfile, onSave],
+  );
 
-      await onSave(sanitized);
-      setStatus({ type: "success", msg: "Changes synced." });
+  // A retry asked for while a save runs, run once that save settles.
+  const queuedRetryRef = useRef<{ cursor?: string } | null>(null);
 
-      setTimeout(() => setStatus(null), 3000);
-    } catch (error) {
-      setStatus({ type: "error", msg: error instanceof Error ? error.message : "Save failed." });
-    }
-  }, [hasUnsavedChanges, isSaving, localProfile, onSave]);
+  useEffect(() => {
+    const queued = queuedRetryRef.current;
+    if (isSaving || !queued) return;
 
-  const handleReset = () => setLocalProfile(prepareProfile(profile));
+    queuedRetryRef.current = null;
+    void save(queued.cursor);
+  }, [isSaving, save]);
+
+  // Re-pointed after every render, so a toast created earlier acts on the current draft; cleared
+  // on unmount, so a toast outliving the page does nothing.
+  useEffect(() => {
+    if (!saveLatestRef) return;
+
+    saveLatestRef.current = (cursor) =>
+      retryLatestSave(
+        {
+          isDirty: () => JSON.stringify(prepareProfile(localProfile)) !== initialFingerprint,
+          isSaving: () => Boolean(isSaving),
+          queue: (queuedCursor) => {
+            queuedRetryRef.current = { cursor: queuedCursor };
+          },
+          save,
+        },
+        cursor,
+      );
+
+    return () => {
+      saveLatestRef.current = null;
+    };
+  });
+
+  const handleSave = () => {
+    if (hasUnsavedChanges) void save();
+  };
+
+  const handleReset = () => {
+    setLocalProfile(prepareProfile(profile));
+    setIssues([]);
+    // "Save my version" would now save the stored copy over newer data: it is withdrawn.
+    dismissMasterSaveFailure();
+  };
 
   return (
     <div className="relative flex flex-col gap-12">
@@ -194,7 +288,21 @@ const ProfileMaster = ({ profile, onSave, isSaving }: ProfileMasterProps) => {
         />
       </div>
 
-      <div className="sticky bottom-6 z-40 mt-8 w-full">
+      <div className="sticky bottom-6 z-40 mt-8 w-full space-y-3">
+        {issues.length > 0 ? (
+          <div
+            role="alert"
+            className="border-destructive/30 bg-background/95 rounded-xl border p-4 shadow-xl backdrop-blur-md"
+          >
+            <p className="text-destructive text-sm font-bold">Your Master Profile was not saved</p>
+            <ul className="text-foreground mt-2 list-disc space-y-1 pl-5 text-sm">
+              {issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <Card
           className={cn(
             "flex flex-wrap items-center justify-between gap-4 border-2 p-2 pl-4 shadow-2xl backdrop-blur-md transition-all duration-300",
@@ -207,13 +315,17 @@ const ProfileMaster = ({ profile, onSave, isSaving }: ProfileMasterProps) => {
             <div
               className={cn(
                 "h-2.5 w-2.5 rounded-full",
-                hasUnsavedChanges ? "animate-pulse bg-amber-500" : "bg-emerald-500",
+                hasUnsavedChanges
+                  ? "animate-pulse bg-amber-500"
+                  : neverSaved
+                    ? "bg-zinc-400"
+                    : "bg-emerald-500",
               )}
             />
 
             <div className="flex flex-col">
               <span className="text-[10px] font-black tracking-widest uppercase">
-                {hasUnsavedChanges ? "Unsaved Changes" : "Everything Synced"}
+                {hasUnsavedChanges ? "Unsaved changes" : neverSaved ? "Not saved yet" : "Saved"}
               </span>
 
               {status && (

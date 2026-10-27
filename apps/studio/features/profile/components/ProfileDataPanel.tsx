@@ -9,9 +9,12 @@ import {
   RefreshCw,
   UserRound,
   CheckCircle2,
+  CircleDashed,
   CalendarClock,
 } from "lucide-react";
 import * as React from "react";
+
+import { LocalDate } from "@/components/LocalDate";
 
 import type { AccountProfile } from "@/features/profile/services/account-profile";
 
@@ -19,14 +22,11 @@ import UsernameLockedModal from "./UsernameLockedModal";
 import EditProfileNameModal from "./EditProfileNameModal";
 import EditProfileUsernameModal from "./EditProfileUsernameModal";
 
+/** In the reader's own time zone, rendered after hydration so the server and client agree. */
 function formatDate(value?: string) {
-  if (!value) return "Not available";
+  if (!value || Number.isNaN(new Date(value).getTime())) return "Not available";
 
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "Not available";
-
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return <LocalDate value={value} />;
 }
 
 function DataLine({
@@ -36,7 +36,7 @@ function DataLine({
 }: {
   icon: LucideIcon;
   label: string;
-  value: string;
+  value: React.ReactNode;
 }) {
   return (
     <div className="bg-muted/10 min-w-0 rounded-xl p-3">
@@ -97,8 +97,12 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
           </div>
 
           <div className="bg-background/70 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            {profile?.emailVerified ? "Verified email" : "Email pending"}
+            {profile?.emailVerified ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            ) : (
+              <CircleDashed className="h-4 w-4 text-amber-500" />
+            )}
+            {profile?.emailVerified ? "Verified email" : "Email not verified"}
           </div>
         </div>
 
@@ -207,7 +211,7 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
       {canEditAccount ? (
         <>
           <EditProfileNameModal
-            currentName={name}
+            currentName={profile?.name ?? ""}
             open={isEditModalOpen}
             onClose={() => setIsEditModalOpen(false)}
           />

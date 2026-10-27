@@ -74,9 +74,13 @@ const EditProfileUsernameModal = ({ open, onClose, onSaved }: EditProfileUsernam
 
     if (!trimmed || validateUsernameFormat(trimmed)) return;
 
+    // A reply for a name the user has since changed must not decide the current one.
+    let current = true;
+
     const delayDebounce = setTimeout(async () => {
       try {
         const response = await checkUsernameAvailability(trimmed);
+        if (!current) return;
         setIsAvailable(response.available);
         setNormalizedUsername(response.normalizedUsername);
         if (!response.available) {
@@ -87,13 +91,18 @@ const EditProfileUsernameModal = ({ open, onClose, onSaved }: EditProfileUsernam
           );
         }
       } catch {
-        setValidationError("Could not verify username availability. Please try again.");
+        if (current) {
+          setValidationError("Could not verify username availability. Please try again.");
+        }
       } finally {
-        setIsChecking(false);
+        if (current) setIsChecking(false);
       }
     }, 450);
 
-    return () => clearTimeout(delayDebounce);
+    return () => {
+      current = false;
+      clearTimeout(delayDebounce);
+    };
   }, [username]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

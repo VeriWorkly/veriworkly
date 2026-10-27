@@ -20,7 +20,8 @@ const ProfileHero = ({ profile }: { profile: AccountProfile | null }) => {
           </h1>
 
           <p className="text-muted mt-2 max-w-2xl text-base">
-            Account identity, sync status, and workspace usage. Master career data stays separate.
+            Account identity, backup status, and workspace usage. Your Master Profile is edited on
+            its own page.
           </p>
         </div>
 

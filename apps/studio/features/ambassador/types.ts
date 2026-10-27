@@ -24,3 +24,11 @@ export type AmbassadorStatus = {
   graduationYear: string | null;
   application: AmbassadorApplicationSnapshot | null;
 };
+
+/**
+ * Approval is recorded on `ambassadorStatus`; the role moves to AMBASSADOR only for a plain user,
+ * so an approved admin keeps ADMIN and must still read as an ambassador.
+ */
+export function isApprovedAmbassador(status: AmbassadorStatus | null) {
+  return status?.role === "AMBASSADOR" || status?.ambassadorStatus === "APPROVED";
+}

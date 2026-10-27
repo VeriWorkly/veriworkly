@@ -1,9 +1,18 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { getSafeAuthCallback } from "@/lib/auth-redirect";
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  getGuestLandingPath,
+  getSafeAuthCallback,
+  isProtectedStudioPath,
+} from "@/lib/auth-redirect";
 import { isInvalidSessionResponse } from "@/lib/invalid-session";
-import proxy, { isProtectedStudioPath } from "@/proxy";
+import proxy from "@/proxy";
+import { describeSignInError, signInFailureFromQuery, signInHref } from "@/lib/sign-in";
+import { siteConfig } from "@/config/site";
 
 describe("auth redirect contract", () => {
   it("keeps only account-sensitive Studio routes protected", () => {
@@ -177,5 +186,143 @@ describe("auth redirect contract", () => {
     expect(isInvalidSessionResponse("/shares/public/jane/resume", 401)).toBe(false);
     expect(isInvalidSessionResponse("/shares/public/jane/resume/verify?x=1", 401)).toBe(false);
     expect(isInvalidSessionResponse("/shares", 401)).toBe(true);
+  });
+});
+
+describe("sign-in from anywhere (Phase 9 Part D)", () => {
+  it("S-324 a failed social sign-in says what happened, from the code alone", () => {
+    expect(describeSignInError("account_not_linked").message).toMatch(
+      /already has a VeriWorkly account/,
+    );
+    expect(describeSignInError("access_denied")).toEqual({
+      tone: "info",
+      message: "Sign in was cancelled.",
+    });
+    expect(describeSignInError("made_up").message).toBe("Sign in failed. Please try again.");
+  });
+
+  it("S-324 the free-text error_description in the link is never shown", () => {
+    const params = new URLSearchParams({
+      error: "internal_server_error",
+      error_description: "Call +1 555 0100 to restore your account",
+    });
+
+    expect(signInFailureFromQuery(params)).toEqual({
+      tone: "error",
+      message: "Sign in failed. Please try again.",
+    });
+    expect(signInFailureFromQuery(new URLSearchParams())).toBeNull();
+  });
+
+  it("S-352 a GitHub account with another email is refused in words that say so", () => {
+    expect(describeSignInError("email_doesn't_match").message).toBe(
+      "This server still requires the same email on both accounts.",
+    );
+  });
+
+  it("S-321 an absolute studio URL to a protected page is not a guest landing", () => {
+    const app = new URL(siteConfig.links.app).origin;
+
+    expect(getGuestLandingPath(`${app}/profile/master`)).toBe("/");
+    expect(getGuestLandingPath(`${app}/documents`)).toBe(`${app}/documents`);
+  });
+
+  it("S-350 sign-in prompts come back to the page they were opened on", () => {
+    vi.stubGlobal("window", { location: { pathname: "/editor/resume/r1", search: "?tab=2" } });
+
+    expect(signInHref()).toBe(
+      `/login?callbackURL=${encodeURIComponent("/editor/resume/r1?tab=2")}`,
+    );
+
+    for (const file of [
+      "components/modals/ShareDocumentModal.tsx",
+      "components/dashboard/modals/ImportProfileModal.tsx",
+      "components/dashboard/account-menu/AccountMenu.tsx",
+    ]) {
+      const source = readFileSync(join(__dirname, "..", "..", file), "utf8");
+
+      expect(source, file).toContain("signInHref()");
+      expect(source, file).not.toMatch(/<Link href="\/login">|push\("\/login"\)\}?>\s*Sign in/);
+    }
+  });
+
+  it("S-352 an email-code user can link GitHub, and a refused link lands where it is explained", async () => {
+    const linkSocial = vi.fn(async () => ({ data: { url: "https://github.com" }, error: null }));
+    vi.doMock("@/lib/auth-client", () => ({ authClient: { linkSocial } }));
+    vi.stubGlobal("window", { location: { pathname: "/documents", search: "" } });
+    vi.resetModules();
+
+    const { linkGithubAccount } = await import("@/lib/sign-in");
+    await linkGithubAccount();
+
+    expect(linkSocial).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "github",
+        callbackURL: expect.stringMatching(/\/documents$/),
+        errorCallbackURL: expect.stringMatching(/\/profile$/),
+      }),
+    );
+    vi.doUnmock("@/lib/auth-client");
+  });
+});
+
+describe("account pages after a redirect (Phase 9 Part D)", () => {
+  const read = (file: string) => readFileSync(join(__dirname, "..", "..", file), "utf8");
+
+  it("S-352 a refused GitHub link is explained on the profile page it lands on", () => {
+    expect(read("app/(main)/(dashboard)/profile/page.tsx")).toContain("<LinkErrorNotice />");
+    expect(read("features/profile/components/LinkErrorNotice.tsx")).toContain(
+      "signInFailureFromQuery(searchParams)",
+    );
+  });
+
+  it("O7 LOW a late availability reply cannot decide a username the user has since changed", () => {
+    const source = read("features/profile/components/EditProfileUsernameModal.tsx");
+
+    expect(source).toMatch(/if \(!current\) return;/);
+  });
+});
+
+describe("GitHub linking (owner decision A)", () => {
+  const read = (file: string) => readFileSync(join(__dirname, "..", "..", file), "utf8");
+
+  it("server refusals read as plain text, an old server's email rule included", () => {
+    expect(describeSignInError("email_doesn't_match").message).toBe(
+      "This server still requires the same email on both accounts.",
+    );
+    expect(describeSignInError("github_already_linked").message).toMatch(
+      /already linked to a different GitHub account/,
+    );
+    expect(describeSignInError("unlink_not_allowed").message).toBe(
+      "A linked GitHub account can't be removed.",
+    );
+    expect(describeSignInError("some_new_code").message).toBe("Sign in failed. Please try again.");
+  });
+
+  it("a code the link call returns is mapped; without one its message is shown", async () => {
+    const linkSocial = vi
+      .fn()
+      .mockResolvedValueOnce({ error: { code: "GITHUB_ALREADY_LINKED", message: "raw" } })
+      .mockResolvedValueOnce({ error: { message: "Provider not configured" } });
+    vi.doMock("@/lib/auth-client", () => ({ authClient: { linkSocial } }));
+    vi.stubGlobal("window", { location: { pathname: "/documents", search: "" } });
+    vi.resetModules();
+    const { linkGithubAccount } = await import("@/lib/sign-in");
+
+    await expect(linkGithubAccount()).rejects.toThrow(
+      /already linked to a different GitHub account/,
+    );
+    await expect(linkGithubAccount()).rejects.toThrow("Provider not configured");
+    vi.doUnmock("@/lib/auth-client");
+  });
+
+  it("the studio offers no way to disconnect GitHub", () => {
+    for (const file of [
+      "components/dashboard/modals/ImportProfileModal.tsx",
+      "lib/sign-in.ts",
+      "features/profile/components/ProfileDataPanel.tsx",
+    ]) {
+      expect(read(file), file).not.toMatch(/unlinkAccount|Disconnect GitHub/);
+    }
   });
 });

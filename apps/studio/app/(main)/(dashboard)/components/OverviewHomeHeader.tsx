@@ -2,7 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 
-import { useUserStore } from "@/store/useUserStore";
+import { useSessionUser } from "@/store/session-user";
 
 const subscribeNever = () => () => {};
 
@@ -31,7 +31,7 @@ const OverviewHomeHeader = ({
   coverLetterCount: number;
   resumeCount: number;
 }) => {
-  const user = useUserStore((state) => state.user);
+  const user = useSessionUser();
 
   const firstName = useMemo(() => {
     const name = user?.name || user?.email?.split("@")[0] || "builder";
@@ -57,13 +57,12 @@ const OverviewHomeHeader = ({
           </h1>
 
           <p className="text-muted mt-2 max-w-2xl text-base">
-            Recent documents, useful references, and account shortcuts without duplicating the full
-            library page.
+            Your latest resumes and cover letters, and help when you need it.
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Files" value={totalCount} />
+          <Stat label="Documents" value={totalCount} />
           <Stat label="Resumes" value={resumeCount} />
           <Stat label="Letters" value={coverLetterCount} />
         </div>
