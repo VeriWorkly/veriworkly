@@ -31,7 +31,9 @@ vi.mock("#config", () => ({
 
 const INTERNAL_KEY = "test-internal-api-key-0123456789abcdef";
 
-vi.mock("#lib/redis", () => ({
+// The real deadline helper and timeout error, so the limiter's timeout handling is exercised.
+vi.mock("#lib/redis", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("#lib/redis")>()),
   getRedis: mockGetRedis,
 }));
 

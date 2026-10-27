@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { config } from "#config";
 
 import { logger } from "#lib/logger";
-import { getRedis } from "#lib/redis";
+import { getRedis, RedisTimeoutError, withRedisDeadline } from "#lib/redis";
 import { timeRedis } from "#lib/metrics";
 import { ApiError, createErrorResponse } from "#lib/errors";
 import { AI_REQUEST_DEADLINE_MS } from "#services/ats/aiDeadline";
@@ -22,8 +22,8 @@ const MAX_MEMORY_ENTRIES = parseIntegerEnv(process.env.MAX_MEMORY_ENTRIES, 15000
 /**
  * V-095: the limiter's EVAL sits in front of every request, so a connected but stalled Redis
  * must not stall the API. Past this the request is counted in memory (or 503 for the
- * fail-closed classes). node-redis's own `timeout` option only covers the write queue, not the
- * wait for a reply, hence the race below.
+ * fail-closed classes). Tighter than the bound `getRedis()` puts on every command, because this
+ * wait sits in front of every route.
  */
 const REDIS_TIMEOUT_MS = parseIntegerEnv(process.env.RATE_LIMIT_REDIS_TIMEOUT_MS, 400);
 /** After this many timeouts in a row the limiter stops asking Redis for `BREAKER_OPEN_MS`. */
@@ -44,19 +44,6 @@ function isAutosaveRequest(method: string, path: string): boolean {
     (method === "PATCH" && /^\/api\/v1\/documents\/[^/]+$/.test(path)) ||
     (method === "PUT" && path === "/api/v1/profiles/master")
   );
-}
-
-class RedisTimeoutError extends Error {}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(
-      () => reject(new RedisTimeoutError(`Redis did not answer within ${ms} ms`)),
-      ms,
-    );
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -83,11 +70,15 @@ const RATE_LIMIT_EXEMPT_PATHS = new Set([
 const INTERNAL_KEY_EXEMPT_PATHS = new Set(["/api/v1/health/metrics", "/api/v1/health/jobs"]);
 
 /**
- * The ATS routes that spend AI credits. They sat in the generic 100/15 min class while
- * `/api/v1/ai/*` had its own 20/min, although each call holds a provider connection for up to
- * the request deadline (V-038).
+ * The routes outside `/api/v1/ai` that spend AI credits. They sat in the generic 100/15 min class
+ * while `/api/v1/ai/*` had its own 20/min, although each call holds a provider connection for up
+ * to the request deadline (V-038). The LinkedIn import is the same resume conversion (V-239).
  */
-const AI_BILLED_ATS_PATHS = new Set(["/api/v1/ats/analyze", "/api/v1/ats/convert-resume"]);
+const AI_BILLED_ATS_PATHS = new Set([
+  "/api/v1/ats/analyze",
+  "/api/v1/ats/convert-resume",
+  "/api/v1/profiles/import/linkedin",
+]);
 
 /**
  * Express routing is case-insensitive and non-strict, so `/API/v1/Contact/` reaches the same
@@ -391,7 +382,7 @@ async function countBuckets(
 
     const counts = (await timeRedis(
       "ratelimit_eval",
-      withTimeout(
+      withRedisDeadline(
         getRedis().eval(INCREMENT_WITH_EXPIRY_SCRIPT, {
           keys: buckets.map((b) => b.key),
           arguments: buckets.map((b) => String(b.windowMs)),

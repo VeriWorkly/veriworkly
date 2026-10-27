@@ -165,6 +165,7 @@ const mockRedis = {
 
 vi.mock("#lib/redis", () => ({
   getRedis: () => mockRedis,
+  redisWrite: (run: (redis: typeof mockRedis) => Promise<unknown>) => run(mockRedis),
   cacheGet: vi.fn(),
   cacheSet: vi.fn(),
   cacheDel: vi.fn(),

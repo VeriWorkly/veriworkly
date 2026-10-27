@@ -4,10 +4,10 @@ import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
 import { cacheDel } from "#lib/redis";
 import { isAdminUser } from "#lib/isAdminUser";
-import { masterProfileCacheKey, userProfileCacheKey } from "#lib/cacheKeys";
+import { bumpGeneration } from "#lib/cacheGeneration";
+import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
 import { revokeAllSessionsForUser, revokeAllSessionsForUserSafely } from "#auth/sessions";
 import { ApiKeyService } from "#services/apiKeyService";
-import { PortfolioAssetService } from "#services/portfolioAssetService";
 import {
   ADMIN_AUDIT_ACTIONS,
   writeAdminAudit,
@@ -15,9 +15,11 @@ import {
   getAuditHistory,
 } from "#services/admin/adminAuditService";
 import {
+  ACCOUNT_DELETION_TRANSACTION,
+  assertNoOpenCheckout,
   deleteUserCascade,
   findChargeableSubscription,
-  purgeDeletedUserCaches,
+  finishAccountDeletion,
   readDeletedUserCacheTargets,
 } from "#services/userService";
 
@@ -274,7 +276,7 @@ export async function getUserDetail(userId: string) {
 async function assertNotProtectedAdmin(userId: string, operation: string) {
   const target = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true },
+    select: { email: true, name: true },
   });
 
   if (!target) throw new ApiError(404, "User not found.");
@@ -358,10 +360,24 @@ export async function updateUser(
 
   // As the user-side writes do (V-031): the master-profile summary repeats name and auto-sync,
   // and the public affiliate leaderboards show name and username.
+  const renamed = input.username !== undefined && input.username !== existing.username;
+
   await Promise.all([
     cacheDel(userProfileCacheKey(userId)),
-    cacheDel(masterProfileCacheKey(userId)),
+    bumpGeneration(cacheNamespaces.masterProfile(userId)),
     ...(input.name !== undefined || input.username !== undefined ? [invalidateLeaderboards()] : []),
+    // Public share pages are cached under the username: the old name stops resolving at once, and
+    // a cached 404 under the new one is dropped (V-233).
+    ...(renamed
+      ? [
+          bumpGeneration(
+            ...[existing.username, input.username]
+              .filter((name): name is string => Boolean(name))
+              .map((name) => cacheNamespaces.publicShare(name)),
+            cacheNamespaces.shareList(userId),
+          ),
+        ]
+      : []),
   ]);
 
   return { user: updated, previousRole: existing.role, roleChanged };
@@ -397,6 +413,9 @@ export async function deleteUser(userId: string, confirmEmail: string, audit: Ad
       409,
       `This account has a subscription that can still be charged (${liveSubscription.id}, ${liveSubscription.productKey}, ${liveSubscription.status}${liveSubscription.cancelAtPeriodEnd ? ", cancelling at period end" : ""}${liveSubscription.currentPeriodEnd ? `, period ends ${liveSubscription.currentPeriodEnd.toISOString().slice(0, 10)}` : ""}). Cancel it in the Dodo dashboard and wait for the cancellation webhook, or for the period to end, before deleting the account.`,
     );
+
+  // An admin can settle an abandoned session with the provider instead of waiting out its day.
+  await assertNoOpenCheckout(userId, { askProvider: true });
 
   // The cascade would drop a withdrawal that is still being paid; the admin resolves it first.
   const openWithdrawal = await prisma.affiliateWithdrawal.findFirst({
@@ -434,13 +453,16 @@ export async function deleteUser(userId: string, confirmEmail: string, audit: Ad
   await prisma.$transaction(async (tx) => {
     await deleteUserCascade(tx, userId, { actorId: audit.actorId });
     await writeAdminAudit(tx, audit);
-  });
+  }, ACCOUNT_DELETION_TRANSACTION);
 
-  // Best effort from here on: the account is gone, so neither may throw back to the admin.
-  await Promise.allSettled([
-    PortfolioAssetService.deleteAssetKeys(assetKeys),
-    ...(cacheTargets ? [purgeDeletedUserCaches(cacheTargets)] : []),
-  ]);
+  // Best effort from here on: the account is gone, so nothing may throw back to the admin. The
+  // same tail as self-deletion (V-232): the public portfolio is revalidated and the person is told.
+  await finishAccountDeletion({
+    cacheTargets,
+    assetKeys,
+    email: target.email,
+    name: target.name ?? null,
+  });
 
   return { id: userId, email: target.email };
 }

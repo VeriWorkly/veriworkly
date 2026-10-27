@@ -11,6 +11,7 @@ import {
   revalidatePublicPortfolios,
 } from "#utils/portfolioPublicationCache";
 import { MODERATION_SUSPENSION_PREFIX } from "#services/portfolioService";
+import { USER_UNPUBLISHED_REASON } from "#services/portfolioAssetService";
 import {
   ADMIN_AUDIT_ACTIONS,
   writeAdminAudit,
@@ -41,29 +42,42 @@ const PUBLICATION_LIST_SELECT = {
   document: { select: { id: true, title: true, slug: true, visibility: true, revision: true } },
 } satisfies Prisma.PortfolioPublicationSelect;
 
+/**
+ * Suspended publications an operator may need to look at (V-248): takedowns and billing
+ * suspensions. The owner's own unpublish (and a trashed portfolio, which unpublishes) is
+ * theirs to undo and never belongs in the admin action queue.
+ */
+export const SUSPENDED_FOR_REVIEW_WHERE = {
+  status: "SUSPENDED" as const,
+  // Spelled with the null case: `NOT { reason }` alone would drop a row with no reason at all.
+  OR: [{ suspensionReason: null }, { suspensionReason: { not: USER_UNPUBLISHED_REASON } }],
+} satisfies Prisma.PortfolioPublicationWhereInput;
+
 export async function getPortfolioSummary() {
   const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const since7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [byStatus, byTemplate, publishedLast30, views30, views7, totalViews] = await Promise.all([
-    prisma.portfolioPublication.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.portfolioPublication.groupBy({
-      by: ["templateId"],
-      _count: { _all: true },
-      orderBy: { _count: { templateId: "desc" } },
-      take: 10,
-    }),
-    prisma.portfolioPublication.count({ where: { publishedAt: { gte: since30 } } }),
-    prisma.portfolioViewDaily.aggregate({
-      where: { date: { gte: since30 } },
-      _sum: { count: true },
-    }),
-    prisma.portfolioViewDaily.aggregate({
-      where: { date: { gte: since7 } },
-      _sum: { count: true },
-    }),
-    prisma.portfolioViewDaily.aggregate({ _sum: { count: true } }),
-  ]);
+  const [byStatus, byTemplate, publishedLast30, views30, views7, totalViews, suspendedForReview] =
+    await Promise.all([
+      prisma.portfolioPublication.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.portfolioPublication.groupBy({
+        by: ["templateId"],
+        _count: { _all: true },
+        orderBy: { _count: { templateId: "desc" } },
+        take: 10,
+      }),
+      prisma.portfolioPublication.count({ where: { publishedAt: { gte: since30 } } }),
+      prisma.portfolioViewDaily.aggregate({
+        where: { date: { gte: since30 } },
+        _sum: { count: true },
+      }),
+      prisma.portfolioViewDaily.aggregate({
+        where: { date: { gte: since7 } },
+        _sum: { count: true },
+      }),
+      prisma.portfolioViewDaily.aggregate({ _sum: { count: true } }),
+      prisma.portfolioPublication.count({ where: SUSPENDED_FOR_REVIEW_WHERE }),
+    ]);
 
   const counts = Object.fromEntries(byStatus.map((row) => [row.status, row._count._all]));
 
@@ -71,6 +85,7 @@ export async function getPortfolioSummary() {
     live: counts.LIVE ?? 0,
     grace: counts.GRACE ?? 0,
     suspended: counts.SUSPENDED ?? 0,
+    suspendedForReview,
     total: Object.values(counts).reduce((sum, value) => sum + value, 0),
     publishedLast30Days: publishedLast30,
     views: {
@@ -303,13 +318,26 @@ export async function updatePublicationStatus(
 }
 
 /**
- * Hard takedown: removes the publication row entirely and forces the source document back to
- * private, so the subdomain is released and nothing can re-serve the old snapshot.
+ * Hard takedown: the site goes offline as a moderation suspension and the source document is
+ * forced private under the moderator lock, so neither the owner's Publish nor making the document
+ * visible again brings it back. Lifted by an admin LIVE (`updatePublicationStatus`) or by "Make
+ * unlisted" on the document (V-203).
+ *
+ * The publication row is kept (V-225): deleting it cascaded every `PortfolioViewDaily` row,
+ * against the retention decision that daily portfolio views are kept (180 days), and the owner's
+ * analytics would be gone if the takedown were ever lifted. The subdomain stays the owner's.
  */
 export async function forceUnpublish(publicationId: string, audit?: AdminAuditInput) {
   const publication = await prisma.portfolioPublication.findUnique({
     where: { id: publicationId },
-    select: { id: true, userId: true, documentId: true, subdomain: true },
+    select: {
+      id: true,
+      userId: true,
+      documentId: true,
+      subdomain: true,
+      status: true,
+      suspensionReason: true,
+    },
   });
 
   if (!publication) throw new ApiError(404, "Portfolio publication not found.");
@@ -326,7 +354,14 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
       data: { visibility: "PRIVATE", moderatedPrivateAt: new Date() },
     });
 
-    await tx.portfolioPublication.delete({ where: { id: publicationId } });
+    await tx.portfolioPublication.update({
+      where: { id: publicationId },
+      data: {
+        status: "SUSPENDED",
+        suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${audit?.reason?.trim() || "force_unpublished"}`,
+        suspendedAt: new Date(),
+      },
+    });
 
     // `documentId` names the document in the takedown record, kept forever (decision 11).
     if (audit)
@@ -336,6 +371,8 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
           ...audit.metadata,
           subdomain: publication.subdomain,
           documentId: publication.documentId,
+          previousStatus: publication.status,
+          previousSuspensionReason: publication.suspensionReason,
         },
       });
   });
@@ -351,7 +388,9 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
 
 export async function listAssets(query: AssetListQuery) {
   const where: Prisma.PortfolioAssetWhereInput = {
-    ...(query.status ? { status: query.status } : {}),
+    // A DELETED row is only a hold on a still-valid upload URL (V-224): listed, counted and sized
+    // only when asked for by its filter.
+    ...(query.status ? { status: query.status } : { status: { not: "DELETED" as const } }),
     ...(query.kind ? { kind: query.kind } : {}),
     ...(query.userId ? { userId: query.userId } : {}),
   };

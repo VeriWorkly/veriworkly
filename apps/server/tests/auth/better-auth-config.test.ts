@@ -49,16 +49,32 @@ describe("Better Auth configuration", () => {
     expect(options.rateLimit).toBeDefined();
     expect(options.rateLimit?.enabled).toBe(true);
     expect(options.rateLimit?.storage).toBe("secondary-storage");
+    // Per IP, sized for many people behind one address (campus, office, carrier NAT). A guess at
+    // one code is bounded by `allowedAttempts`, and the mails one address gets by the per-recipient
+    // cap, so these only stop floods (V-213).
     expect(options.rateLimit?.customRules).toEqual({
-      "/email-otp/send-verification-otp": {
-        window: 60,
-        max: 3,
-      },
-      "/email-otp/verify-otp": {
-        window: 60,
-        max: 5,
-      },
+      "/email-otp/send-verification-otp": { window: 60, max: 10 },
+      "/sign-in/email-otp": { window: 60, max: 20 },
     });
+  });
+
+  it("names a real endpoint in every custom rate-limit rule (V-213)", () => {
+    // better-auth matches a rule by exact path (or a `*` pattern); a typo is silently never used.
+    const endpointPaths = new Set(
+      Object.values(auth.api as Record<string, { path?: string }>)
+        .map((endpoint) => endpoint.path)
+        .filter((path): path is string => typeof path === "string"),
+    );
+    const disabled = new Set<string>(options.disabledPaths ?? []);
+
+    for (const rule of Object.keys(options.rateLimit?.customRules ?? {})) {
+      const matches = rule.includes("*")
+        ? [...endpointPaths].some((path) =>
+            new RegExp(`^${rule.split("*").map(escapeRegExp).join(".*")}$`).test(path),
+          )
+        : endpointPaths.has(rule) && !disabled.has(rule);
+      expect(matches, `${rule} is not an enabled better-auth endpoint`).toBe(true);
+    }
   });
 
   it("has useSecureCookies defined under advanced settings", () => {
@@ -264,3 +280,7 @@ describe("secondaryStorage.increment", () => {
     mockGetRedis.mockReset();
   });
 });
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

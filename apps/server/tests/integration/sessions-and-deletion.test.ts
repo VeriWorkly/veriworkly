@@ -167,11 +167,12 @@ describe("self-service account deletion (V-118, V-048, V-021)", () => {
       cacheNamespaces.documentList(user.id),
       cacheNamespaces.shareList(user.id),
       cacheNamespaces.sharedDocumentIds(user.id),
+      // The master profile read is a generation too (V-244).
+      cacheNamespaces.masterProfile(user.id),
     ];
     const generationsBefore = await Promise.all(namespaces.map((ns) => getGeneration(ns)));
 
     const keys = [
-      `profile:${user.id}`,
       `user:profile:v2:${user.id}`,
       `billing:summary:${user.id}`,
       `billing:history:${user.id}`,

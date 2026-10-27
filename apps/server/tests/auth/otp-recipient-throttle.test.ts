@@ -100,6 +100,34 @@ describe("V-157 per-recipient OTP throttle", () => {
     expect(expireCalls[0]).toEqual([key, 3600, "NX"]);
   });
 
+  it("counts +tag and Gmail dot variants against the one mailbox they reach (V-253)", async () => {
+    const { client } = fakeRedis();
+    mockGetRedis.mockReturnValue(client);
+
+    for (const variant of [
+      "victim@gmail.com",
+      "victim+1@gmail.com",
+      "v.i.c.t.i.m@gmail.com",
+      "Vic.Tim+x@GoogleMail.com",
+      " victim+2@gmail.com ",
+    ])
+      await consumeOtpRecipientQuota(variant);
+
+    await expect(consumeOtpRecipientQuota("vi.ctim+6@gmail.com")).rejects.toMatchObject({
+      status: "TOO_MANY_REQUESTS",
+    });
+    await expect(assertOtpRecipientQuotaAvailable("victim+7@gmail.com")).rejects.toMatchObject({
+      status: "TOO_MANY_REQUESTS",
+    });
+
+    // +tags fold on any domain; dots only where the provider ignores them.
+    for (let i = 0; i < 5; i += 1) await consumeOtpRecipientQuota(`jo.ann+${i}@example.com`);
+    await expect(consumeOtpRecipientQuota("jo.ann@example.com")).rejects.toMatchObject({
+      status: "TOO_MANY_REQUESTS",
+    });
+    await expect(consumeOtpRecipientQuota("joann@example.com")).resolves.toBeUndefined();
+  });
+
   it("does not send the 6th mail from sendVerificationOTP", async () => {
     const { client } = fakeRedis();
     mockGetRedis.mockReturnValue(client);

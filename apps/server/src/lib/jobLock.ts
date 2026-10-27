@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { logger } from "./logger.js";
 import { recordJobSuccess, type JobName } from "./metrics.js";
-import { getRedis } from "./redis.js";
+import { getRedis, redisWrite } from "./redis.js";
 
 /**
  * One Redis lock per background job (V-053, V-127). Every worker schedules every job; the lock
@@ -61,7 +61,15 @@ export async function acquireJobLock(
   const token = randomUUID();
   const ttlMs = Math.max(1, Math.round(options.ttlMs));
 
-  if ((await redis.set(name, token, { NX: true, PX: ttlMs })) !== "OK") return null;
+  // A SET that lands after the acquire failed on its timeout would hold the lock with no runner
+  // until the TTL; it is deleted again, only if it still holds this attempt's token.
+  const acquired = await redisWrite(
+    (client) => client.set(name, token, { NX: true, PX: ttlMs }),
+    async (late) => {
+      if (late === "OK") await redis.eval(RELEASE_LUA, { keys: [name], arguments: [token] });
+    },
+  );
+  if (acquired !== "OK") return null;
 
   let lost = false;
 

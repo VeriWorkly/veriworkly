@@ -20,7 +20,7 @@ import {
 import { prisma } from "#lib/prisma";
 import { logger } from "#lib/logger";
 import { ApiError } from "#lib/errors";
-import { cacheDel, cacheGet, cacheSet, getRedis } from "#lib/redis";
+import { cacheDel, cacheGet, cacheSet, getRedis, redisWrite } from "#lib/redis";
 import { acquireJobLock } from "#lib/jobLock";
 import { userProfileCacheKey } from "#lib/cacheKeys";
 import { PREMIUM_PORTFOLIO_TEMPLATE_IDS } from "#validators/portfolioValidator";
@@ -264,6 +264,23 @@ function parseCheckoutRecord(raw: string | null): CheckoutRecord | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Whether the user has a checkout session that can still be paid, or one being created right now
+ * (V-238): account deletion refuses while one is, or the customer could delete the account and
+ * then pay the open tab, leaving a charge with no account to reconcile it against. Reads the
+ * legacy per-product keys too (`legacyCheckoutRecordKey`). Throws when Redis cannot answer, so a
+ * caller fails closed.
+ */
+export async function hasOpenCheckout(userId: string): Promise<boolean> {
+  const redis = getRedis();
+  const keys = [
+    checkoutRecordKey(userId),
+    ...PRODUCT_KEYS.map((productKey) => legacyCheckoutRecordKey(userId, productKey)),
+  ];
+  const values = await redis.mGet(keys);
+  return values.some((raw) => parseCheckoutRecord(raw) !== null);
 }
 
 /**
@@ -1410,11 +1427,23 @@ export class BillingService {
     }
 
     for (let attempt = 0; ; attempt += 1) {
+      // A claim that lands after this request failed on the timeout would refuse every retry for
+      // the claim TTL; it is deleted again, only while it is still this request's own.
       const claimed =
-        (await redis.set(recordKey, JSON.stringify(claim), {
-          NX: true,
-          EX: CHECKOUT_CLAIM_TTL_SECONDS,
-        })) === "OK";
+        (await redisWrite(
+          (client) =>
+            client.set(recordKey, JSON.stringify(claim), {
+              NX: true,
+              EX: CHECKOUT_CLAIM_TTL_SECONDS,
+            }),
+          async (late) => {
+            if (late === "OK")
+              await getRedis().eval(compareAndDeleteScript, {
+                keys: [recordKey],
+                arguments: [JSON.stringify(claim)],
+              });
+          },
+        )) === "OK";
       if (claimed) break;
 
       // The user's one open session: the same product and interval gets it back; anything else

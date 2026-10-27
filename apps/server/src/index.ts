@@ -7,8 +7,8 @@ import { config, isDevelopment } from "#config";
 
 import { logger } from "#lib/logger";
 import { closePrisma } from "#lib/prisma";
-import { initRedis, closeRedis } from "#lib/redis";
-import { installWorkerRespawn } from "#lib/workerRespawn";
+import { initRedis, closeRedis, RedisConfigError } from "#lib/redis";
+import { FATAL_CONFIG_EXIT_CODE, installWorkerRespawn } from "#lib/workerRespawn";
 import { markJobsBaseline } from "#lib/metrics";
 import { flushAuditLogs } from "#middleware/logging";
 
@@ -70,8 +70,15 @@ async function shutdownWorker(id: number, disconnect: () => void) {
       }, SHUTDOWN_HTTP_GRACE_MS);
       forceTimer.unref();
 
+      // `close` drops only the connections idle at that moment; a keep-alive connection whose
+      // request finishes later would hold the drain until the grace period. Sweep those as they
+      // go idle, so the drain ends when the last request in flight does.
+      const idleSweep = setInterval(() => serverInstance?.closeIdleConnections(), 100);
+      idleSweep.unref();
+
       serverInstance!.close(() => {
         clearTimeout(forceTimer);
+        clearInterval(idleSweep);
         logger.info(`Worker ${id}: HTTP server stopped.`);
         resolve();
       });
@@ -112,23 +119,23 @@ async function startWorker(id: number, disconnect: () => void) {
   process.on("SIGTERM", () => void shutdownWorker(id, disconnect));
   process.on("SIGINT", () => void shutdownWorker(id, disconnect));
 
-  // Handle uncaught exceptions and unhandled rejections in worker
-  process.on("uncaughtException", (error) => {
-    logger.error(`Worker ${id}: Uncaught Exception:`, error);
-    exitCode = 1;
-    void shutdownWorker(id, disconnect);
-  });
-
-  process.on("unhandledRejection", (reason) => {
-    logger.error(`Worker ${id}: Unhandled Rejection:`, {
-      reason: reason instanceof Error ? reason.message : reason,
-      stack: reason instanceof Error ? reason.stack : undefined,
+  // A fault drains like a signal does (V-211): requests in flight finish, running jobs stop and
+  // release their locks, buffered audit rows are written, then the worker exits 1 and is revived.
+  // These are the only fault handlers in a worker; `main()` registers none.
+  const onFault = (kind: string, error: unknown) => {
+    logger.error(`Worker ${id}: ${kind}:`, {
+      reason: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
     });
-
     exitCode = 1;
+    if (isShuttingDown) return;
 
+    // Every drain step is capped, but a hung close must not leave a broken worker running.
+    setTimeout(() => process.exit(1), THRONG_GRACE_MS).unref();
     void shutdownWorker(id, disconnect);
-  });
+  };
+  process.on("uncaughtException", (error) => onFault("Uncaught Exception", error));
+  process.on("unhandledRejection", (reason) => onFault("Unhandled Rejection", reason));
 
   try {
     // Each worker initializes its own Redis connection
@@ -190,28 +197,35 @@ async function startWorker(id: number, disconnect: () => void) {
     });
   } catch (error) {
     logger.error(`Worker ${id}: Failed to start:`, error);
-    exitCode = 1;
+    // Wrong Redis credentials cannot be fixed by a restart: exit with the configuration code so
+    // the primary stops reviving workers and exits too (V-254). Anything else is retried.
+    exitCode = error instanceof RedisConfigError ? FATAL_CONFIG_EXIT_CODE : 1;
     void shutdownWorker(id, disconnect);
   }
 }
 
 // Master process configuration check and bootstrap
-function main() {
-  // Handle uncaught exceptions and unhandled rejections in master process
+/**
+ * The cluster primary serves no requests and holds no locks, so a fault there exits at once.
+ * Registered from throng's `master` hook, which runs in the primary only: `main()` itself runs in
+ * every process, and handlers installed there used to kill a worker before its drain (V-211).
+ */
+function installPrimaryFaultHandlers() {
   process.on("uncaughtException", (error) => {
-    logger.error("Master Process: Uncaught Exception:", error);
+    logger.error("Primary process: Uncaught Exception:", error);
     process.exit(1);
   });
 
   process.on("unhandledRejection", (reason) => {
-    logger.error("Master Process: Unhandled Rejection:", {
+    logger.error("Primary process: Unhandled Rejection:", {
       reason: reason instanceof Error ? reason.message : reason,
       stack: reason instanceof Error ? reason.stack : undefined,
     });
-
     process.exit(1);
   });
+}
 
+function main() {
   try {
     // Validate runtime environment configs in master process first (fail-fast). The raw-env
     // schema runs before the others: it reports every bad variable in one message, and in
@@ -236,7 +250,13 @@ function main() {
       // (1 s, 2 s, 4 s … 30 s; see src/lib/workerRespawn.ts).
       void throng({
         master: () => {
-          const respawn = installWorkerRespawn(cluster);
+          installPrimaryFaultHandlers();
+          const respawn = installWorkerRespawn(cluster, {
+            onFatal: (code) => {
+              logger.error("Primary process: exiting on a fatal configuration error", { code });
+              process.exit(code);
+            },
+          });
           for (const signal of ["SIGTERM", "SIGINT"] as const) process.on(signal, respawn.stop);
         },
         // startWorker logs and exits on its own failures, like the single-process call below.

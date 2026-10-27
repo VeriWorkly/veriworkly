@@ -139,14 +139,16 @@ export class AtsAiController {
         const quota = await AtsQuotaService.consume(user.id, ip(req));
         const jobDescription =
           fetchesJobPage && input.jobUrl
-            ? await AtsJobFetchService.fetch(input.jobUrl)
+            ? await AtsJobFetchService.fetch(input.jobUrl, signal)
             : input.jobDescription;
 
         // From here on a failure is ours, not the caller's, so the scan goes back. The job
         // fetch above is deliberately outside this: refunding a failed fetch would make
-        // fetching free. So is a 402 after a page was fetched — the wallet changed under the
-        // check above and the fetch was already made on the strength of it (V-035); a 402 with
-        // no fetch behind it cost the server nothing, and the scan is returned.
+        // fetching free. Once a page was fetched the scan also stays spent on a 402 (the wallet
+        // changed under the check above and the fetch was made on the strength of it, V-035),
+        // and on the client leaving or the deadline passing (V-241): refunding those made a job
+        // fetch free to anyone who disconnected after it, or whose page was slow. With no fetch
+        // behind it, any failure cost the server nothing and the scan is returned.
         try {
           // Gone during the fetch: nothing is reserved for a client that is not there.
           if (signal.aborted) throw aiTimeoutError();
@@ -167,8 +169,12 @@ export class AtsAiController {
             ),
           );
         } catch (error) {
-          if (!(fetchesJobPage && error instanceof ApiError && error.statusCode === 402))
-            await refundScanQuietly(user.id, ip(req), input.requestId);
+          const scanSpent =
+            fetchesJobPage &&
+            (signal.aborted ||
+              (error instanceof ApiError &&
+                (error.statusCode === 402 || error.statusCode === 504)));
+          if (!scanSpent) await refundScanQuietly(user.id, ip(req), input.requestId);
           throw error;
         }
       });

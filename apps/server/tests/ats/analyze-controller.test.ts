@@ -663,8 +663,40 @@ describe("POST /ats/analyze — the balance gate and the scan refund, revisited"
 
     expect(fetchJobPage).toHaveBeenCalledTimes(1);
     expect(analyze).not.toHaveBeenCalled();
-    expect(refund).toHaveBeenCalledTimes(1);
+    // V-241: the page was fetched on the scan's strength; leaving does not hand the scan back.
+    expect(refund).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 504 }));
+  });
+
+  it("V-241: hands the job fetch the request's abort signal", async () => {
+    const { res } = responseSpy();
+    await AtsAiController.analyze(requestFor(baseBody), res, vi.fn() as unknown as NextFunction);
+
+    expect(fetchJobPage).toHaveBeenCalledWith(baseBody.jobUrl, expect.any(AbortSignal));
+  });
+
+  it("V-241: an analysis that times out after the page was fetched keeps the scan spent", async () => {
+    analyze.mockRejectedValue(new ApiError(504, "The AI request timed out."));
+    const next = vi.fn() as unknown as NextFunction;
+
+    await AtsAiController.analyze(requestFor(baseBody), responseSpy().res, next);
+
+    expect(fetchJobPage).toHaveBeenCalledTimes(1);
+    expect(refund).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 504 }));
+  });
+
+  it("V-241: a 504 with no page fetched still returns the scan", async () => {
+    analyze.mockRejectedValue(new ApiError(504, "The AI request timed out."));
+    const next = vi.fn() as unknown as NextFunction;
+
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted text" }),
+      responseSpy().res,
+      next,
+    );
+
+    expect(refund).toHaveBeenCalledTimes(1);
   });
 });
 

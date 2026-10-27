@@ -911,11 +911,20 @@ ImportLinkedinRequest:
     profileText:
       type: string
       minLength: 10
+      maxLength: 50000
       description: Raw copy-pasted text from a LinkedIn profile export or PDF (parsed by AI, not fetched via any LinkedIn API).
     replaceMaster:
       type: boolean
       default: false
       description: When true, also overwrites the user's master profile with the imported content.
+    requestId:
+      type: string
+      minLength: 8
+      maxLength: 128
+      description: |
+        The client's id for this import, as on every other AI route. A retry with the same id
+        and the same text after a lost response returns the document already created
+        (`replayed: true`) without charging again; the same id with different text is `409`.
 
 ProfileImportResponse:
   type: object
@@ -3554,10 +3563,6 @@ ShareLink:
         Convenience path built from the owner's username and the link slug. Only returned by
         `POST /shares`, not by the list endpoint.
       example: "/janedoe/my-resume"
-    snapshot:
-      type: object
-      additionalProperties: true
-      description: The static content snapshot captured when the link was created.
     hasPassword:
       type: boolean
       description: The scrypt password hash itself is never returned in any API response.

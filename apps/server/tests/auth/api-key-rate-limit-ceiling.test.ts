@@ -16,9 +16,19 @@ vi.mock("#config", () => ({
   },
 }));
 
-vi.mock("#lib/prisma", () => ({
-  prisma: { apiKey: { create: createMock } },
-}));
+vi.mock("#lib/prisma", () => {
+  // generateKey counts the live keys and creates under a lock in one transaction (V-242).
+  const tx = {
+    $executeRaw: vi.fn(async () => 0),
+    apiKey: { create: createMock, count: vi.fn(async () => 0) },
+  };
+  return {
+    prisma: {
+      apiKey: tx.apiKey,
+      $transaction: vi.fn(async (run: (client: typeof tx) => unknown) => run(tx)),
+    },
+  };
+});
 
 vi.mock("#lib/redis", () => ({
   cacheDel: vi.fn(),

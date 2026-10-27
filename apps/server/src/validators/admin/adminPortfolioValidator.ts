@@ -39,7 +39,7 @@ export const adminPortfolioViewsQuerySchema = z.object({
 });
 
 export const adminPortfolioAssetListQuerySchema = adminPaginationSchema.extend({
-  status: z.enum(["PENDING", "READY"]).optional(),
+  status: z.enum(["PENDING", "READY", "DELETED"]).optional(),
   kind: z.enum(["AVATAR", "PROJECT_COVER", "SOCIAL_IMAGE"]).optional(),
   userId: z.string().trim().min(1).optional(),
 });
