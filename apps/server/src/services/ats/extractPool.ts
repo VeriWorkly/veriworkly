@@ -146,17 +146,22 @@ function handleMessage(message: AtsExtractResponse) {
 function ensureChild(): ChildProcess {
   if (child?.connected) return child;
 
-  child = fork(resolveChildEntrypoint(), {
+  const proc = fork(resolveChildEntrypoint(), {
     // No stdio from the child; it communicates over the IPC channel only.
     stdio: ["ignore", "ignore", "ignore", "ipc"],
     // Caps a decompression bomb rather than letting it consume host memory; the watchdog caps
     // what lives outside the V8 heap.
     execArgv: ["--max-old-space-size=256", `--import=${rssWatchdogModule(maxRssBytes())}`],
   });
+  child = proc;
 
-  child.on("message", handleMessage as (message: unknown) => void);
+  proc.on("message", handleMessage as (message: unknown) => void);
 
-  child.on("exit", (code, signal) => {
+  // Events from a child that has already been replaced say nothing about the current one
+  // (V-331): an idle child killed from outside disconnects first, the next upload forks a new
+  // one, and the old one's late `exit` used to recycle the new child and fail that upload.
+  proc.on("exit", (code, signal) => {
+    if (proc !== child) return;
     // Only meaningful if it died while we still had work; an idle child exiting is harmless and
     // the next request simply forks a new one.
     if (current || queue.length)
@@ -169,14 +174,15 @@ function ensureChild(): ChildProcess {
     else child = null;
   });
 
-  child.on("error", (error) =>
+  proc.on("error", (error) => {
+    if (proc !== child) return;
     recycleChild(
       `child error: ${error.message}`,
       new ApiError(503, "Resume extraction is temporarily unavailable."),
-    ),
-  );
+    );
+  });
 
-  return child;
+  return proc;
 }
 
 function pump() {

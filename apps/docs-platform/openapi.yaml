@@ -9690,9 +9690,39 @@ components:
             additionalProperties: true
         withdrawals:
           type: array
+          description: The 25 most recent withdrawals, newest first.
           items:
             type: object
-            additionalProperties: true
+            properties:
+              id:
+                type: string
+              amountCents:
+                type: integer
+              currency:
+                type: string
+                example: USD
+              status:
+                type: string
+                enum:
+                  - REQUESTED
+                  - APPROVED
+                  - REJECTED
+                  - PAID
+              payoutNote:
+                type: string
+                nullable: true
+                description: Visible to the affiliate. The note the admin writes when approving, rejecting or paying the withdrawal (the payout reference, or the reason for a rejection), shown on the affiliate's payouts page as written.
+              reviewedAt:
+                type: string
+                format: date-time
+                nullable: true
+              paidAt:
+                type: string
+                format: date-time
+                nullable: true
+              createdAt:
+                type: string
+                format: date-time
         wallet:
           type: object
           properties:

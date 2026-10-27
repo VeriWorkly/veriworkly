@@ -42,7 +42,14 @@ function loadPrivateJson(cacheKey: string, pathValue: string, jsonValue: string,
   try {
     parsed = JSON.parse(source);
   } catch (parseErr) {
-    throw new ApiError(503, `${label} is invalid JSON: ${(parseErr as Error).message}`);
+    // Where, never what (V-330): V8's message quotes the source around the error ("...mPrompt":
+    // You are th"...), and this message is logged, so it would write the private policy's text
+    // to the logs. Only the position (when V8 gives one) and the length are kept.
+    const at = /at position (\d+)/.exec((parseErr as Error).message)?.[1];
+    throw new ApiError(
+      503,
+      `${label} is invalid JSON (${at ? `error at character ${at} of ` : ""}${source.length} characters).`,
+    );
   }
 
   cache.set(cacheKey, parsed);
