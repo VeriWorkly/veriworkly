@@ -1,11 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { LazyMotion, MotionConfig, domAnimation } from "framer-motion";
+import { LazyMotion, MotionConfig } from "framer-motion";
 
-/** Each island keeps reducedMotion="user" (the CSS kill switch misses framer's inline transforms); `strict` throws on a full `motion.*` import. */
+const loadFeatures = () => import("./motion-features").then((module) => module.default);
+
+/** Each island keeps reducedMotion="user" (the CSS kill switch misses framer's inline transforms); `strict` throws on a full `motion.*` import. Features load after first paint. */
 export const MotionIsland = ({ children }: { children: ReactNode }) => (
-  <LazyMotion features={domAnimation} strict>
+  <LazyMotion features={loadFeatures} strict>
     <MotionConfig reducedMotion="user">{children}</MotionConfig>
   </LazyMotion>
 );

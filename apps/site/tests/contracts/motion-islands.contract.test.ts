@@ -68,3 +68,22 @@ describe("framer stays inside motion islands", () => {
     expect(rendersMotion(join(root, "app", "(marketing)", "page.tsx"))).toBe(true);
   });
 });
+
+describe("the first screen paints without waiting for JavaScript (W-029)", () => {
+  const hero = files(join(root, "features", "landing", "hero"), ".tsx");
+
+  it("no hero component imports framer or starts invisible", () => {
+    expect(hero.length).toBeGreaterThan(3);
+    for (const file of hero) {
+      const source = readFileSync(file, "utf8");
+      expect(source, relative(root, file)).not.toMatch(/from "framer-motion"/);
+      expect(source, relative(root, file)).not.toMatch(/initial=\{\{\s*opacity: 0/);
+    }
+  });
+
+  it("framer's animation features load after first paint", () => {
+    const island = readFileSync(join(root, "providers", "motion-island.tsx"), "utf8");
+    expect(island).toMatch(/features=\{loadFeatures\}/);
+    expect(island).not.toMatch(/domAnimation/);
+  });
+});

@@ -25,6 +25,7 @@ import TemplateShowcase from "@/features/landing/template-showcase/TemplateShowc
 import PortfolioPreview from "@/features/landing/document-switcher/PortfolioPreview";
 import CoverLetterPreview from "@/features/landing/document-switcher/CoverLetterPreview";
 import { MotionIsland } from "@/providers/motion-island";
+import { BelowFold } from "@/components/marketing/BelowFold";
 
 const InteractiveProcess = nextDynamic(
   () => import("@/features/landing/process/InteractiveProcess"),
@@ -149,30 +150,30 @@ const Home = () => {
       <HeroHeader />
       <BrandTrust />
       <MetricsProofBar />
-      <div className="below-fold">
+      <BelowFold>
         <GaplessBento />
-      </div>
-      <div className="below-fold">
+      </BelowFold>
+      <BelowFold>
         <TemplateShowcase />
-      </div>
-      <div className="below-fold">
+      </BelowFold>
+      <BelowFold>
         <InteractiveProcess />
-      </div>
-      <div className="below-fold">
+      </BelowFold>
+      <BelowFold>
         <DocumentPortfolioSwitcher previews={documentPreviews} />
-      </div>
-      <div className="below-fold">
+      </BelowFold>
+      <BelowFold>
         <PrivacyWhyUs />
-      </div>
-      <div className="below-fold">
+      </BelowFold>
+      <BelowFold>
         <ComparisonMatrix />
-      </div>
-      <div className="below-fold">
+      </BelowFold>
+      <BelowFold>
         <PremiumFAQ />
-      </div>
-      <div className="below-fold">
+      </BelowFold>
+      <BelowFold>
         <InteractiveCTA />
-      </div>
+      </BelowFold>
     </MotionIsland>
   );
 };

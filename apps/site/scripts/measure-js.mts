@@ -5,10 +5,10 @@ import { gzipSync } from "node:zlib";
 
 // KB gzip. Set a few KB above the measured size so a regression fails CI; lower them as pages shrink.
 const BUDGETS: Record<string, number> = {
-  "/": 240,
-  "/ats-checker": 210,
-  "/affiliate": 232,
-  "/ambassador": 228,
+  "/": 232,
+  "/ats-checker": 194,
+  "/affiliate": 218,
+  "/ambassador": 216,
 };
 const DEFAULT_BUDGET = 188;
 
