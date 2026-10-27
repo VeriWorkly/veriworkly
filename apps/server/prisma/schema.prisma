@@ -714,6 +714,8 @@ enum PortfolioAssetKind {
 enum PortfolioAssetStatus {
   PENDING
   READY
+  /// Deleted by the owner while its upload URL was still valid; swept with the object (V-224).
+  DELETED
 }
 
 model PortfolioAsset {

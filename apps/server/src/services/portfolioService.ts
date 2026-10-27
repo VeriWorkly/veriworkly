@@ -7,7 +7,9 @@ import { EntitlementService } from "#services/entitlementService";
 import { enforcedEntitlement } from "#services/entitlementEnforcement";
 import {
   PortfolioAssetService,
+  hasUnownedImageSlot,
   referencedAssetIds,
+  withStoredAssetUrls,
   USER_UNPUBLISHED_REASON,
 } from "#services/portfolioAssetService";
 import { ENTITLEMENT_KEYS } from "#services/productCatalog";
@@ -424,19 +426,21 @@ export class PortfolioService {
 
     if (!normalized) return null;
 
-    const cacheKey = publicPortfolioCacheKey(normalized);
+    const cacheKey = await publicPortfolioCacheKey(normalized);
     const now = new Date();
 
-    const cached = await cacheGet<{
-      id: string;
-      subdomain: string;
-      templateId: string;
-      snapshot: unknown;
-      updatedAt: string;
-      isPaid: boolean;
-      isPremiumTemplate: boolean;
-      isPremium: boolean;
-    }>(cacheKey);
+    const cached =
+      cacheKey &&
+      (await cacheGet<{
+        id: string;
+        subdomain: string;
+        templateId: string;
+        snapshot: unknown;
+        updatedAt: string;
+        isPaid: boolean;
+        isPremiumTemplate: boolean;
+        isPremium: boolean;
+      }>(cacheKey));
 
     if (cached) return cached;
 
@@ -500,7 +504,7 @@ export class PortfolioService {
       }
     }
 
-    if (ttl > 0) await cacheSet(cacheKey, result, ttl);
+    if (ttl > 0 && cacheKey) await cacheSet(cacheKey, result, ttl);
 
     return result;
   }
@@ -718,13 +722,22 @@ export class PortfolioService {
     }
 
     // Every image the body shows, extra pages included (the same walk the asset cleanup uses).
+    // Each must be one of the owner's finished uploads; a slot with a url and no asset id is a
+    // hot-link and is refused (V-227).
+    if (hasUnownedImageSlot(publishable.data))
+      throw new ApiError(400, "Portfolio contains an unavailable or invalid image.");
     const assetIds = [...referencedAssetIds(publishable.data)];
+    const assetKeys = new Map<string, string>();
     if (assetIds.length) {
-      const ownedAssets = await prisma.portfolioAsset.count({
+      const ownedAssets = await prisma.portfolioAsset.findMany({
         where: { id: { in: assetIds }, userId, status: "READY" },
+        select: { id: true, key: true },
       });
-      if (ownedAssets !== assetIds.length)
+      if (ownedAssets.length !== assetIds.length)
         throw new ApiError(400, "Portfolio contains an unavailable or invalid image.");
+      if (!config.r2.publicBaseUrl)
+        throw new ApiError(503, "Portfolio media delivery is not configured.");
+      for (const asset of ownedAssets) assetKeys.set(asset.id, asset.key);
     }
 
     // See resolveWatermarkFlag and resolveSeo: the posted values are requests, not facts.
@@ -733,8 +746,9 @@ export class PortfolioService {
       EntitlementService.has(userId, SEO_CONTROLS),
     ]);
 
+    // Image urls are rebuilt from the stored keys, whatever the draft said (V-227).
     const snapshot: PortfolioContentInput = {
-      ...publishable.data,
+      ...withStoredAssetUrls(publishable.data, assetKeys),
       removeWatermark: resolveWatermarkFlag(publishable.data.removeWatermark, canRemoveWatermark),
       seo: resolveSeo(publishable.data.seo, canControlSeo),
     };

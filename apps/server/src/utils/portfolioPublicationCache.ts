@@ -1,19 +1,26 @@
 import { config } from "#config";
 
 import { logger } from "#lib/logger";
-import { cacheDel } from "#lib/redis";
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
 
 /**
  * The two public caches live in separate namespaces under `portfolio:public:` (the prefix the
- * admin cache flush knows). Sites are keyed `...:site:<subdomain>` and the list
+ * admin cache flush knows). Sites are keyed `...:site:<subdomain>:g<generation>` and the list
  * `...:list:g<generation>[:l:o]`, so no subdomain (not even `list`, which is also reserved) can
- * read or poison the other. The list is a generation namespace: one INCR drops every page.
+ * read or poison the other. Both are generation namespaces: one INCR drops the site or every
+ * list page, and a reader that loaded before the INCR writes under the old generation, which
+ * nobody reads again (V-223: a plain key cleared with DEL let a slow read put the pre-takedown
+ * copy back for up to ten minutes, which ISR then picked up).
  */
 export const PUBLIC_LIST_CACHE_NAMESPACE = "portfolio:public:list";
 
-export function publicPortfolioCacheKey(subdomain: string) {
+export function publicPortfolioCacheNamespace(subdomain: string) {
   return `portfolio:public:site:${subdomain}`;
+}
+
+/** Reads the site's generation; call before the DB query. `null` means skip the cache. */
+export function publicPortfolioCacheKey(subdomain: string) {
+  return resolveGenerationalKey(publicPortfolioCacheNamespace(subdomain));
 }
 
 /** Reads the list generation; call before the DB query. `null` means skip the cache. */
@@ -30,10 +37,7 @@ function uniqueSubdomains(subdomains: string[]) {
 export async function invalidatePublicPortfolioCaches(subdomains: string[]) {
   const unique = uniqueSubdomains(subdomains);
 
-  await Promise.all([
-    bumpGeneration(PUBLIC_LIST_CACHE_NAMESPACE),
-    ...unique.map((subdomain) => cacheDel(publicPortfolioCacheKey(subdomain))),
-  ]);
+  await bumpGeneration(PUBLIC_LIST_CACHE_NAMESPACE, ...unique.map(publicPortfolioCacheNamespace));
 }
 
 export async function revalidatePublicPortfolios(subdomains: string[]) {

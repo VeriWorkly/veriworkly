@@ -171,6 +171,41 @@ describe("V-122 a reader that loaded before a write cannot cache the stale row",
   });
 });
 
+describe("V-223 public portfolio: a takedown mid-read is not undone by the reader's cache write", () => {
+  it("an unpublish that lands between the reader's DB load and its cache write wins", async () => {
+    const user = await createUserWithSession();
+    const subdomain = `site${letters(10)}`;
+    const snapshot = { schemaVersion: 1, templateId: "signal", identity: { name: "Owner" } };
+    const document = await prisma.document.create({
+      data: {
+        userId: user.id,
+        type: "PORTFOLIO",
+        title: "Portfolio",
+        slug: subdomain,
+        templateId: "signal",
+        content: snapshot,
+        visibility: "PUBLIC",
+      },
+    });
+    await prisma.portfolioPublication.create({
+      data: { userId: user.id, documentId: document.id, subdomain, templateId: "signal", snapshot },
+    });
+
+    const original = prisma.portfolioPublication.findFirst.bind(prisma.portfolioPublication);
+    vi.spyOn(prisma.portfolioPublication, "findFirst").mockImplementationOnce((async (
+      args: never,
+    ) => {
+      const stale = await original(args);
+      const unpublish = await asUser(user).post("/api/v1/portfolios/unpublish");
+      expect(unpublish.status).toBe(200);
+      return stale;
+    }) as never);
+
+    expect((await publicGet(`/api/v1/portfolios/public/${subdomain}`)).status).toBe(200);
+    expect((await publicGet(`/api/v1/portfolios/public/${subdomain}`)).status).toBe(404);
+  });
+});
+
 describe("negative caches", () => {
   it("an unknown but well-formed API key hits the database once for two requests", async () => {
     const findFirst = vi.spyOn(prisma.apiKey, "findFirst");

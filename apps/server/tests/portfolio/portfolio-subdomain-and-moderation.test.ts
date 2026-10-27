@@ -59,8 +59,9 @@ describe("normalizePortfolioSubdomain", () => {
 describe("public cache keys", () => {
   it("keeps the list and a site called 'list' in separate namespaces", async () => {
     const listKey = await publicPortfolioListCacheKey();
-    expect(listKey).not.toBe(publicPortfolioCacheKey("list"));
-    expect(publicPortfolioCacheKey("list").startsWith(listKey!)).toBe(false);
+    const siteKey = await publicPortfolioCacheKey("list");
+    expect(listKey).not.toBe(siteKey);
+    expect(siteKey!.startsWith(listKey!)).toBe(false);
     expect(await publicPortfolioListCacheKey(10, 20)).toBe("portfolio:public:list:g7:10:20");
   });
 });

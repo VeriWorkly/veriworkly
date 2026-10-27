@@ -388,7 +388,9 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
 
 export async function listAssets(query: AssetListQuery) {
   const where: Prisma.PortfolioAssetWhereInput = {
-    ...(query.status ? { status: query.status } : {}),
+    // A DELETED row is only a hold on a still-valid upload URL (V-224): listed, counted and sized
+    // only when asked for by its filter.
+    ...(query.status ? { status: query.status } : { status: { not: "DELETED" as const } }),
     ...(query.kind ? { kind: query.kind } : {}),
     ...(query.userId ? { userId: query.userId } : {}),
   };
