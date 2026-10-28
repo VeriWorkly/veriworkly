@@ -7,10 +7,7 @@ import type { BaseDocument } from "@/features/documents/core/types";
 import type { ResumeData } from "@/types/resume";
 
 import { buildWorkspaceBackup, signOutCurrentUser } from "@/features/auth/services/current-user";
-import {
-  buildAccountBackup,
-  LEGACY_SERVER_LIST_CAP,
-} from "@/features/profile/services/account-backup";
+import { buildAccountBackup } from "@/features/profile/services/account-backup";
 import {
   purchaseFingerprint,
   recordPurchaseBaseline,
@@ -70,9 +67,8 @@ vi.hoisted(() => {
  */
 function documentListReply(rows: unknown[], url: string) {
   const params = new URL(url).searchParams;
-  const limit = params.get("limit");
-
-  if (!limit) return Response.json({ data: rows, deleted: [], serverTime: null });
+  // The server pages every request, 20 by default (V-422).
+  const limit = params.get("limit") ?? "20";
 
   const from = Number(params.get("cursor") ?? 0);
   const to = from + Number(limit);
@@ -1457,10 +1453,7 @@ describe("S-347: the account backup made before deleting the account", () => {
    * The documents list as the server answers it: filtered by `type` when asked, every
    * type (portfolios included) when not. No Master Profile yet.
    */
-  function serveAccount(
-    records: Row[] | "offline",
-    options: { failCursor?: string; legacy?: boolean } = {},
-  ) {
+  function serveAccount(records: Row[] | "offline", options: { failCursor?: string } = {}) {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -1473,8 +1466,6 @@ describe("S-347: the account backup made before deleting the account", () => {
           }
           const type = address.searchParams.get("type");
           const data = type ? records.filter((record) => record.type === type) : records;
-          // A server from before paging ignores `limit`: one reply, no cursor, no total.
-          if (options.legacy) return Response.json({ data, deleted: [], serverTime: null });
           return documentListReply(data, String(url));
         }
 
@@ -1583,22 +1574,14 @@ describe("S-347: the account backup made before deleting the account", () => {
     ]);
   });
 
-  it("Part H: a full reply from a server without paging is treated as cut short", async () => {
-    const many = Array.from({ length: LEGACY_SERVER_LIST_CAP }, (_, index) =>
-      cloudRecord({ id: `r-${index}`, type: "RESUME", title: `R${index}` }, 1),
+  it("V-422: every page of a large account is in the backup", async () => {
+    // 520 resumes, 26 pages of 20: every one is in the backup.
+    serveAccount(
+      Array.from({ length: 520 }, (_, index) =>
+        cloudRecord({ id: `r-${index}`, type: "RESUME", title: `R${index}` }, 1),
+      ),
     );
-    serveAccount(many, { legacy: true });
-
-    const result = await backup();
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toMatch(/more documents than one backup can fetch/);
-  });
-
-  it("Part H: a short reply from a server without paging is the whole list", async () => {
-    serveAccount(manyCloudRecords(3), { legacy: true });
-
-    expect(await backupTitles()).toHaveLength(3);
+    expect(await backupTitles()).toHaveLength(520);
   });
 
   it("Part H: a page that fails part way makes no backup at all", async () => {

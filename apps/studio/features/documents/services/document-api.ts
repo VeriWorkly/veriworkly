@@ -44,10 +44,7 @@ export interface DocumentListResult {
    * page of one walk repeats the first page's value.
    */
   serverTime: string | null;
-  /**
-   * Send back as `cursor` for the next page. Null on the last page, and from a server without
-   * paging, whose one reply is the whole list.
-   */
+  /** Send back as `cursor` for the next page. Null on the last page. */
   nextCursor: string | null;
   /** The account's live documents of this type; null when the server did not say. */
   total: number | null;
@@ -167,7 +164,8 @@ async function request(path: string, init: RequestInit): Promise<Response> {
 
 export class DocumentApi {
   /**
-   * List documents for the current user: one page when `limit` or `cursor` is set.
+   * One page of the current user's documents: the server pages every request (V-422), 20 by
+   * default, so a caller that wants them all walks `pages`.
    *
    * Bodies are opt-in: a metadata-only list of 50 resumes is a few KB where the
    * full-content version was ~600KB. Callers that merge content (the sync hydrate
@@ -206,7 +204,7 @@ export class DocumentApi {
 
   /**
    * Every page of one list, in order, each yielded as it arrives; leaving the loop early stops
-   * the walk. Against a server without paging this is the one full reply.
+   * the walk.
    */
   static async *pages(
     type: DocumentType | undefined,

@@ -22,16 +22,41 @@ const TARGET_PAGES: Record<string, (id: string) => string> = {
 };
 
 /**
- * Where an entry's target can be opened, or `null`. A target the server reports gone, or an
- * entry that deleted or unpublished it, links nowhere: its page would 404.
+ * Where an entry's target can be opened, or `null`. A target the server reports gone links
+ * nowhere: its page would 404. A document in the trash (`targetDeleted` on a row that exists)
+ * opens in the documents list with deleted ones shown. When the server says where the target
+ * stands (V-272), that wins over the action's name: a restored document or an unpublished
+ * portfolio still has its page. Without it, an entry that deleted or unpublished its target
+ * links nowhere.
  */
 export function adminAuditTargetHref(
-  entry: Pick<AdminAuditEntry, "action" | "targetType" | "targetId" | "targetExists">,
+  entry: Pick<
+    AdminAuditEntry,
+    "action" | "targetType" | "targetId" | "targetExists" | "targetDeleted"
+  >,
 ) {
   if (!entry.targetId || entry.targetExists === false) return null;
-  if (/\.(delete|unpublish)$/.test(entry.action)) return null;
+
+  const known = entry.targetExists === true && entry.targetDeleted !== undefined;
+
+  if (known && entry.targetDeleted) {
+    return entry.targetType === "Document"
+      ? `/admin/documents?query=${encodeURIComponent(entry.targetId)}&includeDeleted=true`
+      : null;
+  }
+  if (!known && /\.(delete|unpublish)$/.test(entry.action)) return null;
 
   return TARGET_PAGES[entry.targetType]?.(entry.targetId) ?? null;
+}
+
+/** What became of an entry's target, for the audit row: gone, in the trash, or nothing to say. */
+export function adminAuditTargetState(
+  entry: Pick<AdminAuditEntry, "targetExists" | "targetDeleted">,
+) {
+  if (entry.targetExists === false) return "Deleted";
+  if (entry.targetExists === true && entry.targetDeleted) return "In the trash";
+
+  return null;
 }
 
 /** An entry's metadata as `key: value` pairs, for a row with no room for a JSON viewer. */

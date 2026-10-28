@@ -5,11 +5,15 @@ import { useRouter } from "next/navigation";
 import { Button } from "@veriworkly/ui";
 import { requestWithdrawal } from "@/features/affiliate/affiliate-api";
 
+/**
+ * `withdrawableCents` is the server's cap (V-321): the available balance less what the affiliate
+ * owes back from a commission reversed after release. Asking for more is refused with a 400.
+ */
 export function AffiliatePayoutForm({
-  availableCents,
+  withdrawableCents,
   minimumCents,
 }: {
-  availableCents: number;
+  withdrawableCents: number;
   minimumCents: number;
 }) {
   const router = useRouter();
@@ -18,7 +22,7 @@ export function AffiliatePayoutForm({
   const [loading, setLoading] = useState(false);
 
   const minDollars = minimumCents / 100;
-  const maxDollars = availableCents / 100;
+  const maxDollars = withdrawableCents / 100;
 
   const validationError = useMemo(() => {
     if (!amount.trim()) return null;
@@ -26,7 +30,7 @@ export function AffiliatePayoutForm({
     const value = Number(amount);
     if (!Number.isFinite(value)) return "Enter a valid amount.";
     if (value < minDollars) return `Minimum payout is $${minDollars.toFixed(2)}.`;
-    if (value > maxDollars) return `You only have $${maxDollars.toFixed(2)} available.`;
+    if (value > maxDollars) return `You can withdraw up to $${maxDollars.toFixed(2)}.`;
     return null;
   }, [amount, minDollars, maxDollars]);
 

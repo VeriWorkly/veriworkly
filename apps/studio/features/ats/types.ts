@@ -42,7 +42,8 @@ export type AtsResult = {
   /** A retry answered from the stored analysis: `creditsSpent` was charged once, earlier (V-192). */
   replayed?: boolean;
   quota: {
-    tier: "anonymous" | "free" | "subscriber";
+    /** As the server's; "paused" is a paused subscription, on the free limits (V-398). */
+    tier: "anonymous" | "free" | "paused" | "subscriber";
     limit: number;
     used: number;
     remaining: number;

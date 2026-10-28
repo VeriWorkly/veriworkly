@@ -6,6 +6,8 @@ import { revokeAdminApiKey, updateAdminApiKey } from "@/features/admin/services/
 interface ApiKeyActionsProps {
   id: string;
   name: string;
+  /** The stored prefix the list shows; retyped to revoke (V-082), never the owner-chosen name. */
+  keyPrefix: string;
   isActive: boolean;
   revoked: boolean;
 }
@@ -14,7 +16,7 @@ interface ApiKeyActionsProps {
  * Disable is reversible; revoke is not. The distinction matters because a compromised key must
  * never be re-enableable, while a noisy integration usually just needs pausing.
  */
-const ApiKeyActions = ({ id, name, isActive, revoked }: ApiKeyActionsProps) => {
+const ApiKeyActions = ({ id, name, keyPrefix, isActive, revoked }: ApiKeyActionsProps) => {
   if (revoked) return <span className="text-muted text-xs">Revoked</span>;
 
   return (
@@ -39,8 +41,10 @@ const ApiKeyActions = ({ id, name, isActive, revoked }: ApiKeyActionsProps) => {
         title="Revoke this API key permanently"
         description={`"${name}" is revoked for good. Use this when a key has leaked — a revoked key can never be re-enabled.`}
         confirmLabel="Revoke permanently"
-        onConfirm={async (reason) => {
-          await revokeAdminApiKey(id, reason);
+        confirmPhrase={keyPrefix}
+        confirmPhraseLabel={`Type the key prefix, ${keyPrefix}, to confirm`}
+        onConfirm={async (reason, _attemptKey, confirmation) => {
+          await revokeAdminApiKey(id, reason, confirmation);
         }}
       />
     </div>

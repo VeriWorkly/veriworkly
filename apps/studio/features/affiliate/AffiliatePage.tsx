@@ -5,7 +5,7 @@ import { Button } from "@veriworkly/ui";
 import { AffiliateNav } from "@/features/affiliate/AffiliateNav";
 import { EnrollButton } from "@/features/affiliate/EnrollButton";
 import { CopyReferralLinkButton } from "@/features/affiliate/CopyReferralLinkButton";
-import type { AffiliateDashboard } from "@/features/affiliate/types";
+import { type AffiliateDashboard, withdrawableCents } from "@/features/affiliate/types";
 import { formatCents } from "@/features/admin/utils/admin-format";
 
 export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | null }) {
@@ -117,6 +117,12 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
           <p className="text-muted mt-2 text-sm">
             {formatCents(dashboard.wallet.pendingCents)} pending review
           </p>
+          {withdrawableCents(dashboard) < dashboard.wallet.availableCents ? (
+            <p className="text-muted mt-1 text-sm">
+              {formatCents(withdrawableCents(dashboard))} withdrawable: the rest repays a refunded
+              commission.
+            </p>
+          ) : null}
           <Button
             asChild={!isPending && !isSuspended}
             disabled={isPending || isSuspended}

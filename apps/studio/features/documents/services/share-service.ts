@@ -6,7 +6,12 @@ import type { CoverLetterContent, CoverLetterSectionId } from "@/features/cover-
 
 import { backendApiUrl } from "@/lib/constants";
 import { clearInvalidSessionAndRedirect } from "@/lib/invalid-session";
-import { fetchApiData, readApiError, type OffsetPaginationPayload } from "@/utils/fetchApiData";
+import {
+  ApiRequestError,
+  fetchApiData,
+  readApiError,
+  type OffsetPaginationPayload,
+} from "@/utils/fetchApiData";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import {
   sectionVisible,
@@ -33,6 +38,11 @@ export type CreateShareLinkOptions = {
   noExpiry?: boolean;
   updateSlug?: boolean;
   removePassword?: boolean;
+  /**
+   * Whether the public page shows its Download buttons (V-421). Left out, a new link shows them
+   * and a refresh keeps the stored value, so it is sent only when the owner changed it.
+   */
+  allowDownload?: boolean;
 };
 
 export type CreateShareLinkResult = {
@@ -40,6 +50,8 @@ export type CreateShareLinkResult = {
   token: string;
   username: string;
   expiresAt: string | null;
+  /** Absent only from a server before V-421, where every link showed the buttons. */
+  allowDownload?: boolean;
 };
 
 export type ShareLinkItem = {
@@ -53,6 +65,8 @@ export type ShareLinkItem = {
   createdAt: string;
   updatedAt: string;
   documentSlug?: string;
+  /** Absent from a list cached before V-421: read as true, the stored default. */
+  allowDownload?: boolean;
 };
 
 type ShareLinksPage = OffsetPaginationPayload<ShareLinkItem>;
@@ -68,7 +82,17 @@ export type ShareLinkPayload<T = unknown> = {
   expiresAt: string | null;
   snapshot?: T;
   viewCount?: number;
+  /**
+   * Whether to show the Download buttons (V-421). A display preference, not access control:
+   * viewers can still save or print the page. Absent means true.
+   */
+  allowDownload?: boolean;
 };
+
+/** Whether a share link shows its Download buttons; a link from before V-421 always did. */
+export function shareAllowsDownload(link: { allowDownload?: boolean } | null | undefined) {
+  return link?.allowDownload !== false;
+}
 
 /** What a share link stores and a recruiter's page renders: the document without its sync state. */
 export type ShareSnapshot = Omit<BaseDocument, "sync">;
@@ -202,6 +226,7 @@ export async function createShareLink(
       noExpiry: options.noExpiry ?? false,
       updateSlug: options.updateSlug ?? false,
       removePassword: options.removePassword ?? false,
+      ...(options.allowDownload === undefined ? {} : { allowDownload: options.allowDownload }),
     }),
   });
 
@@ -297,4 +322,12 @@ export async function verifyShareLinkByUsernameAndSlug<T = unknown>(
     method: "POST",
     body: JSON.stringify({ password }),
   });
+}
+
+/**
+ * The server enforces a link's expiry (V-412) and answers an expired one, a password unlock
+ * included, with 410 "Link expired": the page says the link has expired, not "wrong password".
+ */
+export function isShareLinkExpiredError(error: unknown) {
+  return error instanceof ApiRequestError && error.status === 410;
 }

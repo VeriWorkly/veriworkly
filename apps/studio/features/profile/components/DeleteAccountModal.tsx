@@ -26,7 +26,12 @@ import {
 } from "@/features/auth/services/current-user";
 import { listDocuments } from "@/features/documents/services/document-workspace-service";
 import { downloadAccountBackup } from "@/features/profile/services/account-backup";
-import { deleteAccount } from "@/features/profile/services/update-profile";
+import {
+  type AffiliateForfeit,
+  affiliateForfeitFrom,
+  deleteAccount,
+} from "@/features/profile/services/update-profile";
+import { formatCents } from "@/features/admin/utils/admin-format";
 
 interface DeleteAccountModalProps {
   open: boolean;
@@ -42,6 +47,9 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
   const [downloading, setDownloading] = React.useState(false);
   // Why the full download was not made; the device-only copy is then offered instead.
   const [backupError, setBackupError] = React.useState<string | null>(null);
+  // The unpaid affiliate balance the server said this deletion forfeits (409
+  // AFFILIATE_BALANCE_FORFEIT); deleting again confirms exactly this amount.
+  const [forfeit, setForfeit] = React.useState<AffiliateForfeit | null>(null);
 
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -50,6 +58,7 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
       setConfirmationInput("");
       setError(null);
       setBackupError(null);
+      setForfeit(null);
       setIsDeleting(false);
     }
   }
@@ -95,7 +104,7 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
       setIsDeleting(true);
       setError(null);
 
-      await deleteAccount();
+      await deleteAccount(forfeit ? { confirmedForfeitCents: forfeit.amountCents } : {});
 
       toast.success(
         "Your account has been deleted. Billing records are kept only as long as tax law requires.",
@@ -106,6 +115,15 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
       clearLocalAccountData();
       window.location.href = siteConfig.links.main;
     } catch (err) {
+      // Not a failure: the server wants the forfeit confirmed first, or, when the balance grew
+      // since it was shown, confirmed again at the new amount.
+      const owed = affiliateForfeitFrom(err);
+      if (owed) {
+        setForfeit(owed);
+        setIsDeleting(false);
+        return;
+      }
+
       const message = err instanceof Error ? err.message : "Failed to delete account";
       setError(message);
       toast.error(message);
@@ -274,6 +292,24 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
               </div>
             ) : null}
 
+            {forfeit ? (
+              <div
+                role="alert"
+                id="affiliate-forfeit-notice"
+                className="space-y-1 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs"
+              >
+                <p className="text-foreground font-semibold">
+                  You have {formatCents(forfeit.amountCents, forfeit.currency)} in unpaid affiliate
+                  commissions. Deleting your account forfeits it.
+                </p>
+                <p className="text-muted">
+                  {formatCents(forfeit.availableCents, forfeit.currency)} available and{" "}
+                  {formatCents(forfeit.pendingCents, forfeit.currency)} pending. To keep it, cancel
+                  and request a payout first. To delete anyway, confirm below.
+                </p>
+              </div>
+            ) : null}
+
             <div className="space-y-2 pt-2">
               <label
                 htmlFor="confirm-email-input"
@@ -333,7 +369,9 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
               className="w-full bg-red-600 text-xs font-bold text-white transition-all hover:bg-red-700 disabled:opacity-40 sm:w-auto"
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Permanently Delete Everything
+              {forfeit
+                ? `Forfeit ${formatCents(forfeit.amountCents, forfeit.currency)} and delete`
+                : "Permanently Delete Everything"}
             </Button>
           </div>
         </form>

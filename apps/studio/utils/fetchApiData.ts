@@ -30,8 +30,13 @@ export class ApiRequestError extends Error {
   details: unknown;
   /** `details.code` when the server names the failure, e.g. `AUTH_UNAVAILABLE` on a 503. */
   code: string | undefined;
+  /**
+   * How long the server asked the client to wait before retrying, in seconds: its `Retry-After`
+   * header, or else `details.retryAfterSeconds` (a 503 `SERVER_RESTARTING` sends both).
+   */
+  retryAfterSeconds: number | undefined;
 
-  constructor(message: string, status: number, details?: unknown) {
+  constructor(message: string, status: number, details?: unknown, retryAfterSeconds?: number) {
     super(message);
     this.name = "ApiRequestError";
     this.status = status;
@@ -39,7 +44,24 @@ export class ApiRequestError extends Error {
 
     const code = (details as { code?: unknown } | null | undefined)?.code;
     this.code = typeof code === "string" ? code : undefined;
+
+    const fromDetails = (details as { retryAfterSeconds?: unknown } | null | undefined)
+      ?.retryAfterSeconds;
+    this.retryAfterSeconds =
+      retryAfterSeconds ??
+      (typeof fromDetails === "number" && fromDetails >= 0 ? fromDetails : undefined);
   }
+}
+
+/** `Retry-After` in seconds; the HTTP-date form is read as the time left until that date. */
+export function parseRetryAfter(value: string | null, now = Date.now()): number | undefined {
+  if (!value) return undefined;
+
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+
+  const at = Date.parse(trimmed);
+  return Number.isNaN(at) ? undefined : Math.max(0, Math.ceil((at - now) / 1000));
 }
 
 /** The server's own message wins: it says what actually went wrong ("Username is already taken"). */
@@ -54,7 +76,13 @@ export async function readApiError(response: Response, fallbackMessage?: string)
       ? body.message
       : (fallbackMessage ?? `Request failed: ${response.status}`);
 
-  return new ApiRequestError(message, response.status, body?.details);
+  return new ApiRequestError(
+    message,
+    response.status,
+    body?.details,
+    // Optional: a hand-built Response (a test double, a polyfill) may carry no headers.
+    parseRetryAfter(response.headers?.get("Retry-After") ?? null),
+  );
 }
 
 function normalizeHeaders(headers?: HeadersInit) {

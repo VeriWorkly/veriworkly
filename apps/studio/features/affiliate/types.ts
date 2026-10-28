@@ -6,7 +6,18 @@ export type AffiliateDashboard = {
   affiliateCode: string | null;
   clicks: number;
   conversions: number;
-  wallet: { pendingCents: number; availableCents: number; paidCents: number };
+  wallet: {
+    pendingCents: number;
+    availableCents: number;
+    paidCents: number;
+    /** Money owed back from a commission reversed after it was released (V-321). */
+    clawbackCents?: number;
+  };
+  /**
+   * What a withdrawal may request: the available balance less what is owed back (V-321). Absent
+   * only from a dashboard cached before the server sent it; `withdrawableCents()` falls back.
+   */
+  withdrawableCents?: number;
   minimumWithdrawalCents: number;
   tierProgress: { currentConversions: number; nextTierConversions: number | null };
   tiers: Array<{
@@ -37,6 +48,8 @@ export type AffiliateDashboard = {
     createdAt: string;
     /** The admin's rejection reason or payout reference, written to be shown here. */
     payoutNote: string | null;
+    reviewedAt?: string | null;
+    paidAt?: string | null;
   }>;
 };
 
@@ -51,3 +64,16 @@ export type LeaderboardEntry = {
     affiliateTier: string;
   } | null;
 };
+
+/**
+ * What the affiliate can withdraw now: the server's `withdrawableCents`, or, from a dashboard
+ * cached before it was sent, the available balance less any claw-back.
+ */
+export function withdrawableCents(
+  dashboard: Pick<AffiliateDashboard, "wallet" | "withdrawableCents">,
+) {
+  return (
+    dashboard.withdrawableCents ??
+    Math.max(0, dashboard.wallet.availableCents - (dashboard.wallet.clawbackCents ?? 0))
+  );
+}

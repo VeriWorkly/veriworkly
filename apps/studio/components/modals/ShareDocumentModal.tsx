@@ -9,6 +9,7 @@ import {
   Trash2,
   Loader2,
   Calendar,
+  Download,
   UserRound,
   ExternalLink,
   AlertTriangle,
@@ -27,6 +28,7 @@ import {
   createShareLink,
   revokeShareLink,
   listAllShareLinks,
+  shareAllowsDownload,
 } from "@/features/documents/services/share-service";
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 
@@ -62,6 +64,22 @@ interface LinkItem {
   passwordRequired?: boolean;
   viewCount: number;
   expiresAt: string | null;
+  allowDownload: boolean;
+}
+
+/** The copy beside the download switch: what it does, and what it cannot stop. */
+export function shareDownloadHint(allowDownload: boolean) {
+  return allowDownload
+    ? "Viewers can download it as PDF, HTML or DOCX."
+    : "Hides the download buttons; viewers can still save or print the page.";
+}
+
+/**
+ * The `allowDownload` a save sends: the owner's choice once they touched the switch, otherwise
+ * nothing, so a new link takes the server's default (on) and a refresh keeps the stored value.
+ */
+export function shareDownloadPayload(choice: boolean | null) {
+  return choice === null ? {} : { allowDownload: choice };
 }
 
 const slugify = (text: string) =>
@@ -194,6 +212,13 @@ const ActiveLinkRow = ({
               "Permanent Access"
             )}
           </span>
+
+          {link.allowDownload ? null : (
+            <>
+              <span className="opacity-30">/</span>
+              <span>Downloads hidden</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -255,6 +280,8 @@ const ShareDocumentModal = ({
   const [expiryChoice, setExpiryChoice] = useState<ShareExpiryChoice>("7");
   const [updateSlug, setUpdateSlug] = useState(false);
   const [removePassword, setRemovePassword] = useState(false);
+  // `null` until the owner flips the switch: an untouched save leaves the link's setting alone.
+  const [downloadChoice, setDownloadChoice] = useState<boolean | null>(null);
 
   const [linksLoading, setLinksLoading] = useState(false);
 
@@ -269,6 +296,7 @@ const ShareDocumentModal = ({
 
   const hasActiveLink = shareLinks.length > 0;
   const activeLink = shareLinks[0];
+  const allowDownload = downloadChoice ?? shareAllowsDownload(activeLink);
 
   const isSlugOutofSync = useMemo(() => {
     if (!activeLink) return false;
@@ -305,6 +333,7 @@ const ShareDocumentModal = ({
 
       setRemovePassword(false);
       setUpdateSlug(false);
+      setDownloadChoice(null);
 
       return links;
     } catch (err) {
@@ -344,6 +373,7 @@ const ShareDocumentModal = ({
         ...shareExpiryPayload(expiryChoice, activeLink?.expiresAt ?? null),
         updateSlug,
         removePassword,
+        ...shareDownloadPayload(downloadChoice),
       });
 
       toast.success(hasActiveLink ? "Share link updated!" : "Share link created!");
@@ -405,6 +435,7 @@ const ShareDocumentModal = ({
         expiresAt: link.expiresAt,
         viewCount: link.viewCount,
         passwordRequired: link.hasPassword,
+        allowDownload: shareAllowsDownload(link),
       })),
     [shareLinks],
   );
@@ -634,6 +665,29 @@ const ShareDocumentModal = ({
                     ))}
                   </Select>
                 </div>
+              </div>
+
+              <div className="flex items-start justify-between gap-3 rounded-xl border p-3">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="share-allow-download-checkbox"
+                    className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
+                  >
+                    <Download className="h-3.5 w-3.5 opacity-70" /> Allow downloads
+                  </label>
+
+                  <p id="share-allow-download-hint" className="text-muted-foreground text-xs">
+                    {shareDownloadHint(allowDownload)}
+                  </p>
+                </div>
+
+                <Checkbox
+                  id="share-allow-download-checkbox"
+                  aria-describedby="share-allow-download-hint"
+                  checked={allowDownload}
+                  onCheckedChange={(value) => setDownloadChoice(value)}
+                  className="mt-0.5 scale-90"
+                />
               </div>
 
               <Button

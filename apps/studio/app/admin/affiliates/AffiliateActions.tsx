@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
-import { Select } from "@veriworkly/ui";
+import { Select, TextArea } from "@veriworkly/ui";
 
 import AdminActionDialog from "@/components/admin/AdminActionDialog";
+import { ADMIN_REASON_MAX_LENGTH } from "@/components/admin/admin-reason";
 import { ADMIN_INPUT_CLASS } from "@/components/admin/admin-input-class";
 import {
   createAdminCommission,
@@ -65,14 +66,13 @@ export function AffiliateStandingActions({
         title="Update affiliate standing"
         description={`${email} → status ${nextStatus}, tier ${nextTier}. Suspending stops new commissions accruing.`}
         confirmLabel="Save changes"
-        reasonRequired={false}
         onConfirm={async (reason) => {
           await updateAdminAffiliate(userId, {
             ...(nextStatus !== status
               ? { status: nextStatus as "PENDING" | "ACTIVE" | "SUSPENDED" }
               : {}),
             ...(nextTier !== tier ? { tier: nextTier } : {}),
-            reason: reason || undefined,
+            reason,
           });
         }}
       />
@@ -178,12 +178,11 @@ function CommissionConvertAction({
       title="Record this commission in USD"
       description={`The ${amount} commission is replaced by one in USD: enter what the customer's ${currency} purchase came to in US dollars. The USD commission uses the same ${(rateBps / 100).toFixed(1)}% rate as the original. It starts pending; the ${currency} one is closed in the same step.`}
       confirmLabel="Convert"
-      reasonRequired={false}
       onConfirm={async (reason) => {
         if (!conversion.ok) throw new Error(conversion.message);
 
         try {
-          await createAdminCommission({ ...conversion.payload, reason: reason || undefined });
+          await createAdminCommission({ ...conversion.payload, reason });
         } catch (error) {
           throw new Error(describeConversionError(error));
         }
@@ -273,9 +272,8 @@ export function CommissionActions({
           title="Release this commission"
           description={`${amount} moves from the affiliate's pending balance to available, making it withdrawable.`}
           confirmLabel="Release commission"
-          reasonRequired={false}
           onConfirm={async (reason) => {
-            await updateAdminCommission(id, "AVAILABLE", reason || undefined);
+            await updateAdminCommission(id, "AVAILABLE", reason);
           }}
         />
       ) : !referredUserId ? (
@@ -334,32 +332,33 @@ export function WithdrawalActions({
 
   // The server takes a rejection from REQUESTED or APPROVED, and returns the amount either way.
   const reject = (
-    <AdminActionDialog
+    <WithdrawalDecision
+      id={id}
+      status="REJECTED"
       trigger="Reject"
       title="Reject this withdrawal"
       description={`${amount} is returned to ${email}'s available balance.${status === "APPROVED" ? " Only reject an approved payout that was never sent." : ""}`}
       confirmLabel="Reject"
-      reasonLabel="Payout note"
-      onConfirm={async (reason) => {
-        await updateAdminWithdrawal(id, "REJECTED", reason);
-      }}
+      noteLabel="Why it was rejected"
+      notePlaceholder="Explain the decision to the affiliate."
+      noteRequired
     />
   );
 
   if (status === "REQUESTED") {
     return (
       <div className="flex flex-wrap gap-2">
-        <AdminActionDialog
+        <WithdrawalDecision
+          id={id}
+          status="APPROVED"
           trigger="Approve"
           triggerVariant="primary"
           title="Approve this withdrawal"
           description={`Approving ${amount} for ${email}. The funds stay reserved until you mark the payout as paid.`}
           confirmLabel="Approve"
-          reasonLabel="Payout note"
-          reasonRequired={false}
-          onConfirm={async (reason) => {
-            await updateAdminWithdrawal(id, "APPROVED", reason || undefined);
-          }}
+          noteLabel="Payout note"
+          notePlaceholder="Optional, e.g. when to expect the transfer."
+          noteRequired={false}
         />
 
         {reject}
@@ -370,17 +369,17 @@ export function WithdrawalActions({
   if (status === "APPROVED") {
     return (
       <div className="flex flex-wrap gap-2">
-        <AdminActionDialog
+        <WithdrawalDecision
+          id={id}
+          status="PAID"
           trigger="Mark paid"
           triggerVariant="primary"
           title="Record this payout as paid"
           description={`Confirm that ${amount} has actually been sent to ${email}. This records the transfer; it does not send money.`}
           confirmLabel="Mark as paid"
-          reasonLabel="Payout reference"
-          reasonPlaceholder="Bank reference, PayPal transaction id, etc."
-          onConfirm={async (reason) => {
-            await updateAdminWithdrawal(id, "PAID", reason);
-          }}
+          noteLabel="Payout reference"
+          notePlaceholder="Bank reference, PayPal transaction id, etc."
+          noteRequired
         />
         {reject}
       </div>
@@ -388,6 +387,85 @@ export function WithdrawalActions({
   }
 
   return <span className="text-muted text-xs">Finalized</span>;
+}
+
+/** The server's rule for a payout note: 3–500 characters once trimmed, or blank when optional. */
+export function isPayoutNoteValid(note: string, required: boolean) {
+  const length = note.trim().length;
+
+  return length <= ADMIN_REASON_MAX_LENGTH && (length >= 3 || (!required && length === 0));
+}
+
+/**
+ * One withdrawal decision. Two fields, because two people read them (V-324, V-081): the payout
+ * note is shown to the affiliate on their payout history, and the audit reason stays in the
+ * admin audit log. An admin typing "held: fraud check" must know which one the affiliate sees.
+ */
+function WithdrawalDecision({
+  id,
+  status,
+  noteLabel,
+  notePlaceholder,
+  noteRequired,
+  ...dialog
+}: {
+  id: string;
+  status: "APPROVED" | "REJECTED" | "PAID";
+  trigger: string;
+  triggerVariant?: "primary";
+  title: string;
+  description: string;
+  confirmLabel: string;
+  noteLabel: string;
+  notePlaceholder: string;
+  noteRequired: boolean;
+}) {
+  const noteId = useId();
+  const [note, setNote] = useState("");
+  const noteValid = isPayoutNoteValid(note, noteRequired);
+  const showNoteError = note.length > 0 && !noteValid;
+
+  return (
+    <AdminActionDialog
+      {...dialog}
+      reasonLabel="Internal audit reason"
+      reasonPlaceholder="Why you are doing this. Kept in the admin audit log; the affiliate never sees it."
+      confirmDisabled={!noteValid}
+      onClosed={() => setNote("")}
+      onConfirm={async (reason) => {
+        await updateAdminWithdrawal(id, status, reason, note);
+      }}
+    >
+      <div className="space-y-1.5">
+        <label htmlFor={noteId} className="text-muted text-xs font-medium">
+          {noteLabel} (visible to the affiliate)
+          {noteRequired ? <span className="text-destructive"> *</span> : null}
+        </label>
+
+        <TextArea
+          id={noteId}
+          rows={2}
+          value={note}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
+          placeholder={notePlaceholder}
+          aria-required={noteRequired}
+          aria-invalid={showNoteError}
+          aria-describedby={`${noteId}-hint${showNoteError ? ` ${noteId}-error` : ""}`}
+          onChange={(event) => setNote(event.target.value)}
+        />
+
+        <p id={`${noteId}-hint`} className="text-muted text-xs">
+          Shown to the affiliate on their payout history. Do not put internal notes here.
+        </p>
+
+        {showNoteError ? (
+          <p id={`${noteId}-error`} className="text-warning text-xs">
+            Give at least 3 characters.
+          </p>
+        ) : null}
+      </div>
+    </AdminActionDialog>
+  );
 }
 
 /** Manual commission entry for a payment that never produced a webhook. */
@@ -440,14 +518,13 @@ export function CommissionCreateForm() {
         title="Create a manual commission"
         description={`Recording a ${formatCents(purchaseAmountCents)} purchase against the referring affiliate. The commission amount is calculated from their tier.`}
         confirmLabel="Create commission"
-        reasonRequired={false}
         onConfirm={async (reason) => {
           await createAdminCommission({
             referredUserId: referredUserId.trim(),
             providerPaymentId: providerPaymentId.trim(),
             purchaseAmountCents,
             status: "AVAILABLE",
-            reason: reason || undefined,
+            reason,
           });
 
           setReferredUserId("");

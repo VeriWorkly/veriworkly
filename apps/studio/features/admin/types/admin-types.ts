@@ -50,6 +50,8 @@ export interface AdminAuditEntry {
   actor: AdminUserRef | null;
   /** Whether the target row is still there; `null` when the target is not a database record. */
   targetExists?: boolean | null;
+  /** The row is gone, or soft-deleted (a document in the trash); false when not tracked. */
+  targetDeleted?: boolean;
 }
 
 /** What an overview section holds when its queries failed; the rest of the overview still loads. */
