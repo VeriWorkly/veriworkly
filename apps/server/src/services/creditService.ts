@@ -9,6 +9,7 @@ import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { cacheDel, cacheGet, cacheSet } from "#lib/redis";
 import { CREDIT_SOURCES, PAID_CREDIT_SOURCES } from "#services/creditSources";
+import { NOT_ENOUGH_CREDITS } from "#services/productNames";
 
 const CREDIT_SUMMARY_TTL_SECONDS = 30;
 const CREDIT_HISTORY_TTL_SECONDS = 60;
@@ -512,7 +513,7 @@ export class CreditService {
         // filter compares against: one app clock, no database-clock skew between the two.
         const now = new Date();
         if ((await availableCredits(tx, wallet, now)) < cost)
-          throw new ApiError(402, "Not enough AI credits.");
+          throw new ApiError(402, NOT_ENOUGH_CREDITS);
 
         const changed = await tx.creditWallet.updateMany({
           where: { id: wallet.id, balance: { gte: cost } },
@@ -745,7 +746,7 @@ export class CreditService {
           create: { userId },
           update: {},
         });
-        if (wallet.balance < cost) throw new ApiError(402, "Not enough AI credits.");
+        if (wallet.balance < cost) throw new ApiError(402, NOT_ENOUGH_CREDITS);
 
         // Credits held by pending reservations are not ours to take: an admin debit must leave
         // every PENDING reservation able to commit.
