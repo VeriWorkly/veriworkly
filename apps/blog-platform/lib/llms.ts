@@ -2,13 +2,12 @@ import type { BlogPost } from "@/lib/source";
 
 import { blog } from "@/lib/source";
 import { siteConfig } from "@/config/site";
+import { postMarkdown } from "@/lib/feed";
 
 /**
  * `/llms.txt` and `/llms-full.txt`, built from the content collection at build time so the
  * article list cannot drift from what is published (B-035).
  */
-
-const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
 
 /** Written about VeriWorkly itself, so they are listed apart from the career guidance. */
 const PRODUCT_CATEGORIES = new Set(["Product", "Engineering"]);
@@ -116,7 +115,7 @@ export async function buildLlmsFull(): Promise<string> {
   for (const [category, posts] of postsByCategory()) {
     for (const post of posts) {
       const { title, description, date, updated, faq } = post.data;
-      const body = (await post.data.getText("raw")).replace(FRONTMATTER, "").trim();
+      const body = await postMarkdown(post);
       const dates = updated
         ? `Published ${isoDay(date)}, updated ${isoDay(updated)}`
         : `Published ${isoDay(date)}`;
