@@ -23,7 +23,7 @@ export function denyApiKeyAuth(req: Request, res: Response, next: NextFunction) 
       .json(
         createErrorResponse(
           403,
-          "This action cannot be performed with an API key. Sign in and delete your account from Settings.",
+          "This action cannot be performed with an API key. Sign in and delete your account from your Studio profile page.",
         ),
       );
   }

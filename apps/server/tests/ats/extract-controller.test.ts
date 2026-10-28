@@ -13,7 +13,7 @@ vi.mock("#services/ats/quota", () => ({
 }));
 vi.mock("#services/ats/resumeExtract", () => ({
   AtsResumeExtractService: { extract: (...args: unknown[]) => extract(...args) },
-  UNSUPPORTED_RESUME_FORMAT: "Upload a PDF, DOCX, TXT, Markdown, or JSON resume.",
+  UNSUPPORTED_RESUME_FORMAT: "Upload a PDF, DOCX, HTML, TXT, Markdown, or JSON resume.",
 }));
 vi.mock("#utils/requestIp", () => ({
   getRequestIpDetails: vi.fn(() => ({ resolvedIp: "203.0.113.20" })),

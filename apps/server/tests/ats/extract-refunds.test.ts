@@ -16,7 +16,7 @@ const extract = vi.fn();
 vi.mock("#services/ats/quota", () => ({ AtsQuotaService: { consumeExtract, refundExtract } }));
 vi.mock("#services/ats/resumeExtract", () => ({
   AtsResumeExtractService: { extract },
-  UNSUPPORTED_RESUME_FORMAT: "Upload a PDF, DOCX, TXT, Markdown, or JSON resume.",
+  UNSUPPORTED_RESUME_FORMAT: "Upload a PDF, DOCX, HTML, TXT, Markdown, or JSON resume.",
 }));
 vi.mock("#utils/requestIp", () => ({
   getRequestIpDetails: () => ({ resolvedIp: "203.0.113.9" }),

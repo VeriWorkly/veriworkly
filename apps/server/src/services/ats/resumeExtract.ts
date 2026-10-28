@@ -8,7 +8,7 @@ import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
 import { extractInChildProcess } from "#services/ats/extractPool";
 
-export const UNSUPPORTED_RESUME_FORMAT = "Upload a PDF, DOCX, TXT, Markdown, or JSON resume.";
+export const UNSUPPORTED_RESUME_FORMAT = "Upload a PDF, DOCX, HTML, TXT, Markdown, or JSON resume.";
 
 /** Below this much text there is no resume to score: a scan, an image, or an empty file. */
 const MIN_TEXT_CHARS = 50;
