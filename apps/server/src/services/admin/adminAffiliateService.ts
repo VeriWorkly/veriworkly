@@ -127,9 +127,14 @@ export async function listAffiliates(query: AffiliateListQuery) {
       : {}),
   };
 
-  const [items, total] = await Promise.all([
+  const page = (
+    pageWhere: Prisma.UserWhereInput,
+    orderBy: Prisma.UserOrderByWithRelationInput[],
+    skip: number,
+    take: number,
+  ) =>
     prisma.user.findMany({
-      where,
+      where: pageWhere,
       select: {
         ...AFFILIATE_SELECT,
         affiliateWallet: {
@@ -137,19 +142,73 @@ export async function listAffiliates(query: AffiliateListQuery) {
         },
         _count: { select: { affiliateReferrals: true, affiliateClicks: true } },
       },
-      // "earnings" and "referrals" have no single sortable column, so they fall back to the
-      // wallet's paid total and the referral count via the relation ordering Prisma supports.
-      orderBy:
-        query.sort === "referrals"
-          ? { affiliateReferrals: { _count: "desc" } }
-          : query.sort === "earnings"
-            ? { affiliateWallet: { paidCents: "desc" } }
-            : { affiliateEnrolledAt: "desc" },
-      take: query.limit,
-      skip: query.offset,
-    }),
+      orderBy,
+      take,
+      skip,
+    });
+
+  if (query.sort === "earnings") return listByEarnings(where, query, page);
+
+  // "referrals" has no single sortable column, so it falls back to the relation ordering Prisma
+  // supports.
+  const [items, total] = await Promise.all([
+    page(
+      where,
+      query.sort === "referrals"
+        ? [{ affiliateReferrals: { _count: "desc" } }, { affiliateEnrolledAt: "desc" }]
+        : [{ affiliateEnrolledAt: "desc" }],
+      query.offset,
+      query.limit,
+    ),
     prisma.user.count({ where }),
   ]);
+
+  return listPage(items, total, query);
+}
+
+/**
+ * "Top earners": by the wallet's paid total. An affiliate with no wallet yet has earned nothing,
+ * but ordering through the relation puts them first (Postgres sorts NULL first under DESC, and a
+ * required column cannot ask for NULLS LAST), so the list is the wallet holders, then the rest
+ * (V-296), paged across the two.
+ */
+async function listByEarnings<T>(
+  where: Prisma.UserWhereInput,
+  query: AffiliateListQuery,
+  page: (
+    pageWhere: Prisma.UserWhereInput,
+    orderBy: Prisma.UserOrderByWithRelationInput[],
+    skip: number,
+    take: number,
+  ) => Promise<T[]>,
+) {
+  const withWallet: Prisma.UserWhereInput = { AND: [where, { affiliateWallet: { isNot: null } }] };
+  const withoutWallet: Prisma.UserWhereInput = { AND: [where, { affiliateWallet: { is: null } }] };
+  const [holders, total] = await Promise.all([
+    prisma.user.count({ where: withWallet }),
+    prisma.user.count({ where }),
+  ]);
+
+  const items: T[] = [];
+  if (query.offset < holders)
+    items.push(
+      ...(await page(
+        withWallet,
+        [{ affiliateWallet: { paidCents: "desc" } }, { affiliateEnrolledAt: "desc" }],
+        query.offset,
+        query.limit,
+      )),
+    );
+  const remaining = query.limit - items.length;
+  if (remaining > 0)
+    items.push(
+      ...(await page(
+        withoutWallet,
+        [{ affiliateEnrolledAt: "desc" }],
+        Math.max(0, query.offset - holders),
+        remaining,
+      )),
+    );
 
   return listPage(items, total, query);
 }

@@ -5,6 +5,18 @@ description: >
   most recently
 
   updated first. Returns subdomain and timestamp only — no portfolio content.
+  Without
+
+  `limit` a page holds up to 1,000 portfolios; page through the rest with
+  `offset` (up to
+
+  49,999, the sitemap protocol's 50,000 URLs). The default order, most recently
+  updated first,
+
+  moves whenever a site is republished or its billing changes; to page through
+  every site,
+
+  send `order=stable`, which lists by publication id and never moves.
 
 
   No user session is required, but the request must carry an API key or
@@ -27,7 +39,18 @@ _openapi:
           status, most recently
 
           updated first. Returns subdomain and timestamp only — no portfolio
-          content.
+          content. Without
+
+          `limit` a page holds up to 1,000 portfolios; page through the rest
+          with `offset` (up to
+
+          49,999, the sitemap protocol's 50,000 URLs). The default order, most
+          recently updated first,
+
+          moves whenever a site is republished or its billing changes; to page
+          through every site,
+
+          send `order=stable`, which lists by publication id and never moves.
 
 
           No user session is required, but the request must carry an API key or

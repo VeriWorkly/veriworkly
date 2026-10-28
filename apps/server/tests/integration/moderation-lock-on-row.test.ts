@@ -338,18 +338,28 @@ describe("V-208 an admin LIVE lift also lifts a Make private", () => {
 });
 
 describe("V-226 a takedown that commits after the read is never overwritten", () => {
-  /** Runs `between` right after the first `findUnique`/`findFirst` the code under test makes. */
+  /**
+   * Runs `between` right after the first `findUnique`/`findFirst` the code under test makes.
+   * The returned check says it ran: a request that failed or answered before that read did not
+   * test the race at all (V-414).
+   */
   function interleave<T extends object>(
     delegate: T,
     method: keyof T & string,
     between: () => Promise<unknown>,
   ) {
+    let fired = false;
     const original = (delegate[method] as (...args: unknown[]) => Promise<unknown>).bind(delegate);
     vi.spyOn(delegate, method as never).mockImplementationOnce((async (...args: unknown[]) => {
       const read = await original(...args);
       await between();
+      fired = true;
       return read;
     }) as never);
+    return {
+      assertFired: () =>
+        expect(fired, "the takedown ran between the read and the write").toBe(true),
+    };
   }
 
   it("publish", async () => {
@@ -360,12 +370,15 @@ describe("V-226 a takedown that commits after the read is never overwritten", ()
       data: { status: "SUSPENDED", suspensionReason: "user_unpublished", suspendedAt: new Date() },
     });
 
-    interleave(prisma.portfolioPublication, "findUnique", () =>
+    const race = interleave(prisma.portfolioPublication, "findUnique", () =>
       adminSuspendDirect(publication.id, "Phishing"),
     );
     const response = await publish(owner, document, publication.subdomain);
 
-    expect([403, 409]).toContain(response.status);
+    race.assertFired();
+    // The publish write is conditional on the row it read, and the lock now on it is the answer.
+    expect(response.status, JSON.stringify(response.body)).toBe(403);
+    expect(response.body.message).toMatch(/taken down by a moderator/);
     const row = await prisma.portfolioPublication.findUniqueOrThrow({
       where: { id: publication.id },
     });
@@ -393,15 +406,22 @@ describe("V-226 a takedown that commits after the read is never overwritten", ()
     const owner = await createUserWithSession();
     const { publication } = await seedLivePortfolio(owner.id);
 
-    interleave(prisma.portfolioPublication, "findUnique", () =>
+    const race = interleave(prisma.portfolioPublication, "findUnique", () =>
       adminSuspendDirect(publication.id, "Phishing"),
     );
-    await as(owner, request(app).post("/api/v1/portfolios/unpublish"));
+    const response = await as(owner, request(app).post("/api/v1/portfolios/unpublish"));
+
+    race.assertFired();
+    // The owner's unpublish still succeeds, and is recorded under the lock (V-285) instead of
+    // replacing it.
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
 
     const row = await prisma.portfolioPublication.findUniqueOrThrow({
       where: { id: publication.id },
     });
+    expect(row.status).toBe("SUSPENDED");
     expect(row.suspensionReason).toBe("moderation:Phishing");
+    expect(row.reasonBeforeModeration).toBe("user_unpublished");
   });
 
   it("owner delete", async () => {

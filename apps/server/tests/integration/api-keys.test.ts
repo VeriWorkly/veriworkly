@@ -566,7 +566,10 @@ describe("API keys through the real stack", () => {
     const keyHash = hashKey(created.key);
 
     await revokeApiKey(created.id);
-    await updateApiKey(created.id, { isActive: true, reason: "integration enable" });
+    // Refused outright (V-293): a revocation is permanent.
+    await expect(
+      updateApiKey(created.id, { isActive: true, reason: "integration enable" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
     expect(await revokedMarker(keyHash)).not.toBeNull();
     expect((await requestWithKey(created.key)).status).toBe(401);
   });

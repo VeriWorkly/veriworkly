@@ -40,9 +40,11 @@ function parseViewBeacon(body: unknown) {
 export class PortfolioController {
   static async listPublic(req: Request, res: Response, next: NextFunction) {
     try {
-      const { limit, offset } = publicPortfolioListQuerySchema.parse(req.query);
+      const { limit, offset, order } = publicPortfolioListQuerySchema.parse(req.query);
 
-      res.json(createSuccessResponse(await PortfolioService.listPublicPortfolios(limit, offset)));
+      res.json(
+        createSuccessResponse(await PortfolioService.listPublicPortfolios(limit, offset, order)),
+      );
     } catch (error) {
       next(error instanceof z.ZodError ? handleValidationError(error) : error);
     }

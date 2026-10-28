@@ -36,7 +36,8 @@ const userProfileSelect = {
   _count: {
     select: {
       apiKeys: true,
-      shareLinks: true,
+      // As the share list counts them: none on a deleted document (V-306).
+      shareLinks: { where: { document: { deletedAt: null } } },
       // The "Documents" figure on the account page (V-186): what the documents list shows, so
       // no soft-deleted (or purged, which are soft-deleted too) rows and no portfolio rows.
       resumes: { where: { deletedAt: null, type: { not: "PORTFOLIO" } } },

@@ -297,16 +297,20 @@ describe("lock order: releasing commissions while the affiliate deletes their ac
       );
 
       // V-400: no deadlock is not enough. The deletion committed, and every release or reversal
-      // either landed before it or was refused as "deleted account" (409), never another error.
+      // either landed or was refused with a 409: the account was gone, or the release and the
+      // reversal of the same commission raced and the other one moved it first. Never another error.
       const deletion = results[commissions.length];
       expect(deletion.status).toBe("fulfilled");
       const others = results.filter((_, index) => index !== commissions.length);
       for (const result of others)
-        if (result.status === "rejected")
-          expect(result.reason).toMatchObject({
-            statusCode: 409,
-            message: "This commission belongs to a deleted account and cannot change.",
-          });
+        if (result.status === "rejected") {
+          expect(result.reason).toMatchObject({ statusCode: 409 });
+          expect([
+            "This commission belongs to a deleted account and cannot change.",
+            "Only pending commissions can be released.",
+            "Only pending, available or paid commissions can be reversed.",
+          ]).toContain((result.reason as Error).message);
+        }
       expect(await prisma.user.count({ where: { id: user.id } })).toBe(0);
       expect(await prisma.affiliateWallet.count({ where: { userId: user.id } })).toBe(0);
       // The commissions are billing records: kept and detached, never left pointing at the user.

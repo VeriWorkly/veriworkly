@@ -6,7 +6,8 @@ import { ApiError } from "#lib/errors";
 import { assertConfirmation } from "#services/admin/adminConfirmation";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { assertDocumentNotPurged, PURGED_DOCUMENT_CONTENT } from "#jobs/retentionJob";
-import { cacheNamespaces, documentCacheNamespaces } from "#lib/cacheKeys";
+import { cacheNamespaces, documentCacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheDel } from "#lib/redis";
 
 import {
   isModerationLocked,
@@ -26,6 +27,10 @@ import type {
 } from "#validators/admin/adminDocumentValidator";
 import { listPage } from "#utils/pagination";
 import { USER_UNPUBLISHED_REASON } from "#services/portfolioAssetService";
+import {
+  isBillingSuspensionReason,
+  settleRestoredBillingSuspension,
+} from "#services/admin/adminPortfolioService";
 import {
   ADMIN_AUDIT_ACTIONS,
   getAuditHistory,
@@ -192,7 +197,10 @@ async function invalidateOwnerDocumentCaches(
     // The share list leaves out links on soft-deleted documents (V-030).
     cacheNamespaces.shareList(userId),
     ...(username && shareSlugs.length > 0 ? [cacheNamespaces.publicShare(username)] : []),
+    // The master profile and the account page count share links on live documents (V-306).
+    ...(shareSlugs.length > 0 ? [cacheNamespaces.masterProfile(userId)] : []),
   );
+  await cacheDel(userProfileCacheKey(userId));
 }
 
 type PublicationState = {
@@ -274,8 +282,8 @@ async function loadDocumentForMutation(documentId: string) {
       visibility: true,
       moderatedPrivateAt: true,
       deletedAt: true,
-      // For restoreDocument's purge check (assertDocumentNotPurged).
-      content: true,
+      // No `content` (V-298): a résumé can be megabytes, and only the restore needs to know whether
+      // it was purged, which its conditional write and the re-read after it answer.
       user: { select: { username: true } },
       shareLinks: { select: { slug: true } },
     },
@@ -342,8 +350,13 @@ export async function updateDocumentVisibility(
       : visibility;
   // A lock put over the owner's or billing's own suspension lifts back to it (V-285).
   const liftedReason = publication?.reasonBeforeModeration ?? USER_UNPUBLISHED_REASON;
+  const restoresBilling = isBillingSuspensionReason(liftedReason);
 
   const updated = await prisma.$transaction(async (tx) => {
+    // A lift takes the owner's billing lock first, as the status lift and `dropToFreeTier` do,
+    // then the Document row (below), then the publication: one order everywhere.
+    if (lift) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${document.userId}))`;
+
     // Conditional on the visibility and lock read above, so the owner's own "make private" that
     // commits in between is not turned into an unlist on a stale read.
     const { count } = await tx.document.updateMany({
@@ -401,11 +414,17 @@ export async function updateDocumentVisibility(
       );
 
     if (publication && unchanged && lift) {
-      // Still offline, so `suspendedAt` keeps the date it went down; only the lock goes.
+      // Still offline, so `suspendedAt` keeps the date it went down; only the lock goes. A billing
+      // reason comes back dated now, as the publication lift does it: the free-tier drop only
+      // takes billing suspensions inside its restore window. Settled after the commit, below.
       assertApplied(
         await tx.portfolioPublication.updateMany({
           where: unchanged,
-          data: { suspensionReason: liftedReason, reasonBeforeModeration: null },
+          data: {
+            suspensionReason: liftedReason,
+            reasonBeforeModeration: null,
+            ...(restoresBilling ? { suspendedAt: new Date() } : {}),
+          },
         }),
       );
       await writeAdminAudit(tx, {
@@ -433,6 +452,9 @@ export async function updateDocumentVisibility(
     await invalidatePublicPortfolioCaches([publication.subdomain]);
     void revalidatePublicPortfolios([publication.subdomain]);
   }
+
+  if (publication && lift && restoresBilling)
+    await settleRestoredBillingSuspension(document.userId);
 
   await invalidateOwnerDocumentCaches(
     document.userId,
@@ -513,9 +535,8 @@ export async function restoreDocument(documentId: string, audit?: AdminAuditInpu
 
   if (!document.deletedAt) throw new ApiError(409, "Document is not deleted.");
 
-  assertDocumentNotPurged(document);
-
-  // Conditional, so a purge that lands between the read above and this write wins (410).
+  // Conditional on the content not being purged: a purged document, or a purge that lands
+  // between the read above and this write, is answered 410 by the re-read below.
   const restored = await prisma.$transaction(async (tx) => {
     const result = await tx.document.updateMany({
       where: {
@@ -601,8 +622,15 @@ export async function listShareLinks(query: ShareLinkListQuery) {
   );
 }
 
-/** `confirm` is the slug the admin retyped (V-082), checked before the link is deleted. */
-export async function revokeShareLink(shareLinkId: string, confirm?: string) {
+/**
+ * `confirm` is the slug the admin retyped (V-082), checked before the link is deleted. The audit
+ * entry commits with the delete (V-291).
+ */
+export async function revokeShareLink(
+  shareLinkId: string,
+  confirm: string | undefined,
+  audit: Pick<AdminAuditInput, "actorId" | "reason">,
+) {
   const share = await prisma.shareLink.findUnique({
     where: { id: shareLinkId },
     select: {
@@ -618,7 +646,21 @@ export async function revokeShareLink(shareLinkId: string, confirm?: string) {
   if (!share) throw new ApiError(404, "Share link not found.");
   assertConfirmation(confirm, share.slug, "share link's slug");
 
-  await prisma.shareLink.delete({ where: { id: shareLinkId } });
+  // The delete and its audit entry commit together (V-291): a revoke with no record, or a record
+  // of a revoke that did not happen, is not possible. `deleteMany` so a concurrent revoke of the
+  // same link is a 404, not a P2025 500.
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.shareLink.deleteMany({ where: { id: shareLinkId } });
+    if (count === 0) throw new ApiError(404, "Share link not found.");
+    await writeAdminAudit(tx, {
+      ...audit,
+      action: ADMIN_AUDIT_ACTIONS.shareLinkRevoke,
+      targetType: "ShareLink",
+      targetId: shareLinkId,
+      // Ids only, never the slug (made from the document title).
+      metadata: { documentId: share.documentId, ownerId: share.userId },
+    });
+  });
 
   await invalidateOwnerDocumentCaches(
     share.userId,

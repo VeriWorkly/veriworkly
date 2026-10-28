@@ -4,6 +4,7 @@ import type { z } from "zod";
 
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
 
 import {
   BillingService,
@@ -15,7 +16,11 @@ import { CreditService } from "#services/creditService";
 import { CREDIT_SOURCES } from "#services/creditSources";
 import { creditPackCatalog, isProductKey, productCatalog } from "#services/productCatalog";
 import { withAccountPlaceholder } from "#services/admin/deletedAccountPlaceholder";
-import { writeAdminAudit, type AdminAuditInput } from "#services/admin/adminAuditService";
+import {
+  recordAdminAudit,
+  writeAdminAudit,
+  type AdminAuditInput,
+} from "#services/admin/adminAuditService";
 
 import type {
   adminCreditWalletListQuerySchema,
@@ -323,48 +328,62 @@ export async function updateSubscription(
     input.currentPeriodEnd !== undefined ||
     input.graceEndsAt !== undefined;
 
-  const updated = await prisma.$transaction(async (tx) => {
-    await lockUserForBilling(tx, userId);
-    const subscription = await tx.subscription.update({
-      where: { id: subscriptionId },
-      data: {
-        ...(input.status !== undefined ? { status: input.status } : {}),
-        ...(providerRawStatus !== undefined ? { rawStatus: providerRawStatus } : {}),
-        ...(providerCancelAtPeriodEnd !== undefined
-          ? { cancelAtPeriodEnd: providerCancelAtPeriodEnd }
-          : {}),
-        ...(input.currentPeriodEnd !== undefined
-          ? { currentPeriodEnd: input.currentPeriodEnd ? new Date(input.currentPeriodEnd) : null }
-          : {}),
-        ...(input.graceEndsAt !== undefined
-          ? { graceEndsAt: input.graceEndsAt ? new Date(input.graceEndsAt) : null }
-          : {}),
-      },
-      include: { user: { select: SUBSCRIBER_SELECT } },
-    });
-    if (touchesAccess && isProductKey(subscription.productKey))
-      await syncSubscriptionGrants(tx, {
-        userId,
-        sourceId: subscription.providerSubId ?? subscription.id,
-        productKey: subscription.productKey,
-        status: subscription.status,
-        currentPeriodEnd: subscription.currentPeriodEnd,
-        graceEndsAt: subscription.graceEndsAt,
-        at: new Date(),
+  const auditMetadata = {
+    ...audit.metadata,
+    userId,
+    previousStatus: existing.status,
+    ...(providerCancelAtPeriodEnd !== undefined
+      ? { providerCancelAtPeriodEnd, previousCancelAtPeriodEnd: existing.cancelAtPeriodEnd }
+      : {}),
+  };
+
+  const writeLocally = () =>
+    prisma.$transaction(async (tx) => {
+      await lockUserForBilling(tx, userId);
+      const subscription = await tx.subscription.update({
+        where: { id: subscriptionId },
+        data: {
+          ...(input.status !== undefined ? { status: input.status } : {}),
+          ...(providerRawStatus !== undefined ? { rawStatus: providerRawStatus } : {}),
+          ...(providerCancelAtPeriodEnd !== undefined
+            ? { cancelAtPeriodEnd: providerCancelAtPeriodEnd }
+            : {}),
+          ...(input.currentPeriodEnd !== undefined
+            ? { currentPeriodEnd: input.currentPeriodEnd ? new Date(input.currentPeriodEnd) : null }
+            : {}),
+          ...(input.graceEndsAt !== undefined
+            ? { graceEndsAt: input.graceEndsAt ? new Date(input.graceEndsAt) : null }
+            : {}),
+        },
+        include: { user: { select: SUBSCRIBER_SELECT } },
       });
-    await writeAdminAudit(tx, {
-      ...audit,
-      metadata: {
-        ...audit.metadata,
-        userId,
-        previousStatus: existing.status,
-        ...(providerCancelAtPeriodEnd !== undefined
-          ? { providerCancelAtPeriodEnd, previousCancelAtPeriodEnd: existing.cancelAtPeriodEnd }
-          : {}),
-      },
+      if (touchesAccess && isProductKey(subscription.productKey))
+        await syncSubscriptionGrants(tx, {
+          userId,
+          sourceId: subscription.providerSubId ?? subscription.id,
+          productKey: subscription.productKey,
+          status: subscription.status,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          graceEndsAt: subscription.graceEndsAt,
+          at: new Date(),
+        });
+      await writeAdminAudit(tx, { ...audit, metadata: auditMetadata });
+      return subscription;
     });
-    return subscription;
-  });
+
+  let updated: Awaited<ReturnType<typeof writeLocally>>;
+  try {
+    updated = await writeLocally();
+  } catch (error) {
+    // The provider already changed (V-292): the customer's subscription is set to cancel, or
+    // no longer is, whatever happened here. Its webhook fixes the row; this keeps the trail.
+    if (providerCancelAtPeriodEnd !== undefined)
+      await recordAdminAudit({
+        ...audit,
+        metadata: { ...auditMetadata, providerApplied: true, localWriteFailed: true },
+      });
+    throw error;
+  }
 
   await BillingService.reconcileAccess(userId);
 
@@ -815,7 +834,13 @@ export async function getWebhookEvent(eventId: string) {
  * Already-PROCESSED events are rejected here rather than relying on `processWebhook`'s internal
  * duplicate short-circuit, so the operator gets a clear error instead of a silent no-op.
  */
-export async function replayWebhookEvent(eventId: string) {
+/**
+ * Replays a stored event. The audit entry is written first, and a failed write stops the replay
+ * (V-291): a replay can grant credits or access, so it is never applied without a record. The
+ * entry then gets the outcome; that second write is best-effort, and the entry already says who
+ * replayed which event.
+ */
+export async function replayWebhookEvent(eventId: string, audit: AdminAuditInput) {
   const event = await prisma.billingWebhookEvent.findUnique({ where: { id: eventId } });
 
   if (!event) throw new ApiError(404, "Webhook event not found.");
@@ -831,10 +856,36 @@ export async function replayWebhookEvent(eventId: string) {
       { code: "WEBHOOK_PAYLOAD_REDACTED" },
     );
 
-  const result = await BillingService.processWebhook(
-    event.providerEventId,
-    event.payload as ReturnType<typeof BillingService.unwrapWebhook>,
-  );
+  const entry = await writeAdminAudit(prisma, {
+    ...audit,
+    metadata: { ...audit.metadata, providerEventId: event.providerEventId, outcome: "started" },
+  });
+  const recordOutcome = (metadata: Prisma.InputJsonObject) =>
+    prisma.adminAuditEntry
+      .update({
+        where: { id: entry.id },
+        data: {
+          metadata: { ...audit.metadata, providerEventId: event.providerEventId, ...metadata },
+        },
+      })
+      .catch((error: unknown) =>
+        logger.error("Could not record a webhook replay's outcome", { entryId: entry.id, error }),
+      );
+
+  let result: Awaited<ReturnType<typeof BillingService.processWebhook>>;
+  try {
+    result = await BillingService.processWebhook(
+      event.providerEventId,
+      event.payload as ReturnType<typeof BillingService.unwrapWebhook>,
+    );
+  } catch (error) {
+    await recordOutcome({ outcome: "failed" });
+    throw error;
+  }
+  await recordOutcome({
+    outcome: result.duplicate ? "duplicate" : "applied",
+    duplicate: result.duplicate,
+  });
 
   return {
     id: event.id,

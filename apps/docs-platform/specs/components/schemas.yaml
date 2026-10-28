@@ -3776,8 +3776,10 @@ ShareLinkCreateRequest:
       type: string
       format: date-time
       nullable: true
+      description: 7, 14, 30 or 90 days from now (within a day), or the link's current expiry to keep it. Omitted or null (without noExpiry), a new link lasts 7 days and an existing one keeps its expiry; null does not mean never. Send noExpiry true for a link that never expires.
     noExpiry:
       type: boolean
+      description: true for a link that never expires. Not allowed together with expiresAt.
     updateSlug:
       type: boolean
       description: Regenerate the public slug instead of reusing the existing one (if a link already exists for this document).

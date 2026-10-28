@@ -11,7 +11,13 @@ createShareLink:
     description: |
       Creates (or replaces, if one already exists for this document) a public share link for a
       document. Optionally password-protected — passwords are scrypt-hashed and never returned in
-      any response — and optionally set to expire.
+      any response.
+
+      A link expires 7, 14, 30 or 90 days after it is made, or never. Send `noExpiry: true` for
+      never, or an `expiresAt` 7, 14, 30 or 90 days from now (within a day, for clock skew). With
+      neither (an `expiresAt` of `null` counts as neither, not as never), a new link lasts **7 days**
+      and replacing an existing link keeps its expiry. Any
+      other date, or `noExpiry` together with a date, is `400`.
 
       The caller **must have claimed a username first**, since it forms the public URL
       (`/{username}/{slug}`); without one the request fails with `400`. Requires the
