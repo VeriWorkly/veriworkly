@@ -1,34 +1,47 @@
-# Include any files or directories that you don't want to be copied to your
-# container here (e.g., local build artifacts, temporary files, etc.).
-#
-# For more help, visit the .dockerignore file reference guide at
-# https://docs.docker.com/go/build-context-dockerignore/
+# Every image builds with the repository root as its context (compose.yaml; `docker build -f
+# apps/server/Dockerfile .`), so this is the only .dockerignore Docker reads. The site image runs
+# `COPY . .`: anything not listed here lands in its build stage and the layer cache.
 
-**/.classpath
-**/.dockerignore
+# Secrets and local data: no build reads them.
 **/.env
-**/.git
-**/.gitignore
-**/.project
-**/.settings
-**/.toolstarget
-**/.vs
-**/.vscode
-**/.next
-**/.cache
-**/*.*proj.user
-**/*.dbmdl
-**/*.jfm
-**/charts
-**/docker-compose*
-**/compose.y*ml
-**/Dockerfile*
+**/.env.*
+!**/.env.example
+!**/.env.docker.example
+.private
+load-testing
+
+# Dependencies and build output: each image installs and builds its own.
 **/node_modules
-**/npm-debug.log
-**/obj
-**/secrets.dev.yaml
-**/values.dev.yaml
+**/.next
+**/.source
+**/.turbo
+**/.cache
 **/build
 **/dist
+**/out
+**/coverage
+**/*.tsbuildinfo
+**/.lighthouse
+**/npm-debug.log
+
+# Repository, editor and agent files.
+**/.git
+**/.gitignore
+**/.dockerignore
+**/.vscode
+**/.vs
+**/.idea
+.github
+.claude
+.agents
+.gemini
+.hallmark
+apps/*/audit
+
+# Container files.
+**/Dockerfile*
+**/docker-compose*
+**/compose.y*ml
+
 LICENSE
 README.md

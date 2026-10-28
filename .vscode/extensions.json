@@ -3,6 +3,7 @@
     "ms-vscode.vscode-typescript-next",
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
+    "editorconfig.editorconfig",
     "bradlc.vscode-tailwindcss",
     "prisma.prisma",
     "christian-kohler.path-intellisense",

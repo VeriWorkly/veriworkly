@@ -9,6 +9,8 @@
     "**/.source": true
   },
   "editor.formatOnSave": true,
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.wordWrap": "on",
   "editor.codeActionsOnSave": {
