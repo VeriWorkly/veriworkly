@@ -38,7 +38,7 @@ export const faqs = [
     category: "general",
     question: "Who is Creator Pro meant for?",
     answer:
-      "Creator Pro is for builders, developers, designers, and founders who want a public VeriWorkly subdomain, better sharing controls, CDN media hosting, watermark removal, and low checkout fees.",
+      "Creator Pro is for builders, developers, designers, and founders who want premium templates, better sharing controls, CDN media hosting, watermark removal, and low checkout fees.",
   },
 
   {
@@ -68,9 +68,9 @@ export const faqs = [
   {
     id: "domain",
     category: "domains",
-    question: "How do custom subdomains work?",
+    question: "How do subdomains work?",
     answer:
-      "With Creator Pro, you can choose a unique VeriWorkly subdomain (like yourname.veriworkly.com) to share your site with the world. All subdomains include automatic, secure SSL certificates.",
+      "Every portfolio, free or paid, is published on its own VeriWorkly subdomain (like yourname.veriworkly.com) that you choose. All subdomains include automatic, secure SSL certificates.",
   },
 
   {
@@ -110,15 +110,15 @@ export const faqs = [
     category: "billing",
     question: "Can I buy Creator Pro or AI Credits separately?",
     answer:
-      "Yes, if you do not need the full bundle, you can buy single add-on plans. Creator Pro is available standalone for $9.99/month (or $7.99/month annual), which gives you full publishing on your own custom subdomain, visitor analytics, and no watermark. Standalone AI Credits are available for $5.99/month, providing 1,000 monthly credits for resume and writing tools without website hosting.",
+      "Yes, if you do not need the full bundle, you can buy single add-on plans. Creator Pro is available standalone for $9.99/month (or $7.99/month annual), which adds the premium templates, visitor analytics, and no watermark to your subdomain site. Standalone AI Credits are available for $5.99/month, providing 1,000 monthly credits for resume and writing tools without website hosting.",
   },
 
   {
     id: "subdomain-cost",
     category: "billing",
-    question: "Do I have to pay extra for a custom subdomain?",
+    question: "Do I have to pay for a subdomain?",
     answer:
-      "No. Choosing a custom VeriWorkly subdomain (e.g., yourname.veriworkly.com) with automatic SSL certificates is fully included in the Creator Pro plan ($9.99/mo or $7.99/mo annual) and the Job Hunter Bundle ($14.99/mo or $11.99/mo annual) at no extra cost.",
+      "No. Every portfolio gets its own VeriWorkly subdomain (e.g., yourname.veriworkly.com) with automatic SSL certificates, on the free plan too. Creator Pro ($9.99/mo or $7.99/mo annual) and the Job Hunter Bundle ($14.99/mo or $11.99/mo annual) add the premium templates, analytics, and badge removal.",
   },
 
   {
@@ -134,7 +134,7 @@ export const faqs = [
     category: "billing",
     question: "What happens if I decide to cancel my subscription?",
     answer:
-      "If you cancel your active Creator Pro or Job Hunter Bundle subscription, your custom subdomain mapping and public publishing will be paused at the end of your billing cycle. However, all of your saved resume documents, cover letters, and portfolio drafts remain securely stored in your account so you can reactivate them whenever you're ready.",
+      'If you cancel your active Creator Pro or Job Hunter Bundle subscription, your portfolio stays online on its subdomain: at the end of your billing cycle it moves to the closest free template and shows the "Built with VeriWorkly" badge. All of your saved resume documents, cover letters, and portfolio drafts remain securely stored in your account so you can reactivate them whenever you\'re ready.',
   },
 
   {

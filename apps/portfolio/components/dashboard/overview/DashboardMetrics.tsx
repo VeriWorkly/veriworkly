@@ -11,7 +11,6 @@ export interface DashboardMetricsProps {
   readiness: number;
   isLive: boolean;
   slug?: string;
-  canPublish: boolean;
 }
 
 export function DashboardMetrics({
@@ -22,7 +21,6 @@ export function DashboardMetrics({
   readiness,
   isLive,
   slug,
-  canPublish,
 }: DashboardMetricsProps) {
   return (
     <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -47,7 +45,7 @@ export function DashboardMetrics({
       <Metric
         label="Publication"
         value={isLive ? "Live" : "Draft"}
-        detail={slug ? portfolioWorkspaceUrl(slug, canPublish).display : "Create your first draft"}
+        detail={slug ? portfolioWorkspaceUrl(slug).display : "Create your first draft"}
         icon={<Sparkles size={16} />}
       />
     </section>

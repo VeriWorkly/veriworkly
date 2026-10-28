@@ -25,11 +25,10 @@ const DashboardLayout = async ({ children }: { children: React.ReactNode }) => {
   const draft = bootstrap.workspace?.draft as CloudPortfolioDraft | undefined;
 
   // Resolved here rather than in the shell so the "View site" button is only rendered
-  // when the public site actually resolves, and points at the address this account has
-  // (subdomain on Creator Pro, platform path otherwise).
+  // when the public site actually resolves, and points at the site's subdomain.
   const publicUrl =
     draft?.slug && isPortfolioPubliclyVisible(bootstrap.workspace?.publication?.status)
-      ? portfolioWorkspaceUrl(draft.slug, Boolean(bootstrap.workspace?.billing?.canPublish)).href
+      ? portfolioWorkspaceUrl(draft.slug).href
       : undefined;
 
   return (

@@ -1,6 +1,5 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { portfolioPublicUrl, siteConfig } from "@/config/site";
 
 import { getPublishedPortfolio } from "@/lib/published-portfolio";
@@ -100,24 +99,8 @@ export default async function Portfolio({
   const publication = await getPublishedPortfolio(username);
   if (!publication) notFound();
 
-  const hostHeader = (await headers()).get("host") || "";
-  const hostname = hostHeader.split(":")[0];
-
-  const isCustomSubdomain =
-    hostname !== "portfolio.veriworkly.com" &&
-    hostname !== "localhost" &&
-    hostname !== "portfolio.localhost" &&
-    hostname !== "127.0.0.1";
-
-  if (isCustomSubdomain && !publication.isPremium) {
-    const port = hostHeader.split(":")[1];
-    const mainUrl =
-      process.env.NODE_ENV === "development"
-        ? `http://localhost:${port || "3000"}`
-        : "https://portfolio.veriworkly.com";
-    redirect(`${mainUrl}/portfolio/${username}`);
-  }
-
+  // Every site, free or paid, is served on its own subdomain (owner rule, 2026-10-28); the
+  // platform path still resolves, and the canonical address names the subdomain.
   const project = publication.snapshot;
 
   let currentSections = project.sections;

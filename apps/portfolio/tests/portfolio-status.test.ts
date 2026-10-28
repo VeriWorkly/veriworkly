@@ -127,19 +127,10 @@ describe("getPortfolioReadiness", () => {
 });
 
 describe("portfolioWorkspaceUrl", () => {
-  it("gives Creator Pro accounts their subdomain", () => {
-    expect(portfolioWorkspaceUrl("gautam", true)).toEqual({
+  it("gives every account its subdomain, free or paid (owner rule 2026-10-28)", () => {
+    expect(portfolioWorkspaceUrl("gautam")).toEqual({
       href: "https://gautam.veriworkly.com",
       display: "gautam.veriworkly.com",
-    });
-  });
-
-  it("gives free accounts the platform path they actually have", () => {
-    // Previously the dashboard advertised `{slug}.veriworkly.com` to every account
-    // while the editor showed the path form for the same portfolio.
-    expect(portfolioWorkspaceUrl("gautam", false)).toEqual({
-      href: "https://portfolio.veriworkly.com/portfolio/gautam",
-      display: "portfolio.veriworkly.com/portfolio/gautam",
     });
   });
 });

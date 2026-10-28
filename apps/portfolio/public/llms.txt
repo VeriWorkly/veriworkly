@@ -18,7 +18,7 @@ VeriWorkly Portfolio (`portfolio.veriworkly.com`) enables developers, designers,
 ## Key Features & Editor Workspace
 - **3-Pane Canvas** (`https://portfolio.veriworkly.com/editor/[id]`): Left sidebar section tree (18 section types), center content editor controls, right live iframe preview with responsive viewport toggles (mobile/tablet/desktop).
 - **Multi-Page Portfolios**: Premium tier enables dedicated Work, Writing, About, and Contact pages, as well as auto-generated project detail pages (`/projects/[slug]`).
-- **Subdomain Publishing**: Free tier publishes to `portfolio.veriworkly.com/portfolio/your-slug`. Premium tier unlocks custom subdomains (`your-slug.veriworkly.com`).
+- **Subdomain Publishing**: Every portfolio, free or paid, publishes to its own subdomain (`your-slug.veriworkly.com`).
 - **View Analytics** (`https://portfolio.veriworkly.com/analytics`): Total view counts, trend charts, active days, and referrer source breakdowns.
 - **Watermark Control**: Toggle floating "Built with VeriWorkly" badge on/off for premium accounts.
 - **Master Profile Integration**: Portfolio identity fields auto-seed from the Master Profile in Studio.

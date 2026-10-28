@@ -10,7 +10,7 @@ import { IntervalToggle } from "@/features/pricing/components/IntervalToggle";
 import { CheckoutButton } from "@/features/pricing/components/CheckoutButton";
 
 const creatorProFeatures = [
-  "Custom subdomain mapping",
+  "Premium templates (Nimbus, Cipher)",
   "CDN media hosting & storage",
   "Watermark & branding removed",
   "1 active resume & cover letter",

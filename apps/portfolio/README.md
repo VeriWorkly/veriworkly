@@ -23,8 +23,8 @@ A three-pane workspace (structure / content / live `<iframe>` preview) autosavin
 
 ## 📈 Publishing, analytics & watermark
 
-- Free: published at a shared path (`portfolio.veriworkly.com/portfolio/your-slug`).
-- Premium: a true custom subdomain (`your-slug.veriworkly.com`), enforced at the routing layer.
+- Every portfolio, free or paid, is served on its own subdomain (`your-slug.veriworkly.com`); the platform path (`portfolio.veriworkly.com/portfolio/your-slug`) still resolves and names the subdomain as canonical.
+- Premium adds the Nimbus and Cipher templates and multi-page portfolios.
 - Analytics (views, trend, referrers) is premium-gated, with distinct locked states for logged-out visitors vs. logged-in free users.
 - A "Built with VeriWorkly" watermark appears on every free-tier published portfolio; premium gets a per-portfolio removal toggle.
 

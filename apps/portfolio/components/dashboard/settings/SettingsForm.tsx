@@ -36,8 +36,8 @@ export function SettingsForm({
             <Lock size={12} /> Premium Feature
           </p>
           <p className="mt-1.5">
-            Configuring a custom subdomain, editing search metadata, and uploading social preview
-            images require an active <strong>Creator Pro</strong> subscription.
+            Editing search metadata and uploading social preview images require an active{" "}
+            <strong>Creator Pro</strong> subscription. Your subdomain is free on every plan.
           </p>
           <Link
             href="/pricing"
@@ -55,7 +55,6 @@ export function SettingsForm({
             <input
               className={`${input} rounded-r-none`}
               value={slug}
-              disabled={!isPremium}
               onChange={(e) => updateSlug(e.target.value)}
             />
             <span className="border-line bg-paper text-muted flex items-center rounded-r-lg border border-l-0 px-3 text-[11px]">

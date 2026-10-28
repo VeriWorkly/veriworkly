@@ -97,7 +97,7 @@ export function EditorCommandBar() {
     }
   };
 
-  const { href: urlPath, display: urlDisplay } = portfolioWorkspaceUrl(slug, billing.canPublish);
+  const { href: urlPath, display: urlDisplay } = portfolioWorkspaceUrl(slug);
 
   return (
     <>

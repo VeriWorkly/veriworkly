@@ -108,14 +108,27 @@ describe("dashboard server rendering", () => {
     expect(markup).not.toContain("Good evening");
   });
 
-  it("shows the free-tier address rather than a subdomain the account lacks", () => {
+  it("shows a free account its own subdomain (owner rule 2026-10-28)", () => {
     const markup = renderWorkspace(
       { canPublish: false, locked: true },
       <PortfolioDashboardWorkspace />,
     );
 
-    expect(markup).toContain("portfolio.veriworkly.com/portfolio/gautam");
-    expect(markup).not.toContain(">gautam.veriworkly.com<");
+    expect(markup).toContain("gautam.veriworkly.com");
+    expect(markup).not.toContain("portfolio.veriworkly.com/portfolio/gautam");
+  });
+
+  it("lets a free account choose its subdomain in settings", () => {
+    const markup = renderWorkspace(
+      { canPublish: false, locked: true },
+      <PortfolioSettingsWorkspace />,
+    );
+
+    const subdomainInput = /<input[^>]*value="gautam"[^>]*>/.exec(markup)?.[0];
+    expect(subdomainInput).toBeDefined();
+    // The attribute, not the `disabled:` Tailwind variants in the class list.
+    expect(subdomainInput).not.toMatch(/\sdisabled(=""|\s|\/?>)/);
+    expect(markup).not.toMatch(/custom subdomain/i);
   });
 
   it("withholds view counts from a locked account instead of showing a false zero", () => {

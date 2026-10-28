@@ -14,15 +14,14 @@ export interface DashboardHeaderProps {
   userName?: string | null;
   slug?: string;
   isLive: boolean;
-  canPublish: boolean;
 }
 
-export function DashboardHeader({ userName, slug, isLive, canPublish }: DashboardHeaderProps) {
+export function DashboardHeader({ userName, slug, isLive }: DashboardHeaderProps) {
   const greeting = useTimeOfDay();
 
   // Only offer the link when the site actually resolves. It used to appear as soon as a
   // draft existed, so every unpublished user got a prominent button to a 404.
-  const publicUrl = isLive && slug ? portfolioWorkspaceUrl(slug, canPublish).href : null;
+  const publicUrl = isLive && slug ? portfolioWorkspaceUrl(slug).href : null;
 
   return (
     <header className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">

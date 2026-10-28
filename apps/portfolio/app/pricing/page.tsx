@@ -17,14 +17,14 @@ import BundlePricingSection from "@/components/pricing/BundlePricingSection";
 export const metadata: Metadata = {
   title: "Portfolio Builder Pricing",
   description:
-    "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, CDN hosting, custom metadata, and no watermark.",
+    "Publish a VeriWorkly portfolio on your own subdomain for free, and upgrade for premium templates, custom metadata, visitor analytics, and no watermark.",
 
   openGraph: {
     type: "website",
     url: "/pricing",
     title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
     description:
-      "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, CDN hosting, custom metadata, and no watermark.",
+      "Publish a VeriWorkly portfolio on your own subdomain for free, and upgrade for premium templates, custom metadata, visitor analytics, and no watermark.",
     images: [
       {
         url: "/og/pricing-page-og.png",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
     description:
-      "Build a VeriWorkly portfolio for free, preview templates, and upgrade when you are ready to publish with a subdomain, CDN hosting, custom metadata, and no watermark.",
+      "Publish a VeriWorkly portfolio on your own subdomain for free, and upgrade for premium templates, custom metadata, visitor analytics, and no watermark.",
     images: ["/og/pricing-page-og.png"],
   },
 
@@ -62,7 +62,7 @@ export default async function PricingPage() {
 
     name: "VeriWorkly Creator Pro",
     description:
-      "Publish a professional portfolio website on a custom VeriWorkly subdomain with SEO metadata, image hosting, and page views analytics.",
+      "Premium templates, SEO metadata, image hosting, visitor analytics and no badge for a portfolio website on your VeriWorkly subdomain.",
 
     brand: {
       "@type": "Brand",
