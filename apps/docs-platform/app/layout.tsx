@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 
-import { ThemeProvider } from "next-themes";
 import { RootProvider } from "fumadocs-ui/provider/next";
 
 import { siteConfig } from "@/config/site";
@@ -53,15 +52,7 @@ export const metadata: Metadata = {
     title: "VeriWorkly Docs | Guides & API Reference",
     description: "Explore guides, API references, and technical documentation for VeriWorkly.",
     images: ["/og/docs-page-og.png"],
-  },
-
-  robots: {
-    index: true,
-    follow: true,
-  },
-
-  alternates: {
-    canonical: siteConfig.url,
+    site: siteConfig.twitterHandle,
   },
 };
 
@@ -100,15 +91,12 @@ const DocsPlatformLayout = ({ children }: { children: React.ReactNode }) => {
       <body
         className={`${globalFontVariables} bg-background text-foreground flex min-h-screen flex-col font-sans antialiased`}
       >
-        <ThemeProvider
-          enableSystem
-          attribute="class"
-          defaultTheme="system"
-          disableTransitionOnChange
-          storageKey="veriworkly-theme"
+        <RootProvider
+          search={{ options: { delayMs: 500 } }}
+          theme={{ storageKey: "veriworkly-theme", hotKey: false }}
         >
-          <RootProvider search={{ options: { delayMs: 500 } }}>{children}</RootProvider>
-        </ThemeProvider>
+          {children}
+        </RootProvider>
       </body>
     </html>
   );

@@ -9,13 +9,32 @@ import { getReadingTime } from "@/lib/read-time";
 
 import { Container } from "@veriworkly/ui";
 
+const title = "Blog Archive";
+const description =
+  "Browse the complete history of articles, tech logs, and career engineering advice from the VeriWorkly team.";
+const url = `${siteConfig.url}/archive`;
+
 export const metadata: Metadata = {
-  title: "Blog Archive | VeriWorkly",
-  description:
-    "Browse the complete history of articles, tech logs, and career engineering advice from the VeriWorkly team.",
+  title,
+  description,
   alternates: {
-    canonical: `${siteConfig.url}/archive`,
+    canonical: url,
     types: feedAlternates,
+  },
+  openGraph: {
+    type: "website",
+    url,
+    title: `${title} | ${siteConfig.name}`,
+    description,
+    siteName: siteConfig.name,
+    images: [{ url: "/og/blog-page-og.png", width: 1200, height: 630, alt: siteConfig.name }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: siteConfig.twitterHandle,
+    title: `${title} | ${siteConfig.name}`,
+    description,
+    images: ["/og/blog-page-og.png"],
   },
 };
 
