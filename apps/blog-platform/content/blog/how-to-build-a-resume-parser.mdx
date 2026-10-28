@@ -1,0 +1,174 @@
+---
+title: "How to Build a Resume Parser: Stages, Code and Tests"
+description: "A resume parser turns a PDF or Word file into fields an ATS stores. The five stages, a working TypeScript example, and how to test one."
+author: VeriWorkly Engineering
+date: 2026-10-28
+category: Engineering
+cluster: ats
+primaryKeyword: how to build a resume parser
+tags:
+  - resume parser
+  - resume parsing
+  - parse resume
+  - applicant tracking system
+  - typescript
+  - open source
+faq:
+  - question: What does a resume parser do?
+    answer: >-
+      A resume parser reads a resume file and returns the fields an applicant
+      tracking system stores: name, email, phone, links, one row per job with
+      title, employer and dates, education, and skills. It first extracts the
+      text in reading order, then splits it into sections, then reads each
+      section into fields.
+  - question: Can you build a resume parser with an LLM?
+    answer: >-
+      You can, but its output needs checking against the file. The VeriWorkly
+      ATS Engine keeps a deterministic parser as the source of truth and lets a
+      model fill only the fields the parser missed. Every value the model
+      returns is checked against the resume text, and the report marks those fields
+      as read by AI.
+  - question: How do you test a resume parser?
+    answer: >-
+      Build labelled fixtures: resumes whose correct fields you know because you
+      wrote them. Render each one as text, PDF, two-column PDF and Word, run the
+      parser, and compare every field with the label. Record known misses in a
+      baseline file and fail the run on any new miss.
+  - question: Why does a resume parser return empty fields?
+    answer: >-
+      Usually because the text never reached it in a readable form. A scanned
+      PDF has no text layer, two columns can interleave lines, contact details in
+      a page header can be skipped, and a creative heading such as "Where I Have
+      Been" matches no section. Each one empties a different field.
+---
+
+**A resume parser turns a resume file into structured fields: name, contact details, one row per job with title, employer and dates, education and skills. It works in stages. It extracts the text, orders the lines, splits them into sections at the headings, reads each section into fields, and normalises dates and phone numbers.**
+
+This post walks through each stage and shows how the open-source [VeriWorkly ATS Engine](https://docs.veriworkly.com/ats-engine) handles it, because its parser, its tests and its documentation are all public. We wrote it, so read the code rather than our summary when the detail matters.
+
+## How do you build a resume parser?
+
+**Build it as a pipeline of five stages, each with its own input and output: file to text, text to ordered lines, lines to sections, sections to fields, and raw fields to normalised values. Keeping the stages separate lets you test each one alone and tells you which stage emptied a field when a resume reads badly.**
+
+| Stage                | Input                 | Output                                          | What usually goes wrong                           |
+| -------------------- | --------------------- | ----------------------------------------------- | ------------------------------------------------- |
+| 1. Text extraction   | PDF, DOCX, HTML, text | A string, plus layout signals for PDF and DOCX  | Scanned pages with no text layer                  |
+| 2. Reading order     | Positioned text runs  | Lines in the order a person reads them          | Two columns interleaved line by line              |
+| 3. Section detection | Ordered lines         | Experience, education, skills and other blocks  | Headings the parser does not recognise            |
+| 4. Field extraction  | Sections              | Name, email, phone, roles, education, skills    | Title and employer swapped, dates on another line |
+| 5. Normalisation     | Raw strings           | Dates as year and month, validated phone number | Ambiguous date formats, two-digit years           |
+
+The engine documents its own version of this pipeline, step by step, in [How a resume is read](https://docs.veriworkly.com/ats-engine/concepts/how-a-resume-is-read).
+
+## How do you parse a resume?
+
+**Parse a resume by running the five stages in order on one file. Extract its text with a format-specific reader, rebuild the reading order from where each line sits on the page, cut the lines into sections at known headings, read each section with its own rules, then convert dates and phone numbers into a standard form.**
+
+### Stage 1: extract the text from PDF, DOCX and HTML
+
+Each format needs its own reader. The engine's Node entry point, `extractResume`, picks one by file name and type. PDFs are read with `pdf-parse` and `pdfjs-dist`, Word files with `mammoth`, and both are optional dependencies loaded only when a file of that format arrives. A saved web page is read for its visible text rather than its markup, and a plain text file is decoded as UTF-16, UTF-8 or Windows-1252 from its bytes. RTF is refused, because its markup would be read as words.
+
+Two details are easy to miss. `mammoth` leaves out a Word document's header and footer, so the engine reads those separately and adds them back. And the extracted text is capped at 50,000 characters, with a warning in the report when a file is cut.
+
+### Stage 2: rebuild the reading order and keep the layout signals
+
+A PDF does not store lines. It stores text runs with coordinates, listed in the order they were painted, which is not the order a person reads them. The engine's PDF reader groups runs into lines by baseline, orders each line left to right and the lines top to bottom, and on a page with a gutter reads each column in turn. A gap as wide as a table cell's becomes a tab, which the parser later uses to split a job title from its employer. A running header, footer or page number printed on every page is read once or not at all.
+
+The same pass records what text alone cannot show: the column ratio, ruled tables, page count, photo-sized images, hidden text and pages with no text layer. The engine returns these as a `layout` object next to the text. Pasted text has none of it, so the rules that depend on it are left out rather than guessed.
+
+### Stage 3: split the text into sections
+
+Section detection decides which lines are headings. The engine treats a line as a possible heading only when it is short (up to eight words) and not punctuated like body text, then matches it against heading patterns for experience, education, skills, projects, certifications and languages. "Work Experience", "Professional Experience" and "Employment History" all match. A line such as "Education Program Manager, Khan Academy" does not, because a comma after the match marks it as a job, and "Skills: Python, Java" is read as a heading with its content kept.
+
+The patterns live in the engine's policy, not in the parser code, so a new label or a new language is a data change.
+
+### Stage 4: extract contact details, experience, education and skills
+
+Each section gets its own reader:
+
+- **Contact:** name, email, phone and links.
+- **Experience:** one row per job with `title`, `employer`, `start`, `end` and `current`. A date range anchors each job. The title and employer are read from the same line, else the line above, else the line below for resumes that print dates first. Resumes write both "Engineer, Acme" and "Acme, Engineer", so the side with a job-title word is the title. Bullet lines do not anchor a job unless every role header is itself a bullet, so "grew revenue 2019 - 2021" is not read as tenure.
+- **Education:** school, the credential as written, an end date, and a level on UNESCO's ISCED 2011 scale, from 2 (lower secondary) to 8 (doctoral).
+- **Skills:** the skills section, with programming languages kept apart from spoken languages. A "Languages: Go, Rust" line stays skills.
+
+The engine also records where each field came from: `parser`, `structured` (from a typed input), `ai` or `none`. That provenance matters once you mix rules and a model, because "the parser read this" and "a model guessed this" are different claims.
+
+### Stage 5: normalise dates and phone numbers
+
+Dates are the hardest field. The engine stores each one as a year and a month, with the month left empty when only a year is written. On each line it takes the first range that reads as a real span of time: a candidate is skipped when an end cannot be read, a year falls outside 1950 to ten years from now, or the range runs backwards. Two-digit years are placed so that "2019–21" ends in 2021. Words such as "Present" mark a role as current.
+
+Phone numbers are validated rather than reformatted. The engine takes the first run that [libphonenumber](https://github.com/catamphetamine/libphonenumber-js) accepts as a valid number, with its own country code or as a national number of a region the policy lists, and keeps it as printed. It skips runs that read as dates first, because some national numbering plans accept "2019 2022" as a phone number.
+
+## How do you parse a resume in TypeScript?
+
+**Install `@veriworkly/ats-engine`, read the file with `readResumeFile`, pass the result to `check`, and read `report.parsed`. It holds the name, contact details, one row per job, education and skills. PDF and Word files also need the optional readers `pdf-parse`, `pdfjs-dist` and `mammoth`. The engine needs Node 22.12 or later.**
+
+```bash
+npm install @veriworkly/ats-engine pdf-parse@2 pdfjs-dist@5.4.296 mammoth
+```
+
+```ts
+import { check, DEFAULT_POLICY } from "@veriworkly/ats-engine";
+import { readResumeFile } from "@veriworkly/ats-engine/node";
+
+const { input, layout, file } = await readResumeFile("resume.pdf");
+const report = check(input, DEFAULT_POLICY, { layout, file, includeLines: true });
+const { name, email, phone, roles, education, skills } = report.parsed;
+
+console.log(name, email, phone);
+for (const role of roles) {
+  console.log(role.title, "|", role.employer, role.start, role.end, role.current);
+}
+console.log(
+  education.map((entry) => entry.school),
+  skills,
+);
+console.log(report.lines); // the text in the order the parser read it
+```
+
+`includeLines` returns the text as the engine read it, at most 500 lines, which is the quickest way to see why a field came back empty. The call shape follows the engine's [quick start](https://docs.veriworkly.com/ats-engine/quick-start), and every field is listed in the [report reference](https://docs.veriworkly.com/ats-engine/reference/report).
+
+To try it without writing code, use the [command line tool](https://docs.veriworkly.com/ats-engine/tools/cli). `--json` prints the full report and nothing else. `npx` does not install the optional PDF and Word readers, so name them:
+
+```bash
+npx -p @veriworkly/ats-engine -p pdf-parse@2 -p pdfjs-dist@5.4.296 -p mammoth ats-engine check resume.pdf --json
+```
+
+A `.txt`, `.md`, `.html` or `.json` resume needs none of them: `npx @veriworkly/ats-engine check resume.md --json`.
+
+## How do you test a resume parser?
+
+**Test a resume parser against labelled fixtures: resumes whose correct fields you know because you wrote them, not because the parser read them. Render each fixture in every format you accept, compare each recovered field with its label, and fail the run whenever a field that used to parse stops parsing.**
+
+The engine's [benchmark](https://docs.veriworkly.com/ats-engine/project/benchmarks) is a worked example of this approach:
+
+1. **Hand-written fixtures**, read as text, as a regression check.
+2. **Generated resumes** from a seeded generator, with varied separators, date forms, headings and section order. Each is rendered as text, PDF, two-column PDF and DOCX, and labelled from the generator's inputs rather than from what the engine reads.
+3. **Other languages**: generated resumes in German, French, Hindi, Spanish and Portuguese, plus resumes an independent reviewer wrote in their own layouts.
+4. **A baseline file** listing every field each corpus is known to miss. The run fails on any miss not in the list, so one field read better cannot hide another read worse.
+
+The engine's documentation is explicit that every resume in these corpora is synthetic. A perfect score on them shows the parser reads the shapes the generator produces. It does not predict accuracy on real resumes, so add anonymised real files to your fixtures if you can get consent for them.
+
+The engine also exports `parseQuality`, which turns a parsed record into ratios such as how many roles have both an employer and dates. That is a useful number to watch in production, where you have no labels.
+
+## Where do resume parsers fail?
+
+**Resume parsers fail when the text reaching them is missing, out of order or unlabelled. The common causes are scanned PDFs with no text layer, multi-column layouts read across the columns, tables, contact details placed in a page header or footer, and section headings with creative names that match no known label.**
+
+| Failure                   | What the parser receives                   | How the engine handles it                                                                     |
+| ------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Scanned or image-only PDF | No text, or a scanner's stamp              | Counts image-only pages and fails `ats-v2.parse.imageOnly`; no OCR                            |
+| Two or more columns       | Lines that alternate between the columns   | Reads each side of a gutter in turn; measures the column ratio                                |
+| Tables                    | Cells in an order that depends on the file | Counts ruled tables and scores them under `ats-v2.format.tables`                              |
+| Headers and footers       | Contact details that some extractors skip  | Reads Word headers and footers once; warns when contact is not near the top                   |
+| Creative section names    | "Where I Have Been" as body text           | Not a heading; with no Experience heading at all, every unlabelled block is searched for jobs |
+
+The blank case is the only total failure, and it has a specific cause: [some tools export a resume as a picture of the page](/why-some-resume-pdfs-parse-as-blank). For the candidate's side of the same failures, and which layout rules are worth following, see [what an ATS-friendly resume format actually needs](/ats-friendly-resume-format).
+
+## Should you build a resume parser or use one?
+
+**Build your own when parsing is the product and you can afford a labelled test corpus in every format you accept. Otherwise start from an existing parser and spend your time on the fixtures, because the test corpus, not the first version of the code, is where most of the work goes.**
+
+The VeriWorkly ATS Engine is published on npm as `@veriworkly/ats-engine` under the MIT licence, so you can use it as it is, fork it, or read it as a reference while you write your own. Its source and benchmark are on [GitHub](https://github.com/VeriWorkly/ats-engine). With its built-in language packs it reads English, German, French, Hindi, Spanish and Portuguese. It scores against a [published rubric](https://docs.veriworkly.com/ats-engine/reference/rubric), and runs in the browser and at the edge as well as in Node; only the file readers in `/node` need Node.
+
+If you only want to know how your own resume parses, you do not need to build anything. Run the CLI above on your file, or follow the copy-paste test in [the ATS-friendly format guide](/ats-friendly-resume-format).
