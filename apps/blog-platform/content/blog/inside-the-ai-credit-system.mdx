@@ -3,6 +3,7 @@ title: Inside the AI Credit System
 description: Why AI credits reserve before they spend, and how a multi-grant balance decides which credits actually get used first.
 author: VeriWorkly Team
 date: 2026-07-27
+updated: 2026-10-28
 category: Engineering
 cluster: engineering
 tags:
@@ -12,6 +13,16 @@ tags:
 ---
 
 We've said before that VeriWorkly's AI features should show you the cost before you commit to it, and never silently overwrite your work. Both of those are user-facing promises. This post is about the ledger underneath them — because "show the cost, ask before replacing" only means something if the accounting behind it is actually solid.
+
+## Where credits come from
+
+AI features need credits, and there are no free or sign-up credits: a free account starts at zero. Credits come from three places, all paid, at launch:
+
+- **Subscriptions** (AI Credits or the Job Hunter Bundle): 1,000 credits each month, monthly or annual. They reset every month and nothing rolls over.
+- **Passes**: 150 credits with the 3-Day Sprint Pass, 400 with the 7-Day Hunt Pass, usable while the pass lasts.
+- **Credit packs**: 250, 500 or 1,200 credits, one-time, valid for 90 days. Packs are AI fuel only and unlock no other paid features.
+
+It is one pool: the same credits pay for every AI feature in every VeriWorkly app. Payments are admin-only in production today, so nobody outside the team can buy credits yet. Prices are on [veriworkly.com/pricing](https://veriworkly.com/pricing).
 
 ## Reserve, then commit or release
 

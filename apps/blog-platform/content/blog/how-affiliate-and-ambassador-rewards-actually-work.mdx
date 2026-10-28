@@ -1,8 +1,9 @@
 ---
 title: How Affiliate & Ambassador Rewards Actually Work
-description: A live 3-tier commission program, a campus ambassador program still in its early phase, and the honest difference between the two.
+description: A 3-tier commission program waiting on payments, a campus ambassador program at application intake, and the difference between the two.
 author: VeriWorkly Team
 date: 2026-07-27
+updated: 2026-10-28
 category: Product
 cluster: product
 tags:
@@ -10,24 +11,26 @@ tags:
   - ambassador program
 ---
 
-VeriWorkly runs two separate growth programs — Affiliate and Ambassador — and they're at very different stages of being built out. Rather than let the marketing pages get ahead of what's actually live, here's where each one really stands.
+VeriWorkly has two growth programs, Affiliate and Ambassador, and they are at different stages. Here is where each one stands today.
 
-## Affiliate: fully live
+One fact covers both: commissions are earned only on purchases, and purchases are admin-only in production today. Until payments open at launch, nobody earns a commission. Both programs are also off by default in production and are switched on when we launch them.
 
-The Affiliate program has a complete dashboard in Studio, covering tiers, referrals, commissions, payouts, and a public leaderboard.
+## Affiliate: built, waiting on payments
 
-**Commission structure** is a 3-tier recurring rate: Starter at 2% (0+ conversions), Growth at 3% (10+ conversions), Partner at 5% (50+ conversions). Worth knowing: those conversion counts are informational, not automatic. Nothing in the system bumps your tier on its own — a human on our team reviews and promotes affiliates through the admin console.
+The Affiliate program has a dashboard in Studio covering tiers, referrals, commissions, payouts and a public leaderboard.
 
-**Payouts** work through Dodo Payments, our billing provider, which — unlike some payment platforms — doesn't offer an automated payout/transfer API, only a read-only settlements list. So payouts are handled out-of-band (bank transfer, etc.) and recorded manually once sent. There's a $25 minimum withdrawal before a payout request can go through.
+**Commission structure** is a 3-tier rate paid on every payment a referred customer makes, renewals included: Starter at 2% (0+ conversions), Growth at 3% (10+ conversions), Partner at 5% (50+ conversions). Promotion is automatic: a conversion counts towards your tier once its commission has been released, and a tier is never lowered automatically. Commissions start as pending, because a purchase can still be refunded, and a person on our team releases them.
 
-A few things worth knowing if you're considering joining: signing someone up alone doesn't earn anything — only their paid conversion does. Self-referral is blocked, you get one referral per account for life, and — unlike a lot of affiliate programs that cap attribution at 30 days — there's no expiry window on referral attribution once it's made.
+**Payouts** work through Dodo Payments, our billing provider, which does not offer an automated payout API. Payouts are sent out-of-band (bank transfer, for example) and recorded by hand once sent. You need at least $25 available before you can request a withdrawal.
 
-## Ambassador: early, and honest about it
+A few things worth knowing if you are considering joining: signing someone up earns nothing on its own, only their payments do. Self-referral is blocked, and each account can have one referral for life. A referral code has to be applied within 30 days of the referred person signing up. Once applied, the referral does not expire.
 
-The Ambassador program is newer, and intentionally launched the same way Affiliate did — application intake first, full rewards system after.
+## Ambassador: application intake only
 
-**What's live right now:** you can check your ambassador status and submit an application with your college name and graduation year. That's genuinely it on the backend today. The Studio page reflects three states — not yet applied, pending review, and active ambassador — and that's the full loop that currently exists.
+The Ambassador program is newer, and it launches the same way Affiliate did: application intake first, rewards later.
 
-**What's coming next:** an admin-review workflow to move applications from pending to approved (Affiliate already has this; Ambassador doesn't yet), and the full points economy that the public marketing page previews — points for invites and invite conversions, `.edu`-verified badges, points for content contributions, and a 1,500-point threshold to redeem a 30-day Creator Pro voucher.
+**What exists today:** you can submit an application with your college name and graduation year, and check its status. A person on our team reads each application and approves it or turns it down. There is no automated `.edu` check. The Studio page shows four states: not yet applied, pending review, accepted, and not accepted this round.
 
-We're publishing this now specifically so the gap between "what the marketing page previews" and "what you can actually do today" stays honest as the rewards layer gets built. If you apply now, you're getting in early on a program that's actively being built out, not joining something that's already fully live.
+**What does not exist yet:** a points system, vouchers, or any other ambassador reward. Nothing is earned for invites or content today.
+
+If you apply now, you are joining a program at its intake stage, not one with a settled rewards table.

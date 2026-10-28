@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "name": "VeriWorkly Blog Agent Card",
-  "description": "VeriWorkly Blog (blog.veriworkly.com) publishes research-backed career guidance, primary-source ATS evidence analyses, resume tailoring guides, product release notes, and open-source architecture articles.",
+  "description": "VeriWorkly Blog (blog.veriworkly.com) publishes research-backed career guidance, primary-source ATS evidence analyses, resume tailoring guides, and product notes.",
   "contact_email": "info@veriworkly.com",
   "site_url": "https://blog.veriworkly.com",
   "llms_txt": "https://blog.veriworkly.com/llms.txt",
@@ -19,7 +19,7 @@
     {
       "name": "Blog & Editorial Platform",
       "url": "https://blog.veriworkly.com",
-      "description": "Career guidance, primary-source ATS research, resume writing workflows, and architecture essays."
+      "description": "Career guidance, primary-source ATS research, resume writing workflows, and product notes."
     },
     {
       "name": "RSS Feed",

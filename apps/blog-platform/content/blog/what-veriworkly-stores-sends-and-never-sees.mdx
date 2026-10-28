@@ -1,0 +1,72 @@
+---
+title: What VeriWorkly Stores, Sends and Never Sees
+description: Where your resume data lives on VeriWorkly. What stays in your browser, what syncs to our servers, what we count, and what we never receive.
+author: VeriWorkly Team
+date: 2026-10-28
+category: Product
+cluster: product
+primaryKeyword: what data does veriworkly store
+tags:
+  - privacy
+  - data storage
+  - guest mode
+---
+
+**As a guest, your documents stay in your browser. With an account, they sync to our servers so you can use them on any device, and you can switch that off. Either way, files are built in your browser, scans are not saved, and we keep counts of actions rather than a record of what you did.**
+
+This post lists what is stored where, what leaves your device and when, and what we never receive. The legal version is the [privacy policy](https://veriworkly.com/privacy); this is the plain one.
+
+## Guest mode: your browser holds everything
+
+You can use the editor with no login required. Choose "Continue as Guest" and Studio sets a cookie that lasts 30 days, so it remembers you chose guest mode.
+
+- Your resume, cover letter and master profile are saved in your browser's local storage. They are not uploaded.
+- Clearing your browser's site data, or switching to another browser or device, loses them. Export a JSON copy if you want a backup.
+- Sharing a document by link needs an account, because a share link is served from our servers.
+
+## With an account: what we store
+
+Signing in moves the same data into your account so it follows you between devices.
+
+- **Your account:** your email address, and the basic profile (name, email, avatar) a provider shares if you sign in with Google, GitHub or LinkedIn.
+- **Your documents and master profile:** synced to our database. Sync is on by default for a new account. You can turn it off in Settings, or keep a single document local only, and that document stays in your browser.
+- **Share links:** a copy of the document as it was when you shared it. Anyone with the link can open it until it expires. Links expire after 7, 14, 30 or 90 days, or never; the default is 7 days.
+- **Portfolio images:** files you upload for a portfolio are kept in object storage.
+- **Credits and billing:** a ledger of AI credit grants and spending, and, once payments open at launch, the purchase records our payment provider sends back.
+
+## What leaves your device, and when
+
+Nothing below happens in the background. Each one follows something you did.
+
+| You do this                         | What is sent                                      | Where it goes                                       |
+| ----------------------------------- | ------------------------------------------------- | --------------------------------------------------- |
+| Edit while signed in, with sync on  | The document and master profile                   | Our servers                                         |
+| Run an ATS scan                     | The resume text and any job description           | Our servers, processed and discarded, not saved     |
+| Use an AI feature (needs credits)   | The text that feature works on                    | Our servers, then the OpenRouter gateway to a model |
+| Import from GitHub                  | A GitHub username                                 | Our servers, which read GitHub's public API         |
+| Import from LinkedIn (uses credits) | The profile text you paste or upload              | Our servers, then the OpenRouter gateway to a model |
+| Export, share, or delete a document | The name of the action, such as `resume_exported` | Our servers, added to a daily count                 |
+
+The last row is our usage telemetry. Studio sends an event name and nothing else: no document content, no file name. The server adds one to a daily total for that event. Those totals are what we look at; they do not say who did what.
+
+## What we keep, and for how long
+
+These are the server's default retention settings.
+
+- **Deleted documents:** the content, title and any share or portfolio copy are wiped 30 days after you delete the document. An empty record stays behind so your other devices learn it was deleted.
+- **Sessions and sign-in codes:** removed a day after they expire.
+- **Request log:** failed requests only (method, path without the query string, status, IP address, browser user agent), kept for 90 days for debugging and abuse prevention.
+- **AI results:** the output of a paid AI request is held for one day, so a retry after a dropped connection returns it instead of charging you again.
+- **ATS scans:** never written to our database. We count that a scan happened, against your account or, for a guest, a hashed form of your IP address, so the scan limits work.
+- **Account deletion:** you can delete your account from your Profile page. It removes your documents, master profile, portfolios, share links, sessions and uploaded files. Billing records are kept, detached from the account and with personal details removed. The server refuses the deletion while a subscription is still billing, a checkout is open, or an affiliate withdrawal is in progress, and asks you to confirm before an unpaid affiliate balance is given up.
+
+## What we never see or keep
+
+- **Your exported files.** PDF, DOCX and the other formats are built in your browser. No document is sent to us to be turned into a file.
+- **A guest's documents.** They are not uploaded. The exception is text you send yourself for an ATS scan, which is processed and discarded.
+- **Your card details.** At launch, our payment provider, Dodo Payments, collects them directly. We receive the payment status, not the card.
+- **Third-party trackers.** Studio loads no advertising, analytics-vendor or session-recording scripts.
+
+## Checking it yourself
+
+VeriWorkly's code is MIT-licensed and [public on GitHub](https://github.com/VeriWorkly/veriworkly), so every point above can be checked against the code rather than taken on trust. The AI model configuration is the one part that is not published.

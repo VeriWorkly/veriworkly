@@ -3,6 +3,7 @@ title: How the ATS Checker Actually Works
 description: A deterministic rules engine and an AI analysis layer, sharing one quota — and why that nuance matters if you're testing the free tier.
 author: VeriWorkly Team
 date: 2026-07-27
+updated: 2026-10-28
 category: Product
 cluster: product
 tags:
@@ -14,7 +15,7 @@ tags:
 
 ## Two layers, not one
 
-The checker (`/ats` in Studio) runs two genuinely different kinds of analysis:
+The checker runs on the public page at [veriworkly.com/ats-checker](https://veriworkly.com/ats-checker) with no account, and at `/ats` in Studio. It runs two genuinely different kinds of analysis:
 
 **The core scan** is deterministic and free of AI cost — it's a rules engine, not a model. It checks word count, the presence of email/phone/links, whether Experience, Education and Skills appear as real headings on their own line, what share of your bullets open with an action verb, what share carry a number, and overall length. None of this touches an LLM.
 
@@ -32,7 +33,7 @@ Three behaviours worth knowing about:
 - **Skills you've evidenced under another name still count.** List Terraform and you are credited with infrastructure-as-code; list PostgreSQL and you are credited with relational databases. This runs one way only — naming the concept does not credit you with the tool.
 - **Abbreviations fold together.** `k8s`, `Kubernetes`, `CI/CD` and `continuous integration` resolve to the same term on both sides.
 
-**The AI-powered deep analysis** sits on top of the core scan: an LLM's plain-language explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities. It can also pull a job description straight from a URL instead of requiring you to paste it, with SSRF-hardened fetching underneath (private IP ranges blocked, resolved IP pinned, timeouts and size caps enforced) so that URL field can't be turned into a way to probe internal infrastructure.
+**The AI-powered deep analysis** needs a signed-in account and AI credits, which come only from a paid plan, a pass or a credit pack at launch (there are no free credits, and payments are admin-only in production today). It sits on top of the core scan: an LLM's plain-language explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities. It can also pull a job description straight from a URL instead of requiring you to paste it, with SSRF-hardened fetching underneath (private IP ranges blocked, resolved IP pinned, timeouts and size caps enforced) so that URL field can't be turned into a way to probe internal infrastructure.
 
 ## The quota nuance worth knowing
 
@@ -42,13 +43,13 @@ Quotas, for reference:
 
 - Anonymous visitors: 1 scan / 48 hours
 - Free, logged in: 2 scans / 24 hours
-- Paid subscribers: 300 scans / billing period
+- Any account holding AI credits, credit packs included: 300 scans a month
 
 If you're testing the free tier and wondering why you ran out faster than expected, this is almost always why.
 
 ## Getting content into it
 
-You can load a resume you've already built in Studio directly as the scan source, or upload/paste one fresh — PDF, DOCX, TXT, MD, or JSON, up to 5MB.
+You can load a resume you've already built in Studio directly as the scan source, or upload/paste one fresh: PDF, DOCX, HTML, TXT, MD, or JSON, up to 5MB. Two optional AI steps around the upload are billed in credits like the analysis: repairing a file whose text extracted badly, and converting a scanned resume into an editable Studio document.
 
 ## The takeaway
 
