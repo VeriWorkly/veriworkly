@@ -2,7 +2,7 @@ export const docsFaqs = [
   {
     question: "Is the API free to use?",
     answer:
-      "The codebase is open-source, and you can run your own instance. Managed infrastructure costs depend on how and where you deploy.",
+      "Yes. Any signed-in account can create API keys at no cost, with 20 requests per 15 minutes per key by default. Calls that use AI spend AI credits, which come with a paid plan, a pass or a credit pack at launch. See https://veriworkly.com/pricing.",
   },
   {
     question: "How do I contribute to the documentation?",
@@ -12,7 +12,7 @@ export const docsFaqs = [
   {
     question: "What is the local-first security model?",
     answer:
-      "It means your data is stored on your device first. We only sync to the cloud if you explicitly enable it, ensuring maximum privacy for sensitive professional data.",
+      "Documents are saved in your browser first. As a guest, they stay there. When you sign in, documents sync to your account by default; you can turn auto-sync off, or keep any single document on this device only.",
   },
   {
     question: "Can I use the resume builder as a headless CMS?",

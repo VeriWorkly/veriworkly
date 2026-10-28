@@ -11,8 +11,8 @@ First off, thank you for considering contributing to **VeriWorkly**! We are buil
 
 To ensure a smooth collaboration, please follow these steps to set up your contribution environment:
 
-1. **Star the Repository** 🌟: Before getting started, please star the [VeriWorkly Repository](https://github.com/VeriWorkly/veriworkly) to show your support for this open-source project!
-2. **Claim an Issue** 📋: Browse our open issues. Comment on the one you would like to work on and wait to be officially assigned by a maintainer. **Please do not start coding or open a PR until you are officially assigned to the issue** to avoid duplicate efforts.
+1. **Star the Repository**: Before getting started, please star the [VeriWorkly Repository](https://github.com/VeriWorkly/veriworkly) to show your support for this open-source project!
+2. **Claim an Issue**: Browse our open issues. Comment on the one you would like to work on and wait to be officially assigned by a maintainer. **Please do not start coding or open a PR until you are officially assigned to the issue** to avoid duplicate efforts.
 
    <Callout type="warn" title="Issue Claiming & PR Policy">
      * **Priority for Rule Followers:** If a contributor submits a PR without being assigned to the
@@ -117,12 +117,13 @@ npm test -w @veriworkly/server
 npm run test:contracts -w @veriworkly/studio
 npm run test:contracts -w @veriworkly/site
 npm test -w @veriworkly/portfolio
+npm test -w @veriworkly/ui
 
 # Verify every workspace builds
 npm run build
 ```
 
-If you touched a resume or cover letter template, also run the preview/PDF parity harness — it is
+If you touched a resume or cover letter template, also run the preview/PDF parity harness. It is
 the only thing that proves the live preview and the exported PDF still agree:
 
 ```bash
@@ -130,7 +131,7 @@ npm run test:parity -w @veriworkly/studio
 ```
 
 <Callout type="warn" title="There is no root `npm test`">
-  The repository root does not define a `test` script — run the workspace-scoped commands above
+  The repository root does not define a `test` script. Run the workspace-scoped commands above
   instead.
 </Callout>
 

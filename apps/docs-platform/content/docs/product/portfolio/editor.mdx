@@ -1,9 +1,9 @@
 ---
 title: "Portfolio: Editor"
-description: The three-pane portfolio editor, its section types, and the known editor/publish-validator mismatch.
+description: The three-pane portfolio editor, its section types, multi-page portfolios, and draft storage.
 ---
 
-A three-pane workspace — section structure, content, and a live preview rendered via a real `<iframe>` kept in sync over `postMessage`, with a mobile/tablet/desktop viewport-width toggle. The editor autosaves every 12 seconds while dirty, and warns via the browser's `beforeunload` event if you try to navigate away with unsaved changes.
+A three-pane workspace: section structure, content, and a live preview rendered via a real `<iframe>` kept in sync over `postMessage`, with a mobile/tablet/desktop viewport-width toggle. The editor autosaves every 12 seconds while dirty, and warns via the browser's `beforeunload` event if you try to navigate away with unsaved changes.
 
 ## Section types
 
@@ -15,33 +15,29 @@ awards, certifications, languages, interests, publications, patents,
 testScores, achievements, volunteer, custom, contact
 ```
 
-The canonical list is `portfolioSectionTypes` in `apps/portfolio/lib/portfolio.ts`. A portfolio holds
-at most 24 sections, each with at most 24 items.
-
-<Callout type="warn" title="Editor/publish-validator mismatch">
-  The backend's publish-time content validator currently only accepts **9 of these 18** section
-  types: `projects, experience, services, skills, education, writing, testimonials, awards,
-  contact`. A portfolio using any of the other 9 section types (certifications, languages,
-  interests, publications, patents, test scores, achievements, volunteer, or custom) will fail
-  server-side validation at publish time, even though the editor lets you add and fill them out. If
-  you're building against this today, stick to the 9 validated section types until this is resolved.
-</Callout>
+The canonical list is `portfolioSectionTypes` in `packages/profile-core`, re-exported by
+`apps/portfolio/lib/portfolio.ts`. The server's save and publish validators read the same list, so
+every type the editor offers can be saved and published. A portfolio holds at most 24 sections, each
+with at most 24 items.
 
 ## Premium: multi-page portfolios
 
-Premium users additionally get multi-page portfolios — dedicated Work / Writing / About / Contact pages, plus auto-generated detail pages per project, derived live from the Projects section's items. Each page has its own independent section list.
+On a paid portfolio plan the editor's **Pages** panel adds extra pages (up to 10): predefined
+pages such as Work, Writing, About and Contact, plus a detail page for any item in the Projects
+section. Each page has its own independent section list. Sub-page URLs are served only for a
+premium template on a paid portfolio plan; on any other portfolio they return `404`.
 
 ## The separate preview route
 
-There's also a distinct **private live-preview route** (`/preview/[documentId]`) — not the same as the editor's own preview pane or the published site. It's used for scenarios like a guest (logged-out) user previewing before ever saving, powered by a dedicated server-render endpoint that turns portfolio JSON into HTML on demand.
+There's also a distinct **private live-preview route** (`/preview/[documentId]`), not the same as the editor's own preview pane or the published site. It's used for scenarios like a guest user previewing before ever saving, powered by a dedicated server-render endpoint that turns portfolio JSON into HTML on demand.
 
 ## Draft storage and merging
 
 The editor implements its own local-first layer, independent of Studio's document sync engine. A
-guest (logged-out) draft is kept in the browser; on login, the local draft and the cloud draft are
-merged by comparing `updatedAt` timestamps, so neither side clobbers the newer data.
+guest draft is kept in the browser; on login, the local draft and the cloud draft are merged by
+comparing `updatedAt` timestamps, so neither side clobbers the newer data.
 
-Content is validated server-side on save against a Zod schema that also caps field lengths — for
+Content is validated server-side on save against a Zod schema that also caps field lengths: for
 example a 120-character name, a 240-character headline, a 1,600-character bio, at most 12 social
 links, and at most 24 sections.
 
@@ -50,4 +46,4 @@ links, and at most 24 sections.
 - [Overview](/docs/product/portfolio/overview)
 - [Templates](/docs/product/portfolio/templates)
 - [Publishing & Analytics](/docs/product/portfolio/publishing)
-- [AI Writing Assistant](/docs/product/ai-writing-assistant) — portfolio copy generation.
+- [AI Writing Assistant](/docs/product/ai-writing-assistant): portfolio copy generation.

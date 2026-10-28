@@ -3,6 +3,7 @@ title: "GitHub vs LinkedIn Import: What's Real, What's AI"
 description: One import path is genuine OAuth with deterministic mapping. The other is AI reading pasted text. They are not the same kind of feature.
 author: VeriWorkly Team
 date: 2026-07-27
+updated: 2026-10-28
 category: Product
 cluster: product
 tags:
@@ -15,22 +16,22 @@ tags:
 
 ## GitHub import is a real integration
 
-This one is genuine OAuth. When you connect GitHub, VeriWorkly pulls your profile plus up to 30 repositories and **deterministically** — no AI involved — maps your languages to skills and your repos to project entries. Same input, same output, every time.
+This one is genuine OAuth. When you connect GitHub, VeriWorkly pulls your profile plus your 30 most recently updated public repositories and **deterministically**, with no AI involved, maps them into your profile. Two limits are worth knowing: only the first 15 of those repositories become project entries, and only each repository's primary language is read, which becomes a skill. Same input, same output, every time.
 
-- **Free accounts** can import their own connected GitHub account, once per day.
-- **Paid accounts** can import any public GitHub username.
+- **Free accounts** can import their own linked GitHub account, once per rolling 24 hours.
+- **Paid accounts**, at launch, can import any public GitHub username.
 
-There's one nuance paid users should know: even though there's no visible per-day limit on importing other usernames, there's a hidden cap of 50 imports/day per account. It exists to protect the shared GitHub API token's rate limit from being exhausted by one heavy user, and it isn't surfaced anywhere in the product today — if you hit it, that's why.
+Paid imports are capped at 50 a day per account. The cap protects the shared GitHub API token's rate limit from being exhausted by one heavy user.
 
 ## LinkedIn import is AI reading your text
 
-This is the one that surprises people. There's no LinkedIn API integration here — LinkedIn doesn't offer one that would support this use case. Instead, you export your own LinkedIn profile (as text, or as the PDF LinkedIn generates, which gets auto-extracted for you), paste or upload it, and an AI model parses it into structured resume data.
+This is the one that surprises people. There's no LinkedIn API integration here. LinkedIn doesn't offer one that would support this use case. Instead, you export your own LinkedIn profile (as text, or as the PDF LinkedIn generates, which gets auto-extracted for you), paste or upload it, and an AI model parses it into structured resume data. Because it is an AI call, every LinkedIn import costs AI credits, on any plan, and there are no free credits.
 
 That means the output quality depends on how the model interprets your specific export, not a guaranteed 1:1 field mapping the way GitHub import is. It's a good starting point, and worth reviewing before you trust it as-is.
 
-- **Free accounts** get one LinkedIn import per month.
-- **Paid accounts** get unlimited imports, with no secondary cap — this path isn't bound to a rate-limited third-party API the way GitHub is.
+- **Free accounts**, once credit packs go on sale at launch, get one LinkedIn import per rolling 30 days, paid for with credits from a pack.
+- **Paid accounts**, at launch, have no 30-day gap. Each import still costs credits.
 
 ## Same checkbox, different mechanics
 
-Both paths share the same "Replace my Master Profile with this data" option and both always create a brand-new resume document from the result rather than editing one in place. That part is identical. What produces the data underneath it is not — one is a deterministic API pull, the other is a language model doing its best with unstructured text. Knowing which is which should change how much you double-check the result before you rely on it.
+Both paths share the same "Replace my Master Profile with this data" option and both always create a brand-new resume document from the result rather than editing one in place. On the free tier that new resume counts towards the one-resume limit, so an import is refused while you already have a resume. That part is identical. What produces the data underneath it is not: one is a deterministic API pull, the other is a language model doing its best with unstructured text. Knowing which is which should change how much you double-check the result before you rely on it.

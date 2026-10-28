@@ -1,27 +1,31 @@
 ---
 title: Ambassador Program
-description: What's live in the Campus Ambassador program today — application intake, admin review, and what's still rolling out.
+description: The Campus Ambassador program today is application intake and admin review. There are no points, vouchers or leaderboard.
 ---
 
-The Campus Ambassador program is rolling out in phases, following the same pattern the Affiliate
-program went through: application intake and review first, the rewards loop next.
+The Campus Ambassador program is application intake and admin review. You apply, an admin approves
+or rejects you, and an approved applicant gets the `AMBASSADOR` role.
 
-<Callout type="warn" title="This page describes a program mid-rollout">
-  Application intake and admin review are live. The points economy previewed on the public marketing
-  page is direction, not yet shipped. If you are building against this, verify against
-  `apps/server/src/routes/ambassador.ts` and `apps/server/src/routes/admin/ambassadors.ts`.
+<Callout type="warn" title="No rewards system">
+  There are no points, rewards, vouchers or leaderboard in the product, and no database model for
+  them. If you are building against this, verify against `apps/server/src/routes/ambassador.ts` and
+  `apps/server/src/routes/admin/ambassadors.ts`.
 </Callout>
 
 ## Feature-flag gated
 
-The whole program sits behind a boot-time flag, `config.growth.ambassadorProgramEnabled`, read once
-from `AMBASSADOR_PROGRAM_ENABLED` at server startup.
+The program sits behind an `AMBASSADOR_PROGRAM_ENABLED` flag. Each app reads its own copy of it at
+startup, so set it in every app that should open the program:
 
-- **Default**: enabled outside production, **disabled** in production unless explicitly turned on.
-- **When off**: the ambassador API routes return `503` ("The ambassador program is not available
-  yet"), and Studio's `/ambassador` route shows a "Coming Soon" screen.
-- Changing the flag requires a **server restart** — it is a config-only boolean, not a runtime
-  toggle.
+| App            | Where it is read                         | When off                                                                                |
+| :------------- | :--------------------------------------- | :-------------------------------------------------------------------------------------- |
+| Server         | `config.growth.ambassadorProgramEnabled` | The ambassador API routes return `503` ("The ambassador program is not available yet"). |
+| Studio         | `apps/studio/lib/feature-flags.ts`       | Studio's `/ambassador` route shows a "coming soon" screen.                              |
+| Marketing site | `apps/site/lib/feature-flags.ts`         | The apply page shows a "coming soon" card.                                              |
+
+- **Default** (in every app): enabled outside production, **disabled** in production unless
+  explicitly turned on. An empty value counts as unset.
+- Changing the flag requires a **restart** of the app that reads it. It is not a runtime toggle.
 
 ---
 
@@ -34,27 +38,28 @@ The application form lives on the **marketing site** at
 
 `POST /api/v1/ambassador/apply` accepts:
 
-| Field            | Required | Validation                                                                 |
-| :--------------- | :------- | :------------------------------------------------------------------------- |
-| `collegeName`    | Yes      | 2–160 characters.                                                          |
-| `graduationYear` | Yes      | A real 4-digit year (`19xx` or `20xx`), validated client- and server-side. |
-| `whyJoin`        | Yes      | 20–1,000 characters.                                                       |
-| `superpower`     | Yes      | 2–300 characters.                                                          |
-| `funFact`        | Yes      | 2–300 characters.                                                          |
-| `vibeCheck`      | No       | Up to 80 characters.                                                       |
-| `socialHandle`   | No       | Up to 120 characters.                                                      |
+| Field            | Required | Validation                                                                  |
+| :--------------- | :------- | :-------------------------------------------------------------------------- |
+| `collegeName`    | Yes      | 2–120 characters.                                                           |
+| `graduationYear` | Yes      | A 4-digit year from last year up to 8 years ahead (for 2026: 2025 to 2034). |
+| `whyJoin`        | Yes      | 20–1,000 characters.                                                        |
+| `superpower`     | Yes      | 2–160 characters.                                                           |
+| `funFact`        | Yes      | 2–200 characters.                                                           |
+| `vibeCheck`      | No       | Up to 80 characters.                                                        |
+| `socialHandle`   | No       | Up to 100 characters.                                                       |
 
-Re-applying after a rejection is allowed — the application is upserted, its status reset to
+Re-applying after a rejection is allowed: the application is upserted, its status reset to
 `PENDING`, and the previous review metadata cleared. Applying while already `PENDING`, or while
-already an approved `AMBASSADOR`, is rejected with a `400`.
+already an `AMBASSADOR`, is rejected with a `409`.
 
 Applying sets the user's `ambassadorStatus` to `PENDING` in the same transaction that writes the
 application.
 
 ### Checking status
 
-`GET /api/v1/ambassador/me` returns the user's `role`, `ambassadorStatus`, `collegeName`, and
-`graduationYear`.
+`GET /api/v1/ambassador/me` returns the user's `name`, `email`, `role`, `ambassadorStatus`,
+`collegeName`, and `graduationYear`, plus the previous `application` answers (so a rejected
+applicant can re-apply without retyping) and its `reviewNote`.
 
 ### Admin review
 
@@ -66,31 +71,29 @@ The review workflow is **live**, both as an API surface and as a Studio screen:
 | `GET /api/v1/admin/ambassadors/summary` | Counts by status, the number of active ambassadors, and applications received in the last 7 days.                                                           |
 | `GET /api/v1/admin/ambassadors/roster`  | Everyone currently holding the `AMBASSADOR` role, with their campus and referral count.                                                                     |
 | `GET /api/v1/admin/ambassadors/:id`     | One application in full, plus who reviewed it and its admin audit history.                                                                                  |
-| `PATCH /api/v1/admin/ambassadors/:id`   | Review an application: `action` is `APPROVE` or `REJECT`, with an optional `reviewNote` up to 500 characters.                                               |
+| `PATCH /api/v1/admin/ambassadors/:id`   | Review an application: `action` is `APPROVE` or `REJECT`, with an optional `reviewNote` of 3 to 500 characters.                                             |
 
-All require admin authentication. Approving flips the application's status **and** the user's
-`role` to `AMBASSADOR` inside a single transaction; rejecting sets the role back to `USER`. Neither
-ever changes a role it does not own, so an admin reviewing their own application keeps `ADMIN`.
-Either way, an `AdminAuditEntry` is written recording the actor, the action
+All require admin authentication. Approving flips the application's status **and** moves a `USER`
+to the `AMBASSADOR` role inside a single transaction; rejecting moves an `AMBASSADOR` back to
+`USER`. Neither ever changes a role it does not own, so an admin reviewing their own application
+keeps `ADMIN`. Either way, an `AdminAuditEntry` is written recording the actor, the action
 (`ambassador.application.approve` / `.reject`), the application id, and the review note.
 
-An application that has already been reviewed cannot be reviewed again — a second `PATCH` returns a
-`400`.
+An application that has already been reviewed cannot be reviewed again: a second `PATCH` returns a
+`409`.
 
 <Callout type="info" title="Reviews have a Studio screen">
   The review queue lives at `/admin/ambassadors` in Studio, with a per-application detail view and
-  an approved-ambassador roster. The singular `/api/v1/admin/ambassador` path still resolves as an
-  alias, but its list response is now paginated rather than a bare array.
+  an approved-ambassador roster.
 </Callout>
 
 ### Studio's `/ambassador` page
 
-A status page reflecting two states:
+A status page with a review timeline (submitted, team review, decision) and one of three badges:
 
-1. **Pending** — an "Application Under Review" badge, with copy explaining that a decision will be
-   emailed.
-2. **Active ambassador** — an "Active Campus Ambassador" badge, and a placeholder for the perks,
-   resources, and stats that ship with the rewards layer.
+1. **Pending**: "Application Under Review". The decision appears on this page.
+2. **Rejected**: "Not accepted this round", with the reviewer's note if there is one.
+3. **Active ambassador**: "Active Campus Ambassador".
 
 Applying itself happens on the marketing site, not here.
 
@@ -123,27 +126,10 @@ application status, and the `Role` enum includes a dedicated `AMBASSADOR` value.
 
 ---
 
-## What's still rolling out
-
-The public marketing page at [veriworkly.com/ambassador](https://veriworkly.com/ambassador) previews
-a fuller experience that is **not yet implemented in the backend**:
-
-- Points for invites and invite conversions.
-- `.edu`-verified badges.
-- Points for video and article contributions.
-- A redemption threshold for a 30-day Creator Pro voucher.
-- An interactive points calculator and a public leaderboard.
-
-There is no points, redemption, or leaderboard model in the database today. Treat the marketing
-page's numbers as a preview of intent, not as a live earning schedule.
-
----
-
 ## API
 
 See the [Ambassador API reference](/api-reference/ambassador/overview) for full request and response shapes.
 
 ## Related
 
-- [Affiliate Program](/docs/product/affiliate-program) — the program whose rollout pattern this one
-  is following, and which already has its full rewards loop live.
+- [Affiliate Program](/docs/product/affiliate-program)

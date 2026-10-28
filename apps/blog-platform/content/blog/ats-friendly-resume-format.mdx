@@ -3,7 +3,7 @@ title: "ATS-Friendly Resume Format: What a Parser Actually Receives"
 description: "Most ATS format advice describes how a resume looks instead of what its PDF actually returns to a parser. Use this two-minute test, a public PDF read-back artifact, and the few layout rules that have a real extraction mechanism behind them."
 author: VeriWorkly Engineering
 date: 2026-08-03
-updated: 2026-10-15
+updated: 2026-10-28
 category: Job Search
 cluster: ats
 pillar: true
@@ -146,7 +146,7 @@ Pick one format and use it for every role. A resume where three roles use three 
 
 **File name.** No parser scores it. Name it `firstname-lastname-resume.pdf` for the human on the other end, who will have forty files in a folder.
 
-**PDF versus DOCX.** Format testing across major platforms in 2026 found [negligible difference between the two](https://www.rezi.ai/posts/ats-myths). Send what the form asks for. The old "always send Word" advice is outdated, and the newer "never send PDF" advice is the same folklore with the sign flipped.
+**PDF versus DOCX.** A post by Rezi, a resume-software vendor, says format testing across major platforms found [negligible difference between the two](https://www.rezi.ai/posts/ats-myths). Treat it as a vendor claim. Send what the form asks for. The old "always send Word" advice is outdated, and the newer "never send PDF" advice is the same folklore with the sign flipped.
 
 ## The failure that looks like success
 
@@ -191,7 +191,7 @@ Single column, standard headings, contact in the body, consistent dates, no info
 
 Format is worth thirty minutes once. After that the returns collapse, and it is worth being honest about where the actual failures are.
 
-Applications fail mostly on relevance and volume. [Roughly 2 to 3% of cold applications reach an interview](/how-many-jobs-should-you-apply-to), and knockout questions configured by recruiters (work authorisation, required licence, location) filter more candidates than parsing ever will. A perfectly formatted resume that does not match the posting loses to a plainly formatted one that does.
+Applications fail mostly on relevance and volume. [Most cold applications never reach an interview](/how-many-jobs-should-you-apply-to), and knockout questions configured by recruiters (work authorisation, required licence, location) filter more candidates than parsing ever will. A perfectly formatted resume that does not match the posting loses to a plainly formatted one that does.
 
 So: run the copy-paste test, fix anything it surfaces, then stop thinking about format and go [rewrite your bullets](/how-to-write-resume-bullet-points-that-get-read).
 
@@ -201,7 +201,7 @@ We maintain an ATS checker that runs a deterministic rules engine over extracted
 
 Two things we learned building it are worth passing on. Most resumes that score badly do so on content rather than structure, which matches what the parsing literature reports. And the rules that produce the most useful feedback are boring: contact position, missing sections, and unquantified bullets, not anything exotic.
 
-The engine is [open source](https://github.com/VeriWorkly/veriworkly), and the checker is free to run at the [VeriWorkly ATS resume checker](https://veriworkly.com/ats-checker). [Jobscan](https://www.jobscan.co) is the established option in this category and has a larger keyword database; [Teal](https://www.tealhq.com) bundles a checker into application tracking. Any of them will surface the same structural issues, and so will the copy-paste test, which costs nothing and requires no account.
+The scoring engine is [open source](https://github.com/VeriWorkly/ats-engine), and its structural scan is free to run, with no account, at the [VeriWorkly ATS resume checker](https://veriworkly.com/ats-checker). [Jobscan](https://www.jobscan.co) is the established option in this category and has a larger keyword database; [Teal](https://www.tealhq.com) bundles a checker into application tracking. Any of them will surface the same structural issues, and so will the copy-paste test, which costs nothing and requires no account.
 
 ## The short version
 

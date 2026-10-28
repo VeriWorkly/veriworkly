@@ -12,7 +12,7 @@ const Footer = () => {
       shortName={siteConfig.shortName}
       email="hello@veriworkly.com"
       location="Open Source Everywhere"
-      description="Empowering job seekers with the most advanced, privacy-first, and open-source resume building experience. 100% free, forever."
+      description="Resume, cover letter and portfolio tools for job seekers, with a free tier and MIT-licensed code."
       socialLinks={[
         { name: "GitHub", href: siteConfig.links.github, icon: GithubIcon },
         { name: "Twitter", href: siteConfig.links.twitter, icon: TwitterXIcon },
@@ -66,7 +66,7 @@ const Footer = () => {
         { name: "Security", href: `${siteConfig.links.main}/security` },
       ]}
       tagline="Build for the future of work."
-      statusText="SYSTEMS OPERATIONAL | ALL TEMPLATES FREE"
+      statusText="SYSTEMS OPERATIONAL | FREE TIER AVAILABLE"
     />
   );
 };

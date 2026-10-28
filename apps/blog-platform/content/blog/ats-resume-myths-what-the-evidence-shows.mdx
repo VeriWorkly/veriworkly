@@ -3,7 +3,7 @@ title: "Does an ATS Really Reject 75% of Resumes? What the Evidence Actually Sho
 description: "The most repeated statistic in job search advice has no primary source. Here is how applicant tracking systems actually filter candidates in 2026 — and what really costs you interviews."
 author: VeriWorkly Team
 date: 2026-07-29
-updated: 2026-08-03
+updated: 2026-10-28
 category: Job Search
 cluster: ats
 pillar: true
@@ -59,7 +59,7 @@ A typical pipeline runs in four stages:
 3. **Screen.** Any knockout questions the recruiter configured are applied.
 4. **Search.** The recruiter queries the pool — by title, skill, school, location — and reads what comes back.
 
-Notice what is absent. There is no step where the software assigns your resume a score and discards it. Ranking features exist in many platforms, and adoption of AI-assisted screening is climbing fast — [82% of large corporations now use AI somewhere in resume screening](https://careertrainer.ai/en/reports/ai-in-recruitment-statistics/), and [67% of companies plan to increase that investment in 2026](https://www.talentmsh.com/insights/hiring-recruiting-trends-statistics). But ranking sorts a list. It does not empty one.
+Notice what is absent. There is no step where the software assigns your resume a score and discards it. Ranking features exist in many platforms, and two vendor statistics roundups report high adoption of AI-assisted screening: [82% of large corporations using AI somewhere in resume screening](https://careertrainer.ai/en/reports/ai-in-recruitment-statistics/) and [67% of companies planning to increase that investment](https://www.talentmsh.com/insights/hiring-recruiting-trends-statistics). Both are vendor aggregation pages, not primary studies. But ranking sorts a list. It does not empty one.
 
 The distinction matters enormously. A low-ranked resume in a searchable pool is still findable. A rejected resume is not. Most advice treats these as the same outcome.
 
@@ -165,7 +165,7 @@ This is a real failure mode with a real cause. Some resume tools generate PDFs b
 A short, ordered list. Roughly descending by impact:
 
 1. **Answer knockout questions carefully.** This is the only place true auto-rejection happens.
-2. **Apply to fewer roles, properly.** With a ~3% interview rate, thirty careless applications lose to eight deliberate ones. [The volume math](/how-many-jobs-should-you-apply-to) is worth running once.
+2. **Apply to fewer roles, properly.** With interview rates near 3% on the vendor figures above, a few deliberate applications are worth more than many careless ones. [The volume math](/how-many-jobs-should-you-apply-to) is worth running once.
 3. **Front-load the six scanned elements.** Name, titles, companies, dates, education — instantly findable.
 4. **Confirm your text is selectable.** Ten seconds. Catches [the one parsing failure that genuinely zeroes you out](/why-some-resume-pdfs-parse-as-blank).
 5. **Mirror the job description's real language.** Use their term for the skill when you actually have it. This is [relevance, not stuffing](/how-to-tailor-your-resume-to-a-job-description).
@@ -178,7 +178,7 @@ None of this requires gaming anything. It is the same list you would arrive at b
 
 You can do the important checks by hand. Open the PDF, select your text, confirm your dates and titles are unambiguous, and read the job description beside your resume to see whether your genuine overlap is actually stated.
 
-If you want a faster read, several tools score a resume against a specific job description and flag structural problems. [Jobscan](https://www.jobscan.co) is the long-established option in this category. Our own [ATS checker](https://app.veriworkly.com) runs a deterministic structural pass plus an AI analysis layer, and is free to use — as is the rest of [VeriWorkly](https://veriworkly.com), which is open source, so you can read exactly how the scoring works rather than trusting a number. [Reactive Resume](https://rxresu.me) is another open-source option worth knowing about if self-hosting matters to you.
+If you want a faster read, several tools score a resume against a specific job description and flag structural problems. [Jobscan](https://www.jobscan.co) is the long-established option in this category. Our own [ATS checker](https://veriworkly.com/ats-checker) runs a deterministic structural scan that is free with no account (one scan every 48 hours signed out, two a day signed in). Its AI analysis layer needs a paid plan or credits, at launch. The scoring engine is [open source](https://github.com/VeriWorkly/ats-engine), so you can read exactly how the score is produced rather than trusting a number. [Reactive Resume](https://rxresu.me) is another open-source option worth knowing about if self-hosting matters to you.
 
 Whichever you use, treat the score as a diagnostic, not a target. A resume optimized to satisfy a checker and nothing else has the same problem as one optimized to satisfy a parser and nothing else: a person still has to want to interview you.
 

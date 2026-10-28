@@ -1,100 +1,163 @@
 ---
 title: Monorepo Architecture
-description: The six applications, the shared UI package, and the private template submodule.
+description: How VeriWorkly runs five Next.js 16 App Router apps, an Express API and a shared design system in one npm workspaces monorepo.
 ---
 
-VeriWorkly uses npm workspaces to manage six applications and one shared package in a single
-repository.
+VeriWorkly is one npm workspaces repository with **five Next.js 16 App Router applications**, **one
+Express API**, and **two shared packages**. The apps share a design system (`@veriworkly/ui`,
+consumed as TypeScript source with Tailwind CSS 4 tokens) and a document schema package
+(`@veriworkly/profile-core`, compiled once and imported by the studio, the portfolio app and the
+API). Each app still builds and deploys on its own.
 
-> [!NOTE]
-> The full repository structure can be explored on
-> [GitHub](https://github.com/VeriWorkly/veriworkly).
-
-The workspace globs declared in the root `package.json` are `apps/site`, `apps/studio`,
-`apps/portfolio`, `apps/blog-platform`, `apps/docs-platform`, `apps/server`, and `packages/*`.
-
----
-
-## Applications
-
-### 1. Marketing site — `apps/site`
-
-- **Port**: 3000 · **Workspace**: `@veriworkly/site` · **Framework**: Next.js 16 (App Router)
-- **Scope**: the public face of the product — landing, pricing, features, how-it-works, FAQ, about,
-  contact, roadmap, security/responsible-disclosure, public GitHub activity stats, a public style
-  guide, legal pages, resume/cover-letter template showcase, and the affiliate and ambassador program
-  pages.
-- **Notable**: ships a machine-readable "AI answer engine" layer (`public/llms.txt`,
-  `public/pricing.md`) and a `robots.ts` that explicitly allowlists AI crawlers.
-
-### 2. Studio — `apps/studio`
-
-- **Port**: 3001 · **Workspace**: `@veriworkly/studio` · **Framework**: Next.js 16 (App Router)
-- **Scope**: the authenticated workspace. Resume and cover letter editors, Master Profile,
-  ATS checker, AI tools, document sharing, billing and credits, developer API keys, affiliate and
-  ambassador dashboards, and the internal admin area.
-- **Notable**: local-first document storage in `localStorage` with a background sync engine;
-  dual-engine templates (web preview plus `@react-pdf/renderer` output); an installable PWA manifest.
-
-### 3. Portfolio — `apps/portfolio`
-
-- **Port**: 3004 · **Workspace**: `@veriworkly/portfolio` · **Framework**: Next.js 16 (App Router)
-- **Scope**: three surfaces in one app — the public template gallery and marketing pages, the
-  authenticated editor/dashboard/analytics/settings workspace, and the **published portfolio sites
-  themselves**, served on `*.veriworkly.com` subdomains and at `portfolio.veriworkly.com/portfolio/{username}`.
-- **Notable**: a `proxy.ts` middleware rewrites both the subdomain host and the shared path onto the
-  internal `/portfolios/[username]/[[...slug]]` route, and gates the workspace behind a session cookie.
-
-### 4. API server — `apps/server`
-
-- **Port**: 8080 · **Workspace**: `@veriworkly/server` · **Framework**: Node.js / Express 4 / TypeScript
-- **Scope**: every backend capability — authentication, documents, share links, Master Profile,
-  profile import, AI, ATS, portfolios, portfolio assets, billing, affiliates, ambassador, roadmap,
-  changelog, GitHub stats, usage metrics, contact, and admin.
-- **Notable**: PostgreSQL via Prisma 7, Redis for caching/quotas/locks, clustered across CPU cores
-  with `throng` in production, and five `node-cron` background jobs guarded by Redis distributed locks.
-
-### 5. Documentation platform — `apps/docs-platform`
-
-- **Port**: 3002 · **Workspace**: `@veriworkly/docs-platform` · **Framework**: Next.js 16 / Fumadocs
-- **Scope**: this site. MDX content under `content/docs`, with the sidebar order driven by
-  `content/docs/meta.json`, plus an OpenAPI-generated API reference under `content/api-reference`.
-
-### 6. Blog platform — `apps/blog-platform`
-
-- **Port**: 3003 · **Workspace**: `@veriworkly/blog-platform` · **Framework**: Next.js 16 / Fumadocs
-- **Scope**: product updates, career content, and engineering posts.
+<Callout type="info" title="Browse the source">
+  The full repository is on [GitHub](https://github.com/VeriWorkly/veriworkly).
+</Callout>
 
 ---
 
-## Shared package — `packages/ui`
+## What is in the repository?
 
-`@veriworkly/ui` is the design system consumed by `site`, `docs-platform`, `blog-platform`, and parts
-of `studio`. It provides:
+The root `package.json` declares these workspaces: `apps/site`, `apps/studio`, `apps/portfolio`,
+`apps/blog-platform`, `apps/docs-platform`, `apps/server`, and `packages/*`.
 
-- Twelve UI primitives (Accordion, Badge, Button, Card, Checkbox, Input, Menu, Modal, Select, Switch,
-  TextArea, Tooltip).
-- Layout shells — `AppShell`, `Container`, `MarketingFooter`, the marketing navbar suite,
+| Workspace                   | Path                    | Port | Stack                                    | What it is                                                                                     |
+| :-------------------------- | :---------------------- | :--- | :--------------------------------------- | :--------------------------------------------------------------------------------------------- |
+| `@veriworkly/site`          | `apps/site`             | 3000 | Next.js 16, App Router, Tailwind CSS 4   | The marketing site: landing, pricing, features, roadmap, changelog, FAQ, legal, program pages. |
+| `@veriworkly/studio`        | `apps/studio`           | 3001 | Next.js 16, App Router, Tailwind CSS 4   | The document builder: resume and cover letter editors, Master Profile, ATS checker, AI tools.  |
+| `@veriworkly/docs-platform` | `apps/docs-platform`    | 3002 | Next.js 16, Fumadocs                     | This documentation site and the generated API reference.                                       |
+| `@veriworkly/blog-platform` | `apps/blog-platform`    | 3003 | Next.js 16, Fumadocs                     | The blog.                                                                                      |
+| `@veriworkly/portfolio`     | `apps/portfolio`        | 3004 | Next.js 16, App Router, Tailwind CSS 4   | The portfolio builder and the published portfolio sites.                                       |
+| `@veriworkly/server`        | `apps/server`           | 8080 | Node.js, Express 4, Prisma 7, TypeScript | The API: auth, documents, sharing, AI, ATS, portfolios, billing, admin.                        |
+| `@veriworkly/ui`            | `packages/ui`           | —    | React 19, Tailwind CSS 4                 | The shared design system: components, layout shells, theme tokens, fonts.                      |
+| `@veriworkly/profile-core`  | `packages/profile-core` | —    | TypeScript, Zod 4                        | The Master Profile schema, validation, version migrations and document projections.            |
+
+The ATS scoring engine, `@veriworkly/ats-engine`, is not a workspace. It lives in its own
+repository and is installed from npm, already built, by the site, the studio, the docs and the API.
+
+### What each app does
+
+- **Site** (`apps/site`): the public face of the product. It also ships a machine-readable layer
+  for AI answer engines (`public/llms.txt`, `public/pricing.md`).
+- **Studio** (`apps/studio`): the workspace for resumes and cover letters, plus billing, API keys,
+  the affiliate and ambassador dashboards, and the admin area. Documents are stored locally in the
+  browser first and synced to the API in the background. Templates render twice: as HTML for the
+  live preview and through `@react-pdf/renderer` for the PDF.
+- **Portfolio** (`apps/portfolio`): the template gallery, the editor workspace, and the published
+  sites. Free portfolios are served at `portfolio.veriworkly.com/portfolio/<name>`; a premium
+  portfolio also gets `<name>.veriworkly.com`. `proxy.ts` rewrites both forms onto the internal
+  `/portfolios/[username]` route.
+- **Server** (`apps/server`): PostgreSQL through Prisma, Redis for sessions, rate limits, quotas
+  and job locks, clustered with `throng` in production, and eight `node-cron` background jobs
+  guarded by Redis locks.
+- **Docs** (`apps/docs-platform`): MDX under `content/docs`, with the sidebar order in
+  `content/docs/meta.json`, and an API reference generated from the OpenAPI spec into
+  `content/api-reference`.
+- **Blog** (`apps/blog-platform`): MDX posts under `content/blog`.
+
+---
+
+## How do the apps share code?
+
+Through workspace packages, not through relative imports between apps. An app lists the package
+in its `package.json` dependencies and imports it by name.
+
+| Package                    | Used by                             | How it is consumed                                                |
+| :------------------------- | :---------------------------------- | :---------------------------------------------------------------- |
+| `@veriworkly/ui`           | site, studio, portfolio, docs, blog | As TypeScript source (`"main": "./src/index.ts"`), no build step. |
+| `@veriworkly/profile-core` | studio, portfolio, server           | Compiled to `dist/` with `tsc`, then imported as ES modules.      |
+
+`@veriworkly/profile-core` is the single definition of the Master Profile. It holds the Zod
+schemas and types, the normaliser, validation, the version migrations, and the projections that
+turn a profile into a resume, a cover letter or a portfolio. The studio and the API import the same
+schemas, so the browser and the server agree on what a valid profile is.
+
+Because `profile-core` ships compiled output, it must be built before anything that imports it:
+
+```bash
+npm run build:profile-core
+```
+
+The studio's and the API's `dev` and `build` scripts run this first. The root `npm run build`
+does too. Run it yourself before `npm run dev:portfolio`, and after any change to
+`packages/profile-core`.
+
+---
+
+## How is the design system shared across Next.js apps?
+
+`@veriworkly/ui` is consumed straight from source, so an edit hot-reloads in every app that uses
+it. It provides:
+
+- Twelve UI primitives: Accordion, Badge, Button, Card, Checkbox, Input, Menu, Modal, Select,
+  Switch, TextArea, Tooltip.
+- Layout shells: `AppShell`, `Container`, `MarketingFooter`, the marketing navbar,
   `ThemeToggle`, and `SocialIcons`.
-- The shared light/dark theme token set in `src/styles/themes.css`.
-- Font configuration (`Geist` and `Geist Mono`) exported as `globalFontVariables`.
+- The light and dark theme tokens in `src/styles/themes.css`.
+- The font setup (`Geist` and `Geist Mono`), exported as `globalFontVariables`.
 
-It is consumed directly from source (`"main": "./src/index.ts"`) with no build step, so edits hot
-reload in every consuming app. Because Tailwind CSS 4 defines the theme in CSS via `@theme`, there is
-no `tailwind.config.ts` in this package.
+Tailwind CSS 4 defines the theme in CSS with `@theme`, so there is no `tailwind.config.ts`.
+Each app imports the tokens in its own `globals.css` and points Tailwind's `@source` at the
+package so the classes used inside it are generated:
 
-See [Shared Design System](/docs/architecture/design-system) for the full component and token
+```css title="apps/docs-platform/app/globals.css"
+@import "tailwindcss";
+
+@source "../../../packages/ui/src";
+
+@import "@veriworkly/ui/styles/themes.css";
+@import "@veriworkly/ui/styles/globals.css";
+```
+
+See [Shared Design System](/docs/architecture/design-system) for the component and token
 reference.
 
 ---
 
-## Private template submodule
+## How do builds and CI work?
+
+Every app builds on its own: `npm run build -w @veriworkly/<app>`, or the root shortcuts
+`build:site`, `build:studio`, `build:portfolio`, `build:docs`, `build:blog` and `build:server`.
+The root `npm run build` builds `profile-core` and then every workspace.
+
+GitHub Actions runs these workflows:
+
+| Workflow               | What it checks                                                                                                                                                       |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `builds.yaml`          | Every pull request: builds each of the six apps in its own matrix job.                                                                                               |
+| `tests.yaml`           | Every pull request: server unit and integration tests (real Postgres and Redis), a server smoke boot, site, studio, portfolio and UI package tests, and docs checks. |
+| `lint-format.yaml`     | Every pull request: ESLint and Prettier across the repository, and the site's brand kit check.                                                                       |
+| `studio-browser.yaml`  | Nightly: the studio's browser and preview/PDF parity suites.                                                                                                         |
+| `site-lighthouse.yaml` | Pull requests that touch the site or `packages/ui`: a mobile Lighthouse run against the built site.                                                                  |
+
+The docs job fails when the generated API reference or the ATS Engine pages are out of date with
+their sources, so a spec or validator change must ship with its regenerated pages.
+
+---
+
+## How do I add a package?
+
+1. Create `packages/<name>/package.json` with a scoped name such as `@veriworkly/<name>` and
+   `"private": true`. The `packages/*` glob picks it up; no root change is needed.
+2. Choose how it is consumed. Ship TypeScript source (like `ui`) when only Next.js apps use it.
+   Compile to `dist/` (like `profile-core`) when the API imports it too, since the API runs the
+   compiled output under plain Node.
+3. Add it to the consuming app's `dependencies` as `"@veriworkly/<name>": "*"`, then run
+   `npm install` from the root.
+4. If it holds Tailwind classes, add an `@source` line for it in each consuming app's
+   `globals.css`.
+5. If it needs a build, run that build before the apps' builds, in the root scripts and in the CI
+   jobs that build or test those apps.
+
+---
+
+## The private template submodule
 
 `apps/portfolio/template-library` is a **git submodule** pointing at the private
-`VeriWorkly/portfolio-templates` repository, pinned to a specific upstream commit. It holds the four
-portfolio templates (Signal, Atelier, Nimbus, Cipher) and their registry.
+`VeriWorkly/portfolio-templates` repository. It holds the four portfolio templates (Signal,
+Atelier, Nimbus, Cipher) and their registry.
 
-Without access to that repository, you can scaffold stand-in mock templates using `node scripts/mock-template-library.mjs` to build and test `apps/portfolio` locally. Every other workspace builds and runs without it.
+Without access to that repository, run `node scripts/mock-template-library.mjs` to create
+stand-in templates, which is what CI does. Every other workspace builds and runs without it.
 
 ---
 
@@ -113,68 +176,51 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
       <File name="app/" description="Editor, dashboard, admin, and share routes" />
       <File
         name="features/"
-        description="Domain logic — documents, resume, ats, ai, billing, credits, affiliate, ambassador, api-keys, admin"
+        description="Domain logic: documents, resume, ats, ai, billing, credits, affiliate, ambassador, api-keys, admin"
       />
-      <File name="templates/" description="Dual-engine resume and cover letter templates" />
+      <File name="templates/" description="Resume and cover letter templates, preview and PDF" />
       <File name="store/" description="Global Zustand stores" />
-      <File
-        name="types/"
-        description="ResumeData, MasterProfileData, document and template types"
-      />
     </Folder>
     <Folder name="portfolio">
       <File name="app/" description="Gallery, workspace, and published-site routes" />
-      <File name="lib/portfolio.ts" description="Portfolio content model and section types" />
-      <File name="proxy.ts" description="Subdomain and shared-path routing middleware" />
-      <File
-        name="template-library/"
-        description="Private git submodule — the four portfolio templates"
-      />
+      <File name="proxy.ts" description="Subdomain and shared-path routing" />
+      <File name="template-library/" description="Private git submodule: the portfolio templates" />
     </Folder>
     <Folder name="server" defaultOpen>
       <File name="src/routes/" description="Express route definitions" />
       <File name="src/controllers/" description="Request handling and validation" />
       <File
         name="src/services/"
-        description="Business logic — documents, billing, credits, AI, ATS, portfolios, affiliates"
+        description="Business logic: documents, billing, credits, AI, ATS, portfolios, affiliates"
       />
       <File
         name="src/middleware/"
-        description="Auth, API-key auth and scopes, CORS, rate limiting, feature flags"
+        description="Auth, API-key auth and scopes, rate limiting, feature flags"
       />
-      <File name="src/jobs/" description="Five node-cron background jobs" />
+      <File name="src/jobs/" description="Background jobs" />
       <File name="prisma/schema.prisma" description="The database schema" />
     </Folder>
     <Folder name="docs-platform">
       <File name="content/docs/" description="This documentation" />
       <File name="content/api-reference/" description="Generated OpenAPI reference pages" />
-      <File
-        name="specs/"
-        description="Source OpenAPI fragments; bundled automatically on dev/build"
-      />
+      <File name="specs/" description="Source OpenAPI fragments, bundled on dev and build" />
     </Folder>
     <Folder name="blog-platform">
       <File name="content/blog/" description="MDX blog posts" />
     </Folder>
   </Folder>
-  <Folder name="packages">
+  <Folder name="packages" defaultOpen>
     <Folder name="ui">
       <File name="src/components/" description="Shared UI primitives and layout shells" />
       <File name="src/styles/themes.css" description="Light and dark theme tokens" />
     </Folder>
+    <Folder name="profile-core">
+      <File name="src/schema/" description="Master Profile Zod schemas, types and defaults" />
+      <File name="src/projections/" description="Resume, cover letter and portfolio projections" />
+      <File name="src/migrations/" description="Schema version migrations" />
+    </Folder>
   </Folder>
-  <File name="compose.yaml" description="Docker Compose — marketing site, API, Redis" />
+  <File name="compose.yaml" description="Docker Compose: marketing site, API, migrations, Redis" />
   <File name="Dockerfile" description="Image for apps/site" />
   <File name="package.json" description="npm workspaces root and shared scripts" />
 </Files>
-
----
-
-## Why a monorepo
-
-- **Shared design system** — one component library and one token set keeps six surfaces visually
-  consistent without publishing a package.
-- **Shared types** — the resume and portfolio content models are defined once and referenced by both
-  the frontends and the backend validators.
-- **Independent deployment** — each application still builds and deploys on its own schedule; the
-  monorepo is a source-organisation choice, not a deployment coupling.

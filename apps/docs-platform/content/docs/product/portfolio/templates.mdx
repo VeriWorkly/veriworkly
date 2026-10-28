@@ -6,39 +6,38 @@ description: The four portfolio templates, their design language, premium gating
 Four templates, sourced from a **private git submodule** (`apps/portfolio/template-library`, pinned
 to a specific upstream commit) and rendered server-side.
 
-| Template    | Audience                           | Personality                  | Notable design elements                                                                                                                                                                                            | Access         |
-| :---------- | :--------------------------------- | :--------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------- |
-| **Signal**  | Engineers and product leaders      | Structured / technical       | Dual dark/light theme, scroll-stacking project cards, mouse-glow bento cards, and a live local-time clock in the hero                                                                                              | Free (default) |
-| **Atelier** | Designers and creative builders    | Expressive / editorial       | Print/magazine-style asymmetric masonry, serif headlines, flat 0px-radius cards, drifting orbit spheres                                                                                                            | Free           |
-| **Nimbus**  | Full-stack and frontend developers | Atmospheric / tech-editorial | GSAP animations, cursor-follow ring, per-character text-scramble hover, marquee ticker, magnetic CTA buttons, bento mouse-glow — and deliberately **no** cards, shadows, or blur anywhere, per its own design spec | **Premium**    |
-| **Cipher**  | Developers                         | Interactive CLI emulator     | A fully interactive draggable terminal window with command autocomplete, a blinking caret, a live clock, and a hidden matrix-rain easter egg (plus `sudo make-coffee`)                                             | **Premium**    |
-
-<Callout type="info" title="Which templates have a live clock?">
-  **Signal** and **Cipher** both render a real, ticking local-time display. **Nimbus** does not — it
-  has no clock component at all. Older marketing copy that attributed live-time tracking to Nimbus
-  was incorrect and has since been corrected at the source.
-</Callout>
+| Template    | Audience                           | Personality                  | Notable design elements                                                                      | Access         |
+| :---------- | :--------------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------- | :------------- |
+| **Signal**  | Engineers and product leaders      | Structured / technical       | Dual dark/light theme and stacking project cards                                             | Free (default) |
+| **Atelier** | Designers and creative builders    | Expressive / editorial       | Print/magazine-style layout, flat card geometry, drifting orbit spheres                      | Free           |
+| **Nimbus**  | Full-stack and frontend developers | Atmospheric / tech-editorial | Broadsheet layout with a cursor-follow ring, text-scramble hover and a marquee ticker        | **Premium**    |
+| **Cipher**  | Developers                         | Interactive CLI emulator     | An interactive terminal window with a boot sequence, a command line and a matrix-rain effect | **Premium**    |
 
 ---
 
-## Premium gating
+## Free and premium templates
 
-Premium gating is enforced at publish time, not just in the picker:
+Signal and Atelier are free. Anyone can publish them, and a published free portfolio carries the
+"Built with VeriWorkly" badge.
 
-- A non-premium account can **select and preview** Nimbus or Cipher freely.
-- **Publishing** (or re-publishing after an edit) with a premium template blocks a non-premium
-  account with an upgrade prompt.
+Nimbus and Cipher are premium. Premium gating is enforced at publish time, not just in the picker:
 
-Premium access comes from the `portfolio_publish` entitlement family — see
-[Billing & Credits](/docs/product/billing-and-credits).
+- Any account can **select and preview** Nimbus or Cipher freely.
+- **Publishing** (or re-publishing after an edit) with a premium template is refused without the
+  `portfolio_publish` entitlement, which comes with Creator Pro, the Job Hunter Bundle, or a pass.
+  See [Billing & Credits](/docs/product/billing-and-credits).
+
+When paid access ends, a premium portfolio is not taken offline. After any grace period it moves to
+the closest free template (Nimbus to Atelier, Cipher to Signal) and shows the badge.
+
+Publishing opens to everyone at launch. Today it is admin-only in production.
 
 ---
 
 ## Custom domains
 
-<Callout type="warn" title="Only VeriWorkly-issued subdomains are supported">
-  Custom-domain routing and certificate automation are explicitly out of scope for now, per the
-  template library's own README. Published portfolios are served on `{username}.veriworkly.com`
+<Callout type="warn" title="Only VeriWorkly-issued addresses are supported">
+  Custom domains are not supported. Published portfolios are served on `{username}.veriworkly.com`
   (premium) or `portfolio.veriworkly.com/portfolio/{username}` (free).
 </Callout>
 
@@ -52,10 +51,10 @@ Premium access comes from the `portfolio_publish` entitlement family — see
 export const templatesRegistry = {
   signal: {
     name: "Signal",
-    note: "A precise, proof-first profile for product engineers.",
-    mood: "Structured / technical",
-    audience: "Engineers and product leaders",
-    strengths: ["Project proof", "Clear timelines", "Technical credibility"],
+    note: "…",
+    mood: "…",
+    audience: "…",
+    strengths: ["…"],
     image: "/templates/signal-template-preview.png",
     isPremium: false,
     loader: () => import("./signal/SignalTemplate"),
@@ -67,11 +66,12 @@ export const templatesRegistry = {
 
 `apps/portfolio/templates/catalog/templates.ts` derives the public gallery list from that registry,
 so the gallery and the renderer can never drift apart. `isPremiumTemplate(id)` is the single source
-of truth for gating.
+of truth for gating in the portfolio app.
 
 The backend's publish validator independently accepts only
 `"signal" | "atelier" | "nimbus" | "cipher"`, so an unknown template id is rejected server-side even
-if a client sends one.
+if a client sends one. Its `PREMIUM_PORTFOLIO_TEMPLATE_IDS` list (`nimbus`, `cipher`) is what the
+server gates on.
 
 ---
 
@@ -84,7 +84,9 @@ maintainers, the steps are:
    optional scoped stylesheet.
 2. Register it in `template-library/registry.ts` with its metadata, `isPremium` flag, and loader.
 3. Add the template id to the backend's `templateId` enum in
-   `apps/server/src/validators/portfolioValidator.ts`.
+   `apps/server/src/validators/portfolioValidator.ts`, and to `PREMIUM_PORTFOLIO_TEMPLATE_IDS` there
+   if it is premium. A premium template also needs a free fallback in `FREE_TEMPLATE_FOR_PREMIUM`
+   (`apps/server/src/services/portfolioService.ts`).
 4. Advance the submodule pointer in the main repository.
 
 ---

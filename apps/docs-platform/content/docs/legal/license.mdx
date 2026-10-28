@@ -1,23 +1,18 @@
 ---
 title: License
-description: Open source licensing for VeriWorkly, and what the MIT grant does and does not cover.
+description: VeriWorkly's source code is MIT licensed. The full licence text, and where the scope is set out.
 ---
 
-The VeriWorkly application source code is licensed under the **MIT License**.
+The VeriWorkly source code is licensed under the **MIT License**. There is one
+[`LICENSE`](https://github.com/VeriWorkly/veriworkly/blob/master/LICENSE) file at the repository
+root.
 
-<Callout type="warn" title="The MIT grant does not cover everything in the repository">
-  Two things sit outside the MIT-licensed public code:
-
-- **Portfolio templates** — Signal, Atelier, Nimbus, and Cipher live in a separate **private**
-  repository (`VeriWorkly/portfolio-templates`) included as a git submodule at
-  `apps/portfolio/template-library`. They are not part of the public MIT repository and the MIT
-  grant does not extend to them.
-- **Brand assets** — the VeriWorkly name, logo, and brand marks are not licensed for reuse under
-  MIT.
-
-Everything else — the marketing site, Studio, the portfolio application shell, the API server, the
-shared UI package, the documentation, and the resume and cover letter templates — is MIT.
-
+<Callout type="info" title="What the licence does and does not cover">
+  The repository's
+  [`LICENSING.md`](https://github.com/VeriWorkly/veriworkly/blob/master/LICENSING.md) sets out the
+  scope, and [`TRADEMARK.md`](https://github.com/VeriWorkly/veriworkly/blob/master/TRADEMARK.md)
+  covers the VeriWorkly name and logo. Use of the hosted service is governed by the [Terms of
+  Service](https://veriworkly.com/terms).
 </Callout>
 
 ---
@@ -47,40 +42,7 @@ root.
 
 ---
 
-## What MIT lets you do
-
-- Use VeriWorkly commercially.
-- Modify it.
-- Distribute it.
-- Sublicense it.
-- Run your own instance, publicly or privately.
-
-The only conditions are that you include the copyright notice and the licence text, and accept that
-the software comes with no warranty.
-
-If you self-host, note that you become the **service operator** for your users' purposes — see the
-[Privacy Policy](/docs/legal/privacy-policy) and [Terms of Service](/docs/legal/terms-of-service).
-
----
-
 ## Third-party licenses
 
-VeriWorkly builds on open source. Each dependency is governed by its own licence:
-
-| Project               | License    |
-| :-------------------- | :--------- |
-| Next.js               | MIT        |
-| React                 | MIT        |
-| Tailwind CSS          | MIT        |
-| Zustand               | MIT        |
-| Zod                   | MIT        |
-| `@react-pdf/renderer` | MIT        |
-| `docx`                | MIT        |
-| Express               | MIT        |
-| Prisma                | Apache-2.0 |
-| Better-Auth           | MIT        |
-| Fumadocs              | MIT        |
-| Lucide                | ISC        |
-
-For the complete dependency tree and its licences, see the `package.json` files across the
-repository and the generated lockfile.
+Each dependency is governed by its own licence. The `package.json` files and the lockfile are the
+authority for the full dependency tree.

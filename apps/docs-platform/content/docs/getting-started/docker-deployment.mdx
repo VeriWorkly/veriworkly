@@ -5,25 +5,27 @@ description: Self-hosting VeriWorkly with the provided Docker Compose configurat
 
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-The repository ships a `compose.yaml` that orchestrates four services.
+The repository ships a `compose.yaml` with four production services and one development-only
+service.
 
-| Service        | Image / build                       | Port     | Role                                                                                                 |
-| :------------- | :---------------------------------- | :------- | :--------------------------------------------------------------------------------------------------- |
-| `web`          | Built from the root `Dockerfile`    | 3000     | The **marketing site** (`apps/site`), built with Next.js standalone output.                          |
-| `api`          | Built from `apps/server/Dockerfile` | 8080     | The Express API.                                                                                     |
-| `redis`        | `redis:7-alpine`                    | internal | Cache, sessions, rate limiting, quotas, and job locks. Persisted to a named volume with AOF enabled. |
-| `redisinsight` | `redis/redisinsight:latest`         | 5540     | A browser GUI for inspecting Redis. A debugging convenience, not a runtime dependency.               |
+| Service        | Image / build                                 | Port             | Role                                                                                                                      |
+| :------------- | :-------------------------------------------- | :--------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `web`          | Built from the root `Dockerfile`              | `127.0.0.1:3000` | The **marketing site** (`apps/site`), built with Next.js standalone output.                                               |
+| `api`          | Built from `apps/server/Dockerfile`           | `127.0.0.1:8080` | The Express API.                                                                                                          |
+| `migrate`      | The `build` stage of `apps/server/Dockerfile` | none             | Runs `prisma migrate deploy` once, then exits. `api` starts only after it succeeds.                                       |
+| `redis`        | `redis:7-alpine`                              | internal         | Cache, sessions, rate limiting, quotas, and job locks. Password-protected, memory-capped, persisted to a volume with AOF. |
+| `redisinsight` | `redis/redisinsight:2.70.1`                   | `127.0.0.1:5540` | A browser GUI for inspecting Redis. Starts only with `docker compose --profile dev up`.                                   |
 
-<Callout type="warn" title="Do not expose `redisinsight` publicly">
-  It publishes port 5540 with no authentication in front of it and hands whoever reaches it full
-  read/write access to Redis — which is where sessions live. Bind it to localhost, put it behind
-  your reverse proxy's auth, or delete the service from `compose.yaml` for a production deployment.
+<Callout type="warn" title="Keep `redisinsight` off servers">
+  It has unauthenticated read and write access to Redis, which is where sessions live. It is in the
+  `dev` profile, so a plain `docker compose up` never starts it, and it listens on loopback only.
+  Reach it over an SSH tunnel if you need it.
 </Callout>
 
 <Callout type="warn" title="What Compose does and does not deploy">
   The `web` service builds **only the marketing site**. Studio, the portfolio builder, the
-  documentation site, and the blog are **not** part of this Compose file — deploy those separately
-  (for example on Vercel, or with your own container images) if you need them.
+  documentation site, and the blog are **not** part of this Compose file. Deploy those separately if
+  you need them.
 </Callout>
 
 <Callout type="warn" title="PostgreSQL is not containerised">
@@ -54,8 +56,15 @@ The repository ships a `compose.yaml` that orchestrates four services.
     ```
 
     `compose.yaml` reads everything from the file passed via `--env-file`, so `.env.docker` is the
-    single source of truth for a containerised deployment. `DATABASE_URL` and `AUTH_SECRET` are
-    mandatory — Compose fails fast if either is missing.
+    single source of truth for a containerised deployment. Every variable the API refuses to boot
+    without is marked required in `compose.yaml`, so `docker compose up` names the missing ones
+    before any container starts: `DATABASE_URL`, `ALLOWED_ORIGINS`, `TRUST_PROXY`,
+    `WEB_CONCURRENCY`, `REDIS_PASSWORD`, `AUTH_SECRET`, `AUTH_BASE_URL`, `ADMIN_EMAIL`,
+    `API_KEY_HASH_SECRET`, `ANALYTICS_HASH_PEPPER`, `PORTFOLIO_URL`, `PORTFOLIO_REVALIDATE_SECRET`,
+    the Dodo API key, webhook secret and three redirect URLs, and the five `R2_*` values.
+
+    `REDIS_PASSWORD` goes into the Redis URL as is, so use letters and digits only (for example
+    `openssl rand -hex 32`).
 
   </Step>
 
@@ -64,12 +73,12 @@ The repository ships a `compose.yaml` that orchestrates four services.
 
     Three URL variables control how traffic is routed:
 
-    - **`NEXT_PUBLIC_BACKEND_URL`** — the publicly reachable API endpoint used by the browser, for
+    - **`NEXT_PUBLIC_BACKEND_URL`**: the publicly reachable API endpoint used by the browser, for
       example `https://api.yourdomain.com/api/v1`. This is baked in at build time.
-    - **`BACKEND_INTERNAL_URL`** — the address Next.js uses for server-side rendering inside the
-      Docker network. Set it to `http://api:8080/api/v1`.
-    - **`ALLOWED_ORIGINS`** — a comma-separated list of frontend origins the API will accept CORS
-      requests from. It must include your public site URL.
+    - **`BACKEND_INTERNAL_URL`**: the address Next.js uses for server-side rendering inside the
+      Docker network. It defaults to `http://api:8080/api/v1`.
+    - **`ALLOWED_ORIGINS`**: a comma-separated list of frontend origins the API accepts CORS
+      requests from. It must include your public site URL, and every entry must be `https://`.
 
   </Step>
 
@@ -79,16 +88,21 @@ The repository ships a `compose.yaml` that orchestrates four services.
     The API runs a fail-fast configuration validator at boot when `NODE_ENV=production`. It refuses
     to start unless these hold:
 
-    - `AUTH_SECRET` is set and is not the development default.
-    - `AUTH_BASE_URL` uses HTTPS.
-    - `TRUST_PROXY` is an explicit hop count or CIDR — a bare `true` is **rejected**, because it lets
-      a client spoof `X-Forwarded-For` and defeat IP-based rate limiting. Behind a single reverse
-      proxy, set `TRUST_PROXY=1`.
+    - `AUTH_SECRET` is at least 32 characters and not an example value.
+    - `AUTH_BASE_URL` and the other public URLs use HTTPS and do not point at localhost.
+    - `TRUST_PROXY` is a hop count or an IP/CIDR list. `true` and `false` are **rejected**: `true`
+      lets a client spoof `X-Forwarded-For`, and `false` puts every visitor behind the proxy's one
+      IP. Behind a single nginx, set `TRUST_PROXY=1`; with Cloudflare in front of nginx, see the
+      notes in `apps/server/.env.example`.
     - `API_KEY_HASH_SECRET` is set and is **different** from `AUTH_SECRET`.
-    - `AUTH_EMAIL_PROVIDER` is `smtp` (the `console` provider does not actually send mail), with
-      valid SMTP credentials.
+    - `AUTH_EMAIL_PROVIDER` is `resend` (with `RESEND_API_KEY`) or `smtp` (with host, user and
+      password). Compose defaults it to `resend`. The `console` provider only logs codes and is
+      refused.
     - `AI_API_KEY` is set and the AI policy defines both modes for every action.
     - Dodo Payments and all five Cloudflare R2 credentials are present.
+
+    The [Environment Variables](/docs/operations/environment-variables#production-requirements)
+    page lists every rule.
 
     This is deliberate: a misconfigured production deployment fails at boot rather than silently
     breaking on the first real checkout or upload.
@@ -110,8 +124,8 @@ The repository ships a `compose.yaml` that orchestrates four services.
     docker compose --env-file .env.docker up -d --build
     ```
 
-    Compose starts `redis` first, waits for its health check, then `api`, then `web` once the API
-    reports healthy.
+    Compose starts `redis` and runs `migrate`. `api` starts once Redis is healthy and the
+    migrations have applied, and `web` starts once the API reports healthy.
 
   </Step>
 
@@ -136,7 +150,7 @@ The repository ships a `compose.yaml` that orchestrates four services.
     ```
 
     `/health/ready` probes PostgreSQL and Redis. `/health` is a lightweight liveness check that does
-    not touch either — the container health check uses `/health` deliberately, so an uptime probe
+    not touch either. The container health check uses `/health` deliberately, so an uptime probe
     does not keep serverless database compute awake.
 
   </Step>
@@ -146,16 +160,18 @@ The repository ships a `compose.yaml` that orchestrates four services.
 
 ## Production hardening
 
-Exposing container ports directly to the internet is not recommended. Put a **reverse proxy / TLS
-terminator** (Nginx, Traefik, or Caddy) in front to handle:
+Compose binds `web` and `api` to `127.0.0.1` only, so a **reverse proxy / TLS terminator** on the
+host (Nginx, Traefik, or Caddy) is the only way in. It handles:
 
-- **TLS termination** — the API's own configuration validator requires an HTTPS `AUTH_BASE_URL`.
-- **Domain routing** — mapping `yourdomain.com` to `web:3000` and `api.yourdomain.com` to
-  `api:8080`.
-- **Request filtering** — an additional layer against common web attacks.
+- **TLS termination**: the API's configuration validator requires an HTTPS `AUTH_BASE_URL`.
+- **Domain routing**: mapping `yourdomain.com` to `127.0.0.1:3000` and `api.yourdomain.com` to
+  `127.0.0.1:8080`.
+- **Client addresses**: forward the visitor's IP in `X-Forwarded-For` and set `TRUST_PROXY` to the
+  number of proxies in front of the API.
 
-If you also deploy the portfolio builder, it serves published sites on wildcard subdomains
-(`*.yourdomain.com`), which needs a wildcard DNS record and a wildcard TLS certificate.
+If you also deploy the portfolio builder, free portfolios are served under a path on its own host,
+and premium portfolios on wildcard subdomains (`*.yourdomain.com`), which need a wildcard DNS record
+and a wildcard TLS certificate.
 
 ---
 
@@ -165,12 +181,14 @@ If you also deploy the portfolio builder, it serves published sites on wildcard 
 # Pull the latest source
 git pull origin master
 
-# Apply any new Prisma schema changes to your external database
-npm run db:push
-
 # Rebuild and restart
 docker compose --env-file .env.docker up -d --build
 ```
 
-Run the schema push before restarting the API, so the running code never sees an older schema than
-it expects.
+The `migrate` service applies new migrations on every `up`, before the new API starts, so the
+running code never sees an older schema than it expects. Migrations need a direct database
+connection: if `DATABASE_URL` goes through a pooler, set `DIRECT_DATABASE_URL` to the non-pooled
+endpoint.
+
+The API drains in-flight requests and running jobs on shutdown, so Compose gives it 40 seconds
+(`stop_grace_period`) before killing it.
