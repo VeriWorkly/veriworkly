@@ -4,7 +4,7 @@ import "./globals.css";
 
 import { RootProvider } from "fumadocs-ui/provider/next";
 
-import { feedAlternates, siteConfig } from "@/config/site";
+import { feedAlternates, siteConfig, titleTemplate } from "@/config/site";
 import { globalFontVariables } from "@veriworkly/ui";
 import { buildSiteSchema, serializeSchema } from "@/lib/structured-data";
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
   title: {
     default: "VeriWorkly Blog | Resume Tips, Career Advice & Tech Insights",
-    template: `%s | ${siteConfig.shortName} Blog`,
+    template: titleTemplate,
   },
 
   description:

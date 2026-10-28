@@ -14,7 +14,9 @@
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --check .",
-    "format:write": "prettier --write ."
+    "format:write": "prettier --write .",
+    "test": "vitest run",
+    "check:html": "node scripts/check-built-html.mjs"
   },
   "dependencies": {
     "@veriworkly/ats-engine": "0.21.0",
@@ -40,6 +42,7 @@
     "prettier": "^3.9.9",
     "tailwindcss": "^4",
     "typescript": "^6",
+    "vitest": "^4.1.11",
     "yaml": "^2.9.1"
   }
 }

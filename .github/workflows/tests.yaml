@@ -68,6 +68,27 @@ jobs:
       - name: Run Site Tests
         run: npm run test:contracts -w @veriworkly/site --if-present
 
+  test-blog:
+    name: Test Blog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      # Claims, metadata, feed and content tests. The claims tests read prices and limits from
+      # apps/server/src as text, so a server change that a post contradicts fails here.
+      - name: Run Blog Tests
+        run: npm run test -w @veriworkly/blog-platform
+
   test-ui:
     name: Test UI Package
     runs-on: ubuntu-latest
@@ -139,6 +160,11 @@ jobs:
 
       - name: Type-check ATS Engine docs samples
         run: npm run check:engine-samples -w @veriworkly/docs-platform
+
+      # Claims, metadata, llms.txt and route tests. The claims tests read prices and limits from
+      # apps/server/src as text, so a server change that docs contradict fails here.
+      - name: Run Docs Tests
+        run: npm run test -w @veriworkly/docs-platform
 
   test-studio:
     name: Test Studio

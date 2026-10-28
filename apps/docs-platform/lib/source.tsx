@@ -98,13 +98,20 @@ export function ogImagePath(tree: "docs" | "api" | "ats-engine", slugs: string[]
   return `/og/${tree}/${[...slugs, "image.png"].join("/")}`;
 }
 
-/** The ATS Engine pages in sidebar order, for the llms.txt files. */
-export function getEnginePagesInOrder() {
+/** A tree's pages in sidebar order, for the llms.txt files. */
+export function getPagesInOrder<
+  T extends { getPageTree(): { children: Parameters<typeof flattenTree>[0] }; getPages(): P[] },
+  P extends { url: string } = ReturnType<T["getPages"]>[number],
+>(tree: T): P[] {
   const order = new Map(
-    flattenTree(engineSource.getPageTree().children).map((item, index) => [item.url, index]),
+    flattenTree(tree.getPageTree().children).map((item, index) => [item.url, index]),
   );
 
-  return engineSource
+  return tree
     .getPages()
     .sort((a, b) => (order.get(a.url) ?? Infinity) - (order.get(b.url) ?? Infinity));
+}
+
+export function getEnginePagesInOrder() {
+  return getPagesInOrder(engineSource);
 }
