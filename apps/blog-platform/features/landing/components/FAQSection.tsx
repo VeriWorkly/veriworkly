@@ -13,7 +13,8 @@ const blogFaqs = [
   },
   {
     question: "Where can I find release notes?",
-    answer: "Release notes are published both here on the blog and in our GitHub repository.",
+    answer:
+      "Release notes are published at veriworkly.com/changelog and as GitHub releases, not on this blog.",
   },
 ];
 

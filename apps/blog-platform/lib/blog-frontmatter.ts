@@ -7,12 +7,12 @@ import { z } from "zod";
  * (BlogPosting + FAQPage JSON-LD) and topical clustering. See
  * `content/CONTENT-STRATEGY.md` for the editorial rules that govern them.
  *
- * Lives here rather than in `source.config.ts` because fumadocs-mdx only permits collection
- * exports from that file — `lib/source.ts` needs this schema to type loaded pages.
+ * Lives outside `source.config.ts` because fumadocs-mdx only permits collection exports from that file.
  */
 export const blogFrontmatterSchema = z.object({
   title: z.string(),
   description: z.string(),
+  /** A byline registered in `lib/authors.ts`. */
   author: z.string(),
   date: z.string().or(z.date()),
 
@@ -47,5 +47,3 @@ export const blogFrontmatterSchema = z.object({
   /** Cornerstone posts that should be refreshed on a cadence. */
   pillar: z.boolean().default(false),
 });
-
-export type BlogFrontmatter = z.infer<typeof blogFrontmatterSchema>;

@@ -2,22 +2,12 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 
 import { Button, Card } from "@veriworkly/ui";
+import type { BlogPost } from "@/lib/source";
 import { getReadingTime } from "@/lib/read-time";
-
-interface Post {
-  url: string;
-  data: {
-    title: string;
-    description: string;
-    date: string | Date;
-    info: {
-      path: string;
-    };
-  };
-}
+import { formatDate } from "@/lib/format-date";
 
 interface PostsGridProps {
-  posts: Post[];
+  posts: BlogPost[];
 }
 
 export const PostsGrid = ({ posts }: PostsGridProps) => {
@@ -49,13 +39,7 @@ export const PostsGrid = ({ posts }: PostsGridProps) => {
               <Card className="border-border/50 hover:border-accent/40 h-full transition-all duration-500 group-hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/5">
                 <div className="flex h-full flex-col p-8">
                   <div className="text-muted-foreground mb-6 flex items-center gap-3 text-[10px] font-bold tracking-widest uppercase">
-                    <span className="text-muted-foreground">
-                      {new Date(meta.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
+                    <span className="text-muted-foreground">{formatDate(meta.date)}</span>
 
                     <span className="bg-border size-1 rounded-full" />
 

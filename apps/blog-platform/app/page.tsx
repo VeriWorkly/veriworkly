@@ -5,6 +5,12 @@ import { feedAlternates, siteConfig } from "@/config/site";
 
 import { Container } from "@veriworkly/ui";
 
+import { BlogHero } from "../features/landing/components/BlogHero";
+import { PostsGrid } from "../features/landing/components/PostsGrid";
+import { FAQSection } from "../features/landing/components/FAQSection";
+import { CTASection } from "../features/landing/components/CTASection";
+import { FeaturedPost } from "../features/landing/components/FeaturedPost";
+
 export const metadata: Metadata = {
   title: "VeriWorkly Blog | Career Insights & Resume Tips",
   description:
@@ -14,12 +20,6 @@ export const metadata: Metadata = {
     types: feedAlternates,
   },
 };
-
-import { BlogHero } from "../features/landing/components/BlogHero";
-import { PostsGrid } from "../features/landing/components/PostsGrid";
-import { FAQSection } from "../features/landing/components/FAQSection";
-import { CTASection } from "../features/landing/components/CTASection";
-import { FeaturedPost } from "../features/landing/components/FeaturedPost";
 
 const BlogHome = () => {
   const allPosts = blog

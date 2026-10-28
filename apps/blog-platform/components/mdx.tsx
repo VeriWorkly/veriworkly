@@ -1,23 +1,16 @@
 import type { MDXComponents } from "mdx/types";
-import defaultMdxComponents from "fumadocs-ui/mdx";
 
-import { Pre, CodeBlock } from "fumadocs-ui/components/codeblock";
-import { Tab, Tabs } from "fumadocs-ui/components/tabs";
-import { Callout } from "fumadocs-ui/components/callout";
-import { Card, Cards } from "fumadocs-ui/components/card";
+import Link from "fumadocs-core/link";
+import { Heading } from "fumadocs-ui/components/heading";
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
-import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+import { Pre, CodeBlock } from "fumadocs-ui/components/codeblock";
 
-export function getMDXComponents(components?: MDXComponents) {
+/** Only the elements the posts use: every registered client component ships with each post. */
+export function getMDXComponents() {
   return {
-    ...defaultMdxComponents,
-    Callout,
-    Tab,
-    Tabs,
-    Accordion,
-    Accordions,
-    Card,
-    Cards,
+    a: Link,
+    h2: (props: React.ComponentProps<"h2">) => <Heading as="h2" {...props} />,
+    h3: (props: React.ComponentProps<"h3">) => <Heading as="h3" {...props} />,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     img: (props: any) => <ImageZoom {...props} />,
     // Comparison tables are wide by nature. Scroll them in place so the page
@@ -27,11 +20,10 @@ export function getMDXComponents(components?: MDXComponents) {
         <table {...props} />
       </div>
     ),
-    pre: (props) => (
+    pre: (props: React.ComponentProps<"pre">) => (
       <CodeBlock {...props}>
         <Pre>{props.children}</Pre>
       </CodeBlock>
     ),
-    ...components,
   } satisfies MDXComponents;
 }

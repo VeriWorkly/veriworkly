@@ -6,6 +6,8 @@ import { ArrowLeft, ArrowRight, Clock, FileText, Calendar } from "lucide-react";
 import { blog } from "@/lib/source";
 import { feedAlternates, siteConfig } from "@/config/site";
 import { getReadingTime } from "@/lib/read-time";
+import { formatDate } from "@/lib/format-date";
+import { buildArchiveSchema, serializeSchema } from "@/lib/structured-data";
 
 import { Container } from "@veriworkly/ui";
 
@@ -39,15 +41,27 @@ export const metadata: Metadata = {
 };
 
 const BlogArchive = () => {
-  // `blog.getPages()` is already typed as `BlogPostPage` via `lib/source.ts`. The
-  // previous `as unknown` cast re-declared a narrower shape by hand, which silently
-  // opted this page out of the frontmatter schema.
   const allPosts = blog
     .getPages()
     .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 
+  const schema = buildArchiveSchema({
+    url,
+    name: title,
+    description,
+    posts: allPosts.map((post) => ({
+      url: `${siteConfig.url}${post.url}`,
+      title: post.data.title,
+    })),
+  });
+
   return (
     <div className="min-h-screen py-14 md:py-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeSchema(schema) }}
+      />
+
       <Container>
         <div className="grid gap-12 lg:grid-cols-3 lg:gap-16">
           <aside className="h-fit space-y-8 lg:sticky lg:top-14 lg:col-span-1">
@@ -126,11 +140,7 @@ const BlogArchive = () => {
                     <span className="flex items-center gap-1.5">
                       <Calendar aria-hidden="true" className="size-3.5" />
                       <time dateTime={new Date(meta.date).toISOString()}>
-                        {new Date(meta.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {formatDate(meta.date)}
                       </time>
                     </span>
 

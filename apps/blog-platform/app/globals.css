@@ -15,16 +15,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-muted: var(--muted);
-  /*
-   * `text-muted-foreground` is used throughout the post, archive, and landing
-   * views but was never mapped, so Tailwind emitted no rule for it and every
-   * element fell back to inherited `--foreground`. The de-emphasised tier of the
-   * type hierarchy simply did not render.
-   *
-   * Mapped to `--muted` (#5f5c54 light, #94a3b8 dark) rather than the shared
-   * package's `--muted-foreground`, which is #171717 in both themes and would be
-   * unreadable on the dark background.
-   */
+  /* Mapped to `--muted`, not the shared package's `--muted-foreground` (#171717 in both themes, unreadable on dark). */
   --color-muted-foreground: var(--muted);
   --color-border: var(--border);
   --color-accent: var(--accent);

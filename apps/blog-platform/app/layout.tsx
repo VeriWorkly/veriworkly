@@ -97,7 +97,7 @@ const BlogLayout = ({ children }: { children: React.ReactNode }) => {
         className={`${globalFontVariables} bg-background text-foreground flex min-h-screen flex-col font-sans antialiased`}
       >
         <RootProvider
-          search={{ options: { delayMs: 450 } }}
+          search={{ enabled: false }}
           theme={{ storageKey: "veriworkly-theme", hotKey: false }}
         >
           <MainLayout>{children}</MainLayout>

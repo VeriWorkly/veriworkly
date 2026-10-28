@@ -28,7 +28,7 @@ export const CTASection = () => {
             variant="primary"
             className="h-14 rounded-2xl px-10 text-base font-bold shadow-xl shadow-blue-500/20"
           >
-            <Link href={siteConfig.links.github} target="_blank">
+            <Link href={siteConfig.links.github} target="_blank" rel="noopener noreferrer">
               Follow on GitHub
             </Link>
           </Button>

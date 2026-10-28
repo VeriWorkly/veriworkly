@@ -3,8 +3,6 @@ import type { MetadataRoute } from "next";
 import { blog } from "@/lib/source";
 import { siteConfig } from "@/config/site";
 
-export const revalidate = 86400;
-
 export default function sitemap(): MetadataRoute.Sitemap {
   const blogPages = blog.getPages().map((page) => ({
     url: `${siteConfig.url}${page.url}`,
@@ -30,8 +28,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      // Lists every post and sets its own canonical, so it is a real indexable page.
-      // It was previously absent from the sitemap entirely.
+      // Lists every post and sets its own canonical, so it is an indexable page.
       url: `${siteConfig.url}/archive`,
       lastModified: lastPublished,
       changeFrequency: "weekly" as const,

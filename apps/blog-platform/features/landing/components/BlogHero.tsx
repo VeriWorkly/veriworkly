@@ -59,6 +59,7 @@ export const BlogHero = ({ postCount }: BlogHeroProps) => {
               <Link
                 href="https://fumadocs.vercel.app"
                 target="_blank"
+                rel="noopener noreferrer"
                 className="text-foreground font-bold hover:underline"
               >
                 Fumadocs

@@ -5,9 +5,6 @@ export const dynamic = "force-static";
 
 export function GET() {
   return new Response(buildAtomFeed(getFeedEntries()), {
-    headers: {
-      "Content-Type": "application/atom+xml; charset=utf-8",
-      "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
-    },
+    headers: { "Content-Type": "application/atom+xml; charset=utf-8" },
   });
 }

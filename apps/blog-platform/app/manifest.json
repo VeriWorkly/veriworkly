@@ -1,5 +1,5 @@
 {
-  "name": "VeriWorkly Blogs",
+  "name": "VeriWorkly Blog",
   "short_name": "VeriWorkly Blog",
   "icons": [
     {
@@ -15,7 +15,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#dffcff",
-  "background_color": "#dffcff",
+  "theme_color": "#f5f4ef",
+  "background_color": "#f5f4ef",
   "display": "standalone"
 }
