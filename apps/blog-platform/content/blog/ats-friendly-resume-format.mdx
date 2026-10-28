@@ -1,6 +1,6 @@
 ---
 title: "ATS-Friendly Resume Format: What a Parser Actually Receives"
-description: "Most ATS format advice describes how a resume looks instead of what its PDF actually returns to a parser. Use this two-minute test, a public PDF read-back artifact, and the few layout rules that have a real extraction mechanism behind them."
+description: "An ATS-friendly resume is a file that extracts as complete, ordered text. A two-minute test, the layout rules that matter, and the tools that check it."
 author: VeriWorkly Engineering
 date: 2026-08-03
 updated: 2026-10-28
@@ -29,16 +29,16 @@ faq:
       plain text editor to see what your specific file produces.
   - question: Should I use a PDF or a Word document?
     answer: >-
-      Either, as long as the PDF contains a real text layer. Format testing in
-      2026 found negligible parsing difference between text-based PDF and DOCX.
-      Submit whatever the application form requests, and verify your text is
-      selectable before you send it.
-  - question: Do ATS systems reject resumes with tables or graphics?
+      Either, as long as the PDF contains a real text layer. A resume-software
+      vendor's format testing reported negligible parsing difference between a
+      text-based PDF and a DOCX. Submit whatever the application form requests,
+      and check that your text is selectable before you send it.
+  - question: Are tables ATS-friendly?
     answer: >-
-      They do not reject anything on formatting. They extract what they can and
-      leave the rest blank, which is worse in a quieter way. Information that
-      exists only inside a chart, an icon, or a skill rating bar does not survive
-      extraction and effectively is not on your resume.
+      Not reliably. An ATS can read the words in a table, but it reads them row
+      by row, so cells that belong together can land in the wrong field. Nothing
+      is rejected for a table. Information inside a chart, an icon or a rating
+      bar does not survive extraction at all, so write it in plain lines.
   - question: What section headings should I use on my resume?
     answer: >-
       Use the plain ones: Experience or Work Experience, Education, Skills,
@@ -148,6 +148,21 @@ Pick one format and use it for every role. A resume where three roles use three 
 
 **PDF versus DOCX.** A post by Rezi, a resume-software vendor, says format testing across major platforms found [negligible difference between the two](https://www.rezi.ai/posts/ats-myths). Treat it as a vendor claim. Send what the form asks for. The old "always send Word" advice is outdated, and the newer "never send PDF" advice is the same folklore with the sign flipped.
 
+## Are tables ATS-friendly?
+
+**Not reliably. An ATS can read the text inside a table, but extraction walks the page row by row, so a cell's text can join the wrong line or field. No system rejects a resume for a table. Plain lines and bullets carry the same content without the risk, so use them.**
+
+The open-source [VeriWorkly ATS Engine](https://docs.veriworkly.com/ats-engine/reference/rubric) scores tables and columns with two published rules. Both read the file's layout, so pasted text skips them: tables are counted in uploaded PDF and Word files, and columns are measured in PDFs only.
+
+| Rule                    | Severity, weight | When it fires                                                                                                                           |
+| ----------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `ats-v2.format.tables`  | Warning, 10      | Any ruled table: one drawn with borders in a PDF, or a Word table                                                                       |
+| `ats-v2.format.columns` | Error, 15        | More than 15% of a page's text sits beside a vertical channel no text crosses. A sidebar measures about 20%, balanced columns about 50% |
+
+Right-aligned dates on the same line as a job title measure about 10% and pass, because a date set flush right is a tab stop, not a second column. The fix the engine gives for each is the plain one: replace tables with paragraphs and bullets, and use a single-column layout.
+
+The columns rule is stricter than the advice above to keep a two-column file that extracts cleanly. You can test your own file. The engine cannot test every employer's parser, so it flags the layout that most often goes wrong.
+
 ## The failure that looks like success
 
 Tables, text boxes, icons, skill rating bars, and infographic elements do not get your resume rejected. Nothing gets your resume rejected on formatting, because [applicant tracking systems are databases rather than judges](/ats-resume-myths-what-the-evidence-shows).
@@ -195,13 +210,28 @@ Applications fail mostly on relevance and volume. [Most cold applications never 
 
 So: run the copy-paste test, fix anything it surfaces, then stop thinking about format and go [rewrite your bullets](/how-to-write-resume-bullet-points-that-get-read).
 
+## Which tools convert a resume to an ATS-friendly format?
+
+**Two kinds of tool do this job. A checker reads your file the way a parser does and lists what failed. A converter rewrites the content into a plain single-column layout. Run a checker first: most failures are fixed by moving contact details, renaming a heading or removing a table, and need no conversion.**
+
+| Tool                                                                | What it does                                                                                                                                                             | Cost                                                                                                    |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| The copy-paste test above                                           | Shows the text a parser receives from your actual file                                                                                                                   | Free                                                                                                    |
+| [VeriWorkly ATS resume checker](https://veriworkly.com/ats-checker) | Extracts your PDF or Word file and checks it for parsing errors, structure, evidence and job match                                                                       | Free: 1 scan every 48 hours with no account, 2 a day with a free account. The AI analysis costs credits |
+| `@veriworkly/ats-engine` command line tool                          | The open-source engine with its public default policy, on your own machine: `npx @veriworkly/ats-engine check resume.pdf` (PDF and Word files need its optional parsers) | Free, MIT licence                                                                                       |
+| [Jobscan](https://www.jobscan.co)                                   | Third-party resume scanner and job-match tool                                                                                                                            | See its pricing page                                                                                    |
+| [Teal](https://www.tealhq.com)                                      | Third-party resume builder with a resume checker and application tracking                                                                                                | See its pricing page                                                                                    |
+| VeriWorkly resume converter                                         | Uses AI to rewrite an uploaded resume as a single-column VeriWorkly document                                                                                             | Needs a signed-in account and AI credits. Credit purchases open at launch                               |
+
+The checker and the command line tool find the errors; they do not rewrite your file. If a scan shows a layout problem, rebuilding the resume in any single-column template fixes it as well as a converter does, and the copy-paste test confirms the result. To pick a builder for that, [free resume builders compared](/free-resume-builders-compared) lists what each one lets you download without paying.
+
 ## How we test this
 
 We maintain an ATS checker that runs a deterministic rules engine over extracted resume text: word-count bands, presence of contact details and required sections, where contact details fall in the document, quantified-achievement ratio, buzzword density, and keyword matching against a job description with a synonym map and light stemming so `managed`, `manages`, and `managing` fold together.
 
 Two things we learned building it are worth passing on. Most resumes that score badly do so on content rather than structure, which matches what the parsing literature reports. And the rules that produce the most useful feedback are boring: contact position, missing sections, and unquantified bullets, not anything exotic.
 
-The scoring engine is [open source](https://github.com/VeriWorkly/ats-engine), and its structural scan is free to run, with no account, at the [VeriWorkly ATS resume checker](https://veriworkly.com/ats-checker). [Jobscan](https://www.jobscan.co) is the established option in this category and has a larger keyword database; [Teal](https://www.tealhq.com) bundles a checker into application tracking. Any of them will surface the same structural issues, and so will the copy-paste test, which costs nothing and requires no account.
+The scoring engine is [open source](https://github.com/VeriWorkly/ats-engine). The copy-paste test surfaces the same structural issues, costs nothing and needs no account.
 
 ## The short version
 
