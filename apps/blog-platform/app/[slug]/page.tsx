@@ -33,14 +33,10 @@ const formatDate = (value: string | Date) =>
     year: "numeric",
   });
 
-const ogImageFor = (title: string, description: string) => {
-  const url = new URL(`${siteConfig.url}/api/og`);
+/** Built once per post by `app/og/[slug]/image.png/route.tsx`. */
+const ogImageFor = (slug: string) => `${siteConfig.url}/og/${slug}/image.png`;
 
-  url.searchParams.set("title", title || siteConfig.name);
-  url.searchParams.set("description", description || siteConfig.description);
-
-  return url.toString();
-};
+export const dynamicParams = false;
 
 export default async function BlogPostPage(props: PageProps) {
   const params = await props.params;
@@ -65,7 +61,7 @@ export default async function BlogPostPage(props: PageProps) {
     tags,
     faq,
     url: postUrl,
-    imageUrl: ogImageFor(title, description),
+    imageUrl: ogImageFor(params.slug),
     wordCount: stats.words,
   });
 
@@ -253,7 +249,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   const { title, description, author, date, updated, tags } = page.data;
 
-  const ogUrl = ogImageFor(title, description);
+  const ogUrl = ogImageFor(params.slug);
   const postUrl = `${siteConfig.url}/${params.slug}`;
 
   return {
@@ -292,6 +288,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
     twitter: {
       card: "summary_large_image",
+      site: siteConfig.twitterHandle,
       title,
       description,
       images: [ogUrl],

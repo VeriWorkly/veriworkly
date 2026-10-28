@@ -14,9 +14,9 @@ export default function AppLoading() {
 
         <p className="text-accent text-sm font-bold tracking-[0.2em] uppercase">Loading</p>
 
-        <h1 className="text-foreground mt-4 text-4xl font-bold tracking-tight sm:text-6xl">
+        <p className="text-foreground mt-4 text-4xl font-bold tracking-tight sm:text-6xl">
           Preparing your experience
-        </h1>
+        </p>
 
         <p className="text-muted mt-6 max-w-md text-base leading-7">
           Please wait while we fetch the latest data and prepare the page for you.

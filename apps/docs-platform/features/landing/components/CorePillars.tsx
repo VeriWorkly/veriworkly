@@ -37,7 +37,7 @@ const pillars = [
     title: "Privacy & Security",
     desc: "Data ownership is at the heart of VeriWorkly. Explore our security model and local-first encryption.",
     icon: Shield,
-    href: `${siteConfig.links.app}/privacy`,
+    href: `${siteConfig.links.main}/privacy`,
     bg: "bg-emerald-500/10",
     text: "text-emerald-600",
   },

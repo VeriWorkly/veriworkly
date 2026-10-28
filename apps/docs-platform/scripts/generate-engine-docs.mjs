@@ -51,8 +51,11 @@ async function write(relativePath, content) {
   fs.writeFileSync(filePath, formatted);
 }
 
-function frontmatter(title, description) {
-  return `---\ntitle: ${JSON.stringify(title)}\ndescription: ${JSON.stringify(description)}\n---\n`;
+/** `metaTitle` replaces `title` in `<title>` when another page already uses the same title. */
+function frontmatter(title, description, metaTitle) {
+  const meta = metaTitle ? `metaTitle: ${JSON.stringify(metaTitle)}\n` : "";
+
+  return `---\ntitle: ${JSON.stringify(title)}\n${meta}description: ${JSON.stringify(description)}\n---\n`;
 }
 
 /** A Markdown table cell: one line, with its pipes escaped. */
@@ -146,6 +149,7 @@ async function writeLocales() {
   const body = `${frontmatter(
     "Languages and regions",
     `The language and region packs built into engine ${ENGINE_VERSION}, and their review status.`,
+    "Language and region packs reference",
   )}
 ${generatedNoteMd}
 

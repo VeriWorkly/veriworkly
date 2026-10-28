@@ -21,6 +21,7 @@ export const siteConfig = {
   tagline: "Docs and API reference for VeriWorkly.",
   description: "Technical documentation and API reference for the VeriWorkly platform.",
   url: process.env.SITE_URL || "https://docs.veriworkly.com",
+  twitterHandle: "@veriworkly",
 
   links,
 

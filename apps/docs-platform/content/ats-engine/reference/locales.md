@@ -1,5 +1,6 @@
 ---
 title: "Languages and regions"
+metaTitle: "Language and region packs reference"
 description: "The language and region packs built into engine 0.21.0, and their review status."
 ---
 

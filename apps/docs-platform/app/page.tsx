@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import { Container } from "@veriworkly/ui";
+
+import { siteConfig } from "@/config/site";
 
 import { docsFaqs } from "../data/faq";
 
@@ -10,6 +14,10 @@ import { CTASection } from "../features/landing/components/CTASection";
 import { CorePillars } from "../features/landing/components/CorePillars";
 import { UniversalSearch } from "../features/landing/components/UniversalSearch";
 import { DeveloperSection } from "../features/landing/components/DeveloperSection";
+
+export const metadata: Metadata = {
+  alternates: { canonical: siteConfig.url },
+};
 
 const HomePage = () => {
   return (

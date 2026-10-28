@@ -10,9 +10,13 @@ import {
 import { notFound } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 
-import { source, getPageImage } from "@/lib/source";
+import { source, ogImagePath } from "@/lib/source";
+import { pageMetadata } from "@/lib/metadata";
+import { contentEditUrl } from "@/lib/edit-links";
 
 import { getMDXComponents } from "@/components/mdx";
+
+export const dynamicParams = false;
 
 type PageProps = {
   params: Promise<{ slug?: string[] }>;
@@ -40,11 +44,7 @@ export default async function Page(props: PageProps) {
     <DocsPage
       tableOfContent={{
         style: "clerk",
-        footer: (
-          <EditOnGitHub
-            href={`https://github.com/VeriWorkly/veriworkly/edit/master/apps/docs-platform/content/docs/${page.slugs.join("/") + ".mdx"}`}
-          />
-        ),
+        footer: <EditOnGitHub href={contentEditUrl("docs", page.path)} />,
       }}
       toc={pageData.toc}
       full={pageData.full}
@@ -76,14 +76,13 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   const pageData = page.data as unknown as {
     title: string;
+    metaTitle?: string;
     description: string;
   };
 
-  return {
-    title: pageData.title,
-    description: pageData.description,
-    openGraph: {
-      images: getPageImage(page).url,
-    },
-  };
+  return pageMetadata({
+    ...pageData,
+    path: page.url,
+    image: ogImagePath("docs", page.slugs),
+  });
 }
