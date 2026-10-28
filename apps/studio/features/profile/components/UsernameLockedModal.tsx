@@ -38,7 +38,8 @@ const UsernameLockedModal = ({ open, onClose }: UsernameLockedModalProps) => {
 
         <Modal.Body className="space-y-3 p-5">
           <p className="text-foreground text-sm leading-relaxed font-semibold">
-            Your username is a unique identifier used for your public profile and portfolio links.
+            Your username is part of every share link you create, as in
+            /share/your-username/document.
           </p>
           <p className="text-muted-foreground text-xs leading-relaxed font-medium">
             To prevent broken links, usernames are locked once set and cannot be changed. If you

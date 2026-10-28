@@ -295,6 +295,27 @@ describe("share contract", () => {
       expect(html).not.toContain("Dashboard");
     });
 
+    it("V-421 a link whose owner hid downloads shows no Download button; others still do", async () => {
+      const { toShareSnapshot } = await import("@/features/documents/services/share-service");
+      const data = {
+        passwordRequired: false,
+        resumeTitle: "Quinn CV",
+        documentTitle: "Quinn CV",
+        expiresAt: null,
+        snapshot: toShareSnapshot(toResumeDocument(defaultResume)),
+      };
+
+      const hidden = await renderPage(200, { data: { ...data, allowDownload: false } });
+      expect(hidden).toContain(defaultResume.basics.fullName);
+      expect(hidden).not.toContain("lucide-download");
+
+      expect(await renderPage(200, { data: { ...data, allowDownload: true } })).toContain(
+        "lucide-download",
+      );
+      // A public read cached before the setting existed carries none: the buttons stay.
+      expect(await renderPage(200, { data })).toContain("lucide-download");
+    });
+
     it("S-044 401 and 403 say the document is not available", async () => {
       expect(await renderPage(403, { message: "Forbidden" })).toContain("not available");
       expect(await renderPage(401, { message: "Unauthorized" })).toContain("not available");

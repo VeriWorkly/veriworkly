@@ -11,6 +11,7 @@ import type { ProductKey } from "@/features/billing/types";
 import {
   type CheckoutFailure,
   type CheckoutInterval,
+  describeCheckoutCancelError,
   describeCheckoutError,
   PLAN_NAMES,
 } from "@/features/billing/checkout-rules";
@@ -135,8 +136,21 @@ export function CheckoutRedirect({
                     await cancelCheckout();
                     retry();
                   } catch (cause) {
+                    const failure = describeCheckoutError(
+                      cause,
+                      "Could not cancel the earlier checkout.",
+                    );
+                    // A refused cancel says why (a payment mid 3-D Secure is kept up to an hour).
                     setError(
-                      describeCheckoutError(cause, "Could not cancel the earlier checkout."),
+                      failure.kind === "other"
+                        ? {
+                            kind: "other",
+                            message: describeCheckoutCancelError(
+                              cause,
+                              "Could not cancel the earlier checkout.",
+                            ),
+                          }
+                        : failure,
                     );
                   } finally {
                     setResetting(false);

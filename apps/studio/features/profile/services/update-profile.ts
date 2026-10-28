@@ -1,6 +1,6 @@
 import type { AccountProfile } from "@/features/profile/services/account-profile";
 
-import { fetchApiData } from "@/utils/fetchApiData";
+import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 export async function updateAccountName(name: string): Promise<AccountProfile> {
   return fetchApiData<AccountProfile>("/users/me/name", {
@@ -40,9 +40,50 @@ export async function updateAutoSyncPreference(enabled: boolean): Promise<Accoun
 }
 
 /**
- * The server's message reaches the user as is, notably the 409 telling them to cancel a
- * live subscription before deleting.
+ * The unpaid affiliate balance a deletion would forfeit (V-234, owner decision 10): the 409
+ * `AFFILIATE_BALANCE_FORFEIT` details, in cents of `currency`.
  */
-export async function deleteAccount(): Promise<void> {
-  return fetchApiData<void>("/users/me", { method: "DELETE" });
+export type AffiliateForfeit = {
+  amountCents: number;
+  currency: string;
+  availableCents: number;
+  pendingCents: number;
+};
+
+/** The forfeit a refused deletion names, or `null` when the 409 is about something else. */
+export function affiliateForfeitFrom(error: unknown): AffiliateForfeit | null {
+  if (!(error instanceof ApiRequestError) || error.code !== "AFFILIATE_BALANCE_FORFEIT")
+    return null;
+
+  const details = error.details as Partial<AffiliateForfeit>;
+  if (typeof details.amountCents !== "number") return null;
+
+  return {
+    amountCents: details.amountCents,
+    currency: typeof details.currency === "string" ? details.currency : "USD",
+    availableCents: typeof details.availableCents === "number" ? details.availableCents : 0,
+    pendingCents: typeof details.pendingCents === "number" ? details.pendingCents : 0,
+  };
+}
+
+/**
+ * Deletes the account. The server's message reaches the user as is, notably the 409 telling them
+ * to cancel a live subscription before deleting. An unpaid affiliate balance is refused with 409
+ * `AFFILIATE_BALANCE_FORFEIT` until the user confirms the amount it named: pass it back as
+ * `confirmedForfeitCents`, and a balance that grew past it is refused again.
+ */
+export async function deleteAccount(
+  options: { confirmedForfeitCents?: number } = {},
+): Promise<void> {
+  return fetchApiData<void>("/users/me", {
+    method: "DELETE",
+    ...(options.confirmedForfeitCents === undefined
+      ? {}
+      : {
+          body: JSON.stringify({
+            confirmAffiliateForfeit: true,
+            confirmedAffiliateForfeitCents: options.confirmedForfeitCents,
+          }),
+        }),
+  });
 }

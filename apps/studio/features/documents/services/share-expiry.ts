@@ -12,8 +12,10 @@ export const SHARE_EXPIRY_OPTIONS: Array<{ value: ShareExpiryChoice; label: stri
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * What the server is sent for a choice. "keep" resends the link's stored expiry: the server
- * reads a missing date as "never", so leaving it out would quietly make the link permanent.
+ * What the server is sent for a choice. The server enforces expiry (V-412): with no date and no
+ * `noExpiry`, a new link lasts 7 days and a refresh keeps its stored expiry; `noExpiry: true` is
+ * never, and a date together with it is a 400. A date must be within a day of 7, 14, 30 or 90 days
+ * out, or equal the stored one, which is what "keep" resends. An expired link answers 410.
  */
 export function shareExpiryPayload(
   choice: ShareExpiryChoice,

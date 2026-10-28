@@ -9,6 +9,8 @@ import { loadTemplateComponentById } from "@/templates";
 
 import {
   type ShareLinkPayload,
+  isShareLinkExpiredError,
+  shareAllowsDownload,
   verifyShareLinkByUsernameAndSlug,
 } from "@/features/documents/services/share-service";
 import { readShareSnapshot } from "@/features/documents/services/share-snapshot";
@@ -57,6 +59,8 @@ const ShareDocumentClient = ({
 
   const [password, setPassword] = useState("");
   const [verifying, setVerifying] = useState(false);
+  // The link ran out while the password gate was open: the server answers the unlock with 410.
+  const [expired, setExpired] = useState(false);
 
   const shared = useMemo(() => readShareSnapshot(payload.snapshot), [payload.snapshot]);
   const resume = shared.kind === "resume" ? shared.resume : null;
@@ -108,11 +112,24 @@ const ShareDocumentClient = ({
     try {
       setPayload(await verifyShareLinkByUsernameAndSlug(username, slug, password));
     } catch (err: unknown) {
+      if (isShareLinkExpiredError(err)) {
+        setExpired(true);
+        return;
+      }
       setUnlockError(err instanceof Error ? err.message : "Could not unlock this document.");
     } finally {
       setVerifying(false);
     }
   }, [username, slug, password]);
+
+  if (expired) {
+    return (
+      <FullScreenMessage
+        title="This link has expired"
+        description="Ask the person who shared it for a new link."
+      />
+    );
+  }
 
   if (payload.passwordRequired) {
     return (
@@ -187,7 +204,12 @@ const ShareDocumentClient = ({
       <ShareHeaderBar
         title={payload.documentTitle}
         expiresAt={payload.expiresAt}
-        actions={<DownloadActions resume={resume} sharePreviewId={sharePreviewId} />}
+        actions={
+          // The owner can hide the buttons (V-421); the page itself can still be saved or printed.
+          shareAllowsDownload(payload) ? (
+            <DownloadActions resume={resume} sharePreviewId={sharePreviewId} />
+          ) : undefined
+        }
       />
 
       <ResumeCanvas resume={resume} sharePreviewId={sharePreviewId} template={rendered} />

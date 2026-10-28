@@ -165,3 +165,44 @@ describe("the public share page", () => {
     }
   });
 });
+
+describe("an expired password-protected link (SV-37)", () => {
+  it("an unlock answered 410 shows that the link has expired, not a wrong password", async () => {
+    const locked = await browser.newContext({ viewport: DESKTOP });
+    const origin = server.origin;
+
+    // The server enforces expiry and answers the unlock of an expired link with 410.
+    await locked.route("**/api/v1/shares/public/harness/share/verify", (route) => {
+      const headers = {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "POST",
+        "Access-Control-Allow-Headers":
+          route.request().headers()["access-control-request-headers"] ?? "content-type",
+      };
+      if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+      return route.fulfill({
+        status: 410,
+        headers,
+        contentType: "application/json",
+        body: JSON.stringify({ success: false, message: "Link expired" }),
+      });
+    });
+
+    const gate = await locked.newPage();
+
+    try {
+      await gate.goto(`${origin}/parity/share-page?locked=1`, { waitUntil: "networkidle" });
+      await gate.locator("#share-password").fill("hunter2");
+      await gate.getByRole("button", { name: "Unlock Document" }).click();
+
+      await expect
+        .poll(() => gate.getByRole("heading", { name: "This link has expired" }).count())
+        .toBe(1);
+      expect(await gate.getByText("Ask the person who shared it for a new link.").count()).toBe(1);
+      expect(await gate.getByText("Link expired").count()).toBe(0);
+    } finally {
+      await locked.close();
+    }
+  });
+});

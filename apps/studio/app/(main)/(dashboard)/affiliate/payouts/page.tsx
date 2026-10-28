@@ -4,7 +4,7 @@ import { LocalDate } from "@/components/LocalDate";
 import { AffiliateNav } from "@/features/affiliate/AffiliateNav";
 import { withdrawalStatusLabel } from "@/features/affiliate/labels";
 import { AffiliatePayoutForm } from "@/features/affiliate/AffiliatePayoutForm";
-import type { AffiliateDashboard } from "@/features/affiliate/types";
+import { type AffiliateDashboard, withdrawableCents } from "@/features/affiliate/types";
 import { getProgramServerData, PROGRAM_UNAVAILABLE } from "@/features/billing/billing-server";
 import { ProgramUnavailable } from "@/features/billing/ProgramUnavailable";
 import { formatCents } from "@/features/admin/utils/admin-format";
@@ -19,6 +19,9 @@ export default async function AffiliatePayoutsPage() {
   // Payouts are for an active affiliate only, as on the overview: a pending or suspended account
   // keeps its history but cannot request a withdrawal.
   const canRequest = data?.affiliateStatus === "ACTIVE";
+  const withdrawable = data ? withdrawableCents(data) : 0;
+  // Money owed back from a commission refunded after it was released (V-321) is repaid first.
+  const owed = data ? Math.max(0, data.wallet.availableCents - withdrawable) : 0;
   return (
     <main className="space-y-5">
       <AffiliateNav />
@@ -34,6 +37,12 @@ export default async function AffiliatePayoutsPage() {
           <p className="mt-2 text-3xl font-black">
             {formatCents(data?.wallet.availableCents ?? 0)}
           </p>
+          {owed > 0 ? (
+            <p className="text-muted mt-2 text-xs">
+              {formatCents(owed)} is owed back from a refunded commission and is repaid from this
+              balance first. You can withdraw {formatCents(withdrawable)}.
+            </p>
+          ) : null}
           {canRequest ? (
             <>
               <p className="text-muted mt-2 text-xs">
@@ -41,7 +50,7 @@ export default async function AffiliatePayoutsPage() {
               </p>
               <div className="mt-5">
                 <AffiliatePayoutForm
-                  availableCents={data.wallet.availableCents}
+                  withdrawableCents={withdrawable}
                   minimumCents={data.minimumWithdrawalCents}
                 />
               </div>

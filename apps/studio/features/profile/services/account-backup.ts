@@ -31,31 +31,17 @@ function cloudVersion(document: BaseDocument): BaseDocument {
 }
 
 /**
- * A server from before paging (V-263) ignores `limit`, answers with at most this many documents
- * of a type, newest first, and sends no `nextCursor` or `total`. A full reply from it may be cut
- * short. Remove once the server no longer serves that unpaged list.
+ * Every document of a type with its body, page by page. `GET /documents` always pages (V-422):
+ * every reply carries `nextCursor` and `total`, so the walk ends only on the last page. A failed
+ * page throws: no partial list.
  */
-export const LEGACY_SERVER_LIST_CAP = 500;
-
-/**
- * Every document of a type with its body, page by page. A failed page throws: no partial list.
- * Null when an unpaged server's reply may have left documents out.
- */
-async function listEveryDocument(type: DocumentType): Promise<CloudDocument[] | null> {
+async function listEveryDocument(type: DocumentType): Promise<CloudDocument[]> {
   const documents: CloudDocument[] = [];
 
   for await (const page of DocumentApi.pages(type, {
     includeContent: true,
     limit: DOCUMENT_PAGE_SIZE_WITH_CONTENT,
   })) {
-    if (
-      page.nextCursor === null &&
-      page.total === null &&
-      page.documents.length >= LEGACY_SERVER_LIST_CAP
-    ) {
-      return null;
-    }
-
     documents.push(...page.documents);
   }
 
@@ -79,16 +65,9 @@ export async function buildAccountBackup(now = new Date()): Promise<AccountBacku
   try {
     const lists = await Promise.all(DOCUMENT_TYPES.map((type) => listEveryDocument(type)));
 
-    if (lists.some((list) => list === null)) {
-      return {
-        ok: false,
-        message: `Your account has more documents than one backup can fetch (over ${LEGACY_SERVER_LIST_CAP} of a kind).`,
-      };
-    }
-
     // Each row is read as the type it was listed under.
     records = lists.flatMap((documents, index) =>
-      (documents ?? []).map((record) => ({ type: DOCUMENT_TYPES[index], record })),
+      documents.map((record) => ({ type: DOCUMENT_TYPES[index], record })),
     );
   } catch (error) {
     return { ok: false, message: `Your cloud documents could not be loaded: ${errorText(error)}` };

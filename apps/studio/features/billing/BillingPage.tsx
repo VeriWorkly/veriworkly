@@ -24,6 +24,8 @@ import {
   takePurchaseBaseline,
 } from "@/features/billing/purchase-baseline";
 import {
+  checkoutCancelNotice,
+  describeCheckoutCancelError,
   isPaymentsClosedError,
   PAYMENTS_OPEN_SOON,
   PLAN_NAMES,
@@ -183,11 +185,20 @@ export function BillingPage({
 
     if (checkoutStatus === "cancelled") {
       void cancelCheckout()
-        .then(() => {
+        .then((result) => {
           router.replace("/billing");
+          // A credit-pack payment still landing was kept (V-278): say so, it is not lost.
+          const kept = checkoutCancelNotice(result);
+          if (kept) setError({ message: kept, isNotice: true });
         })
         .catch((cause) => {
-          setError(toBillingError(cause, "Could not release the cancelled checkout."));
+          setError({
+            message: describeCheckoutCancelError(
+              cause,
+              "Could not release the cancelled checkout.",
+            ),
+            isNotice: isPaymentsClosedError(cause),
+          });
         });
       return;
     }

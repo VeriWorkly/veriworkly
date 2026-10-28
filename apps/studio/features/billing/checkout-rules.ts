@@ -156,3 +156,46 @@ export function resolveCheckoutRequest(
     priceLabel: `${formatCents(priceCents, product.currency)} ${INTERVAL_LABELS[interval]}`,
   };
 }
+
+/**
+ * What `POST /billing/checkout/cancel` answers: the checkouts it released (`cleared`, product and
+ * pack keys) and the credit-pack payments it kept because their money is still moving
+ * (`stillProcessing`, by name). A kept pack still blocks account deletion until it lands.
+ */
+export type CheckoutCancelResult = {
+  success: boolean;
+  cleared?: string[];
+  stillProcessing?: string[];
+};
+
+/** The note to show after a cancel that kept a pack payment, or `null` when nothing was kept. */
+export function checkoutCancelNotice(result: CheckoutCancelResult | null | undefined) {
+  const kept = result?.stillProcessing ?? [];
+  if (kept.length === 0) return null;
+
+  return `Your payment for ${kept.join(", ")} is still being processed, so it was kept. It is added to your account when the payment is confirmed.`;
+}
+
+/**
+ * A refused cancel (409, V-377/V-398). The server keeps a checkout whose payment is moving, and
+ * one waiting on the customer (3-D Secure or a bank authorisation) for up to an hour, so the
+ * customer is told what to do instead of retrying into the same answer. The server names it
+ * `CHECKOUT_STILL_PROCESSING`; a server from before the code is matched on its message. Other
+ * refusals ("still being prepared") and failures keep the server's message.
+ */
+export function describeCheckoutCancelError(error: unknown, fallbackMessage: string) {
+  if (isPaymentsClosedError(error)) return PAYMENTS_OPEN_SOON;
+
+  const message = error instanceof Error ? error.message : fallbackMessage;
+  const stillProcessing =
+    error instanceof ApiRequestError &&
+    error.status === 409 &&
+    (error.code === "CHECKOUT_STILL_PROCESSING" ||
+      (error.code === undefined && /still being processed/i.test(error.message)));
+
+  if (stillProcessing) {
+    return `${message} If your bank asked you to confirm the payment (3-D Secure or an authorisation in your banking app), finish that step. An unfinished confirmation is released within an hour, and you can start a new checkout then.`;
+  }
+
+  return message;
+}

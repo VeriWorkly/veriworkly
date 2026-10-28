@@ -28,11 +28,23 @@ export const metadata: Metadata = {
 export default async function ShareHarnessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fixture?: string; paper?: string; template?: string }>;
+  searchParams: Promise<{ fixture?: string; paper?: string; template?: string; locked?: string }>;
 }) {
   if (process.env.NODE_ENV === "production") notFound();
 
-  const { fixture = "default", paper = "a4", template } = await searchParams;
+  const { fixture = "default", paper = "a4", template, locked } = await searchParams;
+
+  // `?locked=1`: a password-protected link, as the API answers it before the unlock.
+  if (locked === "1") {
+    return (
+      <ShareDocumentClient
+        username="harness"
+        slug="share"
+        initialData={{ passwordRequired: true, expiresAt: null }}
+        serverTemplate={null}
+      />
+    );
+  }
 
   if (!PARITY_FIXTURE_IDS.includes(fixture as ParityFixtureId)) notFound();
   if (!PAPER_SIZES.includes(paper as PaperSize)) notFound();

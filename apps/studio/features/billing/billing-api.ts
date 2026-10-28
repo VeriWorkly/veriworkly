@@ -7,6 +7,7 @@ import type {
   PlanChangeResult,
   ProductKey,
 } from "@/features/billing/types";
+import type { CheckoutCancelResult } from "@/features/billing/checkout-rules";
 
 export function beginCheckout(
   productKey: ProductKey,
@@ -49,8 +50,9 @@ export function changePlan(productKey: ProductKey, interval: BillingCycle, idemp
   });
 }
 
+/** Releases the open checkouts nobody is paying; see `CheckoutCancelResult`. */
 export function cancelCheckout() {
-  return fetchApiData<{ success: boolean }>("/billing/checkout/cancel", {
+  return fetchApiData<CheckoutCancelResult>("/billing/checkout/cancel", {
     method: "POST",
     body: "{}",
   });
