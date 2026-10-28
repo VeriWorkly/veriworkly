@@ -173,7 +173,7 @@ describe("admin document audit entries carry no document title or slug", () => {
     const revoked = await as(
       moderator,
       request(app).delete(`/api/v1/admin/share-links/${share.id}`),
-    ).send({ reason: "Reported" });
+    ).send({ reason: "Reported", confirm: "secret-plans-cv" });
     expect(revoked.status, JSON.stringify(revoked.body)).toBe(200);
     for (const step of ["delete", "restore"] as const) {
       const response =

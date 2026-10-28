@@ -201,12 +201,12 @@ export async function updateApiKey(
 }
 
 /**
- * `confirm` is the key prefix the admin retyped (V-082), checked before anything changes: no
- * revoked marker, no row update. The audit entry commits with the revoke (V-291).
+ * `confirm` is the key prefix the admin retyped (V-082), required and checked before anything
+ * changes: no revoked marker, no row update. The audit entry commits with the revoke (V-291).
  */
 export async function revokeApiKey(
   apiKeyId: string,
-  confirm?: string,
+  confirm: string | undefined,
   audit?: Pick<AdminAuditInput, "actorId" | "reason">,
 ) {
   const existing = await prisma.apiKey.findUnique({

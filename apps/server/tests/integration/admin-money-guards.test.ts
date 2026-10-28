@@ -230,6 +230,7 @@ describe("V-074 money and privilege admin actions commit with their audit entry"
       asAdmin("patch", `${ADMIN}/affiliates/withdrawals/${withdrawal.id}`).send({
         status: "PAID",
         payoutNote: "wire sent",
+        reason: "Wire confirmed by finance",
       }),
     );
     expect(blocked.status).toBeGreaterThanOrEqual(500);
@@ -246,6 +247,7 @@ describe("V-074 money and privilege admin actions commit with their audit entry"
     const paid = await asAdmin("patch", `${ADMIN}/affiliates/withdrawals/${withdrawal.id}`).send({
       status: "PAID",
       payoutNote: "wire sent",
+      reason: "Wire confirmed by finance",
     });
     expect(paid.status).toBe(200);
     expect(await auditCount("affiliate.withdrawal.update", withdrawal.id)).toBe(1);
@@ -430,6 +432,7 @@ describe("V-074 money and privilege admin actions commit with their audit entry"
     const blockedTakedown = await withAuditBlocked(async () =>
       asAdmin("delete", `${ADMIN}/portfolios/${publication.id}`).send({
         reason: "Impersonates a public figure",
+        confirm: publication.subdomain,
       }),
     );
     expect(blockedTakedown.status).toBeGreaterThanOrEqual(500);

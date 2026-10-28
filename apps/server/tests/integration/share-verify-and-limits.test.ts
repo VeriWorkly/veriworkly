@@ -529,7 +529,7 @@ describe("V-171 share links follow the document's visibility", () => {
       .delete(`/api/v1/admin/portfolios/${publication.id}`)
       .set("Origin", STUDIO_ORIGIN)
       .set("Cookie", (await admin()).cookie)
-      .send({ reason: "Phishing page" });
+      .send({ reason: "Phishing page", confirm: publication.subdomain });
     expect(takedown.status, JSON.stringify(takedown.body)).toBe(200);
 
     for (const visibility of ["UNLISTED", "PUBLIC"] as const) {

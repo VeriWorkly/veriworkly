@@ -3,19 +3,21 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { prisma } from "#lib/prisma";
+import { getRedis } from "#lib/redis";
 
 import { createUserWithSession } from "./helpers/auth.js";
 import { adminClient } from "./helpers/admin.js";
 
 /**
- * V-081 and V-082, step 1 of 3: the server accepts and checks the new fields when the studio
- * sends them, and still accepts a request without them.
- * - V-081: an optional `reason` (trimmed, 3..500 characters) on every admin write that had none,
- *   recorded as the audit entry's reason. On a withdrawal it is separate from `payoutNote` (the
- *   note the affiliate sees), and on an ambassador review separate from `reviewNote`.
- * - V-082: an optional `confirm` on the three destructive actions without one, compared exactly
- *   after trimming with the identifier the admin list shows: the portfolio's `subdomain`, the
- *   share link's `slug`, the API key's `keyPrefix`. A mismatch is a 400 that changes nothing.
+ * V-081 and V-082: the fields every admin write and every destructive admin action requires.
+ * - V-081: a `reason` (trimmed, 3..500 characters, `adminReasonSchema`) on every admin write that
+ *   had none, recorded as the audit entry's reason. Missing or blank is a 400 that changes
+ *   nothing. On a withdrawal it is separate from `payoutNote` (the note the affiliate sees), and
+ *   on an ambassador review separate from `reviewNote`; neither note stands in for it.
+ * - V-082: a `confirm` on the three destructive actions without one, compared exactly after
+ *   trimming with the identifier the admin list shows: the portfolio's `subdomain`, the share
+ *   link's `slug`, the API key's `keyPrefix`. Missing or blank is CONFIRMATION_REQUIRED, wrong is
+ *   CONFIRMATION_MISMATCH; both are a 400 that changes nothing.
  */
 
 vi.mock("#services/mail/transporter", () => ({ sendMail: vi.fn().mockResolvedValue(undefined) }));
@@ -43,9 +45,27 @@ async function auditFor(action: string, targetId?: string) {
   });
 }
 
-function expectTooShort(response: { status: number; body: { details?: unknown } }) {
+type Response = { status: number; body: { details?: unknown } };
+
+/** The messages `adminReasonSchema` gives, as on every other required admin reason. */
+function expectReasonError(response: Response, message: string) {
   expect(response.status, JSON.stringify(response.body)).toBe(400);
-  expect(JSON.stringify(response.body.details)).toContain("Reason must be at least 3 characters");
+  expect(response.body.details).toContainEqual({ path: "reason", message });
+}
+
+const expectTooShort = (response: Response) =>
+  expectReasonError(response, "String must contain at least 3 character(s)");
+const expectMissing = (response: Response) => expectReasonError(response, "Required");
+/** Blank after trimming: refused as too short, like any required admin reason. */
+const expectBlank = expectTooShort;
+
+function expectConfirmationRequired(response: {
+  status: number;
+  body: { message?: string; details?: unknown };
+}) {
+  expect(response.status, JSON.stringify(response.body)).toBe(400);
+  expect(response.body.details).toEqual({ code: "CONFIRMATION_REQUIRED", field: "confirm" });
+  expect(response.body.message).toMatch(/confirm/i);
 }
 
 async function seedAffiliate() {
@@ -183,93 +203,94 @@ async function seedApiKey() {
 }
 
 describe("V-081 reason on affiliate standing", () => {
-  it("accepts no reason, records a given one, and refuses a too-short one", async () => {
+  it("requires a reason, records it, and refuses a too-short one", async () => {
     const { affiliate } = await seedAffiliate();
     const path = `/admin/affiliates/${affiliate.id}`;
 
-    expect((await admin.request("patch", path).send({ tier: "TIER_2" })).status).toBe(200);
+    expectMissing(await admin.request("patch", path).send({ tier: "TIER_2" }));
+    expectBlank(await admin.request("patch", path).send({ tier: "TIER_2", reason: "   " }));
+    expectTooShort(await admin.request("patch", path).send({ tier: "TIER_2", reason: " ab " }));
+    const untouched = await prisma.user.findUniqueOrThrow({ where: { id: affiliate.id } });
+    expect(untouched.affiliateTier).toBe("TIER_1");
+    expect(await auditFor("affiliate.update", affiliate.id)).toHaveLength(0);
 
     const withReason = await admin.request("patch", path).send({ tier: "TIER_3", reason: REASON });
     expect(withReason.status, JSON.stringify(withReason.body)).toBe(200);
 
-    expectTooShort(await admin.request("patch", path).send({ tier: "TIER_1", reason: " ab " }));
-
     const entries = await auditFor("affiliate.update", affiliate.id);
-    expect(entries.map((entry) => entry.reason)).toEqual([null, TRIMMED_REASON]);
+    expect(entries.map((entry) => entry.reason)).toEqual([TRIMMED_REASON]);
   });
 });
 
 describe("V-081 reason on commission create and update", () => {
-  it("create: accepts no reason, records a given one, and refuses a too-short one", async () => {
+  it("create: requires a reason, records it, and refuses a too-short one", async () => {
     const { referred } = await seedAffiliate();
     const body = (providerPaymentId: string) => ({
       referredUserId: referred.id,
       providerPaymentId,
       purchaseAmountCents: 10_000,
     });
+    const create = () => admin.request("post", "/admin/affiliates/commissions");
 
-    const without = await admin.request("post", "/admin/affiliates/commissions").send(body("p-1"));
-    expect(without.status, JSON.stringify(without.body)).toBe(200);
+    expectMissing(await create().send(body("p-1")));
+    expectBlank(await create().send({ ...body("p-1"), reason: "  " }));
+    expectTooShort(await create().send({ ...body("p-1"), reason: "ab" }));
+    expect(await prisma.affiliateCommission.count({ where: { providerPaymentId: "p-1" } })).toBe(0);
 
-    const withReason = await admin
-      .request("post", "/admin/affiliates/commissions")
-      .send({ ...body("p-2"), reason: REASON });
+    const withReason = await create().send({ ...body("p-2"), reason: REASON });
     expect(withReason.status, JSON.stringify(withReason.body)).toBe(200);
-
-    expectTooShort(
-      await admin
-        .request("post", "/admin/affiliates/commissions")
-        .send({ ...body("p-3"), reason: "ab" }),
-    );
-    expect(await prisma.affiliateCommission.count({ where: { providerPaymentId: "p-3" } })).toBe(0);
 
     const entries = await auditFor("affiliate.commission.create");
-    expect(entries.map((entry) => entry.reason)).toEqual([null, TRIMMED_REASON]);
+    expect(entries.map((entry) => entry.reason)).toEqual([TRIMMED_REASON]);
   });
 
-  it("update: accepts no reason, records a given one, and refuses a too-short one", async () => {
-    const first = await seedCommission();
-    const second = await seedCommission();
-    const third = await seedCommission();
+  it("update: requires a reason, records it, and refuses a too-short one", async () => {
+    const refused = await seedCommission();
+    const reasoned = await seedCommission();
+    const update = (id: string) => admin.request("patch", `/admin/affiliates/commissions/${id}`);
 
-    const without = await admin
-      .request("patch", `/admin/affiliates/commissions/${first.id}`)
-      .send({ status: "AVAILABLE" });
-    expect(without.status, JSON.stringify(without.body)).toBe(200);
-
-    const withReason = await admin
-      .request("patch", `/admin/affiliates/commissions/${second.id}`)
-      .send({ status: "AVAILABLE", reason: REASON });
-    expect(withReason.status, JSON.stringify(withReason.body)).toBe(200);
-
-    expectTooShort(
-      await admin
-        .request("patch", `/admin/affiliates/commissions/${third.id}`)
-        .send({ status: "AVAILABLE", reason: "ab" }),
-    );
+    expectMissing(await update(refused.id).send({ status: "AVAILABLE" }));
+    expectBlank(await update(refused.id).send({ status: "AVAILABLE", reason: " " }));
+    expectTooShort(await update(refused.id).send({ status: "AVAILABLE", reason: "ab" }));
     expect(
-      (await prisma.affiliateCommission.findUniqueOrThrow({ where: { id: third.id } })).status,
+      (await prisma.affiliateCommission.findUniqueOrThrow({ where: { id: refused.id } })).status,
     ).toBe("PENDING");
+    expect(await auditFor("affiliate.commission.update", refused.id)).toHaveLength(0);
 
-    expect((await auditFor("affiliate.commission.update", first.id))[0]?.reason).toBeNull();
-    expect((await auditFor("affiliate.commission.update", second.id))[0]?.reason).toBe(
+    const withReason = await update(reasoned.id).send({ status: "AVAILABLE", reason: REASON });
+    expect(withReason.status, JSON.stringify(withReason.body)).toBe(200);
+    expect((await auditFor("affiliate.commission.update", reasoned.id))[0]?.reason).toBe(
       TRIMMED_REASON,
     );
   });
 });
 
 describe("V-081 reason on withdrawal approve, reject and paid", () => {
-  it("accepts no reason; without one the audit keeps the payout note, as before", async () => {
-    const withdrawal = await seedWithdrawal();
+  it.each(["APPROVED", "REJECTED", "PAID"] as const)(
+    "%s: requires a reason; a payout note does not stand in for it",
+    async (status) => {
+      const withdrawal = await seedWithdrawal();
+      if (status === "PAID") {
+        await prisma.affiliateWithdrawal.update({
+          where: { id: withdrawal.id },
+          data: { status: "APPROVED" },
+        });
+      }
+      const update = () => admin.request("patch", `/admin/affiliates/withdrawals/${withdrawal.id}`);
 
-    const response = await admin
-      .request("patch", `/admin/affiliates/withdrawals/${withdrawal.id}`)
-      .send({ status: "APPROVED", payoutNote: "Approved, paying Friday" });
-    expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expectMissing(await update().send({ status, payoutNote: "Approved, paying Friday" }));
+      expectBlank(
+        await update().send({ status, payoutNote: "Approved, paying Friday", reason: "" }),
+      );
 
-    const [entry] = await auditFor("affiliate.withdrawal.update", withdrawal.id);
-    expect(entry?.reason).toBe("Approved, paying Friday");
-  });
+      const row = await prisma.affiliateWithdrawal.findUniqueOrThrow({
+        where: { id: withdrawal.id },
+      });
+      expect(row.status).toBe(status === "PAID" ? "APPROVED" : "REQUESTED");
+      expect(row.payoutNote).toBeNull();
+      expect(await auditFor("affiliate.withdrawal.update", withdrawal.id)).toHaveLength(0);
+    },
+  );
 
   it.each(["APPROVED", "REJECTED"] as const)(
     "%s: records the internal reason and never shows it to the affiliate",
@@ -331,73 +352,88 @@ describe("V-081 reason on withdrawal approve, reject and paid", () => {
 });
 
 describe("V-081 reason on ambassador review", () => {
-  it("accepts no reason, records a given one apart from the review note, and refuses a too-short one", async () => {
-    const plain = await seedApplication();
-    const reasoned = await seedApplication();
-    const short = await seedApplication();
+  it("requires a reason (a review note does not stand in) and refuses a too-short one", async () => {
+    const application = await seedApplication();
+    const review = () => admin.request("patch", `/admin/ambassadors/${application.id}`);
 
-    const without = await admin
-      .request("patch", `/admin/ambassadors/${plain.id}`)
-      .send({ action: "APPROVE" });
-    expect(without.status, JSON.stringify(without.body)).toBe(200);
+    expectMissing(await review().send({ action: "APPROVE" }));
+    expectMissing(await review().send({ action: "REJECT", reviewNote: "Apply again next term" }));
+    expectBlank(await review().send({ action: "APPROVE", reason: "  " }));
+    expectTooShort(await review().send({ action: "APPROVE", reason: "ab" }));
 
-    const withReason = await admin
-      .request("patch", `/admin/ambassadors/${reasoned.id}`)
+    const row = await prisma.ambassadorApplication.findUniqueOrThrow({
+      where: { id: application.id },
+    });
+    expect(row.status).toBe("PENDING");
+    expect(row.reviewNote).toBeNull();
+    expect(await auditFor("ambassador.application.approve", application.id)).toHaveLength(0);
+    expect(await auditFor("ambassador.application.reject", application.id)).toHaveLength(0);
+  });
+
+  it("records the reason apart from the review note, which the applicant sees", async () => {
+    const rejected = await seedApplication();
+    const approved = await seedApplication();
+
+    const reject = await admin
+      .request("patch", `/admin/ambassadors/${rejected.id}`)
       .send({ action: "REJECT", reviewNote: "Apply again next term", reason: REASON });
-    expect(withReason.status, JSON.stringify(withReason.body)).toBe(200);
-
-    expectTooShort(
-      await admin
-        .request("patch", `/admin/ambassadors/${short.id}`)
-        .send({ action: "APPROVE", reason: "ab" }),
-    );
-    expect(
-      (await prisma.ambassadorApplication.findUniqueOrThrow({ where: { id: short.id } })).status,
-    ).toBe("PENDING");
-
-    expect((await auditFor("ambassador.application.approve", plain.id))[0]?.reason).toBeNull();
-    expect((await auditFor("ambassador.application.reject", reasoned.id))[0]?.reason).toBe(
+    expect(reject.status, JSON.stringify(reject.body)).toBe(200);
+    expect((await auditFor("ambassador.application.reject", rejected.id))[0]?.reason).toBe(
       TRIMMED_REASON,
     );
     const row = await prisma.ambassadorApplication.findUniqueOrThrow({
-      where: { id: reasoned.id },
+      where: { id: rejected.id },
     });
     expect(row.reviewNote).toBe("Apply again next term");
+
+    // The review note stays optional.
+    const approve = await admin
+      .request("patch", `/admin/ambassadors/${approved.id}`)
+      .send({ action: "APPROVE", reason: REASON });
+    expect(approve.status, JSON.stringify(approve.body)).toBe(200);
+    expect((await auditFor("ambassador.application.approve", approved.id))[0]?.reason).toBe(
+      TRIMMED_REASON,
+    );
   });
 });
 
 describe("V-081 reason on roadmap writes", () => {
-  it("create: accepts no reason, records a given one, and refuses a too-short one", async () => {
-    const without = await admin
-      .request("post", "/admin/roadmap")
-      .send({ id: "rm-plain", title: "Plain", description: "Body" });
-    expect(without.status, JSON.stringify(without.body)).toBe(201);
+  it("create: requires a reason, records it, and refuses a too-short one", async () => {
+    const create = () => admin.request("post", "/admin/roadmap");
+    const body = { id: "rm-refused", title: "Refused", description: "Body" };
 
-    const withReason = await admin
-      .request("post", "/admin/roadmap")
-      .send({ id: "rm-reason", title: "Reasoned", description: "Body", reason: REASON });
+    expectMissing(await create().send(body));
+    expectBlank(await create().send({ ...body, reason: "   " }));
+    expectTooShort(await create().send({ ...body, reason: "ab" }));
+    expect(await prisma.roadmapFeature.count({ where: { id: "rm-refused" } })).toBe(0);
+
+    const withReason = await create().send({
+      id: "rm-reason",
+      title: "Reasoned",
+      description: "Body",
+      reason: REASON,
+    });
     expect(withReason.status, JSON.stringify(withReason.body)).toBe(201);
 
-    expectTooShort(
-      await admin
-        .request("post", "/admin/roadmap")
-        .send({ id: "rm-short", title: "Short", description: "Body", reason: "ab" }),
-    );
-    expect(await prisma.roadmapFeature.count({ where: { id: "rm-short" } })).toBe(0);
-
-    expect((await auditFor("roadmap.feature.create", "rm-plain"))[0]?.reason).toBeNull();
-    expect((await auditFor("roadmap.feature.create", "rm-reason"))[0]?.reason).toBe(TRIMMED_REASON);
+    const entries = await auditFor("roadmap.feature.create");
+    expect(entries.map((entry) => [entry.targetId, entry.reason])).toEqual([
+      ["rm-reason", TRIMMED_REASON],
+    ]);
   });
 
-  it("update: accepts no reason, records a given one (not as a field), and refuses a too-short one", async () => {
+  it("update: requires a reason, records it (not as a field), and refuses a too-short one", async () => {
     const feature = await seedRoadmapFeature();
     const path = `/admin/roadmap/${feature.id}`;
 
-    expect((await admin.request("put", path).send({ title: "One" })).status).toBe(200);
+    expectMissing(await admin.request("put", path).send({ title: "One" }));
+    expectBlank(await admin.request("put", path).send({ title: "One", reason: " " }));
+    expectTooShort(await admin.request("put", path).send({ title: "One", reason: "ab" }));
+    const untouched = await prisma.roadmapFeature.findUniqueOrThrow({ where: { id: feature.id } });
+    expect(untouched.title).toBe("Feature");
+
     expect((await admin.request("put", path).send({ title: "Two", reason: REASON })).status).toBe(
       200,
     );
-    expectTooShort(await admin.request("put", path).send({ title: "Three", reason: "ab" }));
     // A reason alone is not an edit.
     expect((await admin.request("put", path).send({ reason: REASON })).status).toBe(400);
 
@@ -405,112 +441,132 @@ describe("V-081 reason on roadmap writes", () => {
     expect(row.title).toBe("Two");
 
     const entries = await auditFor("roadmap.feature.update", feature.id);
-    expect(entries.map((entry) => entry.reason)).toEqual([null, TRIMMED_REASON]);
-    expect(entries[1]?.metadata).toEqual({ fields: ["title"] });
+    expect(entries.map((entry) => entry.reason)).toEqual([TRIMMED_REASON]);
+    expect(entries[0]?.metadata).toEqual({ fields: ["title"] });
   });
 
-  it("delete: accepts no reason, records a given one from the body or the query, and refuses a too-short one", async () => {
-    const plain = await seedRoadmapFeature();
+  it("delete: requires a reason, takes it from the body or the query, and refuses a too-short one", async () => {
+    const refused = await seedRoadmapFeature();
     const body = await seedRoadmapFeature();
     const query = await seedRoadmapFeature();
-    const short = await seedRoadmapFeature();
+    const remove = (id: string) => admin.request("delete", `/admin/roadmap/${id}`);
 
-    expect((await admin.request("delete", `/admin/roadmap/${plain.id}`)).status).toBe(200);
-    expect(
-      (await admin.request("delete", `/admin/roadmap/${body.id}`).send({ reason: REASON })).status,
-    ).toBe(200);
-    expect(
-      (await admin.request("delete", `/admin/roadmap/${query.id}`).query({ reason: REASON }))
-        .status,
-    ).toBe(200);
-    expectTooShort(
-      await admin.request("delete", `/admin/roadmap/${short.id}`).send({ reason: "ab" }),
-    );
-    expect(await prisma.roadmapFeature.count({ where: { id: short.id } })).toBe(1);
+    expectMissing(await remove(refused.id));
+    expectBlank(await remove(refused.id).send({ reason: "  " }));
+    expectTooShort(await remove(refused.id).send({ reason: "ab" }));
+    expect(await prisma.roadmapFeature.count({ where: { id: refused.id } })).toBe(1);
+    expect(await auditFor("roadmap.feature.delete", refused.id)).toHaveLength(0);
 
-    expect((await auditFor("roadmap.feature.delete", plain.id))[0]?.reason).toBeNull();
+    expect((await remove(body.id).send({ reason: REASON })).status).toBe(200);
+    expect((await remove(query.id).query({ reason: REASON })).status).toBe(200);
+
     expect((await auditFor("roadmap.feature.delete", body.id))[0]?.reason).toBe(TRIMMED_REASON);
     expect((await auditFor("roadmap.feature.delete", query.id))[0]?.reason).toBe(TRIMMED_REASON);
   });
 });
 
 describe("V-081 reason on changelog writes", () => {
-  it("create: accepts no reason, records a given one, and refuses a too-short one", async () => {
-    const without = await admin
-      .request("post", "/admin/changelog")
-      .send({ id: "cl-plain", version: "8.0.0", title: "Plain" });
-    expect(without.status, JSON.stringify(without.body)).toBe(201);
+  it("create: requires a reason, records it, and refuses a too-short one", async () => {
+    const create = () => admin.request("post", "/admin/changelog");
+    const body = { id: "cl-refused", version: "8.0.0", title: "Refused" };
 
-    const withReason = await admin
-      .request("post", "/admin/changelog")
-      .send({ id: "cl-reason", version: "8.0.1", title: "Reasoned", reason: REASON });
+    expectMissing(await create().send(body));
+    expectBlank(await create().send({ ...body, reason: "" }));
+    expectTooShort(await create().send({ ...body, reason: "ab" }));
+    expect(await prisma.changelogEntry.count({ where: { id: "cl-refused" } })).toBe(0);
+
+    const withReason = await create().send({
+      id: "cl-reason",
+      version: "8.0.1",
+      title: "Reasoned",
+      reason: REASON,
+    });
     expect(withReason.status, JSON.stringify(withReason.body)).toBe(201);
 
-    expectTooShort(
-      await admin
-        .request("post", "/admin/changelog")
-        .send({ id: "cl-short", version: "8.0.2", title: "Short", reason: "ab" }),
-    );
-    expect(await prisma.changelogEntry.count({ where: { id: "cl-short" } })).toBe(0);
-
-    expect((await auditFor("changelog.entry.create", "cl-plain"))[0]?.reason).toBeNull();
-    expect((await auditFor("changelog.entry.create", "cl-reason"))[0]?.reason).toBe(TRIMMED_REASON);
+    const entries = await auditFor("changelog.entry.create");
+    expect(entries.map((entry) => [entry.targetId, entry.reason])).toEqual([
+      ["cl-reason", TRIMMED_REASON],
+    ]);
   });
 
-  it("update: accepts no reason, records a given one (not as a field), and refuses a too-short one", async () => {
+  it("update: requires a reason, records it (not as a field), and refuses a too-short one", async () => {
     const entry = await seedChangelogEntry();
     const path = `/admin/changelog/${entry.id}`;
 
-    expect((await admin.request("put", path).send({ title: "One" })).status).toBe(200);
+    expectMissing(await admin.request("put", path).send({ title: "One" }));
+    expectBlank(await admin.request("put", path).send({ title: "One", reason: " " }));
+    expectTooShort(await admin.request("put", path).send({ title: "One", reason: "ab" }));
+    const untouched = await prisma.changelogEntry.findUniqueOrThrow({ where: { id: entry.id } });
+    expect(untouched.title).toBe("Release");
+
     expect((await admin.request("put", path).send({ title: "Two", reason: REASON })).status).toBe(
       200,
     );
-    expectTooShort(await admin.request("put", path).send({ title: "Three", reason: "ab" }));
+    // A reason alone is not an edit.
     expect((await admin.request("put", path).send({ reason: REASON })).status).toBe(400);
 
     const row = await prisma.changelogEntry.findUniqueOrThrow({ where: { id: entry.id } });
     expect(row.title).toBe("Two");
 
     const entries = await auditFor("changelog.entry.update", entry.id);
-    expect(entries.map((item) => item.reason)).toEqual([null, TRIMMED_REASON]);
-    expect(entries[1]?.metadata).toEqual({ fields: ["title"] });
+    expect(entries.map((item) => item.reason)).toEqual([TRIMMED_REASON]);
+    expect(entries[0]?.metadata).toEqual({ fields: ["title"] });
   });
 
-  it("delete: accepts no reason, records a given one, and refuses a too-short one", async () => {
-    const plain = await seedChangelogEntry();
-    const reasoned = await seedChangelogEntry();
-    const short = await seedChangelogEntry();
+  it("delete: requires a reason, takes it from the body or the query, and refuses a too-short one", async () => {
+    const refused = await seedChangelogEntry();
+    const body = await seedChangelogEntry();
+    const query = await seedChangelogEntry();
+    const remove = (id: string) => admin.request("delete", `/admin/changelog/${id}`);
 
-    expect((await admin.request("delete", `/admin/changelog/${plain.id}`)).status).toBe(200);
-    expect(
-      (await admin.request("delete", `/admin/changelog/${reasoned.id}`).send({ reason: REASON }))
-        .status,
-    ).toBe(200);
-    expectTooShort(
-      await admin.request("delete", `/admin/changelog/${short.id}`).send({ reason: "ab" }),
-    );
-    expect(await prisma.changelogEntry.count({ where: { id: short.id } })).toBe(1);
+    expectMissing(await remove(refused.id));
+    expectBlank(await remove(refused.id).query({ reason: " " }));
+    expectTooShort(await remove(refused.id).send({ reason: "ab" }));
+    expect(await prisma.changelogEntry.count({ where: { id: refused.id } })).toBe(1);
+    expect(await auditFor("changelog.entry.delete", refused.id)).toHaveLength(0);
 
-    expect((await auditFor("changelog.entry.delete", plain.id))[0]?.reason).toBeNull();
-    expect((await auditFor("changelog.entry.delete", reasoned.id))[0]?.reason).toBe(TRIMMED_REASON);
+    expect((await remove(body.id).send({ reason: REASON })).status).toBe(200);
+    expect((await remove(query.id).query({ reason: REASON })).status).toBe(200);
+
+    expect((await auditFor("changelog.entry.delete", body.id))[0]?.reason).toBe(TRIMMED_REASON);
+    expect((await auditFor("changelog.entry.delete", query.id))[0]?.reason).toBe(TRIMMED_REASON);
   });
 
-  it("sync: accepts no reason, records a given one, and refuses a too-short one", async () => {
-    expect((await admin.request("post", "/admin/changelog/sync")).status).toBe(202);
-    expect(
-      (await admin.request("post", "/admin/changelog/sync").send({ reason: REASON })).status,
-    ).toBe(202);
-    expectTooShort(await admin.request("post", "/admin/changelog/sync").send({ reason: "ab" }));
+  it("sync: requires a reason before starting, records it, and refuses a too-short one", async () => {
+    const { startChangelogSync } = await import("#services/admin/adminSyncTrigger");
+    const sync = () => admin.request("post", "/admin/changelog/sync");
+
+    expectMissing(await sync());
+    expectBlank(await sync().send({ reason: "  " }));
+    expectTooShort(await sync().send({ reason: "ab" }));
+    expect(startChangelogSync).not.toHaveBeenCalled();
+    expect(await auditFor("changelog.sync")).toHaveLength(0);
+
+    expect((await sync().send({ reason: REASON })).status).toBe(202);
+    expect(startChangelogSync).toHaveBeenCalledTimes(1);
 
     const entries = await auditFor("changelog.sync");
-    expect(entries.map((entry) => entry.reason)).toEqual([null, TRIMMED_REASON]);
+    expect(entries.map((entry) => entry.reason)).toEqual([TRIMMED_REASON]);
   });
 });
 
 describe("V-082 typed confirmation on portfolio hard unpublish", () => {
   const unpublish = (id: string) => admin.request("delete", `/admin/portfolios/${id}`);
 
-  it("a wrong confirm is a 400 and the site stays live", async () => {
+  async function expectStillLive(publication: { id: string; documentId: string }) {
+    const row = await prisma.portfolioPublication.findUniqueOrThrow({
+      where: { id: publication.id },
+    });
+    expect(row.status).toBe("LIVE");
+    const document = await prisma.document.findUniqueOrThrow({
+      where: { id: publication.documentId },
+    });
+    expect(document.visibility).toBe("PUBLIC");
+    expect(document.moderatedPrivateAt).toBeNull();
+    expect(await auditFor("portfolio.unpublish", publication.id)).toHaveLength(0);
+  }
+
+  it("a wrong confirm is CONFIRMATION_MISMATCH and the site stays live", async () => {
     const publication = await seedPublication();
 
     const response = await unpublish(publication.id).send({
@@ -521,15 +577,7 @@ describe("V-082 typed confirmation on portfolio hard unpublish", () => {
     expect(response.body.details?.code).toBe("CONFIRMATION_MISMATCH");
     expect(response.body.message).toMatch(/subdomain/i);
 
-    const row = await prisma.portfolioPublication.findUniqueOrThrow({
-      where: { id: publication.id },
-    });
-    expect(row.status).toBe("LIVE");
-    const document = await prisma.document.findUniqueOrThrow({
-      where: { id: publication.documentId },
-    });
-    expect(document.visibility).toBe("PUBLIC");
-    expect(await auditFor("portfolio.unpublish", publication.id)).toHaveLength(0);
+    await expectStillLive(publication);
   });
 
   it("the subdomain, trimmed, takes the site down", async () => {
@@ -547,20 +595,25 @@ describe("V-082 typed confirmation on portfolio hard unpublish", () => {
     expect(await auditFor("portfolio.unpublish", publication.id)).toHaveLength(1);
   });
 
-  it("no confirm still takes the site down, as today", async () => {
+  it("no confirm, or a blank one, is CONFIRMATION_REQUIRED and the site stays live", async () => {
     const publication = await seedPublication();
+    const reason = "Phishing content";
 
-    const response = await unpublish(publication.id).send({ reason: "Phishing content" });
-    expect(response.status, JSON.stringify(response.body)).toBe(200);
-    expect(
-      (await prisma.portfolioPublication.findUniqueOrThrow({ where: { id: publication.id } }))
-        .status,
-    ).toBe("SUSPENDED");
+    expectConfirmationRequired(await unpublish(publication.id).send({ reason }));
+    expectConfirmationRequired(await unpublish(publication.id).send({ reason, confirm: "   " }));
+    expectConfirmationRequired(await unpublish(publication.id).query({ reason }));
+
+    await expectStillLive(publication);
   });
 });
 
 describe("V-082 typed confirmation on share-link revoke", () => {
   const revoke = (id: string) => admin.request("delete", `/admin/share-links/${id}`);
+
+  async function expectSurvives(shareId: string) {
+    expect(await prisma.shareLink.count({ where: { id: shareId } })).toBe(1);
+    expect(await auditFor("share_link.revoke", shareId)).toHaveLength(0);
+  }
 
   it("the admin list shows the identifier as `slug`", async () => {
     const share = await seedShareLink();
@@ -571,7 +624,7 @@ describe("V-082 typed confirmation on share-link revoke", () => {
     );
   });
 
-  it("a wrong confirm is a 400 and the link survives", async () => {
+  it("a wrong confirm is CONFIRMATION_MISMATCH and the link survives", async () => {
     const share = await seedShareLink();
 
     const response = await revoke(share.id).send({
@@ -580,8 +633,7 @@ describe("V-082 typed confirmation on share-link revoke", () => {
     });
     expect(response.status, JSON.stringify(response.body)).toBe(400);
     expect(response.body.details?.code).toBe("CONFIRMATION_MISMATCH");
-    expect(await prisma.shareLink.count({ where: { id: share.id } })).toBe(1);
-    expect(await auditFor("share_link.revoke", share.id)).toHaveLength(0);
+    await expectSurvives(share.id);
   });
 
   it("the slug revokes the link, from the body or the query", async () => {
@@ -603,28 +655,38 @@ describe("V-082 typed confirmation on share-link revoke", () => {
     ).toBe(0);
   });
 
-  it("no confirm still revokes, as today", async () => {
+  it("no confirm, or a blank one, is CONFIRMATION_REQUIRED and the link survives", async () => {
     const share = await seedShareLink();
-    const response = await revoke(share.id).send({ reason: "Reported abuse" });
-    expect(response.status, JSON.stringify(response.body)).toBe(200);
-    expect(await prisma.shareLink.count({ where: { id: share.id } })).toBe(0);
+    const reason = "Reported abuse";
+
+    expectConfirmationRequired(await revoke(share.id).send({ reason }));
+    expectConfirmationRequired(await revoke(share.id).send({ reason, confirm: "" }));
+    expectConfirmationRequired(await revoke(share.id).query({ reason }));
+
+    await expectSurvives(share.id);
   });
 });
 
 describe("V-082 typed confirmation on API-key revoke", () => {
   const revoke = (id: string) => admin.request("delete", `/admin/api-keys/${id}`);
 
-  it("a wrong confirm (the key's name) is a 400 and the key stays live", async () => {
+  async function expectStillLive(key: { id: string; keyHash: string }) {
+    const row = await prisma.apiKey.findUniqueOrThrow({ where: { id: key.id } });
+    expect(row.revokedAt).toBeNull();
+    expect(row.isActive).toBe(true);
+    expect(await auditFor("api_key.revoke", key.id)).toHaveLength(0);
+    // No revoked marker either: it would refuse the live key until it expired.
+    expect(await getRedis().keys(`*apikey:revoked:${key.keyHash}*`)).toEqual([]);
+  }
+
+  it("a wrong confirm (the key's name) is CONFIRMATION_MISMATCH and the key stays live", async () => {
     const key = await seedApiKey();
 
     const response = await revoke(key.id).send({ reason: "Leaked in a repo", confirm: key.name });
     expect(response.status, JSON.stringify(response.body)).toBe(400);
     expect(response.body.details?.code).toBe("CONFIRMATION_MISMATCH");
 
-    const row = await prisma.apiKey.findUniqueOrThrow({ where: { id: key.id } });
-    expect(row.revokedAt).toBeNull();
-    expect(row.isActive).toBe(true);
-    expect(await auditFor("api_key.revoke", key.id)).toHaveLength(0);
+    await expectStillLive(key);
   });
 
   it("the key prefix revokes the key", async () => {
@@ -639,14 +701,18 @@ describe("V-082 typed confirmation on API-key revoke", () => {
       (await prisma.apiKey.findUniqueOrThrow({ where: { id: key.id } })).revokedAt,
     ).not.toBeNull();
     expect(await auditFor("api_key.revoke", key.id)).toHaveLength(1);
+    // The marker check above is not vacuous: a real revoke writes one.
+    expect(await getRedis().keys(`*apikey:revoked:${key.keyHash}*`)).toHaveLength(1);
   });
 
-  it("no confirm still revokes, as today", async () => {
+  it("no confirm, or a blank one, is CONFIRMATION_REQUIRED and the key stays live", async () => {
     const key = await seedApiKey();
-    const response = await revoke(key.id).send({ reason: "Leaked in a repo" });
-    expect(response.status, JSON.stringify(response.body)).toBe(200);
-    expect(
-      (await prisma.apiKey.findUniqueOrThrow({ where: { id: key.id } })).revokedAt,
-    ).not.toBeNull();
+    const reason = "Leaked in a repo";
+
+    expectConfirmationRequired(await revoke(key.id).send({ reason }));
+    expectConfirmationRequired(await revoke(key.id).send({ reason, confirm: " " }));
+    expectConfirmationRequired(await revoke(key.id).query({ reason }));
+
+    await expectStillLive(key);
   });
 });

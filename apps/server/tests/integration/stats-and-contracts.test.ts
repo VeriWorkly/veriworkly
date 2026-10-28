@@ -301,7 +301,7 @@ describe("admin affiliate lists (V-133) and reasons (V-081/V-082)", () => {
     expect(referrals.body.data.items[0].affiliateId).toBe(bob.id);
   });
 
-  it("validates a reason when one is sent (optional until the studio sends it)", async () => {
+  it("requires and validates the reason", async () => {
     const adminUser = await admin();
     const carol = await makeAffiliate("carolreason");
     const commission = await prisma.affiliateCommission.create({
@@ -318,18 +318,17 @@ describe("admin affiliate lists (V-133) and reasons (V-081/V-082)", () => {
       .send({ status: "REVERSED", reason: "x" });
     expect(shortReason.status).toBe(400);
 
-    // Absent is still accepted past validation until the studio sends it (TODO V-081).
     const noReason = await asUser(adminUser)
       .patch(`/api/v1/admin/affiliates/commissions/${commission.id}`)
       .send({ status: "REVERSED" });
-    expect(noReason.status, JSON.stringify(noReason.body)).toBe(200);
+    expect(noReason.status, JSON.stringify(noReason.body)).toBe(400);
     expect(
       (await prisma.affiliateCommission.findUniqueOrThrow({ where: { id: commission.id } })).status,
-    ).toBe("REVERSED");
+    ).toBe("PENDING");
 
     const shortNote = await asUser(adminUser)
       .patch(`/api/v1/admin/affiliates/withdrawals/${withdrawal.id}`)
-      .send({ status: "REJECTED", payoutNote: "no" });
+      .send({ status: "REJECTED", payoutNote: "no", reason: "Duplicate request" });
     expect(shortNote.status).toBe(400);
 
     const standing = await asUser(adminUser)
@@ -398,17 +397,25 @@ describe("ambassador wrong-state codes (V-137)", () => {
 
     const noNote = await asUser(adminUser)
       .patch(`/api/v1/admin/ambassadors/${application.id}`)
-      .send({ action: "REJECT", reviewNote: "x" });
+      .send({ action: "REJECT", reviewNote: "x", reason: "Reviewed the application" });
     expect(noNote.status).toBe(400);
 
     const first = await asUser(adminUser)
       .patch(`/api/v1/admin/ambassadors/${application.id}`)
-      .send({ action: "REJECT", reviewNote: "Not this cohort" });
+      .send({
+        action: "REJECT",
+        reviewNote: "Not this cohort",
+        reason: "Reviewed the application",
+      });
     expect(first.status).toBe(200);
 
     const second = await asUser(adminUser)
       .patch(`/api/v1/admin/ambassadors/${application.id}`)
-      .send({ action: "APPROVE", reviewNote: "Changed my mind" });
+      .send({
+        action: "APPROVE",
+        reviewNote: "Changed my mind",
+        reason: "Reviewed the application",
+      });
     expect(second.status).toBe(409);
   });
 });

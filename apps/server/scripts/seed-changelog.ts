@@ -10,7 +10,7 @@ import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { closeRedis } from "#lib/redis";
 import { invalidateChangelogReadCaches } from "#services/changelog/cache";
-import { changelogAdminCreateSchema } from "#validators/changelogValidator";
+import { changelogEntryFieldsSchema } from "#validators/changelogValidator";
 
 import { assertSeedAllowed, invalidateReadCaches, parseAll, seedFlags } from "./seedSupport.js";
 
@@ -25,7 +25,7 @@ async function run() {
   const items = parseAll(
     raw,
     (item, index) => String((item as { version?: unknown })?.version ?? `#${index}`),
-    (item) => changelogAdminCreateSchema.safeParse(item),
+    (item) => changelogEntryFieldsSchema.safeParse(item),
   );
 
   logger.info(`Loaded ${items.length} changelog entries from ${DATA_FILE}`);

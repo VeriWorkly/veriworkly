@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 import {
+  adminOptionalNoteSchema,
   adminPaginationSchema,
-  adminProvidedReasonSchema,
+  adminReasonSchema,
   adminSearchSchema,
 } from "#validators/admin/adminCommonValidator";
 
@@ -16,8 +17,7 @@ export const adminAffiliateSchema = z
   .object({
     status: z.enum(["PENDING", "ACTIVE", "SUSPENDED"]).optional(),
     tier: z.enum(["TIER_1", "TIER_2", "TIER_3"]).optional(),
-    // TODO(V-081): make required once the studio sends it
-    reason: adminProvidedReasonSchema,
+    reason: adminReasonSchema,
   })
   .refine((value) => value.status || value.tier, "Status or tier is required");
 
@@ -45,8 +45,7 @@ export const adminCommissionSchema = z.object({
   providerPaymentId: z.string().trim().min(1),
   purchaseAmountCents: z.number().int().min(1),
   status: z.enum(["PENDING", "AVAILABLE"]).default("PENDING"),
-  // TODO(V-081): make required once the studio sends it
-  reason: adminProvidedReasonSchema,
+  reason: adminReasonSchema,
   /** ISO 4217 code of `purchaseAmountCents`; defaults to USD, the wallet currency. */
   currency: z
     .string()
@@ -60,8 +59,7 @@ export const adminCommissionSchema = z.object({
 
 export const adminCommissionStatusSchema = z.object({
   status: z.enum(["AVAILABLE", "REVERSED"]),
-  // TODO(V-081): make required once the studio sends it
-  reason: adminProvidedReasonSchema,
+  reason: adminReasonSchema,
 });
 
 export const adminWithdrawalListQuerySchema = adminPaginationSchema
@@ -79,14 +77,13 @@ export const adminWithdrawalListQuerySchema = adminPaginationSchema
 
 export const adminWithdrawalStatusSchema = z.object({
   status: z.enum(["APPROVED", "REJECTED", "PAID"]),
-  /** Shown to the affiliate on their withdrawal. */
-  payoutNote: adminProvidedReasonSchema,
+  /** Shown to the affiliate on their withdrawal; optional, and never the audit reason. */
+  payoutNote: adminOptionalNoteSchema,
   /**
-   * The internal audit reason (V-081). Kept in the admin audit log only, never on the withdrawal
-   * the affiliate reads. Without it the audit keeps the payout note, as before.
+   * The internal audit reason (V-081), required. Kept in the admin audit log only, never on the
+   * withdrawal the affiliate reads.
    */
-  // TODO(V-081): make required once the studio sends it
-  reason: adminProvidedReasonSchema,
+  reason: adminReasonSchema,
 });
 
 export const adminReferralListQuerySchema = adminPaginationSchema.merge(adminSearchSchema).extend({

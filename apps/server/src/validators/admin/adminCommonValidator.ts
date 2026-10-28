@@ -71,10 +71,11 @@ export const adminDateRangeSchema = z.object({
 export const adminReasonSchema = z.string().trim().min(3).max(500);
 
 /**
- * A reason the studio does not send yet (V-081): optional, but when present it must meet the
- * same 3-character minimum as `adminReasonSchema`. A blank value counts as absent.
+ * An optional admin-written note the other party reads (a withdrawal's `payoutNote`, an ambassador
+ * review's `reviewNote`): when present it meets the same 3-character minimum as
+ * `adminReasonSchema`. A blank value counts as absent. Never the audit reason, which is required.
  */
-export const adminProvidedReasonSchema = z
+export const adminOptionalNoteSchema = z
   .string()
   .trim()
   .max(500)
@@ -84,15 +85,17 @@ export const adminProvidedReasonSchema = z
     message: "Reason must be at least 3 characters",
   });
 
-/** A write whose only admin input is the optional reason (a delete, a sync trigger). */
-export const adminOptionalReasonSchema = z.object({
-  reason: adminProvidedReasonSchema,
+/** A write whose only admin input is its audit reason (a delete, a sync trigger), V-081. */
+export const adminReasonOnlySchema = z.object({
+  reason: adminReasonSchema,
 });
 
 /**
  * The identifier an admin retypes before a destructive action (V-082): the portfolio's subdomain,
- * the share link's slug, the API key's prefix. Optional until the studio sends it; a blank value
- * counts as absent. The comparison itself is exact, after trimming (`assertConfirmation`).
+ * the share link's slug, the API key's prefix. Required: a blank value parses as absent, and
+ * `assertConfirmation` refuses an absent one as CONFIRMATION_REQUIRED (with the error code the
+ * studio reads, which a schema-level "Required" would not carry). The comparison itself is exact,
+ * after trimming.
  */
 export const adminConfirmSchema = z
   .string()

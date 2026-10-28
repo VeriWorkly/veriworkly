@@ -288,6 +288,7 @@ describe("commission transitions (V-007, V-017)", () => {
       providerPaymentId: "pay_inr_1:usd-again",
       purchaseAmountCents: 600_000,
       convertedFromId: commission.id,
+      reason: "Converted a second time",
     });
     expect(again.status).toBe(409);
     expect(
@@ -302,6 +303,7 @@ describe("commission transitions (V-007, V-017)", () => {
       providerPaymentId: "pay_bad_currency",
       purchaseAmountCents: 1_000,
       currency: "rupees",
+      reason: "Manual commission",
     });
     expect(badCurrency.status).toBe(400);
   });
@@ -326,16 +328,16 @@ describe("withdrawal transitions (V-007, one active withdrawal)", () => {
     const admin = await adminUser();
     const approved = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({ status: "APPROVED" });
+      .send({ status: "APPROVED", reason: "Reviewed by finance" });
     expect(approved.status).toBe(200);
 
     const [paid, rejected] = await Promise.all([
       asUser(admin)
         .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-        .send({ status: "PAID", payoutNote: "wire sent" }),
+        .send({ status: "PAID", payoutNote: "wire sent", reason: "Reviewed by finance" }),
       asUser(admin)
         .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-        .send({ status: "REJECTED", payoutNote: "duplicate" }),
+        .send({ status: "REJECTED", payoutNote: "duplicate", reason: "Reviewed by finance" }),
     ]);
     expect([paid.status, rejected.status].sort()).toEqual([200, 409]);
 
@@ -375,7 +377,7 @@ describe("withdrawal transitions (V-007, one active withdrawal)", () => {
     const admin = await adminUser();
     const rejected = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${requested.body.data.id}`)
-      .send({ status: "REJECTED", payoutNote: "details missing" });
+      .send({ status: "REJECTED", payoutNote: "details missing", reason: "Reviewed by finance" });
     expect(rejected.status).toBe(200);
     expect(rejected.body.data).toMatchObject({ status: "REJECTED", reviewedBy: admin.id });
     expect(await wallet(affiliate.id)).toEqual({
@@ -387,7 +389,7 @@ describe("withdrawal transitions (V-007, one active withdrawal)", () => {
     // Finalized rows cannot move again, and the partial index no longer counts them.
     const paidAfter = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${requested.body.data.id}`)
-      .send({ status: "PAID" });
+      .send({ status: "PAID", reason: "Reviewed by finance" });
     expect(paidAfter.status).toBe(409);
     const next = await asUser(affiliate).post(`${BASE}/withdrawals`).send({ amountCents: 2_500 });
     expect(next.status).toBe(200);

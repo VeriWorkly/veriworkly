@@ -36,7 +36,7 @@ async function review(applicationId: string, action: "APPROVE" | "REJECT", revie
     .patch(`/api/v1/admin/ambassadors/${applicationId}`)
     .set("Origin", STUDIO_ORIGIN)
     .set("Cookie", (await admin()).cookie)
-    .send({ action, ...(reviewNote ? { reviewNote } : {}) });
+    .send({ action, reason: "Checked the application", ...(reviewNote ? { reviewNote } : {}) });
 }
 
 type SentMail = { to: string; subject: string; text: string; html: string };

@@ -41,6 +41,12 @@ async function createKey(user: TestUser, body: Record<string, unknown> = {}): Pr
   return { id: response.body.data.id, key: response.body.data.key };
 }
 
+/** An admin revoke, with the typed confirmation it requires (V-082): the key's stored prefix. */
+async function adminRevoke(keyId: string) {
+  const { keyPrefix } = await prisma.apiKey.findUniqueOrThrow({ where: { id: keyId } });
+  return revokeApiKey(keyId, keyPrefix);
+}
+
 function requestWithKey(key: string) {
   return request(app).get("/api/v1/users/me").set("X-API-Key", key);
 }
@@ -490,7 +496,7 @@ describe("API keys through the real stack", () => {
     await waitForAuthCache(limitedHash);
 
     // Admin revoke (service-level: the admin route needs the configured admin session).
-    await revokeApiKey(revokedKey.id);
+    await adminRevoke(revokedKey.id);
     expect(await revokedMarker(revokedHash)).not.toBeNull();
     expect((await requestWithKey(revokedKey.key)).status).toBe(401);
     await cacheSet(`apikey:auth:${revokedHash}`, revokedCached, 300); // replay the V-122 race
@@ -565,7 +571,7 @@ describe("API keys through the real stack", () => {
     const created = await createKey(user, { name: "admin-revoked-then-enabled" });
     const keyHash = hashKey(created.key);
 
-    await revokeApiKey(created.id);
+    await adminRevoke(created.id);
     // Refused outright (V-293): a revocation is permanent.
     await expect(
       updateApiKey(created.id, { isActive: true, reason: "integration enable" }),

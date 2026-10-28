@@ -131,7 +131,10 @@ describe("changelog sync re-parses rows no admin edited (V-066)", () => {
     ).toEqual(["first fix", "second fix"]);
 
     // An admin curates the text. The sync may still add PRs, but never rewrites the text again.
-    const edited = await asAdmin("put", `${ADMIN}/changelog/v4-1-0`, { fixed: ["curated"] });
+    const edited = await asAdmin("put", `${ADMIN}/changelog/v4-1-0`, {
+      fixed: ["curated"],
+      reason: "Curated notes",
+    });
     expect(edited.status).toBe(200);
 
     releaseBody = "### Fixed\n- something else entirely";
@@ -177,11 +180,16 @@ describe("admin syncs run in the background (V-080)", () => {
     gate = new Promise((resolve) => (open = resolve));
     mockGitHub();
 
-    const started = await asAdmin("post", `${ADMIN}/changelog/sync`);
+    const started = await asAdmin("post", `${ADMIN}/changelog/sync`, {
+      reason: "Pull the latest releases",
+    });
     expect(started.status).toBe(202);
     expect(started.body.data).toMatchObject({ status: "started" });
 
-    expect((await asAdmin("post", `${ADMIN}/changelog/sync`)).status).toBe(409);
+    expect(
+      (await asAdmin("post", `${ADMIN}/changelog/sync`, { reason: "Pull the latest releases" }))
+        .status,
+    ).toBe(409);
     expect((await asAdmin("get", `${ADMIN}/changelog/sync`)).body.data.running).toBe(true);
 
     open();
@@ -207,7 +215,9 @@ describe("admin syncs run in the background (V-080)", () => {
     const github = await asAdmin("post", `${ADMIN}/system/github/sync`, { reason: "redis down" });
     expect(github.status).toBe(503);
 
-    const changelog = await asAdmin("post", `${ADMIN}/changelog/sync`);
+    const changelog = await asAdmin("post", `${ADMIN}/changelog/sync`, {
+      reason: "Pull the latest releases",
+    });
     expect(changelog.status).toBe(503);
   });
 
@@ -223,7 +233,9 @@ describe("admin syncs run in the background (V-080)", () => {
 
     const github = await asAdmin("post", `${ADMIN}/system/github/sync`, { reason: "audit down" });
     expect(github.status).toBe(202);
-    const changelog = await asAdmin("post", `${ADMIN}/changelog/sync`);
+    const changelog = await asAdmin("post", `${ADMIN}/changelog/sync`, {
+      reason: "Pull the latest releases",
+    });
     expect(changelog.status).toBe(202);
 
     await waitFor(
@@ -248,13 +260,18 @@ describe("changelog sync without GitHub configured (V-260)", () => {
       // /health/jobs reports a disabled job as disabled, never as stale.
       expect(isChangelogSyncJobEnabled()).toBe(false);
 
-      const res = await asAdmin("post", `${ADMIN}/changelog/sync`);
+      const res = await asAdmin("post", `${ADMIN}/changelog/sync`, {
+        reason: "Pull the latest releases",
+      });
       expect(res.status).toBe(503);
       expect(fetchSpy).not.toHaveBeenCalled();
       // No lock was taken, so a later configured sync is not refused with 409.
       Object.assign(config.github, { owner: "x", repo: "y", token: "token" });
       expect(isChangelogSyncJobEnabled()).toBe(true);
-      expect((await asAdmin("post", `${ADMIN}/changelog/sync`)).status).toBe(202);
+      expect(
+        (await asAdmin("post", `${ADMIN}/changelog/sync`, { reason: "Pull the latest releases" }))
+          .status,
+      ).toBe(202);
       await waitFor(
         async () => (await asAdmin("get", `${ADMIN}/changelog/sync`)).body.data.running === false,
       );
@@ -349,6 +366,7 @@ describe("changelog release LOWs", () => {
       version: "v3.32.0",
       title: "Typed with a v",
       type: "minor",
+      reason: "Written by hand",
     });
     expect(created.status).toBe(201);
     expect(created.body.data.id).toBe("v3-32-0");
@@ -369,7 +387,9 @@ describe("an admin delete of a synced release stays deleted (V-289)", () => {
     await syncChangelogFromGitHubReleases();
     expect(await prisma.changelogEntry.count({ where: { id: "v4-1-0" } })).toBe(1);
 
-    const removed = await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`);
+    const removed = await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`, {
+      reason: "Withdrawn release",
+    });
     expect(removed.status, JSON.stringify(removed.body)).toBe(200);
 
     await syncChangelogFromGitHubReleases();
@@ -383,13 +403,14 @@ describe("an admin delete of a synced release stays deleted (V-289)", () => {
   it("comes back when an admin writes the entry again by hand", async () => {
     mockGitHub();
     await syncChangelogFromGitHubReleases();
-    await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`);
+    await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`, { reason: "Withdrawn release" });
 
     const created = await asAdmin("post", `${ADMIN}/changelog`, {
       id: "v4-1-0",
       version: "4.1.0",
       title: "Spring, corrected",
       type: "minor",
+      reason: "Written by hand",
     });
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     await prisma.changelogEntry.delete({ where: { id: "v4-1-0" } });
@@ -406,9 +427,13 @@ describe("an admin delete of a synced release stays deleted (V-289)", () => {
       version: "4.1.0",
       title: "Drafted by hand before the release",
       type: "minor",
+      reason: "Written by hand",
     });
     expect(created.status, JSON.stringify(created.body)).toBe(201);
-    expect((await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`)).status).toBe(200);
+    expect(
+      (await asAdmin("delete", `${ADMIN}/changelog/v4-1-0`, { reason: "Withdrawn release" }))
+        .status,
+    ).toBe(200);
 
     await syncChangelogFromGitHubReleases();
     expect(await prisma.changelogEntry.count({ where: { id: "v4-1-0" } })).toBe(1);

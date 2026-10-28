@@ -314,10 +314,14 @@ describe("roadmap reads (V-062, V-061, V-067)", () => {
 });
 
 describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
+  // Every admin write carries its audit reason (V-081).
+  const ADMIN_REASON = "Roadmap and changelog upkeep";
+
   it("creates a roadmap item from the studio payload with null dates (201)", async () => {
     const admin = await asAdmin();
 
     const response = await admin.post(`${API}/admin/roadmap`).send({
+      reason: ADMIN_REASON,
       title: "Studio item",
       description: "From the studio form",
       status: "todo",
@@ -335,6 +339,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     const admin = await asAdmin();
 
     const response = await admin.post(`${API}/admin/roadmap`).send({
+      reason: ADMIN_REASON,
       title: "With metadata",
       description: "Custom details",
       details: { problem: "Slow exports", rolloutPercent: 25, owner: { team: "core" } },
@@ -347,6 +352,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     });
 
     const tooBig = await admin.post(`${API}/admin/roadmap`).send({
+      reason: ADMIN_REASON,
       title: "Too big",
       description: "Oversized details",
       details: { blob: "x".repeat(70 * 1024) },
@@ -355,6 +361,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
 
     // Measured in UTF-8 bytes: 40,000 two-byte characters are 80 KB, though only 40,000 chars.
     const multiByte = await admin.post(`${API}/admin/roadmap`).send({
+      reason: ADMIN_REASON,
       title: "Too big in bytes",
       description: "Multi-byte details",
       details: { blob: "é".repeat(40_000) },
@@ -366,6 +373,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     const admin = await asAdmin();
 
     const derived = await admin.post(`${API}/admin/roadmap`).send({
+      reason: ADMIN_REASON,
       id: "quarter-a",
       title: "Done, blank quarter",
       description: "Studio sends null for a blank field",
@@ -378,6 +386,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
 
     // The studio prefills the stored quarter, so the reopen carries it; it must still clear.
     const reopened = await admin.put(`${API}/admin/roadmap/quarter-a`).send({
+      reason: ADMIN_REASON,
       status: "todo",
       completedQuarter: "Q2 2026",
     });
@@ -386,6 +395,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     expect(reopened.body.data.completedAt).toBeNull();
 
     const explicit = await admin.put(`${API}/admin/roadmap/quarter-a`).send({
+      reason: ADMIN_REASON,
       status: "done",
       completedAt: "2026-05-10T12:00:00Z",
       completedQuarter: "Q1 2026",
@@ -393,7 +403,9 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     expect(explicit.status).toBe(200);
 
     // V-341: a partial update that leaves the quarter out keeps the hand-set one.
-    const renamed = await admin.put(`${API}/admin/roadmap/quarter-a`).send({ title: "Renamed" });
+    const renamed = await admin
+      .put(`${API}/admin/roadmap/quarter-a`)
+      .send({ title: "Renamed", reason: ADMIN_REASON });
     expect(renamed.status).toBe(200);
     expect(renamed.body.data.completedQuarter).toBe("Q1 2026");
     expect(explicit.body.data.completedQuarter).toBe("Q1 2026");
@@ -403,6 +415,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     const admin = await asAdmin();
 
     const response = await admin.post(`${API}/admin/roadmap`).send({
+      reason: ADMIN_REASON,
       title: "Done item",
       description: "Shipped",
       status: "done",
@@ -415,6 +428,7 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     expect(response.body.data.completedQuarter).toBe("Q4 2025");
 
     const recomputed = await admin.post(`${API}/admin/roadmap`).send({
+      reason: ADMIN_REASON,
       title: "Done item, no quarter",
       description: "Shipped",
       status: "done",
@@ -432,7 +446,9 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
     });
 
     const admin = await asAdmin();
-    const response = await admin.put(`${API}/admin/roadmap/eta-a`).send({ eta: null });
+    const response = await admin
+      .put(`${API}/admin/roadmap/eta-a`)
+      .send({ eta: null, reason: ADMIN_REASON });
     expect(response.status).toBe(200);
 
     const row = await prisma.roadmapFeature.findUniqueOrThrow({ where: { id: "eta-a" } });
@@ -442,11 +458,17 @@ describe("admin roadmap and changelog writes (V-063, V-083, V-084)", () => {
   it("answers a duplicate roadmap id and a duplicate changelog version with 409", async () => {
     const admin = await asAdmin();
 
-    const body = { id: "dup-roadmap", title: "Dup", description: "Dup", status: "todo" };
+    const body = {
+      id: "dup-roadmap",
+      title: "Dup",
+      description: "Dup",
+      status: "todo",
+      reason: ADMIN_REASON,
+    };
     expect((await admin.post(`${API}/admin/roadmap`).send(body)).status).toBe(201);
     expect((await admin.post(`${API}/admin/roadmap`).send(body)).status).toBe(409);
 
-    const entry = { version: "9.9.9", title: "Nine", type: "patch" };
+    const entry = { version: "9.9.9", title: "Nine", type: "patch", reason: ADMIN_REASON };
     expect((await admin.post(`${API}/admin/changelog`).send(entry)).status).toBe(201);
     expect(
       (await admin.post(`${API}/admin/changelog`).send({ ...entry, id: "other-id" })).status,

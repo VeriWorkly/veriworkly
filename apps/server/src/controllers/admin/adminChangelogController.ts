@@ -11,10 +11,7 @@ import {
   changelogAdminCreateSchema,
   changelogAdminUpdateSchema,
 } from "#validators/changelogValidator";
-import {
-  adminIdParamSchema,
-  adminOptionalReasonSchema,
-} from "#validators/admin/adminCommonValidator";
+import { adminIdParamSchema, adminReasonOnlySchema } from "#validators/admin/adminCommonValidator";
 
 import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
 
@@ -113,7 +110,7 @@ export const updateChangelogEntryController = adminHandler(async ({ req, actorId
  * - id: changelog entry id (required)
  *
  * req.body or query:
- * - reason: optional audit reason (V-081)
+ * - reason: audit reason, required (V-081)
  *
  * res:
  * - 200 with deleted id payload
@@ -121,7 +118,7 @@ export const updateChangelogEntryController = adminHandler(async ({ req, actorId
 
 export const deleteChangelogEntryController = adminHandler(async ({ req, actorId }) => {
   const { id } = adminIdParamSchema.parse(req.params);
-  const { reason } = adminOptionalReasonSchema.parse(deleteRequestInput(req));
+  const { reason } = adminReasonOnlySchema.parse(deleteRequestInput(req));
 
   const deleted = await deleteChangelogEntry(id);
 
@@ -142,7 +139,7 @@ export const deleteChangelogEntryController = adminHandler(async ({ req, actorId
  * The sync pages through GitHub for minutes, so it runs in the background (V-080).
  *
  * req.body:
- * - reason: optional audit reason (V-081)
+ * - reason: audit reason, required (V-081)
  *
  * res:
  * - 202 with { status: "started", statusUrl }; poll GET /admin/changelog/sync for the outcome
@@ -150,7 +147,7 @@ export const deleteChangelogEntryController = adminHandler(async ({ req, actorId
  */
 
 export const syncChangelogReleasesController = adminHandler(async ({ req, res, actorId }) => {
-  const { reason } = adminOptionalReasonSchema.parse(req.body ?? {});
+  const { reason } = adminReasonOnlySchema.parse(req.body ?? {});
   const started = await startChangelogSync();
 
   // After the start, so a refused sync (409/503) leaves no entry. Never throws: a failed write is

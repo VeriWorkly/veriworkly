@@ -144,7 +144,7 @@ describe("V-207 the takedown lock lives on the document row", () => {
     const takedown = await as(
       await admin(),
       request(app).delete(`/api/v1/admin/portfolios/${publication.id}`),
-    ).send({ reason: "Phishing page" });
+    ).send({ reason: "Phishing page", confirm: publication.subdomain });
     expect(takedown.status).toBe(200);
     expect(
       (await prisma.document.findUniqueOrThrow({ where: { id: document.id } })).moderatedPrivateAt,

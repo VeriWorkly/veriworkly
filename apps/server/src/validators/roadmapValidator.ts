@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { adminProvidedReasonSchema } from "#validators/admin/adminCommonValidator";
+import { adminReasonSchema } from "#validators/admin/adminCommonValidator";
 import {
   notBothPageAndOffset,
   notBothPageAndOffsetError,
@@ -98,7 +98,11 @@ const roadmapDetailsSchema = z
   .nullable()
   .optional();
 
-export const roadmapAdminCreateSchema = z.object({
+/**
+ * A roadmap feature as stored, without a request's audit reason: what `seed:roadmap` reads from
+ * its JSON, which has no admin behind it.
+ */
+export const roadmapFeatureFieldsSchema = z.object({
   id: z.string().min(1).max(64).optional(),
   title: z.string().min(1),
   description: z.string().min(1),
@@ -115,8 +119,11 @@ export const roadmapAdminCreateSchema = z.object({
   updatedAt: isoDateTime.optional(),
   completedQuarter: z.string().nullable().optional(),
   details: roadmapDetailsSchema,
-  // TODO(V-081): make required once the studio sends it
-  reason: adminProvidedReasonSchema,
+});
+
+/** `POST /admin/roadmap`: the feature, and the audit reason every admin write requires (V-081). */
+export const roadmapAdminCreateSchema = roadmapFeatureFieldsSchema.extend({
+  reason: adminReasonSchema,
 });
 
 export const roadmapAdminUpdateSchema = z
@@ -136,8 +143,7 @@ export const roadmapAdminUpdateSchema = z
     completedQuarter: z.string().nullable().optional(),
 
     details: roadmapDetailsSchema,
-    // TODO(V-081): make required once the studio sends it
-    reason: adminProvidedReasonSchema,
+    reason: adminReasonSchema,
   })
   // The audit reason alone is not an edit.
   .refine((value) => Object.keys(value).some((key) => key !== "reason"), {

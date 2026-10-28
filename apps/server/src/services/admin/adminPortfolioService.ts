@@ -462,9 +462,9 @@ export async function settleRestoredBillingSuspension(userId: string): Promise<b
  */
 export async function forceUnpublish(
   publicationId: string,
-  audit?: AdminAuditInput,
-  /** The subdomain the admin retyped (V-082); checked before anything changes. */
-  confirm?: string,
+  audit: AdminAuditInput | undefined,
+  /** The subdomain the admin retyped (V-082); required, and checked before anything changes. */
+  confirm: string | undefined,
 ) {
   const publication = await prisma.portfolioPublication.findUnique({
     where: { id: publicationId },
