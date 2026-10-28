@@ -130,9 +130,21 @@ tool, not a user-journey runner.
 
 ## Before opening a pull request
 
-Run the checks listed in [Validate before
-committing](/docs/getting-started/local-setup#validate-before-committing), including the parity
-harness if you touched a resume or cover letter template.
+```bash
+npm run lint
+npm run format:write
+npm test -w @veriworkly/server
+npm run test:contracts -w @veriworkly/studio
+npm run test:contracts -w @veriworkly/site
+npm test -w @veriworkly/portfolio
+npm run build
+```
+
+Add `npm run test:parity -w @veriworkly/studio` if you touched a resume or cover letter template.
+
+<Callout type="warn" title="There is no root `npm test`">
+  The repository root defines no `test` script. Run the workspace-scoped commands above.
+</Callout>
 
 See the [Contributing Guide](/docs/contributing) for issue claiming, branch naming, and pull
 request conventions.

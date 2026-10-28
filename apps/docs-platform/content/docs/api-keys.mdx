@@ -1,15 +1,12 @@
 ---
 title: API Keys
-metaTitle: "VeriWorkly API Keys: Create, Scope, Rotate, Revoke"
-description: Create a VeriWorkly API key at app.veriworkly.com/api-keys, send it in the X-API-Key header, and scope, rotate or revoke it safely.
+description: Create, scope, rotate, and revoke API keys for programmatic access to the VeriWorkly API.
 ---
 
-**To get a VeriWorkly API key, sign in to [app.veriworkly.com](https://app.veriworkly.com), open
-`/api-keys`, create a key with the scopes you need, and copy it straight away: it is shown once.
-Send it in the `X-API-Key` header (or as a Bearer token). Keys default to `user:read`, 20 requests
-per 15 minutes and a 365-day expiry.**
+API keys authenticate programmatic requests to the VeriWorkly API. Session cookies are designed for
+browser use; API keys let you integrate VeriWorkly into your own scripts and applications.
 
-## How do I create an API key?
+## Getting an API Key
 
 Key management lives on its own page in Studio, not inside the settings panels (the Settings page
 links to it).
@@ -38,7 +35,7 @@ Each key carries:
 | **Expiry**     | 365 days                 | Configurable per key at creation.                      |
 | **Rate limit** | 20 requests / 15 minutes | Configurable per key, capped by a server-side maximum. |
 
-## How do I send an API key with a request?
+## Using your API Key
 
 Send the key in the `X-API-Key` header:
 
@@ -78,9 +75,7 @@ endpoints. The endpoints `changelog:read` unlocks are documented under
   `github:write` do not exist and will be rejected.
 </Callout>
 
-## What are the API key rate limits?
-
-A key gets 20 requests per 15 minutes unless you set another limit, up to a server maximum of 600.
+## Rate limits
 
 | Limit type          | Rate                                                   |
 | :------------------ | :----------------------------------------------------- |
@@ -122,52 +117,9 @@ is approximate by design.
 
 - **Never share a key**, and never commit one to version control. Use environment variables.
 - **Prefer the smallest scope set** that makes the integration work.
-- **Use shorter expiries** for risky or short-lived integrations. The 365-day default is generous.
-- **Lower the per-key rate limit** for integrations that make few calls.
-- **Rotate on a schedule**, and whenever someone with access to the key leaves.
-- **Never log the full key value**: not in application logs, error reports or support tickets.
+- **Use shorter expiries** for risky or short-lived integrations.
+- **Revoke compromised keys immediately** and issue a replacement.
 - **Use descriptive names** so an unfamiliar key is easy to trace back to its integration.
 
-## How do I rotate a key without downtime?
-
-Rotation issues a replacement and retires the old key, so you can cut over without a gap:
-
-1. Rotate the key and copy the new value.
-2. Deploy the new value to the consuming application.
-3. Confirm the application works with the new key.
-4. Revoke the old key.
-
-## What do I do if a key leaks?
-
-1. **Revoke it immediately.** Do not wait for a rotation window.
-2. Check the key's last-used time and review your API logs for unfamiliar source IPs and request
-   patterns.
-3. Rotate credentials in any integration that shared the same secret store.
-4. If the key carried `ai:write`, check the credit transaction history at `/credits` for
-   unexplained debits. That scope spends real credits.
-
-## Why is my API key rejected?
-
-- **`401`** ("Invalid or inactive API key."): the key is malformed, unknown, revoked or past its
-  expiry date. A missing key gets its own `401` naming both accepted headers.
-- **`403`**: the key is valid but lacks the scope the route needs ("This API key does not have
-  permission for this action.").
-- **`429`**: either the per-key limit or the general per-route IP limiter was hit. Read
-  `Retry-After`.
-
-## Self-hosting: API key settings to check before a release
-
-- `API_KEY_HASH_SECRET` is set and differs from `AUTH_SECRET`. The production boot validator
-  refuses to start otherwise, and also refuses the example development value.
-- `API_KEY_AUTH_CACHE_TTL_SECONDS` and `API_KEY_LAST_USED_TOUCH_INTERVAL_SECONDS` are values you
-  chose on purpose.
-- `API_KEY_DEFAULT_RATE_LIMIT` matches what you want new keys to get, and `API_KEY_DEFAULT_SCOPES`
-  is still the minimal `user:read`.
-- `ALLOWED_ORIGINS` lists only your real frontend domains.
-
-<Callout type="warn" title="Rotating the hash secret invalidates every key">
-  If the database itself was exposed, rotate `API_KEY_HASH_SECRET`. Keys are stored only as hashes
-  made with it, so every existing key stops working. Plan the reissue before you change it.
-</Callout>
-
-See [Environment Variables](/docs/operations/environment-variables) for every key.
+For production operating procedure (rotation schedules, incident response, release checks), see the
+[API Key Security Runbook](/docs/operations/api-key-security-runbook).

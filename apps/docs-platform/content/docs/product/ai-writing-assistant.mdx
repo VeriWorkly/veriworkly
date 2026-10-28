@@ -1,15 +1,7 @@
 ---
 title: AI Writing Assistant
-metaTitle: "AI Resume Writer: Modes, Credit Costs and Actions"
-description: VeriWorkly's AI writing assistant rewrites resume fields, drafts sections and cover letters, and tailors a resume to a job. Costs show before you run it.
+description: Standard vs. Expert mode, transparent credit costs, and the two-phase reserve/commit credit flow.
 ---
-
-**VeriWorkly's AI writing assistant rewrites a field or section, drafts resume sections and cover
-letters, tailors a resume to a job post, and writes portfolio copy. Each run spends AI credits, the
-cost is shown before you generate, and the draft never replaces your text until you choose to.**
-Try it in the editor at [app.veriworkly.com](https://app.veriworkly.com).
-
-## How do I use the AI writing assistant?
 
 An "Improve with AI" control embedded throughout the editors. Select a field or section, choose **Standard** or **Expert** mode (each shows its credit cost on its button), optionally give free-text direction, and review the AI's draft before choosing to replace the field or discard it.
 
@@ -23,7 +15,7 @@ AI writing runs on account credits, so it needs a signed-in account with a credi
 come with a paid plan, a pass or a credit pack, available at launch. See
 [Billing & Credits](/docs/product/billing-and-credits).
 
-## What can the AI writing assistant do?
+## What it can do
 
 The server defines seven AI actions (`apps/server/src/services/aiTypes.ts`):
 
@@ -43,7 +35,7 @@ current costs, and the `/credits` page in Studio lists them.
 Requests go through the OpenRouter gateway. The model chosen per request is set by the private AI
 policy to balance quality against cost. It is not a user-facing setting.
 
-## How are AI credits charged?
+## Credits, not a simple on/off
 
 AI access is backed by a full credit ledger, not a boolean:
 
@@ -54,7 +46,7 @@ AI access is backed by a full credit ledger, not a boolean:
 One credit pool pays for every AI feature in every app. See
 [Billing & Credits](/docs/product/billing-and-credits) for the full credit-wallet model.
 
-## Self-hosting: where do AI costs come from?
+## Where costs come from
 
 Per-action prompts, model selection, token limits, and **credit costs for both modes** live in a
 private AI policy loaded from configuration at boot, not in application code:
@@ -73,44 +65,18 @@ refuses to start with a policy its engine rejects. See
 In production the server refuses to start unless `AI_API_KEY` is set and the policy defines both a
 `standard` and an `expert` tier for **every** action.
 
-## Is AI use rate-limited?
-
-Yes, separately from credits.
+## Rate limiting
 
 AI endpoints have their own window and limit (`AI_RATE_LIMIT_WINDOW_MS` / `AI_RATE_LIMIT_MAX_REQUESTS`,
 default 20 requests per minute) layered on top of credit and quota enforcement, plus a per-request
 timeout (`AI_TIMEOUT_MS`, default 45 seconds).
 
-## Can I call the AI from the API?
-
-Yes, with an API key that has the `ai:write` scope.
+## Developer access
 
 The `ai:write` API-key scope is real and fully issuable: create a key with it at `/api-keys` in
 Studio and call `POST /api/v1/ai/generate` programmatically. Generation through an API key spends the
 owning account's credits exactly as the in-app flow does, so scope it deliberately. See
 [API Keys](/docs/api-keys).
-
-## Frequently asked questions
-
-<Accordions>
-  <Accordion id="generic" title="Will an AI-written resume sound generic?">
-    It can, if you accept the first draft. Give the assistant specifics in the direction box (the
-    tool, the numbers, the outcome) and edit what comes back. Practical tactics are in [using AI to
-    write your resume without sounding
-    generic](https://blog.veriworkly.com/using-ai-to-write-your-resume-without-sounding-generic).
-  </Accordion>
-  <Accordion id="failed-run" title="Do I lose credits if an AI request fails?">
-    No. Credits are reserved when a generation starts and charged only when it succeeds. A failed or
-    timed-out request releases the reservation, so the credits return to your balance. The full
-    history of every charge and release is on the `/credits` page.
-  </Accordion>
-  <Accordion id="free-ai" title="Is the AI writing assistant free?">
-    No. Every AI action spends credits, which come with a paid plan, a pass or a credit pack once
-    payments open at launch. Everything else in the editor, including all templates and exports, is
-    free. For how the credit system works, read [inside the AI credit
-    system](https://blog.veriworkly.com/inside-the-ai-credit-system).
-  </Accordion>
-</Accordions>
 
 ## API
 

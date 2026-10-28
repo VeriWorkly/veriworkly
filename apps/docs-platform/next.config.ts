@@ -57,19 +57,6 @@ const nextConfig: NextConfig = {
       { source: "/faq", destination: "https://veriworkly.com/faq", statusCode: 301 },
       { source: "/templates", destination: "https://veriworkly.com/templates", statusCode: 301 },
       { source: "/roadmap", destination: "https://veriworkly.com/roadmap", statusCode: 301 },
-      // Pages merged into another page (docs register Phase 4).
-      { source: "/docs/documentation", destination: "/docs", statusCode: 301 },
-      {
-        source: "/docs/getting-started/quick-start",
-        destination: "/docs/getting-started/local-setup",
-        statusCode: 301,
-      },
-      { source: "/docs/overview", destination: "/docs/architecture/monorepo", statusCode: 301 },
-      {
-        source: "/docs/operations/api-key-security-runbook",
-        destination: "/docs/api-keys",
-        statusCode: 301,
-      },
       ...folderRedirects().map((redirect) => ({ ...redirect, statusCode: 301 as const })),
     ];
   },
