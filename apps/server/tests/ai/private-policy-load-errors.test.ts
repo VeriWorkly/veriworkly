@@ -8,8 +8,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const loggerError = vi.fn();
+const loggerWarn = vi.fn();
 vi.mock("#lib/logger", () => ({
-  logger: { error: loggerError, warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+  logger: { error: loggerError, warn: loggerWarn, info: vi.fn(), debug: vi.fn() },
 }));
 
 const ai = {
@@ -25,6 +26,7 @@ vi.mock("#config", () => ({ config: { ai }, isProduction: false }));
 beforeEach(() => {
   vi.resetModules();
   loggerError.mockReset();
+  loggerWarn.mockReset();
   for (const key of Object.keys(ai) as Array<keyof typeof ai>) ai[key] = "";
 });
 
@@ -46,8 +48,10 @@ describe("V-329 ATS engine policy load errors", () => {
     expect(JSON.stringify(thrown)).not.toContain("/srv/private");
     expect(loggerError).toHaveBeenCalledWith(
       "ATS engine policy could not be loaded",
-      expect.objectContaining({ error: expect.stringContaining("/srv/private") }),
+      expect.objectContaining({ error: expect.any(String) }),
     );
+    // The path is in the log, never in an error a client can see.
+    expect(JSON.stringify(loggerWarn.mock.calls)).toContain("/srv/private");
   });
 });
 

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import { config } from "#config";
 import { ApiError } from "#lib/errors";
+import { logger } from "#lib/logger";
 
 const cache = new Map<string, unknown>();
 
@@ -14,25 +15,30 @@ function resolveFilePath(filePath: string): string | null {
   return null;
 }
 
-function loadPrivateJson(cacheKey: string, pathValue: string, jsonValue: string, label: string) {
+export function loadPrivateJson(
+  cacheKey: string,
+  pathValue: string,
+  jsonValue: string,
+  label: string,
+) {
   if (cache.has(cacheKey)) return cache.get(cacheKey);
 
   let source = jsonValue ? jsonValue.trim() : "";
   if (!source && pathValue) {
+    // The 503 reaches the client, so where the file was looked for stays in the server log.
     const resolvedPath = resolveFilePath(pathValue);
     if (!resolvedPath) {
-      throw new ApiError(
-        503,
-        `${label} file was not found at "${pathValue}" (working directory: ${process.cwd()}).`,
-      );
+      logger.warn(`${label} file was not found`, { path: pathValue, cwd: process.cwd() });
+      throw new ApiError(503, `${label} is not configured.`);
     }
     try {
       source = readFileSync(resolvedPath, "utf8");
     } catch (readErr) {
-      throw new ApiError(
-        503,
-        `${label} could not be read from "${resolvedPath}": ${(readErr as Error).message}`,
-      );
+      logger.warn(`${label} could not be read`, {
+        path: resolvedPath,
+        error: (readErr as Error).message,
+      });
+      throw new ApiError(503, `${label} is not configured.`);
     }
   }
 

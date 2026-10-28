@@ -120,9 +120,12 @@ describe("credit ledger", () => {
     const { CreditService } = await import("../../src/services/creditService.js");
     txMock.creditWallet.upsert.mockResolvedValue({ id: "wallet_1", balance: 2 });
 
+    const { NOT_ENOUGH_CREDITS } = await import("../../src/services/productNames.js");
+
+    // One message for "out of credits" everywhere, the one that says how to get more.
     await expect(
       CreditService.consume("user_1", 5, { requestId: "rewrite_2", action: "resume_rewrite" }),
-    ).rejects.toThrow("Not enough AI credits");
+    ).rejects.toMatchObject({ statusCode: 402, message: NOT_ENOUGH_CREDITS });
     expect(txMock.creditTransaction.create).not.toHaveBeenCalled();
   });
 });
