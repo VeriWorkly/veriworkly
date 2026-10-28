@@ -10,6 +10,8 @@ import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
 import { useTemplateComponent } from "@/templates/shared/use-template-component";
 import { ResumePagedPreview } from "@/features/resume/editor/ResumePagedPreview";
+import { DownloadActions } from "@/app/share/components/DownloadActions";
+import { ResumeCanvas } from "@/app/share/components/ResumeCanvas";
 
 import { PARITY_FIXTURES, type ParityFixtureId } from "@/tests/parity/fixtures";
 
@@ -22,7 +24,9 @@ type ParityType = "resume" | "cover-letter";
  *
  * `mode=raw` renders the unpaginated document, which isolates box geometry from
  * the pagination algorithm. `mode=paged` renders through `ResumePagedPreview`,
- * which is what the user actually sees. `paper` sets the document's paper size.
+ * which is what the user actually sees, with a button that runs the editor's HTML export on
+ * it. `mode=share` renders the public share page's canvas and downloads. `paper` sets the
+ * document's paper size.
  */
 export function ParityClient({
   fixture,
@@ -32,7 +36,7 @@ export function ParityClient({
   type,
 }: {
   fixture: ParityFixtureId;
-  mode: "raw" | "paged";
+  mode: "raw" | "paged" | "share";
   paperSize: PaperSize;
   templateId: string;
   type: ParityType;
@@ -81,12 +85,37 @@ export function ParityClient({
       };
       const element = createElement(ResumeTemplate, { resume });
 
-      body =
-        mode === "paged" ? (
-          <ResumePagedPreview paperSize={paperSize}>{element}</ResumePagedPreview>
-        ) : (
-          element
+      if (mode === "share") {
+        body = (
+          <>
+            <DownloadActions resume={resume} sharePreviewId="share-preview" />
+            <ResumeCanvas resume={resume} sharePreviewId="share-preview" template={element} />
+          </>
         );
+      } else if (mode === "paged") {
+        // The editor's "Export → HTML" captures the element its preview stage carries the id
+        // of; this button runs that same export against this preview.
+        body = (
+          <>
+            <button
+              data-parity-export-html=""
+              onClick={() => {
+                void import("@/features/documents/export/export-html").then(
+                  ({ exportResumeAsHtml }) => exportResumeAsHtml(resume, "parity-preview"),
+                );
+              }}
+              type="button"
+            >
+              Export HTML
+            </button>
+            <div id="parity-preview">
+              <ResumePagedPreview paperSize={paperSize}>{element}</ResumePagedPreview>
+            </div>
+          </>
+        );
+      } else {
+        body = element;
+      }
     }
   } else {
     const content = PARITY_FIXTURES[fixture].coverLetter();

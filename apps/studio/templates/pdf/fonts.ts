@@ -11,39 +11,21 @@ const registeredFonts = new Set<string>();
 let hasRegisteredHyphenation = false;
 
 /**
- * Mirrors the preview's `overflow-wrap: anywhere` (see `.resume-page-preview`
- * in globals.css) as closely as react-pdf allows.
- *
- * Words short enough to fit a column are left whole, and genuinely oversized
- * tokens (long URLs and emails) get a break opportunity at every character,
- * which is what `anywhere` does once a word cannot fit on a line by itself.
- *
- * Where such a token does break, react-pdf prints a "-" at the end of the line
- * (S-104/S-297): `@react-pdf/textkit` 7 turns every break inside a word into a
- * penalty node and `breakLines` inserts U+002D at each penalty it breaks on.
- * The only breaks without a hyphen are glue nodes, which textkit makes only from
- * parts that are JS whitespace (`s.trim() === ""`). U+200B is not whitespace to
- * `trim`, so it is still a hyphenated penalty. U+FEFF is, and with Inter in the
- * stack it lays out at zero width with no hyphen, but it stays in the text layer:
- * pdf.js then extracts the URL as "h t t p s : / / …", which breaks every reader
- * and ATS that copies it. A hyphen at a visible break costs less than a URL
- * nobody can copy, so the hyphen stays until textkit can break without one.
- */
-const MAX_UNBREAKABLE_WORD_LENGTH = 60;
-
-/**
  * Turns react-pdf's hyphenation off, which is what CSS does by default.
  *
- * Exported and free of the `window` guard on purpose: react-pdf hyphenates
- * eagerly ("doc-ument", "de-tails") unless told not to, and the preview never
- * will, so anything that lays out a PDF has to install this — including tests.
+ * Lines are no longer broken at textkit's syllables at all: the PDF breaks them by
+ * the browser's rules (`templates/pdf/line-breaks.ts`), including the preview's
+ * `overflow-wrap: anywhere` for a URL too long for its column, and never prints a
+ * "-" at a break (S-104/S-297). Keeping every word whole here still matters if that
+ * breaker is ever bypassed: textkit would otherwise split "doc-ument", "de-tails".
+ *
+ * Exported and free of the `window` guard on purpose: anything that lays out a PDF
+ * has to install this — including tests.
  */
 export function registerPdfHyphenation() {
   if (hasRegisteredHyphenation) return;
 
-  Font.registerHyphenationCallback((word) =>
-    word.length <= MAX_UNBREAKABLE_WORD_LENGTH ? [word] : Array.from(word),
-  );
+  Font.registerHyphenationCallback((word) => [word]);
 
   hasRegisteredHyphenation = true;
 }

@@ -513,7 +513,7 @@ describe("S-285: WYSIWYG HTML export", () => {
 
     const html = await downloads[0].blob.text();
     expect(html).toContain("width: 794px");
-    expect(html).toMatch(/@page \{\s*size: 794px 1122px;/);
+    expect(html).toContain("@page{size:794px 1122px;");
   });
 
   it("S-285: falls back to the generated document when the preview is hidden", async () => {
@@ -824,16 +824,14 @@ describe("Decision 9: a resume's paper size reaches every output", () => {
 
       const html = await downloads[0].blob.text();
 
-      expect(html.match(/@page \{\s*size: (\d+)px (\d+)px;/)?.slice(1)).toEqual([
+      expect(html.match(/@page\{size:(\d+)px (\d+)px;/)?.slice(1)).toEqual([
         String(widthPx),
         String(heightPx),
       ]);
     });
 
     it(`the generated HTML states a ${paperSize} @page`, () => {
-      expect(buildHtml(onPaper(paperSize))).toContain(
-        `@page { size: ${widthPx}px ${heightPx}px; }`,
-      );
+      expect(buildHtml(onPaper(paperSize))).toContain(`@page{size:${widthPx}px ${heightPx}px;`);
     });
   }
 
@@ -844,7 +842,7 @@ describe("Decision 9: a resume's paper size reaches every output", () => {
     expect(getResumeRenderStyle(resume).paperSize).toBe("a4");
     expect(parseResumeDataInput(resume)?.customization.paperSize).toBe("a4");
     expect(await docxPageSize(await buildResumeDocx(resume))).toEqual(TWIPS.a4);
-    expect(buildHtml(resume)).toContain("@page { size: 794px 1122px; }");
+    expect(buildHtml(resume)).toContain("@page{size:794px 1122px;");
   });
 
   it("storage and import keep Letter and read an unknown size as A4", () => {

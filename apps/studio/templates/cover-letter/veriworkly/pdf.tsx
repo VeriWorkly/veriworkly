@@ -47,8 +47,13 @@ function createStyles(
    * text is not in — and the paragraph runs off the right edge of the page,
    * which is exactly what the preview does not do.
    */
-  const mainWidth = page.widthPx - S.railWidth - S.hairline - appearance.pageMargin * 2;
-  const railTextWidth = S.railWidth - S.railPadX * 2;
+  //
+  // The rail's border is inside its fixed width, in Yoga as in the preview's border-box: the
+  // rail's text column loses it, and the letter (which starts at `railWidth` + margin) does
+  // not. Counted the other way round, every rail line was set 1px wider than its column and
+  // every letter line 1px narrower than the preview's, which moved line breaks.
+  const mainWidth = page.widthPx - S.railWidth - appearance.pageMargin * 2;
+  const railTextWidth = S.railWidth - S.railPadX * 2 - S.hairline;
   const listWidth = mainWidth - S.listPadX * 2;
   const recipientWidth = mainWidth - S.metaDateWidth - S.metaColumnGap;
 

@@ -1,4 +1,4 @@
-"use client";
+// Pure, and shared: the public share page normalises a shared resume on the server too.
 
 export function safeText(value: string | undefined | null): string {
   return value?.trim() ?? "";

@@ -39,8 +39,13 @@ export interface FlowFragment<T> {
 /** Marks a list row (`data-flow-row` in the templates), the unit a "rows" item is cut between. */
 const FLOW_ROW_ATTRIBUTE = "data-flow-row";
 
-/** Rounding slack between the two engines, in CSS pixels. */
-const TOLERANCE = 1;
+/**
+ * Float noise between two box measurements, in CSS pixels — not slack. react-pdf keeps a
+ * line or a box only when it ends at or above the page foot (`lineBottom > height` ends the
+ * page, `height < top + height` moves a box), so a pixel of slack here kept a paragraph
+ * line, or a whole paragraph, on a page the PDF had already turned.
+ */
+const TOLERANCE = 0.01;
 
 /** react-pdf's default `orphans` and `widows`. */
 const MIN_LINES = 2;

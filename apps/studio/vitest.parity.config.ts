@@ -11,15 +11,22 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
  */
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": rootDir,
-    },
+    alias: [
+      // The PDF line breaker, see `templates/pdf/textkit.ts`. Listed before "@".
+      {
+        find: /^@react-pdf\/textkit$/,
+        replacement: path.join(rootDir, "templates/pdf/textkit.ts"),
+      },
+      { find: "@", replacement: rootDir },
+    ],
   },
 
   test: {
     environment: "node",
     include: ["tests/parity/**/*.test.ts"],
     globals: false,
+    // Bundled rather than loaded by Node, so the alias reaches the textkit import inside them.
+    server: { deps: { inline: [/@react-pdf[\\/](renderer|layout)[\\/]/] } },
     // Every test starts from the real implementations and globals, whatever the last one stubbed.
     restoreMocks: true,
     unstubGlobals: true,

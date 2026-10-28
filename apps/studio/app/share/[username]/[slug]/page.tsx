@@ -9,6 +9,7 @@ import { ApiRequestError } from "@/utils/fetchApiData";
 
 import { FullScreenMessage } from "../../components/FullScreenMessage";
 import ShareDocumentClient from "./share-document-client";
+import { renderSharedResumeTemplate } from "./shared-resume-template";
 
 type ShareParams = { params: Promise<{ username: string; slug: string }> };
 
@@ -84,5 +85,12 @@ export default async function SharedDocumentPage({ params }: ShareParams) {
     return <FullScreenMessage title={message.title} description={message.description} />;
   }
 
-  return <ShareDocumentClient username={username} slug={slug} initialData={share.data} />;
+  return (
+    <ShareDocumentClient
+      username={username}
+      slug={slug}
+      initialData={share.data}
+      serverTemplate={await renderSharedResumeTemplate(share.data)}
+    />
+  );
 }

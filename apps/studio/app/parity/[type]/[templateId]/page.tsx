@@ -39,7 +39,7 @@ export default async function ParityPage({
 
   if (!PARITY_TYPES.includes(type as ParityType)) notFound();
   if (!PARITY_FIXTURE_IDS.includes(fixture as ParityFixtureId)) notFound();
-  if (mode !== "raw" && mode !== "paged") notFound();
+  if (mode !== "raw" && mode !== "paged" && mode !== "share") notFound();
   if (!PAPER_SIZES.includes(paper as PaperSize)) notFound();
 
   return (

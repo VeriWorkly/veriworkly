@@ -13,7 +13,8 @@ import { toResumeDocument } from "@/features/resume/services/resume-core";
 
 const mockedBackendApiUrl = vi.fn((path: string) => `http://localhost:4000/api/v1${path}`);
 
-vi.mock("@/lib/constants", () => ({
+vi.mock("@/lib/constants", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/constants")>()),
   backendApiUrl: (path: string) => mockedBackendApiUrl(path),
 }));
 
@@ -157,20 +158,46 @@ describe("share contract", () => {
     });
   });
 
-  describe("S-142 S-254 expiry is the end of the chosen local day", () => {
-    const originalTz = process.env.TZ;
-
-    afterEach(() => {
-      process.env.TZ = originalTz;
-    });
-
-    it("S-254 under America/Los_Angeles the link lives until local midnight", async () => {
-      process.env.TZ = "America/Los_Angeles";
+  describe("S-142 expiry is the end of the chosen local day", () => {
+    it("S-142 S-356 under America/Los_Angeles a date lives until local midnight", async () => {
+      vi.stubEnv("TZ", "America/Los_Angeles");
       const { endOfLocalDay, isPastLocalDate } = await import("@/lib/local-date");
 
       expect(endOfLocalDay("2026-11-03").toISOString()).toBe("2026-11-04T07:59:59.999Z");
       expect(isPastLocalDate("2020-01-01")).toBe(true);
       expect(isPastLocalDate("2999-01-01")).toBe(false);
+    });
+  });
+
+  describe("S-254 a link edited since it was shared says so", () => {
+    it("S-254 the shared version is stale only once the document was edited after it", async () => {
+      const { isShareSnapshotStale } = await import("@/components/modals/ShareDocumentModal");
+
+      expect(isShareSnapshotStale("2026-10-27T10:00:01.000Z", "2026-10-27T10:00:00.000Z")).toBe(
+        true,
+      );
+      expect(isShareSnapshotStale("2026-10-27T10:00:00.000Z", "2026-10-27T10:00:00.000Z")).toBe(
+        false,
+      );
+      expect(isShareSnapshotStale(null, "2026-10-27T10:00:00.000Z")).toBe(false);
+    });
+
+    it("S-254 a stale link offers to update the shared version; a current one does not", async () => {
+      const { SharedVersionNotice } = await import("@/components/modals/ShareDocumentModal");
+      const notice = (stale: boolean) =>
+        renderToStaticMarkup(
+          <SharedVersionNotice
+            sharedAt="2026-10-27T10:00:00.000Z"
+            stale={stale}
+            busy={false}
+            onUpdate={() => {}}
+          />,
+        );
+
+      expect(notice(true)).toContain("the link still shows the older version");
+      expect(notice(true)).toContain("Update shared version");
+      expect(notice(false)).toContain("Shared version from");
+      expect(notice(false)).not.toContain("Update shared version");
     });
   });
 
@@ -199,8 +226,8 @@ describe("share contract", () => {
     });
 
     it("S-041 an unsupported document type gets a full-screen message", async () => {
-      const { readShareSnapshot, toShareSnapshot } =
-        await import("@/features/documents/services/share-service");
+      const { toShareSnapshot } = await import("@/features/documents/services/share-service");
+      const { readShareSnapshot } = await import("@/features/documents/services/share-snapshot");
 
       expect(readShareSnapshot({ type: "PORTFOLIO", content: {}, templateId: "x" })).toEqual({
         kind: "unsupported",
@@ -221,6 +248,45 @@ describe("share contract", () => {
         await SharedDocumentPage({ params: Promise.resolve({ username: "jane", slug: "cv" }) }),
       );
     }
+
+    it("the server-rendered page carries the resume itself, visible, not a spinner", async () => {
+      const { toShareSnapshot } = await import("@/features/documents/services/share-service");
+      const name = "Quinn Ashdown-Reyes";
+      const resume = { ...defaultResume, basics: { ...defaultResume.basics, fullName: name } };
+
+      const html = await renderPage(200, {
+        data: {
+          passwordRequired: false,
+          documentTitle: "Quinn CV",
+          expiresAt: null,
+          snapshot: toShareSnapshot(toResumeDocument(resume)),
+        },
+      });
+
+      expect(html).not.toContain("Loading resume");
+      // Drawn once: the pages are cut in the browser, so the server's copy is the only one.
+      expect(html.split(name)).toHaveLength(2);
+
+      // Nothing between the canvas and the name hides it: no aria-hidden, inert, transparent
+      // or off-screen box — the measuring copy's state once the pages are drawn.
+      const canvas = html.indexOf('id="share-document-preview-jane-cv"');
+      const upToName = html.slice(canvas, html.indexOf(name));
+
+      expect(canvas).toBeGreaterThan(-1);
+      expect(upToName).not.toMatch(/aria-hidden="true"|\binert=""|opacity-0|-10000/);
+      expect(upToName).not.toContain("data-export-exclude");
+      // And it is what an export or a print takes until the pages replace it.
+      expect(upToName).toContain('data-resume-pages="true"');
+    });
+
+    it("a locked link renders no resume on the server", async () => {
+      const html = await renderPage(200, {
+        data: { passwordRequired: true, expiresAt: null },
+      });
+
+      expect(html).not.toContain("resume-container");
+      expect(html).not.toContain(defaultResume.basics.fullName);
+    });
 
     it("S-044 410 says the link has expired", async () => {
       const html = await renderPage(410, { message: "Link expired" });
@@ -303,6 +369,32 @@ describe("share contract", () => {
       expect(html).not.toMatch(/class="sticky/);
     });
 
+    it.each(["a4", "letter"] as const)(
+      "(c) the shared %s page is one page tall, not two",
+      async (paperSize) => {
+        const { ResumeCanvas } = await import("@/app/share/components/ResumeCanvas");
+        const { resumeTemplateRegistry } = await import("@/templates/resume/registry");
+        const { getPageGeometry } = await import("@/templates/shared/page-geometry");
+        const resume = {
+          ...defaultResume,
+          customization: { ...defaultResume.customization, paperSize },
+        };
+
+        for (const id of resumeTemplateRegistry.ids) {
+          const Template = await resumeTemplateRegistry.loadWeb(id);
+          const html = renderToStaticMarkup(
+            <ResumeCanvas
+              sharePreviewId="share-page"
+              resume={resume}
+              template={<Template resume={resume} className="" />}
+            />,
+          );
+
+          expect(html, id).toContain(`min-height:${getPageGeometry(paperSize).heightPx}px`);
+        }
+      },
+    );
+
     it("S-227 recruiters are not offered the editable JSON source", () => {
       const source = readFileSync(
         join(__dirname, "..", "..", "app/share/components/DownloadActions.tsx"),
@@ -316,11 +408,7 @@ describe("share contract", () => {
       const { ResumeCanvas } = await import("@/app/share/components/ResumeCanvas");
 
       const html = renderToStaticMarkup(
-        <ResumeCanvas
-          sharePreviewId="share-page"
-          resume={defaultResume}
-          templateComponent={() => <p>page</p>}
-        />,
+        <ResumeCanvas sharePreviewId="share-page" resume={defaultResume} template={<p>page</p>} />,
       );
 
       expect(html).toContain("overflow-x-auto");
@@ -328,6 +416,20 @@ describe("share contract", () => {
       expect(html).toContain("print:transform-none!");
       expect(html).toContain("print:w-auto!");
     });
+  });
+
+  it("S-180 share verify never calls a reply without a message a wrong password", async () => {
+    const { verifyShareLinkByUsernameAndSlug } =
+      await import("@/features/documents/services/share-service");
+    // A rate limit answered by a proxy in front of the API carries no JSON message.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("Too Many Requests", { status: 429 }),
+    );
+
+    const failure = verifyShareLinkByUsernameAndSlug("jane", "cv", "x");
+
+    await expect(failure).rejects.toMatchObject({ status: 429 });
+    await expect(failure).rejects.not.toThrow(/password/i);
   });
 
   it("S-180 share verify shows the server's 429 text, not 'Invalid password'", async () => {

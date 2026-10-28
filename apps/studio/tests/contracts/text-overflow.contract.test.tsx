@@ -82,10 +82,9 @@ function widthPt(text: string, fontSizePt: number, weight: number, letterSpacing
  * Measures the lines react-pdf actually produced against the box they sit in.
  *
  * Comparing the drawn line rather than re-deriving a line count keeps the check
- * independent of how textkit chooses its breaks — it may hyphenate, and it may
- * compress a line's spaces by up to half their width rather than break at all
- * (`shrinkWhitespaceFactor`), which `slack` allows for. What it may never do is
- * leave ink outside the column.
+ * independent of where the breaks fall. The PDF breaks lines by the browser's rules
+ * (`templates/pdf/line-breaks.ts`), which never squeeze a line's spaces to make it fit,
+ * so there is no slack beyond float noise: a line's ink stays inside its column.
  */
 function overflowingLines(node: Node, found: string[] = []): string[] {
   if (node.type === "TEXT" && node.lines) {
@@ -95,8 +94,6 @@ function overflowingLines(node: Node, found: string[] = []): string[] {
     const ls = node.style?.letterSpacing ?? 0;
 
     if (fontSizePt > 0 && boxPt > 0) {
-      const spacePt = widthPt(" ", fontSizePt, weight, ls);
-
       for (const line of node.lines) {
         const text = (line.string ?? "").replace(/\s+$/, "");
 
@@ -104,7 +101,7 @@ function overflowingLines(node: Node, found: string[] = []): string[] {
         // problem, not the layout's.
         if (!text.includes(" ")) continue;
 
-        const slack = (text.split(" ").length - 1) * spacePt * 0.5;
+        const slack = 0.01;
         const ink = widthPt(text, fontSizePt, weight, ls);
 
         if (ink > boxPt + slack) {

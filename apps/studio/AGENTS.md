@@ -24,6 +24,8 @@ Read [`README.md`](README.md) for the architecture, env vars and test commands. 
 
 - **One keep-together rule.** `templates/resume/shared/keep-together.ts` decides where sections and items may break, for both `web.tsx` and `pdf.tsx`. Never add a page-break rule to only one of them.
 - **One source per export.** `buildResumeSections` and `getCoverLetterState` decide what is printed. Every format (preview, PDF, DOCX, HTML, Markdown, text) reads from them; never filter hidden sections or placeholders in a single exporter.
+- **One set of print rules.** Every exported HTML file (the resume's WYSIWYG and generated exports, each cover letter template) gets `@page`, colour printing, break rules and the print media query from `documentPrintCss` in `templates/shared/print-styles.ts`. A template writes only its own look. `print-styles.contract.test.ts` fails on a hand-written `@page`.
+- **The share page shows the editor's pages.** `ResumeCanvas` renders the template through `ResumePagedPreview`, so the share page, the editor and the PDF break pages in the same place. The parity suite checks all of them, plus the printed HTML export, page by page.
 - **Exporters load per format.** `registry.tsx` and `resume-exporters.tsx` / `cover-letter-exporters.tsx` reach each exporter through a dynamic `import()`. A static import pulls `@react-pdf/renderer` or `docx` into the editor bundle.
 
 ## Server and auth

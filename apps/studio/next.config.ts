@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
+import path from "node:path";
+
 import packageJson from "./package.json";
+
+/** The PDF's line breaker, see `templates/pdf/textkit.ts`. */
+const TEXTKIT_REPLACEMENT = path.join(__dirname, "templates", "pdf", "textkit.ts");
 
 /** For the asset folders the proxy skips: they serve files, never a page that runs script. */
 const STATIC_ASSET_CSP =
@@ -25,6 +30,24 @@ const nextConfig: NextConfig = {
 
   // Inlined at build time so the version shown in the account menu is the one that shipped.
   env: { STUDIO_VERSION: packageJson.version },
+
+  // The PDF breaks lines where the preview does: `@react-pdf/layout` gets textkit with the
+  // browser's line breaker. See `templates/pdf/textkit.ts`; the vitest configs alias it too.
+  // Both bundlers carry the alias: a build with `--webpack` that lacked it would fall back to
+  // textkit's own Knuth–Plass breaker without a word, and break lines the preview does not.
+  turbopack: {
+    resolveAlias: { "@react-pdf/textkit": "./templates/pdf/textkit.ts" },
+  },
+  webpack(config: { resolve?: { alias?: Record<string, unknown> } }) {
+    config.resolve ??= {};
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      // `$`: only the bare package. The replacement imports textkit's own file by its path.
+      "@react-pdf/textkit$": TEXTKIT_REPLACEMENT,
+    };
+
+    return config;
+  },
 
   async redirects() {
     return [

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, AlertCircle } from "lucide-react";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from "react";
 
 import type { TemplateComponent } from "@/types/template";
 
@@ -9,9 +9,9 @@ import { loadTemplateComponentById } from "@/templates";
 
 import {
   type ShareLinkPayload,
-  readShareSnapshot,
   verifyShareLinkByUsernameAndSlug,
 } from "@/features/documents/services/share-service";
+import { readShareSnapshot } from "@/features/documents/services/share-snapshot";
 import { CoverLetterPreview } from "@/templates/cover-letter/web";
 
 import {
@@ -32,10 +32,17 @@ const ShareDocumentClient = ({
   username,
   slug,
   initialData,
+  serverTemplate = null,
 }: {
   username: string;
   slug: string;
   initialData: ShareLinkPayload;
+  /**
+   * `initialData`'s resume drawn by its template on the server, so the page's HTML carries
+   * the resume (`renderSharedResumeTemplate`). Null for a locked link: once unlocked, the
+   * template loads here.
+   */
+  serverTemplate?: ReactNode;
 }) => {
   const sharePreviewId = `share-document-preview-${username}-${slug}`;
 
@@ -54,6 +61,8 @@ const ShareDocumentClient = ({
   const shared = useMemo(() => readShareSnapshot(payload.snapshot), [payload.snapshot]);
   const resume = shared.kind === "resume" ? shared.resume : null;
   const templateId = resume?.templateId ?? null;
+  // The server drew the resume the page opened with; one unlocked here is drawn here.
+  const drawnOnServer = serverTemplate !== null && payload === initialData;
 
   useEffect(() => {
     if (!payload.passwordRequired && payload.documentTitle) {
@@ -62,7 +71,7 @@ const ShareDocumentClient = ({
   }, [payload]);
 
   useEffect(() => {
-    if (!templateId) return;
+    if (!templateId || drawnOnServer) return;
 
     let isActive = true;
 
@@ -85,7 +94,7 @@ const ShareDocumentClient = ({
     return () => {
       isActive = false;
     };
-  }, [templateId]);
+  }, [templateId, drawnOnServer]);
 
   const handleUnlock = useCallback(async () => {
     if (!password) {
@@ -149,7 +158,7 @@ const ShareDocumentClient = ({
 
   const template = templateState.templateId === templateId ? templateState : null;
 
-  if (template?.error) {
+  if (!drawnOnServer && template?.error) {
     return (
       <FullScreenMessage
         title="This resume could not be displayed"
@@ -159,7 +168,12 @@ const ShareDocumentClient = ({
     );
   }
 
-  if (!resume || !template?.component) {
+  const Template = template?.component ?? null;
+  const rendered = drawnOnServer
+    ? serverTemplate
+    : Template && resume && <Template resume={resume} className="" />;
+
+  if (!resume || !rendered) {
     return (
       <FullScreenMessage
         title="Loading resume"
@@ -176,11 +190,7 @@ const ShareDocumentClient = ({
         actions={<DownloadActions resume={resume} sharePreviewId={sharePreviewId} />}
       />
 
-      <ResumeCanvas
-        resume={resume}
-        sharePreviewId={sharePreviewId}
-        templateComponent={template.component}
-      />
+      <ResumeCanvas resume={resume} sharePreviewId={sharePreviewId} template={rendered} />
     </main>
   );
 };

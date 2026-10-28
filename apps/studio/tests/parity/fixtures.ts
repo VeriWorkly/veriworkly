@@ -1,6 +1,8 @@
 import type { ResumeData } from "@/types/resume";
 import type { CoverLetterContent } from "@/features/cover-letter/types";
 
+import type { DocumentDateFormat } from "@/features/documents/utils/formatters";
+
 import { createDefaultCoverLetter } from "@/features/cover-letter/defaults";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 
@@ -13,16 +15,42 @@ import { defaultResume } from "@/features/resume/constants/default-resume";
  * opportunity, a bullet list dense enough to cross a page boundary, a script
  * with no spaces at all, and blocks taller than a page, which both engines must
  * flow across pages rather than clip.
+ *
+ * The rest pin settings that change what prints without changing much content: a one-page
+ * resume (the share page once drew it two pages tall), each date format, section headings
+ * the user renamed, custom and dated typed sections, and a right-to-left document language
+ * (Latin text, because no embedded PDF family draws Arabic glyphs — see
+ * `tests/contracts/font-coverage.contract.test.ts`).
  */
-export type ParityFixtureId = "default" | "long" | "dense" | "cjk" | "spill" | "overflow";
+export type ParityFixtureId =
+  | "default"
+  | "short"
+  | "long"
+  | "dense"
+  | "cjk"
+  | "spill"
+  | "overflow"
+  | "date-mmm-yyyy"
+  | "date-mm-yyyy"
+  | "date-yyyy-mm"
+  | "renamed"
+  | "custom"
+  | "rtl";
 
 export const PARITY_FIXTURE_IDS: ParityFixtureId[] = [
   "default",
+  "short",
   "long",
   "dense",
   "cjk",
   "spill",
   "overflow",
+  "date-mmm-yyyy",
+  "date-mm-yyyy",
+  "date-yyyy-mm",
+  "renamed",
+  "custom",
+  "rtl",
 ];
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -173,6 +201,134 @@ function overflowResume(): ResumeData {
   return resume;
 }
 
+/** Only the header, links and summary: comfortably one page on either paper. */
+function shortResume(): ResumeData {
+  const resume = baseResume();
+
+  resume.sections = resume.sections.map((section) => ({
+    ...section,
+    visible: ["basics", "links", "summary"].includes(section.id),
+  }));
+
+  return resume;
+}
+
+/** The dense resume, so every date column and every page break is printed in `format`. */
+function datedResume(format: DocumentDateFormat): () => ResumeData {
+  return () => {
+    const resume = denseResume();
+
+    resume.customization = { ...resume.customization, dateFormat: format };
+    resume.certificates = [
+      {
+        id: "cert-1",
+        title: "AWS Certified Solutions Architect",
+        issuer: "Amazon Web Services",
+        date: "2023-06",
+        description: "",
+        showLink: false,
+      },
+    ];
+
+    return resume;
+  };
+}
+
+/** Every heading renamed, some much longer than the default. */
+function renamedResume(): ResumeData {
+  const resume = spillResume();
+  const labels: Partial<Record<string, string>> = {
+    summary: "Professional Profile",
+    experience: "Selected Engineering Leadership and Delivery Experience",
+    education: "Academic Background",
+    projects: "Things I Built",
+    skills: "Toolbox",
+  };
+
+  resume.sections = resume.sections.map((section) => ({
+    ...section,
+    label: labels[section.id] ?? section.label,
+  }));
+
+  return resume;
+}
+
+/** Two user-invented sections plus dated typed ones, ordered among the built-in sections. */
+function customResume(): ResumeData {
+  const resume = baseResume();
+  const item = (id: string, name: string, details: string[]) => ({
+    id,
+    name,
+    issuer: "Open Source Foundation",
+    date: "2024-05",
+    link: "",
+    referenceId: "",
+    description: `${name}: a short description that runs onto a second line in the narrower templates.`,
+    details,
+  });
+
+  resume.customSections = [
+    {
+      id: "custom-talks",
+      kind: "custom",
+      title: "Talks",
+      items: [
+        item("talk-1", "Local-first editors at scale", ["Conference keynote", "Recorded"]),
+        item("talk-2", "Shipping accessible PDFs", ["Meetup talk"]),
+      ],
+    },
+    {
+      id: "custom-mentoring",
+      kind: "custom",
+      title: "Mentoring",
+      items: [item("mentor-1", "Engineering mentor", ["Weekly sessions", "Career planning"])],
+    },
+  ];
+
+  resume.awards = [
+    {
+      id: "award-1",
+      title: "Engineering Excellence Award",
+      awarder: "Acme Corp",
+      date: "2023-11",
+      description: "For the local-first storage migration.",
+      showLink: false,
+    },
+  ];
+
+  resume.certificates = [
+    {
+      id: "cert-1",
+      title: "Certified Kubernetes Application Developer",
+      issuer: "CNCF",
+      date: "2022-08",
+      description: "",
+      showLink: false,
+    },
+  ];
+
+  resume.sections = [
+    ...resume.sections
+      .filter((section) => section.id !== "custom")
+      .map((section) => (section.order > 4 ? { ...section, order: section.order + 1 } : section)),
+    { id: "custom", label: "Talks", visible: true, order: 5, customSectionId: "custom-talks" },
+    {
+      id: "custom",
+      label: "Mentoring",
+      visible: true,
+      order: 20,
+      customSectionId: "custom-mentoring",
+    },
+  ];
+
+  return resume;
+}
+
+/** A right-to-left document language. Only the exports' `lang`/`dir` read it. */
+function rtlResume(): ResumeData {
+  return { ...spillResume(), language: "ar" };
+}
+
 export const PARITY_FIXTURES: Record<
   ParityFixtureId,
   { resume: () => ResumeData; coverLetter: () => CoverLetterContent }
@@ -209,6 +365,38 @@ export const PARITY_FIXTURES: Record<
             `- Highlight ${index + 1}: shipped a change that survived a full quarter in production without a rollback`,
         ).join("\n"),
       }),
+  },
+  short: {
+    resume: shortResume,
+    coverLetter: () =>
+      coverLetterContent({
+        body: "I would bring a practical product engineering mindset to this team.",
+        highlights: "",
+      }),
+  },
+  "date-mmm-yyyy": {
+    resume: datedResume("MMM YYYY"),
+    coverLetter: () => coverLetterContent(),
+  },
+  "date-mm-yyyy": {
+    resume: datedResume("MM/YYYY"),
+    coverLetter: () => coverLetterContent(),
+  },
+  "date-yyyy-mm": {
+    resume: datedResume("YYYY-MM"),
+    coverLetter: () => coverLetterContent(),
+  },
+  renamed: {
+    resume: renamedResume,
+    coverLetter: () => coverLetterContent(),
+  },
+  custom: {
+    resume: customResume,
+    coverLetter: () => coverLetterContent(),
+  },
+  rtl: {
+    resume: rtlResume,
+    coverLetter: () => coverLetterContent({ language: "ar" }),
   },
   spill: {
     resume: spillResume,

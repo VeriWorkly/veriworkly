@@ -28,6 +28,9 @@ import { PdfSocialIcon } from "@/templates/pdf/SocialIcon";
 /** Matches `./web.tsx`; see `../professional/pdf.tsx` for why px is stated in points. */
 const MINIMAL_MARKER = "–";
 
+/** The accent rule down the list's left edge, in CSS px (`borderLeft` in the preview). */
+const LIST_RULE = 2;
+
 function createStyles(
   palette: CoverLetterPalette,
   tokens: CoverLetterTokens,
@@ -35,7 +38,9 @@ function createStyles(
   page: PageGeometry,
 ) {
   const contentWidth = page.widthPx - pageMargin * 2;
-  const listWidth = contentWidth - S.listPadX * 2;
+  // The list's accent rule sits inside its box, as in the preview: its rows lose that width
+  // too, or every bullet line is set 2px wider than the preview's.
+  const listWidth = contentWidth - S.listPadX * 2 - LIST_RULE;
 
   const column = (width: number) => ({ width: pxToPt(width), maxWidth: pxToPt(width) });
 
@@ -121,7 +126,7 @@ function createStyles(
     list: {
       ...column(contentWidth),
       borderLeftColor: palette.accent,
-      borderLeftWidth: pxToPt(2),
+      borderLeftWidth: pxToPt(LIST_RULE),
       paddingHorizontal: pxToPt(S.listPadX),
       paddingVertical: pxToPt(S.listPadY),
     },

@@ -7,7 +7,8 @@ import type { LayoutNode } from "./pdf-layout";
 
 import { PARITY_FIXTURE_IDS, PARITY_FIXTURES, type ParityFixtureId } from "./fixtures";
 import { launchParityBrowser } from "./browser";
-import { layoutPages } from "./pdf-layout";
+import { layoutPages, pageTextKey, pdfPageSignatures } from "./pdf-layout";
+import { expectPrintedSheets, printHtml } from "./print-html";
 import { recordReport } from "./report";
 import { startParityServer } from "./server";
 import { ptToPx } from "./geometry";
@@ -16,6 +17,7 @@ import type { CoverLetterContent } from "@/features/cover-letter/types";
 
 import { PAPER_SIZES, getPageGeometry, type PaperSize } from "@/templates/shared/page-geometry";
 import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
+import { buildCoverLetterHtml } from "@/templates/cover-letter/web";
 
 /**
  * The PDF flows the letter and the preview replays react-pdf's page breaks, so the
@@ -27,34 +29,20 @@ import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
 const TEMPLATES = coverLetterTemplateRegistry.ids;
 
 /** CJK cannot be set in the PDF at all; see `tests/contracts/font-coverage.contract.test.ts`. */
-// `overflow` is a resume fixture; its cover letter is the default one.
-const MEASURABLE_FIXTURES = PARITY_FIXTURE_IDS.filter((id) => id !== "cjk" && id !== "overflow");
+// The date-format, renamed-heading, custom-section and overflow fixtures are resume-only;
+// their cover letter is the default one.
+const LETTER_FIXTURES: ParityFixtureId[] = ["default", "short", "long", "dense", "spill", "rtl"];
+const MEASURABLE_FIXTURES = PARITY_FIXTURE_IDS.filter((id) => LETTER_FIXTURES.includes(id));
 
-/**
- * Splits the two renderers are known to disagree on, and why. Asserted in reverse, so an
- * entry cannot outlive its cause.
- *
- * The page split itself agrees by construction: the PDF is one flowing page that
- * react-pdf breaks, and the preview replays react-pdf's breaking rules against measured
- * boxes (`templates/cover-letter/measure.ts`). What still differs is how the two engines
- * break a paragraph into *lines*, and on the long fixture that moves the P.S. across the
- * page foot:
- *
- * - textkit breaks lines with Knuth–Plass and may shrink spaces by a third, so the sample
- *   bullet "Built React and TypeScript document workflows…" (659px of text in a 650px
- *   column) stays on one line in the PDF and wraps in the browser (+22.5px);
- * - Professional only: the 87-character website. Both engines may now break it anywhere
- *   (S-298), but the browser still prefers its hyphens and takes 4 lines in the 230px
- *   column, where the PDF fills each line to the last character and takes 3 (+21px).
- *
- * ATS Essential differs by the bullet alone. Neither cause is the "-" textkit prints at a
- * forced break (S-104/S-297, see `templates/pdf/fonts.ts`); that one is visible, not
- * vertical.
+/*
+ * No split is excused. The page split agrees by construction: the PDF is one flowing page
+ * that react-pdf breaks, and the preview replays react-pdf's breaking rules against
+ * measured boxes (`templates/cover-letter/measure.ts`). The lines inside each paragraph
+ * agree because the PDF breaks them by the browser's rules (`templates/pdf/line-breaks.ts`).
+ * Before that, textkit's Knuth–Plass breaker kept the 659px sample bullet on one line of a
+ * 650px column by shrinking its spaces, and never broke after a hyphen, so the long letter
+ * was one page in the PDF and two in the preview.
  */
-const KNOWN_PAGINATION_DIFFERENCES: Record<string, string> = {
-  "professional/long/a4": "textkit shrinks spaces and fills URL lines; preview wraps 2 more lines",
-  "ats-essential/long/a4": "textkit shrinks spaces; the browser wraps one bullet the PDF does not",
-};
 
 /** A fixture's letter, on the given paper. */
 function fixtureLetter(fixture: string, paperSize: PaperSize): CoverLetterContent {
@@ -78,6 +66,8 @@ afterAll(async () => {
 
 interface PreviewPages {
   pages: number;
+  /** Each page's opening and closing text, normalized by `pageTextKey`. */
+  texts: { first: string; last: string }[];
   boxes: { width: number; height: number }[];
   /** Pages whose content is taller than the page box, i.e. visibly clipped. */
   overflowing: number[];
@@ -98,13 +88,14 @@ async function readPreview(
     await page.waitForSelector('[data-parity-ready="1"]', { timeout: 60_000 });
     await page.waitForSelector("article.shadow-sm", { timeout: 60_000 });
 
-    return page.evaluate(() => {
+    const measured = await page.evaluate(() => {
       // The measurement probe is `aria-hidden`; the rendered pages carry the
       // preview's ring/shadow classes.
       const articles = Array.from(document.querySelectorAll("article.shadow-sm")) as HTMLElement[];
 
       return {
         pages: articles.length,
+        texts: articles.map((article) => article.textContent ?? ""),
         boxes: articles.map((article) => {
           const rect = article.getBoundingClientRect();
           return { width: Number(rect.width.toFixed(3)), height: Number(rect.height.toFixed(3)) };
@@ -114,9 +105,29 @@ async function readPreview(
         ),
       };
     });
+
+    return { ...measured, texts: measured.texts.map(pageTextKey) };
   } finally {
     await page.close();
   }
+}
+
+/** Every page whose opening or closing text differs between the preview and the PDF. */
+function diffPageTexts(preview: PreviewPages, pdf: { first: string; last: string }[]): string {
+  const lines: string[] = [];
+
+  if (preview.pages !== pdf.length) lines.push(`pages: web ${preview.pages} vs pdf ${pdf.length}`);
+
+  preview.texts.slice(0, pdf.length).forEach((web, index) => {
+    if (web.first !== pdf[index].first) {
+      lines.push(`page ${index + 1} opens: web "${web.first}" vs pdf "${pdf[index].first}"`);
+    }
+    if (web.last !== pdf[index].last) {
+      lines.push(`page ${index + 1} closes: web "${web.last}" vs pdf "${pdf[index].last}"`);
+    }
+  });
+
+  return lines.join("\n");
 }
 
 /** Deepest content bottom on a page, in CSS pixels from the page top. */
@@ -145,28 +156,31 @@ describe("cover letter preview and PDF produce the same pages", () => {
             const pdfPages = await layoutPages(CoverLetterPdf, { content });
             const preview = await readPreview(templateId, fixture, paperSize);
 
-            const known = KNOWN_PAGINATION_DIFFERENCES[name];
-
-            recordReport(
-              `cover letter pagination ${name}`,
-              preview.pages === pdfPages.length
-                ? ""
-                : `preview ${preview.pages} page(s) vs pdf ${pdfPages.length}`,
-              { preview: preview.pages, pdf: pdfPages.length, known: Boolean(known) },
+            const pdfTexts = pdfPageSignatures(pdfPages).map(({ first, last }) => ({
+              first,
+              last,
+            }));
+            const report = diffPageTexts(preview, pdfTexts);
+            const printed = await printHtml(
+              browser,
+              await buildCoverLetterHtml(content, templateId),
             );
 
-            if (known) {
-              // Asserted in reverse, so the entry cannot outlive the problem.
-              expect(preview.pages, `${name} now agrees — drop this entry (${known})`).not.toBe(
-                pdfPages.length,
-              );
-            } else {
-              expect(
-                preview.pages,
-                `${name}: preview shows ${preview.pages} page(s), ` +
-                  `the PDF exports ${pdfPages.length}`,
-              ).toBe(pdfPages.length);
-            }
+            recordReport(`cover letter pagination ${name}`, report, {
+              preview: preview.pages,
+              pdf: pdfPages.length,
+              html: printed.pages,
+            });
+
+            expect(
+              preview.pages,
+              `${name}: preview shows ${preview.pages} page(s), ` +
+                `the PDF exports ${pdfPages.length}`,
+            ).toBe(pdfPages.length);
+            // Each page opens and closes on the same words: the break is in the same place.
+            expect(report, report).toBe("");
+            // The letter's own HTML download, printed, comes out as the same sheets.
+            expectPrintedSheets(printed, pdfPages.length, paperSize, `${name}: printed HTML`);
 
             for (const box of preview.boxes) {
               expect(box.width).toBeCloseTo(widthPx, 1);
