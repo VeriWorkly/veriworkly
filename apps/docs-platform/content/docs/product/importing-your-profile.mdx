@@ -1,52 +1,56 @@
 ---
 title: Importing Your Profile
-description: GitHub import is real OAuth; LinkedIn import is AI-parsed text — worth knowing which is which.
+description: GitHub import is a direct pull with no AI; LinkedIn import is AI-parsed text that spends credits. Worth knowing which is which.
 ---
 
-Several distinct ways to get content into the builder, all backend-processed. The two most-used paths — GitHub and LinkedIn — work very differently from each other, and it's worth being precise about which is which.
+Several distinct ways to get content into the builder, all backend-processed. The two most-used paths, GitHub and LinkedIn, work very differently from each other, and it's worth being precise about which is which.
 
 ## GitHub import
 
-A **real OAuth-based integration**: pulls your connected GitHub profile plus up to 30 repositories, and _deterministically_ (no AI) maps languages to skills and repos to project entries.
+Pulls a GitHub profile plus up to 30 recently updated repositories, and _deterministically_ (no AI) maps languages to skills and up to 15 repos to project entries.
 
-| Tier | Limit                                                                          |
-| ---- | ------------------------------------------------------------------------------ |
-| Free | Only your own connected GitHub account, once per rolling 24 hours.             |
-| Paid | Any GitHub username, no per-day quota shown in the product UI — but see below. |
+| Tier | Limit                                                                                    |
+| ---- | ---------------------------------------------------------------------------------------- |
+| Free | Only your own linked GitHub account, once per rolling 24 hours.                          |
+| Paid | Any public GitHub username, up to 50 imports a day (the counter resets at UTC midnight). |
 
-<Callout type="warn" title="Hidden 50/day cap on paid accounts">
-  Paid users importing any GitHub username have no per-day quota check in the product-facing sense,
-  but there is a hidden secondary cap of **50 imports/day per paid user**. It exists specifically to
-  protect the single shared GitHub API token's 5,000-requests/hour budget from being exhausted by
-  one heavy user, and has no user-facing messaging today. If you're building an integration or
-  workflow around this, expect a silent rate-limit at 50/day regardless of plan.
+`GET /api/v1/profiles/import/quota` reports the remaining imports for either tier.
+
+<Callout type="info" title="One GitHub account per VeriWorkly account">
+  You can link one GitHub account. Once linked, it cannot be unlinked or swapped for a different
+  one; re-linking the same account to renew access is allowed. The GitHub account's email does not
+  need to match your VeriWorkly email.
 </Callout>
 
 ## LinkedIn import
 
 **Not an OAuth/API pull.** You paste your exported LinkedIn profile text (or upload a LinkedIn-exported PDF, which gets auto-extracted into the same paste box) and an AI call parses it into structured resume data.
 
-| Tier | Limit                                                                                                  |
-| ---- | ------------------------------------------------------------------------------------------------------ |
-| Free | One import per rolling 30 days.                                                                        |
-| Paid | Unlimited — no secondary cap (unlike GitHub, this path isn't bound to a rate-limited third-party API). |
+Every LinkedIn import spends AI credits, at the same price as the ATS resume conversion. The modal
+shows the cost and your balance before you run it. Credits are reserved first and charged only once
+the import succeeds.
+
+| Tier | Limit                                                 |
+| ---- | ----------------------------------------------------- |
+| Free | One import per rolling 30 days, plus the credit cost. |
+| Paid | No import limit beyond the credit cost.               |
 
 <Callout type="info" title='What counts as "paid" here'>
-  Import quotas check **entitlements**, not plan names: holding either `ai_credits` or
-  `portfolio_publish` lifts the free-tier cooldown. That includes a manual admin grant or a
-  time-boxed pass, not just a subscription.
+  Import limits check **entitlements**, not plan names: holding either `ai_credits` or
+  `portfolio_publish` lifts the free-tier limits. That includes a manual admin grant or a time-boxed
+  pass, not just a subscription. A credit pack does not lift them. Paid plans open at launch.
 </Callout>
 
 ## Shared behavior
 
-Both GitHub and LinkedIn import share a single **"Replace my Master Profile with this data"** checkbox in the same modal, and both always create a new resume document from the result — they never modify an existing document in place.
+Both GitHub and LinkedIn import share a single **"Replace my Master Profile with this data"** checkbox in the same modal, and both always create a new resume document from the result. They never modify an existing document in place.
 
 ## Other import paths
 
-- **Generic JSON import** — bring in a document exported from elsewhere, via the editor toolbar's Actions menu.
-- **Markdown import** — a hand-authored markdown resume/cover-letter format, hand-parsed (section headers, date ranges, bold/italic stripping).
-- **File extraction** — upload a PDF, DOCX, TXT, MD, or JSON resume (5MB max, enforced server-side — not checked client-side before upload) and have its text extracted server-side for reuse. Used both standalone and inside the [ATS checker](/docs/product/ats-checker).
-- **AI resume conversion** — paste or upload an existing resume in any format and have AI restructure it into a proper, editable VeriWorkly document. This is a paid "Pro" feature, gated by AI-credit entitlement/quota, and lives inside the ATS workspace's "Pro resume conversion" panel rather than the main import modal.
+- **Generic JSON import**: bring in a document exported from elsewhere, via the editor toolbar's Actions menu.
+- **Markdown import**: a hand-authored markdown resume/cover-letter format, hand-parsed (section headers, date ranges, bold/italic stripping).
+- **File extraction**: upload a PDF, DOCX, HTML, TXT, MD, or JSON resume (5 MB max, enforced server-side) and have its text extracted server-side for reuse. Used both standalone and inside the [ATS checker](/docs/product/ats-checker).
+- **AI resume conversion**: paste or upload an existing resume in any format and have AI restructure it into a proper, editable VeriWorkly document. It spends AI credits and lives inside the ATS workspace rather than the main import modal.
 
 ## API
 

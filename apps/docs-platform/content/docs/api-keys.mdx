@@ -12,7 +12,7 @@ Key management lives on its own page in Studio, not inside the settings panels (
 links to it).
 
 1. Log in to [app.veriworkly.com](https://app.veriworkly.com).
-2. Go to **`/api-keys`** — reachable from **Settings → Developer API keys**, or directly.
+2. Go to **`/api-keys`**, reachable from **Settings → Developer API keys**, or directly.
 3. Click **Create key**.
 4. Give the key a descriptive name, pick its scopes, and optionally set a rate limit and expiry.
 5. **Copy the key immediately.** The full value is shown exactly once and is never recoverable.
@@ -66,12 +66,9 @@ rotate call with `400 Unsupported API key scope(s)`.
 | `github:read`    | Read the synced GitHub issue and repository statistics.                              |
 | `ai:write`       | Call `/ai/generate`, `/ats/analyze`, and `/ats/convert-resume`, spending AI credits. |
 
-<Callout type="info" title="`changelog:read` is API-only today">
-  All eight scopes above are accepted by the backend. The Studio scope picker currently surfaces
-  seven of them — `changelog:read` can be requested through the API-key create/rotate endpoints, but
-  has no checkbox in the UI yet. The endpoints it unlocks are documented under
-  [Changelog](/api-reference/changelog/overview).
-</Callout>
+All eight scopes are offered in the Studio scope picker and accepted by the create and rotate
+endpoints. The endpoints `changelog:read` unlocks are documented under
+[Changelog](/api-reference/changelog/overview).
 
 <Callout type="warn" title="There is no write scope for roadmap or GitHub">
   Both the roadmap and GitHub data surfaces are read-only for API keys. `roadmap:write` and
@@ -90,29 +87,27 @@ A requested value above the maximum is clamped down to it rather than rejected.
 
 Exceeding the limit returns `429 Too Many Requests` with headers indicating when to retry:
 
-- `Retry-After` — seconds to wait before the next request.
-- `X-RateLimit-Limit` — maximum requests allowed in the window.
-- `X-RateLimit-Remaining` — remaining requests in the current window.
-- `X-RateLimit-Reset` — Unix timestamp when the limit resets.
+- `Retry-After`: seconds to wait before the next request.
+- `X-RateLimit-Limit`: maximum requests allowed in the window.
+- `X-RateLimit-Remaining`: remaining requests in the current window.
+- `X-RateLimit-Reset`: Unix timestamp when the limit resets.
 
 Per-key limits sit on top of the general per-route IP rate limiter, so a burst can be throttled by
 either.
 
 ## Rotation and revocation
 
-- **Rotate** — issues a replacement key and retires the old one. Use this when the integration is
+- **Rotate**: issues a replacement key and retires the old one. Use this when the integration is
   still needed.
-- **Revoke** — turns the key off permanently. Use this when the key should stop existing.
+- **Revoke**: turns the key off permanently. Use this when the key should stop existing.
 
 Authentication results are cached in Redis for 5 minutes by default
 (`API_KEY_AUTH_CACHE_TTL_SECONDS`), and that cache entry is dropped immediately when a key is
 revoked, so a revoked key stops working right away rather than at the end of its cache window.
 
-<Callout type="warn" title="Keys are invalidated when a subscription lapses">
-  If the owning account's subscription moves to a cancelled or inactive state, its API keys stop
-  authenticating. The billing webhook busts the auth cache the moment it processes the change, so
-  the effect is immediate rather than delayed by the normal 5-minute TTL.
-</Callout>
+A key's validity does not depend on the account's billing state: a key works while it is active,
+not revoked, and not expired. Spending AI credits through `ai:write` still needs credits on the
+account.
 
 The `lastUsed` timestamp is written at a throttled interval
 (`API_KEY_LAST_USED_TOUCH_INTERVAL_SECONDS`, default 300 seconds) rather than on every request, so it
@@ -120,11 +115,11 @@ is approximate by design.
 
 ## Security best practices
 
-- **Never share a key**, and never commit one to version control — use environment variables.
+- **Never share a key**, and never commit one to version control. Use environment variables.
 - **Prefer the smallest scope set** that makes the integration work.
 - **Use shorter expiries** for risky or short-lived integrations.
 - **Revoke compromised keys immediately** and issue a replacement.
 - **Use descriptive names** so an unfamiliar key is easy to trace back to its integration.
 
-For production operating procedure — rotation schedules, incident response, release checks — see the
+For production operating procedure (rotation schedules, incident response, release checks), see the
 [API Key Security Runbook](/docs/operations/api-key-security-runbook).

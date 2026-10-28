@@ -17,8 +17,9 @@ By default the document builder is a client-side application.
   written to the browser's **`localStorage`**.
 - **Service independence** — you can create, edit, preview, and export a document without ever
   calling the backend.
-- **Guest sessions** — logged-out users get a 30-day HttpOnly guest cookie
-  (`veriworkly-guest-mode`), so work survives reloads without an account.
+- **Guest sessions**: **Continue as Guest** on the sign-in screen sets a 30-day guest cookie
+  (`veriworkly-guest-mode`, set by the browser, so not HttpOnly). It lets a logged-out visitor into
+  Studio; the work itself stays in `localStorage`.
 
 ## Optional Cloud Layer
 

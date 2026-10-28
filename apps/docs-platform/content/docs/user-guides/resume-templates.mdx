@@ -1,6 +1,6 @@
 ---
 title: Resume Templates
-description: The document template system — the twelve built-in templates (7 resume, 5 cover letter), the dual-engine model, and how to add your own.
+description: "The document template system: the twelve built-in templates (7 resume, 5 cover letter), the dual-engine model, and how to add your own."
 ---
 
 import { LayoutTemplate, Mail } from "lucide-react";
@@ -51,7 +51,7 @@ All seven resume templates and five cover letter templates are free. There is no
   </Card>
 </Cards>
 
-Every resume template is single-column and ATS-safe by design — they differ in density, header
+Every resume template is single-column and ATS-safe by design. They differ in density, header
 treatment, and typographic breathing room, not in parseability.
 
 ## Cover letter templates
@@ -150,12 +150,11 @@ export const precisionAtsMeta = {
 
 Every template honours the same customisation object:
 
-- **Colours** — accent, body text, muted text, page background, section background, borders, and
+- **Colours**: accent, body text, muted text, page background, section background, borders, and
   section headings, each independently set.
-- **Typography** — font family (which drives PDF font embedding) plus body and heading line heights.
-- **Spacing** — section spacing and page padding.
-- **Structure** — per-section visibility and ordering, and for two-column templates, a left/right
-  column assignment per section.
+- **Typography**: font family (which drives PDF font embedding) plus body and heading line heights.
+- **Spacing**: section spacing and page padding.
+- **Structure**: per-section visibility, ordering, and heading labels.
 
 See [Resume Schema](/docs/architecture/resume-schema#customization) for the full field list.
 

@@ -106,10 +106,15 @@ npm run test:contracts -w @veriworkly/studio # studio contract tests (fast)
 npm run test:browser -w @veriworkly/studio   # studio component browser tests
 npm run test:contracts -w @veriworkly/site   # marketing-site contract tests
 npm test -w @veriworkly/portfolio            # portfolio suite
+npm test -w @veriworkly/ui                   # shared UI package suite
+npm run typecheck -w @veriworkly/ui          # shared UI package type-check
 npm run test:parity -w @veriworkly/studio    # preview/PDF parity (boots a browser, minutes)
+npm run check:engine-samples -w @veriworkly/docs-platform # type-check ATS Engine doc samples
 ```
 
-`blog-platform` and `docs-platform` define no test scripts — they are content-only.
+`blog-platform` defines no test script. `docs-platform` has no unit tests, but CI checks that its
+generated API reference and ATS Engine pages are up to date and type-checks the ATS Engine code
+samples (`.github/workflows/tests.yaml`, job `test-docs`).
 
 <Callout type="info" title="The parity suite needs a real Chromium">
   It is deliberately separate from `vitest.config.ts` because it boots the app and takes minutes.

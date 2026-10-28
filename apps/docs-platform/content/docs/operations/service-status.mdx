@@ -11,9 +11,10 @@ This page covers assessing the health of a running VeriWorkly deployment and dia
 
 ## 1. Health endpoints
 
-There are **two** health routes, and the distinction matters.
+There are two public health routes and two operator routes. The public pair is the one that matters
+for uptime checks.
 
-### `GET /api/v1/health` — liveness
+### `GET /api/v1/health`: liveness
 
 A lightweight check that touches **no external dependencies**. It confirms the process is up and
 responding, nothing more. This is the endpoint the Docker health check and any uptime monitor should
@@ -30,10 +31,10 @@ use, precisely because it does not wake serverless database compute on every pol
 }
 ```
 
-### `GET /api/v1/health/ready` — readiness
+### `GET /api/v1/health/ready`: readiness
 
-A comprehensive check that actively probes PostgreSQL (`SELECT 1`) and Redis (`PING`). Use it for
-deploy-time verification and manual diagnosis.
+A check that probes PostgreSQL (`SELECT 1`) and Redis (`PING`), each bounded at 2 seconds. Use it
+for deploy-time verification and manual diagnosis.
 
 **Healthy (`200 OK`)**
 
@@ -55,17 +56,31 @@ deploy-time verification and manual diagnosis.
 ```json
 {
   "success": false,
-  "message": "Service Unavailable"
+  "message": "Service Unavailable",
+  "statusCode": 503,
+  "details": {
+    "database": "connected",
+    "redis": "timeout"
+  }
 }
 ```
 
-<Callout type="warn" title="`/health/ready` fails whole, not partially">
-  If either PostgreSQL or Redis is unreachable, the endpoint returns a plain `503` error response.
-  It does **not** report which dependency failed — check the API logs to identify the culprit.
-</Callout>
+Each dependency reports `connected`, `timeout` or `error`. The error itself is logged on the server
+only, never returned.
 
 **Recommendation**: point uptime monitoring (UptimeRobot, Better Stack, Datadog) at `/health`, and
 run `/health/ready` as a post-deploy gate.
+
+### Operator routes: `/health/metrics` and `/health/jobs`
+
+Both need the `x-internal-key` header equal to the server's `INTERNAL_API_KEY`. With no key
+configured they answer `404`; with a wrong key, `401`.
+
+- `GET /api/v1/health/metrics` returns Prometheus text for the worker that answered: database pool
+  connections, the resume-extraction queue and process uptime.
+- `GET /api/v1/health/jobs` returns the last success of each background job. A job is `stale` when
+  it has not succeeded within twice its interval. `attention` is true while billing webhooks have
+  failed or need a person.
 
 ---
 
@@ -77,8 +92,9 @@ run `/health/ready` as a post-deploy gate.
 docker compose ps
 ```
 
-Compose defines four services: `web` (the marketing site), `api`, `redis`, and `redisinsight` (a
-Redis GUI on port 5540 — a debugging convenience that should not be publicly exposed).
+Compose defines `web` (the marketing site), `api`, a one-shot `migrate` service that applies
+database migrations before `api` starts, and `redis`. A fifth service, `redisinsight` (a Redis GUI
+on port 5540), starts only with `docker compose --profile dev up` and listens on loopback only.
 
 ### Resource usage
 
@@ -88,12 +104,12 @@ docker stats
 
 Memory growth on the `api` container is most often a Redis-backed structure growing unbounded, or
 concurrent AI/ATS requests holding large extracted-document text in memory while waiting on an
-external LLM provider.
+external AI gateway.
 
 <Callout type="info" title="Document rendering does not load the API">
   PDF and DOCX generation happens entirely in the browser. Export volume puts **no** load on the API
   container. If you are chasing memory pressure, look at AI/ATS concurrency, uploaded-file parsing
-  (`pdf-parse` / `mammoth`), and Redis — not document rendering.
+  (`pdf-parse` / `mammoth`), and Redis, not document rendering.
 </Callout>
 
 ---
@@ -129,37 +145,40 @@ Run from the directory containing `compose.yaml`.
 
 ## 4. Background jobs
 
-Five `node-cron` jobs run inside the API. Each acquires a **Redis distributed lock** first, so only
-one worker executes a given job even when the server is clustered across CPU cores.
+Eight `node-cron` jobs run inside the API. Each acquires a **Redis distributed lock** first, so only
+one worker executes a given job even when the server is clustered. A replica started with
+`CRON_ROLE=none` schedules none of them.
 
-| Job                        | Schedule                                                   | Purpose                                                                                                                                                                          |
-| :------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **GitHub sync**            | `GITHUB_SYNC_CRON`, default `0 0,12 * * *` (twice daily)   | Refreshes repository issue and PR statistics. Skipped when existing data is under 12 hours old.                                                                                  |
-| **Changelog release sync** | `CHANGELOG_RELEASE_SYNC_CRON`, default `0 6 * * *` (daily) | Imports missing GitHub Releases into the public changelog.                                                                                                                       |
-| **Views flush**            | every 10 minutes                                           | Moves buffered portfolio and share-link view counts from Redis into PostgreSQL.                                                                                                  |
-| **Usage metrics flush**    | `USAGE_METRICS_FLUSH_CRON`, default `10 0 * * *`           | Flushes buffered usage counters into `UsageMetricDaily`, only for fully-completed UTC days.                                                                                      |
-| **Portfolio access**       | hourly                                                     | Suspends portfolios whose billing grace period has expired, and garbage-collects abandoned image uploads (and their R2 objects) that have been `PENDING` for more than 24 hours. |
+| Job                        | Schedule                                                   | Purpose                                                                                                                                                                         |
+| :------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **GitHub sync**            | `GITHUB_SYNC_CRON`, default `0 0,12 * * *` (twice daily)   | Refreshes repository issue and PR statistics. Not scheduled without `GITHUB_OWNER`, `GITHUB_REPO` and `GITHUB_TOKEN`.                                                           |
+| **Changelog release sync** | `CHANGELOG_RELEASE_SYNC_CRON`, default `0 6 * * *` (daily) | Imports missing GitHub Releases into the public changelog.                                                                                                                      |
+| **Views flush**            | every 10 minutes                                           | Moves buffered portfolio and share-link view counts from Redis into PostgreSQL.                                                                                                 |
+| **Usage metrics flush**    | `USAGE_METRICS_FLUSH_CRON`, default `10 0 * * *`           | Flushes buffered usage counters into `UsageMetricDaily`, only for fully-completed UTC days.                                                                                     |
+| **Portfolio access**       | hourly                                                     | Moves premium portfolios whose paid access ended to a free template, and garbage-collects abandoned image uploads (and their R2 objects) left `PENDING` for more than 24 hours. |
+| **Credit sweep**           | hourly, at minute 30                                       | Expires due credit grants and releases overdue credit reservations.                                                                                                             |
+| **Annual credits**         | hourly, at minute 15                                       | Grants the monthly credits of annual plans whose next month has started, and retries failed billing emails.                                                                     |
+| **Data retention**         | daily, 03:15 UTC                                           | Deletes or redacts old rows under the `RETENTION_*_DAYS` settings. Not scheduled when every rule is `0`.                                                                        |
 
 Both flush jobs write idempotency-batch markers, so a crashed or racing flush can neither
 double-count nor silently drop a batch.
 
 Missed cron windows during downtime are partially covered: the GitHub sync, changelog sync, and
-usage-metrics jobs each run a catch-up check on startup.
+usage-metrics jobs each run a catch-up check on startup. `/health/jobs` shows which jobs are stale.
 
 ---
 
 ## 5. Common failure modes
 
-| Symptom                                         | Likely cause                                                                                 | Resolution                                                                                                                                                                                                                |
-| :---------------------------------------------- | :------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **API exits immediately on boot**               | The production configuration validator rejected the environment.                             | Read the startup log — it names the failing variable. Common causes: a default `AUTH_SECRET`, a non-HTTPS `AUTH_BASE_URL`, `API_KEY_HASH_SECRET` equal to `AUTH_SECRET`, or `AUTH_EMAIL_PROVIDER` still set to `console`. |
-| **`/health/ready` returns 503**                 | PostgreSQL or Redis unreachable.                                                             | Verify `DATABASE_URL` and `REDIS_URL`, and that the API can reach both across the network.                                                                                                                                |
-| **Login fails but `/health` is fine**           | Redis is down. Better-Auth stores sessions in Redis secondary storage.                       | Restore Redis. The rate limiter has an in-memory fallback; session storage does not.                                                                                                                                      |
-| **CORS errors in the browser**                  | `ALLOWED_ORIGINS` does not include the public frontend origin.                               | Add the exact scheme + host + port. Credentials are only granted to explicitly listed origins, never wildcard-matched portfolio subdomains.                                                                               |
-| **AI generation times out**                     | Upstream Anthropic/OpenAI latency, or a dangling credit reservation.                         | Check the provider status page. Verify the request's credit reservation was released rather than left reserved — reserved credits are not spendable until committed or released.                                          |
-| **API keys stop working after a payment event** | Expected. Keys are invalidated when the owning subscription lapses to cancelled or inactive. | Restore the subscription, or issue keys from an account with an active entitlement.                                                                                                                                       |
-| **Portfolio goes offline unexpectedly**         | The billing grace period expired and the hourly portfolio access job suspended it.           | Restore the subscription; publication status moves back out of `SUSPENDED`.                                                                                                                                               |
-| **Webhook events appear unprocessed**           | Check `BillingWebhookEvent` for rows in `FAILED` or `PROCESSING`.                            | Each row records its error and retry count, keyed by the provider's event ID for idempotent reprocessing.                                                                                                                 |
+| Symptom                                     | Likely cause                                                                              | Resolution                                                                                                                                                                                                                                                                |
+| :------------------------------------------ | :---------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **API exits immediately on boot**           | The configuration validator rejected the environment.                                     | Read the startup log: it names every failing variable. Common causes: an example `AUTH_SECRET`, a non-HTTPS `AUTH_BASE_URL`, `API_KEY_HASH_SECRET` equal to `AUTH_SECRET`, a missing `TRUST_PROXY` or `WEB_CONCURRENCY`, or `AUTH_EMAIL_PROVIDER` still set to `console`. |
+| **`/health/ready` returns 503**             | PostgreSQL or Redis unreachable. `details` names which one.                               | Verify `DATABASE_URL` and `REDIS_URL`, and that the API can reach both across the network.                                                                                                                                                                                |
+| **Login fails but `/health` is fine**       | Redis is down. Better-Auth stores sessions in Redis secondary storage.                    | Restore Redis. The rate limiter has an in-memory fallback; session storage does not.                                                                                                                                                                                      |
+| **CORS errors in the browser**              | `ALLOWED_ORIGINS` does not include the public frontend origin.                            | Add the exact scheme + host + port. Credentials are only granted to explicitly listed origins, never wildcard-matched portfolio subdomains.                                                                                                                               |
+| **AI generation times out**                 | Upstream gateway latency (`AI_TIMEOUT_MS`), or a credit reservation not yet released.     | Check the AI gateway's status. Reserved credits are not spendable until the reservation is committed or released; the hourly credit sweep releases overdue ones.                                                                                                          |
+| **Premium portfolio shows a free template** | Its paid access ended and the grace window passed. The site stays online, with the badge. | Restore the subscription, then choose the premium template again.                                                                                                                                                                                                         |
+| **Webhook events appear unprocessed**       | Check `BillingWebhookEvent` for rows in `FAILED` or `PROCESSING`.                         | Each row records its error and retry count, keyed by the provider's event ID for idempotent reprocessing.                                                                                                                                                                 |
 
 ---
 

@@ -1,32 +1,44 @@
 ---
 title: Billing & Credits
-description: Entitlements and the AI credit wallet are two separate systems — the plan catalog, how they work together, and how checkout is validated.
+description: Entitlements and the AI credit wallet are two separate systems. The plan catalog, how they work together, and how checkout is validated.
 ---
 
 Access in VeriWorkly is not a simple "free vs. premium" boolean. Two independent systems work
 together.
 
+<Callout type="warn" title="Payments open at launch">
+  Payments are closed in production today: only administrators can check out. The plans, passes and
+  packs below describe the model at launch. The [pricing page](https://veriworkly.com/pricing) shows
+  the same notice.
+</Callout>
+
 ## Entitlements
 
 Named capability grants, checked individually wherever a feature is gated:
 
-| Entitlement         | Unlocks                                                             |
-| :------------------ | :------------------------------------------------------------------ |
-| `ai_credits`        | AI writing actions and the AI-powered ATS analysis layer.           |
-| `portfolio_publish` | Publishing a portfolio publicly.                                    |
-| `custom_subdomain`  | A `{username}.veriworkly.com` subdomain instead of the shared path. |
-| `seo_controls`      | Portfolio SEO meta title, description, and social share image.      |
-| `analytics`         | Portfolio analytics.                                                |
-| `watermark_removal` | Removing the "Built with VeriWorkly" badge.                         |
+| Entitlement         | Unlocks                                                                             |
+| :------------------ | :---------------------------------------------------------------------------------- |
+| `ai_credits`        | Marks an AI Credits or Job Hunter Bundle plan. AI actions themselves spend credits. |
+| `portfolio_publish` | Publishing and rendering the premium portfolio templates (Nimbus, Cipher).          |
+| `seo_controls`      | Portfolio SEO meta title, description, and social share image.                      |
+| `analytics`         | Portfolio visitor analytics.                                                        |
+| `watermark_removal` | Removing the "Built with VeriWorkly" badge from a published portfolio.              |
+
+Publishing a portfolio on a free template (Signal, Atelier) at
+`portfolio.veriworkly.com/portfolio/{name}` needs no entitlement. A free portfolio carries the badge.
 
 Each grant carries a **source** (`SUBSCRIPTION`, `MANUAL`, `PROMOTION`, or `SYSTEM`) and its own
 start/end window. Because access checks read entitlements rather than plan names, a manual admin
 grant, a promotion, and a paid subscription all behave identically.
 
 <Callout type="info" title="Several limits key off entitlements, not plans">
-  The free-tier one-document-per-type cap and the profile-import cooldowns both lift for anyone
-  holding **either** `ai_credits` **or** `portfolio_publish`.
+  The free-tier one-document-per-type cap and the profile-import limits both lift for anyone holding
+  **either** `ai_credits` **or** `portfolio_publish`. A credit pack grants neither, so it lifts
+  neither.
 </Callout>
+
+AI actions are gated by the credit balance, not by an entitlement: any account with credits, from a
+plan, a pass or a pack, can spend them.
 
 ---
 
@@ -37,18 +49,20 @@ Three purchasable products, defined in `apps/server/src/services/productCatalog.
 | Product                               | Key             | Entitlements                                   | Monthly | Annual                        |
 | :------------------------------------ | :-------------- | :--------------------------------------------- | :------ | :---------------------------- |
 | **AI Credits**                        | `ai_credits`    | `ai_credits`                                   | $5.99   | $59.88 ($4.99/mo, save 17%)   |
-| **Creator Pro**                       | `portfolio_pro` | All five portfolio entitlements                | $9.99   | $95.88 ($7.99/mo, save 20%)   |
-| **Job Hunter Bundle** _(recommended)_ | `bundle`        | `ai_credits` + all five portfolio entitlements | $14.99  | $143.88 ($11.99/mo, save 20%) |
+| **Creator Pro**                       | `portfolio_pro` | All four portfolio entitlements                | $9.99   | $95.88 ($7.99/mo, save 20%)   |
+| **Job Hunter Bundle** _(recommended)_ | `bundle`        | `ai_credits` + all four portfolio entitlements | $14.99  | $143.88 ($11.99/mo, save 20%) |
 
 ### Included AI credits
 
-| Product           | Monthly                                                | Annual         |
-| :---------------- | :----------------------------------------------------- | :------------- |
-| AI Credits        | 1,000 credits                                          | 12,000 credits |
-| Job Hunter Bundle | 1,000 credits                                          | 12,000 credits |
-| Creator Pro       | — (no AI credits; add AI Credits or choose the Bundle) | —              |
+| Product           | Monthly                                    | Annual                               |
+| :---------------- | :----------------------------------------- | :----------------------------------- |
+| AI Credits        | 1,000 credits a month                      | 1,000 credits a month, for 12 months |
+| Job Hunter Bundle | 1,000 credits a month                      | 1,000 credits a month, for 12 months |
+| Creator Pro       | None (add AI Credits or choose the Bundle) | None                                 |
 
-Subscription credits do **not** roll over between billing cycles.
+Annual plans grant 1,000 credits at the start of each month, not 12,000 up front. Nothing rolls
+over: unused subscription credits expire at the end of the month, when the next 1,000 replace them.
+This applies to monthly and annual plans alike.
 
 <Callout type="warn" title="An interval is only purchasable if its product ID is configured">
   Each plan/interval pair maps to a Dodo Payments product ID supplied by environment variable. The
@@ -60,20 +74,16 @@ Subscription credits do **not** roll over between billing cycles.
 
 ## Time-boxed passes
 
-Short-window access with no subscription, sold under the `bundle` product key:
+One-time purchases with no subscription, sold under the `bundle` product key. A pass does not
+renew, and it acts as the Job Hunter Bundle while it is active.
 
-| Pass      | Price | Duration | Credits | Includes                                           |
-| :-------- | :---- | :------- | :------ | :------------------------------------------------- |
-| **3-Day** | $2.99 | 3 days   | 150     | Portfolio publishing, ATS tools, unlimited exports |
-| **7-Day** | $5.99 | 7 days   | 400     | Portfolio publishing, ATS tools, unlimited exports |
+| Pass                  | Interval key | Price | Duration | Credits |
+| :-------------------- | :----------- | :---- | :------- | :------ |
+| **3-Day Sprint Pass** | `one_day`    | $2.99 | 3 days   | 150     |
+| **7-Day Hunt Pass**   | `seven_day`  | $5.99 | 7 days   | 400     |
 
-<Callout type="info" title="Naming quirk in the data model">
-  The billing interval enum calls these `ONE_DAY` and `SEVEN_DAY`, but `ONE_DAY` maps to **3**
-  actual calendar days. It is a naming inconsistency, not a functional bug — the 3-Day pass really
-  does last three days.
-</Callout>
-
-Pass-granted credits expire when the pass window ends.
+Pass-granted credits expire when the pass window ends. A premium portfolio published during a pass
+moves to a free template as soon as the pass ends, with no grace period.
 
 ---
 
@@ -87,11 +97,11 @@ For extra credits without changing a subscription:
 | 500 extra credits   | `credit_pack_500`  | 500     | $4.99 | 90 days from purchase |
 | 1,200 extra credits | `credit_pack_1200` | 1,200   | $9.99 | 90 days from purchase |
 
+Packs are AI fuel only. They do not lift the document limit or unlock any Pro feature. Pack credits
+keep their own 90-day validity and are not reset by a subscription's monthly reset.
+
 Pack **prices are set on the corresponding Dodo Payments product**; the server's
 `CREDIT_PACK_*_PRICE_CENTS` variables only set the price it displays, so keep the two in step.
-The 1,200-credit pack is priced in Dodo; checkout accepts `credit_pack_1200` once the server
-update that adds it ships. Per the Terms of Service,
-pack credits may also expire immediately on cancellation of an associated subscription where stated.
 
 ---
 
@@ -99,23 +109,24 @@ pack credits may also expire immediately on cancellation of an associated subscr
 
 A full ledger, not a counter.
 
-- **`CreditWallet`** — current balance, reserved amount, and lifetime credited/debited totals.
-- **`CreditGrant`** — each batch of credits with its own expiry date.
-- **`CreditReservation`** — a two-phase reserve → commit/release record for an in-flight AI call, so
+- **`CreditWallet`**: current balance, reserved amount, and lifetime credited/debited totals.
+- **`CreditGrant`**: each batch of credits with its own expiry date.
+- **`CreditReservation`**: a two-phase reserve → commit/release record for an in-flight AI call, so
   a failed generation does not burn credits.
-- **`CreditTransaction`** — the user-visible history: action, reason, amount, resulting balance.
-- **`CreditUsageAllocation`** — which grant(s) funded each transaction.
+- **`CreditTransaction`**: the user-visible history: action, reason, amount, resulting balance.
+- **`CreditUsageAllocation`**: which grant(s) funded each transaction.
 
 <Callout type="info" title="FIFO multi-grant allocation">
   A debit does not simply subtract from one balance. `CreditUsageAllocation` records exactly which
   grant(s) funded each transaction on a **FIFO-by-expiry** basis, so a user holding a subscription
-  grant plus a leftover top-up is billed from the soonest-to-expire grant first — the balance you
-  are about to lose is spent before the one you are not.
+  grant plus a leftover top-up is billed from the soonest-to-expire grant first. The balance you are
+  about to lose is spent before the one you are not.
 </Callout>
 
-Reserved credits are not spendable until the reservation is committed or released. AI actions have
-separate **Standard** and **Expert** cost tiers, defined in the private AI policy rather than in
-application code — see [AI Writing Assistant](/docs/product/ai-writing-assistant).
+Reserved credits are not spendable until the reservation is committed or released. One credit pool
+pays for every AI feature in every app. AI actions have separate **Standard** and **Expert** cost
+tiers, defined in the private AI policy rather than in application code. See
+[AI Writing Assistant](/docs/product/ai-writing-assistant).
 
 ---
 
@@ -124,7 +135,7 @@ application code — see [AI Writing Assistant](/docs/product/ai-writing-assista
 | Page            | Contents                                                                                                                                          |
 | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **`/credits`**  | Wallet balance, per-action Standard/Expert costs, lifetime totals, upcoming grant expiries, and the full transaction history.                     |
-| **`/billing`**  | Plan status, active entitlements, credit top-up purchase, billing history, and subscription management/cancellation.                              |
+| **`/billing`**  | Plan status and dates, credit balance, credit pack purchase, the Bundle upgrade, billing activity, and a link to the Dodo customer portal.        |
 | **`/checkout`** | The purchase flow. It validates the requested product key and billing interval against the catalog whitelist before handing off to Dodo Payments. |
 
 ---
@@ -139,12 +150,15 @@ application code — see [AI Writing Assistant](/docs/product/ai-writing-assista
 - **A last-webhook timestamp** on the subscription keeps out-of-order delivery from corrupting state.
 - **Processing a payment event** grants entitlements and credits, updates portfolio publish access,
   and triggers affiliate commissions.
-- **Free trial** — 7 days, applied automatically for first-time **monthly Creator Pro** subscribers
-  specifically, not for other plans or intervals.
-- **Grace period** — if a subscription lapses, portfolio publish access enters a grace period
-  (`PORTFOLIO_GRACE_DAYS`, default 7) before the hourly portfolio access job suspends the site.
-- **API keys are invalidated** when a subscription lapses to cancelled or inactive — the webhook
-  busts the auth cache immediately.
+- **No free trials** on any plan. Subscriptions charge at checkout for the period chosen.
+- **Cancellation** happens in the Dodo customer portal, opened from **Manage subscription** on
+  `/billing`. A cancelled plan keeps its access to the end of the paid period.
+- **Failed payment or pause.** Plan access ends and the account gets free limits. A premium
+  portfolio stays online in a grace period (`PORTFOLIO_GRACE_DAYS`, default 7) while Dodo retries
+  the card.
+- **Lapsed portfolios stay online.** When paid access ends for good, the hourly portfolio access
+  job moves a premium portfolio to the closest free template (Nimbus to Atelier, Cipher to Signal),
+  with the badge.
 
 ---
 
@@ -156,5 +170,5 @@ See the [Billing API reference](/api-reference/billing/overview) for the full en
 
 - [AI Writing Assistant](/docs/product/ai-writing-assistant)
 - [Portfolio: Publishing & Analytics](/docs/product/portfolio/publishing)
-- [ATS Checker](/docs/product/ats-checker) — paid scan quotas.
+- [ATS Checker](/docs/product/ats-checker): scan quotas.
 - [Environment Variables](/docs/operations/environment-variables#billing-dodo-payments)

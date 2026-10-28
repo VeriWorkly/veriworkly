@@ -3,34 +3,48 @@ title: AI Writing Assistant
 description: Standard vs. Expert mode, transparent credit costs, and the two-phase reserve/commit credit flow.
 ---
 
-An "Improve with AI" control embedded throughout the editors — select text or a section, choose **Standard** or **Expert** mode (different credit costs), optionally give free-text direction, and review the AI's draft before choosing to replace the field or discard it.
+An "Improve with AI" control embedded throughout the editors. Select a field or section, choose **Standard** or **Expert** mode (different credit costs), optionally give free-text direction, and review the AI's draft before choosing to replace the field or discard it.
 
 <Callout type="info" title="Cost is always shown before you spend it">
   The credit cost for the selected mode is shown on the mode buttons themselves, and again on the
   Generate button before you commit to spending credits. Generated content also never silently
-  overwrites your work — replacing a field is always an explicit action.
+  overwrites your work: replacing a field is always an explicit action.
 </Callout>
+
+AI writing runs on account credits, so it needs a signed-in account with a credit balance. Credits
+come with a paid plan, a pass or a credit pack, available at launch. See
+[Billing & Credits](/docs/product/billing-and-credits).
 
 ## What it can do
 
-Underlying AI actions cover:
+The server defines seven AI actions (`apps/server/src/services/aiTypes.ts`):
 
-- Rewriting short text or whole sections.
-- Generating a cover letter.
-- Tailoring a resume to a specific job description.
-- Generating portfolio copy (bio/headline/section copy — used by the Portfolio product).
+| Action                    | What it does                                                    |
+| :------------------------ | :-------------------------------------------------------------- |
+| `rewrite_short_text`      | Rewrites a short field, such as a headline.                     |
+| `rewrite_section`         | Rewrites a whole resume section.                                |
+| `generate_section`        | Drafts a resume section, such as a summary or experience entry. |
+| `generate_cover_letter`   | Drafts a cover letter.                                          |
+| `tailor_resume_to_job`    | Tailors a resume to a specific job description.                 |
+| `generate_document`       | Drafts a whole document.                                        |
+| `generate_portfolio_copy` | Writes portfolio copy (bio, headline, section copy).            |
 
-The model/route chosen per request is dynamically selected across **Anthropic Claude and OpenAI GPT models** to balance quality against cost — this routing is intentional and not surfaced as a user-facing setting.
+Each action has its own Standard and Expert credit cost. `GET /api/v1/ai/actions` returns the
+current costs, and the `/credits` page in Studio lists them.
+
+Requests go through the OpenRouter gateway. The model chosen per request is set by the private AI
+policy to balance quality against cost. It is not a user-facing setting.
 
 ## Credits, not a simple on/off
 
 AI access is backed by a full credit ledger, not a boolean:
 
-- **Standard vs Expert cost tiers** — Expert mode costs more credits per action.
-- **Two-phase reserve → commit/release flow** — credits are reserved when a generation starts and either committed (on success) or released (on failure), so a failed generation doesn't burn credits.
-- **FIFO multi-grant allocation** — if you have multiple active credit grants (e.g. a subscription grant plus a leftover top-up), a debit draws from the soonest-to-expire grant first, via a dedicated allocation table that records exactly which grant(s) funded each transaction.
+- **Standard vs Expert cost tiers**: Expert mode costs more credits per action.
+- **Two-phase reserve → commit/release flow**: credits are reserved when a generation starts and either committed (on success) or released (on failure), so a failed generation doesn't burn credits.
+- **FIFO multi-grant allocation**: if you have multiple active credit grants (e.g. a subscription grant plus a leftover top-up), a debit draws from the soonest-to-expire grant first, via a dedicated allocation table that records exactly which grant(s) funded each transaction.
 
-See [Billing & Credits](/docs/product/billing-and-credits) for the full credit-wallet model.
+One credit pool pays for every AI feature in every app. See
+[Billing & Credits](/docs/product/billing-and-credits) for the full credit-wallet model.
 
 ## Where costs come from
 
@@ -38,7 +52,7 @@ Per-action prompts, model selection, token limits, and **credit costs for both m
 private AI policy loaded from configuration at boot, not in application code:
 `AI_ACTIONS_POLICY_PATH` points at a file named `ai-actions-policy.json`, or
 `AI_ACTIONS_POLICY_JSON` holds the same JSON inline. `GET /api/v1/ai/actions` exposes only the public
-slice of that policy — the Standard and Expert credit cost of each action — which is what the editor
+slice of that policy (the Standard and Expert credit cost of each action), which is what the editor
 renders on the mode buttons.
 
 The ATS feature keeps its own separate policies (`ATS_AI_POLICY_*` for the analysis prompts and
@@ -48,19 +62,18 @@ independently. The engine policy must be built for the engine version the server
 refuses to start with a policy its engine rejects. See
 [Environment Variables](/docs/operations/environment-variables#private-ai-policies).
 
-In production the server validates at boot that a policy exists and defines both a `standard` and an
-`expert` tier for **every** action, and refuses to start otherwise. A deployment without
-`AI_API_KEY` has AI disabled rather than silently broken.
+In production the server refuses to start unless `AI_API_KEY` is set and the policy defines both a
+`standard` and an `expert` tier for **every** action.
 
 ## Rate limiting
 
 AI endpoints have their own window and limit (`AI_RATE_LIMIT_WINDOW_MS` / `AI_RATE_LIMIT_MAX_REQUESTS`,
 default 20 requests per minute) layered on top of credit and quota enforcement, plus a per-request
-timeout (`AI_TIMEOUT_MS`, default 120 seconds).
+timeout (`AI_TIMEOUT_MS`, default 45 seconds).
 
 ## Developer access
 
-The `ai:write` API-key scope is real and fully issuable — create a key with it at `/api-keys` in
+The `ai:write` API-key scope is real and fully issuable: create a key with it at `/api-keys` in
 Studio and call `POST /api/v1/ai/generate` programmatically. Generation through an API key spends the
 owning account's credits exactly as the in-app flow does, so scope it deliberately. See
 [API Keys](/docs/api-keys).

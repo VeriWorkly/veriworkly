@@ -6,62 +6,54 @@ description: A dedicated cover letter editor sharing Studio's live-preview and e
 The cover letter builder is a dedicated editor with its own fields and schema, sharing the same
 live-preview and export pipeline as the resume builder.
 
+## Fields
+
+The letter's shape is defined once, as `CoverLetterContent` in `packages/profile-core`, and shared
+by Studio and the server:
+
+| Group      | Fields                                                                                                    |
+| :--------- | :-------------------------------------------------------------------------------------------------------- |
+| Sender     | `senderName`, `senderTitle`, `senderEmail`, `senderPhone`, `senderWebsite`, `senderLocation`, `links`     |
+| Recipient  | `date`, `recipientName`, `recipientTitle`, `companyName`, `companyLocation`                               |
+| Letter     | `jobTitle`, `subject`, `greeting`, `opening`, `body`, `highlights`, `closing`, `signature`, `postscript`  |
+| Appearance | Font, page margin, paragraph spacing, line height, accent, sidebar, page and text colors, hidden sections |
+
+Studio adds three fields of its own: `jobPost` (the pasted job post, used as context for AI writing
+and never printed), `language` (the exported HTML's language tag), and the page size.
+
 ## Templates
 
 Five templates, all freely selectable with no plan-based lock:
 
-| Template               | Id                   | Design                                                                                            |
-| :--------------------- | :------------------- | :------------------------------------------------------------------------------------------------ |
-| **Professional**       | `professional`       | Formal letterhead, strong subject treatment, conservative recruiter-safe spacing.                 |
-| **VeriWorkly Special** | `veriworkly-special` | A branded two-column layout with an identity rail and numbered proof points.                      |
-| **Minimalist**         | `minimalist`         | A full-width stacked masthead with no column split, whitespace, and small uppercase labels.       |
-| **Executive**          | `executive`          | A centered double-rule masthead with a traditional dateline-over-address arrangement.             |
-| **ATS Essential**      | `ats-essential`      | The classic left-aligned block letter — no column split anywhere, the most parser-safe structure. |
-
-<Callout type="info" title="Naming note">
-  "Professional" is the template's actual name in code. Some older documentation referred to it as
-  "Professional Classic" — that was never its name.
-</Callout>
+| Template               | Id                   | Design                                                                                           |
+| :--------------------- | :------------------- | :----------------------------------------------------------------------------------------------- |
+| **Professional**       | `professional`       | Formal letterhead, strong subject treatment, conservative recruiter-safe spacing.                |
+| **VeriWorkly Special** | `veriworkly-special` | A branded two-column layout with an identity rail and numbered proof points.                     |
+| **Minimalist**         | `minimalist`         | A full-width stacked masthead with no column split, whitespace, and small uppercase labels.      |
+| **Executive**          | `executive`          | A centered double-rule masthead with a traditional dateline-over-address arrangement.            |
+| **ATS Essential**      | `ats-essential`      | The classic left-aligned block letter: no column split anywhere, the most parser-safe structure. |
 
 ## How it fits into the platform
 
-- **Seeding** — a new cover letter auto-seeds from your
+- **Seeding**: a new cover letter auto-seeds from your
   [Master Profile](/docs/product/master-profile) when created with no content.
-- **Free-tier limit** — one active cover letter per account, independent of the one-resume limit.
+- **Free-tier limit**: one active cover letter per account, independent of the one-resume limit.
   Both caps lift with either the `ai_credits` or `portfolio_publish` entitlement.
-- **Export** — PDF, DOCX, HTML, Markdown, plain text, and JSON, from the same menu used elsewhere in
-  Studio.
-- **AI** — cover letter generation is one of the supported AI actions, with the same Standard/Expert
+- **Export**: PDF, DOCX, HTML, Markdown, plain text, and JSON, from the same menu used elsewhere in
+  Studio, with no watermark on any plan. See [Export Pipeline](/docs/architecture/pdf-generation)
+  for how the export dispatcher handles each document type.
+- **AI**: cover letter generation is one of the supported AI actions, with the same Standard/Expert
   mode and credit transparency as everywhere else.
-
-## Export dispatch
-
-The export dispatcher is **type-driven**: it switches on `document.type` and then on the requested
-format, with an `assertNever` exhaustiveness guard on both. Resume and cover letter each have their
-own format handler, and adding a new document type is a compile-time error until every branch is
-handled.
-
-```typescript
-switch (document.type) {
-  case "RESUME":
-    return exportResumeDocumentByFormat(document, format);
-  case "COVER_LETTER":
-    return exportCoverLetterDocumentByFormat(document, format);
-  default:
-    return assertNever(document.type, "exportDocumentByType");
-}
-```
 
 <Callout type="info" title="Only two document types are buildable today">
   Resume and cover letter are the only document types the builder supports. The `Document` model
   also defines `PORTFOLIO` and `LINK_IN_BIO`, but portfolios are a separate product surface with
-  their own editor, and link-in-bio is not built. Invoices, formal letters, and other types
-  described in the product vision are not yet implemented.
+  their own editor, and link-in-bio is not built.
 </Callout>
 
 ## Related
 
 - [Master Profile](/docs/product/master-profile)
-- [Resume Templates](/docs/user-guides/resume-templates) — includes all five cover letter templates.
+- [Resume Templates](/docs/user-guides/resume-templates): includes all five cover letter templates.
 - [Export Pipeline](/docs/architecture/pdf-generation)
 - [AI Writing Assistant](/docs/product/ai-writing-assistant)

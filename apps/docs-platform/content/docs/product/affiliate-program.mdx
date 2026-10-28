@@ -1,6 +1,6 @@
 ---
 title: Affiliate Program
-description: Commission tiers, enrolment states, admin-driven tier promotion, and how payouts actually work.
+description: Commission tiers, enrolment states, tier promotion, and how payouts actually work.
 ---
 
 A full affiliate dashboard lives in Studio across `/affiliate`, `/affiliate/tiers`,
@@ -8,30 +8,36 @@ A full affiliate dashboard lives in Studio across `/affiliate`, `/affiliate/tier
 `/affiliate/leaderboard`.
 
 <Callout type="info" title="Feature-flag gated">
-  The program sits behind a boot-time flag, `config.growth.affiliateProgramEnabled`, read once from
-  `AFFILIATE_PROGRAM_ENABLED` at server startup. It defaults to **enabled outside production** and
-  **disabled in production** unless explicitly turned on. When off, the affiliate API returns `503`
-  and Studio's `/affiliate` route shows a "Coming Soon" screen. Changing it requires a restart.
+  The program sits behind an `AFFILIATE_PROGRAM_ENABLED` flag. The server
+  (`config.growth.affiliateProgramEnabled`), Studio (`apps/studio/lib/feature-flags.ts`) and the
+  marketing site (`apps/site/lib/feature-flags.ts`) each read their own copy at startup, so set it
+  in every app. It defaults to **enabled outside production** and **disabled in production** unless
+  explicitly turned on. When off, the affiliate API returns `503` and Studio's `/affiliate` route
+  shows a "coming soon" screen. Changing it requires a restart of the app that reads it.
+</Callout>
+
+<Callout type="warn" title="Commissions start with payments">
+  Commissions are earned only on purchases, and payments are admin-only in production until launch.
+  Until then no referred customer can buy, so no commission can accrue.
 </Callout>
 
 ---
 
 ## Enrolment states
 
-Four distinct states, each with its own UI:
-
-| State            | Behaviour                                                                                             |
-| :--------------- | :---------------------------------------------------------------------------------------------------- |
-| **Not enrolled** | Shows an Enrol button, with explicit copy that signups alone earn nothing — only paid conversions do. |
-| **Pending**      | Enrolment submitted, awaiting activation.                                                             |
-| **Active**       | Referral link live, commissions accruing.                                                             |
-| **Suspended**    | Existing earnings stay visible; new activity is disabled.                                             |
+| State            | Behaviour                                                                                          |
+| :--------------- | :------------------------------------------------------------------------------------------------- |
+| **Not enrolled** | Shows an Enrol button, with explicit copy that signups alone earn nothing: only paid purchases do. |
+| **Pending**      | Set only by an admin. The dashboard shows, but the affiliate cannot withdraw.                      |
+| **Active**       | Enrolling makes an account active straight away. Referral link live, commissions accruing.         |
+| **Suspended**    | Existing earnings stay visible; new activity and withdrawals are disabled.                         |
 
 ---
 
 ## Commission tiers
 
-A three-tier recurring commission structure. Rates are stored in basis points.
+A three-tier commission structure. Rates are stored in basis points and apply to every payment a
+referred customer makes, net of tax, at the affiliate's tier when the payment lands.
 
 | Tier     | Name    | Rate             | Required conversions | Perks                               |
 | :------- | :------ | :--------------- | :------------------- | :---------------------------------- |
@@ -39,24 +45,28 @@ A three-tier recurring commission structure. Rates are stored in basis points.
 | `TIER_2` | Growth  | **3%** (300 bps) | 10                   | Priority payout review              |
 | `TIER_3` | Partner | **5%** (500 bps) | 50                   | Priority support, partner campaigns |
 
-<Callout type="warn" title="Tier promotion is manual, not automatic">
-  The conversion thresholds are **informational**. Nothing in the code auto-promotes an affiliate
-  based on conversion count — the dashboard displays progress toward the next tier, but the only
-  thing that actually changes an affiliate's tier is a human admin action in the affiliate console
-  at `/admin/affiliates`.
+<Callout type="info" title="Tier promotion is automatic">
+  An affiliate is promoted when their count of converted referrals with at least one released
+  commission reaches the next threshold. Pending or reversed commissions do not count. Promotion
+  only ever moves up. An admin can also set the tier in the affiliate console at
+  `/admin/affiliates`; that decision holds until the affiliate crosses the next threshold.
 </Callout>
 
 ---
 
 ## Wallet and payouts
 
-- **Balances** — pending and available, tracked in cents.
-- **Minimum withdrawal** — **$25.00** (2,500 cents).
-- **Payout request flow** — an affiliate requests a withdrawal; an admin approves, rejects, or marks
-  it paid.
+- **Balances**: pending, available and paid, tracked in USD cents.
+- **Commission review**: every commission starts `PENDING`. An admin releases it to the available
+  balance (`AVAILABLE`) or reverses it.
+- **Withdrawable amount**: the available balance minus any claw-back owed from a refunded
+  commission.
+- **Minimum withdrawal**: **$25.00** (2,500 cents).
+- **Payout request flow**: an active affiliate requests a withdrawal (one open request at a time);
+  an admin approves, rejects, or marks it paid.
 
 <Callout type="info" title="Why payouts are manual">
-  Dodo Payments provides no payout or transfer API — only a read-only settlements list. Payouts are
+  Dodo Payments provides no payout or transfer API, only a read-only settlements list. Payouts are
   therefore always executed **out-of-band** (bank transfer or equivalent) and then recorded in the
   system. A commission can only be marked `PAID` by an admin action.
 </Callout>
@@ -68,7 +78,7 @@ Withdrawal states are `REQUESTED`, `APPROVED`, `REJECTED`, and `PAID`. Commissio
 
 ## Public leaderboard
 
-Monthly and all-time boards, explicitly scoped to **released and paid commissions only** — pending
+Monthly and all-time boards, explicitly scoped to **released and paid commissions only**: pending
 or reversed commissions never appear. Leaderboard results are cached for 5 minutes; the affiliate
 dashboard for 1 minute.
 
@@ -80,10 +90,11 @@ Surfaced on the public marketing page at
 [veriworkly.com/affiliate](https://veriworkly.com/affiliate):
 
 - **Self-referral is blocked.**
-- **One referral per account for life** — a user can only ever be attributed to one affiliate.
-- **No attribution expiry window** — unlike the typical 30-day industry norm, attribution does not
-  time out.
-- **No brand-keyword bidding** — affiliates may not bid on VeriWorkly's own brand keywords in paid
+- **One referral per account for life**: a user can only ever be attributed to one affiliate.
+- **Attribution window**: a referral code must be applied within 30 days of the referred user's
+  sign-up (`AFFILIATE_ATTRIBUTION_DAYS`) and before their first purchase. Once attached, it does not
+  expire.
+- **No brand-keyword bidding**: affiliates may not bid on VeriWorkly's own brand keywords in paid
   advertising.
 
 ---
@@ -107,5 +118,5 @@ the `503` response shape returned when the program flag is off.
 ## Related
 
 - [Ambassador Program](/docs/product/ambassador-program)
-- [Billing & Credits](/docs/product/billing-and-credits) — commissions are triggered by billing
+- [Billing & Credits](/docs/product/billing-and-credits): commissions are triggered by billing
   webhooks.

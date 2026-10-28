@@ -21,11 +21,11 @@ Manages authentication and application preferences:
 - **Preferences** — theme (light, dark, or follow system) and the auto-sync toggle.
 
 <Callout type="warn" title="A username is permanent">
-  You can only set a username once. It is baked into every share URL you have handed out — and, on a
-  plan with `custom_subdomain`, into your published portfolio's address — so the API rejects a
-  change with `409 Username is locked and cannot be changed`. Your input is normalised before it is
-  stored (lowercased, non-alphanumerics folded to hyphens, truncated to 32 characters), so check
-  what you will actually get before committing.
+  You can only set a username once. It is part of every share URL you have handed out, so the API
+  rejects a change with `409 Username is locked and cannot be changed`. Your input is normalised
+  before it is stored: accents are stripped, letters are lowercased, anything other than `a-z`,
+  `0-9`, `_` and `-` becomes a hyphen, and the result is cut to 32 characters. It must be at least 3
+  characters and not a reserved name. Check what you will actually get before committing.
 </Callout>
 
 ### Your Master Profile
@@ -53,13 +53,19 @@ VeriWorkly is passwordless. There is no account password to forget or reuse.
    enabled, so signing in with Google after having used email OTP lands you on the same account
    rather than creating a duplicate.
 
+<Callout type="warn" title="One GitHub account, linked for good">
+  An account can have one linked GitHub account, and it cannot be disconnected or swapped for
+  another. Its email does not have to match your VeriWorkly email. Free accounts import only from
+  the linked GitHub; paid plans can import any public GitHub username.
+</Callout>
+
 Sessions last 30 days by default and are shared across VeriWorkly subdomains, so a login in Studio
 carries over to the portfolio builder.
 
 <Callout type="info" title="You do not need an account to build">
-  Documents work fully logged out — they live in your browser, backed by a 30-day guest cookie. An
-  account is only required for cloud sync, sharing, AI, ATS scanning, imports, and portfolio
-  publishing.
+  No login required: choose **Continue as Guest** on the sign-in screen. Your documents live in your
+  browser, and a 30-day guest cookie keeps you in guest mode. Sign in for cloud sync, share links,
+  and the Master Profile.
 </Callout>
 
 You will also receive automatic emails on account events: a welcome email on signup, and a
@@ -103,6 +109,21 @@ view at `/settings`.
 
 ---
 
+## Your profile page
+
+`/profile` in Studio shows your account:
+
+- **Name**: edit your display name, up to 255 characters.
+- **Username**: set it once. After that it shows as locked.
+- **Account details**: your email and whether it is verified, the auto-sync setting, and when the
+  account was created and last updated.
+- **Account stats**: how many API keys, share links, and documents your account holds.
+- **Links** to Billing, AI credit usage, the affiliate program, the Master Profile, Advanced JSON,
+  and API keys.
+- **Danger Zone**: delete your account. See below.
+
+---
+
 ## Deleting your data
 
 **Individual documents** can be deleted at any time from the dashboard. Deletion is a soft delete
@@ -112,12 +133,28 @@ free-tier one-document-per-type limit.
 **Local data** persists in your browser until you clear site data or delete the document. Clearing
 browser storage removes anything that was never synced.
 
-<Callout type="warn" title="Self-service account deletion is not yet available">
-  Studio does not currently expose an account-deletion control, and the backend's delete-user
-  endpoint is not enabled. To have your account and all associated cloud data removed, email
-  <a href="mailto:info@veriworkly.com">info@veriworkly.com</a>. You will receive a confirmation
-  email when the deletion is processed. Deletion cascades to your documents, Master Profile, share
-  links, portfolio, API keys, and sessions.
+**Deleted documents** are wiped from the server 30 days after you delete them.
+
+**Your account** can be deleted from the **Danger Zone** on `/profile`. Type your email to confirm.
+Before you do, use **Download my data** in the same dialog: it saves one JSON file with every
+document in your account and your Master Profile.
+
+Deletion is permanent. It removes your documents, Master Profile, share links, portfolios and their
+uploaded images, API keys, sessions, AI credits, and affiliate data. The documents stored on that
+device are removed too. A confirmation email follows.
+
+<Callout type="warn" title="When deletion is refused">
+  The server answers `409` and deletes nothing while:
+
+- a subscription can still charge you. That includes one you have cancelled whose paid period has
+  not ended, and one that is paused or retrying a failed payment. Cancel it from **Billing**
+  (Manage Subscription), wait for it to end, then delete. VeriWorkly cannot cancel it for you,
+  because it lives with the payment provider.
+- a checkout is still open. Finish or cancel it first.
+- an affiliate withdrawal is requested or approved but not yet paid.
+- you have unpaid affiliate commissions. The message states the amount you would forfeit. Sending
+  the request again with `{ "confirmAffiliateForfeit": true }` confirms it.
+
 </Callout>
 
 ---
