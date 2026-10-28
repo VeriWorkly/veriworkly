@@ -307,6 +307,8 @@ describe("admin affiliate lists (V-133) and reasons (V-081/V-082)", () => {
     const commission = await prisma.affiliateCommission.create({
       data: { affiliateId: carol.id, amountCents: 500, rateBps: 2000 },
     });
+    // The pending balance the commission sits in, so a reversal can come out of it (V-415).
+    await prisma.affiliateWallet.create({ data: { userId: carol.id, pendingCents: 500 } });
     const withdrawal = await prisma.affiliateWithdrawal.create({
       data: { userId: carol.id, amountCents: 1000 },
     });
@@ -320,7 +322,10 @@ describe("admin affiliate lists (V-133) and reasons (V-081/V-082)", () => {
     const noReason = await asUser(adminUser)
       .patch(`/api/v1/admin/affiliates/commissions/${commission.id}`)
       .send({ status: "REVERSED" });
-    expect(noReason.status).not.toBe(400);
+    expect(noReason.status, JSON.stringify(noReason.body)).toBe(200);
+    expect(
+      (await prisma.affiliateCommission.findUniqueOrThrow({ where: { id: commission.id } })).status,
+    ).toBe("REVERSED");
 
     const shortNote = await asUser(adminUser)
       .patch(`/api/v1/admin/affiliates/withdrawals/${withdrawal.id}`)

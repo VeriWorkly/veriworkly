@@ -289,14 +289,26 @@ describe("JSON body limits (V-098)", () => {
     const response = await asUser(user)
       .put("/api/v1/portfolios/draft")
       .send({ subdomain: `big${randomUUID().slice(0, 8)}`, snapshot: { blob: big } });
-    expect(response.status).not.toBe(413);
+    // Parsed, so it reaches validation (V-415): a 400 naming the snapshot's fields, never the 413
+    // the 100 kb parser would give.
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: "snapshot.schemaVersion" })]),
+    );
   });
 
   it("parses a 200 kb body on the AI/ATS text routes (256 kb) but not 300 kb", async () => {
     const user = await createUserWithSession();
     const api = asUser(user);
-    expect((await api.post("/api/v1/ats/check").send({ resumeText: big })).status).not.toBe(413);
-    expect((await api.post("/api/v1/ai/generate").send({ prompt: big })).status).not.toBe(413);
+    // Parsed, so each reaches validation (V-415): 400 "Validation failed", not 413.
+    for (const parsed of [
+      await api.post("/api/v1/ats/check").send({ resumeText: big }),
+      await api.post("/api/v1/ai/generate").send({ prompt: big }),
+    ]) {
+      expect(parsed.status).toBe(400);
+      expect(parsed.body.message).toBe("Validation failed");
+    }
     const tooBig = "x".repeat(300 * 1024);
     expect((await api.post("/api/v1/ats/check").send({ resumeText: tooBig })).status).toBe(413);
   });
