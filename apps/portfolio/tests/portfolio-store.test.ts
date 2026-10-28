@@ -163,6 +163,113 @@ describe("portfolio store", () => {
     expect(draftSaveCalled).toBe(true);
   });
 
+  describe("draft saves run one at a time (SV-08)", () => {
+    // The 12 s autosave, a manual Save and Publish each call saveDraft. Sent together they carried
+    // the same revision, so a server that refuses a stale revision (V-304) would answer the second
+    // with a false "changed in another session".
+    function signedInStore() {
+      return createPortfolioStore({
+        user: { name: "Gautam Raj", email: "gautam@veriworkly.com" },
+        draft: {
+          id: "draft-1",
+          slug: "gautam",
+          templateId: "signal",
+          revision: 1,
+          updatedAt: "2026-10-28T00:00:00.000Z",
+          content: baseContent,
+        } as never,
+        content: baseContent,
+        slug: "gautam",
+        ready: true,
+      });
+    }
+
+    function deferredSaves() {
+      const bodies: Array<{ revision?: number; snapshot: { identity: { bio: string } } }> = [];
+      const replies: Array<() => void> = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          if (!String(input).includes("/portfolios/draft"))
+            return Promise.resolve(jsonResponse(null, 404));
+          const body = JSON.parse(String(init?.body));
+          bodies.push(body);
+          return new Promise<Response>((resolve) => {
+            replies.push(() =>
+              resolve(
+                jsonResponse({
+                  id: "draft-1",
+                  slug: "gautam",
+                  templateId: "signal",
+                  revision: (body.revision ?? 0) + 1,
+                  updatedAt: "2026-10-28T00:00:01.000Z",
+                  content: body.snapshot,
+                }),
+              ),
+            );
+          });
+        }),
+      );
+      return { bodies, replies };
+    }
+
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it("sends a save asked for mid-flight after the first returns, with the new revision", async () => {
+      const saving = signedInStore();
+      const { bodies, replies } = deferredSaves();
+
+      const autosave = saving.getState().saveDraft();
+      saving.getState().updateIdentity({ bio: "edited mid-flight" });
+      const manual = saving.getState().saveDraft();
+      await settle();
+      expect(bodies).toHaveLength(1);
+
+      replies[0]();
+      await autosave;
+      await settle();
+      expect(bodies).toHaveLength(2);
+      expect(bodies[1].revision).toBe(2);
+      expect(bodies[1].snapshot.identity.bio).toBe("edited mid-flight");
+
+      replies[1]();
+      await expect(manual).resolves.toMatchObject({ revision: 3 });
+      expect(saving.getState().draft?.revision).toBe(3);
+      expect(saving.getState().isDirty).toBe(false);
+    });
+
+    it("folds every save asked for during one flight into a single follow-up", async () => {
+      const saving = signedInStore();
+      const { bodies, replies } = deferredSaves();
+
+      const first = saving.getState().saveDraft();
+      const second = saving.getState().saveDraft();
+      const third = saving.getState().saveDraft();
+      replies[0]();
+      await first;
+      await settle();
+      replies[1]();
+
+      const [a, b] = await Promise.all([second, third]);
+      expect(bodies).toHaveLength(2);
+      expect(a).toBe(b);
+    });
+
+    it("keeps an edit made during a save marked unsaved", async () => {
+      const saving = signedInStore();
+      const { replies } = deferredSaves();
+
+      const autosave = saving.getState().saveDraft();
+      await settle();
+      saving.getState().updateIdentity({ bio: "typed while saving" });
+      replies[0]();
+      await autosave;
+
+      expect(saving.getState().isDirty).toBe(true);
+      expect(saving.getState().status).toBe("Unsaved changes");
+    });
+  });
+
   it("shares a single in-flight load across concurrent loadWorkspace() calls", async () => {
     let usersMeCallCount = 0;
 
