@@ -186,17 +186,14 @@ const SyncDetailsModal = ({
 
               <div className="flex items-center">
                 <p
-                  className={cn(
-                    "text-[10px] font-bold tracking-widest uppercase",
-                    currentStatus.color,
-                  )}
+                  className={cn("text-xs font-bold tracking-widest uppercase", currentStatus.color)}
                 >
                   {currentStatus.label}
                 </p>
 
                 <span className="bg-foreground/10 mr-0.5 ml-2 block h-1 w-1 rounded-full" />
 
-                <span className="text-muted-foreground text-[10px] font-medium italic">
+                <span className="text-muted-foreground text-xs font-medium italic">
                   {currentStatus.description}
                 </span>
               </div>
@@ -206,7 +203,7 @@ const SyncDetailsModal = ({
 
         <Modal.Body className="space-y-5 p-4">
           <div className="space-y-1.5">
-            <p className="text-muted text-[10px] font-bold tracking-widest uppercase">Document</p>
+            <p className="text-muted text-xs font-bold tracking-widest uppercase">Document</p>
 
             <div className="bg-muted/5 group hover:bg-muted/10 flex items-center justify-between rounded-xl border px-4 py-3 transition-colors">
               <span className="text-sm font-bold">{document.title}</span>
@@ -226,7 +223,7 @@ const SyncDetailsModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card space-y-1 rounded-xl border p-3">
-              <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-bold tracking-tight uppercase">
+              <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-tight uppercase">
                 <Cloud className="-mt-px h-3.5 w-3.5 opacity-60" /> Last backed up
               </p>
 
@@ -242,7 +239,7 @@ const SyncDetailsModal = ({
             </div>
 
             <div className="bg-card space-y-1 rounded-xl border p-3">
-              <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-bold tracking-tight uppercase">
+              <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-tight uppercase">
                 <Monitor className="-mt-px h-3.5 w-3.5 opacity-60" /> Last Attempt
               </p>
 
@@ -282,7 +279,7 @@ const SyncDetailsModal = ({
               <div className="mb-1 flex items-center gap-2">
                 <AlertTriangle className="text-destructive h-3.5 w-3.5" />
 
-                <p className="text-destructive text-[10px] font-black tracking-widest uppercase">
+                <p className="text-destructive text-xs font-black tracking-widest uppercase">
                   {isDeletedElsewhere ? "Deleted on another device" : "Backup error"}
                 </p>
               </div>
@@ -325,7 +322,7 @@ const SyncDetailsModal = ({
                         variant="secondary"
                         disabled={isSyncing}
                         onClick={() => setConfirmingResolve(null)}
-                        className="text-[10px] font-black tracking-widest uppercase"
+                        className="text-xs font-black tracking-widest uppercase"
                       >
                         Cancel
                       </Button>
@@ -338,7 +335,7 @@ const SyncDetailsModal = ({
                             ? onResolveUseLocal(document.id)
                             : onResolveUseCloud(document.id)
                         }
-                        className="text-[10px] font-black tracking-widest uppercase"
+                        className="text-xs font-black tracking-widest uppercase"
                       >
                         {confirmingResolve === "local" ? "Replace Cloud Copy" : "Replace This Copy"}
                       </Button>
@@ -388,7 +385,7 @@ const SyncDetailsModal = ({
                         size="sm"
                         variant="secondary"
                         onClick={() => setConfirmingKeepLocal(false)}
-                        className="text-[10px] font-black tracking-widest uppercase"
+                        className="text-xs font-black tracking-widest uppercase"
                       >
                         Cancel
                       </Button>
@@ -397,7 +394,7 @@ const SyncDetailsModal = ({
                         size="sm"
                         loading={isSyncing}
                         onClick={() => onKeepLocalOnly(document.id)}
-                        className="text-[10px] font-black tracking-widest uppercase"
+                        className="text-xs font-black tracking-widest uppercase"
                       >
                         Delete Cloud Copy
                       </Button>
@@ -408,7 +405,7 @@ const SyncDetailsModal = ({
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="text-[10px] font-black tracking-widest uppercase"
+                      className="text-xs font-black tracking-widest uppercase"
                       onClick={() => {
                         router.push(editorHref);
                         onClose();
@@ -421,9 +418,9 @@ const SyncDetailsModal = ({
                       size="sm"
                       variant="secondary"
                       onClick={() => setConfirmingKeepLocal(true)}
-                      className="text-muted-foreground hover:text-foreground text-[10px] font-black tracking-widest uppercase"
+                      className="text-muted-foreground hover:text-foreground text-xs font-black tracking-widest uppercase"
                     >
-                      Keep Local, Delete Cloud
+                      Keep on this device only
                     </Button>
                   </div>
                 )}

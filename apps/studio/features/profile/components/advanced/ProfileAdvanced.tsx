@@ -116,13 +116,13 @@ const ProfileAdvanced = ({ profile, onSave, isSaving, initialStatus }: ProfileAd
             <div>
               <h3 className="text-sm font-bold">Raw JSON Schema</h3>
 
-              <p className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+              <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
                 Direct Data Manipulation
               </p>
             </div>
           </div>
 
-          <Badge className="h-5 px-2 text-[10px]">
+          <Badge className="h-5 px-2 text-xs">
             {jsonCheck.ok
               ? "Valid profile"
               : jsonCheck.kind === "syntax"

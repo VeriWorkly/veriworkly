@@ -165,7 +165,7 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
                 <span>
                   <strong className="text-foreground">Portfolios & Media:</strong> Published
                   subdomains (
-                  <code className="rounded bg-red-500/10 px-1 py-0.5 font-mono text-[11px]">
+                  <code className="rounded bg-red-500/10 px-1 py-0.5 font-mono text-xs">
                     *.veriworkly.com
                   </code>
                   ) will be unpublished and all uploaded images deleted from cloud storage.

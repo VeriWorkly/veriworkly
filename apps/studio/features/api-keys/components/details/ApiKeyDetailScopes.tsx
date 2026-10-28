@@ -29,7 +29,7 @@ export function ApiKeyDetailScopes({ scopes, scopeSummary }: ApiKeyDetailScopesP
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-bold">{option?.label ?? scope}</p>
 
-                  <Badge className="bg-accent/10 border-accent/20 text-accent px-2 py-0 text-[10px]">
+                  <Badge className="bg-accent/10 border-accent/20 text-accent px-2 py-0 text-xs">
                     {scope}
                   </Badge>
                 </div>

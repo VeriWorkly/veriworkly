@@ -86,6 +86,7 @@ describe("login showcase carousel", () => {
     expect(await page.getByRole("button", { name: /slideshow/ }).count()).toBe(0);
 
     const before = await currentDot().getAttribute("aria-label");
+    // Deliberate negative check: nothing may happen for longer than one rotation interval.
     await page.waitForTimeout(6_500);
 
     expect(await currentDot().getAttribute("aria-label")).toBe(before);
@@ -100,7 +101,10 @@ describe("editor", () => {
       waitUntil: "networkidle",
     });
     await page.waitForFunction(() => !location.pathname.endsWith("/new"));
-    await page.waitForTimeout(1_000);
+    await page
+      .getByLabel(/full name/i)
+      .first()
+      .waitFor({ state: "visible", timeout: 30_000 });
   });
 
   it("S-167: shows routine saves without announcing them", async () => {
@@ -108,9 +112,10 @@ describe("editor", () => {
       .getByLabel(/full name/i)
       .first()
       .fill("Live Region");
-    await page.waitForTimeout(1_500);
 
-    expect(await page.getByTestId("editor-status").innerText()).toBe("Saved on this device");
+    await expect
+      .poll(() => page.getByTestId("editor-status").innerText())
+      .toBe("Saved on this device");
     expect(await page.getByRole("status").filter({ hasText: "Saved on this device" }).count()).toBe(
       0,
     );
@@ -127,9 +132,8 @@ describe("editor", () => {
 
     await canvas.hover();
     await page.mouse.wheel(0, 400);
-    await page.waitForTimeout(300);
 
+    await expect.poll(transform).toContain("-400px");
     expect(await transform()).not.toBe(before);
-    expect(await transform()).toContain("-400px");
   });
 });

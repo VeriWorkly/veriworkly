@@ -158,7 +158,7 @@ export function DocumentTemplatePickerModal({
                       <span className="mt-2 flex flex-wrap gap-1">
                         {template.tags.slice(0, 3).map((tag) => (
                           <span
-                            className="bg-background text-muted rounded-md border px-1.5 py-0.5 text-[10px] font-medium"
+                            className="bg-background text-muted rounded-md border px-1.5 py-0.5 text-xs font-medium"
                             key={tag}
                           >
                             {tag}

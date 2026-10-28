@@ -27,7 +27,7 @@ function QueueBadge({ count, critical }: { count: number | null; critical?: bool
     <span
       title={count === null ? "Count unavailable" : undefined}
       className={cn(
-        "admin-numeric ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
+        "admin-numeric ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
         count === null
           ? "bg-admin-inset text-muted"
           : critical
@@ -95,7 +95,7 @@ const AdminSidebar = ({ queue, onNavigate }: AdminSidebarProps) => {
             <span className="text-foreground block truncate text-sm leading-tight font-semibold">
               VeriWorkly
             </span>
-            <span className="text-muted block text-[11px] leading-tight">Admin console</span>
+            <span className="text-muted block text-xs leading-tight">Admin console</span>
           </span>
         </Link>
       </div>

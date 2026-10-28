@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { check, DEFAULT_POLICY } from "@veriworkly/ats-engine";
 
+import type { AtsResult } from "@/features/ats/types";
+
+import { recallAtsReport, rememberAtsReport } from "@/features/ats/ats-report-memory";
 import { toAtsDocument } from "@/features/ats/resume-document";
+import { createLocalStorageMock } from "@/tests/utils/local-storage";
 import { defaultResume } from "@/features/resume/constants/default-resume";
 
 /** Certificates and languages reach the engine as its own rows, so it can judge them. */
@@ -72,5 +76,41 @@ describe("S-296: renamed headings in the ATS document", () => {
     expect(check(toAtsDocument(renamed), DEFAULT_POLICY).readinessScore).toBe(
       check(toAtsDocument(sample()), DEFAULT_POLICY).readinessScore,
     );
+  });
+});
+
+describe("S-221: the last ATS report per resume survives leaving the page", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const report = { score: 72 } as unknown as AtsResult;
+
+  it("S-221: a resume picked again shows its last report, marked stale once it was edited", () => {
+    vi.stubGlobal("window", { sessionStorage: createLocalStorageMock() });
+
+    expect(recallAtsReport("resume-1", "Jane Doe")).toBeNull();
+
+    rememberAtsReport("resume-1", "Jane Doe", report);
+
+    expect(recallAtsReport("resume-1", "Jane Doe")).toEqual({ result: report, current: true });
+    expect(recallAtsReport("resume-1", "Jane Doe, edited")).toEqual({
+      result: report,
+      current: false,
+    });
+    expect(recallAtsReport("resume-2", "Jane Doe")).toBeNull();
+  });
+
+  it("S-221: storage that refuses the write loses only the recall, never the scan", () => {
+    const sessionStorage = createLocalStorageMock();
+    sessionStorage.setItem.mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError");
+    });
+    vi.stubGlobal("window", { sessionStorage });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(() => rememberAtsReport("resume-1", "Jane Doe", report)).not.toThrow();
+    expect(warn).toHaveBeenCalled();
+    expect(recallAtsReport("resume-1", "Jane Doe")).toBeNull();
   });
 });

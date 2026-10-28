@@ -136,11 +136,11 @@ export default async function AdminApiKeysPage({
       summary={
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <AdminStatCard label="Total" value={formatNumber(summary.total)} />
-          {/* The server counts every enabled, unrevoked key here, expired ones included. */}
+          {/* Keys that authenticate right now: enabled, not revoked and not expired. */}
           <AdminStatCard
             label="Enabled"
             value={formatNumber(summary.active)}
-            hint="expired ones included"
+            hint="not revoked or expired"
             tone="positive"
           />
           <AdminStatCard label="Revoked" value={formatNumber(summary.revoked)} />

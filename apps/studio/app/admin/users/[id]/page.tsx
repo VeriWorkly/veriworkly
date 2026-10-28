@@ -10,7 +10,7 @@ import Panel from "@/components/admin/Panel";
 import UserAdminActions from "@/app/admin/users/[id]/UserAdminActions";
 
 import { fetchAdminUserDetail, loadAdminDetail } from "@/features/admin/services/admin-server";
-import { describeAdminAccess } from "@/features/admin/utils/admin-access";
+import { adminAccessLabel, type AdminUserDetail } from "@/features/admin/types/admin-types";
 import {
   apiKeyState,
   formatCents,
@@ -35,6 +35,34 @@ function ListCount({ shown, total, noun }: { shown: number; total?: number; noun
         : `The latest ${pluralize(shown, noun)}; older ones are not shown.`}
     </p>
   );
+}
+
+/**
+ * The lines under the access label, all from the server's summary but the retry date, which is
+ * the past-due subscription's own.
+ */
+function accessDetails(detail: AdminUserDetail) {
+  const { access } = detail;
+  if (!access) return [];
+
+  const lines: string[] = [];
+
+  if (access.paymentIssue) {
+    const graceEndsAt = detail.subscriptions.find(
+      (subscription) => subscription.status === "PAST_DUE" && subscription.graceEndsAt,
+    )?.graceEndsAt;
+    lines.push(
+      `Payment issue: the card is being retried${graceEndsAt ? ` until ${formatDate(graceEndsAt)}` : ""}`,
+    );
+  }
+
+  if (access.passEndsAt) lines.push(`Pass until ${formatDate(access.passEndsAt)}`);
+
+  lines.push(
+    `${formatNumber(access.creditBalance)} credits available, ${access.paidCredits > 0 ? `${formatNumber(access.paidCredits)} of them paid for` : "none paid for"}`,
+  );
+
+  return lines;
 }
 
 /** Whether a timestamp has gone by, for the "expired" and "expires" labels. */
@@ -74,7 +102,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   // `ADMIN_EMAIL`'s account: the server refuses to delete it or change its role.
   const protectedAdmin =
     user.email.trim().toLowerCase() === process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  const access = describeAdminAccess(detail);
+  const access = { label: adminAccessLabel(detail.access), details: accessDetails(detail) };
 
   return (
     <div className="space-y-5">
@@ -94,7 +122,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         <AdminStatCard
           label="Documents"
           value={formatNumber(user._count.resumes)}
-          hint="all kinds, deleted ones included"
+          hint="all kinds, not counting the trash"
         />
         <AdminStatCard label="Share links" value={formatNumber(user._count.shareLinks)} />
         <AdminStatCard

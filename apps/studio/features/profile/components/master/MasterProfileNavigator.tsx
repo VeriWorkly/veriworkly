@@ -34,12 +34,12 @@ export function MasterProfileNavigator({
           <header className="mb-4 flex items-center gap-2">
             <Compass className="text-accent h-4 w-4" />
 
-            <h2 className="text-muted-foreground text-[10px] font-black tracking-widest uppercase">
+            <h2 className="text-muted-foreground text-xs font-black tracking-widest uppercase">
               Navigator
             </h2>
           </header>
 
-          <div className="mb-6 space-y-2 border-b border-dashed pb-4 text-[11px]">
+          <div className="mb-6 space-y-2 border-b border-dashed pb-4 text-xs">
             <StatRow label="Source" value={sourceLabel} />
             <StatRow
               isMono
@@ -144,7 +144,7 @@ function NavButton({
       {count !== undefined && (
         <span
           className={cn(
-            "rounded px-1.5 py-0.5 text-[9px]",
+            "rounded px-1.5 py-0.5 text-xs",
             count > 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-zinc-500/10 text-zinc-500",
           )}
         >

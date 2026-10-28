@@ -169,7 +169,7 @@ export function AccountMenu({ collapsed, displayName, email, version }: AccountM
               <>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-semibold">{displayName}</span>
-                  <span className="text-muted block truncate text-[11px]">{email}</span>
+                  <span className="text-muted block truncate text-xs">{email}</span>
                 </span>
 
                 <ChevronDown className="text-muted h-4 w-4" />
@@ -246,7 +246,7 @@ export function AccountMenu({ collapsed, displayName, email, version }: AccountM
                 ? item(LogOut, "Sign out", handleLogout, true)
                 : item(LogIn, "Sign in", () => router.push(signInHref()))}
 
-              <div className="text-muted border-border/70 mt-1 border-t px-3 pt-2 text-[11px]">
+              <div className="text-muted border-border/70 mt-1 border-t px-3 pt-2 text-xs">
                 {version} -{" "}
                 <a
                   href={`${siteConfig.links.main}/terms`}

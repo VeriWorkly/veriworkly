@@ -364,9 +364,7 @@ export function ImportProfileModal({
         {/* Header */}
         <div className="border-border/70 from-card to-background flex items-start justify-between border-b bg-linear-to-r p-5 sm:p-6">
           <div>
-            <span className="text-accent text-[10px] font-bold tracking-[0.2em] uppercase">
-              Import
-            </span>
+            <span className="text-accent text-xs font-bold tracking-[0.2em] uppercase">Import</span>
             <h2
               id="import-profile-title"
               className="mt-1.5 flex items-center gap-2 text-2xl font-black tracking-tight"
@@ -452,12 +450,12 @@ export function ImportProfileModal({
 
             {/* Quota Indicators */}
             {quota && (
-              <div className="border-border/60 bg-card/20 flex items-center justify-between border-b px-6 py-2.5 text-[11px]">
+              <div className="border-border/60 bg-card/20 flex items-center justify-between border-b px-6 py-2.5 text-xs">
                 <div className="text-muted-foreground flex items-center gap-1">
                   <span>Imports:</span>
                   {accessBadge ? (
                     <Badge
-                      className={`rounded border-none px-1.5 py-0.5 text-[10px] font-bold ${accessBadge === "Free" ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}
+                      className={`rounded border-none px-1.5 py-0.5 text-xs font-bold ${accessBadge === "Free" ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}
                     >
                       {accessBadge}
                     </Badge>
@@ -513,7 +511,7 @@ export function ImportProfileModal({
                     </div>
                   </div>
                   {currentTabQuota && currentTabQuota.resetsInSeconds > 0 && (
-                    <p className="text-muted-foreground pt-1 text-[10px]">
+                    <p className="text-muted-foreground pt-1 text-xs">
                       Quota resets in:{" "}
                       <span className="text-foreground font-bold">
                         {formatResetsTime(currentTabQuota.resetsInSeconds)}
@@ -562,14 +560,14 @@ export function ImportProfileModal({
                           <span className="mt-2 text-xs font-bold">
                             {uploadingPdf ? "Reading file..." : "Upload Profile PDF"}
                           </span>
-                          <span className="text-muted-foreground mt-1 text-[10px]">
+                          <span className="text-muted-foreground mt-1 text-xs">
                             Go to LinkedIn &gt; More &gt; Save to PDF, then upload here.
                           </span>
                         </button>
                       </div>
 
                       {/* Divider */}
-                      <div className="text-muted-foreground flex items-center gap-3 py-1 text-[10px] font-bold uppercase">
+                      <div className="text-muted-foreground flex items-center gap-3 py-1 text-xs font-bold uppercase">
                         <div className="bg-border/80 h-px flex-1"></div>
                         <span>or</span>
                         <div className="bg-border/80 h-px flex-1"></div>
@@ -681,20 +679,18 @@ export function ImportProfileModal({
                               {githubImportState(currentTabQuota) === "needs-sign-in" ? (
                                 <>
                                   <p className="font-bold">Link your GitHub account</p>
-                                  <p className="text-muted-foreground mt-0.5 text-[11px]">
+                                  <p className="text-muted-foreground mt-0.5 text-xs">
                                     Your account has no GitHub login, so there is no GitHub profile
                                     of yours to read. Link GitHub to import your own profile, use
                                     LinkedIn import, or get a subscription or pass to import any
                                     public GitHub profile.
                                   </p>
-                                  <p className="mt-1 text-[11px] font-semibold">
-                                    {GITHUB_LINK_NOTICE}
-                                  </p>
+                                  <p className="mt-1 text-xs font-semibold">{GITHUB_LINK_NOTICE}</p>
                                 </>
                               ) : (
                                 <>
                                   <p className="font-bold">Your GitHub account could not be read</p>
-                                  <p className="text-muted-foreground mt-0.5 text-[11px]">
+                                  <p className="text-muted-foreground mt-0.5 text-xs">
                                     Your account is linked to GitHub, but GitHub did not let us read
                                     your profile. Reconnect GitHub, use LinkedIn import, or get a
                                     subscription or pass to import any public GitHub profile.
@@ -737,7 +733,7 @@ export function ImportProfileModal({
                             </div>
                           </div>
                         ) : (
-                          <p className="text-muted-foreground text-[11px] leading-5">
+                          <p className="text-muted-foreground text-xs leading-5">
                             {currentTabQuota || isPaidUser
                               ? githubImportNote(isPaidUser)
                               : "Checking your GitHub sign-in..."}

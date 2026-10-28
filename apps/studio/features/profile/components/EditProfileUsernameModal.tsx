@@ -235,7 +235,7 @@ const EditProfileUsernameModal = ({ open, onClose, onSaved }: EditProfileUsernam
                   Username is available!
                 </p>
               ) : (
-                <p className="text-muted-foreground/70 pl-1 text-[11px] leading-relaxed font-medium">
+                <p className="text-muted-foreground/70 pl-1 text-xs leading-relaxed font-medium">
                   Use 3-32 characters, lowercase letters, numbers, hyphens, and underscores.
                 </p>
               )}

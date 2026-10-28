@@ -31,7 +31,7 @@ async function fetchInitialApiKeys() {
 function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
     <div className="bg-background/70 rounded-xl p-4">
-      <div className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+      <div className="text-muted flex items-center gap-2 text-xs font-bold tracking-wider uppercase">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>

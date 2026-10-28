@@ -9,7 +9,7 @@ const referenceCards = [
   {
     href: `${siteConfig.links.docs}/docs`,
     title: "Studio docs",
-    text: "Export, sharing, sync, and editor basics.",
+    text: "Export, sharing, backup, and editor basics.",
     icon: BookOpen,
   },
 

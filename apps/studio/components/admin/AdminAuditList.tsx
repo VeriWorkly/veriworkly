@@ -22,13 +22,14 @@ const TARGET_PAGES: Record<string, (id: string) => string> = {
 };
 
 /**
- * Where an entry's target can be opened, or `null`. An entry that deleted or unpublished its
- * target links nowhere: the record is gone and its page would 404.
+ * Where an entry's target can be opened, or `null`. A target the server reports gone, or an
+ * entry that deleted or unpublished it, links nowhere: its page would 404.
  */
 export function adminAuditTargetHref(
-  entry: Pick<AdminAuditEntry, "action" | "targetType" | "targetId">,
+  entry: Pick<AdminAuditEntry, "action" | "targetType" | "targetId" | "targetExists">,
 ) {
-  if (!entry.targetId || /\.(delete|unpublish)$/.test(entry.action)) return null;
+  if (!entry.targetId || entry.targetExists === false) return null;
+  if (/\.(delete|unpublish)$/.test(entry.action)) return null;
 
   return TARGET_PAGES[entry.targetType]?.(entry.targetId) ?? null;
 }
@@ -78,7 +79,7 @@ export default function AdminAuditList({
                   {entry.actor?.email ?? "system"} · {formatDateTime(entry.createdAt)}
                   {entry.reason ? ` · ${entry.reason}` : ""}
                 </p>
-                {metadata ? <p className="text-muted font-mono text-[11px]">{metadata}</p> : null}
+                {metadata ? <p className="text-muted font-mono text-xs">{metadata}</p> : null}
               </div>
             );
           })}

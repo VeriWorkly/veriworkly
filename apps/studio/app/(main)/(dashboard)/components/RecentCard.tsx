@@ -54,7 +54,7 @@ const RecentCard = ({
       <div className="p-3">
         <div className="flex items-center gap-2">
           <h3 className="min-w-0 flex-1 truncate text-sm font-bold">{doc.title}</h3>
-          <Badge className="px-2 py-0.5 text-[10px]">{definition.label}</Badge>
+          <Badge className="px-2 py-0.5 text-xs">{definition.label}</Badge>
         </div>
 
         <p className="text-muted mt-1 truncate text-xs">{doc.description || doc.templateName}</p>

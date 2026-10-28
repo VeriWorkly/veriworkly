@@ -71,7 +71,7 @@ const columns: Array<AdminTableColumn<AdminAuditEntry>> = [
     hideOnMobile: true,
     className: "max-w-sm",
     render: (entry) => (
-      <span className="text-muted font-mono text-[11px] break-words">
+      <span className="text-muted font-mono text-xs break-words">
         {formatAuditMetadata(entry.metadata) || "—"}
       </span>
     ),

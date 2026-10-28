@@ -139,7 +139,7 @@ export default function SyncSection() {
         <div className="border-border/40 flex items-center gap-3 rounded-full border bg-zinc-500/5 p-2 px-4">
           <span
             id="auto-sync-label"
-            className="text-muted-foreground text-[10px] font-bold tracking-tighter uppercase"
+            className="text-muted-foreground text-xs font-bold tracking-tighter whitespace-nowrap uppercase"
           >
             Automatic backup
           </span>
@@ -168,7 +168,7 @@ export default function SyncSection() {
             telemetry.lastAttemptAt ? (
               <>
                 <span>{new Date(telemetry.lastAttemptAt).toLocaleTimeString()}</span>
-                <span className="text-muted-foreground/40 ml-1 text-[10px] font-semibold">
+                <span className="text-muted-foreground/40 ml-1 text-xs font-semibold">
                   ({new Date(telemetry.lastAttemptAt).toLocaleDateString()})
                 </span>
               </>
@@ -196,9 +196,7 @@ function StatsTile({
   return (
     <div className="border-border/60 space-y-3 rounded-3xl border bg-zinc-500/2 p-5">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground/70 text-[10px] tracking-widest uppercase">
-          {label}
-        </span>
+        <span className="text-muted-foreground/70 text-xs tracking-widest uppercase">{label}</span>
 
         <Icon
           className={cn("h-4 w-4", success ? "text-emerald-500" : "text-muted-foreground/40")}

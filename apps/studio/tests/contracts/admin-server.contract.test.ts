@@ -988,6 +988,23 @@ async function withAdminServer<T>(
   }
 }
 
+/** The server's access summary for one user (`describeAccessForUsers`): free unless overridden. */
+function accessSummary(overrides: Record<string, unknown>) {
+  return {
+    tier: "free",
+    isPaid: false,
+    isPaying: false,
+    paymentIssue: false,
+    passEndsAt: null,
+    portfolioAccessEndsAt: null,
+    aiCreditsEndsAt: null,
+    creditBalance: 0,
+    paidCredits: 0,
+    creditSources: {},
+    ...overrides,
+  };
+}
+
 function userDetail(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     user: {
@@ -1030,99 +1047,31 @@ function userDetail(overrides: Partial<Record<string, unknown>> = {}) {
     apiKeys: [],
     sessions: [],
     auditEntries: [],
+    access: accessSummary({}),
     ...overrides,
   } as unknown as import("@/features/admin/types/admin-types").AdminUserDetail;
 }
 
 describe("Phase 9 Part E: admin console", () => {
-  it("S-339: a pass holder or a possible pack buyer never reads as Free", async () => {
-    const { describeAdminAccess } = await import("@/features/admin/utils/admin-access");
-    const now = Date.parse("2026-10-27T00:00:00Z");
-    const grant = (overrides: Record<string, unknown>) => ({
-      id: "g",
-      key: "portfolio_publish",
-      source: "SUBSCRIPTION",
-      startsAt: "2026-10-01T00:00:00Z",
-      endsAt: "2026-11-30T00:00:00Z",
-      revokedAt: null,
-      metadata: null,
-      ...overrides,
+  it("S-339 V-266: the users list shows the server's access summary; a pass holder or a credit buyer is never Free", async () => {
+    const row = (id: string, access: Record<string, unknown> | null) => ({
+      ...userDetail().user,
+      id,
+      email: `${id}@example.com`,
+      access,
     });
 
-    const pass = describeAdminAccess(
-      userDetail({
-        entitlements: [
-          grant({ source: "SYSTEM", metadata: { pass: true } }),
-          grant({ key: "ai_credits", source: "SYSTEM", metadata: { pass: true } }),
-        ],
-      }),
-      now,
-    );
-    expect(pass.label).toBe("Job Hunter pass");
-    expect(pass.details.join(" ")).toMatch(/Pass until Nov 30, 2026/);
-
-    const packBuyer = describeAdminAccess(
-      userDetail({
-        credits: {
-          wallet: { balance: 200, reserved: 0, lifetimeCredited: 300, lifetimeDebited: 100 },
-          transactions: [],
-        },
-      }),
-      now,
-    );
-    expect(packBuyer.label).not.toBe("Free");
-    expect(packBuyer.details.join(" ")).toMatch(/200 credits/);
-
-    expect(describeAdminAccess(userDetail(), now).label).toBe("Free");
-
-    expect(
-      describeAdminAccess(
-        userDetail({
-          entitlements: [grant({}), grant({ key: "ai_credits" })],
-        }),
-        now,
-      ).label,
-    ).toBe("Job Hunter Bundle");
-
-    // An expired subscription grant gives nothing.
-    expect(
-      describeAdminAccess(
-        userDetail({ entitlements: [grant({ endsAt: "2026-10-20T00:00:00Z" })] }),
-        now,
-      ).label,
-    ).toBe("Free");
-
-    // As the server's `buildSummary`: dunning only while the grace window runs, for a product.
-    const pastDue = (graceEndsAt: string | null, productKey = "portfolio_pro") =>
-      describeAdminAccess(
-        userDetail({
-          subscriptions: [{ id: "s1", productKey, status: "PAST_DUE", graceEndsAt }],
-          credits: {
-            wallet: { balance: 0, reserved: 0, lifetimeCredited: 0, lifetimeDebited: 0 },
-            transactions: [],
-          },
-        }),
-        now,
-      );
-
-    const dunning = pastDue("2026-11-03T00:00:00Z");
-    expect(dunning.label).toBe("Creator Pro (payment issue)");
-    expect(dunning.details.join(" ")).toMatch(/retried until Nov 3, 2026/);
-
-    const graceOver = pastDue("2026-10-20T00:00:00Z");
-    expect(graceOver.label).toBe("No plan or pass");
-    expect(graceOver.details.join(" ")).not.toMatch(/Payment issue/);
-
-    expect(pastDue(null).label).toBe("No plan or pass");
-    expect(pastDue("2026-11-03T00:00:00Z", "legacy_plan").label).toBe("No plan or pass");
-  });
-
-  it("S-339: the users list does not call a row without a subscription Free", async () => {
-    await withAdminServer(
+    const cells = await withAdminServer(
       {
         fetchAdminUsers: async () => ({
-          items: [userDetail().user],
-          total: 1,
+          items: [
+            row("pass", accessSummary({ tier: "pass", isPaying: true })),
+            row("buyer", accessSummary({ tier: "credits", isPaying: true, paidCredits: 250 })),
+            row("dunning", accessSummary({ tier: "portfolio_pro", paymentIssue: true })),
+            row("free", accessSummary({})),
+            row("unknown", null),
+          ],
+          total: 5,
           limit: 20,
           offset: 0,
         }),
@@ -1138,14 +1087,74 @@ describe("Phase 9 Part E: admin console", () => {
             };
           }
         ).props;
-        const column = props.columns.find((item) => item.key === "subscription")!;
-        const { renderToStaticMarkup } = await import("react-dom/server");
+        const column = props.columns.find((item) => item.key === "access")!;
 
-        expect(
-          renderToStaticMarkup(column.render(props.page.items[0]) as ReactElement),
-        ).not.toMatch(/Free/);
+        return Promise.all(
+          props.page.items.map((item) => renderAdminText(column.render(item) as ReactElement)),
+        );
       },
     );
+
+    expect(cells[0]).toMatch(/Job Hunter pass/);
+    expect(cells[1]).toMatch(/Credits customer/);
+    expect(cells[2]).toMatch(/Creator Pro \(payment issue\)/);
+    expect(cells[3]).toMatch(/Free/);
+    expect(cells[4]).toMatch(/Unavailable/);
+    for (const cell of cells.slice(0, 3)) expect(cell).not.toMatch(/Free/);
+  });
+
+  it("S-339 V-266: the user page shows the server's access summary, not one worked out from grants", async () => {
+    const { existsSync } = await import("node:fs");
+    expect(existsSync(path.join(process.cwd(), "features/admin/utils/admin-access.ts"))).toBe(
+      false,
+    );
+
+    const render = (detail: ReturnType<typeof userDetail>) =>
+      withAdminServer({ fetchAdminUserDetail: async () => detail }, async () => {
+        const { default: Page } = await import("@/app/admin/users/[id]/page");
+        return renderAdminText(
+          (await Page({ params: Promise.resolve({ id: "u1" }) })) as ReactElement,
+        );
+      });
+
+    // No grant on the detail says so: the summary is the only source.
+    const pass = await render(
+      userDetail({
+        access: accessSummary({
+          tier: "pass",
+          isPaying: true,
+          passEndsAt: "2026-11-30T00:00:00Z",
+          creditBalance: 120,
+          paidCredits: 100,
+        }),
+      }),
+    );
+    expect(pass).toMatch(/Access Job Hunter pass/);
+    expect(pass).toMatch(/Pass until Nov 30, 2026/);
+    expect(pass).toMatch(/120 credits available, 100 of them paid for/);
+
+    const buyer = await render(
+      userDetail({
+        access: accessSummary({
+          tier: "credits",
+          isPaying: true,
+          creditBalance: 250,
+          paidCredits: 250,
+        }),
+      }),
+    );
+    expect(buyer).toMatch(/Access Credits customer/);
+    expect(buyer).not.toMatch(/Access Free/);
+
+    const goodwill = await render(
+      userDetail({
+        access: accessSummary({ creditBalance: 50, creditSources: { admin_adjustment: 50 } }),
+      }),
+    );
+    expect(goodwill).toMatch(/Access Free/);
+    expect(goodwill).toMatch(/50 credits available, none paid for/);
+
+    expect(await render(userDetail({ access: null }))).toMatch(/Access Unavailable/);
   });
 
   it("S-339 S-341 LOW: the user page shows access, record history links, counts and honest dates", async () => {
@@ -1201,10 +1210,19 @@ describe("Phase 9 Part E: admin console", () => {
     expect(html).toMatch(/Latest 25 of 40 documents/);
     expect(html).toMatch(/expired [^<]*ago/);
     expect(html).toMatch(/Latest 1 of 12 sessions/);
-    expect(html).toMatch(/deleted ones included/);
+    // V-271: the server counts live documents only.
+    expect(html).not.toMatch(/deleted ones included/);
   });
 
-  it("S-340: the dashboard's commission figure is USD without reversed rows", async () => {
+  it("S-340 V-267 V-271: the dashboard shows revenue per currency, USD commission with its series, and honest key counts", async () => {
+    const money = (currency: string, netCents: number) => ({
+      currency,
+      payments: 1,
+      grossCents: netCents,
+      reversedCents: 0,
+      netCents,
+    });
+
     const tree = await withAdminServer(
       {
         fetchAdminOverview: async () => ({
@@ -1213,16 +1231,38 @@ describe("Phase 9 Part E: admin console", () => {
           ...Object.fromEntries(
             [
               "users",
-              "billing",
               "portfolios",
               "documents",
               "ambassadors",
-              "apiKeys",
               "jobs",
               "health",
               "recentActivity",
             ].map((section) => [section, { error: true }]),
           ),
+          billing: {
+            subscriptions: {
+              byStatus: {},
+              paying: 3,
+              byProduct: {},
+              newLast30Days: 0,
+              cancelingAtPeriodEnd: 0,
+            },
+            credits: {
+              balance: 0,
+              reserved: 0,
+              lifetimeCredited: 0,
+              lifetimeDebited: 0,
+              grantedLast30Days: 0,
+              spentLast30Days: 0,
+            },
+            webhooks: { byStatus: {}, failed: 0 },
+            activeEntitlements: 0,
+            revenue: {
+              last30Days: [money("EUR", 4_500), money("USD", 12_000)],
+              allTime: [money("EUR", 9_000), money("INR", 150_000), money("USD", 50_000)],
+            },
+          },
+          apiKeys: { total: 3, active: 1, revoked: 1, expired: 1, usedLast7Days: 2 },
           affiliates: {
             affiliatesByStatus: {},
             commissionsByStatus: {
@@ -1252,7 +1292,7 @@ describe("Phase 9 Part E: admin console", () => {
           subscriptions: [],
           applications: [],
         }),
-        // Every currency's cents, reversed ones included: never an amount to show.
+        // The server's commission series is USD only, reversed rows left out (V-267).
         fetchAdminTimeSeries: async () => ({
           buckets: ["2026-10-25", "2026-10-26"],
           series: new Proxy({}, { get: () => [5_000, 7_000] }),
@@ -1264,15 +1304,25 @@ describe("Phase 9 Part E: admin console", () => {
       },
     );
 
-    const [card] = findElements(
+    const [revenue] = findElements(tree, (props) => props.label === "Revenue · last 30 days");
+    const revenueText = await renderAdminText(
+      createElement("div", null, revenue.value as ReactNode, revenue.hint as ReactNode),
+    );
+    expect(revenueText).toMatch(/€45\.00/);
+    expect(revenueText).toMatch(/\$120\.00/);
+    expect(revenueText).toMatch(/All time: €90\.00 · ₹1,500\.00 · \$500\.00/);
+
+    const [commission] = findElements(
       tree,
       (props) => props.label === "Commission earned · USD, all time",
     );
-    expect(card.value).toBe("$6.00");
-    expect(card.hint).toMatch(/2 in other currencies/);
-    // The series mixes currencies and windows: no trend line, no delta from it.
-    expect(card.delta).toBeUndefined();
-    expect(card.trend).toBeUndefined();
+    expect(commission.value).toBe("$6.00");
+    expect(commission.hint).toMatch(/2 in other currencies/);
+    expect(commission.trend).toEqual([5_000, 7_000]);
+
+    const [keys] = findElements(tree, (props) => props.label === "Enabled API keys");
+    expect(keys.value).toBe("1");
+    expect(keys.hint).not.toMatch(/expired ones included/);
   }, 60_000);
 
   it("S-341: the audit log links targets, shows metadata and sends a whole-day UTC range", async () => {
@@ -1288,6 +1338,23 @@ describe("Phase 9 Part E: admin console", () => {
     expect(
       adminAuditTargetHref({ action: "api_key.update", targetType: "ApiKey", targetId: "k1" }),
     ).toBe(null);
+    // V-272: the server says whether the target is still there.
+    expect(
+      adminAuditTargetHref({
+        action: "user.role.change",
+        targetType: "User",
+        targetId: "u1",
+        targetExists: false,
+      }),
+    ).toBe(null);
+    expect(
+      adminAuditTargetHref({
+        action: "user.role.change",
+        targetType: "User",
+        targetId: "u1",
+        targetExists: true,
+      }),
+    ).toBe("/admin/users/u1");
     expect(formatAuditMetadata({ previousRole: "USER", nextRole: "AMBASSADOR" })).toBe(
       "previousRole: USER · nextRole: AMBASSADOR",
     );
@@ -1381,7 +1448,7 @@ describe("Phase 9 Part E: admin console", () => {
     expect(error?.digest).toMatch(/404/);
   });
 
-  it("S-344: an approved withdrawal can still be rejected; a released commission says why it cannot be reversed", async () => {
+  it("S-344 V-269: an approved withdrawal can still be rejected; a released or paid commission can be reversed", async () => {
     const { WithdrawalActions, CommissionActions } =
       await import("@/app/admin/affiliates/AffiliateActions");
 
@@ -1398,23 +1465,35 @@ describe("Phase 9 Part E: admin console", () => {
     expect(approved).toMatch(/Reject this withdrawal/);
     expect(approved).toMatch(/\$50\.00 is returned to ann@example\.com's available balance/);
 
-    const released = await renderAdminText(
-      createElement(CommissionActions, {
-        id: "c1",
-        status: "AVAILABLE",
-        amountCents: 500,
-        currency: "USD",
-        rateBps: 2000,
-        referredUserId: "u9",
-        providerPaymentId: "pay_1",
-        subscriptionId: null,
-        affiliateActive: true,
-      }),
-    );
-    expect(released).toMatch(/cannot be reversed from the console/);
+    const commission = (status: string) =>
+      renderAdminText(
+        createElement(CommissionActions, {
+          id: "c1",
+          status,
+          amountCents: 500,
+          currency: "USD",
+          rateBps: 2000,
+          referredUserId: "u9",
+          providerPaymentId: "pay_1",
+          subscriptionId: null,
+          affiliateActive: true,
+        }),
+      );
+
+    for (const status of ["AVAILABLE", "PAID"]) {
+      const html = await commission(status);
+      expect(html, status).toMatch(/Reverse this commission/);
+      expect(html, status).toMatch(
+        /\$5\.00 comes back out of the affiliate's available balance first; whatever it cannot cover is owed back/,
+      );
+      expect(html, status).not.toMatch(/cannot be reversed/);
+      expect(html, status).not.toMatch(/Release commission/);
+    }
+
+    expect(await commission("REVERSED")).toMatch(/No action/);
   });
 
-  it("S-256: a pending non-USD commission offers Convert only for an active affiliate", async () => {
+  it("S-256 V-270: a pending non-USD commission offers Convert, at the original's rate, only for an active affiliate", async () => {
     // The browser suite drives the dialog's confirm (admin-console.test.ts, S-256).
     const { CommissionActions, commissionConversion } =
       await import("@/app/admin/affiliates/AffiliateActions");
@@ -1433,7 +1512,8 @@ describe("Phase 9 Part E: admin console", () => {
       createElement(CommissionActions, { ...row, affiliateActive: true }),
     );
     expect(active).toMatch(/Convert to USD/);
-    expect(active).toMatch(/current tier rate, which may differ from the 20\.0%/);
+    expect(active).toMatch(/uses the same 20\.0% rate as the original/);
+    expect(active).not.toMatch(/current tier rate/);
     expect(active).not.toMatch(/Release commission/);
 
     const inactive = await renderAdminText(
@@ -1454,9 +1534,8 @@ describe("Phase 9 Part E: admin console", () => {
     ).toBe(false);
   });
 
-  it("S-256: the commissions page looks up which affiliates can convert, by exact id", async () => {
-    const lookups: Array<Record<string, unknown>> = [];
-    const eurRow = (id: string, affiliateId: string) => ({
+  it("S-256 V-272: the commissions page reads each row's affiliate status, with no lookups", async () => {
+    const eurRow = (id: string, affiliateId: string, affiliateStatus: string) => ({
       id,
       amountCents: 900,
       currency: "EUR",
@@ -1466,6 +1545,7 @@ describe("Phase 9 Part E: admin console", () => {
       providerPaymentId: null,
       subscriptionId: null,
       createdAt: "2026-10-01T00:00:00.000Z",
+      affiliateStatus,
       affiliate: {
         id: affiliateId,
         name: null,
@@ -1474,24 +1554,20 @@ describe("Phase 9 Part E: admin console", () => {
       },
       referral: { id: "r", referredUser: { id: "u9", email: "u9@x.com" } },
     });
+    const lookups: unknown[] = [];
 
     const html = await withAdminServer(
       {
         fetchAdminCommissions: async () => ({
-          items: [eurRow("c1", "a-active"), eurRow("c2", "a-suspended")],
+          items: [eurRow("c1", "a-active", "ACTIVE"), eurRow("c2", "a-suspended", "SUSPENDED")],
           total: 2,
           limit: 20,
           offset: 0,
           totalAmountCents: 0,
         }),
-        fetchAdminAffiliates: async (params: Record<string, unknown>) => {
+        fetchAdminAffiliates: async (params: unknown) => {
           lookups.push(params);
-          return {
-            items: params.query === "a-active" ? [{ id: "a-active" }] : [],
-            total: 0,
-            limit: 20,
-            offset: 0,
-          };
+          return { items: [], total: 0, limit: 20, offset: 0 };
         },
       },
       async () => {
@@ -1513,12 +1589,35 @@ describe("Phase 9 Part E: admin console", () => {
       },
     );
 
-    expect(lookups).toEqual([
-      { query: "a-active", status: "ACTIVE" },
-      { query: "a-suspended", status: "ACTIVE" },
-    ]);
+    expect(lookups).toEqual([]);
     expect(html[0]).toMatch(/Convert to USD/);
     expect(html[1]).toMatch(/affiliate is not active/);
+  });
+
+  it("V-272: an affiliate's 'See all' and 'Manage' links filter the lists by exact id", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "app/admin/affiliates/[id]/page.tsx"),
+      "utf8",
+    );
+    const links = [...source.matchAll(/href=\{`(\/admin\/affiliates\/[a-z]+\?[^`]+)`\}/g)].map(
+      ([, href]) => href,
+    );
+
+    expect(links.length).toBeGreaterThan(0);
+    for (const href of links)
+      expect(href).toMatch(/\?affiliateId=\$\{encodeURIComponent\(affiliate\.id\)\}$/);
+
+    // The list pages hand every URL param to the server, which filters on `affiliateId`.
+    const calls = mockFetch(() => ({ status: 200, body: { data: { items: [] } } }));
+    const admin = await import("@/features/admin/services/admin-server");
+    await admin.fetchAdminCommissions({ affiliateId: "a1" });
+    await admin.fetchAdminWithdrawals({ affiliateId: "a1" });
+    await admin.fetchAdminReferrals({ affiliateId: "a1" });
+    expect(calls.map((call) => new URL(call.url).searchParams.get("affiliateId"))).toEqual([
+      "a1",
+      "a1",
+      "a1",
+    ]);
   });
 
   it("brief: every admin list asks the server for 20 rows, whatever the URL says", async () => {
@@ -1817,6 +1916,9 @@ describe("Phase 9 Part E: admin console", () => {
     );
     expect(labels).not.toContain("Active");
     expect(labels).toContain("Enabled");
+    // V-271: the server's count leaves expired keys out.
+    const [enabled] = findElements(tree, (props) => props.label === "Enabled");
+    expect(enabled.hint).not.toMatch(/expired ones included/);
   });
 });
 
@@ -1904,5 +2006,87 @@ describe("Phase 9 Part E review fixes", () => {
 
     vi.stubEnv("NODE_ENV", "development");
     expect(isValidElement(Harness())).toBe(true);
+  });
+});
+
+describe("affiliate and ambassador copy says what the server does", () => {
+  const dashboard = (currentConversions: number, nextTierConversions: number | null) =>
+    ({
+      affiliateStatus: "ACTIVE",
+      affiliateTier: "TIER_1",
+      affiliateCode: "ANN",
+      clicks: 0,
+      conversions: currentConversions,
+      wallet: { pendingCents: 0, availableCents: 0, paidCents: 0 },
+      minimumWithdrawalCents: 5000,
+      tierProgress: { currentConversions, nextTierConversions },
+      tiers: [
+        { key: "TIER_1", name: "Starter", rateBps: 2000, requiredConversions: 0, perks: [] },
+        { key: "TIER_2", name: "Pro", rateBps: 2500, requiredConversions: 10, perks: [] },
+      ],
+      totalReferrals: 0,
+      referrals: [],
+      commissions: [],
+      withdrawals: [],
+    }) as unknown as import("@/features/affiliate/types").AffiliateDashboard;
+
+  it("S-255: promotion is automatic at the tier's paid-conversion count, refunds excluded", async () => {
+    const commissions = await readFile(
+      path.join(process.cwd(), "../server/src/services/affiliate/commissions.ts"),
+      "utf8",
+    );
+    // The server promotes in the conversion's own transaction, counting clean conversions only.
+    expect(commissions).toMatch(/const promotion = await promoteForConversions\(tx/);
+    expect(commissions).toMatch(/where: cleanConversionsWhere\(affiliateId\)/);
+
+    const { AffiliatePage } = await import("@/features/affiliate/AffiliatePage");
+    const overview = await renderAdminText(
+      createElement(AffiliatePage, { dashboard: dashboard(3, 10) }),
+    );
+    expect(overview).toMatch(
+      /3 of 10 paid conversions toward the next tier\. You move up automatically at 10 paid conversions; refunded purchases don't count\./,
+    );
+    expect(overview).not.toMatch(/not automatic|reviewed by our team/i);
+
+    vi.resetModules();
+    vi.doMock("@/features/billing/billing-server", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("@/features/billing/billing-server")>()),
+      getProgramServerData: async () => dashboard(3, 10),
+    }));
+    try {
+      const { default: TiersPage } = await import("@/app/(main)/(dashboard)/affiliate/tiers/page");
+      const tiers = await renderAdminText((await TiersPage()) as ReactElement);
+
+      expect(tiers).toMatch(/You move up automatically at 10 paid conversions/);
+      expect(tiers).toMatch(/refunded purchases don't count/);
+      expect(tiers).not.toMatch(/not automatic|by hand|Reviewed for promotion/i);
+    } finally {
+      vi.doUnmock("@/features/billing/billing-server");
+    }
+  });
+
+  it("S-258: the ambassador review dialogs say the applicant is emailed the decision with the note", async () => {
+    const service = await readFile(
+      path.join(process.cwd(), "../server/src/services/ambassadorService.ts"),
+      "utf8",
+    );
+    expect(service).toMatch(/sendAmbassadorDecisionEmail\(email, \{[\s\S]*reviewNote:/);
+
+    const { default: AmbassadorReviewActions } =
+      await import("@/app/admin/ambassadors/AmbassadorReviewActions");
+    const html = await renderAdminText(
+      createElement(AmbassadorReviewActions, {
+        applicationId: "a1",
+        status: "PENDING",
+        applicantEmail: "ann@example.com",
+      }),
+    );
+
+    expect(html).not.toMatch(/No email is sent/);
+    expect(
+      html.match(
+        /ann@example\.com is emailed the decision, with your note, and also sees it on their ambassador page/g,
+      ),
+    ).toHaveLength(2);
   });
 });

@@ -42,6 +42,7 @@ import {
   extractResumeFile,
   getAtsQuota,
   conversionUnavailableReason,
+  quotaResetLabel,
   runAtsAnalysis,
   runAtsCheck,
   type AtsFileInfo,
@@ -59,6 +60,7 @@ import type {
   ConvertedResume,
 } from "@/features/ats/types";
 import { toAtsDocument } from "@/features/ats/resume-document";
+import { recallAtsReport, rememberAtsReport } from "@/features/ats/ats-report-memory";
 import { buildResumeFromConversion } from "@/features/ats/converted-resume";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { useHiddenFileInput } from "@/features/documents/editor/toolbar/useHiddenFileInput";
@@ -95,7 +97,8 @@ export async function conversionLimitMessage(): Promise<string | null> {
   return hasUnlimitedDocuments(billing) ? null : freeLimitMessage("RESUME");
 }
 
-export function AtsWorkspace() {
+/** `initialDocumentId`: the saved resume to start from, when opened from its editor (S-221). */
+export function AtsWorkspace({ initialDocumentId }: { initialDocumentId?: string }) {
   const router = useRouter();
   const isLoggedIn = Boolean(useSessionUser()?.email);
   const [resume, setResume] = useState("");
@@ -104,6 +107,10 @@ export function AtsWorkspace() {
   // edit, paste or upload clears it and the scan falls back to the text.
   const [resumeDocument, setResumeDocument] = useState<AtsResumeDocument | null>(null);
   const [sourceLabel, setSourceLabel] = useState("");
+  // The saved resume being scanned, while its text is untouched: its last report is kept for
+  // the tab, and shown again when the resume is picked again.
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [reportIsStale, setReportIsStale] = useState(false);
   // Page geometry from an uploaded file, kept beside its text so the format checks can read the
   // layout. Cleared whenever the resume comes from anywhere else, since it would then describe
   // a document that is no longer loaded.
@@ -137,6 +144,36 @@ export function AtsWorkspace() {
   const pendingAnalysisRef = useRef<PendingAiRequest["current"]>(null);
   const pendingConversionRef = useRef<PendingAiRequest["current"]>(null);
   const fieldIds = useId();
+
+  // Picking a resume to scan is not opening it, so the active-document pointer stays where the
+  // user's editor left it.
+  const selectSavedResume = useCallback((id: string, fallbackTitle?: string) => {
+    const selected = readResumeById(id);
+    if (!selected) return;
+
+    const document = toAtsDocument(selected);
+    const text = renderResumeDocument(document);
+    const remembered = recallAtsReport(id, text);
+
+    setResumeDocument(document);
+    setResume(text);
+    setDocumentId(id);
+    setLayout(undefined);
+    setFileInfo(undefined);
+    setSourceLabel(fallbackTitle ?? (selected.title || "Studio resume"));
+    setResult(remembered?.result ?? null);
+    setReportIsStale(remembered ? !remembered.current : false);
+    setConverted(null);
+  }, []);
+
+  // Read from storage once the page is on screen: the server render has no storage, and the
+  // first client render must match it.
+  useEffect(() => {
+    if (!initialDocumentId) return;
+
+    const frame = window.requestAnimationFrame(() => selectSavedResume(initialDocumentId));
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialDocumentId, selectSavedResume]);
 
   const refreshWallet = useCallback(() => {
     void fetchApiData<CreditWallet>("/billing/credits")
@@ -176,7 +213,7 @@ export function AtsWorkspace() {
   // Only the visible field is the target: a description left behind the URL tab is not sent.
   const hasTarget = Boolean(useJobUrl ? jobUrl.trim() : jobDescription.trim());
   const urlOnlyTarget = useJobUrl && Boolean(jobUrl.trim());
-  const canRepair = typeof pricing?.parseRepairCredits === "number" && quota?.canRepair !== false;
+  const canRepair = canOfferRepair(quota);
   // Both scans spend one from the allowance, so at zero neither is offered.
   const outOfScans = quota?.remaining === 0;
 
@@ -215,6 +252,8 @@ export function AtsWorkspace() {
           });
       if (withAi) settleRequestId(pendingAnalysisRef);
       setResult(next);
+      setReportIsStale(false);
+      if (documentId && resumeDocument) rememberAtsReport(documentId, resume, next);
       setQuota(next.quota);
     } catch (cause) {
       if (withAi) settleRequestId(pendingAnalysisRef, cause);
@@ -314,7 +353,7 @@ export function AtsWorkspace() {
           </p>
         </div>
         <div className="flex gap-6 text-sm">
-          <Metric label="Scans left" value={quota ? `${quota.remaining}/${quota.limit}` : "..."} />
+          <ScansLeftMetric quota={quota} />
           <Metric
             label="Credits available"
             value={wallet === "error" ? "Unavailable" : wallet ? String(wallet.available) : "..."}
@@ -349,6 +388,7 @@ export function AtsWorkspace() {
                     const extracted = await extractResumeFile(file);
                     setResume(extracted.text);
                     setResumeDocument(null);
+                    setDocumentId(null);
                     setLayout(extracted.layout);
                     setFileInfo({ name: file.name, bytes: file.size });
                     setQuota(extracted.quota);
@@ -372,23 +412,12 @@ export function AtsWorkspace() {
                   disabled={Boolean(busy)}
                   className="mt-4 w-full bg-transparent text-sm outline-none"
                   value=""
-                  onChange={(event) => {
-                    // Picking a resume to scan is not opening it, so the active-document
-                    // pointer stays where the user's editor left it.
-                    const selected = readResumeById(event.target.value);
-                    if (!selected) return;
-                    const document = toAtsDocument(selected);
-                    setResumeDocument(document);
-                    setResume(renderResumeDocument(document));
-                    setLayout(undefined);
-                    setFileInfo(undefined);
-                    setSourceLabel(
-                      saved.find((item) => item.id === event.target.value)?.title ??
-                        "Studio resume",
-                    );
-                    setResult(null);
-                    setConverted(null);
-                  }}
+                  onChange={(event) =>
+                    selectSavedResume(
+                      event.target.value,
+                      saved.find((item) => item.id === event.target.value)?.title,
+                    )
+                  }
                 >
                   <option value="" disabled>
                     {saved.length ? "Choose resume" : "No saved resumes"}
@@ -411,6 +440,7 @@ export function AtsWorkspace() {
               onChange={(event) => {
                 setResume(event.target.value);
                 setResumeDocument(null);
+                setDocumentId(null);
                 setLayout(undefined);
                 setFileInfo(undefined);
                 setSourceLabel(event.target.value ? "Pasted resume" : "");
@@ -467,8 +497,8 @@ export function AtsWorkspace() {
                 title="Run core ATS scan"
                 description="Fast rule-based scoring with prioritized fixes. No AI credits."
                 detail={
-                  outOfScans
-                    ? "No scans left in this period"
+                  quota && outOfScans
+                    ? outOfScansDetail(quota)
                     : urlOnlyTarget
                       ? "Paste the job description for a job match score"
                       : "Best for a quick readiness check"
@@ -482,8 +512,8 @@ export function AtsWorkspace() {
                 title="Add AI interpretation"
                 description="Explains missing evidence, keyword opportunities, and the best next edits."
                 detail={
-                  outOfScans
-                    ? "No scans left in this period"
+                  quota && outOfScans
+                    ? outOfScansDetail(quota)
                     : useJobUrl && !jobUrl.trim()
                       ? "Enter the job URL to review it"
                       : pricing
@@ -607,7 +637,16 @@ export function AtsWorkspace() {
               onCreate={() => void createConvertedResume()}
             />
           ) : result ? (
-            <ResultsPanel result={result} />
+            <>
+              {reportIsStale ? (
+                <p className="bg-card ring-border text-muted flex items-start gap-2 rounded-xl px-4 py-3 text-xs leading-5 ring-1">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  Your last report for this resume. It has changed since, so scan it again to check
+                  the new version.
+                </p>
+              ) : null}
+              <ResultsPanel result={result} />
+            </>
           ) : (
             <EmptyResults />
           )}
@@ -798,13 +837,34 @@ function ActionChoice({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div>
       <p className="text-muted text-xs">{label}</p>
       <p className="mt-1 font-mono text-sm font-bold tabular-nums">{value}</p>
+      {hint ? <p className="text-muted mt-0.5 text-xs">{hint}</p> : null}
     </div>
   );
+}
+
+/** The allowance and when it comes back (S-198), so running out is never a dead end. */
+export function ScansLeftMetric({ quota, now }: { quota: AtsQuota | null; now?: number }) {
+  return (
+    <Metric
+      label="Scans left"
+      value={quota ? `${quota.remaining}/${quota.limit}` : "..."}
+      hint={quota ? quotaResetLabel(quota, now) : undefined}
+    />
+  );
+}
+
+/** AI parse repair is offered only when it has a price and the server lets this account use it. */
+export function canOfferRepair(quota: AtsQuota | null) {
+  return typeof quota?.pricing?.parseRepairCredits === "number" && quota.canRepair !== false;
+}
+
+export function outOfScansDetail(quota: AtsQuota, now?: number) {
+  return `No scans left in this period. ${quotaResetLabel(quota, now)}`;
 }
 
 function EmptyResults() {
@@ -839,7 +899,7 @@ function EmptyResults() {
 /** Marks a value a model recovered, so it is never shown as though the parser read it. */
 function AiFilled() {
   return (
-    <span className="bg-accent/10 text-accent ml-1.5 rounded px-1 py-px align-middle text-[10px] font-bold tracking-wide normal-case">
+    <span className="bg-accent/10 text-accent ml-1.5 rounded px-1 py-px align-middle text-xs font-bold tracking-wide normal-case">
       AI
     </span>
   );
@@ -891,7 +951,7 @@ function ParsedRecord({ parsed, repair }: { parsed: AtsParsedResume; repair?: At
           ] as const
         ).map(([label, value, field]) => (
           <div key={label}>
-            <dt className="text-muted text-[11px] font-semibold tracking-wide uppercase">
+            <dt className="text-muted text-xs font-semibold tracking-wide uppercase">
               {label}
               {filled.has(field) ? <AiFilled /> : null}
             </dt>
@@ -901,7 +961,7 @@ function ParsedRecord({ parsed, repair }: { parsed: AtsParsedResume; repair?: At
       </dl>
 
       <div className="mt-5">
-        <p className="text-muted text-[11px] font-semibold tracking-wide uppercase">
+        <p className="text-muted text-xs font-semibold tracking-wide uppercase">
           Work history — {parsed.roles.length} {parsed.roles.length === 1 ? "row" : "rows"}
           {filled.has("roles") ? <AiFilled /> : null}
         </p>
@@ -909,7 +969,7 @@ function ParsedRecord({ parsed, repair }: { parsed: AtsParsedResume; repair?: At
           <div className="mt-2 overflow-x-auto">
             <table className="w-full min-w-[460px] text-left text-sm">
               <thead>
-                <tr className="border-border text-muted border-b text-[11px]">
+                <tr className="border-border text-muted border-b text-xs">
                   <th className="pb-1.5 font-semibold">Title</th>
                   <th className="pb-1.5 font-semibold">Employer</th>
                   <th className="pb-1.5 font-semibold">Dates</th>
@@ -1007,14 +1067,14 @@ function RankedFixes({ failedChecks }: { failedChecks: AtsResult["report"]["fail
             key={rule.id}
             className="border-border flex gap-3 border-t pt-4 first:border-t-0 first:pt-0"
           >
-            <span className="bg-accent/10 text-accent mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-semibold tabular-nums">
+            <span className="bg-accent/10 text-accent mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-xs font-semibold tabular-nums">
               {index + 1}
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm leading-5 font-medium">{rule.fix}</p>
               <p className="text-muted mt-1 text-xs leading-5">{rule.evidence}</p>
               {rule.scoreImpact > 0 ? (
-                <span className="bg-background mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums">
+                <span className="bg-background mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums">
                   +{Math.round(rule.scoreImpact)} pts if fixed
                 </span>
               ) : null}

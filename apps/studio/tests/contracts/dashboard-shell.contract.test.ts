@@ -238,6 +238,19 @@ describe("library, search and shell copy (Phase 9 Part D)", () => {
     );
   });
 
+  it("S-219 the profile pages say backup and saved, not sync", () => {
+    const pages = [
+      "features/profile/components/ProfileDataPanel.tsx",
+      "features/profile/components/advanced/AdvancedProfilePanels.tsx",
+    ]
+      .map(read)
+      .join("\n");
+
+    expect(pages).not.toMatch(/Auto sync|Cloud synced|Not synced/);
+    expect(pages).toContain("Automatic backup");
+    expect(pages).toContain("Saved to your account");
+  });
+
   it("O6 LOW the guest reminder sits inside the page content and signs in back to this page", () => {
     expect(read("components/dashboard/StudioShell.tsx")).toContain("<GuestBackupBanner />");
     expect(read("app/(main)/layout.tsx")).not.toContain("GuestBackupBanner");

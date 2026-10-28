@@ -18,8 +18,8 @@ export default async function AffiliateTiersPage() {
       <header className="border-border bg-card rounded-2xl border p-5">
         <h1 className="text-3xl font-black">Affiliate tiers</h1>
         <p className="text-muted mt-2 text-sm">
-          Tiers count referred users who complete paid purchases. Moving up is not automatic: once
-          you reach a tier&apos;s count, our team reviews your account and promotes it by hand.
+          Tiers count referred users who complete paid purchases; refunded purchases don&apos;t
+          count. You move up automatically when you reach a tier&apos;s count.
         </p>
       </header>
       <section className="grid gap-4 lg:grid-cols-3">
@@ -34,7 +34,7 @@ export default async function AffiliateTiersPage() {
             </div>
             <p className="text-muted mt-2 text-sm">
               {tier.requiredConversions
-                ? `Reviewed for promotion at ${tier.requiredConversions} paid conversions`
+                ? `You move up automatically at ${tier.requiredConversions} paid conversions`
                 : "Starting tier"}
             </p>
             <div className="mt-5 space-y-2">

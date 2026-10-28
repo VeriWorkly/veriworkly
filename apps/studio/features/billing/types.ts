@@ -1,5 +1,8 @@
 import type { CreditWallet } from "@/features/credits/types";
 
+/** The server catalog's one-time packs (`productCatalog.ts`); the server sets names and prices. */
+export type CreditPackKey = "credit_pack_250" | "credit_pack_500" | "credit_pack_1200";
+
 export type BillingSummary = {
   plan: "FREE" | "AI_CREDITS" | "PORTFOLIO_PRO" | "BUNDLE";
   productKey: ProductKey | null;
@@ -35,7 +38,7 @@ export type BillingSummary = {
       }
     >;
     packs: Array<{
-      key: "credit_pack_250" | "credit_pack_500";
+      key: CreditPackKey;
       name: string;
       credits: number;
       /** USD cents, for display; the charge is the provider product's. */

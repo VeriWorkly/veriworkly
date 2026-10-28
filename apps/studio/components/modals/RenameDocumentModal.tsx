@@ -88,7 +88,7 @@ export default function RenameDocumentModal({
                 Rename Document
               </Modal.Title>
 
-              <p className="text-muted-foreground text-[10px] font-medium tracking-widest uppercase">
+              <p className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
                 {getDocumentDefinition(doc.type).label}
               </p>
             </div>
@@ -98,7 +98,7 @@ export default function RenameDocumentModal({
             <div className="space-y-2">
               <label
                 htmlFor="rename-title-input"
-                className="text-muted-foreground/85 text-[10px] font-bold tracking-widest uppercase"
+                className="text-muted-foreground/85 text-xs font-bold tracking-widest uppercase"
               >
                 Document Title
               </label>
@@ -127,7 +127,7 @@ export default function RenameDocumentModal({
                       Update share link address
                     </label>
 
-                    <p className="text-muted-foreground text-[11px]">
+                    <p className="text-muted-foreground text-xs">
                       If this document has a share link, its address can follow the new title.
                     </p>
                   </div>
@@ -148,7 +148,7 @@ export default function RenameDocumentModal({
                         Warning: Old URL will break
                       </p>
 
-                      <p className="text-muted-foreground text-[11px] leading-relaxed">
+                      <p className="text-muted-foreground text-xs leading-relaxed">
                         The link&apos;s address changes to match the new title. Anyone opening the
                         old address will see &quot;not found&quot;.
                       </p>
@@ -161,7 +161,7 @@ export default function RenameDocumentModal({
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-blue-500">Share link unchanged</p>
 
-                      <p className="text-muted-foreground text-[11px] leading-relaxed">
+                      <p className="text-muted-foreground text-xs leading-relaxed">
                         If this document has a share link, it keeps its current address.
                       </p>
                     </div>

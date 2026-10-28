@@ -103,8 +103,8 @@ export function AffiliatePage({ dashboard }: { dashboard: AffiliateDashboard | n
             {dashboard.tierProgress.nextTierConversions
               ? dashboard.tierProgress.currentConversions >=
                 dashboard.tierProgress.nextTierConversions
-                ? `${dashboard.tierProgress.currentConversions} paid conversions: you have reached the next tier's count. Promotion is reviewed by our team, not automatic.`
-                : `${dashboard.tierProgress.currentConversions} of ${dashboard.tierProgress.nextTierConversions} paid conversions toward the next tier. Promotion is reviewed by our team, not automatic.`
+                ? `${dashboard.tierProgress.currentConversions} paid conversions: you have reached the next tier's count. A tier our team set holds until you reach a count you had not reached when it was set.`
+                : `${dashboard.tierProgress.currentConversions} of ${dashboard.tierProgress.nextTierConversions} paid conversions toward the next tier. You move up automatically at ${dashboard.tierProgress.nextTierConversions} paid conversions; refunded purchases don't count.`
               : "Highest tier reached."}
           </p>
           <Link className="text-accent mt-4 inline-block text-sm font-bold" href="/affiliate/tiers">

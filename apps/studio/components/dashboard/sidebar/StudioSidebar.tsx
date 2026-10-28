@@ -47,7 +47,7 @@ export function StudioSidebar({
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="truncate">Search workspace</span>
-            <kbd className="ml-auto font-sans text-[10px]">
+            <kbd className="ml-auto font-sans text-xs">
               <ShortcutKey letter="K" />
             </kbd>
           </button>

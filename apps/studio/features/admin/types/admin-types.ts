@@ -7,6 +7,9 @@
  * that is the file to fix.
  */
 
+import type { BillingSummary } from "@/features/billing/types";
+import { accessTierLabel } from "@/features/billing/checkout-rules";
+
 export interface AdminPaginatedResponse<T> {
   items: T[];
   total: number;
@@ -45,6 +48,8 @@ export interface AdminAuditEntry {
   metadata: Record<string, unknown> | null;
   createdAt: string;
   actor: AdminUserRef | null;
+  /** Whether the target row is still there; `null` when the target is not a database record. */
+  targetExists?: boolean | null;
 }
 
 /** What an overview section holds when its queries failed; the rest of the overview still loads. */
@@ -129,6 +134,18 @@ export interface AdminBillingSummary {
   };
   webhooks: { byStatus: Partial<Record<WebhookStatus, number>>; failed: number };
   activeEntitlements: number;
+  /** Money taken, one row per currency (amounts never add up across currencies). */
+  revenue: { last30Days: AdminRevenueRow[]; allTime: AdminRevenueRow[] };
+}
+
+export interface AdminRevenueRow {
+  /** ISO 4217, upper case. */
+  currency: string;
+  payments: number;
+  grossCents: number;
+  /** Refunds and lost or accepted disputes. */
+  reversedCents: number;
+  netCents: number;
 }
 
 /**
@@ -206,11 +223,37 @@ export interface AdminUserRow extends AdminUserRef {
     currentPeriodEnd: string | null;
   } | null;
   portfolioPublication: { subdomain: string; status: PublicationStatus } | null;
+  /** Live documents only; trashed ones are not counted. */
   _count: { resumes: number; apiKeys: number; sessions: number };
+  access: AdminUserAccess | null;
+}
+
+/**
+ * What the customer's own billing summary says they have (`describeAccessForUsers`, V-266): the
+ * same `access` their billing page reads, plus the unexpired credits by grant source.
+ */
+export type AdminUserAccess = BillingSummary["access"] & {
+  isPaid: boolean;
+  /** A subscription in dunning whose card is still being retried. */
+  paymentIssue: boolean;
+  /** Unexpired credits somebody paid for (packs, plan and pass allowances). */
+  paidCredits: number;
+  creditSources: Record<string, number>;
+};
+
+/** The access summary's plan in a few words. A payer with no plan or pass is never "Free". */
+export function adminAccessLabel(access: AdminUserAccess | null) {
+  if (!access) return "Unavailable";
+
+  const label =
+    access.tier === "free" && access.isPaying ? "Paying, no plan" : accessTierLabel(access.tier);
+  return access.paymentIssue ? `${label} (payment issue)` : label;
 }
 
 export interface AdminUserDetail {
-  user: AdminUserRow & {
+  /** What the customer's own billing summary says they have; `null` if it could not be read. */
+  access: AdminUserAccess | null;
+  user: Omit<AdminUserRow, "access"> & {
     autoSyncEnabled: boolean;
     affiliateEnrolledAt: string | null;
     lastGithubImportAt: string | null;
@@ -365,6 +408,8 @@ export interface AdminCommissionRow {
   createdAt: string;
   /** The deleted-account placeholder (or `null`) once the account is gone; the money history stays. */
   affiliate: (AdminUserRef & { affiliateCode: string | null }) | null;
+  /** The affiliate's standing (only an ACTIVE one can convert); `null` once the account is gone. */
+  affiliateStatus: AffiliateStatus | null;
   referral: { id: string; referredUser: { id: string; email: string } } | null;
 }
 

@@ -9,6 +9,10 @@ interface AmbassadorReviewActionsProps {
   applicantEmail: string;
 }
 
+/** The server emails every decision with the review note (`sendAmbassadorDecisionEmail`). */
+const decisionNotice = (email: string) =>
+  `${email} is emailed the decision, with your note, and also sees it on their ambassador page.`;
+
 /**
  * Approve/reject controls for one application.
  *
@@ -30,7 +34,7 @@ const AmbassadorReviewActions = ({
         trigger="Approve"
         triggerVariant="primary"
         title="Approve this ambassador"
-        description={`${applicantEmail} will be promoted to the AMBASSADOR role. No email is sent: they see the decision on their ambassador page.`}
+        description={`${applicantEmail} will be promoted to the AMBASSADOR role. ${decisionNotice(applicantEmail)}`}
         confirmLabel="Approve application"
         reasonLabel="Review note"
         reasonPlaceholder="Shown to the applicant and stored on the application."
@@ -43,7 +47,7 @@ const AmbassadorReviewActions = ({
       <AdminActionDialog
         trigger="Reject"
         title="Reject this application"
-        description={`${applicantEmail} keeps their current role and can re-apply later.`}
+        description={`${applicantEmail} keeps their current role and can re-apply later. ${decisionNotice(applicantEmail)}`}
         confirmLabel="Reject application"
         reasonLabel="Review note"
         reasonPlaceholder="Explain the decision — the applicant can see this."

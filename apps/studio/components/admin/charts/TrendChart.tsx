@@ -118,7 +118,7 @@ const TrendChart = ({
     <div className={cn("w-full", className)}>
       <div className="flex gap-2">
         <div
-          className="text-muted admin-numeric flex w-10 shrink-0 flex-col justify-between text-right text-[10px] leading-none"
+          className="text-muted admin-numeric flex w-10 shrink-0 flex-col justify-between text-right text-xs leading-none"
           aria-hidden="true"
         >
           {ticks.map((tick, index) => (
@@ -229,7 +229,7 @@ const TrendChart = ({
                   : { left: `${activeRatio * 100}%`, marginLeft: 8 }
               }
             >
-              <p className="text-muted mb-1.5 text-[11px] font-medium">
+              <p className="text-muted mb-1.5 text-xs font-medium">
                 {formatAxisDate(buckets[activeIndex])}
               </p>
 
@@ -281,7 +281,7 @@ const TrendChart = ({
         </tbody>
       </table>
 
-      <div className="text-muted admin-numeric mt-2 ml-12 flex justify-between text-[10px]">
+      <div className="text-muted admin-numeric mt-2 ml-12 flex justify-between text-xs">
         <span>{formatAxisDate(buckets[0])}</span>
 
         {buckets.length > 2 ? (

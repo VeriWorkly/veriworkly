@@ -171,7 +171,7 @@ export function PreviewClient({ documentId, type }: PreviewClientProps) {
     <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div className="border-border bg-card/95 sticky top-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 shadow-sm backdrop-blur">
         <div className="min-w-0">
-          <p className="text-muted text-[11px] font-semibold tracking-[0.22em] uppercase">
+          <p className="text-muted text-xs font-semibold tracking-[0.22em] uppercase">
             Document Preview
           </p>
           <p className="text-foreground truncate text-sm font-medium">

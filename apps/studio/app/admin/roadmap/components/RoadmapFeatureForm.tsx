@@ -305,13 +305,13 @@ export default function RoadmapFeatureForm({
               className="text-foreground flex items-center gap-2 text-sm font-semibold"
               htmlFor="detailsJson"
             >
-              <Badge className="bg-accent/10 border-accent/20 border px-1.5 py-0.5 text-[10px]">
+              <Badge className="bg-accent/10 border-accent/20 border px-1.5 py-0.5 text-xs">
                 JSON
               </Badge>
               Details Metadata
             </label>
 
-            <span className="text-muted/60 text-[10px] font-medium tracking-wider uppercase">
+            <span className="text-muted/60 text-xs font-medium tracking-wider uppercase">
               Advanced Configuration
             </span>
           </div>
@@ -340,7 +340,7 @@ export default function RoadmapFeatureForm({
             </div>
           </div>
 
-          <p className="text-muted pl-1 text-[11px]">
+          <p className="text-muted pl-1 text-xs">
             Valid JSON required. Used for technical highlights and impact metrics.
           </p>
         </div>
