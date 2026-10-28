@@ -1,6 +1,4 @@
-import { Request, Response, NextFunction } from "express";
-
-import { adminHandler } from "#controllers/admin/adminRequestHandler";
+import { adminHandler, deleteRequestInput } from "#controllers/admin/adminRequestHandler";
 import {
   createRoadmapFeature,
   deleteRoadmapFeature,
@@ -9,12 +7,12 @@ import {
 import { type RoadmapStatus } from "#services/roadmapService";
 
 import { roadmapAdminCreateSchema, roadmapAdminUpdateSchema } from "#validators/roadmapValidator";
-import { adminIdParamSchema } from "#validators/admin/adminCommonValidator";
+import {
+  adminIdParamSchema,
+  adminOptionalReasonSchema,
+} from "#validators/admin/adminCommonValidator";
 
 import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
-import { requireAuthUser } from "#middleware/auth";
-
-import { createSuccessResponse } from "#lib/errors";
 
 const parseDateInput = (val?: string | null) =>
   val === undefined ? undefined : val === null ? null : new Date(val);
@@ -55,6 +53,7 @@ export const createRoadmapFeatureController = adminHandler(async ({ req, res, ac
     action: ADMIN_AUDIT_ACTIONS.roadmapCreate,
     targetType: "RoadmapFeature",
     targetId: created.id,
+    reason: payload.reason,
     metadata: { title: created.title, status: created.status },
   });
 
@@ -99,9 +98,10 @@ export const updateRoadmapFeatureController = adminHandler(async ({ req, actorId
     action: ADMIN_AUDIT_ACTIONS.roadmapUpdate,
     targetType: "RoadmapFeature",
     targetId: id,
+    reason: payload.reason,
     // Records which fields were touched, not their values: a roadmap body can be several
     // kilobytes of prose and the audit table is not a revision history.
-    metadata: { fields: Object.keys(payload) },
+    metadata: { fields: Object.keys(payload).filter((key) => key !== "reason") },
   });
 
   return updated;
@@ -113,32 +113,26 @@ export const updateRoadmapFeatureController = adminHandler(async ({ req, actorId
  * req.params:
  * - id: roadmap feature id (required)
  *
+ * req.body or query:
+ * - reason: optional audit reason (V-081)
+ *
  * res:
  * - 200 with deleted id payload
- *
- * next:
- * - forwards runtime errors to global error handler
  */
 
-export async function deleteRoadmapFeatureController(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  try {
-    const { id } = adminIdParamSchema.parse(req.params);
+export const deleteRoadmapFeatureController = adminHandler(async ({ req, actorId }) => {
+  const { id } = adminIdParamSchema.parse(req.params);
+  const { reason } = adminOptionalReasonSchema.parse(deleteRequestInput(req));
 
-    const deleted = await deleteRoadmapFeature(id);
+  const deleted = await deleteRoadmapFeature(id);
 
-    await recordAdminAudit({
-      actorId: requireAuthUser(req).id,
-      action: ADMIN_AUDIT_ACTIONS.roadmapDelete,
-      targetType: "RoadmapFeature",
-      targetId: id,
-    });
+  await recordAdminAudit({
+    actorId,
+    action: ADMIN_AUDIT_ACTIONS.roadmapDelete,
+    targetType: "RoadmapFeature",
+    targetId: id,
+    reason,
+  });
 
-    res.json(createSuccessResponse(deleted, "Roadmap feature deleted successfully"));
-  } catch (error) {
-    next(error);
-  }
-}
+  return deleted;
+}, "Roadmap feature deleted successfully");

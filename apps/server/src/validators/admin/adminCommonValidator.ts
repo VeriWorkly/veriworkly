@@ -84,6 +84,23 @@ export const adminProvidedReasonSchema = z
     message: "Reason must be at least 3 characters",
   });
 
+/** A write whose only admin input is the optional reason (a delete, a sync trigger). */
+export const adminOptionalReasonSchema = z.object({
+  reason: adminProvidedReasonSchema,
+});
+
+/**
+ * The identifier an admin retypes before a destructive action (V-082): the portfolio's subdomain,
+ * the share link's slug, the API key's prefix. Optional until the studio sends it; a blank value
+ * counts as absent. The comparison itself is exact, after trimming (`assertConfirmation`).
+ */
+export const adminConfirmSchema = z
+  .string()
+  .trim()
+  .max(255)
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 export const adminIdParamSchema = z.object({
   id: z.string().trim().min(1).max(64),
 });

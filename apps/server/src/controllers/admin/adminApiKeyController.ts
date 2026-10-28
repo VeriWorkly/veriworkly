@@ -53,7 +53,7 @@ export const AdminApiKeyController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminApiKeyRevokeSchema.parse(deleteRequestInput(req));
 
-    const apiKey = await AdminApiKeyService.revokeApiKey(id);
+    const apiKey = await AdminApiKeyService.revokeApiKey(id, input.confirm);
 
     await recordAdminAudit({
       actorId,

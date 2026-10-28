@@ -54,7 +54,8 @@ export const AdminAmbassadorController = {
           : ADMIN_AUDIT_ACTIONS.ambassadorReject,
       targetType: "AmbassadorApplication",
       targetId: id,
-      reason: input.reviewNote,
+      // The internal reason stays in the audit log; the review note is what the applicant sees.
+      reason: input.reason ?? input.reviewNote,
     });
   }, "Ambassador application reviewed successfully"),
 };

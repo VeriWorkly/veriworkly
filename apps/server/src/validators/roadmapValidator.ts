@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { adminProvidedReasonSchema } from "#validators/admin/adminCommonValidator";
 import {
   notBothPageAndOffset,
   notBothPageAndOffsetError,
@@ -114,6 +115,8 @@ export const roadmapAdminCreateSchema = z.object({
   updatedAt: isoDateTime.optional(),
   completedQuarter: z.string().nullable().optional(),
   details: roadmapDetailsSchema,
+  // TODO(V-081): make required once the studio sends it
+  reason: adminProvidedReasonSchema,
 });
 
 export const roadmapAdminUpdateSchema = z
@@ -133,7 +136,10 @@ export const roadmapAdminUpdateSchema = z
     completedQuarter: z.string().nullable().optional(),
 
     details: roadmapDetailsSchema,
+    // TODO(V-081): make required once the studio sends it
+    reason: adminProvidedReasonSchema,
   })
-  .refine((value) => Object.keys(value).length > 0, {
+  // The audit reason alone is not an edit.
+  .refine((value) => Object.keys(value).some((key) => key !== "reason"), {
     message: "At least one field is required for update",
   });
