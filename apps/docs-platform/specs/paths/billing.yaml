@@ -11,6 +11,11 @@ getBillingSummary:
       Returns the caller's plan, subscription status, entitlements, AI credit wallet, and public
       catalog in one call. Entitlements (e.g. portfolio publishing) and the AI credit wallet are
       two independent systems — a plan can grant one, both, or neither depending on `productKey`.
+
+      Plans that carry AI credits grant 1,000 credits a month. An annual plan grants them month by
+      month, not all at once. Subscription credits expire at the end of their month and never roll
+      over; credit packs last 90 days. `graceEndsAt` and `publicationStatus` describe the grace
+      period after a failed renewal, and `access` tells a paying customer from a free one.
       Session-authenticated only.
     responses:
       "200":
@@ -37,7 +42,7 @@ getBillingHistory:
       - LocalSession: []
       - ProdSession: []
     summary: Get Billing History
-    description: Lists the caller's processed billing webhook events (most recent 50). Session-authenticated only.
+    description: Lists the caller's processed billing events (most recent 50), each with the product and amount it was for. Session-authenticated only.
     responses:
       "200":
         description: History fetched successfully
@@ -77,7 +82,7 @@ getCreditHistory:
       - LocalSession: []
       - ProdSession: []
     summary: Get AI Credit Transaction History
-    description: Lists recent AI credit reservations/commits/releases for the caller's wallet. Session-authenticated only.
+    description: Lists the caller's 50 most recent AI credit ledger entries (grants, debits, refunds, adjustments and expiries), newest first. Session-authenticated only.
     responses:
       "200":
         description: History fetched successfully
@@ -136,11 +141,13 @@ createBillingCheckout:
         content:
           application/json:
             schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
             example:
               success: false
               statusCode: 403
               message: "Payments are disabled in production during this phase. Only administrators can perform payments."
+              details:
+                code: "PAYMENTS_DISABLED"
       "409":
         description: |
           The purchase would overlap something the customer already has, or a checkout is already
@@ -171,12 +178,35 @@ createBillingCheckout:
                 upgrade:
                   productKey: "bundle"
                   interval: "monthly"
-      "503":
-        description: The selected billing product is not configured
+      "502":
+        description: The billing provider did not return a checkout URL.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 502
+              message: "Billing provider did not return a checkout URL."
+      "503":
+        description: Billing, or the selected product, is not configured on the server.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              billing:
+                summary: Billing not configured
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Billing is not configured."
+              product:
+                summary: Product not configured
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "The selected billing product is not configured."
 
 cancelBillingCheckout:
   post:
@@ -224,7 +254,11 @@ createBillingPortal:
       - LocalSession: []
       - ProdSession: []
     summary: Create Billing Portal Session
-    description: Creates a Dodo Payments customer portal URL for managing an existing subscription. Session-authenticated only; blocked for non-admins in production during the current rollout phase.
+    description: |
+      Creates a Dodo Payments customer portal URL, where an existing customer cancels, downloads
+      receipts and fixes a failed card. It sells nothing new, so it is open in production to every
+      customer (not only administrators). Needs a billing account, which the first checkout
+      creates. Session-authenticated only.
     responses:
       "200":
         description: Portal session created successfully
@@ -234,12 +268,6 @@ createBillingPortal:
               $ref: "../components/schemas.yaml#/BillingPortalResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
-      "403":
-        description: Payments disabled in production for non-admins
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
       "409":
         description: No billing account exists yet
         content:
@@ -290,7 +318,13 @@ createCreditPackCheckout:
         content:
           application/json:
             schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "Payments are disabled in production during this phase. Only administrators can perform payments."
+              details:
+                code: "PAYMENTS_DISABLED"
       "503":
         description: Extra credit checkout is not configured
         content:
@@ -309,9 +343,11 @@ previewPlanChange:
     summary: Preview Plan Upgrade
     description: |
       Prices an upgrade of the live subscription without changing anything: what is charged now
-      for the rest of the period, and what the new plan renews at. Only an upgrade to the
-      `bundle` in the same billing period is accepted (the one `UPGRADE_AVAILABLE` from
-      `POST /billing/checkout` offers). Session-authenticated only; blocked for non-admins in
+      for the rest of the period, and what the new plan renews at. The body accepts any plan and
+      any recurring interval, but only an upgrade to the `bundle` in the same billing period is
+      carried out (the one `UPGRADE_AVAILABLE` from `POST /billing/checkout` offers). Any other
+      change, a downgrade included, is refused with `409` and a `details.code`; to move to a
+      smaller plan, cancel in the billing portal and subscribe again when the plan ends. Session-authenticated only; blocked for non-admins in
       production during the current rollout phase.
     requestBody:
       required: true
@@ -338,7 +374,13 @@ previewPlanChange:
         content:
           application/json:
             schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "Payments are disabled in production during this phase. Only administrators can perform payments."
+              details:
+                code: "PAYMENTS_DISABLED"
       "409":
         description: |
           This plan cannot be changed this way. `details.code` is one of: `NO_SUBSCRIPTION`,
@@ -379,7 +421,9 @@ changePlan:
       - ProdSession: []
     summary: Upgrade Plan
     description: |
-      Upgrades the live subscription to the `bundle` in place. The provider charges the prorated
+      Upgrades the live subscription to the `bundle` in place. As with the preview, the body
+      accepts any plan and recurring interval, and any change other than that upgrade is refused
+      with `409` and a `details.code`. The provider charges the prorated
       difference, and the plan, its features and its credits move once that payment succeeds and
       its webhook arrives; until then the answer is `status: "pending"`.
 
@@ -439,7 +483,13 @@ changePlan:
         content:
           application/json:
             schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "Payments are disabled in production during this phase. Only administrators can perform payments."
+              details:
+                code: "PAYMENTS_DISABLED"
       "409":
         description: |
           The change was refused. `details.code` is one of the preview's codes, or

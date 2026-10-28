@@ -1,16 +1,26 @@
 ---
 title: Get Public Portfolio By Subdomain
 description: >
-  Returns the published snapshot for a live portfolio subdomain.
+  Returns the published snapshot for a portfolio subdomain, with two facts for
+  the renderer:
+
+  `isPaid` (the owner's paid portfolio access is in effect) and
+  `isPremiumTemplate`. The
+
+  billing state of the publication is not returned.
 
 
-  Returns `404` for a suspended portfolio, or one whose grace period has just
-  expired — that
+  Returns `404` for a suspended portfolio, one whose document was deleted, or
+  one whose grace
 
-  lookup also flips the record to `SUSPENDED` as a side effect. Cached for up to
-  10 minutes,
+  period after a lapsed subscription has run out. A lapsed portfolio is not
+  taken down: a
 
-  shortened to the remaining grace window for portfolios in `GRACE`.
+  background job moves a premium template to the closest free one and the site
+  stays online.
+
+  This read never writes. Cached for up to 10 minutes, less while a grace period
+  is running.
 
 
   No user session is required, but the request must carry an API key or
@@ -28,16 +38,26 @@ _openapi:
     headings: []
     contents:
       - content: >
-          Returns the published snapshot for a live portfolio subdomain.
+          Returns the published snapshot for a portfolio subdomain, with two
+          facts for the renderer:
+
+          `isPaid` (the owner's paid portfolio access is in effect) and
+          `isPremiumTemplate`. The
+
+          billing state of the publication is not returned.
 
 
-          Returns `404` for a suspended portfolio, or one whose grace period has
-          just expired — that
+          Returns `404` for a suspended portfolio, one whose document was
+          deleted, or one whose grace
 
-          lookup also flips the record to `SUSPENDED` as a side effect. Cached
-          for up to 10 minutes,
+          period after a lapsed subscription has run out. A lapsed portfolio is
+          not taken down: a
 
-          shortened to the remaining grace window for portfolios in `GRACE`.
+          background job moves a premium template to the closest free one and
+          the site stays online.
+
+          This read never writes. Cached for up to 10 minutes, less while a
+          grace period is running.
 
 
           No user session is required, but the request must carry an API key or

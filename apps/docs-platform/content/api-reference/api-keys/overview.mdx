@@ -20,13 +20,19 @@ To protect your account, VeriWorkly implements a strict visibility policy for ke
 - **One-Time Secret**: The raw API key is **only returned once** — in the response to the `POST`
   that created (or rotated) it. It is stored solely as an HMAC-SHA256 hash and can never be read
   back.
-- **No masked secret**: List operations return **no form of the secret at all**, not even a masked
-  one. Each entry carries `keyPrefix` — the first 8 characters, e.g. `vw_a1b2c` — which is enough
-  to tell keys apart. If you lose a secret, rotate the key.
+- **No full secret in reads**: List and get operations never return the secret. Each entry carries
+  `keyPrefix` (the first 8 characters, e.g. `vw_a1b2c`) and `keySuffix` (the last 8), which is
+  enough to tell keys apart. If you lose a secret, rotate the key.
 - **Format**: `vw_` followed by 64 hexadecimal characters.
 - **Expiry**: Every key expires. When you don't supply `expiresAt`, it defaults to 365 days out.
-- **Rate Limiting**: Each key has its own limit (default 20 requests / 15 minutes, capped at 20).
-  Responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`.
+  `expiresAt` must be an ISO-8601 timestamp with a zone (`Z` or an offset) and must be in the
+  future.
+- **Limit per account**: At most 10 active keys. Creating an eleventh answers `409` with
+  `details.code: "API_KEY_LIMIT"`; revoke one you no longer use first.
+- **Rate Limiting**: Each key has its own limit per 15 minutes. It defaults to 20; you can set
+  `rateLimit` up to 600 (the server's `API_KEY_MAX_RATE_LIMIT`), and a higher value is lowered to
+  that maximum. Responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
+  `X-RateLimit-Reset`.
 
 <Callout type="info" title="Managing keys requires a session">
   Every endpoint in this module is session-only — you cannot use an API key to list, create, rotate,
@@ -41,28 +47,30 @@ Keys are scope-gated. A request whose key lacks the scope a route requires is re
 Session callers are never scope-gated. Scopes default to `["user:read"]` when you don't specify
 any, and requesting a value outside this set fails with `400`.
 
-| Scope            | Grants                                                       |
-| :--------------- | :----------------------------------------------------------- |
-| `user:read`      | `GET /users/me`                                              |
-| `user:write`     | `PUT /users/me/name`, `/users/me/username`, `/users/me/sync` |
-| `resume:read`    | Reading documents, the master profile, and share links       |
-| `resume:write`   | Creating/updating/deleting documents and share links         |
-| `roadmap:read`   | Roadmap endpoints                                            |
-| `changelog:read` | Changelog endpoints                                          |
-| `github:read`    | GitHub stats and issues                                      |
-| `ai:write`       | `POST /ai/generate`, `/ats/analyze`, `/ats/convert-resume`   |
+| Scope            | Grants                                                                                  |
+| :--------------- | :-------------------------------------------------------------------------------------- |
+| `user:read`      | `GET /users/me`                                                                         |
+| `user:write`     | `PUT /users/me/name`, `/users/me/username`, `/users/me/sync`                            |
+| `resume:read`    | Reading documents, the master profile, share links, and the import quota                |
+| `resume:write`   | Creating, updating, and deleting documents and share links; the master profile; imports |
+| `roadmap:read`   | Roadmap endpoints                                                                       |
+| `changelog:read` | Changelog endpoints                                                                     |
+| `github:read`    | GitHub stats and issues                                                                 |
+| `ai:write`       | `POST /ai/generate`, `/ats/analyze`, `/ats/convert-resume`, `/profiles/import/linkedin` |
+
+`POST /profiles/import/linkedin` needs both `resume:write` and `ai:write`.
 
 ---
 
 ## Key Lifecycle
 
-| Action          | Description                                                                                                   |
-| :-------------- | :------------------------------------------------------------------------------------------------------------ |
-| **Creation**    | Generate a key with a custom name, scopes, and rate limit. Store the secret immediately — it is shown once.   |
-| **Usage**       | Send the key as `X-API-Key: vw_...` or `Authorization: Bearer vw_...`. Both headers are accepted.             |
-| **Rotation**    | Issue a replacement and revoke the old key in one transaction. Send an empty body to carry all settings over. |
-| **Soft revoke** | Disable a key without removing its record. Takes effect immediately; a revoked key cannot be reactivated.     |
-| **Deletion**    | Permanently remove a key and its record.                                                                      |
+| Action          | Description                                                                                                                                                                                |
+| :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Creation**    | Generate a key with a custom name, scopes, and rate limit. Store the secret immediately — it is shown once.                                                                                |
+| **Usage**       | Send the key as `X-API-Key: vw_...` or `Authorization: Bearer vw_...`. Both headers are accepted.                                                                                          |
+| **Rotation**    | Issue a replacement and revoke the old key in one transaction. Send an empty body to carry all settings over. A revoked key or an expired key cannot be rotated (`409`); create a new one. |
+| **Soft revoke** | Disable a key without removing its record. Takes effect immediately; a revoked key cannot be reactivated.                                                                                  |
+| **Deletion**    | Permanently remove a key and its record.                                                                                                                                                   |
 
 ---
 

@@ -16,8 +16,13 @@ getAtsQuota:
       the AI-powered `/ats/analyze` deep analysis — they are **not** two separate quotas. Limits:
 
       - Anonymous: 1 scan / 48 hours
-      - Free logged-in: 2 scans / 24 hours
-      - Subscriber (active AI Credits or Bundle plan): 300 scans / billing period
+      - Free or paused (signed in): 2 scans / 24 hours
+      - Subscriber: 300 scans a month. Any account that holds spendable AI credits, whatever their
+        source, or holds a paid subscription or pass even with no credits left.
+
+      `canConvertResume` and `canRepair` say whether the caller's credit balance covers those AI
+      actions. `pricing` is null when the server could not load its ATS AI settings, and both are
+      then false.
     responses:
       "200":
         description: Quota fetched successfully
@@ -35,10 +40,12 @@ getAtsQuota:
                 remaining: 2
                 resetsAt: "2026-04-28T00:00:00.000Z"
                 canConvertResume: false
+                canRepair: false
                 pricing:
                   analysisCredits: { min: 1, max: 6 }
                   jobUrlAnalysisCredits: { min: 2, max: 12 }
                   resumeConversionCredits: 2
+                  parseRepairCredits: 2
                 extract: { limit: 6, used: 0, remaining: 6 }
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
@@ -169,7 +176,29 @@ checkAtsResume:
             schema:
               $ref: "../components/schemas.yaml#/AtsCheckResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        description: |
+          The body failed validation, or the resume is an `AtsResumeDocument` that is not valid.
+          Neither costs a scan.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              validation:
+                summary: Validation error
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "resume"
+                      message: "Required"
+              invalidDocument:
+                summary: Invalid structured resume
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Invalid resume document at basics.name: Required"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "429":
@@ -223,7 +252,9 @@ analyzeAtsResume:
             schema:
               $ref: "../components/schemas.yaml#/AtsAnalyzeResponse"
       "400":
-        description: Validation error, or job URL fetch was blocked
+        description: |
+          The body failed validation, `fetchJobUrl` was true without a `jobUrl`, the resume
+          document is not valid, or the job page could not be fetched or read.
         content:
           application/json:
             schema:
@@ -235,16 +266,37 @@ analyzeAtsResume:
                   success: false
                   statusCode: 400
                   message: "Validation failed"
+                  details:
+                    - path: "requestId"
+                      message: "Required"
+              missingJobUrl:
+                summary: fetchJobUrl without jobUrl
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Provide a job URL to analyze online."
               blockedUrl:
                 summary: Job URL resolves to a blocked network
                 value:
                   success: false
                   statusCode: 400
                   message: "Job URL resolves to a blocked network."
+              jobPage:
+                summary: Job page unusable
+                description: |
+                  Other job-page messages: "Job URL must use HTTPS on the standard port.", "Job URL
+                  host is not allowed.", "Job URL could not be resolved.", "Job URL could not be
+                  resolved in time.", "Job page request timed
+                  out.", "Job page redirect limit exceeded.", "Job page exceeds the download limit.",
+                  "Job page must be HTML or plain text.", "Job page could not be retrieved.".
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Job page did not contain enough readable text."
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "402":
-        description: Not enough AI credits
+        description: The credit balance cannot cover the cheapest analysis this request could cost (plus repair, when it would run).
         content:
           application/json:
             schema:
@@ -252,7 +304,7 @@ analyzeAtsResume:
             example:
               success: false
               statusCode: 402
-              message: "Not enough AI credits."
+              message: "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
       "403":
         description: API key is missing the ai:write scope
         content:
@@ -263,28 +315,48 @@ analyzeAtsResume:
               success: false
               statusCode: 403
               message: "This API key does not have permission for this action."
-      "429":
-        description: ATS scan quota exceeded
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/AtsQuotaErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "ATS scan quota exceeded."
       "409":
-        description: requestId was already used, or is still processing
+        description: The `requestId` was already used, or is still processing.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "This AI request id can no longer be reused."
+            examples:
+              reused:
+                summary: Used for another operation
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "AI request id was already used for another operation."
+              processing:
+                summary: Still processing
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request is processing."
+      "429":
+        description: |
+          The ATS scan quota is used up (`details` is the quota), or the caller already has two
+          AI requests in progress (`Retry-After` says when to try again).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              quota:
+                summary: Scan quota used up
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "ATS scan quota exceeded."
+              inFlight:
+                summary: Too many AI requests at once
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "Too many AI requests in progress. Wait for one to finish and try again."
       "502":
-        description: AI provider error
+        description: The AI gateway failed
         content:
           application/json:
             schema:
@@ -294,15 +366,40 @@ analyzeAtsResume:
               statusCode: 502
               message: "AI ATS analysis could not be completed."
       "503":
-        description: The ATS AI policy is invalid, AI provider credentials are not configured, or AI model routing is not configured on the server.
+        description: |
+          The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
+          configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+          `Retry-After`). Nothing is charged.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              policy:
+                summary: Invalid ATS AI settings
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "AI ATS policy is invalid."
+              restarting:
+                summary: Server restarting
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "The server is restarting. Try again in a few seconds."
+                  details:
+                    code: "SERVER_RESTARTING"
+                    retryAfterSeconds: 5
+      "504":
+        description: The AI request ran past its deadline.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             example:
               success: false
-              statusCode: 503
-              message: "AI ATS policy is invalid."
+              statusCode: 504
+              message: "The AI request timed out before the provider answered."
 
 convertAtsResume:
   post:
@@ -315,9 +412,12 @@ convertAtsResume:
       - ProdSession: []
     summary: Convert Resume Text To Structured JSON
     description: |
-      Uses AI to convert raw resume text into structured JSON Resume-shaped fields. Requires an
-      active AI Credits or Bundle entitlement, and spends credits independently of the shared ATS
-      scan quota above. Requires the `ai:write` API key scope when called with an API key.
+      Uses AI to convert raw resume text into structured JSON Resume-shaped fields. Spends AI
+      credits from any source (a plan, a pass or a credit pack), independently of the shared ATS
+      scan quota above. The result becomes a resume, so a free account that already keeps one
+      resume is refused with `402` before anything is charged. A retry with the same `requestId`
+      and text returns the stored result without charging again. Requires the `ai:write` API key
+      scope when called with an API key.
     requestBody:
       required: true
       content:
@@ -339,24 +439,27 @@ convertAtsResume:
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "402":
-        description: No active AI Credits or Bundle plan, or not enough AI credits
+        description: Not enough AI credits, or a free account already keeps its one resume.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
-              noEntitlement:
-                summary: No active AI Credits or Bundle plan
-                value:
-                  success: false
-                  statusCode: 402
-                  message: "Resume conversion requires an active AI Credits or Bundle plan."
               notEnoughCredits:
                 summary: Not enough AI credits
                 value:
                   success: false
                   statusCode: 402
-                  message: "Not enough AI credits."
+                  message: "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
+              documentLimit:
+                summary: Free document limit
+                value:
+                  success: false
+                  statusCode: 402
+                  message: "Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only."
+                  details:
+                    code: "DOCUMENT_LIMIT"
+                    type: "RESUME"
       "403":
         description: API key is missing the ai:write scope
         content:
@@ -387,8 +490,31 @@ convertAtsResume:
               success: false
               statusCode: 502
               message: "AI resume conversion could not be completed."
+      "429":
+        description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 429
+              message: "Too many AI requests in progress. Wait for one to finish and try again."
+      "504":
+        description: The AI request ran past its deadline.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 504
+              message: "The AI request timed out before the provider answered."
       "503":
-        description: The ATS AI policy is invalid, AI provider credentials are not configured, or AI model routing is not configured on the server.
+        description: |
+          The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
+          configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+          `Retry-After`).
         content:
           application/json:
             schema:

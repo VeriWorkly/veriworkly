@@ -48,7 +48,7 @@ createShareLink:
             schema:
               $ref: "../components/schemas.yaml#/ShareLinkResponse"
       "400":
-        description: Validation error, or the caller has not claimed a username yet.
+        description: Validation error, the caller has not claimed a username yet, or the document is not a résumé or cover letter.
         content:
           application/json:
             schema:
@@ -60,6 +60,12 @@ createShareLink:
                   success: false
                   statusCode: 400
                   message: "Username required before sharing"
+              notShareable:
+                summary: Document type cannot be shared
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Only résumés and cover letters can be shared by link."
               validation:
                 summary: Validation error
                 value:
@@ -169,6 +175,12 @@ listShareLinksForDocument:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ShareLinkListResponse"
+      "400":
+        description: "`offset` (or `page`) reaches past row 1,000,000."
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
 
@@ -292,8 +304,10 @@ verifyPublicShareLinkPassword:
       No user session is required, but the request must carry an API key or originate from a
       whitelisted first-party origin, same as the read endpoint.
 
-      **Rate limited to 3 attempts per 5 minutes per IP** — considerably tighter than the rest of
-      the API, to make these links impractical to brute-force.
+      **Rate limited to 5 password attempts per link per 5 minutes per client network**, and to 20
+      requests per 5 minutes per IP across all links, to make these links impractical to
+      brute-force. A correct password resets the per-link count. A link without a password is
+      returned directly.
     security:
       - ApiKeyAuth: []
       - {}
@@ -323,15 +337,15 @@ verifyPublicShareLinkPassword:
               $ref: "../components/schemas.yaml#/PublicShareResponse"
       "400":
         $ref: "../components/responses.yaml#/ValidationError"
-      "401":
-        description: Invalid password
+      "403":
+        description: Wrong password. A `403`, not a `401`, so a signed-in viewer is not treated as signed out.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             example:
               success: false
-              statusCode: 401
+              statusCode: 403
               message: "Invalid password"
       "404":
         description: Link not found
@@ -354,7 +368,9 @@ verifyPublicShareLinkPassword:
               statusCode: 410
               message: "Link expired"
       "429":
-        description: Too many password attempts — 3 per 5 minutes per IP.
+        description: |
+          Too many password attempts for this link (5 per 5 minutes), or too many verify requests
+          from this IP (20 per 5 minutes). `Retry-After` says when to try again.
         content:
           application/json:
             schema:
@@ -362,4 +378,14 @@ verifyPublicShareLinkPassword:
             example:
               success: false
               statusCode: 429
-              message: "Too many requests. Please try again later."
+              message: "Too many password attempts. Please try again later."
+      "503":
+        description: The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 503
+              message: "Password verification is temporarily unavailable"

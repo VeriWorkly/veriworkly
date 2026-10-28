@@ -8,13 +8,14 @@ description: Public portfolio pages, drafts, publishing, and analytics.
 Portfolios are published from a single PORTFOLIO-type [Document](/api-reference/documents/overview) to a
 subdomain of `veriworkly.com`. The flow is: save a draft (`PUT /portfolios/draft`), preview it,
 then publish it (`POST /portfolios/publish`) once the content passes the full validation schema.
-Premium templates (`nimbus`, `cipher`) require an active Creator Pro subscription.
+The free templates (`signal`, `atelier`) publish on any account and show a VeriWorkly badge.
+Premium templates (`nimbus`, `cipher`) need Creator Pro, the Job Hunter Bundle, or a pass. When
+that access lapses, a premium portfolio stays online on the closest free template.
 
-<Callout type="warn" title="Publishing is temporarily admin-gated">
-  In production, publishing currently requires the caller's email to match a hardcoded `ADMIN_EMAIL`
-  — independent of plan tier. Regular users can still save drafts, preview, and manage everything
-  except actually flipping a portfolio live. This is a rollout-phase restriction, not a permanent
-  limitation, and does not apply in development.
+<Callout type="warn" title="Publishing is admin-only in production for now">
+  In production, `POST /portfolios/publish` currently answers `403` for every account except the
+  configured admin, whatever the plan. Everyone can still save drafts, preview, and manage
+  everything except putting a portfolio live. This does not apply in development.
 </Callout>
 
 The `/portfolios/public*` routes serve published content and need no user session. View tracking is
@@ -32,8 +33,7 @@ count.
 <Callout type="warn" title="“Public” means no user session, not no credentials">
   The `/portfolios/public*` routes do not require a logged-in user, but they are **not** open to
   anonymous callers. A request that carries neither an API key nor a whitelisted first-party
-  `Origin`/`Referer` is rejected with `401`. Only `GET /health` and `GET /health/ready` are
-  genuinely unauthenticated.
+  `Origin`/`Referer` is rejected with `401`.
 </Callout>
 
 ## Available Endpoints

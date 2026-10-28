@@ -4,8 +4,13 @@ description: >
   Publishes the given draft revision to its chosen subdomain, making it publicly
   reachable.
 
-  Premium templates (`nimbus`, `cipher`) require an active Creator Pro
-  subscription.
+  Premium templates (`nimbus`, `cipher`) need Creator Pro, the Job Hunter Bundle
+  or a pass;
+
+  `signal` and `atelier` are free. The stored draft is checked against the
+  stricter publish
+
+  rules (see `PortfolioDraftContent`).
 
 
   **Current-state caveat:** in production, publishing is gated behind a
@@ -36,8 +41,13 @@ _openapi:
           Publishes the given draft revision to its chosen subdomain, making it
           publicly reachable.
 
-          Premium templates (`nimbus`, `cipher`) require an active Creator Pro
-          subscription.
+          Premium templates (`nimbus`, `cipher`) need Creator Pro, the Job
+          Hunter Bundle or a pass;
+
+          `signal` and `atelier` are free. The stored draft is checked against
+          the stricter publish
+
+          rules (see `PortfolioDraftContent`).
 
 
           **Current-state caveat:** in production, publishing is gated behind a

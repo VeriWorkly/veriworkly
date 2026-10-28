@@ -149,16 +149,44 @@ documentCollection:
         $ref: "../components/responses.yaml#/ValidationError"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
-      "403":
-        description: Free-tier document limit reached
+      "402":
+        description: Free-tier document limit reached (`details.code` `DOCUMENT_LIMIT`).
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             example:
               success: false
-              statusCode: 403
-              message: "Free users can only have 1 active resume at a time. Upgrade to Creator Pro for unlimited documents."
+              statusCode: 402
+              message: "Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only."
+              details:
+                code: "DOCUMENT_LIMIT"
+                type: "RESUME"
+      "409":
+        description: The `id` belongs to another account or to one of the caller's deleted documents, or the slug is taken.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              idInUse:
+                summary: Id used by another account
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Document ID already in use"
+              deleted:
+                summary: Id of a deleted document
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Document was deleted"
+              slugInUse:
+                summary: Slug taken
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Document slug is already in use"
       "413":
         description: Payload too large
         content:
@@ -180,6 +208,10 @@ documentItem:
       - LocalSession: []
       - ProdSession: []
     summary: Get Document
+    description: |
+      Returns one of the caller's documents with its full content. A document in the trash, or one
+      that belongs to another account, answers `404`. Requires the `resume:read` scope when
+      called with an API key.
     parameters:
       - name: id
         in: path

@@ -52,8 +52,14 @@ The provider, and per task the default route, system prompt and redaction.
     },
     hooks: {
       type: "object",
-      typeDescription:
-        '{ onRetry?: { method(event: AtsAiRetryEvent): void; }["method"] | undefined; }',
+      typeDescription: "{ onRetry?: ((event: AtsAiRetryEvent) => void) | undefined; }",
+      description: (
+        <>
+          {"Fields: "}
+          <code>{"onRetry"}</code>
+          {"."}
+        </>
+      ),
     },
   }}
 />

@@ -7,15 +7,20 @@ description: CRUD for resumes, cover letters, portfolios, and link-in-bio pages.
 
 Documents are the unified content model behind every product surface — Resume, Cover Letter,
 Portfolio, and Link-in-Bio all share one `Document` record shape (`type` distinguishes them). Free
-users are limited to 1 active document per type; upgrading removes that limit.
+users can keep 1 active document per type; another one answers `402` with
+`details.code: "DOCUMENT_LIMIT"`. Any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a
+pass removes that limit. A credit pack does not.
 
 Updates use **Optimistic Concurrency Control** via a `revision` integer instead of a timestamp:
 each successful update increments `revision` by 1, and a `PATCH` request must send back the
 revision it read, or the API rejects it with `409`.
 
 Deletes are **soft deletes** — a `deletedAt` timestamp is set and the document is immediately
-excluded from list/get responses. Hard delete and restore exist at the service layer for internal
-use but are not exposed through any public route.
+excluded from list/get responses. There is no public restore route. The content of a deleted
+document is wiped after 30 days by default.
+
+Document content over about 1 MB of JSON is refused with `413`. `PATCH /documents/{id}` counts
+toward the autosave limit of 600 requests per 15 minutes per user.
 
 ## Authentication
 

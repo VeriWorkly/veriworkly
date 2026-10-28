@@ -16,8 +16,9 @@ The ATS module scores a resume's readiness for applicant tracking systems in two
 <Callout type="warn" title="Check and analyze share one quota">
   `/ats/check` and `/ats/analyze` draw from the **same** ATS scan-quota bucket — there is no
   separate "AI analysis" allowance. Limits: anonymous callers get 1 scan / 48 hours, free logged-in
-  users get 2 scans / 24 hours, and subscribers (active AI Credits or Bundle plan) get 300 scans /
-  billing period. Check current usage with `GET /ats/quota`.
+  users get 2 scans / 24 hours, and accounts that hold AI credits or a paid plan or pass get 300
+  scans a month. Check current usage with `GET /ats/quota`. `/ats/analyze` also spends AI credits; a
+  balance that cannot cover it answers `402`.
 </Callout>
 
 <Callout type="info" title="The same engine is open source">
@@ -29,12 +30,12 @@ The ATS module scores a resume's readiness for applicant tracking systems in two
 Two supporting endpoints round out the module:
 
 - `POST /ats/extract` pulls plain text out of an uploaded PDF/DOCX/TXT/Markdown/JSON resume file
-  (5 MB max). It draws on a **separate upload budget** — 3 uploads for anonymous callers, 6 for free
-  logged-in users, 300 for subscribers — so uploading a file never spends a scan. `GET /ats/quota`
-  reports it under `extract`.
+  (5 MB max; a larger file answers `413`). It draws on a **separate upload budget** (3 uploads for
+  anonymous callers, 6 for free logged-in users, 300 for the paid tier above), so uploading a file
+  never spends a scan. `GET /ats/quota` reports it under `extract`.
 - `POST /ats/convert-resume` uses AI to turn raw resume text into structured JSON Resume fields. It
-  requires an active AI Credits or Bundle entitlement and spends credits independently of both
-  budgets above.
+  spends AI credits from any source (a plan, a pass, or a credit pack) and answers `402` when the
+  balance cannot cover it. It does not use either budget above.
 
 `/ats/analyze` also supports fetching a job description directly from a URL instead of requiring
 pasted text. That fetch is SSRF-hardened: HTTPS-only on the standard port, blocks

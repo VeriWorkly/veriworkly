@@ -38,7 +38,7 @@ getAiActions:
             example:
               success: false
               statusCode: 503
-              message: "AI generation policy is invalid."
+              message: "AI generation is unavailable right now. Please try again later."
 
 generateAiContent:
   post:
@@ -115,7 +115,7 @@ generateAiContent:
             example:
               success: false
               statusCode: 402
-              message: "Not enough AI credits."
+              message: "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
       "403":
         description: API key is missing the ai:write scope
         content:
@@ -146,8 +146,31 @@ generateAiContent:
               success: false
               statusCode: 502
               message: "The AI provider could not complete the request."
+      "429":
+        description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 429
+              message: "Too many AI requests in progress. Wait for one to finish and try again."
+      "504":
+        description: The AI request ran past its deadline.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 504
+              message: "The AI request timed out before the provider answered."
       "503":
-        description: The AI policy is missing or invalid, AI provider credentials are not configured, or AI model routing is not configured on the server.
+        description: |
+          The server's AI settings are missing or invalid, the AI gateway credentials are not
+          configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+          `Retry-After`).
         content:
           application/json:
             schema:

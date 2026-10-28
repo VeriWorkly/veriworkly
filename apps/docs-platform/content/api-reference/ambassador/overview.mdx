@@ -6,14 +6,14 @@ description: Campus ambassador program application intake.
 ## Description
 
 A deliberately small surface today: applying to become a campus ambassador, and checking your
-application status. There is no points, rewards, or redemption API yet — that system has not been
-built. Applications capture college name, graduation year (a real, validated 4-digit year), and a
-few short free-text answers, and are reviewed manually.
+application status. There is no points, rewards, or redemption API. Applications capture college
+name, graduation year (from last year to eight years ahead), and a few short free-text answers,
+and are reviewed manually.
 
 <Callout type="warn" title="Off by default in production">
-  The entire group is gated behind a feature flag (`config.growth.ambassadorProgramEnabled`), which
-  defaults **off** in production until explicitly enabled. Every route in this group returns `503`
-  while the flag is off.
+  The entire group is gated behind a feature flag (`AMBASSADOR_PROGRAM_ENABLED`), which defaults
+  **off** in production until explicitly enabled. Every route in this group returns `503` while the
+  flag is off.
 </Callout>
 
 ## Authentication

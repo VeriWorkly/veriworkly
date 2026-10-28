@@ -7,10 +7,25 @@ description: >
   and creates a new RESUME document from the result. This is an AI-parsed paste,
   not a LinkedIn
 
-  API integration. Free users get 1 import/month; paid users (AI Credits or
-  Portfolio Pro/Bundle)
+  API integration. Requires the `resume:write` and `ai:write` scopes when called
+  with an API
 
-  get unlimited imports.
+  key.
+
+
+  Every import spends AI credits, the same as an ATS resume conversion (see
+  `pricing` on
+
+  `GET /ats/quota`). The credits are held before the model runs and charged only
+  once the
+
+  import is saved; a short balance is `402` and nothing runs. Free users also
+  get only 1
+
+  import every 30 days and keep one resume at a time; paid users (any plan or a
+  pass) have no
+
+  import limit.
 
 
   It is an AI route like the others: it counts toward the AI rate limit and the
@@ -38,10 +53,25 @@ _openapi:
           and creates a new RESUME document from the result. This is an
           AI-parsed paste, not a LinkedIn
 
-          API integration. Free users get 1 import/month; paid users (AI Credits
-          or Portfolio Pro/Bundle)
+          API integration. Requires the `resume:write` and `ai:write` scopes
+          when called with an API
 
-          get unlimited imports.
+          key.
+
+
+          Every import spends AI credits, the same as an ATS resume conversion
+          (see `pricing` on
+
+          `GET /ats/quota`). The credits are held before the model runs and
+          charged only once the
+
+          import is saved; a short balance is `402` and nothing runs. Free users
+          also get only 1
+
+          import every 30 days and keep one resume at a time; paid users (any
+          plan or a pass) have no
+
+          import limit.
 
 
           It is an AI route like the others: it counts toward the AI rate limit

@@ -12,7 +12,14 @@ seeds it from this profile.
 
 Updates use **Optimistic Concurrency Control**: pass the `updatedAt` timestamp you last read as
 `expectedUpdatedAt`, and the API rejects the write with `409` if someone else (another tab,
-another device) updated the profile in the meantime.
+another device) updated the profile in the meantime. Once a profile exists, a write without
+`expectedUpdatedAt` is also refused with `409`. The `409` carries the current value in
+`details.currentUpdatedAt`.
+
+`PUT /profiles/master` replaces the whole profile. `templateId`, `basics`, `links`, `summary`, and
+`customization` are required; a list section you leave out is saved as an empty list, and unknown
+keys are dropped. Profile content over about 1 MB of JSON is refused with `413`. Saves count toward
+the autosave limit of 600 requests per 15 minutes per user.
 
 ## Authentication
 

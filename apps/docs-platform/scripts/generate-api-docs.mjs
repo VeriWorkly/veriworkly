@@ -2,7 +2,10 @@
  * Builds the API reference from the modular OpenAPI spec, in two steps:
  *
  *   1. Bundle  `specs/openapi.yaml` (+ `specs/paths/*`, `specs/components/*`) -> `openapi.yaml`
- *   2. Generate `openapi.yaml` -> `content/api-reference/**\/*.mdx`
+ *   2. Generate the bundle -> `content/api-reference/**\/*.mdx`
+ *
+ * The bundle files (`openapi.yaml`, `public/openapi.{json,yaml}`) are written only after the pages
+ * are generated, so a failed run changes nothing.
  *
  * Runs automatically before `dev` and `build` (see the `predev` / `prebuild` scripts), so the
  * published reference can never drift from the spec. Edit files under `specs/` — never the
@@ -60,6 +63,9 @@ function pointer(doc, fragment) {
   }, doc);
 }
 
+/** Component refs already warned about, so each is reported once. */
+const unknownComponentRefs = new Set();
+
 /** Rewrites a cross-file component `$ref` into the local pointer the bundle uses. */
 function localRef(target) {
   const [file, fragment] = target.split("#");
@@ -71,8 +77,20 @@ function localRef(target) {
   const base = path.basename(file);
   if (base === "schemas.yaml") return `#/components/schemas/${name}`;
   if (base === "responses.yaml") return `#/components/responses/${name}`;
+
+  // Any other file under `components/` is inlined at every use instead of shared as a component,
+  // which is rarely what was meant. Say so. To share it, wire it up like schemas and responses.
+  if (path.basename(path.dirname(file)) === "components" && !unknownComponentRefs.has(target)) {
+    unknownComponentRefs.add(target);
+    console.warn(
+      `[api-docs] WARNING: "${target}" points into a component file the bundler does not map to #/components/*, so it is inlined, not referenced`,
+    );
+  }
   return null;
 }
+
+/** Keys OpenAPI allows next to a `$ref`. Any other key would silently override the target. */
+const REF_SIBLINGS = new Set(["summary", "description"]);
 
 /** The component namespace a file's own `#/Name` refs belong to once inlined. */
 function selfPrefixFor(file) {
@@ -98,6 +116,13 @@ function resolve(node, baseDir, selfPrefix) {
     );
 
   if (typeof node.$ref === "string") {
+    const stray = keys.filter((k) => k !== "$ref" && !REF_SIBLINGS.has(k));
+    if (stray.length > 0) {
+      throw new Error(
+        `$ref "${node.$ref}" (in ${baseDir}) has sibling key(s) ${stray.join(", ")}. Only summary and description may sit next to a $ref.`,
+      );
+    }
+
     // A file-internal ref inside an inlined component file must be re-namespaced.
     if (node.$ref.startsWith("#")) {
       if (!selfPrefix) {
@@ -126,7 +151,7 @@ function resolve(node, baseDir, selfPrefix) {
     try {
       const inlined = resolve(pointer(load(abs), fragment), path.dirname(abs), selfPrefixFor(abs));
 
-      // Keys written next to the $ref (a summary, say) belong to the referencing file; keep them.
+      // A summary or description written next to the $ref belongs to the referencing file; keep it.
       return Object.keys(extra).length > 0 && inlined && typeof inlined === "object"
         ? { ...inlined, ...extra }
         : inlined;
@@ -410,15 +435,18 @@ function writeIfChanged(file, text) {
   return true;
 }
 
-writeIfChanged(bundlePath, bundledYaml);
-writeIfChanged(publicYamlPath, bundledYaml);
-writeIfChanged(publicJsonPath, bundledJson);
+// The three spec files are written only after the pages are generated (see the end of this file).
+// Written first, a failed generation left the served spec ahead of the pages, and the re-run saw no
+// diff in the spec and kept that partial state.
+const specOutputs = [
+  [bundlePath, bundledYaml],
+  [publicYamlPath, bundledYaml],
+  [publicJsonPath, bundledJson],
+];
 
 const pathCount = Object.keys(bundled.paths ?? {}).length;
 const schemaCount = Object.keys(bundled.components?.schemas ?? {}).length;
-console.log(
-  `[api-docs] bundled ${pathCount} paths and ${schemaCount} schemas -> openapi.yaml, public/openapi.{json,yaml}`,
-);
+console.log(`[api-docs] bundled ${pathCount} paths and ${schemaCount} schemas from specs/`);
 console.log(
   `[api-docs] request schemas of ${zodOperationCount} operations taken from the server's zod validators` +
     (keptRequestRefs.size > 0
@@ -440,23 +468,49 @@ process.chdir(appRoot);
 
 const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), "api-docs-"));
 
-function stagedPages(dir, prefix = "") {
+/** Generated pages under `dir`, relative to it. `overview.mdx` files are hand-written. */
+function generatedPages(dir, prefix = "") {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const relative = path.join(prefix, entry.name);
-    if (entry.isDirectory()) return stagedPages(path.join(dir, entry.name), relative);
+    if (entry.isDirectory()) return generatedPages(path.join(dir, entry.name), relative);
     return entry.name.endsWith(".mdx") && entry.name !== "overview.mdx" ? [relative] : [];
   });
 }
 
+// The page copy of the spec. An operation with no description gets its summary as one, so its page
+// still has a meta description. The served spec is left exactly as written.
+const pageDocument = YAML.parse(bundledYaml);
+const undescribed = [];
+for (const [route, item] of Object.entries(pageDocument.paths ?? {})) {
+  for (const method of HTTP_METHODS) {
+    const operation = item[method];
+    if (!operation || operation.description || item.description) continue;
+
+    undescribed.push(`${method.toUpperCase()} ${route}`);
+    if (operation.summary) operation.description = operation.summary;
+  }
+}
+if (undescribed.length > 0) {
+  console.warn(
+    `[api-docs] WARNING: ${undescribed.length} operation(s) have no description; their pages use the summary as the meta description. Add one in specs/paths:\n  ${undescribed.join("\n  ")}`,
+  );
+}
+
 try {
   await generateFiles({
-    input: createOpenAPI({ input: ["./openapi.yaml"], proxyUrl: "/api/proxy" }),
+    // Keyed by the same "./openapi.yaml" string `lib/openapi.ts` registers, so the pages' preload
+    // keys still match at runtime. The bundle is passed in memory because the file on disk is only
+    // updated once generation has succeeded.
+    input: createOpenAPI({
+      input: { "./openapi.yaml": () => pageDocument },
+      proxyUrl: "/api/proxy",
+    }),
     output: stagingDir,
     per: "operation",
     groupBy: "tag",
   });
 
-  const pages = stagedPages(stagingDir);
+  const pages = generatedPages(stagingDir);
   const formatted = new Map();
   let updated = 0;
   let removed = 0;
@@ -479,14 +533,14 @@ try {
   );
 
   // Swept before writing: on a case-insensitive disk a page renamed only in case is written through
-  // the old file name, and a sweep after the write would delete it.
+  // the old file name, and a sweep after the write would delete it. The sweep walks folders as deep
+  // as the staging does; files at the top level (the hand-written `index.mdx`) are never generated.
   const keep = new Set(pages);
   for (const entry of fs.readdirSync(outputDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
 
-    for (const file of fs.readdirSync(path.join(outputDir, entry.name))) {
-      const relative = path.join(entry.name, file);
-      if (file.endsWith(".mdx") && file !== "overview.mdx" && !keep.has(relative)) {
+    for (const relative of generatedPages(path.join(outputDir, entry.name), entry.name)) {
+      if (!keep.has(relative)) {
         fs.rmSync(path.join(outputDir, relative));
         removed++;
       }
@@ -502,6 +556,12 @@ try {
 
   console.log(
     `[api-docs] ${pages.length} MDX pages in content/api-reference (${updated} written, ${removed} removed)`,
+  );
+
+  // Last, so the served spec never runs ahead of the pages.
+  const specsWritten = specOutputs.filter(([file, text]) => writeIfChanged(file, text)).length;
+  console.log(
+    `[api-docs] openapi.yaml, public/openapi.{json,yaml}: ${specsWritten} of ${specOutputs.length} written`,
   );
 
   // Sidebar order lives in each folder's hand-written `meta.json`, so a new operation gets a page

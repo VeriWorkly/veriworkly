@@ -18,8 +18,8 @@ Once authenticated, the system establishes a secure, HTTP-only session that pers
 VeriWorkly follows a simple 2-step verification process:
 
 1. **OTP Request**: `POST /auth/email-otp/send-verification-otp` with `{ email, type: "sign-in" }`.
-   A short-lived numeric code is sent via our SMTP provider. The response is always
-   `{ "success": true }` — it does not reveal whether the address has an account.
+   A short-lived numeric code is sent by email. The response is `{ "success": true }` and does not
+   reveal whether the address has an account.
 2. **Sign in**: `POST /auth/sign-in/email-otp` with `{ email, otp }`. On success a secure cookie is
    set and the session token plus user record are returned. A new account is created automatically
    on first sign-in.
@@ -34,12 +34,13 @@ VeriWorkly follows a simple 2-step verification process:
 
 ## Security & session management
 
-| Feature          | Implementation                                                                                       |
-| :--------------- | :--------------------------------------------------------------------------------------------------- |
-| **Protocol**     | Passwordless Email OTP. Codes expire after 5 minutes and allow 3 attempts.                           |
-| **Session Type** | HTTP-only, Secure, SameSite cookies to prevent CSRF and XSS.                                         |
-| **Provider**     | Powered by **Better Auth** with a Prisma adapter for persistent session storage.                     |
-| **Rate limits**  | 3 requests/minute per IP for sending a code; 20/minute for signing in. Exceeding either gives `429`. |
+| Feature          | Implementation                                                                                                                                                                                |
+| :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Protocol**     | Passwordless Email OTP. Codes expire after 5 minutes and allow 3 attempts.                                                                                                                    |
+| **Session Type** | HTTP-only cookies, `Secure` in production. A session lasts 30 days and is extended when used after a day. A signed-out or revoked session stops working on the next request.                  |
+| **Cookie scope** | The API host only, unless the server sets `AUTH_COOKIE_DOMAIN` (for example `.veriworkly.com`); then every subdomain of that domain shares the session.                                       |
+| **Provider**     | Powered by **Better Auth** with a Prisma adapter for persistent session storage.                                                                                                              |
+| **Rate limits**  | Per IP: 10 code requests a minute and 20 sign-in attempts a minute. Per email address: 5 codes an hour. Exceeding any of them gives `429`. Without Redis, code requests answer `503` instead. |
 
 ---
 
@@ -49,3 +50,18 @@ VeriWorkly follows a simple 2-step verification process:
 - `POST /auth/sign-in/email-otp` — [Sign In With Email OTP](./verifyOTP)
 - `GET /auth/get-session` — [Get Session](./getSession)
 - `POST /auth/sign-out` — [Sign Out](./signOut)
+
+These four are the documented flow. Better Auth serves its other routes under `/auth/*` too, such
+as Google, GitHub, and LinkedIn sign-in when they are configured. `/auth/forget-password/email-otp`
+is switched off; use `/auth/email-otp/request-password-reset` instead.
+
+### Linking GitHub
+
+An account can link one GitHub account, and a linked GitHub account is never removed.
+
+- Linking a second, different GitHub account is refused with the code `GITHUB_ALREADY_LINKED`.
+  When the refusal happens during the OAuth redirect, the browser is sent back with
+  `error=GITHUB_ALREADY_LINKED` in the URL.
+- Unlinking GitHub (`POST /auth/unlink-account`) is refused with `403` and the code
+  `GITHUB_UNLINK_FORBIDDEN`.
+- The GitHub account may use a different email address from the VeriWorkly account.

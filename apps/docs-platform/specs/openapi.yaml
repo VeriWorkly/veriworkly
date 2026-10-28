@@ -20,8 +20,8 @@ info:
 
     - **Format**: `vw_` followed by 64 hexadecimal characters.
     - **Rate limit**: 20 requests per 15 minutes per key by default, configurable per key at
-      creation. Responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
-      `X-RateLimit-Reset`.
+      creation up to 600 (the server's `API_KEY_MAX_RATE_LIMIT`). Responses carry
+      `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`.
     - **Scopes**: keys are scope-gated. A key missing a route's required scope gets `403`. Session
       callers are never scope-gated.
 
@@ -35,23 +35,70 @@ info:
     - **Note**: sessions are only honoured for whitelisted origins. Send `credentials: 'include'`
       (fetch) or `withCredentials: true` (axios). Requests from these documentation pages **must**
       use an API key.
+    - **Cookie domain**: when the server sets `AUTH_COOKIE_DOMAIN`, the session cookie is issued
+      for that domain so it is shared across its subdomains. Without it the cookie belongs to the
+      API host only.
 
     #### Endpoints that need neither
-    Only `GET /api/v1/health` and `GET /api/v1/health/ready` are fully open. Everything else —
-    including the endpoints labelled "public", such as public portfolios and share links — still
-    requires an API key or a whitelisted first-party origin, and returns `401` without one.
+    These are fully open, with no key, session or first-party origin:
+
+    - `GET /api/v1/health` and `GET /api/v1/health/ready`
+    - `POST /api/v1/affiliates/click` and `GET /api/v1/affiliates/leaderboard` (while the
+      affiliate program is switched on)
+    - the Better Auth routes under `/api/v1/auth/*`
+    - `POST /api/v1/contact`
+
+    Everything else, including the endpoints labelled "public" such as public portfolios and
+    share links, requires an API key or a whitelisted first-party origin, and returns `401`
+    without one.
+
+    #### Cross-origin requests
+    A browser request whose `Origin` is not on the server's allowlist is refused with `403`,
+    message "Not allowed by CORS" and `details.code` `CORS_REJECTED`, whatever credentials it
+    carries. Requests without an `Origin` header (scripts, servers) are not affected.
 
     ### Response Envelope
 
     Every endpoint under `/api/v1` except the Better Auth routes at `/api/v1/auth/*` returns
     `{ success, message, data }` on success and `{ success, message, statusCode, details? }` on
-    failure. Better Auth endpoints return their own payload shapes.
+    failure. Better Auth endpoints return their own payload shapes. `details` is an array of
+    `{ path, message }` on a validation failure and an object (such as `{ code }`) elsewhere.
+
+    A body larger than the route accepts is refused with `413` "Request body too large". Most
+    routes accept 100 kb; documents, the master profile, profile imports, share links and the
+    portfolio draft accept 4 MB; the AI and ATS text routes accept 256 kb. A body that is not
+    valid JSON is refused with `400` "Invalid JSON body".
+
+    ### Sign-in coverage
+    Better Auth answers every path under `/api/v1/auth/*`. This reference documents the email
+    code sign-in (`/email-otp/send-verification-otp`, `/sign-in/email-otp`),
+    `/get-session` and `/sign-out`, which are the supported way to sign in from your own
+    client. Better Auth's other routes are also served: social sign-in and account linking (Google, GitHub
+    and LinkedIn when configured, through `/sign-in/social`, `/link-social` and `/callback/{provider}`),
+    session management (`/list-sessions`, `/revoke-session`, `/revoke-sessions`,
+    `/revoke-other-sessions`) and `/email-otp/request-password-reset`. Those follow Better
+    Auth's own documentation and are not described here. `/forget-password/email-otp` is
+    switched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`
+    with code `GITHUB_UNLINK_FORBIDDEN`), and an account can link only one GitHub account
+    (`GITHUB_ALREADY_LINKED`, sent as an `error` query parameter on the OAuth redirect, or as a
+    `403` code elsewhere).
 
     ### Not Documented Here
 
-    `/api/v1/contact`, `/api/v1/stats/events` and everything under `/api/v1/admin/*` are internal
-    first-party routes. They are left out of this reference on purpose and are not part of the
-    supported public API.
+    `POST /api/v1/client-errors` (crash reports from VeriWorkly's own site),
+    `GET /api/v1/health/metrics` and `GET /api/v1/health/jobs` (behind the server's internal key)
+    and everything under `/api/v1/admin/*` are internal first-party routes. They are left out
+    of this reference on purpose and are not part of the supported public API.
+
+    ### Contact form
+    `POST /api/v1/contact` sends a message to the VeriWorkly team. It is open (no key or
+    session) and limited to 5 requests per hour per IP. The JSON body takes `name` (1 to 100
+    characters), `email` (up to 254), `subject` (1 to 200), `message` (10 to 5,000) and `_ts`,
+    the time the form was loaded in milliseconds since the epoch, which is required. `website`
+    is a hidden field that must stay empty. A bad body answers `400` "Validation failed" with
+    `details`; success answers `{ name, email, subject, timestamp }` with the message "Message
+    sent successfully". A submission sent less than 1.2 seconds after `_ts`, or with `website`
+    filled, gets the same success answer and is dropped.
 
 servers:
   - url: https://api.veriworkly.com
@@ -71,7 +118,7 @@ tags:
   - name: GitHub
     description: GitHub issues, pull requests, and repository statistics.
   - name: Authentication
-    description: Authentication operations using email OTP and sessions.
+    description: Email code sign-in and sessions, served by Better Auth. Other Better Auth routes are listed under "Sign-in coverage" above.
   - name: API Keys
     description: Operations related to managing personal API keys.
   - name: Profile

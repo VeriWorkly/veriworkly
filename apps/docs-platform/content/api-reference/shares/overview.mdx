@@ -14,7 +14,9 @@ Links can optionally be password-protected (scrypt-hashed, verified with a timin
 days, or never if asked for with `noExpiry: true`; a link created without either lasts 7 days.
 
 Creating a link requires the owner to have **claimed a username** first, since it forms the public
-URL (`/{username}/{slug}`); without one the request fails with `400`.
+URL (`/{username}/{slug}`); without one the request fails with `400`. Only résumés and cover letters
+can be shared by link; other document types answer `400`. A snapshot over about 1 MB of JSON
+answers `413`.
 
 ## Authentication
 
@@ -25,13 +27,21 @@ URL (`/{username}/{slug}`); without one the request fails with `400`.
 
 <Callout type="warn" title="“Public” means no user session, not no credentials">
   The `/shares/public/*` routes do not require a logged-in user, but they are **not** open to
-  anonymous callers — a request carrying neither an API key nor a whitelisted first-party
+  anonymous callers. A request carrying neither an API key nor a whitelisted first-party
   `Origin`/`Referer` is rejected with `401`.
-
-The password-verification route is additionally rate limited to **3 attempts per 5 minutes per
-IP**, far tighter than the rest of the API, to make protected links impractical to brute-force.
-
 </Callout>
+
+## Password verification
+
+`POST /shares/public/{username}/{slug}/verify` allows **5 password attempts per link per 5 minutes**
+from one network; a correct password resets the count. On top of that, one IP may call the route 20
+times per 5 minutes across all links. It answers:
+
+- `403` for a wrong password.
+- `429` with `Retry-After` once the attempts are used up.
+- `503` when the attempt counter cannot be read; the password is not checked then.
+- `404` for an unknown link, or one whose document was deleted or made private, and `410` for an
+  expired one. The public read route answers the same way.
 
 ## Available Endpoints
 

@@ -1,8 +1,13 @@
 ---
 title: Upgrade Plan
 description: >
-  Upgrades the live subscription to the `bundle` in place. The provider charges
-  the prorated
+  Upgrades the live subscription to the `bundle` in place. As with the preview,
+  the body
+
+  accepts any plan and recurring interval, and any change other than that
+  upgrade is refused
+
+  with `409` and a `details.code`. The provider charges the prorated
 
   difference, and the plan, its features and its credits move once that payment
   succeeds and
@@ -31,8 +36,13 @@ _openapi:
     headings: []
     contents:
       - content: >
-          Upgrades the live subscription to the `bundle` in place. The provider
-          charges the prorated
+          Upgrades the live subscription to the `bundle` in place. As with the
+          preview, the body
+
+          accepts any plan and recurring interval, and any change other than
+          that upgrade is refused
+
+          with `409` and a `details.code`. The provider charges the prorated
 
           difference, and the plan, its features and its credits move once that
           payment succeeds and
