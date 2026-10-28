@@ -89,7 +89,8 @@ function serverOtherCheckoutConflicts() {
     )
     .filter((message) => /checkout|payment for/i.test(message));
 
-  expect(messages.length).toBeGreaterThanOrEqual(2);
+  // Coded 409s (the lock, CHECKOUT_STILL_PROCESSING) carry a third argument and are not listed.
+  expect(messages.length).toBeGreaterThanOrEqual(1);
   return messages;
 }
 

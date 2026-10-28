@@ -172,7 +172,10 @@ describe("S-177 studio payloads parse with the server's validators", () => {
       "create",
     );
 
-    expect(roadmapAdminCreateSchema.safeParse(payload).success).toBe(true);
+    // The client adds the audit reason when it sends the payload (admin-roadmap.ts, V-081).
+    expect(
+      roadmapAdminCreateSchema.safeParse({ ...payload, reason: "Plan the changelog API" }).success,
+    ).toBe(true);
   });
 
   it("S-177 the admin credit adjustment the forms send passes adminCreditAdjustmentSchema", async () => {
