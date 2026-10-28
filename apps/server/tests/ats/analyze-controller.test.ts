@@ -246,11 +246,64 @@ describe("POST /ats/analyze — quota gates outbound egress", () => {
       "user-1",
       "203.0.113.9",
       expect.objectContaining({ tier: "free" }),
+      expect.any(Function),
     );
     expect(json.mock.calls[0][0].data).toMatchObject({
       aiStatus: "unavailable",
       quota: { remaining: 2 },
     });
+  });
+
+  /**
+   * V-388: the refund decrements and then reads the summary back. If the read after the
+   * decrement throws, the scan is already back: refunding again (the outer catch used to) handed
+   * back two scans for one. If the failure came before the decrement, nothing went back yet and
+   * the refund is tried once more, or the scan is lost. `refund` reports the decrement through
+   * its `onReturned` callback, which is how the two are told apart.
+   */
+  const unrouted = async () => {
+    analyze.mockResolvedValue({ ai: null, creditsSpent: 0, routed: false });
+    const { res, json } = responseSpy();
+    const next = vi.fn();
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted description" }),
+      res,
+      next,
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(json.mock.calls[0][0].data.aiStatus).toBe("unavailable");
+  };
+
+  it("does not refund again when the read after the decrement fails", async () => {
+    refund.mockImplementation(async (...args: unknown[]) => {
+      (args[3] as () => void)();
+      throw new Error("Redis GET failed after the DECR");
+    });
+
+    await unrouted();
+
+    expect(refund).toHaveBeenCalledTimes(1);
+  });
+
+  it("tries the refund once more when it failed before the decrement", async () => {
+    refund
+      .mockRejectedValueOnce(new Error("Redis down before the DECR"))
+      .mockImplementationOnce(async (...args: unknown[]) => {
+        (args[3] as () => void)();
+        return { tier: "free", remaining: 2 };
+      });
+
+    await unrouted();
+
+    expect(refund).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after a second failure before the decrement, and still answers", async () => {
+    refund.mockRejectedValue(new Error("Redis down"));
+
+    await unrouted();
+
+    expect(refund).toHaveBeenCalledTimes(2);
   });
 
   it("does not refund when the analysis actually ran", async () => {

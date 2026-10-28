@@ -682,11 +682,24 @@ describe("rateLimitMiddleware on a stalled Redis (V-095)", () => {
     mockGetRedis.mockReturnValue({ isReady: true, eval: vi.fn(() => new Promise(() => {})) });
   });
 
+  // V-384: on fake timers, not a wall-clock bound a busy runner can miss. The request is still
+  // waiting just short of the 400 ms Redis bound and is answered from memory once it passes.
   it("stops waiting after the timeout and counts the request in memory", async () => {
-    const started = Date.now();
-    const result = await call("/api/v1/documents", "GET");
-    expect(result.passed).toBe(true);
-    expect(Date.now() - started).toBeLessThan(1000);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      let settled = false;
+      const pending = call("/api/v1/documents", "GET").then((result) => {
+        settled = true;
+        return result;
+      });
+      await vi.advanceTimersByTimeAsync(390);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(20);
+      expect(settled).toBe(true);
+      expect((await pending).passed).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps a fail-closed class closed: 503", async () => {

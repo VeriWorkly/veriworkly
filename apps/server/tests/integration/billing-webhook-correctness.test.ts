@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { app } from "#app";
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
+import { settleBillingNotifications } from "#services/billingNotifications";
 
 import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession, type TestUser } from "./helpers/auth.js";
@@ -96,12 +97,18 @@ function paymentEvent(input: {
   };
 }
 
-async function deliver(event: unknown, id?: string) {
+/**
+ * Signs and delivers one webhook. The status is checked here (V-399): a "nothing happens" money or
+ * access assertion after a delivery that failed proves nothing. A test that expects a refusal
+ * passes the status it expects.
+ */
+async function deliver(event: unknown, id?: string, expectedStatus = 200) {
   const body = JSON.stringify(event);
   const headers = signDodoWebhook(body, id ? { id } : {});
   const req = request(app).post(WEBHOOK_PATH);
   for (const [key, value] of Object.entries(headers)) req.set(key, value);
   const response = await req.send(body);
+  expect(response.status, JSON.stringify(response.body)).toBe(expectedStatus);
   return { response, eventId: headers["webhook-id"] };
 }
 
@@ -437,6 +444,8 @@ describe("V-004 product_id wins over stale checkout metadata", () => {
           veriworkly_interval: "fortnightly",
         },
       }),
+      undefined,
+      400,
     );
     expect(bad.response.status).toBeGreaterThanOrEqual(400);
     expect(await eventStatus(bad.eventId)).toBe("FAILED");
@@ -613,6 +622,8 @@ describe("V-005 / V-006 status table", () => {
         at: eventTime(1),
         nextBillingDate: future(),
       }),
+      undefined,
+      400,
     );
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(await eventStatus(eventId)).toBe("FAILED");
@@ -660,7 +671,8 @@ describe("V-149 cancellation email", () => {
         at: eventTime(2),
       }),
     );
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // V-359: wait for every billing send started so far, not a fixed time a late send can miss.
+    await settleBillingNotifications();
     expect(billingMailMock.sendSubscriptionCancelledEmail).toHaveBeenCalledTimes(1);
   });
 
@@ -687,7 +699,8 @@ describe("V-149 cancellation email", () => {
         nextBillingDate: new Date(Date.now() - 60_000),
       }),
     );
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // V-359: wait for every billing send started so far, not a fixed time a late send can miss.
+    await settleBillingNotifications();
     expect(billingMailMock.sendSubscriptionCancelledEmail).not.toHaveBeenCalled();
     expect((await activePublishGrants(user.id)).length).toBe(0);
   });
@@ -822,6 +835,8 @@ describe("V-012 events that cannot be attributed", () => {
     const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
     const { response, eventId } = await deliver(
       paymentEvent({ productId: "prod_pack_250", settlementAmount: 499, metadata: {} }),
+      undefined,
+      400,
     );
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(await eventStatus(eventId)).toBe("FAILED");
@@ -833,6 +848,8 @@ describe("V-012 events that cannot be attributed", () => {
     const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
     const { response, eventId } = await deliver(
       paymentEvent({ userId: user.id, productId: "prod_mystery", settlementAmount: 499 }),
+      undefined,
+      400,
     );
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(await eventStatus(eventId)).toBe("FAILED");

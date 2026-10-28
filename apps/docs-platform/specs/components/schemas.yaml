@@ -2208,10 +2208,11 @@ AtsQuotaSummary:
   properties:
     tier:
       type: string
-      enum: [anonymous, free, subscriber]
+      enum: [anonymous, free, paused, subscriber]
+      description: "subscriber: spendable AI credits from any source, or a subscription or pass in effect even with an empty wallet (a paying customer is never free). paused: a paused subscription and no credits; the free limits apply. free: any other signed-in account, including one whose payment failed."
     limit:
       type: integer
-      description: "1 for anonymous callers per 48h window, 2 for free logged-in users per 24h window, 300 for subscribers per billing period."
+      description: "1 for anonymous callers per 48h window, 2 for free and paused logged-in users per 24h window, 300 for subscribers per billing period."
     used:
       type: integer
     remaining:
@@ -3289,6 +3290,7 @@ BillingSummary:
     plan:
       type: string
       enum: [FREE, AI_CREDITS, PORTFOLIO_PRO, BUNDLE]
+      description: "The plan whose features are in effect, from subscription or pass access. A credit pack unlocks no plan features, so a customer whose only purchase is a pack is FREE here although they paid; show plan names from the product the customer bought, not from this field."
     productKey:
       type: string
       nullable: true

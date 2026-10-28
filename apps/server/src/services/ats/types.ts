@@ -8,7 +8,11 @@ export type { AtsParsedResume, AtsReport } from "@veriworkly/ats-engine";
 export type { AtsAiInsights } from "@veriworkly/ats-engine/ai";
 
 export type AtsQuotaSummary = {
-  tier: "anonymous" | "free" | "subscriber";
+  /**
+   * `paused`: a subscription the customer paused, on the free limits (owner decision
+   * 2026-10-28: a payer is never labelled free, and a pause gives no paid features).
+   */
+  tier: "anonymous" | "free" | "paused" | "subscriber";
   limit: number;
   used: number;
   remaining: number;

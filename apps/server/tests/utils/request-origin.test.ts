@@ -16,6 +16,19 @@ describe("hasWellFormedHostAndProto (V-155)", () => {
     ).toBe(true);
   });
 
+  // V-396: a client or proxy may name the scheme's default port; isAllowedHost accepts it, so
+  // this gate must too, or every auth call from it is a 400.
+  it("accepts the scheme's default port written out", () => {
+    expect(
+      hasWellFormedHostAndProto({ host: "API.VeriWorkly.com:443", "x-forwarded-proto": "https" }),
+    ).toBe(true);
+    expect(hasWellFormedHostAndProto({ host: "api.veriworkly.com:80" })).toBe(true);
+    expect(hasWellFormedHostAndProto({ host: "api.veriworkly.com:443" })).toBe(true);
+    expect(
+      hasWellFormedHostAndProto({ host: "api.veriworkly.com:80", "x-forwarded-proto": "https" }),
+    ).toBe(true);
+  });
+
   it("refuses the inputs that make `new Request()` throw", () => {
     expect(hasWellFormedHostAndProto({ host: "a:99999" })).toBe(false);
     expect(hasWellFormedHostAndProto({ host: "" })).toBe(false);

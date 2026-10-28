@@ -89,6 +89,22 @@ describe("ambassador decision emails (V-181)", () => {
     ]);
     expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
     await vi.waitFor(() => expect(mailsTo(user.email)).toHaveLength(1));
+
+    // V-403: `waitFor(toHaveLength(1))` passes the moment the first mail lands, so it cannot see
+    // a second one. The stored decision, the account status and the one mail must all be the
+    // winner's, and no mail for the losing action may follow.
+    const approvedWon = results[0]!.status === 200;
+    const stored = await prisma.ambassadorApplication.findUniqueOrThrow({
+      where: { id: application.id },
+    });
+    const account = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(stored.status).toBe(approvedWon ? "APPROVED" : "REJECTED");
+    expect(account.ambassadorStatus).toBe(approvedWon ? "APPROVED" : "REJECTED");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const mails = mailsTo(user.email);
+    expect(mails).toHaveLength(1);
+    if (approvedWon) expect(mails[0]!.subject).toMatch(/approved/i);
+    else expect(mails[0]!.subject).not.toMatch(/approved/i);
   });
 
   it("commits the decision, the role change and the audit entry together (V-074)", async () => {

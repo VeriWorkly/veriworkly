@@ -52,6 +52,19 @@ describe("auth route hardening against malformed Host / X-Forwarded-Proto (V-155
     }
   });
 
+  // V-396: both gates together. The allow-list accepted `host:443`, but the well-formedness
+  // check in front of it compared against a URL that drops the default port and refused it.
+  it("answers a Host that writes out the scheme's default port", async () => {
+    const https = await request(app)
+      .get("/api/v1/auth/ok")
+      .set("Host", "localhost:443")
+      .set("X-Forwarded-Proto", "https");
+    expect(https.status).toBe(200);
+
+    const http = await request(app).get("/api/v1/auth/ok").set("Host", "localhost:80");
+    expect(http.status).toBe(200);
+  });
+
   it("returns 400 for a non-http X-Forwarded-Proto", async () => {
     const capture = captureUnhandledRejections();
     try {

@@ -372,10 +372,20 @@ const CHECKOUT_ACTIVE_MESSAGE =
  */
 const CHECKOUT_IN_PROGRESS = { code: "CHECKOUT_IN_PROGRESS" } as const;
 /**
- * Provider payment states in which money is moving or has moved: a session in one of these is
- * never cleared by `cancelCheckout`; the webhook settles it.
+ * Provider payment states in which nobody is paying: no attempt yet (null), or the attempt
+ * failed, was cancelled or had its card refused. A session in one of these is always cleared by
+ * `cancelCheckout` (V-377).
  */
-const PAYMENT_IN_FLIGHT_STATUSES = new Set<string>([
+const PAYMENT_NOT_STARTED_STATUSES = new Set<string>([
+  "failed",
+  "cancelled",
+  "requires_payment_method",
+]);
+/**
+ * Provider payment states in which money is moving or has moved: a session in one of these is
+ * never cleared, however old; its webhook settles it.
+ */
+const PAYMENT_MOVING_STATUSES = new Set<string>([
   "succeeded",
   "processing",
   "requires_capture",
@@ -383,6 +393,24 @@ const PAYMENT_IN_FLIGHT_STATUSES = new Set<string>([
   "partially_captured_and_capturable",
   "requires_merchant_action",
 ]);
+/**
+ * Every other state waits on the customer (3-D Secure: `requires_customer_action`, a bank
+ * authorisation: `requires_confirmation`) or is one this code does not know. Clearing it at once
+ * could let a second session for the same product be opened and paid mid-authentication (V-377);
+ * holding it for the session's whole 24 h kept a customer who abandoned the bank page from
+ * cancelling, buying another plan or deleting the account. It is held this long, then cleared.
+ * Dodo's SDK has no call to expire a session, so a page left open after this could still be paid;
+ * that payment lands through its webhook like any other.
+ */
+const CUSTOMER_STEP_HOLD_MS = 60 * 60 * 1000;
+
+/** Whether a session in this provider state, opened at `createdAt`, must stay (V-377). */
+function checkoutStillPaying(paymentStatus: string | null | undefined, createdAt: string) {
+  if (!paymentStatus || PAYMENT_NOT_STARTED_STATUSES.has(paymentStatus)) return false;
+  if (PAYMENT_MOVING_STATUSES.has(paymentStatus)) return true;
+  const openedAt = Date.parse(createdAt);
+  return Number.isNaN(openedAt) || Date.now() - openedAt < CUSTOMER_STEP_HOLD_MS;
+}
 /**
  * Must outlive one full processing attempt: the entitlement transaction alone may wait 10 s for
  * a connection and run 20 s, and the pre/post work (event row, cache invalidation, affiliate
@@ -1942,9 +1970,10 @@ export class BillingService {
 
   /**
    * Forgets the user's open checkout sessions, credit packs included (V-278), but only those the
-   * provider confirms are not being paid. A session whose payment succeeded or is processing stays
-   * until its webhook settles it: dropping it would let a second session for the same product be
-   * opened and paid, or the account be deleted under a payment about to land.
+   * provider confirms nobody is paying (V-377). A session whose money is moving stays until its
+   * webhook settles it: dropping it would let a second session for the same product be opened and
+   * paid, or the account be deleted under a payment about to land. One waiting on the customer
+   * (3-D Secure, a bank authorisation, an unknown state) stays for an hour, then clears.
    */
   static async cancelCheckout(userId: string) {
     const redis = getRedis();
@@ -1974,7 +2003,7 @@ export class BillingService {
     if (packs.stale.length > 0) await redis.hDel(packCheckoutKey(userId), packs.stale);
     for (const { sessionId, record } of packs.open) {
       const paymentStatus = await askProvider(sessionId);
-      if (paymentStatus && PAYMENT_IN_FLIGHT_STATUSES.has(paymentStatus)) {
+      if (checkoutStillPaying(paymentStatus, record.createdAt)) {
         packsProcessing.push(creditPackCatalog[record.packKey].name);
         continue;
       }
@@ -2003,7 +2032,7 @@ export class BillingService {
 
       const paymentStatus = await askProvider(record.sessionId);
 
-      if (paymentStatus && PAYMENT_IN_FLIGHT_STATUSES.has(paymentStatus)) {
+      if (checkoutStillPaying(paymentStatus, record.createdAt)) {
         paying.push(productCatalog[productKey].name);
         continue;
       }

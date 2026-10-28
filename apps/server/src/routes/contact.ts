@@ -27,6 +27,13 @@ const contactSchema = z.object({
 
 /** No contact form was loaded before this (2024-01-01 UTC). */
 const EARLIEST_FORM_TIMESTAMP_MS = Date.UTC(2024, 0, 1);
+/**
+ * How far ahead of the server a browser clock may run (a wrong clock must not drop a real
+ * message silently). A timestamp further in the future is made up: it gave a negative elapsed
+ * time, which skipped the timing check (V-391). The bound is generous on purpose: a bot can send
+ * a timestamp a few seconds old anyway, so a tight one would only drop real users.
+ */
+const MAX_CLOCK_SKEW_MS = 60 * 60_000;
 
 router.post("/", async (req, res) => {
   try {
@@ -70,9 +77,14 @@ router.post("/", async (req, res) => {
 
     // 2. Timing check: If submitted impossibly fast (< 1200ms from form mount), it's automated.
     // A timestamp from before the form existed (`_ts: 0`, any made-up small number) skipped this
-    // check entirely: it read as a form open for decades.
+    // check entirely: it read as a form open for decades. One from the future (beyond a browser
+    // clock running a little ahead) is made up too.
     const elapsedMs = Date.now() - _ts;
-    if ((elapsedMs < 1200 && elapsedMs >= 0) || _ts < EARLIEST_FORM_TIMESTAMP_MS) {
+    if (
+      (elapsedMs < 1200 && elapsedMs >= 0) ||
+      elapsedMs < -MAX_CLOCK_SKEW_MS ||
+      _ts < EARLIEST_FORM_TIMESTAMP_MS
+    ) {
       logger.warn("[Contact] Bot blocked via fast-submission timing check", {
         ip: req.ip,
         elapsedMs,

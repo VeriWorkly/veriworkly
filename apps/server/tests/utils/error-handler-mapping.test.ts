@@ -8,7 +8,8 @@ vi.mock("#config", () => ({
   isProduction: true,
 }));
 
-vi.mock("#lib/logger", () => ({
+vi.mock("#lib/logger", async (importOriginal) => ({
+  maskEmails: (await importOriginal<typeof import("#lib/logger")>()).maskEmails,
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
@@ -266,6 +267,9 @@ describe("errorHandler central mapping", () => {
       errorHandler(prismaKnownError("P2000"), req, res, next);
 
       expect(statusMock).toHaveBeenCalledWith(500);
+      // V-394: the audit column (admin-visible, kept for the retention window, never erased with
+      // the account) gets the code, not the message that quotes the values.
+      expect(res.locals.errorMessage).toBe("Prisma P2000");
       expect(body()).toEqual({
         success: false,
         message: "Internal server error",
@@ -279,7 +283,7 @@ describe("errorHandler central mapping", () => {
       [
         "PrismaClientValidationError",
         () =>
-          new Prisma.PrismaClientValidationError("Argument `id` is missing.", {
+          new Prisma.PrismaClientValidationError("Argument `email`: secret-value@example.com", {
             clientVersion: "7.10.0",
           }),
       ],
@@ -295,6 +299,9 @@ describe("errorHandler central mapping", () => {
 
       expect(statusMock).toHaveBeenCalledWith(500);
       expect(body().message).toBe("Internal server error");
+      // V-394: a validation error renders the call's arguments, values included; only its name
+      // reaches the audit column.
+      expect(res.locals.errorMessage).toBe(`Prisma ${_name}`);
       expect(logger.error).toHaveBeenCalled();
     });
   });

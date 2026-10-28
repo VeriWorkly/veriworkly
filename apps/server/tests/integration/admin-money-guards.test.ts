@@ -249,6 +249,16 @@ describe("V-074 money and privilege admin actions commit with their audit entry"
     });
     expect(paid.status).toBe(200);
     expect(await auditCount("affiliate.withdrawal.update", withdrawal.id)).toBe(1);
+    // V-409: the retry paid the money once: the withdrawal is PAID and the wallet records the
+    // 10.00 as paid exactly once, nothing more and nothing left behind.
+    const settled = await prisma.affiliateWithdrawal.findUniqueOrThrow({
+      where: { id: withdrawal.id },
+    });
+    expect(settled.status).toBe("PAID");
+    const after = await prisma.affiliateWallet.findUniqueOrThrow({
+      where: { userId: affiliate.id },
+    });
+    expect(after).toMatchObject({ paidCents: 1_000, pendingCents: 500, availableCents: 0 });
   });
 
   it("commission release rolls back without its audit entry", async () => {

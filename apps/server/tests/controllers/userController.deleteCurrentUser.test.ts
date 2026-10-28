@@ -23,5 +23,11 @@ describe("deleteCurrentUser", () => {
       expect(res.clearCookie).toHaveBeenCalledWith(`veriworkly-auth.${name}`, plain);
       expect(res.clearCookie).toHaveBeenCalledWith(`__Secure-veriworkly-auth.${name}`, secure);
     }
+    // V-380: no `__Secure-` clear is ever sent without `Secure`: the browser would ignore it.
+    for (const [name, cookieOptions] of res.clearCookie.mock.calls as [
+      string,
+      { secure?: boolean },
+    ][])
+      if (name.startsWith("__Secure-")) expect(cookieOptions.secure).toBe(true);
   });
 });

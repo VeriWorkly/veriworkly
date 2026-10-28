@@ -322,4 +322,74 @@ describe("credit ledger invariants against the real database", () => {
     const ledger = await expectInvariant(user.id);
     expect(ledger).toMatchObject({ balance: 50, reserved: 0, unexpired: 50 });
   });
+
+  /**
+   * V-406: a reservation's commit racing its release, or the expired-reservation sweep, settles
+   * one way only. Either the charge stands (COMMITTED, 20 spent) or the hold is handed back
+   * (RELEASED or EXPIRED, nothing spent); never both, never neither, and the ledger balances.
+   */
+  it.each(["release", "sweep"] as const)(
+    "(h) a commit racing the %s settles the reservation exactly once",
+    async (rival) => {
+      for (let round = 0; round < 6; round += 1) {
+        const user = await createUserWithSession();
+        await grant(user.id, 50);
+        const requestId = `req:${randomUUID()}`;
+        await CreditService.reserve(user.id, 20, "ats_analysis", requestId);
+
+        const [commit, other] = await Promise.allSettled([
+          CreditService.commitReservation(user.id, requestId, { reason: "race" }),
+          rival === "release"
+            ? CreditService.releaseReservation(user.id, requestId)
+            : // The sweep runs as if the hold had already run out.
+              CreditService.releaseExpiredReservations(user.id, new Date(Date.now() + 2 * HOUR)),
+        ]);
+
+        const reservation = await prisma.creditReservation.findFirstOrThrow({
+          where: { userId: user.id },
+        });
+        const ledger = await expectInvariant(user.id);
+        expect(other.status).toBe("fulfilled");
+        const handedBack =
+          rival === "release"
+            ? (other as PromiseFulfilledResult<boolean>).value === true
+            : (other as PromiseFulfilledResult<number>).value === 20;
+
+        if (commit.status === "fulfilled") {
+          expect(reservation.status).toBe("COMMITTED");
+          expect(handedBack).toBe(false);
+          expect(ledger).toMatchObject({ balance: 30, reserved: 0 });
+        } else {
+          expect(commit.reason).toBeInstanceOf(ApiError);
+          expect(reservation.status).toBe(rival === "release" ? "RELEASED" : "EXPIRED");
+          expect(handedBack).toBe(true);
+          expect(ledger).toMatchObject({ balance: 50, reserved: 0 });
+        }
+      }
+    },
+  );
+
+  // The race above is usually won by the commit; this pins the other order, where the hold was
+  // handed back first and the late commit must charge nothing.
+  it.each(["release", "sweep"] as const)(
+    "(h2) a commit that arrives after the %s is refused and charges nothing",
+    async (rival) => {
+      const user = await createUserWithSession();
+      await grant(user.id, 50);
+      const requestId = `req:${randomUUID()}`;
+      await CreditService.reserve(user.id, 20, "ats_analysis", requestId);
+
+      if (rival === "release")
+        await expect(CreditService.releaseReservation(user.id, requestId)).resolves.toBe(true);
+      else
+        await expect(
+          CreditService.releaseExpiredReservations(user.id, new Date(Date.now() + 2 * HOUR)),
+        ).resolves.toBe(20);
+
+      await expect(
+        CreditService.commitReservation(user.id, requestId, { reason: "late" }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(await expectInvariant(user.id)).toMatchObject({ balance: 50, reserved: 0 });
+    },
+  );
 });

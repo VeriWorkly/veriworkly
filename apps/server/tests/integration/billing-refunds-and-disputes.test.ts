@@ -499,6 +499,31 @@ describe("review: reversals that add up to the whole payment", () => {
     await expectLedgerBalanced(buyer.id);
   });
 
+  /**
+   * V-407: the per-payment lock (`withPaymentLock`) is what makes two reversals arriving at the
+   * same moment add up. Without it each reads "nothing reversed yet", each is a partial refund,
+   * and the customer keeps the credits for a payment refunded in full.
+   */
+  it("two partial refunds delivered at the same moment still add up to the whole payment", async () => {
+    for (let round = 0; round < 4; round += 1) {
+      const buyer = await createUserWithSession();
+      const payment = packPayment(buyer.id, 200_000);
+      await deliver(payment);
+      const paymentId = payment.data.payment_id;
+
+      await Promise.all([
+        deliver(refundEvent(paymentId, { amount: 120_000, isPartial: true })),
+        deliver(refundEvent(paymentId, { amount: 80_000, isPartial: true })),
+      ]);
+
+      expect((await grantFor(buyer.id, paymentId)).remaining).toBe(0);
+      expect(
+        await prisma.creditTransaction.count({ where: { userId: buyer.id, type: "REFUND" } }),
+      ).toBe(1);
+      await expectLedgerBalanced(buyer.id);
+    }
+  });
+
   it("a partial refund and a lost dispute for the rest take everything back", async () => {
     const buyer = await createUserWithSession();
     const payment = packPayment(buyer.id, 499);

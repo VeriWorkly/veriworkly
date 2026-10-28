@@ -231,6 +231,20 @@ describe("V-322: a tier is earned by released commissions, not refundable pendin
     for (const commission of commissions)
       await deliver(refundEvent(commission.providerPaymentId!, { amount: 10_000 }));
     expect(await tierOf(user.id)).toBe("TIER_1");
+
+    // V-405: TIER_1 above holds whether or not refunds count, since none was released. The
+    // refunds landed (every commission reversed), and one real conversion released now is the
+    // first: had the refunded ten counted, it would be the eleventh and promote.
+    const statuses = await prisma.affiliateCommission.findMany({
+      where: { id: { in: commissions.map((commission) => commission.id) } },
+      select: { status: true },
+    });
+    expect(statuses.map((row) => row.status)).toEqual(Array(10).fill("REVERSED"));
+    const real = await pendingConversion(code);
+    await AffiliateService.updateCommission(real.id, "AVAILABLE");
+    expect(await tierOf(user.id)).toBe("TIER_1");
+    const after = await asUser(user).get(`${BASE}/me`);
+    expect(after.body.data.tierProgress.currentConversions).toBe(1);
   });
 
   it("releasing the tenth commission is what promotes", async () => {
@@ -281,6 +295,26 @@ describe("lock order: releasing commissions while the affiliate deletes their ac
       expect(deadlocks.map((result) => String((result as PromiseRejectedResult).reason))).toEqual(
         [],
       );
+
+      // V-400: no deadlock is not enough. The deletion committed, and every release or reversal
+      // either landed before it or was refused as "deleted account" (409), never another error.
+      const deletion = results[commissions.length];
+      expect(deletion.status).toBe("fulfilled");
+      const others = results.filter((_, index) => index !== commissions.length);
+      for (const result of others)
+        if (result.status === "rejected")
+          expect(result.reason).toMatchObject({
+            statusCode: 409,
+            message: "This commission belongs to a deleted account and cannot change.",
+          });
+      expect(await prisma.user.count({ where: { id: user.id } })).toBe(0);
+      expect(await prisma.affiliateWallet.count({ where: { userId: user.id } })).toBe(0);
+      // The commissions are billing records: kept and detached, never left pointing at the user.
+      const rows = await prisma.affiliateCommission.findMany({
+        where: { id: { in: commissions.map((commission) => commission.id) } },
+      });
+      expect(rows).toHaveLength(commissions.length);
+      expect(rows.every((row) => row.affiliateId === null)).toBe(true);
     }
   });
 });
@@ -289,12 +323,22 @@ describe("lock order: a credit grant or AI reservation while the account is dele
   const isDeadlock = (result: PromiseSettledResult<unknown>) =>
     result.status === "rejected" && /deadlock|40P01/i.test(String(result.reason));
 
-  /** Locks the wallet, waits, then writes a row whose foreign key points at the user. */
-  async function walletThenUserRow(userId: string, kind: "grant" | "reservation") {
+  /**
+   * Locks the wallet, says so through `onLocked`, waits, then writes a row whose foreign key
+   * points at the user. The caller starts the deletion only once the lock is held, so the order
+   * the test is about is the order that runs (V-400 review).
+   */
+  async function walletThenUserRow(
+    userId: string,
+    kind: "grant" | "reservation",
+    sourceId: string,
+    onLocked: () => void,
+  ) {
     return prisma.$transaction(
       async (tx) => {
         const [wallet] = await tx.$queryRaw<Array<{ id: string }>>`
           SELECT "id" FROM "CreditWallet" WHERE "userId" = ${userId} FOR UPDATE`;
+        onLocked();
         await new Promise((resolve) => setTimeout(resolve, 400));
         if (kind === "grant")
           await tx.creditGrant.create({
@@ -304,7 +348,7 @@ describe("lock order: a credit grant or AI reservation while the account is dele
               amount: 10,
               remaining: 10,
               source: "admin_adjustment",
-              sourceId: randomUUID(),
+              sourceId,
             },
           });
         else
@@ -329,8 +373,11 @@ describe("lock order: a credit grant or AI reservation while the account is dele
       const user = await createUserWithSession();
       await prisma.creditWallet.create({ data: { userId: user.id } });
 
-      const writer = walletThenUserRow(user.id, kind);
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      const sourceId = randomUUID();
+      let locked!: () => void;
+      const holdsLock = new Promise<void>((resolve) => (locked = resolve));
+      const writer = walletThenUserRow(user.id, kind, sourceId, locked);
+      await holdsLock;
       const deletion = prisma.$transaction((tx) => deleteUserCascade(tx, user.id), {
         timeout: 20_000,
       });
@@ -342,6 +389,16 @@ describe("lock order: a credit grant or AI reservation while the account is dele
           .map((result) => String((result as PromiseRejectedResult).reason)),
       ).toEqual([]);
       expect(await prisma.user.count({ where: { id: user.id } })).toBe(0);
+      // V-400: no deadlock is not enough. The writer that held the wallet first finished before
+      // the deletion, rather than failing with some other error the filter above ignores; a
+      // grant is a billing record and survives detached.
+      expect(results.map((result) => result.status)).toEqual(["fulfilled", "fulfilled"]);
+      if (kind === "grant")
+        expect(
+          await prisma.creditGrant.count({
+            where: { source: "admin_adjustment", sourceId, userId: null },
+          }),
+        ).toBe(1);
     },
   );
 });

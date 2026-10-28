@@ -102,40 +102,79 @@ describe("masterProfilePayloadSchema contract", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects malformed phone, URL, and dates", () => {
+  /*
+   * V-392: one payload per rule, each otherwise valid, and the failing path asserted. A single
+   * payload with three faults stayed red if any one rule was dropped, because the others still
+   * failed it.
+   */
+  const issuePaths = (profile: Record<string, unknown>) => {
     const result = masterProfilePayloadSchema.safeParse({
       ...validPayload,
-      profile: {
-        ...validPayload.profile,
-        basics: {
-          ...validPayload.profile.basics,
-          phone: "123",
-        },
-        links: {
-          ...validPayload.profile.links,
-          items: [
-            {
-              ...validPayload.profile.links.items[0],
-              url: "github.com/test",
-            },
-          ],
-        },
-        education: [
-          {
-            id: "edu-1",
-            school: "School",
-            degree: "Degree",
-            field: "Field",
-            startDate: "2024-01",
-            endDate: "abcd",
-            current: false,
-            summary: "",
-          },
-        ],
-      },
+      profile: { ...validPayload.profile, ...profile },
     });
+    return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+  };
+  const withLinkUrl = (url: string) => ({
+    links: {
+      ...validPayload.profile.links,
+      items: [{ ...validPayload.profile.links.items[0], url }],
+    },
+  });
+  const withEducationEnd = (endDate: string) => ({
+    education: [
+      {
+        id: "edu-1",
+        school: "School",
+        degree: "Degree",
+        field: "Field",
+        startDate: "2020",
+        endDate,
+        current: false,
+        summary: "",
+      },
+    ],
+  });
+  const withExperienceEnd = (endDate: string) => ({
+    experience: [
+      {
+        id: "exp-1",
+        company: "Company",
+        role: "Engineer",
+        location: "Remote",
+        startDate: "2024-01",
+        endDate,
+        current: false,
+        summary: "",
+        highlights: [],
+      },
+    ],
+  });
 
-    expect(result.success).toBe(false);
+  it("accepts the valid payload each case below changes one field of", () => {
+    expect(issuePaths({})).toEqual([]);
+    expect(issuePaths(withEducationEnd("2024"))).toEqual([]);
+    expect(issuePaths(withExperienceEnd("2025-06"))).toEqual([]);
+  });
+
+  it("rejects a malformed phone", () => {
+    expect(issuePaths({ basics: { ...validPayload.profile.basics, phone: "123" } })).toContain(
+      "profile.basics.phone",
+    );
+  });
+
+  it.each(["github.com/test", "javascript:alert(1)", "not a url"])(
+    "rejects the link URL %s",
+    (url) => {
+      expect(issuePaths(withLinkUrl(url))).toContain("profile.links.items.0.url");
+    },
+  );
+
+  it.each(["abcd", "2024-06", "24x"])("rejects the education end year %s", (endDate) => {
+    expect(issuePaths(withEducationEnd(endDate))).toContain("profile.education.0.endDate");
+  });
+
+  it.each(["abcd", "June 2024", "2024/06"])("rejects the experience end month %s", (endDate) => {
+    expect(issuePaths(withExperienceEnd(endDate))).toContain("profile.experience.0.endDate");
   });
 
   /*

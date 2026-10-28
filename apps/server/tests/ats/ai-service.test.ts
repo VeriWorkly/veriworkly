@@ -392,6 +392,8 @@ describe("ATS AI service — the request signal", () => {
       controller.signal,
     );
 
+    // V-389: the loops below pass when they run zero times, so the call is asserted first.
+    expect(api.fetch).toHaveBeenCalledTimes(1);
     for (const call of api.fetch.mock.calls) {
       const init = call[1] as { signal?: AbortSignal };
       expect(init.signal).toBeInstanceOf(AbortSignal);

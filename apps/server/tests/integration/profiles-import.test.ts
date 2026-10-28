@@ -98,6 +98,7 @@ async function wallet(userId: string) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
   convertResume.mockReset();
 });
 
@@ -323,6 +324,9 @@ describe("GET /profiles/import/quota (V-197)", () => {
     await prisma.entitlementGrant.create({
       data: { userId: user.id, key: "ai_credits", source: "MANUAL", sourceId: randomUUID() },
     });
+    // V-363: Date stands still for this test, so the request and the key read below name the same
+    // UTC day even when the run crosses midnight.
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() });
     await getRedis().set(
       `import:paid-github:${user.id}:${new Date().toISOString().slice(0, 10)}`,
       "3",

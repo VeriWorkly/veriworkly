@@ -153,12 +153,18 @@ function paymentEvent(input: {
   };
 }
 
-async function deliver(event: unknown, id?: string) {
+/**
+ * Signs and delivers one webhook. The status is checked here (V-399): a "nothing happens" money or
+ * access assertion after a delivery that failed proves nothing. A test that expects a refusal
+ * passes the status it expects.
+ */
+async function deliver(event: unknown, id?: string, expectedStatus = 200) {
   const body = JSON.stringify(event);
   const headers = signDodoWebhook(body, id ? { id } : {});
   const req = request(app).post(WEBHOOK_PATH);
   for (const [key, value] of Object.entries(headers)) req.set(key, value);
   const response = await req.send(body);
+  expect(response.status, JSON.stringify(response.body)).toBe(expectedStatus);
   return { response, eventId: headers["webhook-id"] };
 }
 
