@@ -13,7 +13,7 @@ import { createUserWithSession, type TestUser } from "./helpers/auth.js";
 /**
  * Keyset paging on `GET /api/v1/documents` (V-263), against real Postgres: walks that span
  * pages, an edit and a delete landing mid-walk, tombstones across pages, `total`, the request
- * limits, a bad cursor, and the legacy single response a request without `limit` still gets.
+ * limits, a bad cursor, and a request without `limit` paging 20 at a time (V-422).
  */
 
 type ListBody = {
@@ -230,8 +230,10 @@ describe("GET /documents keyset paging (V-263)", () => {
       .body as ListBody;
     expect(second.data.map((d) => [d.id, d.title])).toEqual([[ids[0], "Renamed"]]);
   });
+});
 
-  it("keeps the legacy single response, up to 500 and newest first, when no limit is sent", async () => {
+describe("GET /documents without limit pages 20 at a time (V-422)", () => {
+  it("returns the first 20, newest first, with nextCursor and total", async () => {
     const user = await createUserWithSession();
     const ids = await seed(
       user.id,
@@ -241,9 +243,48 @@ describe("GET /documents keyset paging (V-263)", () => {
     const response = await asUser(user).get("/api/v1/documents");
 
     expect(response.status).toBe(200);
-    expect(response.body.data.map((d: { id: string }) => d.id)).toEqual([...ids].reverse());
-    expect(response.body).not.toHaveProperty("nextCursor");
-    expect(response.body).not.toHaveProperty("total");
+    expect(response.body.data.map((d: { id: string }) => d.id)).toEqual(
+      [...ids].reverse().slice(0, 20),
+    );
+    expect(typeof response.body.nextCursor).toBe("string");
+    expect(response.body.total).toBe(25);
     expect(response.body.deleted).toEqual([]);
+  });
+
+  it("follows nextCursor through more than 20 documents without ever sending limit", async () => {
+    const user = await createUserWithSession();
+    const ids = await seed(
+      user.id,
+      Array.from({ length: 45 }, (_, index) => index),
+    );
+
+    const pages = await walk(asUser(user), "");
+
+    expect(pages.map((page) => page.data.length)).toEqual([20, 20, 5]);
+    expect(pages.flatMap((page) => page.data.map((d) => d.id))).toEqual([...ids].reverse());
+    expect(pages.at(-1)?.nextCursor).toBeNull();
+  });
+
+  it("no longer answers with the old single response of up to 500", async () => {
+    const user = await createUserWithSession();
+    await seed(
+      user.id,
+      Array.from({ length: 30 }, (_, index) => index),
+    );
+
+    const metadata = await asUser(user).get("/api/v1/documents");
+    expect(metadata.body.data).toHaveLength(20);
+    expect(metadata.body).toHaveProperty("nextCursor");
+    expect(metadata.body).toHaveProperty("total", 30);
+
+    // The sync walk pages too: bodies and `updatedSince` without a limit.
+    const withBodies = await asUser(user).get("/api/v1/documents?includeContent=true");
+    expect(withBodies.body.data).toHaveLength(20);
+    expect(typeof withBodies.body.nextCursor).toBe("string");
+
+    const since = new Date(BASE).toISOString();
+    const incremental = await asUser(user).get(`/api/v1/documents?updatedSince=${since}`);
+    expect(incremental.body.data).toHaveLength(20);
+    expect(typeof incremental.body.nextCursor).toBe("string");
   });
 });

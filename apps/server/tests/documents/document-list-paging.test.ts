@@ -133,8 +133,9 @@ describe("document list cursor", () => {
 });
 
 describe("document list query limits", () => {
-  it("leaves limit unset when the caller sends none (the legacy response)", () => {
-    expect(documentListQuerySchema.parse({}).limit).toBeUndefined();
+  it("defaults limit to 20 when the caller sends none (V-422)", () => {
+    expect(documentListQuerySchema.parse({}).limit).toBe(20);
+    expect(documentListQuerySchema.parse({ includeContent: "true" }).limit).toBe(20);
   });
 
   it("accepts up to 50 for metadata and up to 20 with bodies", () => {

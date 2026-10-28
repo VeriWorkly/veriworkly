@@ -2303,7 +2303,7 @@
         "operationId": "listDocuments",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "List Documents",
-        "description": "Lists the authenticated user's documents (resumes, cover letters, portfolios, link-in-bio\npages), optionally filtered by type. Soft-deleted documents are excluded. Document bodies\nare left out unless `includeContent=true`.\n\n**Paging.** Send `limit` (and, after the first page, `cursor`) to read the list a page at a\ntime. Each page adds `nextCursor`, the value to send as `cursor` for the next page (`null`\non the last page), and `total`, the number of live documents of this type. Send the same\n`type`, `updatedSince` and `includeContent` on every page of one walk; a cursor that was\nnot issued for them is rejected with `400` and `details.code` `INVALID_DOCUMENT_CURSOR`.\n\n- The plain list goes newest first, by `updatedAt` then `id`.\n- A sync walk (`updatedSince` set, or `includeContent=true`) goes oldest first, by\n  `updatedAt` then `id`. A document edited during the walk comes back again on a later\n  page, so none is skipped; keep the copy you saw last.\n- With `updatedSince`, documents deleted since then come back in `deleted`, also paged\n  (up to `limit` per page, oldest deletion first) beside the documents. Keep following\n  `nextCursor` until it is `null`.\n- Every page of one walk repeats the first page's `serverTime`. Use it as the next\n  `updatedSince` only after the last page.\n\n**Without `limit` or `cursor`** the response is the older single list: up to 500\ndocuments, most recently updated first, with no `nextCursor` or `total`. It is kept while\nclients move to paging; a later release makes `limit` default to 20.\n",
+        "description": "Lists the authenticated user's documents (resumes, cover letters, portfolios, link-in-bio\npages), optionally filtered by type. Soft-deleted documents are excluded. Document bodies\nare left out unless `includeContent=true`.\n\n**Paging.** Every response is one page: `limit` documents, 20 when it is not sent. To read\nthe whole list, send each page's `nextCursor` back as `cursor` until it is `null`. `total`\nis the number of live documents of this type. Send the same\n`type`, `updatedSince` and `includeContent` on every page of one walk; a cursor that was\nnot issued for them is rejected with `400` and `details.code` `INVALID_DOCUMENT_CURSOR`.\n\n- The plain list goes newest first, by `updatedAt` then `id`.\n- A sync walk (`updatedSince` set, or `includeContent=true`) goes oldest first, by\n  `updatedAt` then `id`. A document edited during the walk comes back again on a later\n  page, so none is skipped; keep the copy you saw last.\n- With `updatedSince`, documents deleted since then come back in `deleted`, also paged\n  (up to `limit` per page, oldest deletion first) beside the documents. Keep following\n  `nextCursor` until it is `null`.\n- Every page of one walk repeats the first page's `serverTime`. Use it as the next\n  `updatedSince` only after the last page.\n\nA request without `limit` used to get one unpaged list of up to 500 documents; it now gets\nthe first page of 20, with `nextCursor`.\n",
         "parameters": [
           {
             "name": "type",
@@ -2333,8 +2333,8 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50 },
-            "description": "Documents per page, at most 50, or at most 20 with `includeContent=true` (a larger value is rejected with `400`). Sending it turns on paging; with `cursor` but no `limit`, pages hold 20."
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 },
+            "description": "Documents per page, 20 by default, at most 50, or at most 20 with `includeContent=true` (a larger value is rejected with `400`)."
           },
           {
             "name": "cursor",
@@ -6121,15 +6121,15 @@
       },
       "DocumentListResponse": {
         "type": "object",
-        "description": "`nextCursor` and `total` are present only when the request sent `limit` or `cursor`. Without\nthem `data` is the older single list of up to 500 documents.\n",
-        "required": ["success", "message", "data", "serverTime", "deleted"],
+        "description": "One page of the list, `limit` documents (20 by default). Follow `nextCursor` for the rest.\n",
+        "required": ["success", "message", "data", "serverTime", "deleted", "nextCursor", "total"],
         "properties": {
           "success": { "type": "boolean" },
           "message": { "type": "string" },
           "data": {
             "type": "array",
-            "maxItems": 500,
-            "description": "This page's documents; at most `limit` when paging.",
+            "maxItems": 50,
+            "description": "This page's documents, at most `limit`.",
             "items": { "$ref": "#/components/schemas/DocumentSummary" }
           },
           "serverTime": {

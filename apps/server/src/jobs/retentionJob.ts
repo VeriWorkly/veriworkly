@@ -22,7 +22,7 @@ import {
  *
  * Soft-deleted documents have their content replaced by `PURGED_DOCUMENT_CONTENT` (and title, tags,
  * metadata, slug, share and publication snapshots blanked, V-206), never deleted:
- * the row is the sync tombstone (`listDocuments` returns `{ id, deletedAt }` to a device whose
+ * the row is the sync tombstone (`listDocumentPage` returns `{ id, deletedAt }` to a device whose
  * cursor predates the delete, and a create with that id answers 409 instead of resurrecting it),
  * and deleting it would also cascade away its ShareLink and PortfolioPublication. There is no
  * `contentPurgedAt` column, so the marker itself is the durable "already purged" record.

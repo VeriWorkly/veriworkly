@@ -1672,9 +1672,8 @@ Document:
 DocumentListResponse:
   type: object
   description: |
-    `nextCursor` and `total` are present only when the request sent `limit` or `cursor`. Without
-    them `data` is the older single list of up to 500 documents.
-  required: [success, message, data, serverTime, deleted]
+    One page of the list, `limit` documents (20 by default). Follow `nextCursor` for the rest.
+  required: [success, message, data, serverTime, deleted, nextCursor, total]
   properties:
     success:
       type: boolean
@@ -1682,8 +1681,8 @@ DocumentListResponse:
       type: string
     data:
       type: array
-      maxItems: 500
-      description: This page's documents; at most `limit` when paging.
+      maxItems: 50
+      description: This page's documents, at most `limit`.
       items:
         $ref: "#/DocumentSummary"
     serverTime:

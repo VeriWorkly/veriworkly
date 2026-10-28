@@ -8,7 +8,6 @@ import { DocumentService } from "#services/documentService";
 import { createSuccessResponse, handleValidationError, ApiError } from "#lib/errors";
 
 import {
-  DOCUMENT_PAGE_DEFAULT_LIMIT,
   documentCreateSchema,
   documentListQuerySchema,
   documentUpdateSchema,
@@ -16,7 +15,7 @@ import {
 
 export class DocumentController {
   /**
-   * List all documents for the authenticated user.
+   * List the authenticated user's documents, one page at a time (20 by default).
    * Supports filtering by document type (e.g., RESUME, COVER_LETTER).
    *
    * @param req Express request
@@ -32,40 +31,21 @@ export class DocumentController {
         req.query,
       );
 
-      // Keyset paging (V-263) once the caller sends `limit` or `cursor`. The response adds
-      // `nextCursor` (null on the last page) and `total` beside the unchanged fields.
-      if (limit !== undefined || cursor !== undefined) {
-        const page = await DocumentService.listDocumentPage(user.id, type, {
-          updatedSince,
-          includeContent,
-          limit: limit ?? DOCUMENT_PAGE_DEFAULT_LIMIT,
-          cursor,
-        });
+      // Every request is one keyset page (V-263), 20 by default (V-422). `data` is the page; the
+      // sync cursor, tombstones, `nextCursor` (null on the last page) and `total` ride beside it.
+      const page = await DocumentService.listDocumentPage(user.id, type, {
+        updatedSince,
+        includeContent,
+        limit,
+        cursor,
+      });
 
-        res.json({
-          ...createSuccessResponse(page.documents, "Documents fetched successfully"),
-          serverTime: page.serverTime.toISOString(),
-          deleted: page.deleted,
-          nextCursor: page.nextCursor,
-          total: page.total,
-        });
-        return;
-      }
-
-      // LEGACY (V-263): no `limit` and no `cursor` keeps the old single response (up to 500) for
-      // studios that predate paging. Deploy the server after the studio; a later change makes
-      // `limit` default to 20 and drops this branch.
-      const { documents, deleted, serverTime } = await DocumentService.listDocuments(
-        user.id,
-        type,
-        { updatedSince, includeContent },
-      );
-
-      // `data` keeps its shape (the list); the sync cursor and tombstones ride beside it.
       res.json({
-        ...createSuccessResponse(documents, "Documents fetched successfully"),
-        serverTime: serverTime.toISOString(),
-        deleted,
+        ...createSuccessResponse(page.documents, "Documents fetched successfully"),
+        serverTime: page.serverTime.toISOString(),
+        deleted: page.deleted,
+        nextCursor: page.nextCursor,
+        total: page.total,
       });
     } catch (error) {
       if (error instanceof z.ZodError) return next(handleValidationError(error));

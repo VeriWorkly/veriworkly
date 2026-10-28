@@ -39,8 +39,6 @@ import {
 
 const MODERATED_PRIVATE_MESSAGE = "This document was made private by a moderator.";
 
-const MAX_DOCUMENTS_PER_LIST = 500;
-
 /**
  * How far behind the query start the reported sync cursor sits. `@updatedAt` is stamped when
  * the statement runs, not when its transaction commits, so a write that commits just after
@@ -201,116 +199,14 @@ export class DocumentService {
   }
 
   /**
-   * List documents for a user, optionally filtered by type and by modification time.
+   * One page of a keyset walk over the user's documents (V-263). Every `GET /documents` is one
+   * of these, 20 by default (V-422); the unpaged list of up to 500 is gone.
    *
-   * `content` is only included when `includeContent` is set. The client's document
-   * library renders from metadata alone, and `content` is by far the largest column —
-   * shipping it for every document made a 50-resume list a ~600KB response. Full bodies come
-   * from `getDocument` instead, and a list that includes them is never cached.
-   *
-   * `updatedSince` lets the client pull only what changed since its last hydrate. The cursor
-   * is server-authoritative: every response carries `serverTime`, read on this clock before
-   * the query, and the client sends it back as the next `updatedSince`. The comparison is
-   * `updatedAt >= since` (a write stamped at exactly the cursor is returned twice rather than
-   * never). Documents soft-deleted at or after the cursor come back as `{ id, deletedAt }`
-   * tombstones so the other device can drop them. Incremental responses are never cached:
-   * they are small, and a cached one would hand the same cursor out twice.
-   *
-   * LEGACY (V-263): this unpaged list (up to 500, newest first) is served only to a request with
-   * no `limit` and no `cursor`, while the studio switches to {@link listDocumentPage}. Deploy the
-   * server after the studio; a later change makes `limit` default to 20 and removes this path.
-   */
-  static async listDocuments(
-    userId: string,
-    type?: DocumentType,
-    options?: { updatedSince?: Date; includeContent?: boolean },
-  ): Promise<{
-    documents: DocumentListItem[];
-    deleted: Array<{ id: string; deletedAt: Date }>;
-    serverTime: Date;
-  }> {
-    const includeContent = options?.includeContent ?? false;
-    const since = options?.updatedSince;
-    // Only the plain metadata list is cached (V-027/V-104): full bodies are too large for one
-    // Redis value and incremental cursors would mint a new key per call. The generation is
-    // read before the query, so a write that lands mid-read strands this value (V-122).
-    const cacheKey =
-      since || includeContent
-        ? null
-        : await resolveGenerationalKey(cacheNamespaces.documentList(userId), type || "all", "v3");
-
-    if (cacheKey) {
-      const cached = await cacheGet<{ documents: DocumentListItem[]; serverTime: string }>(
-        cacheKey,
-      );
-
-      if (cached) {
-        return {
-          documents: cached.documents,
-          deleted: [],
-          serverTime: new Date(cached.serverTime),
-        };
-      }
-    }
-
-    const serverTime = new Date(Date.now() - SYNC_CURSOR_SLACK_MS);
-
-    const documents = await prisma.document.findMany({
-      where: {
-        userId,
-        type,
-        deletedAt: null,
-        ...(since ? { updatedAt: { gte: since } } : {}),
-      },
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        slug: true,
-        tags: true,
-        metadata: true,
-        templateId: true,
-        visibility: true,
-        revision: true,
-        lastSyncedAt: true,
-        updatedAt: true,
-        createdAt: true,
-        content: includeContent,
-      },
-      orderBy: { updatedAt: "desc" },
-      // Bounded so an account with hundreds of documents cannot produce a multi-megabyte
-      // response body (or, for the metadata list, cache entry).
-      take: MAX_DOCUMENTS_PER_LIST,
-    });
-
-    // Migrated before the value is cached, so a cache hit serves the same shape a miss does.
-    const migrated = (
-      includeContent ? documents.map((document) => withMigratedContent(document)) : documents
-    ) as DocumentListItem[];
-
-    if (since) {
-      const deleted = await prisma.document.findMany({
-        where: { userId, type, deletedAt: { gte: since } },
-        select: { id: true, deletedAt: true },
-        orderBy: { deletedAt: "desc" },
-        take: MAX_DOCUMENTS_PER_LIST,
-      });
-
-      return {
-        documents: migrated,
-        deleted: deleted as Array<{ id: string; deletedAt: Date }>,
-        serverTime,
-      };
-    }
-
-    if (cacheKey) await cacheSet(cacheKey, { documents: migrated, serverTime }, 1800);
-
-    return { documents: migrated, deleted: [], serverTime };
-  }
-
-  /**
-   * One page of a keyset walk over the user's documents (V-263). The paged successor to
-   * {@link listDocuments}, which stays only for clients that send no `limit` or `cursor`.
+   * `content` is only included with `includeContent`: the library renders from metadata, and
+   * full bodies made a 50-résumé list a ~600KB response. `updatedSince` asks for what changed
+   * since the client's last walk (`updatedAt >= since`, so a write stamped at exactly the cursor
+   * comes back twice rather than never), with documents soft-deleted since as `{ id, deletedAt }`
+   * tombstones.
    *
    * Order: a sync walk (`updatedSince` set, or `includeContent`) goes oldest first by
    * `(updatedAt, id)`. A document edited mid-walk gets a newer `updatedAt` than anything already
