@@ -12,7 +12,9 @@ sendOtp:
       Better Auth's own payloads — they are **not** wrapped in the `{ success, message, data }`
       envelope the rest of this API uses.
 
-      Rate limited to 3 requests per minute per IP.
+      Rate limited to 10 requests per minute per IP, and to 5 codes per hour per email address
+      (`+tag` and Gmail dot variants of one inbox share that budget). The per-address limit
+      applies to `type: sign-in` and is checked before any mail is sent.
     requestBody:
       required: true
       content:
@@ -31,7 +33,9 @@ sendOtp:
                 enum: [sign-in, email-verification, forget-password]
                 description: |
                   Required. Use `sign-in` for the login flow — that is what the VeriWorkly
-                  dashboard sends.
+                  dashboard sends. For a password-reset code use Better Auth's
+                  `/email-otp/request-password-reset`; the older `/forget-password/email-otp`
+                  path is switched off.
           example:
             email: "user@example.com"
             type: "sign-in"
@@ -69,9 +73,18 @@ sendOtp:
         description: The request's `Origin` is not in the server's trusted origins.
       "429":
         description: |
-          Too many OTP requests: 3 per minute per IP. Better Auth answers with `{ "message": "..." }`
-          and an `X-Retry-After` header. Outside development the server's own limiter (20 per
-          minute) can answer first, with `ErrorResponse` and a `Retry-After` header.
+          Too many OTP requests: 10 per minute per IP, or 5 per hour for this email address ("Too
+          many codes requested for this email. Please try again later."). Better Auth answers with
+          `{ "message": "..." }` and, for the per-IP limit, an `X-Retry-After` header. Outside
+          development the server's own limiter (20 requests per minute per IP for each
+          `/api/v1/auth/*` endpoint) can answer first, with `ErrorResponse` and a `Retry-After`
+          header. When the server cannot count requests it answers `503` instead of sending an
+          uncounted code.
+      "503":
+        description: |
+          The server cannot count code requests right now (its rate-limit store is unreachable), so
+          it sends no code. Better Auth answers with `{ "message": "Sign-in codes are temporarily
+          unavailable. Please try again shortly." }`.
 
 verifyOtp:
   post:
@@ -88,9 +101,9 @@ verifyOtp:
       attempts by default. This endpoint returns Better Auth's payload, not the
       `{ success, message, data }` envelope.
 
-      Rate limited to 3 requests per minute per IP, by the email OTP plugin's own rule for this
-      path. (A 5 per minute rule in the server configuration targets `/email-otp/verify-otp`, a
-      path this Better Auth version does not expose, so it never applies.) Codes are 6 digits.
+      Rate limited to 20 requests per minute per IP. Guessing one code is bounded by the attempt
+      limit instead. Codes are 6 digits. The code lifetime and attempt count are the server's
+      `AUTH_OTP_TTL_SECONDS` (300) and `AUTH_OTP_ALLOWED_ATTEMPTS` (3).
     requestBody:
       required: true
       content:
@@ -140,7 +153,7 @@ verifyOtp:
           The attempt limit was reached (`TOO_MANY_ATTEMPTS`). The code is discarded, so request a
           new one.
       "429":
-        description: Too many requests. The limit is 3 per minute per IP, and Better Auth sends an `X-Retry-After` header.
+        description: Too many requests. The limit is 20 per minute per IP, and Better Auth sends an `X-Retry-After` header.
 
 getSession:
   get:

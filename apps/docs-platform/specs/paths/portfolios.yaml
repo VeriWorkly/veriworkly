@@ -56,11 +56,14 @@ getPublicPortfolio:
     operationId: getPublicPortfolio
     summary: Get Public Portfolio By Subdomain
     description: |
-      Returns the published snapshot for a live portfolio subdomain.
+      Returns the published snapshot for a portfolio subdomain, with two facts for the renderer:
+      `isPaid` (the owner's paid portfolio access is in effect) and `isPremiumTemplate`. The
+      billing state of the publication is not returned.
 
-      Returns `404` for a suspended portfolio, or one whose grace period has just expired — that
-      lookup also flips the record to `SUSPENDED` as a side effect. Cached for up to 10 minutes,
-      shortened to the remaining grace window for portfolios in `GRACE`.
+      Returns `404` for a suspended portfolio, one whose document was deleted, or one whose grace
+      period after a lapsed subscription has run out. A lapsed portfolio is not taken down: a
+      background job moves a premium template to the closest free one and the site stays online.
+      This read never writes. Cached for up to 10 minutes, less while a grace period is running.
 
       No user session is required, but the request must carry an API key or originate from a
       whitelisted first-party origin; otherwise it is rejected with `401`.
@@ -256,6 +259,10 @@ checkPortfolioSubdomainAvailability:
       - LocalSession: []
       - ProdSession: []
     summary: Check Portfolio Subdomain Availability
+    description: |
+      Normalises `slug` the way publishing does and says whether it is free. A subdomain the
+      caller already publishes under counts as available to them. An empty or reserved name answers
+      `400`. Session-authenticated only.
     parameters:
       - name: slug
         in: path
@@ -324,7 +331,9 @@ publishPortfolio:
     summary: Publish Portfolio
     description: |
       Publishes the given draft revision to its chosen subdomain, making it publicly reachable.
-      Premium templates (`nimbus`, `cipher`) require an active Creator Pro subscription.
+      Premium templates (`nimbus`, `cipher`) need Creator Pro, the Job Hunter Bundle or a pass;
+      `signal` and `atelier` are free. The stored draft is checked against the stricter publish
+      rules (see `PortfolioDraftContent`).
 
       **Current-state caveat:** in production, publishing is gated behind a hardcoded
       `ADMIN_EMAIL` check independent of plan tier (`isAdminUser`) — regular users can save drafts,
@@ -365,8 +374,18 @@ publishPortfolio:
                   message: "Portfolio contains an unavailable or invalid image."
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "402":
+        description: A premium template (`nimbus`, `cipher`) without Creator Pro, the Job Hunter Bundle or a pass.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 402
+              message: 'Publishing the premium template "Nimbus" requires Creator Pro, the Job Hunter Bundle or a pass.'
       "403":
-        description: Production publishing restriction, or premium template requires a subscription
+        description: The production publishing restriction, or a portfolio a moderator took down.
         content:
           application/json:
             schema:
@@ -378,12 +397,12 @@ publishPortfolio:
                   success: false
                   statusCode: 403
                   message: "Publishing is disabled in production during this phase."
-              premiumTemplate:
-                summary: Premium template without subscription
+              moderated:
+                summary: Taken down by a moderator
                 value:
                   success: false
                   statusCode: 403
-                  message: 'Publishing the premium template "nimbus" requires an active Creator Pro subscription.'
+                  message: "This portfolio was taken down by a moderator."
       "404":
         description: Portfolio draft not found
         content:
@@ -415,8 +434,9 @@ unpublishPortfolio:
       `user_unpublished`, and the underlying document reverts to `PRIVATE` visibility. The document
       itself is not deleted, so the portfolio can be republished later.
 
-      Idempotent: if the caller has never published, the call still succeeds and returns
-      `data: null`. Session-authenticated only.
+      A caller who has never published gets `404`. A portfolio a moderator took down keeps its
+      moderation reason; the unpublish is recorded so the site stays offline if the takedown is
+      lifted. Session-authenticated only.
     responses:
       "200":
         description: Portfolio unpublished successfully
@@ -426,6 +446,16 @@ unpublishPortfolio:
               $ref: "../components/schemas.yaml#/PortfolioUnpublishResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "404":
+        description: The caller has never published a portfolio.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 404
+              message: "Portfolio is not published."
 
 getPortfolioAnalytics:
   get:
@@ -436,7 +466,12 @@ getPortfolioAnalytics:
       - LocalSession: []
       - ProdSession: []
     summary: Get Portfolio Analytics
-    description: Views for the last 30 days plus top referrer hosts. Returns all-zero data if the caller has never published.
+    description: |
+      Views for the last 30 days plus the top 10 referrer hosts.
+
+      Visitor analytics comes with Creator Pro, the Job Hunter Bundle or a pass. Without it the
+      response has `locked: true` and all-zero data, whether or not a portfolio is published. With
+      it and no published portfolio, `locked` is false and the data is all zero.
     responses:
       "200":
         description: Analytics fetched successfully
@@ -490,6 +525,16 @@ createPortfolioAssetUploadUrl:
               message: "Upload a JPG, PNG, or WebP image."
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "429":
+        description: The caller started 20 uploads in the last hour, finished or not.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 429
+              message: "Too many image uploads this hour. Try again later."
       "503":
         description: Media uploads are not configured (R2 credentials missing)
         content:

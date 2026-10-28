@@ -20,8 +20,8 @@ info:
 
     - **Format**: `vw_` followed by 64 hexadecimal characters.
     - **Rate limit**: 20 requests per 15 minutes per key by default, configurable per key at
-      creation. Responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
-      `X-RateLimit-Reset`.
+      creation up to 600 (the server's `API_KEY_MAX_RATE_LIMIT`). Responses carry
+      `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`.
     - **Scopes**: keys are scope-gated. A key missing a route's required scope gets `403`. Session
       callers are never scope-gated.
 
@@ -35,23 +35,70 @@ info:
     - **Note**: sessions are only honoured for whitelisted origins. Send `credentials: 'include'`
       (fetch) or `withCredentials: true` (axios). Requests from these documentation pages **must**
       use an API key.
+    - **Cookie domain**: when the server sets `AUTH_COOKIE_DOMAIN`, the session cookie is issued
+      for that domain so it is shared across its subdomains. Without it the cookie belongs to the
+      API host only.
 
     #### Endpoints that need neither
-    Only `GET /api/v1/health` and `GET /api/v1/health/ready` are fully open. Everything else —
-    including the endpoints labelled "public", such as public portfolios and share links — still
-    requires an API key or a whitelisted first-party origin, and returns `401` without one.
+    These are fully open, with no key, session or first-party origin:
+
+    - `GET /api/v1/health` and `GET /api/v1/health/ready`
+    - `POST /api/v1/affiliates/click` and `GET /api/v1/affiliates/leaderboard` (while the
+      affiliate program is switched on)
+    - the Better Auth routes under `/api/v1/auth/*`
+    - `POST /api/v1/contact`
+
+    Everything else, including the endpoints labelled "public" such as public portfolios and
+    share links, requires an API key or a whitelisted first-party origin, and returns `401`
+    without one.
+
+    #### Cross-origin requests
+    A browser request whose `Origin` is not on the server's allowlist is refused with `403`,
+    message "Not allowed by CORS" and `details.code` `CORS_REJECTED`, whatever credentials it
+    carries. Requests without an `Origin` header (scripts, servers) are not affected.
 
     ### Response Envelope
 
     Every endpoint under `/api/v1` except the Better Auth routes at `/api/v1/auth/*` returns
     `{ success, message, data }` on success and `{ success, message, statusCode, details? }` on
-    failure. Better Auth endpoints return their own payload shapes.
+    failure. Better Auth endpoints return their own payload shapes. `details` is an array of
+    `{ path, message }` on a validation failure and an object (such as `{ code }`) elsewhere.
+
+    A body larger than the route accepts is refused with `413` "Request body too large". Most
+    routes accept 100 kb; documents, the master profile, profile imports, share links and the
+    portfolio draft accept 4 MB; the AI and ATS text routes accept 256 kb. A body that is not
+    valid JSON is refused with `400` "Invalid JSON body".
+
+    ### Sign-in coverage
+    Better Auth answers every path under `/api/v1/auth/*`. This reference documents the email
+    code sign-in (`/email-otp/send-verification-otp`, `/sign-in/email-otp`),
+    `/get-session` and `/sign-out`, which are the supported way to sign in from your own
+    client. Better Auth's other routes are also served: social sign-in and account linking (Google, GitHub
+    and LinkedIn when configured, through `/sign-in/social`, `/link-social` and `/callback/{provider}`),
+    session management (`/list-sessions`, `/revoke-session`, `/revoke-sessions`,
+    `/revoke-other-sessions`) and `/email-otp/request-password-reset`. Those follow Better
+    Auth's own documentation and are not described here. `/forget-password/email-otp` is
+    switched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`
+    with code `GITHUB_UNLINK_FORBIDDEN`), and an account can link only one GitHub account
+    (`GITHUB_ALREADY_LINKED`, sent as an `error` query parameter on the OAuth redirect, or as a
+    `403` code elsewhere).
 
     ### Not Documented Here
 
-    `/api/v1/contact`, `/api/v1/stats/events` and everything under `/api/v1/admin/*` are internal
-    first-party routes. They are left out of this reference on purpose and are not part of the
-    supported public API.
+    `POST /api/v1/client-errors` (crash reports from VeriWorkly's own site),
+    `GET /api/v1/health/metrics` and `GET /api/v1/health/jobs` (behind the server's internal key)
+    and everything under `/api/v1/admin/*` are internal first-party routes. They are left out
+    of this reference on purpose and are not part of the supported public API.
+
+    ### Contact form
+    `POST /api/v1/contact` sends a message to the VeriWorkly team. It is open (no key or
+    session) and limited to 5 requests per hour per IP. The JSON body takes `name` (1 to 100
+    characters), `email` (up to 254), `subject` (1 to 200), `message` (10 to 5,000) and `_ts`,
+    the time the form was loaded in milliseconds since the epoch, which is required. `website`
+    is a hidden field that must stay empty. A bad body answers `400` "Validation failed" with
+    `details`; success answers `{ name, email, subject, timestamp }` with the message "Message
+    sent successfully". A submission sent less than 1.2 seconds after `_ts`, or with `website`
+    filled, gets the same success answer and is dropped.
 servers:
   - url: https://api.veriworkly.com
     description: Production Server
@@ -69,7 +116,7 @@ tags:
   - name: GitHub
     description: GitHub issues, pull requests, and repository statistics.
   - name: Authentication
-    description: Authentication operations using email OTP and sessions.
+    description: Email code sign-in and sessions, served by Better Auth. Other Better Auth routes are listed under "Sign-in coverage" above.
   - name: API Keys
     description: Operations related to managing personal API keys.
   - name: Profile
@@ -1374,6 +1421,16 @@ paths:
                 success: false
                 statusCode: 409
                 message: GitHub sync is already in progress
+        "500":
+          description: The server has no `ADMIN_EMAIL` set, so no one can be the administrator.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 500
+                message: ADMIN_EMAIL is not configured
         "503":
           description: |
             The sync cannot start: Redis, which holds its lock, is unreachable, or
@@ -1399,7 +1456,9 @@ paths:
         Better Auth's own payloads — they are **not** wrapped in the `{ success, message, data }`
         envelope the rest of this API uses.
 
-        Rate limited to 3 requests per minute per IP.
+        Rate limited to 10 requests per minute per IP, and to 5 codes per hour per email address
+        (`+tag` and Gmail dot variants of one inbox share that budget). The per-address limit
+        applies to `type: sign-in` and is checked before any mail is sent.
       requestBody:
         required: true
         content:
@@ -1421,7 +1480,9 @@ paths:
                     - forget-password
                   description: |
                     Required. Use `sign-in` for the login flow — that is what the VeriWorkly
-                    dashboard sends.
+                    dashboard sends. For a password-reset code use Better Auth's
+                    `/email-otp/request-password-reset`; the older `/forget-password/email-otp`
+                    path is switched off.
             example:
               email: user@example.com
               type: sign-in
@@ -1459,9 +1520,18 @@ paths:
           description: The request's `Origin` is not in the server's trusted origins.
         "429":
           description: |
-            Too many OTP requests: 3 per minute per IP. Better Auth answers with `{ "message": "..." }`
-            and an `X-Retry-After` header. Outside development the server's own limiter (20 per
-            minute) can answer first, with `ErrorResponse` and a `Retry-After` header.
+            Too many OTP requests: 10 per minute per IP, or 5 per hour for this email address ("Too
+            many codes requested for this email. Please try again later."). Better Auth answers with
+            `{ "message": "..." }` and, for the per-IP limit, an `X-Retry-After` header. Outside
+            development the server's own limiter (20 requests per minute per IP for each
+            `/api/v1/auth/*` endpoint) can answer first, with `ErrorResponse` and a `Retry-After`
+            header. When the server cannot count requests it answers `503` instead of sending an
+            uncounted code.
+        "503":
+          description: |
+            The server cannot count code requests right now (its rate-limit store is unreachable), so
+            it sends no code. Better Auth answers with `{ "message": "Sign-in codes are temporarily
+            unavailable. Please try again shortly." }`.
   /api/v1/auth/sign-in/email-otp:
     post:
       tags:
@@ -1476,9 +1546,9 @@ paths:
         attempts by default. This endpoint returns Better Auth's payload, not the
         `{ success, message, data }` envelope.
 
-        Rate limited to 3 requests per minute per IP, by the email OTP plugin's own rule for this
-        path. (A 5 per minute rule in the server configuration targets `/email-otp/verify-otp`, a
-        path this Better Auth version does not expose, so it never applies.) Codes are 6 digits.
+        Rate limited to 20 requests per minute per IP. Guessing one code is bounded by the attempt
+        limit instead. Codes are 6 digits. The code lifetime and attempt count are the server's
+        `AUTH_OTP_TTL_SECONDS` (300) and `AUTH_OTP_ALLOWED_ATTEMPTS` (3).
       requestBody:
         required: true
         content:
@@ -1530,7 +1600,7 @@ paths:
             The attempt limit was reached (`TOO_MANY_ATTEMPTS`). The code is discarded, so request a
             new one.
         "429":
-          description: Too many requests. The limit is 3 per minute per IP, and Better Auth sends an `X-Retry-After` header.
+          description: Too many requests. The limit is 20 per minute per IP, and Better Auth sends an `X-Retry-After` header.
   /api/v1/auth/get-session:
     get:
       tags:
@@ -1634,7 +1704,9 @@ paths:
             type: integer
             minimum: 1
             default: 1
-          description: 1-based page index. An alternative to `offset`.
+          description: |
+            1-based page index. An alternative to `offset`. When both are sent, `offset` decides
+            the window and the response echoes the `page` that was sent.
         - name: pageSize
           in: query
           required: false
@@ -1699,28 +1771,34 @@ paths:
                 name:
                   type: string
                   minLength: 1
-                  description: A descriptive name for the API key.
-                  example: My Documentation Key
                   maxLength: 100
+                  description: A descriptive name for the API key. Surrounding spaces are trimmed.
+                  example: My Documentation Key
                 scopes:
                   type: array
                   description: |
-                    Scopes granted to the new key. Defaults to `["user:read"]` when omitted. Any
-                    value outside the listed set is rejected with `400`.
+                    Scopes granted to the new key. Defaults to `["user:read"]` when omitted (the
+                    server's `API_KEY_DEFAULT_SCOPES`). A comma-separated string such as
+                    `"user:read,resume:read"` is also accepted. Any value outside the listed set is
+                    rejected with `400`.
                   items:
                     $ref: "#/components/schemas/ApiKeyScope"
                 rateLimit:
                   type: integer
                   minimum: 1
-                  maximum: 20
+                  maximum: 600
                   description: |
-                    Requests allowed per 15-minute window. Defaults to 20; values above 20 are
-                    silently clamped down to 20 rather than rejected.
+                    Requests allowed per 15-minute window. Defaults to 20 (the server's
+                    `API_KEY_DEFAULT_RATE_LIMIT`). The ceiling is `API_KEY_MAX_RATE_LIMIT`, 600 by
+                    default: a larger value is lowered to the ceiling, not rejected. A value that is
+                    not a positive integer is rejected with `400`.
                   example: 20
                 expiresAt:
                   description: |
-                    ISO timestamp for expiry. Defaults to 365 days from creation when omitted — keys
-                    are never issued without an expiry.
+                    When the key stops working: an ISO 8601 timestamp with a zone (`Z` or an offset
+                    such as `+05:30`), in the future. A timestamp without a zone, or one in the past,
+                    is rejected with `400`. Defaults to 365 days from creation when omitted or empty.
+                    Keys are never issued without an expiry.
                   anyOf:
                     - type: string
                       const: ""
@@ -1771,15 +1849,46 @@ paths:
                   value:
                     success: false
                     statusCode: 400
-                    message: Key name is required
+                    message: Validation failed
+                    details:
+                      - path: name
+                        message: Required
+                pastExpiry:
+                  summary: Expiry in the past
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: expiresAt
+                        message: expiresAt must be in the future
                 badScope:
                   summary: Unsupported scope
                   value:
                     success: false
                     statusCode: 400
                     message: "Unsupported API key scope(s): billing:read"
+                badRateLimit:
+                  summary: Rate limit not a positive integer
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: rateLimit must be a positive integer
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "409":
+          description: The caller already has 10 active, unexpired keys. Revoke or delete one first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 409
+                message: You can have at most 10 active API keys. Revoke one you no longer use first.
+                details:
+                  code: API_KEY_LIMIT
+                  limit: 10
   /api/v1/api-keys/{id}/rotate:
     post:
       tags:
@@ -1794,7 +1903,8 @@ paths:
         existing name, scopes, and rate limit. As with creation, the new secret is returned exactly
         once. The response also carries `rotatedFromId`, the id of the key that was replaced.
 
-        Only an active, unrevoked key can be rotated; anything else returns `404`.
+        Only an active, unexpired key can be rotated. A key that is revoked, already rotated or
+        expired answers `409`. An id that is not one of the caller's keys answers `404`.
       security:
         - LocalSession: []
         - ProdSession: []
@@ -1813,28 +1923,31 @@ paths:
               type: object
               properties:
                 name:
-                  description: Replacement name. Carried over from the old key when omitted or blank.
+                  description: Replacement name. Carried over from the old key when omitted or null.
                   anyOf:
                     - type: string
-                      minLength: 1
                       maxLength: 100
+                      minLength: 1
                     - type: "null"
                 scopes:
                   type: array
-                  description: Scopes for the replacement key. Carried over from the old key when omitted.
+                  description: |
+                    Scopes for the replacement key. Carried over from the old key when omitted. A
+                    comma-separated string is also accepted.
                   items:
                     $ref: "#/components/schemas/ApiKeyScope"
                 rateLimit:
                   type: integer
                   minimum: 1
-                  maximum: 20
+                  maximum: 600
                   description: |
-                    Requests allowed per 15-minute window. Carried over when omitted; values above 20
-                    are silently clamped down to 20.
+                    Requests allowed per 15-minute window. Carried over unchanged when omitted. A value
+                    you send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger.
                 expiresAt:
                   description: |
-                    New expiry. Carried over from the old key when omitted, falling back to 365 days
-                    from now if the old key had none.
+                    New expiry: an ISO 8601 timestamp with a zone, in the future (`400` otherwise).
+                    Carried over from the old key when omitted, falling back to 365 days from now if
+                    the old key had none.
                   anyOf:
                     - type: string
                       const: ""
@@ -1879,7 +1992,7 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          description: No active key with this ID belongs to the caller.
+          description: No key with this ID belongs to the caller.
           content:
             application/json:
               schema:
@@ -1887,7 +2000,26 @@ paths:
               example:
                 success: false
                 statusCode: 404
-                message: API key not found or inactive
+                message: API key not found
+        "409":
+          description: The key is revoked, was already rotated, or has expired. Create a new key instead.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                inactive:
+                  summary: Revoked or already rotated
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Key is no longer active
+                expired:
+                  summary: Expired
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Key has expired, create a new one
   /api/v1/api-keys/{id}/revoke:
     post:
       tags:
@@ -2211,18 +2343,20 @@ paths:
         - ProdSession: []
       summary: Get Profile Import Quota
       description: |
-        Returns the caller's current GitHub and LinkedIn import quota status in one call.
+        Returns the caller's current GitHub and LinkedIn import quota status in one call. Requires
+        the `resume:read` scope when called with an API key.
 
         - **GitHub import** is a real GitHub OAuth-backed integration (up to 30 of the account's most
           recently updated repositories, deterministically mapped to skills by repository language —
-          no AI is involved). Free users get 1 import/day and may only import their own OAuth-connected
-          GitHub account. Paid users (any active AI Credits or Portfolio Pro/Bundle plan) may import
-          any public GitHub username, but are still capped at a hidden 50 imports/day — this protects
-          the single shared `config.github.token` request budget used by every paid import and the
-          GitHub sync cron job from being exhausted by one account.
+          no AI is involved). Free users get 1 import/day and may only import their own linked GitHub
+          account. Paid users (any plan: AI Credits, Creator Pro or the Job Hunter Bundle, or a pass)
+          may import any public GitHub username, but are capped at 50 imports/day, which protects the
+          shared GitHub request budget every paid import uses. An account links one GitHub account,
+          and a linked GitHub account cannot be removed.
         - **LinkedIn import** is not a LinkedIn API integration — it's an AI parse of raw text the
-          user pastes in (copied profile text, or text extracted from an exported PDF). Free users get
-          1 import/month; paid users get unlimited imports.
+          user pastes in (copied profile text, or text extracted from an exported PDF). It costs the
+          same AI credits as an ATS resume conversion, for every caller. Free users also get only 1
+          import every 30 days; paid users have no import limit.
 
         Both import types share a single `replaceMaster` request flag and always create a brand-new
         RESUME document from the imported data, in addition to optionally overwriting the master
@@ -2264,10 +2398,10 @@ paths:
       summary: Import Profile From GitHub
       description: |
         Imports a GitHub profile and repositories directly via the GitHub REST API (no AI parsing) and
-        creates a new RESUME document from the result. Free users can only import their own
-        OAuth-connected GitHub account (`usernameOrUrl` is ignored in that case); paid users may import
-        any public username, subject to the hidden 50/day shared-token cap described on
-        `GET /profiles/import/quota`.
+        creates a new RESUME document from the result. Free users can only import their own linked
+        GitHub account (`usernameOrUrl` is ignored in that case); paid users may import any public
+        username, up to 50 imports a day (see `GET /profiles/import/quota`). Requires the
+        `resume:write` scope when called with an API key.
       requestBody:
         required: true
         content:
@@ -2313,6 +2447,29 @@ paths:
                 message: Please connect your GitHub account in settings to import your profile.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "402":
+          description: A free account already keeps its one active resume (`details.code` is `DOCUMENT_LIMIT`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 402
+                message: Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only.
+                details:
+                  code: DOCUMENT_LIMIT
+                  type: RESUME
+        "403":
+          description: The API key lacks `resume:write`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 403
+                message: This API key does not have permission for this action.
         "404":
           description: GitHub profile not found
           content:
@@ -2343,7 +2500,9 @@ paths:
                   value:
                     success: false
                     statusCode: 429
-                    message: Free users can only import from GitHub once a day. Upgrade to Creator Pro for unlimited imports.
+                    message: Free accounts can import from GitHub once a day. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass.
+                    details:
+                      resetsInSeconds: 54000
                 paidSharedCap:
                   summary: Paid hidden shared-token cap
                   value:
@@ -2375,8 +2534,14 @@ paths:
       description: |
         Parses raw copy-pasted LinkedIn profile text (or text extracted from an exported PDF) using AI
         and creates a new RESUME document from the result. This is an AI-parsed paste, not a LinkedIn
-        API integration. Free users get 1 import/month; paid users (AI Credits or Portfolio Pro/Bundle)
-        get unlimited imports.
+        API integration. Requires the `resume:write` and `ai:write` scopes when called with an API
+        key.
+
+        Every import spends AI credits, the same as an ATS resume conversion (see `pricing` on
+        `GET /ats/quota`). The credits are held before the model runs and charged only once the
+        import is saved; a short balance is `402` and nothing runs. Free users also get only 1
+        import every 30 days and keep one resume at a time; paid users (any plan or a pass) have no
+        import limit.
 
         It is an AI route like the others: it counts toward the AI rate limit and the two AI
         requests a user may have in flight (`429` beyond that), ends at the AI request deadline
@@ -2432,6 +2597,26 @@ paths:
                     message: LinkedIn profile text must be at least 10 characters long
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "402":
+          description: Not enough AI credits, or a free account already keeps its one resume.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 402
+                message: Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.
+        "403":
+          description: The API key lacks `resume:write` or `ai:write`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 403
+                message: This API key does not have permission for this action.
         "429":
           description: Import quota exceeded
           content:
@@ -2441,7 +2626,9 @@ paths:
               example:
                 success: false
                 statusCode: 429
-                message: Free users can only import from LinkedIn once a month. Upgrade to Creator Pro for unlimited imports.
+                message: Free accounts can import from LinkedIn once a month. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass.
+                details:
+                  resetsInSeconds: 2160000
         "502":
           description: AI parsing failed
           content:
@@ -2609,16 +2796,44 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-        "403":
-          description: Free-tier document limit reached
+        "402":
+          description: Free-tier document limit reached (`details.code` `DOCUMENT_LIMIT`).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 success: false
-                statusCode: 403
-                message: Free users can only have 1 active resume at a time. Upgrade to Creator Pro for unlimited documents.
+                statusCode: 402
+                message: Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only.
+                details:
+                  code: DOCUMENT_LIMIT
+                  type: RESUME
+        "409":
+          description: The `id` belongs to another account or to one of the caller's deleted documents, or the slug is taken.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                idInUse:
+                  summary: Id used by another account
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Document ID already in use
+                deleted:
+                  summary: Id of a deleted document
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Document was deleted
+                slugInUse:
+                  summary: Slug taken
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Document slug is already in use
         "413":
           description: Payload too large
           content:
@@ -2639,6 +2854,10 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Get Document
+      description: |
+        Returns one of the caller's documents with its full content. A document in the trash, or one
+        that belongs to another account, answers `404`. Requires the `resume:read` scope when
+        called with an API key.
       parameters:
         - name: id
           in: path
@@ -2806,8 +3025,13 @@ paths:
         the AI-powered `/ats/analyze` deep analysis — they are **not** two separate quotas. Limits:
 
         - Anonymous: 1 scan / 48 hours
-        - Free logged-in: 2 scans / 24 hours
-        - Subscriber (active AI Credits or Bundle plan): 300 scans / billing period
+        - Free or paused (signed in): 2 scans / 24 hours
+        - Subscriber: 300 scans a month. Any account that holds spendable AI credits, whatever their
+          source, or holds a paid subscription or pass even with no credits left.
+
+        `canConvertResume` and `canRepair` say whether the caller's credit balance covers those AI
+        actions. `pricing` is null when the server could not load its ATS AI settings, and both are
+        then false.
       responses:
         "200":
           description: Quota fetched successfully
@@ -2825,6 +3049,7 @@ paths:
                   remaining: 2
                   resetsAt: 2026-04-28T00:00:00.000Z
                   canConvertResume: false
+                  canRepair: false
                   pricing:
                     analysisCredits:
                       min: 1
@@ -2833,6 +3058,7 @@ paths:
                       min: 2
                       max: 12
                     resumeConversionCredits: 2
+                    parseRepairCredits: 2
                   extract:
                     limit: 6
                     used: 0
@@ -2968,7 +3194,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/AtsCheckResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          description: |
+            The body failed validation, or the resume is an `AtsResumeDocument` that is not valid.
+            Neither costs a scan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validation:
+                  summary: Validation error
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: resume
+                        message: Required
+                invalidDocument:
+                  summary: Invalid structured resume
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: "Invalid resume document at basics.name: Required"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "429":
@@ -3024,7 +3272,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/AtsAnalyzeResponse"
         "400":
-          description: Validation error, or job URL fetch was blocked
+          description: |
+            The body failed validation, `fetchJobUrl` was true without a `jobUrl`, the resume
+            document is not valid, or the job page could not be fetched or read.
           content:
             application/json:
               schema:
@@ -3036,16 +3286,37 @@ paths:
                     success: false
                     statusCode: 400
                     message: Validation failed
+                    details:
+                      - path: requestId
+                        message: Required
+                missingJobUrl:
+                  summary: fetchJobUrl without jobUrl
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Provide a job URL to analyze online.
                 blockedUrl:
                   summary: Job URL resolves to a blocked network
                   value:
                     success: false
                     statusCode: 400
                     message: Job URL resolves to a blocked network.
+                jobPage:
+                  summary: Job page unusable
+                  description: |
+                    Other job-page messages: "Job URL must use HTTPS on the standard port.", "Job URL
+                    host is not allowed.", "Job URL could not be resolved.", "Job URL could not be
+                    resolved in time.", "Job page request timed
+                    out.", "Job page redirect limit exceeded.", "Job page exceeds the download limit.",
+                    "Job page must be HTML or plain text.", "Job page could not be retrieved.".
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Job page did not contain enough readable text.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
-          description: Not enough AI credits
+          description: The credit balance cannot cover the cheapest analysis this request could cost (plus repair, when it would run).
           content:
             application/json:
               schema:
@@ -3053,7 +3324,7 @@ paths:
               example:
                 success: false
                 statusCode: 402
-                message: Not enough AI credits.
+                message: Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.
         "403":
           description: API key is missing the ai:write scope
           content:
@@ -3065,27 +3336,47 @@ paths:
                 statusCode: 403
                 message: This API key does not have permission for this action.
         "409":
-          description: requestId was already used, or is still processing
+          description: The `requestId` was already used, or is still processing.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: This AI request id can no longer be reused.
+              examples:
+                reused:
+                  summary: Used for another operation
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: AI request id was already used for another operation.
+                processing:
+                  summary: Still processing
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request is processing.
         "429":
-          description: ATS scan quota exceeded
+          description: |
+            The ATS scan quota is used up (`details` is the quota), or the caller already has two
+            AI requests in progress (`Retry-After` says when to try again).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AtsQuotaErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: ATS scan quota exceeded.
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                quota:
+                  summary: Scan quota used up
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: ATS scan quota exceeded.
+                inFlight:
+                  summary: Too many AI requests at once
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many AI requests in progress. Wait for one to finish and try again.
         "502":
-          description: AI provider error
+          description: The AI gateway failed
           content:
             application/json:
               schema:
@@ -3095,15 +3386,40 @@ paths:
                 statusCode: 502
                 message: AI ATS analysis could not be completed.
         "503":
-          description: The ATS AI policy is invalid, AI provider credentials are not configured, or AI model routing is not configured on the server.
+          description: |
+            The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
+            configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+            `Retry-After`). Nothing is charged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                policy:
+                  summary: Invalid ATS AI settings
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: AI ATS policy is invalid.
+                restarting:
+                  summary: Server restarting
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: The server is restarting. Try again in a few seconds.
+                    details:
+                      code: SERVER_RESTARTING
+                      retryAfterSeconds: 5
+        "504":
+          description: The AI request ran past its deadline.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 success: false
-                statusCode: 503
-                message: AI ATS policy is invalid.
+                statusCode: 504
+                message: The AI request timed out before the provider answered.
   /api/v1/ats/convert-resume:
     post:
       tags:
@@ -3115,9 +3431,12 @@ paths:
         - ProdSession: []
       summary: Convert Resume Text To Structured JSON
       description: |
-        Uses AI to convert raw resume text into structured JSON Resume-shaped fields. Requires an
-        active AI Credits or Bundle entitlement, and spends credits independently of the shared ATS
-        scan quota above. Requires the `ai:write` API key scope when called with an API key.
+        Uses AI to convert raw resume text into structured JSON Resume-shaped fields. Spends AI
+        credits from any source (a plan, a pass or a credit pack), independently of the shared ATS
+        scan quota above. The result becomes a resume, so a free account that already keeps one
+        resume is refused with `402` before anything is charged. A retry with the same `requestId`
+        and text returns the stored result without charging again. Requires the `ai:write` API key
+        scope when called with an API key.
       requestBody:
         required: true
         content:
@@ -3142,24 +3461,27 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
-          description: No active AI Credits or Bundle plan, or not enough AI credits
+          description: Not enough AI credits, or a free account already keeps its one resume.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
-                noEntitlement:
-                  summary: No active AI Credits or Bundle plan
-                  value:
-                    success: false
-                    statusCode: 402
-                    message: Resume conversion requires an active AI Credits or Bundle plan.
                 notEnoughCredits:
                   summary: Not enough AI credits
                   value:
                     success: false
                     statusCode: 402
                     message: Not enough AI credits.
+                documentLimit:
+                  summary: Free document limit
+                  value:
+                    success: false
+                    statusCode: 402
+                    message: Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only.
+                    details:
+                      code: DOCUMENT_LIMIT
+                      type: RESUME
         "403":
           description: API key is missing the ai:write scope
           content:
@@ -3180,6 +3502,16 @@ paths:
                 success: false
                 statusCode: 409
                 message: This AI request id can no longer be reused.
+        "429":
+          description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 429
+                message: Too many AI requests in progress. Wait for one to finish and try again.
         "502":
           description: AI provider error
           content:
@@ -3191,7 +3523,10 @@ paths:
                 statusCode: 502
                 message: AI resume conversion could not be completed.
         "503":
-          description: The ATS AI policy is invalid, AI provider credentials are not configured, or AI model routing is not configured on the server.
+          description: |
+            The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
+            configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+            `Retry-After`).
           content:
             application/json:
               schema:
@@ -3200,6 +3535,16 @@ paths:
                 success: false
                 statusCode: 503
                 message: AI ATS policy is invalid.
+        "504":
+          description: The AI request ran past its deadline.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 504
+                message: The AI request timed out before the provider answered.
   /api/v1/ai/actions:
     get:
       tags:
@@ -3240,7 +3585,7 @@ paths:
               example:
                 success: false
                 statusCode: 503
-                message: AI generation policy is invalid.
+                message: AI generation is unavailable right now. Please try again later.
   /api/v1/ai/generate:
     post:
       tags:
@@ -3337,6 +3682,16 @@ paths:
                 success: false
                 statusCode: 409
                 message: This AI request id can no longer be reused.
+        "429":
+          description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 429
+                message: Too many AI requests in progress. Wait for one to finish and try again.
         "502":
           description: AI provider error
           content:
@@ -3348,7 +3703,10 @@ paths:
                 statusCode: 502
                 message: The AI provider could not complete the request.
         "503":
-          description: The AI policy is missing or invalid, AI provider credentials are not configured, or AI model routing is not configured on the server.
+          description: |
+            The server's AI settings are missing or invalid, the AI gateway credentials are not
+            configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+            `Retry-After`).
           content:
             application/json:
               schema:
@@ -3357,6 +3715,16 @@ paths:
                 success: false
                 statusCode: 503
                 message: AI provider credentials are not configured.
+        "504":
+          description: The AI request ran past its deadline.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 504
+                message: The AI request timed out before the provider answered.
   /api/v1/portfolios/public:
     get:
       tags:
@@ -3416,11 +3784,14 @@ paths:
       operationId: getPublicPortfolio
       summary: Get Public Portfolio By Subdomain
       description: |
-        Returns the published snapshot for a live portfolio subdomain.
+        Returns the published snapshot for a portfolio subdomain, with two facts for the renderer:
+        `isPaid` (the owner's paid portfolio access is in effect) and `isPremiumTemplate`. The
+        billing state of the publication is not returned.
 
-        Returns `404` for a suspended portfolio, or one whose grace period has just expired — that
-        lookup also flips the record to `SUSPENDED` as a side effect. Cached for up to 10 minutes,
-        shortened to the remaining grace window for portfolios in `GRACE`.
+        Returns `404` for a suspended portfolio, one whose document was deleted, or one whose grace
+        period after a lapsed subscription has run out. A lapsed portfolio is not taken down: a
+        background job moves a premium template to the closest free one and the site stays online.
+        This read never writes. Cached for up to 10 minutes, less while a grace period is running.
 
         No user session is required, but the request must carry an API key or originate from a
         whitelisted first-party origin; otherwise it is rejected with `401`.
@@ -3612,6 +3983,10 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Check Portfolio Subdomain Availability
+      description: |
+        Normalises `slug` the way publishing does and says whether it is free. A subdomain the
+        caller already publishes under counts as available to them. An empty or reserved name answers
+        `400`. Session-authenticated only.
       parameters:
         - name: slug
           in: path
@@ -3680,7 +4055,9 @@ paths:
       summary: Publish Portfolio
       description: |
         Publishes the given draft revision to its chosen subdomain, making it publicly reachable.
-        Premium templates (`nimbus`, `cipher`) require an active Creator Pro subscription.
+        Premium templates (`nimbus`, `cipher`) need Creator Pro, the Job Hunter Bundle or a pass;
+        `signal` and `atelier` are free. The stored draft is checked against the stricter publish
+        rules (see `PortfolioDraftContent`).
 
         **Current-state caveat:** in production, publishing is gated behind a hardcoded
         `ADMIN_EMAIL` check independent of plan tier (`isAdminUser`) — regular users can save drafts,
@@ -3721,8 +4098,18 @@ paths:
                     message: Portfolio contains an unavailable or invalid image.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "402":
+          description: A premium template (`nimbus`, `cipher`) without Creator Pro, the Job Hunter Bundle or a pass.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 402
+                message: Publishing the premium template "Nimbus" requires Creator Pro, the Job Hunter Bundle or a pass.
         "403":
-          description: Production publishing restriction, or premium template requires a subscription
+          description: The production publishing restriction, or a portfolio a moderator took down.
           content:
             application/json:
               schema:
@@ -3734,12 +4121,12 @@ paths:
                     success: false
                     statusCode: 403
                     message: Publishing is disabled in production during this phase.
-                premiumTemplate:
-                  summary: Premium template without subscription
+                moderated:
+                  summary: Taken down by a moderator
                   value:
                     success: false
                     statusCode: 403
-                    message: Publishing the premium template "nimbus" requires an active Creator Pro subscription.
+                    message: This portfolio was taken down by a moderator.
         "404":
           description: Portfolio draft not found
           content:
@@ -3770,8 +4157,9 @@ paths:
         `user_unpublished`, and the underlying document reverts to `PRIVATE` visibility. The document
         itself is not deleted, so the portfolio can be republished later.
 
-        Idempotent: if the caller has never published, the call still succeeds and returns
-        `data: null`. Session-authenticated only.
+        A caller who has never published gets `404`. A portfolio a moderator took down keeps its
+        moderation reason; the unpublish is recorded so the site stays offline if the takedown is
+        lifted. Session-authenticated only.
       responses:
         "200":
           description: Portfolio unpublished successfully
@@ -3781,6 +4169,16 @@ paths:
                 $ref: "#/components/schemas/PortfolioUnpublishResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: The caller has never published a portfolio.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 404
+                message: Portfolio is not published.
   /api/v1/portfolios/analytics:
     get:
       tags:
@@ -3790,7 +4188,12 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Get Portfolio Analytics
-      description: Views for the last 30 days plus top referrer hosts. Returns all-zero data if the caller has never published.
+      description: |
+        Views for the last 30 days plus the top 10 referrer hosts.
+
+        Visitor analytics comes with Creator Pro, the Job Hunter Bundle or a pass. Without it the
+        response has `locked: true` and all-zero data, whether or not a portfolio is published. With
+        it and no published portfolio, `locked` is false and the data is all zero.
       responses:
         "200":
           description: Analytics fetched successfully
@@ -3843,6 +4246,16 @@ paths:
                 message: Upload a JPG, PNG, or WebP image.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          description: The caller started 20 uploads in the last hour, finished or not.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 429
+                message: Too many image uploads this hour. Try again later.
         "503":
           description: Media uploads are not configured (R2 credentials missing)
           content:
@@ -3956,6 +4369,11 @@ paths:
         Returns the caller's plan, subscription status, entitlements, AI credit wallet, and public
         catalog in one call. Entitlements (e.g. portfolio publishing) and the AI credit wallet are
         two independent systems — a plan can grant one, both, or neither depending on `productKey`.
+
+        Plans that carry AI credits grant 1,000 credits a month. An annual plan grants them month by
+        month, not all at once. Subscription credits expire at the end of their month and never roll
+        over; credit packs last 90 days. `graceEndsAt` and `publicationStatus` describe the grace
+        period after a failed renewal, and `access` tells a paying customer from a free one.
         Session-authenticated only.
       responses:
         "200":
@@ -3981,7 +4399,7 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Get Billing History
-      description: Lists the caller's processed billing webhook events (most recent 50). Session-authenticated only.
+      description: Lists the caller's processed billing events (most recent 50), each with the product and amount it was for. Session-authenticated only.
       responses:
         "200":
           description: History fetched successfully
@@ -4019,7 +4437,7 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Get AI Credit Transaction History
-      description: Lists recent AI credit reservations/commits/releases for the caller's wallet. Session-authenticated only.
+      description: Lists the caller's 50 most recent AI credit ledger entries (grants, debits, refunds, adjustments and expiries), newest first. Session-authenticated only.
       responses:
         "200":
           description: History fetched successfully
@@ -4077,11 +4495,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/CodedErrorResponse"
               example:
                 success: false
                 statusCode: 403
                 message: Payments are disabled in production during this phase. Only administrators can perform payments.
+                details:
+                  code: PAYMENTS_DISABLED
         "409":
           description: |
             The purchase would overlap something the customer already has, or a checkout is already
@@ -4112,12 +4532,35 @@ paths:
                   upgrade:
                     productKey: bundle
                     interval: monthly
-        "503":
-          description: The selected billing product is not configured
+        "502":
+          description: The billing provider did not return a checkout URL.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 502
+                message: Billing provider did not return a checkout URL.
+        "503":
+          description: Billing, or the selected product, is not configured on the server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                billing:
+                  summary: Billing not configured
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Billing is not configured.
+                product:
+                  summary: Product not configured
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: The selected billing product is not configured.
   /api/v1/billing/checkout/cancel:
     post:
       tags:
@@ -4163,7 +4606,11 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Create Billing Portal Session
-      description: Creates a Dodo Payments customer portal URL for managing an existing subscription. Session-authenticated only; blocked for non-admins in production during the current rollout phase.
+      description: |
+        Creates a Dodo Payments customer portal URL, where an existing customer cancels, downloads
+        receipts and fixes a failed card. It sells nothing new, so it is open in production to every
+        customer (not only administrators). Needs a billing account, which the first checkout
+        creates. Session-authenticated only.
       responses:
         "200":
           description: Portal session created successfully
@@ -4173,12 +4620,6 @@ paths:
                 $ref: "#/components/schemas/BillingPortalResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-        "403":
-          description: Payments disabled in production for non-admins
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: No billing account exists yet
           content:
@@ -4228,7 +4669,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/CodedErrorResponse"
+              example:
+                success: false
+                statusCode: 403
+                message: Payments are disabled in production during this phase. Only administrators can perform payments.
+                details:
+                  code: PAYMENTS_DISABLED
         "503":
           description: Extra credit checkout is not configured
           content:
@@ -4246,9 +4693,11 @@ paths:
       summary: Preview Plan Upgrade
       description: |
         Prices an upgrade of the live subscription without changing anything: what is charged now
-        for the rest of the period, and what the new plan renews at. Only an upgrade to the
-        `bundle` in the same billing period is accepted (the one `UPGRADE_AVAILABLE` from
-        `POST /billing/checkout` offers). Session-authenticated only; blocked for non-admins in
+        for the rest of the period, and what the new plan renews at. The body accepts any plan and
+        any recurring interval, but only an upgrade to the `bundle` in the same billing period is
+        carried out (the one `UPGRADE_AVAILABLE` from `POST /billing/checkout` offers). Any other
+        change, a downgrade included, is refused with `409` and a `details.code`; to move to a
+        smaller plan, cancel in the billing portal and subscribe again when the plan ends. Session-authenticated only; blocked for non-admins in
         production during the current rollout phase.
       requestBody:
         required: true
@@ -4275,7 +4724,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/CodedErrorResponse"
+              example:
+                success: false
+                statusCode: 403
+                message: Payments are disabled in production during this phase. Only administrators can perform payments.
+                details:
+                  code: PAYMENTS_DISABLED
         "409":
           description: |
             This plan cannot be changed this way. `details.code` is one of: `NO_SUBSCRIPTION`,
@@ -4315,7 +4770,9 @@ paths:
         - ProdSession: []
       summary: Upgrade Plan
       description: |
-        Upgrades the live subscription to the `bundle` in place. The provider charges the prorated
+        Upgrades the live subscription to the `bundle` in place. As with the preview, the body
+        accepts any plan and recurring interval, and any change other than that upgrade is refused
+        with `409` and a `details.code`. The provider charges the prorated
         difference, and the plan, its features and its credits move once that payment succeeds and
         its webhook arrives; until then the answer is `status: "pending"`.
 
@@ -4375,7 +4832,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/CodedErrorResponse"
+              example:
+                success: false
+                statusCode: 403
+                message: Payments are disabled in production during this phase. Only administrators can perform payments.
+                details:
+                  code: PAYMENTS_DISABLED
         "409":
           description: |
             The change was refused. `details.code` is one of the preview's codes, or
@@ -4453,7 +4916,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ShareLinkResponse"
         "400":
-          description: Validation error, or the caller has not claimed a username yet.
+          description: Validation error, the caller has not claimed a username yet, or the document is not a résumé or cover letter.
           content:
             application/json:
               schema:
@@ -4465,6 +4928,12 @@ paths:
                     success: false
                     statusCode: 400
                     message: Username required before sharing
+                notShareable:
+                  summary: Document type cannot be shared
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Only résumés and cover letters can be shared by link.
                 validation:
                   summary: Validation error
                   value:
@@ -4572,6 +5041,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ShareLinkListResponse"
+        "400":
+          description: "`offset` (or `page`) reaches past row 1,000,000."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
   /api/v1/shares/documents/{documentId}/links/{shareLinkId}:
@@ -4692,8 +5167,10 @@ paths:
         No user session is required, but the request must carry an API key or originate from a
         whitelisted first-party origin, same as the read endpoint.
 
-        **Rate limited to 3 attempts per 5 minutes per IP** — considerably tighter than the rest of
-        the API, to make these links impractical to brute-force.
+        **Rate limited to 5 password attempts per link per 5 minutes per client network**, and to 20
+        requests per 5 minutes per IP across all links, to make these links impractical to
+        brute-force. A correct password resets the per-link count. A link without a password is
+        returned directly.
       security:
         - ApiKeyAuth: []
         - {}
@@ -4723,15 +5200,15 @@ paths:
                 $ref: "#/components/schemas/PublicShareResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "401":
-          description: Invalid password
+        "403":
+          description: Wrong password. A `403`, not a `401`, so a signed-in viewer is not treated as signed out.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 success: false
-                statusCode: 401
+                statusCode: 403
                 message: Invalid password
         "404":
           description: Link not found
@@ -4754,7 +5231,9 @@ paths:
                 statusCode: 410
                 message: Link expired
         "429":
-          description: Too many password attempts — 3 per 5 minutes per IP.
+          description: |
+            Too many password attempts for this link (5 per 5 minutes), or too many verify requests
+            from this IP (20 per 5 minutes). `Retry-After` says when to try again.
           content:
             application/json:
               schema:
@@ -4762,7 +5241,17 @@ paths:
               example:
                 success: false
                 statusCode: 429
-                message: Too many requests. Please try again later.
+                message: Too many password attempts. Please try again later.
+        "503":
+          description: The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 503
+                message: Password verification is temporarily unavailable
   /api/v1/affiliates/click:
     post:
       tags:
@@ -4865,8 +5354,25 @@ paths:
                 $ref: "#/components/schemas/AffiliateDashboardResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          description: The caller's affiliate account is suspended.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 403
+                message: Affiliate account is suspended
         "503":
-          $ref: "#/components/responses/FeatureDisabledError"
+          description: |
+            The affiliate program is switched off (see `FeatureDisabledError`), or no unique
+            affiliate code could be made ("Could not create a unique affiliate code."). Retry the
+            second case.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/affiliates/referral:
     post:
       tags:
@@ -4876,7 +5382,11 @@ paths:
         - LocalSession: []
         - ProdSession: []
       summary: Apply Affiliate Referral Code
-      description: Attaches another affiliate's referral code to the caller's account. Self-referrals are rejected, and each account may only apply one referral code, ever. Session-authenticated only.
+      description: |
+        Attaches another affiliate's referral code to the caller's account and answers
+        `{ applied: true }`. Self-referrals are rejected, and each account may only apply one
+        referral code, ever, within its first days after signing up and before any purchase.
+        Session-authenticated only.
       requestBody:
         required: true
         content:
@@ -4909,7 +5419,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: This account already has a referral
+          description: |
+            This account already has a referral, signed up too long ago ("Referral codes can only be
+            applied within N days of signing up."), or has already bought something ("Referral
+            codes cannot be applied after a purchase.").
           content:
             application/json:
               schema:
@@ -4927,6 +5440,8 @@ paths:
       summary: Request Affiliate Withdrawal
       description: |
         Requests a payout of available affiliate commission balance (minimum $25 / 2,500 cents).
+        Money owed back from a reversed commission is netted first, so the most that can be
+        requested is `withdrawableCents` on the dashboard.
         Payouts are reviewed and marked paid manually by an admin out-of-band (bank transfer, PayPal,
         etc) — Dodo Payments only exposes a read-only settlements API, not an outbound transfer API,
         so this cannot be automated end-to-end yet. Session-authenticated only.
@@ -4946,7 +5461,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AffiliateWithdrawalResponse"
         "400":
-          description: Available balance is too low
+          description: The amount is more than `withdrawableCents`, or fails validation.
           content:
             application/json:
               schema:
@@ -4957,6 +5472,19 @@ paths:
                 message: Available balance is too low.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          description: The affiliate account is not active (`details.code` `AFFILIATE_NOT_ACTIVE`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 403
+                message: This affiliate account is not active, so its balance cannot be paid out.
+                details:
+                  code: AFFILIATE_NOT_ACTIVE
+                  affiliateStatus: SUSPENDED
         "409":
           description: An active withdrawal request already exists
           content:
@@ -5167,15 +5695,22 @@ components:
         statusCode:
           type: integer
         details:
-          type: array
-          nullable: true
-          items:
-            type: object
-            properties:
-              path:
-                type: string
-              message:
-                type: string
+          description: |
+            Left out when there is nothing to add. A validation failure (`400` "Validation failed")
+            sends an array of `{ path, message }`, one entry per rejected field. Other errors send an
+            object instead, such as `{ code }`, `{ currentUpdatedAt }` or the caller's quota. Each
+            operation's error responses say which.
+          oneOf:
+            - type: array
+              items:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  message:
+                    type: string
+            - type: object
+              additionalProperties: true
     UnauthorizedResponse:
       type: object
       description: |
@@ -5259,12 +5794,14 @@ components:
               enum:
                 - offset
             nextOffset:
-              type: integer
-              nullable: true
+              type:
+                - integer
+                - "null"
               description: Null when `hasMore` is false.
             nextCursor:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
               description: Always null — these endpoints are offset-paginated, never cursor-paginated.
     HealthLivenessData:
       type: object
@@ -5346,11 +5883,13 @@ components:
         id:
           type: string
         name:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         username:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           description: |
             Null until the user claims one. Immutable once set, and required before any share link can
             be created.
@@ -5458,8 +5997,9 @@ components:
         id:
           type: string
         name:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         email:
           type: string
         createdAt:
@@ -5472,11 +6012,47 @@ components:
         shareResumeCount:
           type: integer
           description: Number of ShareLink records owned by the user.
+    MasterProfileItemId:
+      type: string
+      minLength: 1
+      maxLength: 128
+      description: Client-generated id, unique within its list. Surrounding spaces are trimmed.
+    MasterProfileMonthDate:
+      type: string
+      maxLength: 7
+      pattern: ^$|^\d{4}-(0[1-9]|1[0-2])$
+      description: "`YYYY-MM`, or an empty string when not known."
+    MasterProfileYearDate:
+      type: string
+      maxLength: 4
+      pattern: ^$|^\d{4}$
+      description: "`YYYY`, or an empty string when not known."
+    MasterProfileUrl:
+      type: string
+      maxLength: 2048
+      description: An `http://` or `https://` URL, or an empty string.
+    MasterProfileEmail:
+      type: string
+      maxLength: 200
+      description: A valid email address, or an empty string when not provided.
+    MasterProfilePhone:
+      type: string
+      maxLength: 24
+      description: |
+        Empty when not provided. Otherwise either a number that starts with `+` and the country code
+        and is valid for that country (`"+14155550123"`, `"+1 (415) 555-0123"`), or 7 to 15 digits
+        with nothing else (`"9876543210"`, kept for numbers saved before country codes were
+        collected). `"(987) 654-3210"` is rejected. The value is stored as sent.
     MasterProfileLink:
       type: object
+      required:
+        - id
+        - type
+        - label
+        - url
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         type:
           type: string
           enum:
@@ -5491,11 +6067,12 @@ components:
             - custom
         label:
           type: string
+          maxLength: 80
         url:
-          type: string
+          $ref: "#/components/schemas/MasterProfileUrl"
     MasterProfileBasics:
       type: object
-      description: All properties are required when writing — this object is validated strictly.
+      description: All properties are required.
       required:
         - fullName
         - role
@@ -5517,16 +6094,9 @@ components:
           type: string
           maxLength: 250
         email:
-          type: string
-          format: email
-          description: Must be a valid email address. An empty string is rejected.
+          $ref: "#/components/schemas/MasterProfileEmail"
         phone:
-          type: string
-          maxLength: 24
-          description: |
-            Must contain exactly 10 digits once non-digit characters are ignored, so `"9876543210"` and
-            `"(987) 654-3210"` both pass. The value is stored as sent — it is not reformatted — and an
-            empty string is rejected.
+          $ref: "#/components/schemas/MasterProfilePhone"
         location:
           type: string
           maxLength: 120
@@ -5538,95 +6108,148 @@ components:
           type: boolean
     MasterProfileExperienceItem:
       type: object
+      required:
+        - id
+        - company
+        - role
+        - location
+        - startDate
+        - endDate
+        - current
+        - summary
+        - highlights
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         company:
           type: string
+          maxLength: 160
         role:
           type: string
+          maxLength: 160
         location:
           type: string
+          maxLength: 120
         startDate:
-          type: string
-          description: YYYY-MM
+          $ref: "#/components/schemas/MasterProfileMonthDate"
         endDate:
-          type: string
-          description: YYYY-MM
+          $ref: "#/components/schemas/MasterProfileMonthDate"
         current:
           type: boolean
         summary:
           type: string
+          maxLength: 5000
         highlights:
           type: array
+          maxItems: 50
           items:
             type: string
+            maxLength: 400
     MasterProfileEducationItem:
       type: object
+      required:
+        - id
+        - school
+        - degree
+        - field
+        - startDate
+        - endDate
+        - current
+        - summary
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         school:
           type: string
+          maxLength: 160
         degree:
           type: string
+          maxLength: 160
         field:
           type: string
+          maxLength: 160
         startDate:
-          type: string
-          description: YYYY
+          $ref: "#/components/schemas/MasterProfileYearDate"
         endDate:
-          type: string
-          description: YYYY
+          $ref: "#/components/schemas/MasterProfileYearDate"
         current:
           type: boolean
         summary:
           type: string
+          maxLength: 5000
     MasterProfileProjectItem:
       type: object
+      required:
+        - id
+        - name
+        - role
+        - link
+        - summary
+        - highlights
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         name:
           type: string
+          maxLength: 160
         role:
           type: string
+          maxLength: 160
         link:
-          type: string
+          $ref: "#/components/schemas/MasterProfileUrl"
         linkLabel:
           type: string
+          maxLength: 80
           default: Link
         showLinkAsText:
           type: boolean
           default: true
         summary:
           type: string
+          maxLength: 5000
         highlights:
           type: array
+          maxItems: 50
           items:
             type: string
+            maxLength: 400
         skills:
           type: array
+          maxItems: 100
+          default: []
           items:
             type: string
+            maxLength: 80
     MasterProfileSkillItem:
       type: object
+      required:
+        - id
+        - name
+        - keywords
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         name:
           type: string
+          maxLength: 120
         keywords:
           type: array
+          maxItems: 100
           items:
             type: string
+            maxLength: 80
     MasterProfileLanguageItem:
       type: object
+      required:
+        - id
+        - language
+        - fluency
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         language:
           type: string
+          maxLength: 80
         fluency:
           type: string
           enum:
@@ -5637,140 +6260,231 @@ components:
             - native
     MasterProfileInterestItem:
       type: object
+      required:
+        - id
+        - name
+        - keywords
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         name:
           type: string
+          maxLength: 120
         keywords:
           type: array
+          maxItems: 100
           items:
             type: string
+            maxLength: 80
     MasterProfileAwardItem:
       type: object
+      required:
+        - id
+        - title
+        - awarder
+        - date
+        - description
+        - showLink
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         title:
           type: string
+          maxLength: 200
         awarder:
           type: string
+          maxLength: 200
         date:
-          type: string
-          description: YYYY-MM
+          $ref: "#/components/schemas/MasterProfileMonthDate"
         website:
-          type: string
+          $ref: "#/components/schemas/MasterProfileUrl"
         description:
           type: string
+          maxLength: 5000
         showLink:
           type: boolean
     MasterProfileCertificateItem:
       type: object
+      required:
+        - id
+        - title
+        - issuer
+        - date
+        - description
+        - showLink
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         title:
           type: string
+          maxLength: 200
         issuer:
           type: string
+          maxLength: 200
         date:
-          type: string
-          description: YYYY-MM
+          $ref: "#/components/schemas/MasterProfileMonthDate"
         website:
+          $ref: "#/components/schemas/MasterProfileUrl"
+        referenceId:
           type: string
+          maxLength: 200
+          description: The credential id printed on the certificate.
         description:
           type: string
+          maxLength: 5000
         showLink:
           type: boolean
     MasterProfilePublicationItem:
       type: object
+      required:
+        - id
+        - title
+        - publisher
+        - date
+        - description
+        - showLink
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         title:
           type: string
+          maxLength: 200
         publisher:
           type: string
+          maxLength: 200
         date:
-          type: string
-          description: YYYY-MM
+          $ref: "#/components/schemas/MasterProfileMonthDate"
         website:
-          type: string
+          $ref: "#/components/schemas/MasterProfileUrl"
         description:
           type: string
+          maxLength: 5000
         showLink:
           type: boolean
     MasterProfileVolunteerItem:
       type: object
+      required:
+        - id
+        - organization
+        - role
+        - startDate
+        - endDate
+        - current
+        - location
+        - summary
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         organization:
           type: string
+          maxLength: 200
         role:
           type: string
+          maxLength: 160
         startDate:
-          type: string
+          $ref: "#/components/schemas/MasterProfileMonthDate"
         endDate:
-          type: string
+          $ref: "#/components/schemas/MasterProfileMonthDate"
         current:
           type: boolean
         location:
           type: string
+          maxLength: 120
         summary:
           type: string
+          maxLength: 5000
     MasterProfileReferenceItem:
       type: object
+      required:
+        - id
+        - name
+        - title
+        - organization
+        - relationship
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         name:
           type: string
+          maxLength: 160
         title:
           type: string
+          maxLength: 160
         organization:
           type: string
+          maxLength: 200
         email:
-          type: string
+          $ref: "#/components/schemas/MasterProfileEmail"
         phone:
-          type: string
+          $ref: "#/components/schemas/MasterProfilePhone"
         relationship:
           type: string
+          maxLength: 200
     MasterProfileAchievementItem:
       type: object
+      required:
+        - id
+        - title
+        - description
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         title:
           type: string
+          maxLength: 200
         description:
           type: string
+          maxLength: 5000
     MasterProfileAdditionalItem:
       type: object
+      required:
+        - id
+        - name
+        - issuer
+        - date
+        - link
+        - referenceId
+        - description
+        - details
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         name:
           type: string
+          maxLength: 200
         issuer:
           type: string
+          maxLength: 200
         date:
           type: string
+          maxLength: 40
+          description: Free text. Not checked against a date format.
         link:
           type: string
+          maxLength: 2048
+          description: Free text. Not checked as a URL.
         referenceId:
           type: string
+          maxLength: 200
         description:
           type: string
+          maxLength: 5000
         details:
           type: array
+          maxItems: 50
           items:
             type: string
+            maxLength: 500
     MasterProfileCustomSection:
       type: object
+      required:
+        - id
+        - kind
+        - title
+        - items
       properties:
         id:
-          type: string
+          $ref: "#/components/schemas/MasterProfileItemId"
         kind:
           type: string
           enum:
@@ -5785,14 +6499,21 @@ components:
             - custom
         title:
           type: string
+          maxLength: 120
         items:
           type: array
+          maxItems: 200
           items:
             $ref: "#/components/schemas/MasterProfileAdditionalItem"
         editableTitle:
           type: boolean
     MasterProfileSectionItem:
       type: object
+      required:
+        - id
+        - label
+        - visible
+        - order
       properties:
         id:
           type: string
@@ -5815,37 +6536,75 @@ components:
             - custom
         label:
           type: string
+          maxLength: 80
         visible:
           type: boolean
         order:
           type: integer
+          minimum: 0
+          maximum: 1000
+        customSectionId:
+          type: string
+          maxLength: 128
+          description: The id of the custom section this entry orders and shows or hides. Set only when `id` is `custom`.
     MasterProfileCustomization:
       type: object
+      description: All twelve properties are required.
+      required:
+        - accentColor
+        - textColor
+        - mutedTextColor
+        - pageBackgroundColor
+        - sectionBackgroundColor
+        - borderColor
+        - sectionHeadingColor
+        - fontFamily
+        - sectionSpacing
+        - pagePadding
+        - bodyLineHeight
+        - headingLineHeight
       properties:
         accentColor:
           type: string
+          maxLength: 32
         textColor:
           type: string
+          maxLength: 32
         mutedTextColor:
           type: string
+          maxLength: 32
         pageBackgroundColor:
           type: string
+          maxLength: 32
         sectionBackgroundColor:
           type: string
+          maxLength: 32
         borderColor:
           type: string
+          maxLength: 32
         sectionHeadingColor:
           type: string
+          maxLength: 32
         fontFamily:
           type: string
+          minLength: 1
+          maxLength: 32
         sectionSpacing:
           type: number
+          minimum: 0
+          maximum: 120
         pagePadding:
           type: number
+          minimum: 0
+          maximum: 120
         bodyLineHeight:
           type: number
+          minimum: 1
+          maximum: 3
         headingLineHeight:
           type: number
+          minimum: 1
+          maximum: 3
     MasterProfileContent:
       type: object
       description: |
@@ -5853,9 +6612,9 @@ components:
 
         On `PUT /profiles/master`, `templateId`, `basics`, `links`, `summary` and `customization` are
         required. An omitted array is stored as `[]`, and keys not listed here are dropped rather than
-        rejected. Every array item carries a client-generated `id`. Field limits (string lengths, 200
-        items per array, 10-digit phone numbers, `YYYY-MM` / `YYYY` date formats) are enforced
-        server-side.
+        rejected. Inside an item, every property is required unless its schema marks it optional.
+        Every array item carries a client-generated `id`. Each top-level array holds at most 200
+        items. A payload larger than 1 MB once serialized is rejected with `413`.
       required:
         - templateId
         - basics
@@ -5870,10 +6629,15 @@ components:
           description: Version of the profile content format. Defaults to the current version when omitted.
         templateId:
           type: string
+          minLength: 1
+          maxLength: 64
         basics:
           $ref: "#/components/schemas/MasterProfileBasics"
         links:
           type: object
+          required:
+            - displayMode
+            - items
           properties:
             displayMode:
               type: string
@@ -5883,64 +6647,94 @@ components:
                 - icon-username
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/MasterProfileLink"
         summary:
           type: string
+          maxLength: 8000
         experience:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileExperienceItem"
         education:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileEducationItem"
         projects:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileProjectItem"
         skills:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileSkillItem"
         languages:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileLanguageItem"
         interests:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileInterestItem"
         awards:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileAwardItem"
         certificates:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileCertificateItem"
         publications:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfilePublicationItem"
         volunteer:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileVolunteerItem"
         references:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileReferenceItem"
         achievements:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileAchievementItem"
         customSections:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileCustomSection"
         sections:
           type: array
+          maxItems: 200
+          default: []
           items:
             $ref: "#/components/schemas/MasterProfileSectionItem"
         customization:
@@ -5974,7 +6768,10 @@ components:
         expectedUpdatedAt:
           type: string
           format: date-time
-          description: Pass the `updatedAt` value from your last read. Omit only when creating the profile for the first time.
+          description: |
+            The `updatedAt` from your last read. Leave it out only when the profile has never been
+            saved; a save over an existing profile without it is rejected with `409`. `null` is
+            rejected with `400`.
         profile:
           $ref: "#/components/schemas/MasterProfileContent"
     MasterProfileUpdateResponse:
@@ -5992,19 +6789,39 @@ components:
           $ref: "#/components/schemas/MasterProfile"
     ProfileImportQuota:
       type: object
+      required:
+        - isPaid
+        - unlimited
+        - remaining
+        - limit
+        - resetsInSeconds
+        - connectedUsername
       properties:
         isPaid:
           type: boolean
+          description: The caller has any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass. A credit pack does not count.
+        unlimited:
+          type: boolean
+          description: True for a paid caller's LinkedIn quota. `remaining` and `limit` are then null.
         remaining:
-          type: integer
+          type:
+            - integer
+            - "null"
         limit:
-          type: integer
+          type:
+            - integer
+            - "null"
+          description: 1 for a free caller (a day for GitHub, 30 days for LinkedIn), 50 a day for a paid caller's GitHub imports, null when unlimited.
         resetsInSeconds:
           type: integer
         connectedUsername:
-          type: string
-          nullable: true
-          description: The GitHub login connected via OAuth, when known (GitHub quota only).
+          type:
+            - string
+            - "null"
+          description: The GitHub login of the linked account, read from GitHub for a free caller. Null for a paid caller, for LinkedIn, or when GitHub cannot be reached.
+        hasGithubAccount:
+          type: boolean
+          description: GitHub quota only. A GitHub login is linked to the account, whatever GitHub says about its token.
     ProfileImportQuotaResponse:
       type: object
       required:
@@ -6098,8 +6915,9 @@ components:
             - in-progress
             - done
         eta:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         tags:
           type: array
           items:
@@ -6108,22 +6926,26 @@ components:
           type: string
           format: date-time
         startedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         completedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         completedQuarter:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         updatedAt:
           type: string
           format: date-time
         timeline:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
     RoadmapListData:
       allOf:
         - type: object
@@ -6180,14 +7002,17 @@ components:
         - type: object
           properties:
             fullDescription:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
             whyItMatters:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
             details:
-              type: object
-              nullable: true
+              type:
+                - object
+                - "null"
             interactions:
               type: array
               items:
@@ -6198,8 +7023,9 @@ components:
                   value:
                     type: integer
                   comment:
-                    type: string
-                    nullable: true
+                    type:
+                      - string
+                      - "null"
                   createdAt:
                     type: string
                     format: date-time
@@ -6209,8 +7035,9 @@ components:
                       id:
                         type: string
                       name:
-                        type: string
-                        nullable: true
+                        type:
+                          - string
+                          - "null"
     RoadmapFeatureResponse:
       type: object
       required:
@@ -6239,8 +7066,9 @@ components:
           type: string
           format: uri
         author:
-          type: object
-          nullable: true
+          type:
+            - object
+            - "null"
           properties:
             login:
               type: string
@@ -6267,8 +7095,9 @@ components:
         title:
           type: string
         summary:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         type:
           type: string
           enum:
@@ -6279,9 +7108,10 @@ components:
           type: string
           format: date-time
         githubUrl:
-          type: string
+          type:
+            - string
+            - "null"
           format: uri
-          nullable: true
         added:
           type: array
           items:
@@ -6307,8 +7137,9 @@ components:
           items:
             type: string
         prRefs:
-          type: array
-          nullable: true
+          type:
+            - array
+            - "null"
           items:
             $ref: "#/components/schemas/ChangelogPrRef"
     ChangelogListData:
@@ -6360,8 +7191,9 @@ components:
         patch:
           type: integer
         latest:
-          type: object
-          nullable: true
+          type:
+            - object
+            - "null"
           description: The most recently published entry, or `null` when the changelog is empty.
           properties:
             version:
@@ -6563,9 +7395,10 @@ components:
           type: string
           format: date-time
         lastUsed:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
           description: Written at most once every 5 minutes per key, so it lags real usage slightly.
     ApiKeySecret:
       type: object
@@ -6613,14 +7446,16 @@ components:
           items:
             $ref: "#/components/schemas/ApiKeyScope"
         expiresAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
           description: Always set. Defaults to 365 days from creation when not supplied.
         revokedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -6628,9 +7463,10 @@ components:
           type: string
           format: date-time
         lastUsed:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         rotatedFromId:
           type: string
           description: Only present on a rotate response — the id of the key this one replaced.
@@ -6706,13 +7542,15 @@ components:
           items:
             $ref: "#/components/schemas/ApiKeyScope"
         expiresAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         revokedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -6720,9 +7558,10 @@ components:
           type: string
           format: date-time
         lastUsed:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
           description: Written at most once every 5 minutes per key, so it lags real usage slightly.
     ApiKeyDetailResponse:
       type: object
@@ -6779,8 +7618,9 @@ components:
           additionalProperties: true
           description: Document-type-specific JSON payload (resume schema, portfolio schema, etc).
         metadata:
-          type: object
-          nullable: true
+          type:
+            - object
+            - "null"
           additionalProperties: true
         templateId:
           type: string
@@ -6797,9 +7637,10 @@ components:
             - UNLISTED
             - PUBLIC
         lastSyncedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -6807,9 +7648,10 @@ components:
           type: string
           format: date-time
         deletedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
           description: Set by soft delete. Documents with a non-null deletedAt are excluded from list/get.
     DocumentListResponse:
       type: object
@@ -6856,8 +7698,9 @@ components:
                 type: string
                 format: date-time
         nextCursor:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           description: Send as `cursor` for the next page; `null` on the last page.
         total:
           type: integer
@@ -6935,8 +7778,9 @@ components:
           additionalProperties: true
           description: Present only when `includeContent=true`.
         metadata:
-          type: object
-          nullable: true
+          type:
+            - object
+            - "null"
           additionalProperties: true
         templateId:
           type: string
@@ -6949,9 +7793,10 @@ components:
             - UNLISTED
             - PUBLIC
         lastSyncedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -7036,9 +7881,10 @@ components:
             - UNLISTED
             - PUBLIC
         lastSyncedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -7046,9 +7892,10 @@ components:
           type: string
           format: date-time
         deletedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
     DocumentCreateRequest:
       type: object
       required:
@@ -7056,8 +7903,12 @@ components:
       properties:
         id:
           type: string
-          description: Optional client-generated id. If a document with this id already exists for the caller, it is returned as-is (idempotent create).
           pattern: ^[A-Za-z0-9_-]{1,64}$
+          description: |
+            Optional client-generated id: 1 to 64 letters, digits, `-` or `_`. If the caller already
+            has a live document with this id, it is returned as-is (idempotent create). An id another
+            account uses is `409` "Document ID already in use"; one of the caller's documents in the
+            trash is `409` "Document was deleted".
         type:
           type: string
           enum:
@@ -7073,13 +7924,14 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+          description: Normalised to a URL slug before it is stored.
         tags:
           type: array
+          maxItems: 20
           items:
             type: string
             minLength: 1
             maxLength: 40
-          maxItems: 20
         content:
           type: object
           additionalProperties: {}
@@ -7110,16 +7962,17 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+          description: Normalised to a URL slug before it is stored.
         updateShareSlug:
           type: boolean
           description: When true and an active share link exists, its slug is updated to track the new document slug.
         tags:
           type: array
+          maxItems: 20
           items:
             type: string
             minLength: 1
             maxLength: 40
-          maxItems: 20
         content:
           type: object
           additionalProperties: {}
@@ -7138,16 +7991,38 @@ components:
             - PUBLIC
         revision:
           type: integer
-          description: Must match the document's current revision. Mismatch returns 409.
           minimum: 1
+          description: Must match the document's current revision. Mismatch returns 409.
+    AtsCategory:
+      type: string
+      enum:
+        - parse
+        - contact
+        - structure
+        - content
+        - format
+        - writing
+        - integrity
+      description: |
+        The rule category. Integrity checks (hidden text, instructions aimed at an AI screener, a
+        copied posting, keyword stuffing) deduct their impact from the score in points rather than
+        weighing in its denominator.
     AtsRuleResult:
       type: object
+      required:
+        - id
+        - category
+        - severity
+        - passed
+        - evidence
+        - scoreImpact
+        - fix
       properties:
         id:
           type: string
+          example: ats-v2.writing.tense
         category:
-          type: string
-          description: "One of: integrity, parse, contact, structure, content, format. Integrity checks (hidden text, instructions aimed at an AI screener, a copied posting, keyword stuffing) deduct their impact from the score in points rather than weighing in its denominator."
+          $ref: "#/components/schemas/AtsCategory"
         severity:
           type: string
           enum:
@@ -7158,27 +8033,102 @@ components:
           type: boolean
         evidence:
           type: string
+          description: What was found, quoted where it can be.
         scoreImpact:
-          type: integer
+          type: number
+          description: The weight the rule cost here (for an integrity rule, the points deducted). 0 when passed.
         fix:
           type: string
+    AtsKeywordGroups:
+      type: object
+      required:
+        - hard
+        - soft
+      description: Posting terms by kind, each group at most 12. Soft skills weigh less in `jobMatchScore`.
+      properties:
+        hard:
+          type: array
+          maxItems: 12
+          items:
+            type: string
+        soft:
+          type: array
+          maxItems: 12
+          items:
+            type: string
+    AtsAdvice:
+      type: object
+      required:
+        - id
+        - kind
+        - message
+      description: |
+        Something worth knowing that is not scored: the file (name, size, password, tracked
+        changes), details that can invite age bias where the region asks, and notes about a named
+        applicant tracking system. Never part of the score, the categories, the failed checks or the
+        fixes.
+      properties:
+        id:
+          type: string
+          example: file.name
+        kind:
+          type: string
+          enum:
+            - file
+            - age
+            - ats
+        message:
+          type: string
+        evidence:
+          type: string
+          description: What was found, quoted. Absent when there is nothing to quote.
+        fix:
+          type: string
+        source:
+          type: string
+          description: For an `ats` note, the vendor's public page that documents it.
     AtsReport:
       description: |
         Deterministic, rule-based ATS report. Computed entirely server-side without calling any AI
-        provider. Shape depends on the caller's auth state: anonymous requests to `/ats/check` get
-        `AtsRestrictedReport` (score + verdict only); any authenticated user (free or subscriber)
-        gets `AtsFullReport`. `/ats/analyze` requires auth and always returns `AtsFullReport`.
+        model. Shape depends on the caller's auth state: anonymous requests to `/ats/check` get
+        `AtsRestrictedReport` (scores, verdict and counts); any signed-in caller (free or paid) gets
+        `AtsFullReport`. `/ats/analyze` requires a signed-in caller and always returns
+        `AtsFullReport`.
       oneOf:
         - $ref: "#/components/schemas/AtsFullReport"
         - $ref: "#/components/schemas/AtsRestrictedReport"
     AtsFullReport:
       type: object
-      description: Full deterministic report — every rule's evidence, all matched/missing keywords, all prioritized fixes. Requires an authenticated caller.
+      description: Full deterministic report — every rule's evidence, all matched/missing keywords, all prioritized fixes. Requires a signed-in caller.
+      required:
+        - version
+        - restricted
+        - verdict
+        - readinessScore
+        - jobMatchScore
+        - matchedKeywords
+        - missingKeywords
+        - matchedKeywordGroups
+        - missingKeywordGroups
+        - parsingWarnings
+        - strengths
+        - failedChecks
+        - prioritizedFixes
+        - rules
+        - categories
+        - checksPassed
+        - checksTotal
+        - wordCount
+        - parsed
+        - locale
+        - engine
+        - requirements
+        - advice
       properties:
         version:
           type: string
-          enum:
-            - ats-v2
+          description: The scoring policy's declared version.
+          example: ats-v2
         restricted:
           type: boolean
           enum:
@@ -7192,18 +8142,43 @@ components:
         readinessScore:
           type: integer
         jobMatchScore:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
+          description: Null without a job description.
         matchedKeywords:
           type: array
+          maxItems: 12
+          description: Posting terms the resume has, hard skills first, then soft.
           items:
             type: string
         missingKeywords:
           type: array
+          maxItems: 12
+          description: Posting terms the resume lacks, hard skills first, then soft.
           items:
             type: string
+        matchedKeywordGroups:
+          $ref: "#/components/schemas/AtsKeywordGroups"
+        missingKeywordGroups:
+          $ref: "#/components/schemas/AtsKeywordGroups"
+        keywordCounts:
+          type: object
+          description: How many posting terms the resume has and lacks, past the 12 the lists show.
+          required:
+            - matched
+            - missing
+          properties:
+            matched:
+              type: integer
+            missing:
+              type: integer
         parsingWarnings:
           type: array
+          description: |
+            Every failed check that stops an ATS reading the document, then a note when the resume
+            was cut at 50,000 characters, when the job posting was cut at 20,000 characters, and
+            when the posting lists more than the 25 requirements that are judged.
           items:
             type: string
         strengths:
@@ -7239,11 +8214,15 @@ components:
           $ref: "#/components/schemas/AtsParsedResume"
         locale:
           type: object
+          required:
+            - languages
+            - region
+            - unsupported
           description: |
-            What the resume (and posting) were read as: the language packs detected beyond English,
-            and the region applied (from a +country-code phone number, else the language's usual
-            country). Regions set phone and date conventions and weigh country-specific checks
-            such as a stated date of birth or a photo.
+            What the resume (and posting) were read as: the language packs used beyond the base
+            vocabulary, and the region applied (from a +country-code phone number, else the
+            language's usual country). Regions set phone and date conventions and weigh
+            country-specific checks such as a stated date of birth or a photo.
           properties:
             languages:
               type: array
@@ -7251,18 +8230,29 @@ components:
                 type: string
                 example: de
             region:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
               example: DE
+            unsupported:
+              type:
+                - string
+                - "null"
+              description: |
+                The language the resume is written in when no pack reads it: an ISO 639 code
+                (`it`), a script (`Cyrillic`), or `und`. A parsing warning says so. Null otherwise.
         engine:
           type: object
+          required:
+            - version
+            - policy
           description: |
             What produced the report. The same input, reference date, engine version and policy
             fingerprint always give the same report.
           properties:
             version:
               type: string
-              example: 0.1.0
+              example: 0.21.0
             policy:
               type: string
               description: The policy's declared version and a hash of its content as applied, locale packs included.
@@ -7273,14 +8263,27 @@ components:
           description: The job posting's requirements, each judged against the resume. Empty without a job description.
           items:
             $ref: "#/components/schemas/AtsRequirement"
+        advice:
+          type: array
+          description: Unscored advice. See `AtsAdvice`.
+          items:
+            $ref: "#/components/schemas/AtsAdvice"
     AtsRequirement:
       type: object
+      required:
+        - text
+        - importance
+        - kind
+        - status
+        - terms
+        - evidence
       description: |
         One requirement of the posting, as a per-qualification screener grades it. `unverifiable`
         means the resume cannot settle it — the right to work, a clearance — unless it states it.
       properties:
         text:
           type: string
+          description: The requirement as the posting wrote it.
         importance:
           type: string
           enum:
@@ -7295,6 +8298,8 @@ components:
             - authorization
             - clearance
             - language
+            - seniority
+          description: "`seniority` is the level named in the job title, such as Senior. It comes first when there is one."
         status:
           type: string
           enum:
@@ -7304,8 +8309,12 @@ components:
             - unverifiable
         terms:
           type: array
+          description: What the requirement names, and whether the resume has each. Skills and languages.
           items:
             type: object
+            required:
+              - term
+              - found
             properties:
               term:
                 type: string
@@ -7314,23 +8323,29 @@ components:
         evidence:
           type: array
           maxItems: 2
-          description: Resume lines that show it, work history first.
+          description: Resume lines that show it, quoted. Work history first, a skills list last.
           items:
             type: string
         detail:
           type: string
-          description: For years and degrees, what was compared.
+          description: For years, degrees, language levels and clearances, what was compared.
           example: 6 years in the work history, 5 asked
     AtsCategoryScore:
       type: object
+      required:
+        - category
+        - score
+        - passed
+        - total
+        - lost
+        - possible
       description: |
         Per-area rollup of the deterministic rules, saying which part of the resume is losing points
-        without revealing which rule fired or what it weighs. Authenticated callers only — the rollup
+        without revealing which rule fired or what it weighs. Signed-in callers only — the rollup
         carries most of the diagnostic value, so it is not part of the anonymous shape.
       properties:
         category:
-          type: string
-          description: Rule category key, e.g. `parse`, `contact`, `structure`, `content`, `format`.
+          $ref: "#/components/schemas/AtsCategory"
         score:
           type: integer
           description: Percentage of this category's own weight the resume kept (0-100).
@@ -7341,13 +8356,28 @@ components:
           type: integer
           description: Rules evaluated in this category.
         lost:
-          type: integer
+          type: number
           description: Points this category actually cost.
         possible:
-          type: integer
+          type: number
           description: Worst-case points this category could have cost.
     AtsRestrictedReport:
       type: object
+      required:
+        - version
+        - restricted
+        - readinessScore
+        - jobMatchScore
+        - verdict
+        - topFix
+        - primaryWarning
+        - checksPassed
+        - checksTotal
+        - matchedKeywordCount
+        - missingKeywordCount
+        - parsedRoleCount
+        - remainingFixCount
+        - advice
       description: |
         Returned instead of AtsFullReport when /ats/check is called anonymously. A diagnosis without
         the prescription: scores, a verdict, the single most serious problem and the single
@@ -7357,8 +8387,7 @@ components:
       properties:
         version:
           type: string
-          enum:
-            - ats-v2
+          example: ats-v2
         restricted:
           type: boolean
           enum:
@@ -7366,8 +8395,9 @@ components:
         readinessScore:
           type: integer
         jobMatchScore:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
         verdict:
           type: string
           enum:
@@ -7375,12 +8405,14 @@ components:
             - needs-work
             - weak
         topFix:
-          type: string
-          nullable: true
-          description: The single highest-impact fix, in full. The rest of the list requires auth.
+          type:
+            - string
+            - "null"
+          description: The single highest-impact fix, in full. The rest of the list requires a signed-in caller.
         primaryWarning:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           description: |
             The most serious parsing or formatting failure, phrased as the risk it creates. Structural
             failures outrank heavier content ones here because a candidate cannot self-diagnose them:
@@ -7392,19 +8424,40 @@ components:
           type: integer
         matchedKeywordCount:
           type: integer
-          description: How many job-description terms the resume covers. The terms themselves require auth.
+          description: How many job-description terms the resume covers. The terms themselves require a signed-in caller.
         missingKeywordCount:
           type: integer
-          description: How many job-description terms the resume is missing. The terms themselves require auth.
+          description: How many job-description terms the resume is missing. The terms themselves require a signed-in caller.
         parsedRoleCount:
           type: integer
-          description: How many work-history rows were recovered. The rows themselves require auth.
+          description: How many work-history rows were recovered. The rows themselves require a signed-in caller.
         remainingFixCount:
           type: integer
           description: Prioritised fixes beyond the one shown.
+        advice:
+          type: array
+          description: Each piece of advice as its id, kind and message. The evidence, fix and source stay in the full report.
+          items:
+            type: object
+            required:
+              - id
+              - kind
+              - message
+            properties:
+              id:
+                type: string
+              kind:
+                type: string
+                enum:
+                  - file
+                  - age
+                  - ats
+              message:
+                type: string
     AtsAiInsights:
-      type: object
-      nullable: true
+      type:
+        - object
+        - "null"
       description: Null when the AI step was skipped (e.g. `/check`, which never calls AI).
       properties:
         explanation:
@@ -7448,9 +8501,21 @@ components:
           format: date-time
         canConvertResume:
           type: boolean
-          description: True only for active AI Credits / Bundle subscribers — gates access to /ats/convert-resume.
+          description: |
+            True when the caller's credit balance (from any source) covers a resume conversion
+            (`/ats/convert-resume`). False when `pricing` is null.
+        canRepair:
+          type: boolean
+          description: |
+            True when this deployment offers the AI parse repair (`repairParse` on `/ats/analyze`)
+            and the caller's credit balance covers it. Offer repair only when this is true.
         pricing:
-          type: object
+          type:
+            - object
+            - "null"
+          description: |
+            Credit prices of the ATS AI actions. Null when the server could not load its ATS AI
+            settings; conversion and repair are then off.
           properties:
             analysisCredits:
               type: object
@@ -7469,8 +8534,9 @@ components:
             resumeConversionCredits:
               type: integer
             parseRepairCredits:
-              type: integer
-              nullable: true
+              type:
+                - integer
+                - "null"
               description: |
                 Credits charged by the optional AI parse repair (`repairParse` on `/ats/analyze`),
                 on top of the analysis. `null` when this deployment does not offer repair.
@@ -7499,6 +8565,19 @@ components:
           $ref: "#/components/schemas/AtsQuotaSummary"
     AtsParsedResume:
       type: object
+      required:
+        - name
+        - email
+        - phone
+        - links
+        - roles
+        - education
+        - skills
+        - certifications
+        - spokenLanguages
+        - monthsOfExperience
+        - highestIsced
+        - provenance
       description: |
         The fields an applicant tracking system recovers from the document — the "what the ATS sees"
         view. Produced by the same deterministic pass as the scores, so it never costs a second scan.
@@ -7520,6 +8599,12 @@ components:
           description: One row per job, in the shape an ATS stores it.
           items:
             type: object
+            required:
+              - title
+              - employer
+              - start
+              - end
+              - current
             properties:
               title:
                 type: string
@@ -7535,14 +8620,20 @@ components:
           type: array
           items:
             type: object
+            required:
+              - school
+              - credential
+              - isced
+              - end
             properties:
               school:
                 type: string
               credential:
                 type: string
               isced:
-                type: integer
-                nullable: true
+                type:
+                  - integer
+                  - "null"
                 enum:
                   - 2
                   - 3
@@ -7551,31 +8642,71 @@ components:
                   - 6
                   - 7
                   - 8
+                  - null
                 description: The ISCED 2011 level of the credential — 3 upper secondary (Abitur, Class XII), 6 bachelor's or equivalent, 7 master's or equivalent (a German Diplom), 8 doctoral.
-              level:
-                type: string
-                nullable: true
-                deprecated: true
-                enum:
-                  - diploma
-                  - associate
-                  - bachelor
-                  - master
-                  - doctorate
-                description: Derived from isced (2–4 read as diploma). Kept for one minor version.
               end:
                 $ref: "#/components/schemas/AtsParsedDate"
         skills:
           type: array
           items:
             type: string
+        certifications:
+          type: array
+          description: Certifications and licences, from their own section or a "Certifications:" line.
+          items:
+            type: object
+            required:
+              - name
+              - issuer
+              - date
+              - expires
+            properties:
+              name:
+                type: string
+              issuer:
+                type: string
+              date:
+                $ref: "#/components/schemas/AtsParsedDate"
+              expires:
+                $ref: "#/components/schemas/AtsParsedDate"
+        spokenLanguages:
+          type: array
+          description: Languages spoken, each once. Programming languages stay in `skills`.
+          items:
+            type: object
+            required:
+              - language
+              - level
+              - cefr
+            properties:
+              language:
+                type: string
+                description: As written, such as `Deutsch`.
+              level:
+                type: string
+                description: The level as written, such as `native`. Empty when none was given.
+              cefr:
+                type:
+                  - string
+                  - "null"
+                enum:
+                  - A1
+                  - A2
+                  - B1
+                  - B2
+                  - C1
+                  - C2
+                  - null
+                description: The CEFR level, or null when no known level word was given.
         monthsOfExperience:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
           description: Calendar months covered by at least one role, so overlapping jobs are counted once.
         highestIsced:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
           enum:
             - 2
             - 3
@@ -7584,18 +8715,8 @@ components:
             - 6
             - 7
             - 8
+            - null
           description: The highest ISCED 2011 level among the education entries.
-        highestDegree:
-          type: string
-          nullable: true
-          deprecated: true
-          enum:
-            - diploma
-            - associate
-            - bachelor
-            - master
-            - doctorate
-          description: Derived from highestIsced. Kept for one minor version.
         provenance:
           type: object
           description: |
@@ -7610,6 +8731,8 @@ components:
             - roles
             - education
             - skills
+            - certifications
+            - spokenLanguages
           properties:
             name:
               $ref: "#/components/schemas/AtsProvenance"
@@ -7623,6 +8746,21 @@ components:
               $ref: "#/components/schemas/AtsProvenance"
             skills:
               $ref: "#/components/schemas/AtsProvenance"
+            certifications:
+              $ref: "#/components/schemas/AtsProvenance"
+            spokenLanguages:
+              $ref: "#/components/schemas/AtsProvenance"
+    AtsParsedField:
+      type: string
+      enum:
+        - name
+        - email
+        - phone
+        - roles
+        - education
+        - skills
+        - certifications
+        - spokenLanguages
     AtsProvenance:
       type: string
       enum:
@@ -7727,14 +8865,16 @@ components:
                   type: object
                   additionalProperties: true
     AtsParsedDate:
-      type: object
-      nullable: true
+      type:
+        - object
+        - "null"
       properties:
         year:
           type: integer
         month:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
           description: Null when the resume gave only a year.
     AtsLayoutSignals:
       type: object
@@ -7753,8 +8893,9 @@ components:
         `trackedChanges` and `comments`.
       properties:
         columnRatio:
-          type: number
-          nullable: true
+          type:
+            - number
+            - "null"
           minimum: 0
           maximum: 1
           description: Share of content lines split across a horizontal gutter — the signature of a two-column layout, sidebar, or floating text box, all of which extract in a scrambled reading order. Null when the document had too few content lines for the measurement to carry signal.
@@ -7845,8 +8986,8 @@ components:
           $ref: "#/components/schemas/AtsResumeInput"
         jobDescription:
           type: string
-          description: Optional plain-text job description to compute a jobMatchScore against.
           maxLength: 20000
+          description: Optional plain-text job description to compute a jobMatchScore against. Surrounding spaces are trimmed.
         layout:
           $ref: "#/components/schemas/AtsLayoutSignals"
         file:
@@ -7889,16 +9030,16 @@ components:
         jobUrl:
           type: string
           format: uri
-          description: Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3, response size to 2MB, and timeout to 8s).
           maxLength: 2048
+          description: Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3, response size to 2MB, and timeout to 8s).
         fetchJobUrl:
           type: boolean
           default: false
         requestId:
           type: string
           minLength: 8
-          description: Client-generated idempotency key for the underlying AI credit reservation.
           maxLength: 128
+          description: Client-generated idempotency key for the underlying AI credit reservation.
         layout:
           $ref: "#/components/schemas/AtsLayoutSignals"
         file:
@@ -7912,7 +9053,7 @@ components:
             deterministic parse came back thin (`repair.available` in the response), and it spends
             credits separately from the analysis. Every value the model returns must occur in the
             resume text; values that do not are dropped and counted in `repair.rejectedValues`.
-            Requires an active AI Credits or Bundle plan.
+            Spends AI credits from any source (a plan, a pass or a credit pack).
     AtsAnalyzeResponse:
       type: object
       required:
@@ -7958,6 +9099,7 @@ components:
         - fields
         - rejectedValues
         - creditsSpent
+        - unusable
       description: |
         Outcome of the optional AI parse-repair pass. Present on every analyze response, whether or
         not repair was requested, so a client can offer it when it would help.
@@ -7971,14 +9113,7 @@ components:
         fields:
           type: array
           items:
-            type: string
-            enum:
-              - name
-              - email
-              - phone
-              - roles
-              - education
-              - skills
+            $ref: "#/components/schemas/AtsParsedField"
           description: |
             Fields in `report.parsed` supplied by the model rather than the deterministic parser.
             Repair only ever fills fields the parser left empty; it never overwrites one.
@@ -7988,6 +9123,9 @@ components:
         creditsSpent:
           type: integer
           description: Credits spent on repair, in addition to the analysis `creditsSpent`.
+        unusable:
+          type: boolean
+          description: Repair ran but the model's answer could not be used. Nothing was filled and nothing was charged for it.
     AtsConvertResumeRequest:
       type: object
       required:
@@ -7997,8 +9135,8 @@ components:
         resume:
           type: string
           minLength: 1
-          description: Raw resume text to convert into structured JSON Resume fields.
           maxLength: 50000
+          description: Raw resume text to convert into structured JSON Resume fields.
         requestId:
           type: string
           minLength: 8
@@ -8071,7 +9209,7 @@ components:
               $ref: "#/components/schemas/AtsConvertedResume"
             creditsSpent:
               type: integer
-              description: Requires an active AI Credits or Bundle entitlement — this endpoint spends credits independently of the shared ATS scan quota above.
+              description: Credits spent on the conversion. They come from any source (a plan, a pass or a credit pack), independently of the shared ATS scan quota.
     AiActionKey:
       type: string
       enum:
@@ -8187,8 +9325,9 @@ components:
             content:
               type: string
             usage:
-              type: object
-              nullable: true
+              type:
+                - object
+                - "null"
               properties:
                 promptTokens:
                   type: integer
@@ -8229,6 +9368,18 @@ components:
             $ref: "#/components/schemas/PortfolioPublicSummary"
     PortfolioPublication:
       type: object
+      description: |
+        A published portfolio as the public site reads it. The billing state behind it (live, in
+        grace) is not shown.
+      required:
+        - id
+        - subdomain
+        - templateId
+        - snapshot
+        - updatedAt
+        - isPaid
+        - isPremiumTemplate
+        - isPremium
       properties:
         id:
           type: string
@@ -8242,21 +9393,24 @@ components:
             - nimbus
             - cipher
         snapshot:
-          type: object
-          additionalProperties: true
-          description: Published portfolio content snapshot (validated against the portfolio content schema at publish time).
-        status:
-          type: string
-          enum:
-            - LIVE
-            - GRACE
-            - SUSPENDED
+          $ref: "#/components/schemas/PortfolioDraftContent"
         updatedAt:
           type: string
           format: date-time
+        isPaid:
+          type: boolean
+          description: |
+            The owner's paid portfolio access (Creator Pro, the Job Hunter Bundle, a pass) is in
+            effect, or its short grace period after a lapse is still running. It decides the badge,
+            the custom subdomain and the extra pages on any template. An AI Credits plan alone does not
+            count.
+        isPremiumTemplate:
+          type: boolean
+          description: The template is a premium one (`nimbus` or `cipher`). About the template only.
         isPremium:
           type: boolean
-          description: Whether the owner currently has an active portfolio_pro/bundle subscription.
+          deprecated: true
+          description: "`isPaid` and `isPremiumTemplate` both true. Kept for renderers that have not moved to the two fields."
     PortfolioPublicResponse:
       type: object
       required:
@@ -8315,13 +9469,15 @@ components:
           type: integer
           description: The draft `revision` that was published.
         suspensionReason:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           description: One of `grace_expired` or `user_unpublished` when the portfolio is suspended.
         suspendedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         publishedAt:
           type: string
           format: date-time
@@ -8471,8 +9627,9 @@ components:
             - $ref: "#/components/schemas/PortfolioDraft"
             - type: "null"
         publication:
-          type: object
-          nullable: true
+          type:
+            - object
+            - "null"
           properties:
             subdomain:
               type: string
@@ -8485,9 +9642,10 @@ components:
             publishedRevision:
               type: integer
             publishedAt:
-              type: string
+              type:
+                - string
+                - "null"
               format: date-time
-              nullable: true
             updatedAt:
               type: string
               format: date-time
@@ -8508,6 +9666,216 @@ components:
           type: string
         data:
           $ref: "#/components/schemas/PortfolioMe"
+    PortfolioAssetReference:
+      type: object
+      required:
+        - id
+        - url
+      description: An image uploaded through `/portfolio-assets`. Publishing refuses an image that is not one of the owner's finished uploads.
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: An `http://` or `https://` URL.
+    PortfolioSection:
+      type: object
+      required:
+        - id
+        - type
+        - title
+        - visible
+        - items
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        type:
+          type: string
+          enum:
+            - projects
+            - experience
+            - services
+            - skills
+            - education
+            - writing
+            - testimonials
+            - awards
+            - certifications
+            - languages
+            - interests
+            - publications
+            - patents
+            - testScores
+            - achievements
+            - volunteer
+            - custom
+            - contact
+        title:
+          type: string
+          maxLength: 120
+          description: Required to be non-empty on publish. A draft may leave it empty.
+        subtitle:
+          type: string
+          maxLength: 240
+        visible:
+          type: boolean
+        items:
+          type: array
+          maxItems: 24
+          description: The section's entries. Their fields depend on the section type and are not checked by the server.
+          items:
+            type: object
+            additionalProperties: true
+        settings:
+          type: object
+          additionalProperties: true
+    PortfolioDraftContent:
+      type: object
+      required:
+        - schemaVersion
+        - templateId
+        - identity
+        - seo
+        - socialLinks
+        - sections
+      description: |
+        The portfolio content a draft stores and a publish serves. Saving a draft accepts empty
+        values where noted, so an unfinished portfolio can be kept. Publishing checks the stored draft
+        again with the stricter rules (a non-empty `identity.name`, `headline`, `bio` and a valid
+        `email`; every social link with a label and URL; every section and page with a title) and
+        answers `400` "Complete the required portfolio details before publishing." with the fields in
+        `details` otherwise. Surrounding spaces in text fields are trimmed.
+      properties:
+        schemaVersion:
+          type: integer
+          enum:
+            - 1
+        templateId:
+          type: string
+          enum:
+            - signal
+            - atelier
+            - nimbus
+            - cipher
+          description: "`nimbus` and `cipher` are premium: publishing them needs Creator Pro, the Job Hunter Bundle or a pass."
+        identity:
+          type: object
+          required:
+            - name
+            - headline
+            - bio
+            - location
+            - email
+            - availability
+            - avatar
+          properties:
+            name:
+              type: string
+              maxLength: 120
+              description: Required to be non-empty on publish.
+            headline:
+              type: string
+              maxLength: 240
+              description: Required to be non-empty on publish.
+            bio:
+              type: string
+              maxLength: 1600
+              description: Required to be non-empty on publish.
+            location:
+              type: string
+              maxLength: 120
+            email:
+              type: string
+              maxLength: 254
+              description: A valid email address. A draft may leave it empty; publishing needs one.
+            availability:
+              type: string
+              maxLength: 160
+            avatar:
+              oneOf:
+                - $ref: "#/components/schemas/PortfolioAssetReference"
+                - type: "null"
+        seo:
+          type: object
+          required:
+            - title
+            - description
+            - socialImage
+          properties:
+            title:
+              type: string
+              maxLength: 120
+            description:
+              type: string
+              maxLength: 300
+            socialImage:
+              oneOf:
+                - $ref: "#/components/schemas/PortfolioAssetReference"
+                - type: "null"
+        socialLinks:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            required:
+              - id
+              - label
+              - url
+            properties:
+              id:
+                type: string
+                minLength: 1
+                maxLength: 128
+              label:
+                type: string
+                maxLength: 80
+                description: Required to be non-empty on publish.
+              url:
+                type: string
+                maxLength: 2048
+                description: An `http://` or `https://` URL. A draft may leave it empty; publishing needs one.
+        sections:
+          type: array
+          maxItems: 24
+          items:
+            $ref: "#/components/schemas/PortfolioSection"
+        pages:
+          type: array
+          maxItems: 10
+          description: Extra pages. The public site shows them only while the owner has paid portfolio access (`isPaid` on the public read).
+          items:
+            type: object
+            required:
+              - id
+              - slug
+              - title
+              - sections
+            properties:
+              id:
+                type: string
+                minLength: 1
+                maxLength: 128
+              slug:
+                type: string
+                minLength: 1
+                maxLength: 63
+              title:
+                type: string
+                maxLength: 120
+                description: Required to be non-empty on publish.
+              sections:
+                type: array
+                maxItems: 24
+                items:
+                  $ref: "#/components/schemas/PortfolioSection"
+        removeWatermark:
+          type: boolean
     PortfolioSaveDraftRequest:
       type: object
       required:
@@ -8527,260 +9895,7 @@ components:
           description: Required once a draft already exists, for optimistic concurrency (409 on mismatch).
           minimum: 1
         snapshot:
-          type: object
-          description: Portfolio content. The draft schema is more permissive than the publish schema (empty strings allowed) so incomplete drafts can still be saved.
-          properties:
-            schemaVersion:
-              type: number
-              const: 1
-            templateId:
-              type: string
-              enum:
-                - signal
-                - atelier
-                - nimbus
-                - cipher
-            identity:
-              type: object
-              properties:
-                name:
-                  type: string
-                  maxLength: 120
-                headline:
-                  type: string
-                  maxLength: 240
-                bio:
-                  type: string
-                  maxLength: 1600
-                location:
-                  type: string
-                  maxLength: 120
-                email:
-                  anyOf:
-                    - type: string
-                      const: ""
-                    - type: string
-                      maxLength: 254
-                      format: email
-                availability:
-                  type: string
-                  maxLength: 160
-                avatar:
-                  anyOf:
-                    - type: object
-                      properties:
-                        id:
-                          type: string
-                          minLength: 1
-                          maxLength: 128
-                        url:
-                          type: string
-                          maxLength: 2048
-                          format: uri
-                      required:
-                        - id
-                        - url
-                    - type: "null"
-              required:
-                - name
-                - headline
-                - bio
-                - location
-                - email
-                - availability
-                - avatar
-            seo:
-              type: object
-              properties:
-                title:
-                  type: string
-                  maxLength: 120
-                description:
-                  type: string
-                  maxLength: 300
-                socialImage:
-                  anyOf:
-                    - type: object
-                      properties:
-                        id:
-                          type: string
-                          minLength: 1
-                          maxLength: 128
-                        url:
-                          type: string
-                          maxLength: 2048
-                          format: uri
-                      required:
-                        - id
-                        - url
-                    - type: "null"
-              required:
-                - title
-                - description
-                - socialImage
-            socialLinks:
-              maxItems: 12
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    minLength: 1
-                    maxLength: 128
-                  label:
-                    type: string
-                    maxLength: 80
-                  url:
-                    anyOf:
-                      - type: string
-                        const: ""
-                      - type: string
-                        maxLength: 2048
-                        format: uri
-                required:
-                  - id
-                  - label
-                  - url
-            sections:
-              maxItems: 24
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    minLength: 1
-                    maxLength: 128
-                  type:
-                    type: string
-                    enum:
-                      - projects
-                      - experience
-                      - services
-                      - skills
-                      - education
-                      - writing
-                      - testimonials
-                      - awards
-                      - certifications
-                      - languages
-                      - interests
-                      - publications
-                      - patents
-                      - testScores
-                      - achievements
-                      - volunteer
-                      - custom
-                      - contact
-                  title:
-                    type: string
-                    maxLength: 120
-                  subtitle:
-                    type: string
-                    maxLength: 240
-                  visible:
-                    type: boolean
-                  items:
-                    maxItems: 24
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: {}
-                  settings:
-                    type: object
-                    additionalProperties: {}
-                required:
-                  - id
-                  - type
-                  - title
-                  - visible
-                  - items
-            pages:
-              maxItems: 10
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    minLength: 1
-                    maxLength: 128
-                  slug:
-                    type: string
-                    minLength: 1
-                    maxLength: 63
-                  title:
-                    type: string
-                    maxLength: 120
-                  sections:
-                    maxItems: 24
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          minLength: 1
-                          maxLength: 128
-                        type:
-                          type: string
-                          enum:
-                            - projects
-                            - experience
-                            - services
-                            - skills
-                            - education
-                            - writing
-                            - testimonials
-                            - awards
-                            - certifications
-                            - languages
-                            - interests
-                            - publications
-                            - patents
-                            - testScores
-                            - achievements
-                            - volunteer
-                            - custom
-                            - contact
-                        title:
-                          type: string
-                          maxLength: 120
-                        subtitle:
-                          type: string
-                          maxLength: 240
-                        visible:
-                          type: boolean
-                        items:
-                          maxItems: 24
-                          type: array
-                          items:
-                            type: object
-                            additionalProperties: {}
-                        settings:
-                          type: object
-                          additionalProperties: {}
-                      required:
-                        - id
-                        - type
-                        - title
-                        - visible
-                        - items
-                required:
-                  - id
-                  - slug
-                  - title
-                  - sections
-            removeWatermark:
-              type: boolean
-          required:
-            - schemaVersion
-            - templateId
-            - identity
-            - seo
-            - socialLinks
-            - sections
+          $ref: "#/components/schemas/PortfolioDraftContent"
     PortfolioPublishRequest:
       type: object
       required:
@@ -8801,7 +9916,18 @@ components:
           minimum: 1
     PortfolioAnalytics:
       type: object
+      required:
+        - locked
+        - totalViews
+        - daily
+        - referrers
       properties:
+        locked:
+          type: boolean
+          description: |
+            True when the caller has no visitor-analytics access (it comes with Creator Pro, the Job
+            Hunter Bundle or a pass). The numbers are then all zero and the lists empty, whether or
+            not a portfolio is published.
         totalViews:
           type: integer
         daily:
@@ -8933,6 +10059,24 @@ components:
                 when the upload URL was requested.
     BillingSummary:
       type: object
+      required:
+        - plan
+        - productKey
+        - activeProductKeys
+        - status
+        - interval
+        - currentPeriodEnd
+        - cancelAtPeriodEnd
+        - graceEndsAt
+        - canPublish
+        - accessEndsAt
+        - publicationStatus
+        - entitlements
+        - access
+        - credits
+        - catalog
+        - creditEconomics
+        - addOns
       properties:
         plan:
           type: string
@@ -8941,10 +10085,11 @@ components:
             - AI_CREDITS
             - PORTFOLIO_PRO
             - BUNDLE
-          description: The plan whose features are in effect, from subscription or pass access. A credit pack unlocks no plan features, so a customer whose only purchase is a pack is FREE here although they paid; show plan names from the product the customer bought, not from this field.
+          description: The plan whose features are in effect, from subscription or pass access. A credit pack unlocks no plan features, so a customer whose only purchase is a pack is FREE here although they paid; use `access` to tell a paying customer from a free one.
         productKey:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           enum:
             - ai_credits
             - portfolio_pro
@@ -8963,10 +10108,12 @@ components:
             - CANCELED
           description: |
             Status of the subscription in effect today. `INACTIVE` when none is (no plan, or one that
-            has ended); `PAST_DUE` while a failed renewal's grace runs. There are no trials.
+            has ended); `PAST_DUE` while a failed renewal's grace runs, or while the subscription is
+            paused. There are no trials.
         interval:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           enum:
             - one_day
             - seven_day
@@ -8974,34 +10121,90 @@ components:
             - annual
             - null
         currentPeriodEnd:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         cancelAtPeriodEnd:
           type: boolean
         graceEndsAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
+          description: When the grace period after a failed renewal ends. Null when none is running.
         canPublish:
           type: boolean
           description: Portfolio-publish entitlement is a separate system from the AI credit wallet below.
-        eligibleForTrial:
-          type: boolean
         accessEndsAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
+          description: The latest period end of an active Creator Pro or Job Hunter Bundle subscription.
         publicationStatus:
           type: string
           enum:
             - LIVE
             - GRACE
             - SUSPENDED
+          description: "`LIVE` while publishing is included, `GRACE` while a grace period runs, `SUSPENDED` otherwise."
         entitlements:
           type: array
           items:
             type: string
+        access:
+          type: object
+          description: |
+            Who the customer is, separately from the plan. A payer is never shown as free: a customer
+            whose renewal failed, or who paused, keeps the tier of the subscription they pay for.
+          required:
+            - tier
+            - isPaid
+            - isPaying
+            - paymentIssue
+            - passEndsAt
+            - portfolioAccessEndsAt
+            - aiCreditsEndsAt
+            - creditBalance
+          properties:
+            tier:
+              type: string
+              enum:
+                - bundle
+                - portfolio_pro
+                - ai_credits
+                - pass
+                - credits
+                - free
+              description: "`credits` is a customer whose only purchase is credits (a pack, or a plan allowance that is still unspent)."
+            isPaid:
+              type: boolean
+              description: A subscription, a pass or an admin grant of one is in effect. A credit pack never makes an account paid.
+            isPaying:
+              type: boolean
+              description: The customer paid for something now in effect (a subscription, a pass, or paid credits), or has a subscription in dunning.
+            paymentIssue:
+              type: boolean
+              description: A subscription renewal failed and is being retried. False for a pause.
+            passEndsAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            portfolioAccessEndsAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            aiCreditsEndsAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            creditBalance:
+              type: integer
+              description: Spendable credits, the same as `credits.available`.
         credits:
           $ref: "#/components/schemas/CreditWallet"
         catalog:
@@ -9013,6 +10216,7 @@ components:
           additionalProperties: true
         addOns:
           type: array
+          description: What can be bought on top of portfolio access. Empty without it.
           items:
             type: object
             properties:
@@ -9035,6 +10239,15 @@ components:
           $ref: "#/components/schemas/BillingSummary"
     BillingHistoryEvent:
       type: object
+      required:
+        - id
+        - providerEventId
+        - type
+        - processedAt
+        - createdAt
+        - productName
+        - amountCents
+        - currency
       properties:
         id:
           type: string
@@ -9043,12 +10256,26 @@ components:
         type:
           type: string
         processedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
+        productName:
+          type:
+            - string
+            - "null"
+          description: What the event was for, as the customer knows it, such as `7-Day Hunt Pass`.
+        amountCents:
+          type:
+            - integer
+            - "null"
+        currency:
+          type:
+            - string
+            - "null"
     BillingHistoryResponse:
       type: object
       required:
@@ -9069,17 +10296,22 @@ components:
       properties:
         balance:
           type: integer
+          description: The ledger balance. It can still hold credits that expired and were not yet swept; use `available` for what can be spent.
         reserved:
           type: integer
           description: Credits currently held by in-flight AI generations that have not yet committed or been released.
+        available:
+          type: integer
+          description: Credits that can be spent now.
         lifetimeCredited:
           type: integer
         lifetimeDebited:
           type: integer
         nextExpiryAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         nextExpiryCredits:
           type: integer
         updatedAt:
@@ -9100,16 +10332,50 @@ components:
           $ref: "#/components/schemas/CreditWallet"
     CreditHistoryEntry:
       type: object
-      additionalProperties: true
+      required:
+        - id
+        - type
+        - amount
+        - balanceAfter
+        - action
+        - documentId
+        - reason
+        - metadata
+        - createdAt
       properties:
         id:
           type: string
-        action:
+        type:
           type: string
-        cost:
+          enum:
+            - GRANT
+            - DEBIT
+            - REFUND
+            - ADJUSTMENT
+            - EXPIRATION
+        amount:
           type: integer
+          description: Signed change to the balance. Negative for a debit or an expiry.
         balanceAfter:
           type: integer
+        action:
+          type:
+            - string
+            - "null"
+          description: The AI action the credits were spent on, when there was one.
+        documentId:
+          type:
+            - string
+            - "null"
+        reason:
+          type:
+            - string
+            - "null"
+        metadata:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
         createdAt:
           type: string
           format: date-time
@@ -9382,8 +10648,9 @@ components:
                 - monthly
                 - annual
             paymentId:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
             confirmed:
               type: boolean
               description: False when the provider's answer never arrived (the response is then `202`); the change may still apply.
@@ -9469,15 +10736,17 @@ components:
             Whether the studio shows a Download button on the public page. A display preference, not a
             security control: the studio hides the Download button, and viewers can still save the page.
         expiresAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         viewCount:
           type: integer
         lastViewedAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -9585,9 +10854,10 @@ components:
         documentTitle:
           type: string
         expiresAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         allowDownload:
           type: boolean
           description: |
@@ -9658,20 +10928,24 @@ components:
         commissions:
           type: integer
         user:
-          type: object
-          nullable: true
+          type:
+            - object
+            - "null"
           properties:
             id:
               type: string
             name:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
             username:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
             image:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
             affiliateTier:
               type: string
               enum:
@@ -9710,12 +10984,14 @@ components:
             - TIER_2
             - TIER_3
         affiliateCode:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         affiliateEnrolledAt:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
-          nullable: true
         clicks:
           type: integer
         referrals:
@@ -9735,9 +11011,10 @@ components:
                 type: string
                 format: date-time
               convertedAt:
-                type: string
+                type:
+                  - string
+                  - "null"
                 format: date-time
-                nullable: true
         totalReferrals:
           type: integer
         conversions:
@@ -9768,17 +11045,20 @@ components:
                   - REJECTED
                   - PAID
               payoutNote:
-                type: string
-                nullable: true
+                type:
+                  - string
+                  - "null"
                 description: Visible to the affiliate. The note the admin writes when approving, rejecting or paying the withdrawal (the payout reference, or the reason for a rejection), shown on the affiliate's payouts page as written.
               reviewedAt:
-                type: string
+                type:
+                  - string
+                  - "null"
                 format: date-time
-                nullable: true
               paidAt:
-                type: string
+                type:
+                  - string
+                  - "null"
                 format: date-time
-                nullable: true
               createdAt:
                 type: string
                 format: date-time
@@ -9791,6 +11071,12 @@ components:
               type: integer
             paidCents:
               type: integer
+            clawbackCents:
+              type: integer
+              description: Commission paid out earlier and since reversed, which is owed back.
+        withdrawableCents:
+          type: integer
+          description: What a withdrawal may request now, `availableCents` less `clawbackCents` (never below 0).
         minimumWithdrawalCents:
           type: integer
           enum:
@@ -9801,8 +11087,9 @@ components:
             currentConversions:
               type: integer
             nextTierConversions:
-              type: integer
-              nullable: true
+              type:
+                - integer
+                - "null"
         tiers:
           type: array
           items:
@@ -9857,7 +11144,13 @@ components:
           type: string
         data:
           type: object
-          additionalProperties: true
+          required:
+            - applied
+          properties:
+            applied:
+              type: boolean
+              enum:
+                - true
     AffiliateWithdrawalRequest:
       type: object
       required:
@@ -9899,7 +11192,7 @@ components:
         graduationYear:
           type: string
           pattern: ^\d{4}$
-          description: A real 4-digit year, validated both client- and server-side.
+          description: A 4-digit year from last year to 8 years ahead, checked on each request. Surrounding spaces are trimmed.
         whyJoin:
           type: string
           minLength: 20
@@ -9961,11 +11254,13 @@ components:
             - APPROVED
             - REJECTED
         collegeName:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         graduationYear:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
     AmbassadorStatusResponse:
       type: object
       required:

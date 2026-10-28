@@ -4,14 +4,20 @@ description: >
   Prices an upgrade of the live subscription without changing anything: what is
   charged now
 
-  for the rest of the period, and what the new plan renews at. Only an upgrade
-  to the
+  for the rest of the period, and what the new plan renews at. The body accepts
+  any plan and
 
-  `bundle` in the same billing period is accepted (the one `UPGRADE_AVAILABLE`
-  from
+  any recurring interval, but only an upgrade to the `bundle` in the same
+  billing period is
 
-  `POST /billing/checkout` offers). Session-authenticated only; blocked for
-  non-admins in
+  carried out (the one `UPGRADE_AVAILABLE` from `POST /billing/checkout`
+  offers). Any other
+
+  change, a downgrade included, is refused with `409` and a `details.code`; to
+  move to a
+
+  smaller plan, cancel in the billing portal and subscribe again when the plan
+  ends. Session-authenticated only; blocked for non-admins in
 
   production during the current rollout phase.
 full: true
@@ -28,14 +34,20 @@ _openapi:
           Prices an upgrade of the live subscription without changing anything:
           what is charged now
 
-          for the rest of the period, and what the new plan renews at. Only an
-          upgrade to the
+          for the rest of the period, and what the new plan renews at. The body
+          accepts any plan and
 
-          `bundle` in the same billing period is accepted (the one
-          `UPGRADE_AVAILABLE` from
+          any recurring interval, but only an upgrade to the `bundle` in the
+          same billing period is
 
-          `POST /billing/checkout` offers). Session-authenticated only; blocked
-          for non-admins in
+          carried out (the one `UPGRADE_AVAILABLE` from `POST /billing/checkout`
+          offers). Any other
+
+          change, a downgrade included, is refused with `409` and a
+          `details.code`; to move to a
+
+          smaller plan, cancel in the billing portal and subscribe again when
+          the plan ends. Session-authenticated only; blocked for non-admins in
 
           production during the current rollout phase.
 ---

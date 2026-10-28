@@ -178,18 +178,20 @@ getImportQuota:
       - ProdSession: []
     summary: Get Profile Import Quota
     description: |
-      Returns the caller's current GitHub and LinkedIn import quota status in one call.
+      Returns the caller's current GitHub and LinkedIn import quota status in one call. Requires
+      the `resume:read` scope when called with an API key.
 
       - **GitHub import** is a real GitHub OAuth-backed integration (up to 30 of the account's most
         recently updated repositories, deterministically mapped to skills by repository language —
-        no AI is involved). Free users get 1 import/day and may only import their own OAuth-connected
-        GitHub account. Paid users (any active AI Credits or Portfolio Pro/Bundle plan) may import
-        any public GitHub username, but are still capped at a hidden 50 imports/day — this protects
-        the single shared `config.github.token` request budget used by every paid import and the
-        GitHub sync cron job from being exhausted by one account.
+        no AI is involved). Free users get 1 import/day and may only import their own linked GitHub
+        account. Paid users (any plan: AI Credits, Creator Pro or the Job Hunter Bundle, or a pass)
+        may import any public GitHub username, but are capped at 50 imports/day, which protects the
+        shared GitHub request budget every paid import uses. An account links one GitHub account,
+        and a linked GitHub account cannot be removed.
       - **LinkedIn import** is not a LinkedIn API integration — it's an AI parse of raw text the
-        user pastes in (copied profile text, or text extracted from an exported PDF). Free users get
-        1 import/month; paid users get unlimited imports.
+        user pastes in (copied profile text, or text extracted from an exported PDF). It costs the
+        same AI credits as an ATS resume conversion, for every caller. Free users also get only 1
+        import every 30 days; paid users have no import limit.
 
       Both import types share a single `replaceMaster` request flag and always create a brand-new
       RESUME document from the imported data, in addition to optionally overwriting the master
@@ -233,10 +235,10 @@ importGithub:
     summary: Import Profile From GitHub
     description: |
       Imports a GitHub profile and repositories directly via the GitHub REST API (no AI parsing) and
-      creates a new RESUME document from the result. Free users can only import their own
-      OAuth-connected GitHub account (`usernameOrUrl` is ignored in that case); paid users may import
-      any public username, subject to the hidden 50/day shared-token cap described on
-      `GET /profiles/import/quota`.
+      creates a new RESUME document from the result. Free users can only import their own linked
+      GitHub account (`usernameOrUrl` is ignored in that case); paid users may import any public
+      username, up to 50 imports a day (see `GET /profiles/import/quota`). Requires the
+      `resume:write` scope when called with an API key.
     requestBody:
       required: true
       content:
@@ -285,6 +287,31 @@ importGithub:
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
 
+      "402":
+        description: A free account already keeps its one active resume (`details.code` is `DOCUMENT_LIMIT`).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 402
+              message: "Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only."
+              details:
+                code: "DOCUMENT_LIMIT"
+                type: "RESUME"
+
+      "403":
+        description: The API key lacks `resume:write`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "This API key does not have permission for this action."
+
       "404":
         description: GitHub profile not found
         content:
@@ -331,7 +358,9 @@ importGithub:
                 value:
                   success: false
                   statusCode: 429
-                  message: "Free users can only import from GitHub once a day. Upgrade to Creator Pro for unlimited imports."
+                  message: "Free accounts can import from GitHub once a day. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass."
+                  details:
+                    resetsInSeconds: 54000
               paidSharedCap:
                 summary: Paid hidden shared-token cap
                 value:
@@ -352,8 +381,14 @@ importLinkedin:
     description: |
       Parses raw copy-pasted LinkedIn profile text (or text extracted from an exported PDF) using AI
       and creates a new RESUME document from the result. This is an AI-parsed paste, not a LinkedIn
-      API integration. Free users get 1 import/month; paid users (AI Credits or Portfolio Pro/Bundle)
-      get unlimited imports.
+      API integration. Requires the `resume:write` and `ai:write` scopes when called with an API
+      key.
+
+      Every import spends AI credits, the same as an ATS resume conversion (see `pricing` on
+      `GET /ats/quota`). The credits are held before the model runs and charged only once the
+      import is saved; a short balance is `402` and nothing runs. Free users also get only 1
+      import every 30 days and keep one resume at a time; paid users (any plan or a pass) have no
+      import limit.
 
       It is an AI route like the others: it counts toward the AI rate limit and the two AI
       requests a user may have in flight (`429` beyond that), ends at the AI request deadline
@@ -409,6 +444,28 @@ importLinkedin:
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
 
+      "402":
+        description: Not enough AI credits, or a free account already keeps its one resume.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 402
+              message: "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
+
+      "403":
+        description: The API key lacks `resume:write` or `ai:write`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "This API key does not have permission for this action."
+
       "429":
         description: Import quota exceeded
         content:
@@ -418,7 +475,9 @@ importLinkedin:
             example:
               success: false
               statusCode: 429
-              message: "Free users can only import from LinkedIn once a month. Upgrade to Creator Pro for unlimited imports."
+              message: "Free accounts can import from LinkedIn once a month. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass."
+              details:
+                resetsInSeconds: 2160000
 
       "502":
         description: AI parsing failed

@@ -4,6 +4,11 @@ description: >
   Requests a payout of available affiliate commission balance (minimum $25 /
   2,500 cents).
 
+  Money owed back from a reversed commission is netted first, so the most that
+  can be
+
+  requested is `withdrawableCents` on the dashboard.
+
   Payouts are reviewed and marked paid manually by an admin out-of-band (bank
   transfer, PayPal,
 
@@ -24,6 +29,11 @@ _openapi:
       - content: >
           Requests a payout of available affiliate commission balance (minimum
           $25 / 2,500 cents).
+
+          Money owed back from a reversed commission is netted first, so the
+          most that can be
+
+          requested is `withdrawableCents` on the dashboard.
 
           Payouts are reviewed and marked paid manually by an admin out-of-band
           (bank transfer, PayPal,

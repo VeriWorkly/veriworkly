@@ -101,8 +101,25 @@ enrollAsAffiliate:
               $ref: "../components/schemas.yaml#/AffiliateDashboardResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        description: The caller's affiliate account is suspended.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "Affiliate account is suspended"
       "503":
-        $ref: "../components/responses.yaml#/FeatureDisabledError"
+        description: |
+          The affiliate program is switched off (see `FeatureDisabledError`), or no unique
+          affiliate code could be made ("Could not create a unique affiliate code."). Retry the
+          second case.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
 
 applyAffiliateReferral:
   post:
@@ -113,7 +130,11 @@ applyAffiliateReferral:
       - LocalSession: []
       - ProdSession: []
     summary: Apply Affiliate Referral Code
-    description: Attaches another affiliate's referral code to the caller's account. Self-referrals are rejected, and each account may only apply one referral code, ever. Session-authenticated only.
+    description: |
+      Attaches another affiliate's referral code to the caller's account and answers
+      `{ applied: true }`. Self-referrals are rejected, and each account may only apply one
+      referral code, ever, within its first days after signing up and before any purchase.
+      Session-authenticated only.
     requestBody:
       required: true
       content:
@@ -146,7 +167,10 @@ applyAffiliateReferral:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
       "409":
-        description: This account already has a referral
+        description: |
+          This account already has a referral, signed up too long ago ("Referral codes can only be
+          applied within N days of signing up."), or has already bought something ("Referral
+          codes cannot be applied after a purchase.").
         content:
           application/json:
             schema:
@@ -165,6 +189,8 @@ requestAffiliateWithdrawal:
     summary: Request Affiliate Withdrawal
     description: |
       Requests a payout of available affiliate commission balance (minimum $25 / 2,500 cents).
+      Money owed back from a reversed commission is netted first, so the most that can be
+      requested is `withdrawableCents` on the dashboard.
       Payouts are reviewed and marked paid manually by an admin out-of-band (bank transfer, PayPal,
       etc) — Dodo Payments only exposes a read-only settlements API, not an outbound transfer API,
       so this cannot be automated end-to-end yet. Session-authenticated only.
@@ -184,7 +210,7 @@ requestAffiliateWithdrawal:
             schema:
               $ref: "../components/schemas.yaml#/AffiliateWithdrawalResponse"
       "400":
-        description: Available balance is too low
+        description: The amount is more than `withdrawableCents`, or fails validation.
         content:
           application/json:
             schema:
@@ -195,6 +221,19 @@ requestAffiliateWithdrawal:
               message: "Available balance is too low."
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        description: The affiliate account is not active (`details.code` `AFFILIATE_NOT_ACTIVE`).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 403
+              message: "This affiliate account is not active, so its balance cannot be paid out."
+              details:
+                code: "AFFILIATE_NOT_ACTIVE"
+                affiliateStatus: "SUSPENDED"
       "409":
         description: An active withdrawal request already exists
         content:

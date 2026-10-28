@@ -201,6 +201,16 @@ syncGitHubStats:
               success: false
               statusCode: 409
               message: "GitHub sync is already in progress"
+      "500":
+        description: The server has no `ADMIN_EMAIL` set, so no one can be the administrator.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 500
+              message: "ADMIN_EMAIL is not configured"
       "503":
         description: |
           The sync cannot start: Redis, which holds its lock, is unreachable, or

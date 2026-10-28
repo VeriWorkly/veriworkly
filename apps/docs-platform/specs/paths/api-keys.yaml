@@ -39,7 +39,9 @@ apiKeyCollection:
           type: integer
           minimum: 1
           default: 1
-        description: 1-based page index. An alternative to `offset`.
+        description: |
+          1-based page index. An alternative to `offset`. When both are sent, `offset` decides
+          the window and the response echoes the `page` that was sent.
       - name: pageSize
         in: query
         required: false
@@ -106,29 +108,36 @@ apiKeyCollection:
               name:
                 type: string
                 minLength: 1
-                description: A descriptive name for the API key.
+                maxLength: 100
+                description: A descriptive name for the API key. Surrounding spaces are trimmed.
                 example: "My Documentation Key"
               scopes:
                 type: array
                 description: |
-                  Scopes granted to the new key. Defaults to `["user:read"]` when omitted. Any
-                  value outside the listed set is rejected with `400`.
+                  Scopes granted to the new key. Defaults to `["user:read"]` when omitted (the
+                  server's `API_KEY_DEFAULT_SCOPES`). A comma-separated string such as
+                  `"user:read,resume:read"` is also accepted. Any value outside the listed set is
+                  rejected with `400`.
                 items:
                   $ref: "../components/schemas.yaml#/ApiKeyScope"
               rateLimit:
                 type: integer
                 minimum: 1
-                maximum: 20
+                maximum: 600
                 description: |
-                  Requests allowed per 15-minute window. Defaults to 20; values above 20 are
-                  silently clamped down to 20 rather than rejected.
+                  Requests allowed per 15-minute window. Defaults to 20 (the server's
+                  `API_KEY_DEFAULT_RATE_LIMIT`). The ceiling is `API_KEY_MAX_RATE_LIMIT`, 600 by
+                  default: a larger value is lowered to the ceiling, not rejected. A value that is
+                  not a positive integer is rejected with `400`.
                 example: 20
               expiresAt:
                 type: string
                 format: date-time
                 description: |
-                  ISO timestamp for expiry. Defaults to 365 days from creation when omitted — keys
-                  are never issued without an expiry.
+                  When the key stops working: an ISO 8601 timestamp with a zone (`Z` or an offset
+                  such as `+05:30`), in the future. A timestamp without a zone, or one in the past,
+                  is rejected with `400`. Defaults to 365 days from creation when omitted or empty.
+                  Keys are never issued without an expiry.
           example:
             name: "My Documentation Key"
             scopes: ["user:read", "resume:read"]
@@ -169,15 +178,46 @@ apiKeyCollection:
                 value:
                   success: false
                   statusCode: 400
-                  message: "Key name is required"
+                  message: "Validation failed"
+                  details:
+                    - path: "name"
+                      message: "Required"
+              pastExpiry:
+                summary: Expiry in the past
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "expiresAt"
+                      message: "expiresAt must be in the future"
               badScope:
                 summary: Unsupported scope
                 value:
                   success: false
                   statusCode: 400
                   message: "Unsupported API key scope(s): billing:read"
+              badRateLimit:
+                summary: Rate limit not a positive integer
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "rateLimit must be a positive integer"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "409":
+        description: The caller already has 10 active, unexpired keys. Revoke or delete one first.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 409
+              message: "You can have at most 10 active API keys. Revoke one you no longer use first."
+              details:
+                code: "API_KEY_LIMIT"
+                limit: 10
 
 apiKeyRotate:
   post:
@@ -194,7 +234,8 @@ apiKeyRotate:
       existing name, scopes, and rate limit. As with creation, the new secret is returned exactly
       once. The response also carries `rotatedFromId`, the id of the key that was replaced.
 
-      Only an active, unrevoked key can be rotated; anything else returns `404`.
+      Only an active, unexpired key can be rotated. A key that is revoked, already rotated or
+      expired answers `409`. An id that is not one of the caller's keys answers `404`.
     security:
       - LocalSession: []
       - ProdSession: []
@@ -214,25 +255,29 @@ apiKeyRotate:
             properties:
               name:
                 type: string
-                description: Replacement name. Carried over from the old key when omitted or blank.
+                maxLength: 100
+                description: Replacement name. Carried over from the old key when omitted or null.
               scopes:
                 type: array
-                description: Scopes for the replacement key. Carried over from the old key when omitted.
+                description: |
+                  Scopes for the replacement key. Carried over from the old key when omitted. A
+                  comma-separated string is also accepted.
                 items:
                   $ref: "../components/schemas.yaml#/ApiKeyScope"
               rateLimit:
                 type: integer
                 minimum: 1
-                maximum: 20
+                maximum: 600
                 description: |
-                  Requests allowed per 15-minute window. Carried over when omitted; values above 20
-                  are silently clamped down to 20.
+                  Requests allowed per 15-minute window. Carried over unchanged when omitted. A value
+                  you send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger.
               expiresAt:
                 type: string
                 format: date-time
                 description: |
-                  New expiry. Carried over from the old key when omitted, falling back to 365 days
-                  from now if the old key had none.
+                  New expiry: an ISO 8601 timestamp with a zone, in the future (`400` otherwise).
+                  Carried over from the old key when omitted, falling back to 365 days from now if
+                  the old key had none.
           example: {}
     responses:
       "201":
@@ -269,7 +314,7 @@ apiKeyRotate:
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "404":
-        description: No active key with this ID belongs to the caller.
+        description: No key with this ID belongs to the caller.
         content:
           application/json:
             schema:
@@ -277,7 +322,26 @@ apiKeyRotate:
             example:
               success: false
               statusCode: 404
-              message: "API key not found or inactive"
+              message: "API key not found"
+      "409":
+        description: The key is revoked, was already rotated, or has expired. Create a new key instead.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              inactive:
+                summary: Revoked or already rotated
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Key is no longer active"
+              expired:
+                summary: Expired
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Key has expired, create a new one"
 
 apiKeyRevoke:
   post:

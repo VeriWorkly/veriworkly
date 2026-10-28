@@ -12,15 +12,22 @@ ErrorResponse:
     statusCode:
       type: integer
     details:
-      type: array
-      nullable: true
-      items:
-        type: object
-        properties:
-          path:
-            type: string
-          message:
-            type: string
+      description: |
+        Left out when there is nothing to add. A validation failure (`400` "Validation failed")
+        sends an array of `{ path, message }`, one entry per rejected field. Other errors send an
+        object instead, such as `{ code }`, `{ currentUpdatedAt }` or the caller's quota. Each
+        operation's error responses say which.
+      oneOf:
+        - type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              message:
+                type: string
+        - type: object
+          additionalProperties: true
 
 UnauthorizedResponse:
   type: object
@@ -105,12 +112,10 @@ OffsetPaginationMeta:
           const: offset
           enum: [offset]
         nextOffset:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
           description: Null when `hasMore` is false.
         nextCursor:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Always null — these endpoints are offset-paginated, never cursor-paginated.
 
 ##################################################
@@ -205,11 +210,9 @@ UserObject:
     id:
       type: string
     name:
-      type: string
-      nullable: true
+      type: [string, "null"]
     username:
-      type: string
-      nullable: true
+      type: [string, "null"]
       description: |
         Null until the user claims one. Immutable once set, and required before any share link can
         be created.
@@ -316,8 +319,7 @@ UserSummary:
     id:
       type: string
     name:
-      type: string
-      nullable: true
+      type: [string, "null"]
     email:
       type: string
     createdAt:
@@ -331,22 +333,61 @@ UserSummary:
       type: integer
       description: Number of ShareLink records owned by the user.
 
+MasterProfileItemId:
+  type: string
+  minLength: 1
+  maxLength: 128
+  description: Client-generated id, unique within its list. Surrounding spaces are trimmed.
+
+MasterProfileMonthDate:
+  type: string
+  maxLength: 7
+  pattern: "^$|^\\d{4}-(0[1-9]|1[0-2])$"
+  description: "`YYYY-MM`, or an empty string when not known."
+
+MasterProfileYearDate:
+  type: string
+  maxLength: 4
+  pattern: "^$|^\\d{4}$"
+  description: "`YYYY`, or an empty string when not known."
+
+MasterProfileUrl:
+  type: string
+  maxLength: 2048
+  description: An `http://` or `https://` URL, or an empty string.
+
+MasterProfileEmail:
+  type: string
+  maxLength: 200
+  description: A valid email address, or an empty string when not provided.
+
+MasterProfilePhone:
+  type: string
+  maxLength: 24
+  description: |
+    Empty when not provided. Otherwise either a number that starts with `+` and the country code
+    and is valid for that country (`"+14155550123"`, `"+1 (415) 555-0123"`), or 7 to 15 digits
+    with nothing else (`"9876543210"`, kept for numbers saved before country codes were
+    collected). `"(987) 654-3210"` is rejected. The value is stored as sent.
+
 MasterProfileLink:
   type: object
+  required: [id, type, label, url]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     type:
       type: string
       enum: [github, linkedin, dribbble, twitter, portfolio, behance, medium, youtube, custom]
     label:
       type: string
+      maxLength: 80
     url:
-      type: string
+      $ref: "#/MasterProfileUrl"
 
 MasterProfileBasics:
   type: object
-  description: All properties are required when writing — this object is validated strictly.
+  description: All properties are required.
   required:
     - fullName
     - role
@@ -368,16 +409,9 @@ MasterProfileBasics:
       type: string
       maxLength: 250
     email:
-      type: string
-      format: email
-      description: Must be a valid email address. An empty string is rejected.
+      $ref: "#/MasterProfileEmail"
     phone:
-      type: string
-      maxLength: 24
-      description: |
-        Must contain exactly 10 digits once non-digit characters are ignored, so `"9876543210"` and
-        `"(987) 654-3210"` both pass. The value is stored as sent — it is not reformatted — and an
-        empty string is rejected.
+      $ref: "#/MasterProfilePhone"
     location:
       type: string
       maxLength: 120
@@ -390,247 +424,313 @@ MasterProfileBasics:
 
 MasterProfileExperienceItem:
   type: object
+  required: [id, company, role, location, startDate, endDate, current, summary, highlights]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     company:
       type: string
+      maxLength: 160
     role:
       type: string
+      maxLength: 160
     location:
       type: string
+      maxLength: 120
     startDate:
-      type: string
-      description: YYYY-MM
+      $ref: "#/MasterProfileMonthDate"
     endDate:
-      type: string
-      description: YYYY-MM
+      $ref: "#/MasterProfileMonthDate"
     current:
       type: boolean
     summary:
       type: string
+      maxLength: 5000
     highlights:
       type: array
+      maxItems: 50
       items:
         type: string
+        maxLength: 400
 
 MasterProfileEducationItem:
   type: object
+  required: [id, school, degree, field, startDate, endDate, current, summary]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     school:
       type: string
+      maxLength: 160
     degree:
       type: string
+      maxLength: 160
     field:
       type: string
+      maxLength: 160
     startDate:
-      type: string
-      description: YYYY
+      $ref: "#/MasterProfileYearDate"
     endDate:
-      type: string
-      description: YYYY
+      $ref: "#/MasterProfileYearDate"
     current:
       type: boolean
     summary:
       type: string
+      maxLength: 5000
 
 MasterProfileProjectItem:
   type: object
+  required: [id, name, role, link, summary, highlights]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     name:
       type: string
+      maxLength: 160
     role:
       type: string
+      maxLength: 160
     link:
-      type: string
+      $ref: "#/MasterProfileUrl"
     linkLabel:
       type: string
+      maxLength: 80
       default: Link
     showLinkAsText:
       type: boolean
       default: true
     summary:
       type: string
+      maxLength: 5000
     highlights:
       type: array
+      maxItems: 50
       items:
         type: string
+        maxLength: 400
     skills:
       type: array
+      maxItems: 100
+      default: []
       items:
         type: string
+        maxLength: 80
 
 MasterProfileSkillItem:
   type: object
+  required: [id, name, keywords]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     name:
       type: string
+      maxLength: 120
     keywords:
       type: array
+      maxItems: 100
       items:
         type: string
+        maxLength: 80
 
 MasterProfileLanguageItem:
   type: object
+  required: [id, language, fluency]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     language:
       type: string
+      maxLength: 80
     fluency:
       type: string
       enum: [elementary, limited, professional, fluent, native]
 
 MasterProfileInterestItem:
   type: object
+  required: [id, name, keywords]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     name:
       type: string
+      maxLength: 120
     keywords:
       type: array
+      maxItems: 100
       items:
         type: string
+        maxLength: 80
 
 MasterProfileAwardItem:
   type: object
+  required: [id, title, awarder, date, description, showLink]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     title:
       type: string
+      maxLength: 200
     awarder:
       type: string
+      maxLength: 200
     date:
-      type: string
-      description: YYYY-MM
+      $ref: "#/MasterProfileMonthDate"
     website:
-      type: string
+      $ref: "#/MasterProfileUrl"
     description:
       type: string
+      maxLength: 5000
     showLink:
       type: boolean
 
 MasterProfileCertificateItem:
   type: object
+  required: [id, title, issuer, date, description, showLink]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     title:
       type: string
+      maxLength: 200
     issuer:
       type: string
+      maxLength: 200
     date:
-      type: string
-      description: YYYY-MM
+      $ref: "#/MasterProfileMonthDate"
     website:
+      $ref: "#/MasterProfileUrl"
+    referenceId:
       type: string
+      maxLength: 200
+      description: The credential id printed on the certificate.
     description:
       type: string
+      maxLength: 5000
     showLink:
       type: boolean
 
 MasterProfilePublicationItem:
   type: object
+  required: [id, title, publisher, date, description, showLink]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     title:
       type: string
+      maxLength: 200
     publisher:
       type: string
+      maxLength: 200
     date:
-      type: string
-      description: YYYY-MM
+      $ref: "#/MasterProfileMonthDate"
     website:
-      type: string
+      $ref: "#/MasterProfileUrl"
     description:
       type: string
+      maxLength: 5000
     showLink:
       type: boolean
 
 MasterProfileVolunteerItem:
   type: object
+  required: [id, organization, role, startDate, endDate, current, location, summary]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     organization:
       type: string
+      maxLength: 200
     role:
       type: string
+      maxLength: 160
     startDate:
-      type: string
+      $ref: "#/MasterProfileMonthDate"
     endDate:
-      type: string
+      $ref: "#/MasterProfileMonthDate"
     current:
       type: boolean
     location:
       type: string
+      maxLength: 120
     summary:
       type: string
+      maxLength: 5000
 
 MasterProfileReferenceItem:
   type: object
+  required: [id, name, title, organization, relationship]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     name:
       type: string
+      maxLength: 160
     title:
       type: string
+      maxLength: 160
     organization:
       type: string
+      maxLength: 200
     email:
-      type: string
+      $ref: "#/MasterProfileEmail"
     phone:
-      type: string
+      $ref: "#/MasterProfilePhone"
     relationship:
       type: string
+      maxLength: 200
 
 MasterProfileAchievementItem:
   type: object
+  required: [id, title, description]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     title:
       type: string
+      maxLength: 200
     description:
       type: string
+      maxLength: 5000
 
 MasterProfileAdditionalItem:
   type: object
+  required: [id, name, issuer, date, link, referenceId, description, details]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     name:
       type: string
+      maxLength: 200
     issuer:
       type: string
+      maxLength: 200
     date:
       type: string
+      maxLength: 40
+      description: Free text. Not checked against a date format.
     link:
       type: string
+      maxLength: 2048
+      description: Free text. Not checked as a URL.
     referenceId:
       type: string
+      maxLength: 200
     description:
       type: string
+      maxLength: 5000
     details:
       type: array
+      maxItems: 50
       items:
         type: string
+        maxLength: 500
 
 MasterProfileCustomSection:
   type: object
+  required: [id, kind, title, items]
   properties:
     id:
-      type: string
+      $ref: "#/MasterProfileItemId"
     kind:
       type: string
       enum:
@@ -647,8 +747,10 @@ MasterProfileCustomSection:
         ]
     title:
       type: string
+      maxLength: 120
     items:
       type: array
+      maxItems: 200
       items:
         $ref: "#/MasterProfileAdditionalItem"
     editableTitle:
@@ -656,6 +758,7 @@ MasterProfileCustomSection:
 
 MasterProfileSectionItem:
   type: object
+  required: [id, label, visible, order]
   properties:
     id:
       type: string
@@ -680,38 +783,76 @@ MasterProfileSectionItem:
         ]
     label:
       type: string
+      maxLength: 80
     visible:
       type: boolean
     order:
       type: integer
+      minimum: 0
+      maximum: 1000
+    customSectionId:
+      type: string
+      maxLength: 128
+      description: The id of the custom section this entry orders and shows or hides. Set only when `id` is `custom`.
 
 MasterProfileCustomization:
   type: object
+  description: All twelve properties are required.
+  required:
+    - accentColor
+    - textColor
+    - mutedTextColor
+    - pageBackgroundColor
+    - sectionBackgroundColor
+    - borderColor
+    - sectionHeadingColor
+    - fontFamily
+    - sectionSpacing
+    - pagePadding
+    - bodyLineHeight
+    - headingLineHeight
   properties:
     accentColor:
       type: string
+      maxLength: 32
     textColor:
       type: string
+      maxLength: 32
     mutedTextColor:
       type: string
+      maxLength: 32
     pageBackgroundColor:
       type: string
+      maxLength: 32
     sectionBackgroundColor:
       type: string
+      maxLength: 32
     borderColor:
       type: string
+      maxLength: 32
     sectionHeadingColor:
       type: string
+      maxLength: 32
     fontFamily:
       type: string
+      minLength: 1
+      maxLength: 32
     sectionSpacing:
       type: number
+      minimum: 0
+      maximum: 120
     pagePadding:
       type: number
+      minimum: 0
+      maximum: 120
     bodyLineHeight:
       type: number
+      minimum: 1
+      maximum: 3
     headingLineHeight:
       type: number
+      minimum: 1
+      maximum: 3
 
 MasterProfileContent:
   type: object
@@ -720,9 +861,9 @@ MasterProfileContent:
 
     On `PUT /profiles/master`, `templateId`, `basics`, `links`, `summary` and `customization` are
     required. An omitted array is stored as `[]`, and keys not listed here are dropped rather than
-    rejected. Every array item carries a client-generated `id`. Field limits (string lengths, 200
-    items per array, 10-digit phone numbers, `YYYY-MM` / `YYYY` date formats) are enforced
-    server-side.
+    rejected. Inside an item, every property is required unless its schema marks it optional.
+    Every array item carries a client-generated `id`. Each top-level array holds at most 200
+    items. A payload larger than 1 MB once serialized is rejected with `413`.
   required:
     - templateId
     - basics
@@ -737,74 +878,107 @@ MasterProfileContent:
       description: Version of the profile content format. Defaults to the current version when omitted.
     templateId:
       type: string
+      minLength: 1
+      maxLength: 64
     basics:
       $ref: "#/MasterProfileBasics"
     links:
       type: object
+      required: [displayMode, items]
       properties:
         displayMode:
           type: string
           enum: [icon, url, icon-username]
         items:
           type: array
+          maxItems: 50
           items:
             $ref: "#/MasterProfileLink"
     summary:
       type: string
+      maxLength: 8000
     experience:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileExperienceItem"
     education:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileEducationItem"
     projects:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileProjectItem"
     skills:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileSkillItem"
     languages:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileLanguageItem"
     interests:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileInterestItem"
     awards:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileAwardItem"
     certificates:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileCertificateItem"
     publications:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfilePublicationItem"
     volunteer:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileVolunteerItem"
     references:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileReferenceItem"
     achievements:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileAchievementItem"
     customSections:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileCustomSection"
     sections:
       type: array
+      maxItems: 200
+      default: []
       items:
         $ref: "#/MasterProfileSectionItem"
     customization:
@@ -837,8 +1011,10 @@ MasterProfileUpdateRequest:
     expectedUpdatedAt:
       type: string
       format: date-time
-      nullable: true
-      description: Pass the `updatedAt` value from your last read. Omit only when creating the profile for the first time.
+      description: |
+        The `updatedAt` from your last read. Leave it out only when the profile has never been
+        saved; a save over an existing profile without it is rejected with `409`. `null` is
+        rejected with `400`.
     profile:
       $ref: "#/MasterProfileContent"
 
@@ -859,19 +1035,27 @@ MasterProfileUpdateResponse:
 
 ProfileImportQuota:
   type: object
+  required: [isPaid, unlimited, remaining, limit, resetsInSeconds, connectedUsername]
   properties:
     isPaid:
       type: boolean
+      description: The caller has any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass. A credit pack does not count.
+    unlimited:
+      type: boolean
+      description: True for a paid caller's LinkedIn quota. `remaining` and `limit` are then null.
     remaining:
-      type: integer
+      type: [integer, "null"]
     limit:
-      type: integer
+      type: [integer, "null"]
+      description: 1 for a free caller (a day for GitHub, 30 days for LinkedIn), 50 a day for a paid caller's GitHub imports, null when unlimited.
     resetsInSeconds:
       type: integer
     connectedUsername:
-      type: string
-      nullable: true
-      description: The GitHub login connected via OAuth, when known (GitHub quota only).
+      type: [string, "null"]
+      description: The GitHub login of the linked account, read from GitHub for a free caller. Null for a paid caller, for LinkedIn, or when GitHub cannot be reached.
+    hasGithubAccount:
+      type: boolean
+      description: GitHub quota only. A GitHub login is linked to the account, whatever GitHub says about its token.
 
 ProfileImportQuotaResponse:
   type: object
@@ -962,8 +1146,7 @@ RoadmapFeature:
       type: string
       enum: [todo, in-progress, done]
     eta:
-      type: string
-      nullable: true
+      type: [string, "null"]
     tags:
       type: array
       items:
@@ -972,22 +1155,18 @@ RoadmapFeature:
       type: string
       format: date-time
     startedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     completedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     completedQuarter:
-      type: string
-      nullable: true
+      type: [string, "null"]
     updatedAt:
       type: string
       format: date-time
     timeline:
-      type: string
-      nullable: true
+      type: [string, "null"]
 
 RoadmapListData:
   allOf:
@@ -1042,14 +1221,11 @@ RoadmapFeatureDetail:
     - type: object
       properties:
         fullDescription:
-          type: string
-          nullable: true
+          type: [string, "null"]
         whyItMatters:
-          type: string
-          nullable: true
+          type: [string, "null"]
         details:
-          type: object
-          nullable: true
+          type: [object, "null"]
         interactions:
           type: array
           items:
@@ -1060,8 +1236,7 @@ RoadmapFeatureDetail:
               value:
                 type: integer
               comment:
-                type: string
-                nullable: true
+                type: [string, "null"]
               createdAt:
                 type: string
                 format: date-time
@@ -1071,8 +1246,7 @@ RoadmapFeatureDetail:
                   id:
                     type: string
                   name:
-                    type: string
-                    nullable: true
+                    type: [string, "null"]
 
 RoadmapFeatureResponse:
   type: object
@@ -1102,8 +1276,7 @@ ChangelogPrRef:
       type: string
       format: uri
     author:
-      type: object
-      nullable: true
+      type: [object, "null"]
       properties:
         login:
           type: string
@@ -1126,8 +1299,7 @@ ChangelogEntry:
     title:
       type: string
     summary:
-      type: string
-      nullable: true
+      type: [string, "null"]
     type:
       type: string
       enum: [major, minor, patch]
@@ -1135,9 +1307,8 @@ ChangelogEntry:
       type: string
       format: date-time
     githubUrl:
-      type: string
+      type: [string, "null"]
       format: uri
-      nullable: true
     added:
       type: array
       items:
@@ -1163,8 +1334,7 @@ ChangelogEntry:
       items:
         type: string
     prRefs:
-      type: array
-      nullable: true
+      type: [array, "null"]
       items:
         $ref: "#/ChangelogPrRef"
 
@@ -1213,8 +1383,7 @@ ChangelogStats:
     patch:
       type: integer
     latest:
-      type: object
-      nullable: true
+      type: [object, "null"]
       description: The most recently published entry, or `null` when the changelog is empty.
       properties:
         version:
@@ -1426,9 +1595,8 @@ ApiKeyListItem:
       type: string
       format: date-time
     lastUsed:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
       description: Written at most once every 5 minutes per key, so it lags real usage slightly.
 
 ApiKeySecret:
@@ -1477,14 +1645,12 @@ ApiKeySecret:
       items:
         $ref: "#/ApiKeyScope"
     expiresAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
       description: Always set. Defaults to 365 days from creation when not supplied.
     revokedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     createdAt:
       type: string
       format: date-time
@@ -1492,9 +1658,8 @@ ApiKeySecret:
       type: string
       format: date-time
     lastUsed:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     rotatedFromId:
       type: string
       description: Only present on a rotate response — the id of the key this one replaced.
@@ -1567,13 +1732,11 @@ ApiKeyDetail:
       items:
         $ref: "#/ApiKeyScope"
     expiresAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     revokedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     createdAt:
       type: string
       format: date-time
@@ -1581,9 +1744,8 @@ ApiKeyDetail:
       type: string
       format: date-time
     lastUsed:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
       description: Written at most once every 5 minutes per key, so it lags real usage slightly.
 
 ApiKeyDetailResponse:
@@ -1639,8 +1801,7 @@ Document:
       additionalProperties: true
       description: Document-type-specific JSON payload (resume schema, portfolio schema, etc).
     metadata:
-      type: object
-      nullable: true
+      type: [object, "null"]
       additionalProperties: true
     templateId:
       type: string
@@ -1654,9 +1815,8 @@ Document:
       type: string
       enum: [PRIVATE, UNLISTED, PUBLIC]
     lastSyncedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     createdAt:
       type: string
       format: date-time
@@ -1664,9 +1824,8 @@ Document:
       type: string
       format: date-time
     deletedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
       description: Set by soft delete. Documents with a non-null deletedAt are excluded from list/get.
 
 DocumentListResponse:
@@ -1705,8 +1864,7 @@ DocumentListResponse:
             type: string
             format: date-time
     nextCursor:
-      type: string
-      nullable: true
+      type: [string, "null"]
       description: Send as `cursor` for the next page; `null` on the last page.
     total:
       type: integer
@@ -1780,8 +1938,7 @@ DocumentSummary:
       additionalProperties: true
       description: Present only when `includeContent=true`.
     metadata:
-      type: object
-      nullable: true
+      type: [object, "null"]
       additionalProperties: true
     templateId:
       type: string
@@ -1791,9 +1948,8 @@ DocumentSummary:
       type: string
       enum: [PRIVATE, UNLISTED, PUBLIC]
     lastSyncedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     createdAt:
       type: string
       format: date-time
@@ -1868,9 +2024,8 @@ DocumentUpdateResult:
       type: string
       enum: [PRIVATE, UNLISTED, PUBLIC]
     lastSyncedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     createdAt:
       type: string
       format: date-time
@@ -1878,9 +2033,8 @@ DocumentUpdateResult:
       type: string
       format: date-time
     deletedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
 
 DocumentCreateRequest:
   type: object
@@ -1888,18 +2042,31 @@ DocumentCreateRequest:
   properties:
     id:
       type: string
-      description: Optional client-generated id. If a document with this id already exists for the caller, it is returned as-is (idempotent create).
+      pattern: "^[A-Za-z0-9_-]{1,64}$"
+      description: |
+        Optional client-generated id: 1 to 64 letters, digits, `-` or `_`. If the caller already
+        has a live document with this id, it is returned as-is (idempotent create). An id another
+        account uses is `409` "Document ID already in use"; one of the caller's documents in the
+        trash is `409` "Document was deleted".
     type:
       type: string
       enum: [RESUME, COVER_LETTER, PORTFOLIO, LINK_IN_BIO]
     title:
       type: string
+      minLength: 1
+      maxLength: 255
     slug:
       type: string
+      minLength: 1
+      maxLength: 255
+      description: Normalised to a URL slug before it is stored.
     tags:
       type: array
+      maxItems: 20
       items:
         type: string
+        minLength: 1
+        maxLength: 40
     content:
       type: object
       additionalProperties: true
@@ -1909,6 +2076,8 @@ DocumentCreateRequest:
       additionalProperties: true
     templateId:
       type: string
+      minLength: 1
+      maxLength: 64
     visibility:
       type: string
       enum: [PRIVATE, UNLISTED, PUBLIC]
@@ -1919,15 +2088,23 @@ DocumentUpdateRequest:
   properties:
     title:
       type: string
+      minLength: 1
+      maxLength: 255
     slug:
       type: string
+      minLength: 1
+      maxLength: 255
+      description: Normalised to a URL slug before it is stored.
     updateShareSlug:
       type: boolean
       description: When true and an active share link exists, its slug is updated to track the new document slug.
     tags:
       type: array
+      maxItems: 20
       items:
         type: string
+        minLength: 1
+        maxLength: 40
     content:
       type: object
       additionalProperties: true
@@ -1936,25 +2113,37 @@ DocumentUpdateRequest:
       additionalProperties: true
     templateId:
       type: string
+      minLength: 1
+      maxLength: 64
     visibility:
       type: string
       enum: [PRIVATE, UNLISTED, PUBLIC]
     revision:
       type: integer
+      minimum: 1
       description: Must match the document's current revision. Mismatch returns 409.
 
 ##################################################
 # ATS SCHEMA
 ##################################################
 
+AtsCategory:
+  type: string
+  enum: [parse, contact, structure, content, format, writing, integrity]
+  description: |
+    The rule category. Integrity checks (hidden text, instructions aimed at an AI screener, a
+    copied posting, keyword stuffing) deduct their impact from the score in points rather than
+    weighing in its denominator.
+
 AtsRuleResult:
   type: object
+  required: [id, category, severity, passed, evidence, scoreImpact, fix]
   properties:
     id:
       type: string
+      example: ats-v2.writing.tense
     category:
-      type: string
-      description: "One of: integrity, parse, contact, structure, content, format. Integrity checks (hidden text, instructions aimed at an AI screener, a copied posting, keyword stuffing) deduct their impact from the score in points rather than weighing in its denominator."
+      $ref: "#/AtsCategory"
     severity:
       type: string
       enum: [info, warning, error]
@@ -1962,28 +2151,96 @@ AtsRuleResult:
       type: boolean
     evidence:
       type: string
+      description: What was found, quoted where it can be.
     scoreImpact:
-      type: integer
+      type: number
+      description: The weight the rule cost here (for an integrity rule, the points deducted). 0 when passed.
     fix:
       type: string
+
+AtsKeywordGroups:
+  type: object
+  required: [hard, soft]
+  description: Posting terms by kind, each group at most 12. Soft skills weigh less in `jobMatchScore`.
+  properties:
+    hard:
+      type: array
+      maxItems: 12
+      items: { type: string }
+    soft:
+      type: array
+      maxItems: 12
+      items: { type: string }
+
+AtsAdvice:
+  type: object
+  required: [id, kind, message]
+  description: |
+    Something worth knowing that is not scored: the file (name, size, password, tracked
+    changes), details that can invite age bias where the region asks, and notes about a named
+    applicant tracking system. Never part of the score, the categories, the failed checks or the
+    fixes.
+  properties:
+    id:
+      type: string
+      example: file.name
+    kind:
+      type: string
+      enum: [file, age, ats]
+    message:
+      type: string
+    evidence:
+      type: string
+      description: What was found, quoted. Absent when there is nothing to quote.
+    fix:
+      type: string
+    source:
+      type: string
+      description: For an `ats` note, the vendor's public page that documents it.
 
 AtsReport:
   description: |
     Deterministic, rule-based ATS report. Computed entirely server-side without calling any AI
-    provider. Shape depends on the caller's auth state: anonymous requests to `/ats/check` get
-    `AtsRestrictedReport` (score + verdict only); any authenticated user (free or subscriber)
-    gets `AtsFullReport`. `/ats/analyze` requires auth and always returns `AtsFullReport`.
+    model. Shape depends on the caller's auth state: anonymous requests to `/ats/check` get
+    `AtsRestrictedReport` (scores, verdict and counts); any signed-in caller (free or paid) gets
+    `AtsFullReport`. `/ats/analyze` requires a signed-in caller and always returns
+    `AtsFullReport`.
   oneOf:
     - $ref: "#/AtsFullReport"
     - $ref: "#/AtsRestrictedReport"
 
 AtsFullReport:
   type: object
-  description: Full deterministic report — every rule's evidence, all matched/missing keywords, all prioritized fixes. Requires an authenticated caller.
+  description: Full deterministic report — every rule's evidence, all matched/missing keywords, all prioritized fixes. Requires a signed-in caller.
+  required:
+    - version
+    - restricted
+    - verdict
+    - readinessScore
+    - jobMatchScore
+    - matchedKeywords
+    - missingKeywords
+    - matchedKeywordGroups
+    - missingKeywordGroups
+    - parsingWarnings
+    - strengths
+    - failedChecks
+    - prioritizedFixes
+    - rules
+    - categories
+    - checksPassed
+    - checksTotal
+    - wordCount
+    - parsed
+    - locale
+    - engine
+    - requirements
+    - advice
   properties:
     version:
       type: string
-      enum: [ats-v2]
+      description: The scoring policy's declared version.
+      example: ats-v2
     restricted:
       type: boolean
       enum: [false]
@@ -1993,18 +2250,37 @@ AtsFullReport:
     readinessScore:
       type: integer
     jobMatchScore:
-      type: integer
-      nullable: true
+      type: [integer, "null"]
+      description: Null without a job description.
     matchedKeywords:
       type: array
+      maxItems: 12
+      description: Posting terms the resume has, hard skills first, then soft.
       items:
         type: string
     missingKeywords:
       type: array
+      maxItems: 12
+      description: Posting terms the resume lacks, hard skills first, then soft.
       items:
         type: string
+    matchedKeywordGroups:
+      $ref: "#/AtsKeywordGroups"
+    missingKeywordGroups:
+      $ref: "#/AtsKeywordGroups"
+    keywordCounts:
+      type: object
+      description: How many posting terms the resume has and lacks, past the 12 the lists show.
+      required: [matched, missing]
+      properties:
+        matched: { type: integer }
+        missing: { type: integer }
     parsingWarnings:
       type: array
+      description: |
+        Every failed check that stops an ATS reading the document, then a note when the resume
+        was cut at 50,000 characters, when the job posting was cut at 20,000 characters, and
+        when the posting lists more than the 25 requirements that are judged.
       items:
         type: string
     strengths:
@@ -2040,26 +2316,32 @@ AtsFullReport:
       $ref: "#/AtsParsedResume"
     locale:
       type: object
+      required: [languages, region, unsupported]
       description: |
-        What the resume (and posting) were read as: the language packs detected beyond English,
-        and the region applied (from a +country-code phone number, else the language's usual
-        country). Regions set phone and date conventions and weigh country-specific checks
-        such as a stated date of birth or a photo.
+        What the resume (and posting) were read as: the language packs used beyond the base
+        vocabulary, and the region applied (from a +country-code phone number, else the
+        language's usual country). Regions set phone and date conventions and weigh
+        country-specific checks such as a stated date of birth or a photo.
       properties:
         languages:
           type: array
           items: { type: string, example: de }
         region:
-          type: string
-          nullable: true
+          type: [string, "null"]
           example: DE
+        unsupported:
+          type: [string, "null"]
+          description: |
+            The language the resume is written in when no pack reads it: an ISO 639 code
+            (`it`), a script (`Cyrillic`), or `und`. A parsing warning says so. Null otherwise.
     engine:
       type: object
+      required: [version, policy]
       description: |
         What produced the report. The same input, reference date, engine version and policy
         fingerprint always give the same report.
       properties:
-        version: { type: string, example: 0.1.0 }
+        version: { type: string, example: 0.21.0 }
         policy:
           type: string
           description: The policy's declared version and a hash of its content as applied, locale packs included.
@@ -2070,46 +2352,55 @@ AtsFullReport:
       description: The job posting's requirements, each judged against the resume. Empty without a job description.
       items:
         $ref: "#/AtsRequirement"
+    advice:
+      type: array
+      description: Unscored advice. See `AtsAdvice`.
+      items:
+        $ref: "#/AtsAdvice"
 
 AtsRequirement:
   type: object
+  required: [text, importance, kind, status, terms, evidence]
   description: |
     One requirement of the posting, as a per-qualification screener grades it. `unverifiable`
     means the resume cannot settle it — the right to work, a clearance — unless it states it.
   properties:
-    text: { type: string }
+    text: { type: string, description: The requirement as the posting wrote it. }
     importance: { type: string, enum: [required, preferred] }
     kind:
       type: string
-      enum: [skills, experience, education, authorization, clearance, language]
+      enum: [skills, experience, education, authorization, clearance, language, seniority]
+      description: "`seniority` is the level named in the job title, such as Senior. It comes first when there is one."
     status: { type: string, enum: [met, partial, missing, unverifiable] }
     terms:
       type: array
+      description: What the requirement names, and whether the resume has each. Skills and languages.
       items:
         type: object
+        required: [term, found]
         properties:
           term: { type: string }
           found: { type: boolean }
     evidence:
       type: array
       maxItems: 2
-      description: Resume lines that show it, work history first.
+      description: Resume lines that show it, quoted. Work history first, a skills list last.
       items: { type: string }
     detail:
       type: string
-      description: For years and degrees, what was compared.
+      description: For years, degrees, language levels and clearances, what was compared.
       example: 6 years in the work history, 5 asked
 
 AtsCategoryScore:
   type: object
+  required: [category, score, passed, total, lost, possible]
   description: |
     Per-area rollup of the deterministic rules, saying which part of the resume is losing points
-    without revealing which rule fired or what it weighs. Authenticated callers only — the rollup
+    without revealing which rule fired or what it weighs. Signed-in callers only — the rollup
     carries most of the diagnostic value, so it is not part of the anonymous shape.
   properties:
     category:
-      type: string
-      description: Rule category key, e.g. `parse`, `contact`, `structure`, `content`, `format`.
+      $ref: "#/AtsCategory"
     score:
       type: integer
       description: Percentage of this category's own weight the resume kept (0-100).
@@ -2120,14 +2411,29 @@ AtsCategoryScore:
       type: integer
       description: Rules evaluated in this category.
     lost:
-      type: integer
+      type: number
       description: Points this category actually cost.
     possible:
-      type: integer
+      type: number
       description: Worst-case points this category could have cost.
 
 AtsRestrictedReport:
   type: object
+  required:
+    - version
+    - restricted
+    - readinessScore
+    - jobMatchScore
+    - verdict
+    - topFix
+    - primaryWarning
+    - checksPassed
+    - checksTotal
+    - matchedKeywordCount
+    - missingKeywordCount
+    - parsedRoleCount
+    - remainingFixCount
+    - advice
   description: |
     Returned instead of AtsFullReport when /ats/check is called anonymously. A diagnosis without
     the prescription: scores, a verdict, the single most serious problem and the single
@@ -2137,25 +2443,22 @@ AtsRestrictedReport:
   properties:
     version:
       type: string
-      enum: [ats-v2]
+      example: ats-v2
     restricted:
       type: boolean
       enum: [true]
     readinessScore:
       type: integer
     jobMatchScore:
-      type: integer
-      nullable: true
+      type: [integer, "null"]
     verdict:
       type: string
       enum: [strong, needs-work, weak]
     topFix:
-      type: string
-      nullable: true
-      description: The single highest-impact fix, in full. The rest of the list requires auth.
+      type: [string, "null"]
+      description: The single highest-impact fix, in full. The rest of the list requires a signed-in caller.
     primaryWarning:
-      type: string
-      nullable: true
+      type: [string, "null"]
       description: |
         The most serious parsing or formatting failure, phrased as the risk it creates. Structural
         failures outrank heavier content ones here because a candidate cannot self-diagnose them:
@@ -2167,20 +2470,29 @@ AtsRestrictedReport:
       type: integer
     matchedKeywordCount:
       type: integer
-      description: How many job-description terms the resume covers. The terms themselves require auth.
+      description: How many job-description terms the resume covers. The terms themselves require a signed-in caller.
     missingKeywordCount:
       type: integer
-      description: How many job-description terms the resume is missing. The terms themselves require auth.
+      description: How many job-description terms the resume is missing. The terms themselves require a signed-in caller.
     parsedRoleCount:
       type: integer
-      description: How many work-history rows were recovered. The rows themselves require auth.
+      description: How many work-history rows were recovered. The rows themselves require a signed-in caller.
     remainingFixCount:
       type: integer
       description: Prioritised fixes beyond the one shown.
+    advice:
+      type: array
+      description: Each piece of advice as its id, kind and message. The evidence, fix and source stay in the full report.
+      items:
+        type: object
+        required: [id, kind, message]
+        properties:
+          id: { type: string }
+          kind: { type: string, enum: [file, age, ats] }
+          message: { type: string }
 
 AtsAiInsights:
-  type: object
-  nullable: true
+  type: [object, "null"]
   description: Null when the AI step was skipped (e.g. `/check`, which never calls AI).
   properties:
     explanation:
@@ -2221,9 +2533,19 @@ AtsQuotaSummary:
       format: date-time
     canConvertResume:
       type: boolean
-      description: True only for active AI Credits / Bundle subscribers — gates access to /ats/convert-resume.
+      description: |
+        True when the caller's credit balance (from any source) covers a resume conversion
+        (`/ats/convert-resume`). False when `pricing` is null.
+    canRepair:
+      type: boolean
+      description: |
+        True when this deployment offers the AI parse repair (`repairParse` on `/ats/analyze`)
+        and the caller's credit balance covers it. Offer repair only when this is true.
     pricing:
-      type: object
+      type: [object, "null"]
+      description: |
+        Credit prices of the ATS AI actions. Null when the server could not load its ATS AI
+        settings; conversion and repair are then off.
       properties:
         analysisCredits:
           type: object
@@ -2242,8 +2564,7 @@ AtsQuotaSummary:
         resumeConversionCredits:
           type: integer
         parseRepairCredits:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
           description: |
             Credits charged by the optional AI parse repair (`repairParse` on `/ats/analyze`),
             on top of the analysis. `null` when this deployment does not offer repair.
@@ -2271,6 +2592,19 @@ AtsQuotaResponse:
 
 AtsParsedResume:
   type: object
+  required:
+    - name
+    - email
+    - phone
+    - links
+    - roles
+    - education
+    - skills
+    - certifications
+    - spokenLanguages
+    - monthsOfExperience
+    - highestIsced
+    - provenance
   description: |
     The fields an applicant tracking system recovers from the document — the "what the ATS sees"
     view. Produced by the same deterministic pass as the scores, so it never costs a second scan.
@@ -2288,6 +2622,7 @@ AtsParsedResume:
       description: One row per job, in the shape an ATS stores it.
       items:
         type: object
+        required: [title, employer, start, end, current]
         properties:
           title: { type: string }
           employer: { type: string }
@@ -2300,40 +2635,56 @@ AtsParsedResume:
       type: array
       items:
         type: object
+        required: [school, credential, isced, end]
         properties:
           school: { type: string }
           credential: { type: string }
           isced:
-            type: integer
-            nullable: true
-            enum: [2, 3, 4, 5, 6, 7, 8]
+            type: [integer, "null"]
+            enum: [2, 3, 4, 5, 6, 7, 8, null]
             description: The ISCED 2011 level of the credential — 3 upper secondary (Abitur, Class XII), 6 bachelor's or equivalent, 7 master's or equivalent (a German Diplom), 8 doctoral.
-          level:
-            type: string
-            nullable: true
-            deprecated: true
-            enum: [diploma, associate, bachelor, master, doctorate]
-            description: Derived from isced (2–4 read as diploma). Kept for one minor version.
           end:
             $ref: "#/AtsParsedDate"
     skills:
       type: array
       items: { type: string }
+    certifications:
+      type: array
+      description: Certifications and licences, from their own section or a "Certifications:" line.
+      items:
+        type: object
+        required: [name, issuer, date, expires]
+        properties:
+          name: { type: string }
+          issuer: { type: string }
+          date:
+            $ref: "#/AtsParsedDate"
+          expires:
+            $ref: "#/AtsParsedDate"
+    spokenLanguages:
+      type: array
+      description: Languages spoken, each once. Programming languages stay in `skills`.
+      items:
+        type: object
+        required: [language, level, cefr]
+        properties:
+          language:
+            type: string
+            description: As written, such as `Deutsch`.
+          level:
+            type: string
+            description: The level as written, such as `native`. Empty when none was given.
+          cefr:
+            type: [string, "null"]
+            enum: [A1, A2, B1, B2, C1, C2, null]
+            description: The CEFR level, or null when no known level word was given.
     monthsOfExperience:
-      type: integer
-      nullable: true
+      type: [integer, "null"]
       description: Calendar months covered by at least one role, so overlapping jobs are counted once.
     highestIsced:
-      type: integer
-      nullable: true
-      enum: [2, 3, 4, 5, 6, 7, 8]
+      type: [integer, "null"]
+      enum: [2, 3, 4, 5, 6, 7, 8, null]
       description: The highest ISCED 2011 level among the education entries.
-    highestDegree:
-      type: string
-      nullable: true
-      deprecated: true
-      enum: [diploma, associate, bachelor, master, doctorate]
-      description: Derived from highestIsced. Kept for one minor version.
     provenance:
       type: object
       description: |
@@ -2341,7 +2692,7 @@ AtsParsedResume:
         parser — what an ATS would see. `structured` was taken from the typed fields of an
         `AtsResumeDocument` or a JSON Resume. `ai` was recovered by the optional parse repair and
         grounded against the text. `none` means nothing was recovered.
-      required: [name, email, phone, roles, education, skills]
+      required: [name, email, phone, roles, education, skills, certifications, spokenLanguages]
       properties:
         name: { $ref: "#/AtsProvenance" }
         email: { $ref: "#/AtsProvenance" }
@@ -2349,6 +2700,12 @@ AtsParsedResume:
         roles: { $ref: "#/AtsProvenance" }
         education: { $ref: "#/AtsProvenance" }
         skills: { $ref: "#/AtsProvenance" }
+        certifications: { $ref: "#/AtsProvenance" }
+        spokenLanguages: { $ref: "#/AtsProvenance" }
+
+AtsParsedField:
+  type: string
+  enum: [name, email, phone, roles, education, skills, certifications, spokenLanguages]
 
 AtsProvenance:
   type: string
@@ -2424,13 +2781,11 @@ AtsResumeDocument:
               additionalProperties: true
 
 AtsParsedDate:
-  type: object
-  nullable: true
+  type: [object, "null"]
   properties:
     year: { type: integer }
     month:
-      type: integer
-      nullable: true
+      type: [integer, "null"]
       description: Null when the resume gave only a year.
 
 AtsLayoutSignals:
@@ -2447,8 +2802,7 @@ AtsLayoutSignals:
     `trackedChanges` and `comments`.
   properties:
     columnRatio:
-      type: number
-      nullable: true
+      type: [number, "null"]
       minimum: 0
       maximum: 1
       description: Share of content lines split across a horizontal gutter — the signature of a two-column layout, sidebar, or floating text box, all of which extract in a scrambled reading order. Null when the document had too few content lines for the measurement to carry signal.
@@ -2538,7 +2892,8 @@ AtsCheckRequest:
       $ref: "#/AtsResumeInput"
     jobDescription:
       type: string
-      description: Optional plain-text job description to compute a jobMatchScore against.
+      maxLength: 20000
+      description: Optional plain-text job description to compute a jobMatchScore against. Surrounding spaces are trimmed.
     layout:
       $ref: "#/AtsLayoutSignals"
     file:
@@ -2573,9 +2928,11 @@ AtsAnalyzeRequest:
       $ref: "#/AtsResumeInput"
     jobDescription:
       type: string
+      maxLength: 20000
     jobUrl:
       type: string
       format: uri
+      maxLength: 2048
       description: Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3, response size to 2MB, and timeout to 8s).
     fetchJobUrl:
       type: boolean
@@ -2583,6 +2940,7 @@ AtsAnalyzeRequest:
     requestId:
       type: string
       minLength: 8
+      maxLength: 128
       description: Client-generated idempotency key for the underlying AI credit reservation.
     layout:
       $ref: "#/AtsLayoutSignals"
@@ -2597,7 +2955,7 @@ AtsAnalyzeRequest:
         deterministic parse came back thin (`repair.available` in the response), and it spends
         credits separately from the analysis. Every value the model returns must occur in the
         resume text; values that do not are dropped and counted in `repair.rejectedValues`.
-        Requires an active AI Credits or Bundle plan.
+        Spends AI credits from any source (a plan, a pass or a credit pack).
 
 AtsAnalyzeResponse:
   type: object
@@ -2634,7 +2992,7 @@ AtsAnalyzeResponse:
 
 AtsRepairSummary:
   type: object
-  required: [available, applied, fields, rejectedValues, creditsSpent]
+  required: [available, applied, fields, rejectedValues, creditsSpent, unusable]
   description: |
     Outcome of the optional AI parse-repair pass. Present on every analyze response, whether or
     not repair was requested, so a client can offer it when it would help.
@@ -2648,8 +3006,7 @@ AtsRepairSummary:
     fields:
       type: array
       items:
-        type: string
-        enum: [name, email, phone, roles, education, skills]
+        $ref: "#/AtsParsedField"
       description: |
         Fields in `report.parsed` supplied by the model rather than the deterministic parser.
         Repair only ever fills fields the parser left empty; it never overwrites one.
@@ -2659,6 +3016,9 @@ AtsRepairSummary:
     creditsSpent:
       type: integer
       description: Credits spent on repair, in addition to the analysis `creditsSpent`.
+    unusable:
+      type: boolean
+      description: Repair ran but the model's answer could not be used. Nothing was filled and nothing was charged for it.
 
 AtsConvertResumeRequest:
   type: object
@@ -2667,10 +3027,12 @@ AtsConvertResumeRequest:
     resume:
       type: string
       minLength: 1
+      maxLength: 50000
       description: Raw resume text to convert into structured JSON Resume fields.
     requestId:
       type: string
       minLength: 8
+      maxLength: 128
 
 AtsConvertedResume:
   type: object
@@ -2738,7 +3100,7 @@ AtsConvertResumeResponse:
           $ref: "#/AtsConvertedResume"
         creditsSpent:
           type: integer
-          description: Requires an active AI Credits or Bundle entitlement — this endpoint spends credits independently of the shared ATS scan quota above.
+          description: Credits spent on the conversion. They come from any source (a plan, a pass or a credit pack), independently of the shared ATS scan quota.
 
 ##################################################
 # AI SCHEMA
@@ -2846,8 +3208,7 @@ AiGenerateResponse:
         content:
           type: string
         usage:
-          type: object
-          nullable: true
+          type: [object, "null"]
           properties:
             promptTokens:
               type: integer
@@ -2892,6 +3253,10 @@ PortfolioPublicListResponse:
 
 PortfolioPublication:
   type: object
+  description: |
+    A published portfolio as the public site reads it. The billing state behind it (live, in
+    grace) is not shown.
+  required: [id, subdomain, templateId, snapshot, updatedAt, isPaid, isPremiumTemplate, isPremium]
   properties:
     id:
       type: string
@@ -2901,18 +3266,24 @@ PortfolioPublication:
       type: string
       enum: [signal, atelier, nimbus, cipher]
     snapshot:
-      type: object
-      additionalProperties: true
-      description: Published portfolio content snapshot (validated against the portfolio content schema at publish time).
-    status:
-      type: string
-      enum: [LIVE, GRACE, SUSPENDED]
+      $ref: "#/PortfolioDraftContent"
     updatedAt:
       type: string
       format: date-time
+    isPaid:
+      type: boolean
+      description: |
+        The owner's paid portfolio access (Creator Pro, the Job Hunter Bundle, a pass) is in
+        effect, or its short grace period after a lapse is still running. It decides the badge,
+        the custom subdomain and the extra pages on any template. An AI Credits plan alone does not
+        count.
+    isPremiumTemplate:
+      type: boolean
+      description: The template is a premium one (`nimbus` or `cipher`). About the template only.
     isPremium:
       type: boolean
-      description: Whether the owner currently has an active portfolio_pro/bundle subscription.
+      deprecated: true
+      description: "`isPaid` and `isPremiumTemplate` both true. Kept for renderers that have not moved to the two fields."
 
 PortfolioPublicResponse:
   type: object
@@ -2963,13 +3334,11 @@ PortfolioPublicationRecord:
       type: integer
       description: The draft `revision` that was published.
     suspensionReason:
-      type: string
-      nullable: true
+      type: [string, "null"]
       description: One of `grace_expired` or `user_unpublished` when the portfolio is suspended.
     suspendedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     publishedAt:
       type: string
       format: date-time
@@ -3094,8 +3463,7 @@ PortfolioMe:
         - $ref: "#/PortfolioDraft"
         - type: "null"
     publication:
-      type: object
-      nullable: true
+      type: [object, "null"]
       properties:
         subdomain:
           type: string
@@ -3105,9 +3473,8 @@ PortfolioMe:
         publishedRevision:
           type: integer
         publishedAt:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         updatedAt:
           type: string
           format: date-time
@@ -3127,6 +3494,186 @@ PortfolioMeResponse:
     data:
       $ref: "#/PortfolioMe"
 
+PortfolioAssetReference:
+  type: object
+  required: [id, url]
+  description: An image uploaded through `/portfolio-assets`. Publishing refuses an image that is not one of the owner's finished uploads.
+  properties:
+    id:
+      type: string
+      minLength: 1
+      maxLength: 128
+    url:
+      type: string
+      format: uri
+      maxLength: 2048
+      description: An `http://` or `https://` URL.
+
+PortfolioSection:
+  type: object
+  required: [id, type, title, visible, items]
+  properties:
+    id:
+      type: string
+      minLength: 1
+      maxLength: 128
+    type:
+      type: string
+      enum:
+        [
+          projects,
+          experience,
+          services,
+          skills,
+          education,
+          writing,
+          testimonials,
+          awards,
+          certifications,
+          languages,
+          interests,
+          publications,
+          patents,
+          testScores,
+          achievements,
+          volunteer,
+          custom,
+          contact,
+        ]
+    title:
+      type: string
+      maxLength: 120
+      description: Required to be non-empty on publish. A draft may leave it empty.
+    subtitle:
+      type: string
+      maxLength: 240
+    visible:
+      type: boolean
+    items:
+      type: array
+      maxItems: 24
+      description: The section's entries. Their fields depend on the section type and are not checked by the server.
+      items:
+        type: object
+        additionalProperties: true
+    settings:
+      type: object
+      additionalProperties: true
+
+PortfolioDraftContent:
+  type: object
+  required: [schemaVersion, templateId, identity, seo, socialLinks, sections]
+  description: |
+    The portfolio content a draft stores and a publish serves. Saving a draft accepts empty
+    values where noted, so an unfinished portfolio can be kept. Publishing checks the stored draft
+    again with the stricter rules (a non-empty `identity.name`, `headline`, `bio` and a valid
+    `email`; every social link with a label and URL; every section and page with a title) and
+    answers `400` "Complete the required portfolio details before publishing." with the fields in
+    `details` otherwise. Surrounding spaces in text fields are trimmed.
+  properties:
+    schemaVersion:
+      type: integer
+      enum: [1]
+    templateId:
+      type: string
+      enum: [signal, atelier, nimbus, cipher]
+      description: "`nimbus` and `cipher` are premium: publishing them needs Creator Pro, the Job Hunter Bundle or a pass."
+    identity:
+      type: object
+      required: [name, headline, bio, location, email, availability, avatar]
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          description: Required to be non-empty on publish.
+        headline:
+          type: string
+          maxLength: 240
+          description: Required to be non-empty on publish.
+        bio:
+          type: string
+          maxLength: 1600
+          description: Required to be non-empty on publish.
+        location:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          maxLength: 254
+          description: A valid email address. A draft may leave it empty; publishing needs one.
+        availability:
+          type: string
+          maxLength: 160
+        avatar:
+          oneOf:
+            - $ref: "#/PortfolioAssetReference"
+            - type: "null"
+    seo:
+      type: object
+      required: [title, description, socialImage]
+      properties:
+        title:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 300
+        socialImage:
+          oneOf:
+            - $ref: "#/PortfolioAssetReference"
+            - type: "null"
+    socialLinks:
+      type: array
+      maxItems: 12
+      items:
+        type: object
+        required: [id, label, url]
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 128
+          label:
+            type: string
+            maxLength: 80
+            description: Required to be non-empty on publish.
+          url:
+            type: string
+            maxLength: 2048
+            description: An `http://` or `https://` URL. A draft may leave it empty; publishing needs one.
+    sections:
+      type: array
+      maxItems: 24
+      items:
+        $ref: "#/PortfolioSection"
+    pages:
+      type: array
+      maxItems: 10
+      description: Extra pages. The public site shows them only while the owner has paid portfolio access (`isPaid` on the public read).
+      items:
+        type: object
+        required: [id, slug, title, sections]
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 128
+          slug:
+            type: string
+            minLength: 1
+            maxLength: 63
+          title:
+            type: string
+            maxLength: 120
+            description: Required to be non-empty on publish.
+          sections:
+            type: array
+            maxItems: 24
+            items:
+              $ref: "#/PortfolioSection"
+    removeWatermark:
+      type: boolean
+
 PortfolioSaveDraftRequest:
   type: object
   required: [subdomain, snapshot]
@@ -3141,9 +3688,7 @@ PortfolioSaveDraftRequest:
       type: integer
       description: Required once a draft already exists, for optimistic concurrency (409 on mismatch).
     snapshot:
-      type: object
-      additionalProperties: true
-      description: Portfolio content. The draft schema is more permissive than the publish schema (empty strings allowed) so incomplete drafts can still be saved.
+      $ref: "#/PortfolioDraftContent"
 
 PortfolioPublishRequest:
   type: object
@@ -3160,7 +3705,14 @@ PortfolioPublishRequest:
 
 PortfolioAnalytics:
   type: object
+  required: [locked, totalViews, daily, referrers]
   properties:
+    locked:
+      type: boolean
+      description: |
+        True when the caller has no visitor-analytics access (it comes with Creator Pro, the Job
+        Hunter Bundle or a pass). The numbers are then all zero and the lists empty, whether or
+        not a portfolio is published.
     totalViews:
       type: integer
     daily:
@@ -3285,14 +3837,31 @@ PortfolioAssetCompleteResponse:
 
 BillingSummary:
   type: object
+  required:
+    - plan
+    - productKey
+    - activeProductKeys
+    - status
+    - interval
+    - currentPeriodEnd
+    - cancelAtPeriodEnd
+    - graceEndsAt
+    - canPublish
+    - accessEndsAt
+    - publicationStatus
+    - entitlements
+    - access
+    - credits
+    - catalog
+    - creditEconomics
+    - addOns
   properties:
     plan:
       type: string
       enum: [FREE, AI_CREDITS, PORTFOLIO_PRO, BUNDLE]
-      description: "The plan whose features are in effect, from subscription or pass access. A credit pack unlocks no plan features, so a customer whose only purchase is a pack is FREE here although they paid; show plan names from the product the customer bought, not from this field."
+      description: "The plan whose features are in effect, from subscription or pass access. A credit pack unlocks no plan features, so a customer whose only purchase is a pack is FREE here although they paid; use `access` to tell a paying customer from a free one."
     productKey:
-      type: string
-      nullable: true
+      type: [string, "null"]
       enum: [ai_credits, portfolio_pro, bundle, null]
     activeProductKeys:
       type: array
@@ -3303,37 +3872,77 @@ BillingSummary:
       enum: [INACTIVE, ACTIVE, PAST_DUE, CANCELED]
       description: |
         Status of the subscription in effect today. `INACTIVE` when none is (no plan, or one that
-        has ended); `PAST_DUE` while a failed renewal's grace runs. There are no trials.
+        has ended); `PAST_DUE` while a failed renewal's grace runs, or while the subscription is
+        paused. There are no trials.
     interval:
-      type: string
-      nullable: true
+      type: [string, "null"]
       enum: [one_day, seven_day, monthly, annual, null]
     currentPeriodEnd:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     cancelAtPeriodEnd:
       type: boolean
     graceEndsAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
+      description: When the grace period after a failed renewal ends. Null when none is running.
     canPublish:
       type: boolean
       description: Portfolio-publish entitlement is a separate system from the AI credit wallet below.
-    eligibleForTrial:
-      type: boolean
     accessEndsAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
+      description: The latest period end of an active Creator Pro or Job Hunter Bundle subscription.
     publicationStatus:
       type: string
       enum: [LIVE, GRACE, SUSPENDED]
+      description: "`LIVE` while publishing is included, `GRACE` while a grace period runs, `SUSPENDED` otherwise."
     entitlements:
       type: array
       items:
         type: string
+    access:
+      type: object
+      description: |
+        Who the customer is, separately from the plan. A payer is never shown as free: a customer
+        whose renewal failed, or who paused, keeps the tier of the subscription they pay for.
+      required:
+        [
+          tier,
+          isPaid,
+          isPaying,
+          paymentIssue,
+          passEndsAt,
+          portfolioAccessEndsAt,
+          aiCreditsEndsAt,
+          creditBalance,
+        ]
+      properties:
+        tier:
+          type: string
+          enum: [bundle, portfolio_pro, ai_credits, pass, credits, free]
+          description: "`credits` is a customer whose only purchase is credits (a pack, or a plan allowance that is still unspent)."
+        isPaid:
+          type: boolean
+          description: A subscription, a pass or an admin grant of one is in effect. A credit pack never makes an account paid.
+        isPaying:
+          type: boolean
+          description: The customer paid for something now in effect (a subscription, a pass, or paid credits), or has a subscription in dunning.
+        paymentIssue:
+          type: boolean
+          description: A subscription renewal failed and is being retried. False for a pause.
+        passEndsAt:
+          type: [string, "null"]
+          format: date-time
+        portfolioAccessEndsAt:
+          type: [string, "null"]
+          format: date-time
+        aiCreditsEndsAt:
+          type: [string, "null"]
+          format: date-time
+        creditBalance:
+          type: integer
+          description: Spendable credits, the same as `credits.available`.
     credits:
       $ref: "#/CreditWallet"
     catalog:
@@ -3345,6 +3954,7 @@ BillingSummary:
       additionalProperties: true
     addOns:
       type: array
+      description: What can be bought on top of portfolio access. Empty without it.
       items:
         type: object
         properties:
@@ -3366,6 +3976,7 @@ BillingSummaryResponse:
 
 BillingHistoryEvent:
   type: object
+  required: [id, providerEventId, type, processedAt, createdAt, productName, amountCents, currency]
   properties:
     id:
       type: string
@@ -3374,12 +3985,18 @@ BillingHistoryEvent:
     type:
       type: string
     processedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     createdAt:
       type: string
       format: date-time
+    productName:
+      type: [string, "null"]
+      description: What the event was for, as the customer knows it, such as `7-Day Hunt Pass`.
+    amountCents:
+      type: [integer, "null"]
+    currency:
+      type: [string, "null"]
 
 BillingHistoryResponse:
   type: object
@@ -3399,17 +4016,20 @@ CreditWallet:
   properties:
     balance:
       type: integer
+      description: The ledger balance. It can still hold credits that expired and were not yet swept; use `available` for what can be spent.
     reserved:
       type: integer
       description: Credits currently held by in-flight AI generations that have not yet committed or been released.
+    available:
+      type: integer
+      description: Credits that can be spent now.
     lifetimeCredited:
       type: integer
     lifetimeDebited:
       type: integer
     nextExpiryAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     nextExpiryCredits:
       type: integer
     updatedAt:
@@ -3429,16 +4049,28 @@ CreditWalletResponse:
 
 CreditHistoryEntry:
   type: object
-  additionalProperties: true
+  required: [id, type, amount, balanceAfter, action, documentId, reason, metadata, createdAt]
   properties:
     id:
       type: string
-    action:
+    type:
       type: string
-    cost:
+      enum: [GRANT, DEBIT, REFUND, ADJUSTMENT, EXPIRATION]
+    amount:
       type: integer
+      description: Signed change to the balance. Negative for a debit or an expiry.
     balanceAfter:
       type: integer
+    action:
+      type: [string, "null"]
+      description: The AI action the credits were spent on, when there was one.
+    documentId:
+      type: [string, "null"]
+    reason:
+      type: [string, "null"]
+    metadata:
+      type: [object, "null"]
+      additionalProperties: true
     createdAt:
       type: string
       format: date-time
@@ -3657,8 +4289,7 @@ PlanChangeResponse:
           type: string
           enum: [monthly, annual]
         paymentId:
-          type: string
-          nullable: true
+          type: [string, "null"]
         confirmed:
           type: boolean
           description: False when the provider's answer never arrived (the response is then `202`); the change may still apply.
@@ -3748,15 +4379,13 @@ ShareLink:
         Whether the studio shows a Download button on the public page. A display preference, not a
         security control: the studio hides the Download button, and viewers can still save the page.
     expiresAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     viewCount:
       type: integer
     lastViewedAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     createdAt:
       type: string
       format: date-time
@@ -3778,9 +4407,8 @@ ShareLinkCreateRequest:
       type: string
       description: When provided, the link is scrypt-hashed and requires this password to view.
     expiresAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
       description: 7, 14, 30 or 90 days from now (within a day), or the link's current expiry to keep it. Omitted or null (without noExpiry), a new link lasts 7 days and an existing one keeps its expiry; null does not mean never. Send noExpiry true for a link that never expires.
     noExpiry:
       type: boolean
@@ -3854,9 +4482,8 @@ PublicSharePayload:
     documentTitle:
       type: string
     expiresAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     allowDownload:
       type: boolean
       description: |
@@ -3901,6 +4528,7 @@ AffiliateClickRequest:
       maxLength: 32
     referrerHost:
       type: string
+      maxLength: 255
 
 AffiliateClickResponse:
   type: object
@@ -3926,20 +4554,16 @@ AffiliateLeaderboardEntry:
     commissions:
       type: integer
     user:
-      type: object
-      nullable: true
+      type: [object, "null"]
       properties:
         id:
           type: string
         name:
-          type: string
-          nullable: true
+          type: [string, "null"]
         username:
-          type: string
-          nullable: true
+          type: [string, "null"]
         image:
-          type: string
-          nullable: true
+          type: [string, "null"]
         affiliateTier:
           type: string
           enum: [TIER_1, TIER_2, TIER_3]
@@ -3967,12 +4591,10 @@ AffiliateDashboard:
       type: string
       enum: [TIER_1, TIER_2, TIER_3]
     affiliateCode:
-      type: string
-      nullable: true
+      type: [string, "null"]
     affiliateEnrolledAt:
-      type: string
+      type: [string, "null"]
       format: date-time
-      nullable: true
     clicks:
       type: integer
     referrals:
@@ -3990,9 +4612,8 @@ AffiliateDashboard:
             type: string
             format: date-time
           convertedAt:
-            type: string
+            type: [string, "null"]
             format: date-time
-            nullable: true
     totalReferrals:
       type: integer
     conversions:
@@ -4019,17 +4640,14 @@ AffiliateDashboard:
             type: string
             enum: [REQUESTED, APPROVED, REJECTED, PAID]
           payoutNote:
-            type: string
-            nullable: true
+            type: [string, "null"]
             description: Visible to the affiliate. The note the admin writes when approving, rejecting or paying the withdrawal (the payout reference, or the reason for a rejection), shown on the affiliate's payouts page as written.
           reviewedAt:
-            type: string
+            type: [string, "null"]
             format: date-time
-            nullable: true
           paidAt:
-            type: string
+            type: [string, "null"]
             format: date-time
-            nullable: true
           createdAt:
             type: string
             format: date-time
@@ -4042,6 +4660,12 @@ AffiliateDashboard:
           type: integer
         paidCents:
           type: integer
+        clawbackCents:
+          type: integer
+          description: Commission paid out earlier and since reversed, which is owed back.
+    withdrawableCents:
+      type: integer
+      description: What a withdrawal may request now, `availableCents` less `clawbackCents` (never below 0).
     minimumWithdrawalCents:
       type: integer
       enum: [2500]
@@ -4051,8 +4675,7 @@ AffiliateDashboard:
         currentConversions:
           type: integer
         nextTierConversions:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
     tiers:
       type: array
       items:
@@ -4102,7 +4725,11 @@ AffiliateReferralResponse:
       type: string
     data:
       type: object
-      additionalProperties: true
+      required: [applied]
+      properties:
+        applied:
+          type: boolean
+          enum: [true]
 
 AffiliateWithdrawalRequest:
   type: object
@@ -4138,11 +4765,11 @@ AmbassadorApplicationRequest:
     collegeName:
       type: string
       minLength: 2
-      maxLength: 160
+      maxLength: 120
     graduationYear:
       type: string
-      pattern: "^(19|20)\\d{2}$"
-      description: A real 4-digit year, validated both client- and server-side.
+      pattern: "^\\d{4}$"
+      description: A 4-digit year from last year to 8 years ahead, checked on each request. Surrounding spaces are trimmed.
     whyJoin:
       type: string
       minLength: 20
@@ -4150,17 +4777,17 @@ AmbassadorApplicationRequest:
     superpower:
       type: string
       minLength: 2
-      maxLength: 300
+      maxLength: 160
     funFact:
       type: string
       minLength: 2
-      maxLength: 300
+      maxLength: 200
     vibeCheck:
       type: string
       maxLength: 80
     socialHandle:
       type: string
-      maxLength: 120
+      maxLength: 100
 
 AmbassadorApplicationResponse:
   type: object
@@ -4196,11 +4823,9 @@ AmbassadorStatus:
       type: string
       enum: [NONE, PENDING, APPROVED, REJECTED]
     collegeName:
-      type: string
-      nullable: true
+      type: [string, "null"]
     graduationYear:
-      type: string
-      nullable: true
+      type: [string, "null"]
 
 AmbassadorStatusResponse:
   type: object
