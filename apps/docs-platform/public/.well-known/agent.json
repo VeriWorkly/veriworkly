@@ -40,24 +40,24 @@
       "name": "API Reference Indexing",
       "description": "Explore endpoint paths, request parameters, request payloads, and response envelopes for all 78 operations across 72 paths.",
       "endpoints": [
-        "/api/v1/health",
-        "/api/v1/documents",
-        "/api/v1/profiles/master",
-        "/api/v1/ats/check",
-        "/api/v1/ai/generate",
-        "/api/v1/portfolios/me",
-        "/api/v1/api-keys"
+        "https://api.veriworkly.com/api/v1/health",
+        "https://api.veriworkly.com/api/v1/documents",
+        "https://api.veriworkly.com/api/v1/profiles/master",
+        "https://api.veriworkly.com/api/v1/ats/check",
+        "https://api.veriworkly.com/api/v1/ai/generate",
+        "https://api.veriworkly.com/api/v1/portfolios/me",
+        "https://api.veriworkly.com/api/v1/api-keys"
       ]
     },
     {
       "name": "Architecture & Integration Guides",
       "description": "Index technical guides on the local-first sync engine, the Master Profile data model, the client-side export pipeline, and scoped API keys.",
       "endpoints": [
-        "/docs/overview",
-        "/docs/architecture/state-management",
-        "/docs/architecture/resume-schema",
-        "/docs/architecture/pdf-generation",
-        "/docs/api-keys"
+        "https://docs.veriworkly.com/docs/overview",
+        "https://docs.veriworkly.com/docs/architecture/state-management",
+        "https://docs.veriworkly.com/docs/architecture/resume-schema",
+        "https://docs.veriworkly.com/docs/architecture/pdf-generation",
+        "https://docs.veriworkly.com/docs/api-keys"
       ]
     }
   ],

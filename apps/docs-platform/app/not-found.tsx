@@ -3,6 +3,8 @@ import { Frown } from "lucide-react";
 
 import { Button, Container } from "@veriworkly/ui";
 
+import { siteConfig } from "@/config/site";
+
 const NotFound = () => {
   return (
     <main className="surface-grid flex min-h-screen items-center justify-center">
@@ -28,7 +30,7 @@ const NotFound = () => {
           </Button>
 
           <Button asChild variant="ghost">
-            <Link href="/templates">View Templates</Link>
+            <Link href={`${siteConfig.links.main}/templates`}>View Templates</Link>
           </Button>
         </div>
       </Container>

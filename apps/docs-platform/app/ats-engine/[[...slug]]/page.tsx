@@ -10,7 +10,9 @@ import {
 import { notFound } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 
-import { engineSource, getEnginePageImage } from "@/lib/source";
+import { engineSource, ogImagePath } from "@/lib/source";
+import { pageMetadata } from "@/lib/metadata";
+import { contentEditUrl } from "@/lib/edit-links";
 
 import { getMDXComponents } from "@/components/mdx";
 
@@ -23,7 +25,10 @@ const GENERATED_PAGES = new Set([
   "project/changelog.md",
 ]);
 
-const repoTree = "https://github.com/VeriWorkly/veriworkly";
+const generatorUrl =
+  "https://github.com/VeriWorkly/veriworkly/blob/master/apps/docs-platform/scripts/generate-engine-docs.mjs";
+
+export const dynamicParams = false;
 
 type PageProps = {
   params: Promise<{ slug?: string[] }>;
@@ -55,8 +60,8 @@ export default async function Page(props: PageProps) {
           <EditOnGitHub
             href={
               GENERATED_PAGES.has(page.path)
-                ? `${repoTree}/blob/master/apps/docs-platform/scripts/generate-engine-docs.mjs`
-                : `${repoTree}/edit/master/apps/docs-platform/content/ats-engine/${page.path}`
+                ? generatorUrl
+                : contentEditUrl("ats-engine", page.path)
             }
           />
         ),
@@ -91,14 +96,13 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   const pageData = page.data as unknown as {
     title: string;
+    metaTitle?: string;
     description: string;
   };
 
-  return {
-    title: pageData.title,
-    description: pageData.description,
-    openGraph: {
-      images: getEnginePageImage(page).url,
-    },
-  };
+  return pageMetadata({
+    ...pageData,
+    path: page.url,
+    image: ogImagePath("ats-engine", page.slugs),
+  });
 }

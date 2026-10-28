@@ -10,11 +10,15 @@ import {
 } from "fumadocs-ui/layouts/notebook/page";
 import { notFound } from "next/navigation";
 
-import { apiSource, getApiPageImage } from "@/lib/source";
+import { apiSource, ogImagePath } from "@/lib/source";
+import { pageMetadata } from "@/lib/metadata";
+import { apiEditUrl } from "@/lib/edit-links";
 import { openapi } from "@/lib/openapi";
 
 import { getMDXComponents } from "@/components/mdx";
 import { OpenAPIPage } from "@/components/api-page";
+
+export const dynamicParams = false;
 
 type PageProps = {
   params: Promise<{ slug?: string[] }>;
@@ -50,11 +54,7 @@ export default async function Page(props: PageProps) {
     <DocsPage
       tableOfContent={{
         style: "clerk",
-        footer: (
-          <EditOnGitHub
-            href={`https://github.com/VeriWorkly/veriworkly/edit/master/apps/docs-platform/content/api-reference/${page.slugs.join("/") + ".mdx"}`}
-          />
-        ),
+        footer: <EditOnGitHub href={apiEditUrl(page.path)} />,
       }}
       toc={pageData.toc}
       full={pageData.full}
@@ -81,14 +81,13 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   const pageData = page.data as unknown as {
     title: string;
+    metaTitle?: string;
     description: string;
   };
 
-  return {
-    title: pageData.title,
-    description: pageData.description,
-    openGraph: {
-      images: getApiPageImage(page).url,
-    },
-  };
+  return pageMetadata({
+    ...pageData,
+    path: page.url,
+    image: ogImagePath("api", page.slugs),
+  });
 }

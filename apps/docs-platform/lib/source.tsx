@@ -4,43 +4,26 @@ import { loader } from "fumadocs-core/source";
 import { flattenTree } from "fumadocs-core/page-tree";
 import { docs, api, engine } from "collections/server";
 
+function icon(name?: string) {
+  if (name && name in icons) return createElement(icons[name as keyof typeof icons]);
+}
+
 export const source = loader({
   baseUrl: "/docs",
   source: docs.toFumadocsSource(),
-
-  icon(icon) {
-    if (!icon) {
-      return;
-    }
-
-    if (icon in icons) return createElement(icons[icon as keyof typeof icons]);
-  },
+  icon,
 });
 
 export const engineSource = loader({
   baseUrl: "/ats-engine",
   source: engine.toFumadocsSource(),
-
-  icon(icon) {
-    if (!icon) {
-      return;
-    }
-
-    if (icon in icons) return createElement(icons[icon as keyof typeof icons]);
-  },
+  icon,
 });
 
 export const apiSource = loader({
   baseUrl: "/api-reference",
   source: api.toFumadocsSource(),
-
-  icon(icon) {
-    if (!icon) {
-      return;
-    }
-
-    if (icon in icons) return createElement(icons[icon as keyof typeof icons]);
-  },
+  icon,
 
   plugins: [
     {
@@ -110,31 +93,9 @@ export function getMethodColor(method: string) {
   }
 }
 
-export function getPageImage(page: (typeof source)["$inferPage"]) {
-  const segments = [...page.slugs, "image.png"];
-
-  return {
-    segments,
-    url: `/og/docs/${segments.join("/")}`,
-  };
-}
-
-export function getApiPageImage(page: (typeof apiSource)["$inferPage"]) {
-  const segments = [...page.slugs, "image.png"];
-
-  return {
-    segments,
-    url: `/og/api/${segments.join("/")}`,
-  };
-}
-
-export function getEnginePageImage(page: (typeof engineSource)["$inferPage"]) {
-  const segments = [...page.slugs, "image.png"];
-
-  return {
-    segments,
-    url: `/og/ats-engine/${segments.join("/")}`,
-  };
+/** Path of a page's social card, built by `app/og/<tree>/[...slug]/route.tsx`. */
+export function ogImagePath(tree: "docs" | "api" | "ats-engine", slugs: string[]) {
+  return `/og/${tree}/${[...slugs, "image.png"].join("/")}`;
 }
 
 /** The ATS Engine pages in sidebar order, for the llms.txt files. */

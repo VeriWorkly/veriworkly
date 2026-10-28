@@ -11,6 +11,7 @@ export const siteConfig = {
   description:
     "Research-backed guidance on resumes, job search strategy, and hiring technology — plus engineering notes from the team building VeriWorkly.",
   url: process.env.SITE_URL || "https://blog.veriworkly.com",
+  twitterHandle: "@veriworkly",
 
   links: {
     twitter: "https://x.com/veriworkly",
