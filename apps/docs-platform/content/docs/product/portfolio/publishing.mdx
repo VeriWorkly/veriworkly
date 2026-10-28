@@ -1,41 +1,47 @@
 ---
 title: "Portfolio: Publishing & Analytics"
-description: Shared path vs. custom subdomain publishing, the premium gates, the readiness score, and analytics' two locked states.
+description: Shared path vs. subdomain publishing, the premium gates, the readiness score, and analytics' two locked states.
 ---
 
 ## Publishing
 
-| Tier        | Published at                                                                                         |
+| Portfolio   | Published at                                                                                         |
 | :---------- | :--------------------------------------------------------------------------------------------------- |
 | **Free**    | A shared path: `portfolio.veriworkly.com/portfolio/{your-slug}` (`/user/{your-slug}` also resolves). |
-| **Premium** | A true custom subdomain: `{your-slug}.veriworkly.com`.                                               |
+| **Premium** | A subdomain: `{your-slug}.veriworkly.com`.                                                           |
+
+A premium portfolio is a premium template (Nimbus or Cipher) published by an account with the
+`portfolio_publish` entitlement (Creator Pro, the Job Hunter Bundle, or a pass).
 
 Both forms are handled by the portfolio app's `proxy.ts` middleware, which rewrites the subdomain
 host and the shared path onto the same internal route.
 
-- **Subdomain access is enforced at the routing layer**, not just in the UI. A non-premium account
-  hitting a custom-subdomain URL directly is server-redirected back to the shared path, and
-  multi-page slug routes return `404` for non-premium accounts regardless of subdomain.
-- **Premium templates gate at publish time.** Publishing — or re-publishing after an edit — with
-  Nimbus or Cipher blocks a non-premium account with an upgrade prompt.
+- **Subdomain access is enforced at the routing layer**, not just in the UI. A request to the
+  subdomain of a free portfolio is server-redirected to the shared path, and multi-page slug routes
+  return `404` on a free portfolio.
+- **Premium templates gate at publish time.** Publishing (or re-publishing after an edit) with
+  Nimbus or Cipher is refused without the `portfolio_publish` entitlement.
 - **Unpublishing** takes the site down while leaving the draft intact.
 
-<Callout type="warn" title="Publishing is currently admin-only in production">
-  Independent of plan tier, `PortfolioController.publish` rejects non-admin accounts with a `403`
-  when `NODE_ENV=production`, while the general-availability rollout completes. Dashboard access,
-  draft editing, previews, and unpublishing are unaffected and open to everyone. See [Portfolio:
-  Overview](/docs/product/portfolio/overview).
+<Callout type="warn" title="Publishing opens at launch">
+  Independent of plan, `PortfolioController.publish` rejects non-admin accounts with a `403` in
+  production until launch. Dashboard access, draft editing, previews, and unpublishing are open to
+  everyone. See [Portfolio: Overview](/docs/product/portfolio/overview).
 </Callout>
 
 ### Publication lifecycle
 
 A `PortfolioPublication` record holds one of three statuses:
 
-| Status      | Meaning                                                                                                        |
-| :---------- | :------------------------------------------------------------------------------------------------------------- |
-| `LIVE`      | Publicly served.                                                                                               |
-| `GRACE`     | The owning subscription lapsed; the site stays up during the grace period (`PORTFOLIO_GRACE_DAYS`, default 7). |
-| `SUSPENDED` | The grace period expired and the hourly portfolio access job took the site down.                               |
+| Status      | Meaning                                                                                                                         |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `LIVE`      | Publicly served.                                                                                                                |
+| `GRACE`     | A portfolio plan's renewal failed or was paused; the site stays up during the grace period (`PORTFOLIO_GRACE_DAYS`, default 7). |
+| `SUSPENDED` | Not served: unpublished by the owner, taken down by a moderator, or suspended by billing.                                       |
+
+When paid access ends for good (after the grace period, at the end of a cancelled plan's paid
+period, or when a pass ends), the hourly portfolio access job moves a premium portfolio to the
+closest free template (Nimbus to Atelier, Cipher to Signal). It stays `LIVE` with the badge.
 
 Publishing stores a **content snapshot** and the published revision number, so continuing to edit the
 draft does not change the live site until you publish again.
@@ -44,23 +50,17 @@ draft does not change the live site until you publish again.
 
 ## Dashboard
 
-Shows all-time views, published section and project counts, and a **readiness percentage**:
+Shows all-time views, published section and project counts, and a **readiness percentage**.
 
-```
-readiness = round(((identityFieldsCompleted + min(visibleSections, 4)) / 8) × 100)
-```
+Readiness is the share of a four-item checklist that is complete:
 
-where `identityFieldsCompleted` counts how many of `{name, headline, bio, email}` are filled in
-(0–4). Both halves are capped at 4, so a portfolio reaches 100% with all four identity fields and at
-least four visible sections.
+1. Profile details: name, headline, bio and email all filled in.
+2. Portfolio sections: at least two visible sections.
+3. Search metadata: SEO title **and** description both set.
+4. Public publishing: the portfolio is publicly visible.
 
-A health checklist covers four items: profile details complete, at least two visible sections, SEO
-metadata present (title **and** description both set), and publicly published.
-
-<Callout type="info" title='The "recommended next steps" panel is mostly static'>
-  It is largely fixed guidance copy, with only one line's wording conditional on whether you have
-  added projects yet — less personalised than the heading suggests.
-</Callout>
+Each item is worth 25%. The score and the checklist come from the same calculation
+(`apps/portfolio/lib/portfolio-status.ts`), so they always agree.
 
 ---
 
@@ -72,7 +72,8 @@ publication and referrer host.
 **Premium-gated** (the `analytics` entitlement), with two distinct locked states:
 
 - A **logged-out** visitor sees a "Log In" prompt.
-- A **logged-in free** user sees the real metrics blurred behind an "Upgrade to Pro" overlay.
+- A **logged-in free** user sees an "Upgrade to Pro" overlay. The server sends no view data to an
+  account without the entitlement.
 
 <Callout type="info" title="View counting is deduplicated">
   Repeat views from the same IP within a 30-minute window are ignored before any counter increments,
@@ -87,9 +88,10 @@ publication and referrer host.
 The subdomain/slug editor (with an inline format hint), SEO meta title and description, and social
 share image upload.
 
-All are **disabled for free users** — each field is individually re-checked server-side rather than
-merely hidden — and editable for premium accounts, with an explicit banner naming exactly which
-fields are locked. The relevant entitlements are `custom_subdomain` and `seo_controls`.
+All are **disabled for free users**, with a banner naming the locked fields, and editable for
+accounts with the `portfolio_publish` entitlement. The server re-checks at publish time: without
+the `seo_controls` entitlement the published SEO block is replaced with defaults, whatever the draft
+says.
 
 ### Image uploads
 
@@ -101,8 +103,9 @@ and ETag against what was declared. Only JPG, PNG, and WebP are accepted, capped
 
 ## Watermark
 
-A floating "Built with VeriWorkly" badge appears on every free-tier published portfolio. Accounts
-with the `watermark_removal` entitlement get a per-portfolio toggle to remove it.
+A floating "Built with VeriWorkly" badge appears on every free published portfolio. On a premium
+portfolio, an account with the `watermark_removal` entitlement gets a per-portfolio toggle to remove
+it. Document exports (PDF, DOCX and the rest) never carry a watermark on any plan.
 
 ---
 

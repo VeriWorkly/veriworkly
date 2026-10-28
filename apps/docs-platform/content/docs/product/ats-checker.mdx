@@ -3,7 +3,12 @@ title: ATS Checker
 description: The deterministic core scan and AI-powered deep-analysis layer, and how their quotas actually work.
 ---
 
-A dedicated workspace (`/ats`, requires login) with two layers of analysis over a resume.
+Two layers of analysis over a resume, in two places:
+
+- **The public checker** at [veriworkly.com/ats-checker](https://veriworkly.com/ats-checker): no
+  login required. Upload or paste a resume and get the core scan on the anonymous quota.
+- **The Studio workspace** at `/ats`: opens in guest mode, but scanning, conversion and AI analysis
+  there ask you to sign in.
 
 <Callout type="info" title="Built on the open-source ATS Engine">
   The core scan is the [VeriWorkly ATS Engine](/ats-engine), an MIT-licensed npm package you can run
@@ -14,7 +19,7 @@ A dedicated workspace (`/ats`, requires login) with two layers of analysis over 
 ## Core scan
 
 A deterministic, non-AI, free-of-AI-cost rules engine. One pass produces **both halves** of the
-report — the scores and the recovered record — so seeing either never costs a second scan.
+report (the scores and the recovered record), so seeing either never costs a second scan.
 
 Produces a **readiness score** (the share of available points the resume kept, on a true 0–100
 scale), a **job-match score** when a job description is supplied, and a **parsed record**.
@@ -24,38 +29,38 @@ scale), a **job-match score** when a job description is supplied, and a **parsed
 The parsed record is the half that is not a score. An applicant tracking system does not rank a
 resume: it shreds it into a row per job holding an **employer**, a **job title** and a **date
 range**, and lets recruiters search and filter those rows. A resume whose history cannot be
-recovered arrives with empty columns — invisible to that filter however well the bullets read.
+recovered arrives with empty columns, invisible to that filter however well the bullets read.
 
 `report.parsed` returns exactly that record: name, email, phone, links, one row per role, education
 with a normalised degree level, the indexed skills list, and **total months of experience** with
 overlapping roles counted once (which is how a "5+ years" filter reads it).
 
-Four rules score the recovery itself — how many rows came back, how many carry all three of title,
+Four rules score the recovery itself: how many rows came back, how many carry all three of title,
 employer and dates, how many have a parseable date range, and whether the header fields were
 recoverable. The parser failing _is_ the finding: if it cannot recover a field from your document,
 a real ATS very likely cannot either.
 
 <Callout type="info" title="Anonymous callers get counts, not rows">
-  `POST /ats/check` without a session returns a diagnosis and honest counts — the score, the
-  verdict, the single most serious problem, the highest-impact fix, and how many keywords and
-  work-history rows exist — but no per-area rollup, no keyword lists and no recovered table. The
-  server never sends them, so there is nothing for a client to un-hide.
+  `POST /ats/check` without a session returns a diagnosis and honest counts (the score, the verdict,
+  the single most serious problem, the highest-impact fix, and how many keywords and work-history
+  rows exist), but no per-area rollup, no keyword lists and no recovered table. The server never
+  sends them, so there is nothing for a client to un-hide.
 </Callout>
 
 What it checks:
 
-- **Parsing** — whether enough readable text came out at all.
-- **Contact** — email, phone, a professional link, and whether they sit in the first quarter of the document.
-- **Structure** — Experience, Education, and Skills headings, matched **on their own line**. The word appearing mid-sentence does not satisfy the check, because a parser maps sections from headings.
-- **Evidence** — the _share_ of bullets carrying a metric, and the share opening with an action verb. Density, not a single occurrence somewhere in the document.
-- **Format** — emoji bullets, page-footer artifacts, and, for uploaded PDFs, the page geometry below.
+- **Parsing**: whether enough readable text came out at all.
+- **Contact**: email, phone, a professional link, and whether they sit in the first quarter of the document.
+- **Structure**: Experience, Education, and Skills headings, matched **on their own line**. The word appearing mid-sentence does not satisfy the check, because a parser maps sections from headings.
+- **Evidence**: the _share_ of bullets carrying a metric, and the share opening with an action verb. Density, not a single occurrence somewhere in the document.
+- **Format**: emoji bullets, page-footer artifacts, and, for uploaded PDFs, the page geometry below.
 
 <Callout type="info" title="Layout checks need an uploaded file">
   Two checks read the document's geometry rather than its text: the share of lines split across a
   column gutter (a two-column layout, sidebar, or floating text box, all of which extract in a
   scrambled order) and the number of ruled table grids. Both require the `layout` object returned by
   `POST /ats/extract` to be passed back with the scan. Pasted text and Studio documents have no
-  geometry, so those rules are **omitted from the report entirely** — neither passed nor failed, and
+  geometry, so those rules are **omitted from the report entirely**: neither passed nor failed, and
   excluded from the score's denominator, so scores stay comparable either way.
 </Callout>
 
@@ -69,26 +74,25 @@ posting's filler cannot outvote the skills it actually asks for.
 Three behaviours worth knowing:
 
 - **Alternatives count once.** "Go or Java" is one requirement satisfied by either side, not two gaps.
-- **Implied skills count.** Listing Terraform credits infrastructure-as-code; PostgreSQL credits relational databases. One-way only — the reverse would credit a tool that was never named.
+- **Implied skills count.** Listing Terraform credits infrastructure-as-code; PostgreSQL credits relational databases. One-way only: the reverse would credit a tool that was never named.
 - **Synonyms and phrases fold together**, so `k8s`, `Kubernetes`, `CI/CD`, and `continuous integration` all resolve to the same term on both sides.
 
 ## AI-powered deep analysis
 
-Layers an LLM's explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities on top of the core scan. Can fetch a job description directly from a URL instead of requiring paste, with strong server-side SSRF protections (HTTPS-only, blocks private/loopback IP ranges, pins the resolved IP for the actual fetch, caps redirects/response size/timeout).
+Layers an LLM's explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities on top of the core scan. It requires a signed-in account and spends AI credits from the same pool as every other AI feature; the cost is shown before you run it. Can fetch a job description directly from a URL instead of requiring paste, with strong server-side SSRF protections (HTTPS-only, blocks private/loopback IP ranges, pins the resolved IP for the actual fetch, caps redirects/response size/timeout).
 
 <Callout type="info" title="If no model can be routed">
   Model selection is priced against the credit bucket the request would be billed at. When the tier
   a request is graded into cannot be served inside that margin, it steps down to a cheaper tier
   rather than dropping the analysis. If nothing can be routed at all, the response carries
   `aiStatus: "unavailable"`, `ai` is null, no credits are charged, **and the scan quota unit is
-  refunded** — the deterministic report is still returned.
+  refunded**. The deterministic report is still returned.
 </Callout>
 
 <Callout type="warn" title="Core scan and AI analysis share one quota">
-  This is the single most surprising part of this feature: the core scan and the AI-powered analysis
-  draw from the **same** scan-quota bucket, not separate meters. Running the free core scan and then
-  the AI analysis on the same resume consumes two scans against one shared quota — not one scan
-  against each of two independent limits.
+  The core scan and the AI-powered analysis draw from the **same** scan quota, not separate meters.
+  Running the core scan and then the AI analysis on the same resume uses two scans from one quota.
+  The AI analysis also spends credits.
 </Callout>
 
 ## Quotas
@@ -100,37 +104,35 @@ uploads (`/ats/extract`). Both reset on the same window.
 | ----------------- | ----------------------------------------------------- | ------- |
 | Anonymous visitor | 1 / 48 hours, keyed to a salted hash of the client IP | 3       |
 | Free, logged in   | 2 / 24 hours                                          | 6       |
-| Subscriber        | 300 / billing period                                  | 300     |
+| Paid              | 300 / month                                           | 300     |
 
-<Callout type="info" title="Uploading a file no longer costs you a scan">
-  Extraction used to share the scan counter, which meant an anonymous visitor — with a single scan
-  per 48 hours — could spend it just by uploading their resume, and the check that followed always
-  came back `429`. Extraction now has its own, more generous allowance; it is still bounded
-  separately by IP, file size, and file type. `GET /ats/quota` reports both budgets, with the upload
-  one under `extract`.
+<Callout type="info" title="Uploading a file does not cost a scan">
+  Extraction has its own allowance, separate from the scan quota, and is bounded by IP, file size,
+  and file type. `GET /ats/quota` reports both budgets, with the upload one under `extract`.
 </Callout>
 
-<Callout type="info" title="What counts as a subscriber here">
-  The paid tier is determined by the **`ai_credits` entitlement** specifically — held by the AI
-  Standalone plan, the Job Hunter Bundle, a time-boxed pass, or a manual admin grant. Creator Pro on
-  its own does **not** raise the ATS quota, because it grants portfolio entitlements rather than
-  `ai_credits`.
+<Callout type="info" title="Who gets the paid tier">
+  Any signed-in account with AI credits gets 300 scans a month, whatever the credits came from: a
+  plan, a pass, or a credit pack. An account with an active subscription (Creator Pro included) or
+  pass keeps the paid tier even after spending every credit. A paused subscription gets the free
+  tier.
 
-The subscriber window is anchored to the subscription's own period (its `currentPeriodEnd` for
-monthly plans, otherwise the anniversary of its creation date), not to a calendar month.
+The month is anchored on the day the account's active `ai_credits` grant was created. Without one
+(for example, credits from a pack only), it is the calendar month.
 
 </Callout>
 
-The "Pro resume conversion" panel is gated on the same `ai_credits` entitlement.
+Paid tiers open at launch, when payments do. Resume conversion spends AI credits like any other AI
+action.
 
 ## Getting a resume into the checker
 
-A previously saved Studio resume can be loaded directly as the scan source, or a resume can be uploaded/pasted fresh (PDF, DOCX, TXT, MD, or JSON — 5MB max, enforced server-side).
+A previously saved Studio resume can be loaded directly as the scan source, or a resume can be uploaded/pasted fresh (PDF, DOCX, HTML, TXT, MD, or JSON, 5 MB max, enforced server-side).
 
 ## When the quota runs out
 
-Exceeding the quota returns `429` with the current quota summary attached — tier, limit, used,
-remaining, and a `resetsAt` timestamp — so the UI can tell you exactly when the next scan unlocks.
+Exceeding the quota returns `429` with the current quota summary attached (tier, limit, used,
+remaining, and a `resetsAt` timestamp), so the UI can tell you exactly when the next scan unlocks.
 Quota consumption is atomic (a Lua script on Redis), so concurrent scans cannot slip past the limit.
 
 ## API

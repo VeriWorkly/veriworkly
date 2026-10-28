@@ -25,9 +25,24 @@ unconfigured provider simply does not appear rather than failing at runtime.
 
 ### Account linking
 
-Account linking is enabled with `google`, `github`, and `linkedin` marked as trusted providers, so a
-user who signs up with email OTP and later signs in with Google lands on the same account rather than
-creating a duplicate.
+Account linking is enabled with `google` as the only trusted provider, so a user who signs up with
+email OTP and later signs in with Google lands on the same account rather than creating a duplicate.
+GitHub and LinkedIn link to an existing account by email only when the provider reports that email as
+verified.
+
+### GitHub linking rules
+
+- **One GitHub per account.** Linking a second, different GitHub account is refused with
+  `GITHUB_ALREADY_LINKED`. During an OAuth callback the code arrives as `error=GITHUB_ALREADY_LINKED`
+  on the redirect; otherwise it is a `403`. Re-linking the same GitHub account is allowed.
+- **Never unlinked.** `/unlink-account` for a GitHub account is refused with `403
+GITHUB_UNLINK_FORBIDDEN`.
+- **Any email.** A GitHub account can be linked even when its email differs from the VeriWorkly one
+  (`allowDifferentEmails`).
+- **One exception.** The first email-code sign-in to an account whose email was never verified
+  removes the accounts linked to it, GitHub included, before the email is marked verified.
+
+Free accounts import only from their linked GitHub; paid plans can import any public username.
 
 ---
 
@@ -47,12 +62,16 @@ Sessions are stored in **both** PostgreSQL and Redis:
 - A `secondaryStorage` adapter backed by Redis caches session lookups, so the hot path does not hit
   PostgreSQL on every request.
 
-| Setting                  | Environment variable                 | Default                                 |
-| :----------------------- | :----------------------------------- | :-------------------------------------- |
-| Session lifetime         | `AUTH_SESSION_TTL_SECONDS`           | `2592000` (30 days)                     |
-| Session refresh interval | `AUTH_SESSION_RESET_TTL_ON_USE`      | `86400` (24 hours)                      |
-| Cookie cache enabled     | `AUTH_SESSION_CACHE_ENABLED`         | `true` in production, `false` otherwise |
-| Cookie cache max age     | `AUTH_SESSION_CACHE_MAX_AGE_SECONDS` | `900` (15 minutes)                      |
+| Setting                  | Environment variable                 | Default             |
+| :----------------------- | :----------------------------------- | :------------------ |
+| Session lifetime         | `AUTH_SESSION_TTL_SECONDS`           | `2592000` (30 days) |
+| Session refresh interval | `AUTH_SESSION_RESET_TTL_ON_USE`      | `86400` (24 hours)  |
+| Server session cache TTL | `AUTH_SESSION_CACHE_MAX_AGE_SECONDS` | `900` (15 minutes)  |
+
+Better-Auth's cookie cache is always off (`cookieCache: { enabled: false }`), so a revoked session
+stops working on its next request. The server keeps its own token-keyed session cache in Redis, with
+revocation markers, in front of Better-Auth's storage. `AUTH_SESSION_CACHE_MAX_AGE_SECONDS` sets its
+TTL.
 
 ### Cookies
 
@@ -85,11 +104,18 @@ export const auth = betterAuth({
   advanced: {
     trustedProxyHeaders: true,
     cookiePrefix: "veriworkly-auth",
-    useSecureCookies: config.nodeEnv === "production",
+    useSecureCookies: isProduction,
     crossSubDomainCookies: {
       enabled: !!config.auth.cookieDomain,
       domain: config.auth.cookieDomain,
     },
+  },
+
+  session: {
+    storeSessionInDatabase: true,
+    expiresIn: config.auth.sessionTtlSeconds,
+    updateAge: config.auth.sessionResetTtlOnUse,
+    cookieCache: { enabled: false, strategy: "jwt" },
   },
 
   plugins: [
@@ -97,6 +123,7 @@ export const auth = betterAuth({
       expiresIn: config.auth.otpTtlSeconds,
       allowedAttempts: config.auth.otpAllowedAttempts,
       sendVerificationOTP: async ({ email, otp, type }) => {
+        await consumeOtpRecipientQuota(email);
         await sendAuthOtpEmail({ email, otp, type });
       },
     }),
@@ -117,41 +144,35 @@ export const auth = betterAuth({
 
 ### Rate limiting
 
-Better-Auth's own limiter runs on Redis, with a tighter custom rule on the send-OTP endpoint:
+Better-Auth's own limiter runs on Redis, per IP and per endpoint:
 
-| Endpoint                           | Effective limit                                                                           |
+| Endpoint                           | Limit                                                                                     |
 | :--------------------------------- | :---------------------------------------------------------------------------------------- |
-| `/email-otp/send-verification-otp` | 3 requests / 60 seconds (custom rule)                                                     |
-| `/sign-in/email-otp`               | Falls back to the default below — see the caveat                                          |
+| `/email-otp/send-verification-otp` | 10 requests / 60 seconds (custom rule)                                                    |
+| `/sign-in/email-otp`               | 20 requests / 60 seconds (custom rule)                                                    |
 | All other auth routes              | `AUTH_RATE_LIMIT_MAX_REQUESTS` (default 20) per `AUTH_RATE_LIMIT_WINDOW_MS` (default 60s) |
 
-The application's own IP-based rate limiter runs in front of this as an additional layer, also at 20
-requests / 60 seconds for `/api/v1/auth/*`.
+On top of that, one email address can receive at most 5 one-time codes per hour, whatever IP asks.
+Guessing a single code is bounded by the allowed failed attempts above.
 
-<Callout type="warn" title="The OTP-verification custom rule is dead configuration">
-  `auth/index.ts` defines a `customRules` entry for `/email-otp/verify-otp` at 5 requests / 60
-  seconds, but the Better-Auth version in use does not expose that path — the email-OTP plugin
-  provides `/email-otp/send-verification-otp`, `/email-otp/verify-email`,
-  `/email-otp/check-verification-otp`, and `/sign-in/email-otp`. The rule therefore never matches,
-  and OTP submission is limited only by the 20/60s default. Retargeting it at `/sign-in/email-otp`
-  would restore the intended tighter limit.
-</Callout>
+The application's own IP-based rate limiter runs in front of this as an additional layer, at the
+same `AUTH_RATE_LIMIT_*` limit for each endpoint under `/api/v1/auth`. Without Redis, the OTP-send
+endpoints refuse requests rather than count them in memory.
 
 ### Session cache invalidation
 
-A `before` hook clears cached session data on `/sign-out`, `/revoke-session`, `/revoke-sessions`,
-`/change-email`, `/change-password`, and `/delete-user`, so a revoked session cannot keep working for
-the remainder of its Redis cache TTL. Updating or deleting a user invalidates every one of their
-cached sessions by token.
+A `before` hook marks the session as revoked in the server's cache on `/sign-out`. Every deleted
+session (sign-out of other devices, admin revoke, account deletion) has its cache entry revoked by
+token, and updating a user invalidates every one of their cached sessions.
 
 ### Automatic emails
 
-Database hooks send transactional email on account lifecycle events:
+Transactional email goes out on account lifecycle events:
 
-- **Welcome email** — on user creation.
-- **New-device login alert** — on session creation, including the provider, IP, and user agent.
+- **Welcome email**: on user creation.
+- **New-device login alert**: on session creation, including the provider, IP, and user agent.
   Suppressed within the first 15 seconds after signup to avoid duplicating the welcome email.
-- **Account deletion confirmation** — before a user record is deleted.
+- **Account deletion confirmation**: after the account has been deleted.
 
 ### Admin provisioning
 
@@ -159,11 +180,11 @@ On server boot, if no admin account exists for the configured `ADMIN_EMAIL`, one
 automatically. `ADMIN_EMAIL` is compared case-insensitively and is a **server-only** value — it is
 never sent to the browser.
 
-<Callout type="warn" title="Self-service account deletion is not exposed">
-  The backend has the deletion machinery and the confirmation email template, but Better-Auth's
-  `deleteUser` endpoint is not enabled and no Studio UI calls it. Account deletion is currently
-  handled by contacting <a href="mailto:info@veriworkly.com">info@veriworkly.com</a>. See [Account
-  Management](/docs/user-guides/account-management).
+<Callout type="info" title="Account deletion">
+  Users delete their own account from the Danger Zone on Studio's `/profile`, which calls `DELETE
+  /api/v1/users/me`. That endpoint accepts a session only, never an API key. Better-Auth's own
+  `deleteUser` endpoint is not used. See [Account
+  Management](/docs/user-guides/account-management#deleting-your-data) for when deletion is refused.
 </Callout>
 
 ---

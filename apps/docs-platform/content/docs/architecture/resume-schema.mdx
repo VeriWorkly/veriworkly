@@ -161,9 +161,12 @@ export interface ResumeLinkItem {
 }
 ```
 
-<Callout type="warn" title="Phone validation is US-format only">
-  Phone-number validation in both the Basics section and the Master Profile is hard-coded to a
-  10-digit US format. International numbers will fail validation. This is a known limitation.
+<Callout type="info" title="Phone numbers: any country, stored as E.164">
+  `phone` is optional. Studio, the server, and the portfolio share one rule from
+  `packages/profile-core/src/common/phone.ts`: a value starting with `+` must be a valid number for
+  its country (checked with `libphonenumber-js`) and is stored in E.164 form, for example
+  `+442079460958`. A value without `+` is accepted only as 7 to 15 bare digits, kept as typed. An
+  empty string means "not provided".
 </Callout>
 
 ### Experience

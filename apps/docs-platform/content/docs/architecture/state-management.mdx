@@ -8,47 +8,44 @@ is an optional persistence and processing layer.
 
 ## Objectives
 
-1. **Client-centricity** — document data is persisted locally, so the editor works offline and before
+1. **Client-centricity**: document data is persisted locally, so the editor works offline and before
    login.
-2. **Optimistic updates** — UI interactions apply immediately; no network round-trip blocks typing.
-3. **Decoupled synchronisation** — pushing to the cloud is a background process, and can be turned
+2. **Optimistic updates**: UI interactions apply immediately; no network round-trip blocks typing.
+3. **Decoupled synchronisation**: pushing to the cloud is a background process, and can be turned
    off entirely per account or per document.
-4. **Data integrity** — schema normalisation runs on every load, and a revision counter guards
+4. **Data integrity**: schema normalisation runs on every load, and a revision counter guards
    against silent cross-device overwrites.
 
 ---
 
 ## Stores
 
-Studio uses **Zustand** without persistence middleware. Persistence is explicit: stores expose
-`saveToStorage` / `hydrateFromStorage` actions that call dedicated service modules, so writes are
-deliberate rather than a side effect of every state change.
+Studio uses **Zustand** without persistence middleware. Persistence is explicit: the document stores
+expose a `saveToStorage` action (and the cover letter store a `hydrateFromStorage` action) that call
+dedicated service modules, so writes are deliberate rather than a side effect of every state change.
 
-| Store                 | Location                                            | Holds                                                                            |
-| :-------------------- | :-------------------------------------------------- | :------------------------------------------------------------------------------- |
-| `useResumeStore`      | `features/resume/store/resume-store.ts`             | The **single active** `ResumeData` document plus the currently selected section. |
-| `useCoverLetterStore` | `features/cover-letter/store/cover-letter-store.ts` | The **single active** `CoverLetterDocument` plus the currently selected section. |
-| `useUserStore`        | `store/useUserStore.ts`                             | The session user, login state, and loading flag.                                 |
+| Store                 | Location                                            | Holds                                            |
+| :-------------------- | :-------------------------------------------------- | :----------------------------------------------- |
+| `useResumeStore`      | `features/resume/store/resume-store.ts`             | The **single active** `ResumeData` document.     |
+| `useCoverLetterStore` | `features/cover-letter/store/cover-letter-store.ts` | The **single active** `CoverLetterDocument`.     |
+| `useUserStore`        | `store/useUserStore.ts`                             | The session user, login state, and loading flag. |
 
-`useResumeStore` and `useCoverLetterStore` hold one document at a time — not a collection. The multi-document library is not
+`useResumeStore` and `useCoverLetterStore` hold one document at a time, not a collection. The multi-document library is not
 store state; it is read from and written to `localStorage` through
 `features/documents/services/document-library.ts`.
 
 ```typescript
 interface ResumeStoreState {
   resume: ResumeData;
-  selectedSection: ResumeSectionId;
-
   setResume: (resume: ResumeData) => void;
-  hydrateFromStorage: () => void;
   saveToStorage: (options?: SaveResumeOptions) => SaveResumeResult;
-  resetResume: () => void;
-  emptyResume: () => void;
+  resetResume: (master?: MasterProfileData) => SaveResumeResult;
+  emptyResume: () => SaveResumeResult;
 
   // Section-level mutators
-  setSectionVisibility: (section: ResumeSectionId, visible: boolean) => void;
+  setSectionVisibility: (sectionKey: string, visible: boolean) => void;
   reorderSections: (fromIndex: number, toIndex: number) => void;
-  updateSectionColumn: (sectionId: ResumeSectionId, column: "left" | "right") => void;
+  setSectionHeading: (sectionKey: string, label: string) => void;
 
   // Content mutators (basics, summary, links, skills, experience,
   // education, projects, and custom sections) …
@@ -75,27 +72,26 @@ The v2 storage scheme stored every document of a type inside a single JSON blob.
 | :----------------------------------- | :------------------------------------------------------------------------------------------------ |
 | `veriworkly:docs:v3:doc:{type}:{id}` | Individual document data. Reads and autosaves are constant time O(1).                             |
 | `veriworkly:docs:v3:index`           | Metadata index (id, type, title, updatedAt, sync status, revision) used for fast library listing. |
-| `veriworkly:docs:v2:active`          | `TYPE:id` pointer to the currently active document (deliberately preserved across migrations).    |
 | `veriworkly:sync-outbox`             | Pending background sync work items and retry queue.                                               |
 | `veriworkly:sync-telemetry`          | Last attempt / success / error timestamps and error diagnostics.                                  |
 | `veriworkly:master-profile`          | Local cached master profile facts record.                                                         |
 | `veriworkly:workspace-settings`      | Local workspace and editor preferences.                                                           |
 
-_(Note: `veriworkly:docs:v2:{type}` is legacy — read once during automatic migration to v3, then cleaned up)._
+_(Note: `veriworkly:docs:v2:{type}` is legacy: read once during automatic migration to v3, then cleaned up)._
 
 Two custom DOM events (`veriworkly:docs-storage-updated` and
 `veriworkly:sync-outbox-updated`) let the autosave layer and the sync layer notify each other without
-importing one another — this avoids a circular dependency between them.
+importing one another. This avoids a circular dependency between them.
 
 ### Resilience
 
-- **Self-healing reads** — a corrupted JSON value is cleared and replaced with a safe fallback rather
+- **Self-healing reads**: a corrupted JSON value is cleared and replaced with a safe fallback rather
   than throwing. An uncaught throw inside the fire-and-forget sync tick would silently stop syncing
   until a page reload.
-- **Schema validation** — document collections are validated on load and malformed entries are
+- **Schema validation**: document collections are validated on load and malformed entries are
   dropped instead of being carried forward in an obsolete format.
-- **Quota handling** — when the browser's storage quota is reached, the user is notified and offered
-  cloud offloading or document cleanup.
+- **Quota handling**: when the browser's storage quota is reached, the save fails and the editor
+  shows "Storage is full. Remove older documents or exports and try again."
 
 ---
 
@@ -121,22 +117,22 @@ local-only → pending → syncing → synced
 ### Outbox items
 
 Each queued document carries an `attempts` count and a `nextAttemptAt` timestamp, so failed uploads
-back off rather than retrying in a tight loop. Conflicted items are excluded from automatic retry —
+back off rather than retrying in a tight loop. Conflicted items are excluded from automatic retry:
 they wait for the user to resolve them in the conflict details view under `/settings`.
 
 ### Conflict detection
 
 Every `Document` row carries a `revision` integer. The client sends the revision it last saw; if the
 server's revision has advanced, the write is rejected and the local document is marked
-`conflicted` rather than overwritten. Failures are classified by reason (`conflict`, `auth`,
-`forbidden`, `not-found`, `network`, `unknown`) so the UI can respond appropriately — a network blip
+`conflicted` rather than overwritten. Failures are classified by reason (for example `conflict`, `auth`,
+`forbidden`, `not-found`, `network`, `storage`, `unknown`) so the UI can respond appropriately: a network blip
 retries, an auth failure prompts a re-login, a conflict prompts resolution.
 
 ### Controls
 
-- **Auto-sync toggle** — an account-level setting (`autoSyncEnabled`, default on) exposed at
+- **Auto-sync toggle**: an account-level setting (`autoSyncEnabled`, default on) exposed at
   `/settings`, plus a manual **Sync Now** action.
-- **Keep local only** — a per-document opt-out that pins a document to `local-only` and never
+- **Keep local only**: a per-document opt-out that pins a document to `local-only` and never
   uploads it.
 
 <Callout type="info" title="Editing during an in-flight sync is safe">

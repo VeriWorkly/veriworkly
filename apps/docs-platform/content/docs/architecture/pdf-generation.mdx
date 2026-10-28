@@ -3,14 +3,14 @@ title: Export Pipeline
 description: The dual-engine template model and the six client-side export formats.
 ---
 
-Every VeriWorkly export — PDF, DOCX, HTML, Markdown, plain text, and JSON — is generated **inside the
+Every VeriWorkly export (PDF, DOCX, HTML, Markdown, plain text, and JSON) is generated **inside the
 user's browser**. There is no server-side rendering step and no headless browser in the export path.
 
 <Callout type="info" title="The one Playwright dependency is a test tool">
   Studio depends on Playwright for `npm run test:parity`, which lays the same document out in
   Chromium and in `@react-pdf/renderer` and diffs the two box trees. It is a dev-only harness for
-  proving the preview and the export agree — it is not part of the export pipeline, and no
-  production code path launches a browser. There is no Puppeteer anywhere in the repository.
+  proving the preview and the export agree. It is not part of the export pipeline, and no production
+  code path launches a browser. There is no Puppeteer anywhere in the repository.
 </Callout>
 
 ---
@@ -19,42 +19,45 @@ user's browser**. There is no server-side rendering step and no headless browser
 
 Each resume template ships two implementations of the same document:
 
-1. **Web engine (`web.tsx`)** — standard React and Tailwind CSS 4. Optimised for interactivity, live
+1. **Web engine (`web.tsx`)**: standard React and Tailwind CSS 4. Optimised for interactivity, live
    editing, and the paged on-screen preview.
-2. **PDF engine (`pdf.tsx`)** — `@react-pdf/renderer` primitives (`Document`, `Page`, `View`,
+2. **PDF engine (`pdf.tsx`)**: `@react-pdf/renderer` primitives (`Document`, `Page`, `View`,
    `Text`, `Image`) with a React-Native-style style object syntax, giving fixed-width layout control
    for print fidelity.
 
 Cover letters follow the same split, with a shared `CoverLetterPdf` component that selects its layout
 by `templateId`.
 
-> [!TIP]
-> The live implementations are in the
-> [templates directory](https://github.com/VeriWorkly/veriworkly/tree/master/apps/studio/templates)
-> on GitHub.
+<Callout type="info" title="Source">
+  The live implementations are in the [templates
+  directory](https://github.com/VeriWorkly/veriworkly/tree/master/apps/studio/templates) on GitHub.
+</Callout>
 
 ---
 
 ## The dispatcher
 
-`features/documents/export/export-dispatcher.tsx` is **type-driven**. It switches first on the
-document's `type`, then on the requested format, and uses an `assertNever` exhaustiveness guard on
-both — so adding a document type or an export format is a compile-time error until every branch is
-handled.
+`features/documents/export/export-dispatcher.tsx` is the only way any surface reaches an exporter.
+It looks up the document type's definition in the document registry, checks that the type supports
+the requested format, and loads that type's exporter with a dynamic `import()`. Listing or editing
+documents therefore never loads `@react-pdf/renderer` or `docx`, and a new document type registers
+its own exporter instead of falling through to another type's.
 
 ```typescript
 export async function exportDocumentByType(
   document: BaseDocument,
   format: ExportFormat,
+  options?: DocumentExportOptions,
 ): Promise<void> {
-  switch (document.type) {
-    case "RESUME":
-      return exportResumeDocumentByFormat(document, format);
-    case "COVER_LETTER":
-      return exportCoverLetterDocumentByFormat(document, format);
-    default:
-      return assertNever(document.type, "exportDocumentByType");
+  const definition = getDocumentDefinition(document.type);
+
+  if (!definition.exportFormats.includes(format)) {
+    throw new Error(`${definition.label} cannot be exported as ${format}`);
   }
+
+  const exporter = await definition.loadExporter(format);
+
+  return exporter(document, options);
 }
 ```
 
@@ -62,17 +65,17 @@ export async function exportDocumentByType(
 
 ## Formats
 
-| Format         | Implementation        | Notes                                                   |
-| :------------- | :-------------------- | :------------------------------------------------------ |
-| **PDF**        | `@react-pdf/renderer` | Vector text with embedded fonts.                        |
-| **DOCX**       | the `docx` package    | Editable Word output for further manual adjustment.     |
-| **HTML**       | dedicated serialiser  | Self-contained markup.                                  |
-| **Markdown**   | dedicated serialiser  | Plain, portable structure.                              |
-| **Plain text** | dedicated serialiser  | For paste-into-form ATS flows.                          |
-| **JSON**       | dedicated serialiser  | The raw document model — re-importable into VeriWorkly. |
+| Format         | Implementation        | Notes                                                  |
+| :------------- | :-------------------- | :----------------------------------------------------- |
+| **PDF**        | `@react-pdf/renderer` | Vector text with embedded fonts.                       |
+| **DOCX**       | the `docx` package    | Editable Word output for further manual adjustment.    |
+| **HTML**       | dedicated serialiser  | Self-contained markup.                                 |
+| **Markdown**   | dedicated serialiser  | Plain, portable structure.                             |
+| **Plain text** | dedicated serialiser  | For paste-into-form ATS flows.                         |
+| **JSON**       | dedicated serialiser  | The raw document model, re-importable into VeriWorkly. |
 
-All six are available from a single export menu, both inside the editor and on a document's public
-share page.
+All six are available from the export menu in the editor. A document's public share page offers PDF
+and DOCX only: the editable JSON source stays with the owner.
 
 ---
 
@@ -80,7 +83,7 @@ share page.
 
 ### 1. Normalisation
 
-The active document is read from its Zustand store and normalised — dates formatted, rich-text
+The active document is read from its Zustand store and normalised: dates formatted, rich-text
 fragments flattened, hidden sections dropped, section order applied.
 
 ### 2. Font registration
@@ -89,8 +92,9 @@ fragments flattened, hidden sections dropped, section order applied.
 faces with `@react-pdf/renderer`, resolving font files to absolute URLs against the current origin.
 Registration is memoised, so switching between documents does not re-register the same family.
 
-A hyphenation callback breaks words longer than 18 characters into 12-character chunks, so a long
-unbroken URL or token cannot overflow the page.
+A hyphenation callback turns `@react-pdf/renderer`'s own hyphenation off, as CSS does by default:
+words up to 60 characters are never split. A longer unbroken token, such as a long URL, may break at
+any character, and the PDF prints a hyphen at that break.
 
 ### 3. Blob generation
 
@@ -106,18 +110,18 @@ never leaves the device during export.
 
 ## ATS considerations
 
-- **Vector text, not images** — every glyph is real text, so applicant tracking systems can index the
+- **Vector text, not images**: every glyph is real text, so applicant tracking systems can index the
   full contents.
-- **Embedded fonts** — font files are embedded in the PDF, so layout does not shift based on the
+- **Embedded fonts**: font files are embedded in the PDF, so layout does not shift based on the
   reader's locally installed fonts.
-- **Single-column-friendly layouts** — the Precision ATS template in particular uses a dense
+- **Single-column-friendly layouts**: the Precision ATS template in particular uses a dense
   single-column structure that parsers handle reliably.
-- **Document title metadata** — the PDF's `title` property is set from the document owner's name.
+- **Document metadata**: the PDF's title is the owner's name plus "Resume" or "Cover Letter", and
+  the author is the owner's name.
 
 <Callout type="info" title="What the PDF pipeline does not do">
   `@react-pdf/renderer` produces standard, untagged PDFs. VeriWorkly does **not** emit PDF/UA
-  accessibility structure tags, and does not populate author, subject, or keyword metadata — only
-  the document title. If you have a hard requirement for a tagged or fully-metadata-annotated PDF,
+  accessibility structure tags or keyword metadata. If you have a hard requirement for a tagged PDF,
   export to DOCX and generate the final file from a word processor.
 </Callout>
 
@@ -125,16 +129,10 @@ never leaves the device during export.
 
 ## Empty-field handling
 
-`formatDateRange` and `joinTruthy` in `features/documents/utils/formatters.ts` drop blank parts
-rather than substituting placeholder text, so an entry missing its dates, company, or location
-exports with those pieces simply absent.
-
-<Callout type="info" title="Titles are the one place a fallback still prints">
-  An item with no title falls back to a generic label — `"Role"` for experience, `"Education"`,
-  `"Project"`, and `"Item"` for custom sections. These come from `getExperienceRenderItems` and its
-  siblings in `templates/resume/shared/model.ts` and are deliberate: a headingless entry would
-  otherwise render as a floating block of bullets.
-</Callout>
+The render helpers in `features/documents/rendering/resume-render-items.ts` and
+`features/documents/utils/formatters.ts` drop blank parts rather than substituting placeholder
+text, so an entry missing its title, dates, company, or location exports with those pieces simply
+absent.
 
 ---
 
@@ -142,7 +140,7 @@ exports with those pieces simply absent.
 
 The full procedure, including the `skin.ts` geometry contract and the contract tests that enforce
 it, is documented once in
-[Resume Templates → Adding a template](/docs/user-guides/resume-templates#adding-a-template).
+[Resume Templates: Adding a template](/docs/user-guides/resume-templates#adding-a-template).
 
-`/pdf-debug/[type]/[templateId]` is an internal PDF-rendering debugger useful while iterating. Its
-navigation link is hidden in production builds, though the route itself has no server-side gate.
+`/pdf-debug/[type]/[templateId]` is an internal PDF-rendering debugger useful while iterating. It
+works in development only: outside development the route answers 404.

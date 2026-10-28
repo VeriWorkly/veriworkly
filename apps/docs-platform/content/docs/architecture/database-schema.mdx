@@ -1,6 +1,6 @@
 ---
 title: Database Schema
-description: The VeriWorkly relational data model — documents, sharing, billing, credits, portfolios, growth programs, and observability.
+description: The VeriWorkly relational data model, covering documents, sharing, billing, credits, portfolios, growth programs, and observability.
 ---
 
 VeriWorkly uses **PostgreSQL** through **Prisma 7**. The source of truth is
@@ -29,6 +29,7 @@ model User {
   // Affiliate program
   affiliateStatus       AffiliateStatus        @default(NOT_ENROLLED)
   affiliateTier         AffiliateTier          @default(TIER_1)
+  affiliateTierDecidedAt DateTime?
   affiliateCode         String?                @unique
   affiliateEnrolledAt   DateTime?
 
@@ -41,6 +42,9 @@ model User {
   lastLinkedinImportAt  DateTime?
   lastGithubImportAt    DateTime?
 
+  // The Dodo customer id, recorded from every successful payment
+  billingCustomerId     String?
+
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   // …plus relations to sessions, documents, credits, billing, portfolios, and more
@@ -51,7 +55,7 @@ enum AffiliateStatus { NOT_ENROLLED  PENDING  ACTIVE  SUSPENDED }
 enum AffiliateTier   { TIER_1  TIER_2  TIER_3 }
 ```
 
-`username` is required before a document can be shared publicly — share URLs are username-scoped.
+`username` is required before a document can be shared publicly: share URLs are username-scoped.
 `lastLinkedinImportAt` and `lastGithubImportAt` are what enforce the free-tier import cooldowns
 described in [Importing Your Profile](/docs/product/importing-your-profile).
 
@@ -65,7 +69,7 @@ new-device login alerts.
 
 ## Documents
 
-### Document — the unified content model
+### Document: the unified content model
 
 Resumes, cover letters, portfolios, and link-in-bio pages are all **one table**, distinguished by
 `type`.
@@ -82,6 +86,8 @@ model Document {
   slug          String
   tags          String[]     @default([])
 
+  portfolioSubdomain String?  // A portfolio draft's chosen subdomain; null on other types
+
   content       Json         // Document body, JSON-Resume-shaped for resumes
   metadata      Json?        // UI state, favourites, and other client hints
 
@@ -96,21 +102,26 @@ model Document {
   updatedAt     DateTime     @updatedAt
   deletedAt     DateTime?    // Soft delete
 
+  moderatedPrivateAt DateTime? // Set when a moderator made the document private
+
   @@unique([userId, slug])
 }
 ```
 
 - **`revision`** is the optimistic-concurrency guard. A sync write that carries a stale revision is
   rejected rather than applied, which is what surfaces as a `conflicted` sync state in Studio.
-- **`templateId`'s `"modern"` default is a historical artefact** — no template ships with that id.
+- **`templateId`'s `"modern"` default is a historical artefact**: no template ships with that id.
   Studio's `loadTemplateComponentById` falls back to the first registry entry for any unrecognised
   id, so such a document renders as Executive Clarity. Every document created through the UI carries
   a real id.
-- **`deletedAt`** is a soft delete. Restore and hard-delete methods exist in the service layer, but
-  no route currently exposes them — only soft delete is reachable through the API today.
-- **Payload cap** — document `content` is limited to roughly 1 MB per document, enforced server-side.
-- **Free-tier cap** — one active document _per type_ for users without the `ai_credits` or
-  `portfolio_publish` entitlement.
+- **`deletedAt`** is a soft delete. A deleted document's content is purged 30 days later by default
+  (`RETENTION_DELETED_DOCUMENT_DAYS`); the row stays, and a purged document cannot be restored.
+- **`moderatedPrivateAt`** is set when a moderator makes a document private. While it is set, the
+  owner cannot share, unlist or publish the document.
+- **Payload cap**: document `content` is limited to 1,000,000 characters of JSON per document,
+  enforced server-side.
+- **Free-tier cap**: one active document _per type_ for accounts without paid access (a plan or a
+  pass). Credit packs do not lift it.
 
 ### MasterProfile
 
@@ -141,7 +152,7 @@ model ShareLink {
   slug         String    // Stable public URL slug
   snapshot     Json      // Static copy of the document at share time
 
-  passwordHash String?   // scrypt, verified with a timing-safe comparison
+  passwordHash String?
   expiresAt    DateTime?
   viewCount    Int       @default(0)
   lastViewedAt DateTime?
@@ -158,8 +169,8 @@ Two things follow directly from this shape:
 - **One share link per document per user** (`@@unique([userId, documentId])`). Re-sharing updates the
   existing link rather than minting a second one.
 
-`ShareView` records individual views, feeding the buffered view-count flush job. Repeat views from
-the same IP within a 30-minute window are deduplicated before any counter is incremented.
+`ShareView` records individual views (with a one-way hash of the IP, never the IP itself). Views are
+buffered in Redis and written by the view flush job, and `ShareView` rows are pruned after 30 days.
 
 Public share URLs take the form `/share/{username}/{slug}`.
 
@@ -170,20 +181,23 @@ Public share URLs take the form `/share/{username}/{slug}`.
 ### Subscription
 
 ```prisma
-enum SubscriptionStatus { INACTIVE  TRIALING  ACTIVE  PAST_DUE  CANCELED }
+enum SubscriptionStatus { INACTIVE  ACTIVE  PAST_DUE  CANCELED }
 enum BillingInterval    { ONE_DAY  SEVEN_DAY  MONTHLY  ANNUAL }
 ```
 
-Holds provider/customer/price/subscription IDs, a `productKey`, status, interval, a grace-period end
-date, a cancel-at-period-end flag, and a last-webhook timestamp used to keep out-of-order webhook
-delivery from corrupting state.
+Holds provider/customer/price/subscription IDs, a `productKey`, status, the provider's raw status,
+interval, the current period end, a grace-period end date, a cancel-at-period-end flag, and a
+last-webhook timestamp used to keep out-of-order webhook delivery from corrupting state.
+
+`SubscriptionCreditSchedule` records an annual plan's monthly credit grants, one row per paid
+period, and `BillingNotification` records each billing email once so a retry never sends it twice.
 
 ### EntitlementGrant
 
-A named capability (`ai_credits`, `portfolio_publish`, `custom_subdomain`, `seo_controls`,
-`analytics`, `watermark_removal`), its source (`SUBSCRIPTION`, `MANUAL`, `PROMOTION`, `SYSTEM`), and
-a start/end/revoked window. Access checks read entitlements, never plan names — which is why a
-manual admin grant behaves identically to a paid subscription.
+A named capability (`ai_credits`, `portfolio_publish`, `seo_controls`, `analytics`,
+`watermark_removal`), its source (`SUBSCRIPTION`, `MANUAL`, `PROMOTION`, `SYSTEM`), and a
+start/end/revoked window. Access checks read entitlements, never plan names, which is why a manual
+admin grant behaves identically to a paid subscription.
 
 ### The credit ledger
 
@@ -193,7 +207,7 @@ Five tables work together:
 | :---------------------- | :---------------------------------------------------------------------- |
 | `CreditWallet`          | Balance, reserved amount, and lifetime credited/debited totals.         |
 | `CreditGrant`           | An individual batch of credits with its own expiry.                     |
-| `CreditReservation`     | The two-phase reserve → commit/release record for an in-flight AI call. |
+| `CreditReservation`     | The two-phase reserve, then commit or release, record for an AI call.   |
 | `CreditTransaction`     | The full, user-visible transaction history.                             |
 | `CreditUsageAllocation` | Records exactly which grant(s) funded each transaction, FIFO by expiry. |
 
@@ -203,20 +217,23 @@ grant plus a leftover top-up is debited from the soonest-to-expire grant first.
 ### BillingWebhookEvent
 
 Every Dodo Payments webhook, keyed by the provider's event ID for idempotency, with a processing
-status and retry count. This table also powers the user-facing billing history list.
+status (`PROCESSING`, `PROCESSED`, `FAILED`), the error, a retry count, and the product, amount and
+payment ID. This table also powers the user-facing billing history list. Payloads are redacted
+after the `RETENTION_*_WEBHOOK_PAYLOAD_DAYS` windows.
 
 ---
 
 ## Portfolio
 
-| Model                  | Role                                                                                                                                                                           |
-| :--------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PortfolioPublication` | A published portfolio's live state — status (`LIVE`/`GRACE`/`SUSPENDED`), unique subdomain, template, content snapshot, published revision, suspension metadata. One per user. |
-| `PortfolioAsset`       | Uploaded images (avatar, project cover, social image) with R2 upload status (`PENDING`/`READY`), checksum, and size.                                                           |
-| `PortfolioViewDaily`   | Daily view counts, unique per (publication, date, referrer host).                                                                                                              |
+| Model                  | Role                                                                                                                                                                          |
+| :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PortfolioPublication` | A published portfolio's live state: status (`LIVE`/`GRACE`/`SUSPENDED`), unique subdomain, template, content snapshot, published revision, suspension metadata. One per user. |
+| `PortfolioAsset`       | Uploaded images (avatar, project cover, social image) with R2 upload status (`PENDING`/`READY`/`DELETED`), checksum, and size.                                                |
+| `PortfolioViewDaily`   | Daily view counts, unique per (publication, date, referrer host).                                                                                                             |
 
-Abandoned `PENDING` uploads older than 24 hours — and their R2 objects — are garbage-collected by the
-hourly portfolio access job, which also suspends publications whose billing grace period has expired.
+Abandoned `PENDING` uploads older than 24 hours, and their R2 objects, are garbage-collected by the
+hourly portfolio access job. The same job moves a premium portfolio whose paid access has ended to a
+free template; the site stays online.
 
 ---
 
@@ -227,7 +244,7 @@ hourly portfolio access job, which also suspends publications whose billing grac
 `AffiliateReferral` (signed up / converted / rejected), `AffiliateClick`, `AffiliateCommission`
 (pending / available / reversed / paid, with a basis-points rate and a cent amount),
 `AffiliateWallet` (pending / available / paid cent totals), and `AffiliateWithdrawal` (requested /
-approved / rejected / paid).
+approved / rejected / paid). A reversed commission records any `clawbackCents` still owed back.
 
 ### Ambassador
 
@@ -256,8 +273,10 @@ transaction. See [Ambassador Program](/docs/product/ambassador-program).
 
 ### AdminAuditEntry
 
-The admin action log actually written to by the monetization console — credit and entitlement
-grants, affiliate moderation, and withdrawal decisions.
+The admin action log: actor, action, target, reason and metadata for every admin action, including
+credit and entitlement grants, affiliate moderation, withdrawal decisions, and document and
+portfolio moderation. Entries are deleted after `RETENTION_ADMIN_AUDIT_DAYS` (money actions after
+`RETENTION_ADMIN_MONEY_AUDIT_DAYS`); takedown records are kept.
 
 ---
 
@@ -266,23 +285,19 @@ grants, affiliate moderation, and withdrawal decisions.
 ### RoadmapFeature and RoadmapInteraction
 
 `RoadmapFeature` holds public roadmap items: a free-text `status` (`"todo"` / `"in-progress"` /
-`"done"` — a string, not a database enum), an ETA, tags, and rich detail fields (`fullDescription`,
-`whyItMatters`, `timeline`, `details`).
+`"done"`, a string, not a database enum), an ETA, tags, start and completion dates, and rich detail
+fields (`fullDescription`, `whyItMatters`, `timeline`, `details`).
 
-`RoadmapInteraction` models per-user votes, bookmarks, and comments.
-
-<Callout type="warn" title="Roadmap interactions are read-only in practice">
-  Existing `RoadmapInteraction` rows are returned as part of a feature's public detail response, but
-  no route lets a user create, update, or delete one. The feature is read-visible but not
-  write-reachable.
-</Callout>
+`RoadmapInteraction` is a table for per-user votes, bookmarks, and comments. The API does not read
+or write it.
 
 ### ChangelogEntry
 
 One row per shipped release: `version` (unique), title, summary, a `type` (`major` / `minor` /
 `patch`), publish date, GitHub URL, and five categorised string arrays — `added`, `improved`,
-`fixed`, `breaking`, `security` — plus tags and PR references. A daily sync job can import missing
-entries from GitHub Releases.
+`fixed`, `breaking`, `security`, plus tags and PR references. A daily sync job can import missing
+entries from GitHub Releases. `ChangelogReleaseTombstone` remembers releases an admin deleted, so
+the sync does not import them again.
 
 ---
 
@@ -296,21 +311,20 @@ entries from GitHub Releases.
 | `AuditLog`                                 | A generic HTTP request/error audit table.                                                                     |
 
 <Callout type="info" title="Two different audit tables">
-  `AdminAuditEntry` is the live admin action log, written by the monetization console. `AuditLog` is
-  separate and generic: the logging middleware writes one row per `4xx`/`5xx` response — **in
-  production only**, and excluding `401`, `404`, and `429`, which are high-volume expected failures
-  (auth probes, missing routes, rate-limit noise). Each row records method, path, status, IP, user
-  agent, and the error message.
+  `AdminAuditEntry` is the admin action log. `AuditLog` is separate and generic: the logging
+  middleware writes one row per `4xx`/`5xx` response, **in production only**, and excluding `401`,
+  `404`, `409`, and `429`, which are high-volume expected failures. Rows are written in batches.
+  Each row records method, path, status, IP, user agent, and the error message.
 </Callout>
 
-<Callout type="warn" title="`AuditLog` is the fastest-growing table in the schema">
-  Nothing else deletes from it. The daily usage-metrics job is the only pruner, dropping rows older
-  than `AUDIT_LOG_RETENTION_DAYS` (default 90) — so that variable, not any external retention
-  policy, is what bounds the table.
+<Callout type="info" title="Retention">
+  The daily data retention job deletes `AuditLog` rows older than `RETENTION_AUDIT_LOG_DAYS`
+  (default 90). See [Environment Variables](/docs/operations/environment-variables#data-retention)
+  for every retention rule.
 </Callout>
 
-Usage metrics are **aggregate-only product telemetry** — counts of events like resumes created,
-exports, and logins — buffered in Redis and flushed daily. They are not per-user tracking, and no
+Usage metrics are **aggregate-only product telemetry**: counts of events like resumes created,
+exports, and logins, buffered in Redis and flushed daily. They are not per-user tracking, and no
 third-party analytics is present.
 
 ---
@@ -320,7 +334,7 @@ third-party analytics is present.
 ```prisma
 model ApiKey {
   id        String    @id @default(cuid())
-  keyHash   String    @unique   // HMAC-SHA256; the key itself is never stored
+  keyHash   String    @unique   // HMAC of the key; the key itself is never stored
   keyPrefix String
   keySuffix String
   name      String

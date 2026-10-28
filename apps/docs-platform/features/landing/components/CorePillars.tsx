@@ -17,7 +17,7 @@ const pillars = [
 
   {
     title: "API-Driven Workflows",
-    desc: "Every feature is built API-first. Integrate our builder into your existing HR tech stack seamlessly.",
+    desc: "Work with your documents from your own tools through the REST API and scoped API keys.",
     icon: Code,
     href: "/api-reference",
     bg: "bg-purple-500/10",
@@ -35,7 +35,7 @@ const pillars = [
 
   {
     title: "Privacy & Security",
-    desc: "Data ownership is at the heart of VeriWorkly. Explore our security model and local-first encryption.",
+    desc: "Data ownership is at the heart of VeriWorkly. Read how we store, sync and protect your data.",
     icon: Shield,
     href: `${siteConfig.links.main}/privacy`,
     bg: "bg-emerald-500/10",
