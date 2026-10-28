@@ -25,7 +25,8 @@ const EXTRACTION_TIMEOUT_MS = 20_000;
  * upload charge, like any other file the server could not read. `ATS_EXTRACT_MAX_RSS_MB`
  * (megabytes, default 512) is read at each fork so it needs no restart to change. A child busy
  * in one long synchronous decode cannot poll; the extraction timeout above remains the backstop.
- * The real fix is `maxImageSize` upstream in `@veriworkly/ats-engine`'s `readPdf`.
+ * Since `@veriworkly/ats-engine` 0.22.0 `readPdf` caps decoded images at 4096² pixels, so this
+ * is the backstop, not the fix.
  */
 const DEFAULT_MAX_RSS_MB = 512;
 const RSS_EXIT_CODE = 97;

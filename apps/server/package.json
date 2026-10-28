@@ -46,7 +46,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@prisma/config": "^7.10.0",
-    "@veriworkly/ats-engine": "^0.21.0",
+    "@veriworkly/ats-engine": "^0.22.0",
     "@veriworkly/profile-core": "*",
     "better-auth": "~1.7.14",
     "compression": "^1.8.2",
