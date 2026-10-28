@@ -1,6 +1,6 @@
 ---
 title: Match against job postings
-description: Turn a saved job page into posting text and an employer name with the job helpers, pass both to check, or let the CLI read Greenhouse, Lever and Ashby links.
+description: Turn a saved job page into posting text and an employer name, pass both to check, or let the CLI read Greenhouse, Lever and Ashby links.
 ---
 
 A job match needs the posting's text. If you have it as text, pass it as `jobDescription` ([pasted text](/ats-engine/guides/pasted-text)). If you have the page's HTML, `@veriworkly/ats-engine/job` extracts the posting from it. The subpath is <EngineSize of="./job" /> gzipped, has no dependencies and runs in browsers, at the edge and on servers. It parses HTML only. It never fetches a page.

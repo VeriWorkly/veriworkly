@@ -1,10 +1,15 @@
 ---
 title: Ambassador Program
-description: The Campus Ambassador program today is application intake and admin review. There are no points, vouchers or leaderboard.
+metaTitle: "VeriWorkly Campus Ambassador Program: How to Apply"
+description: Apply to the VeriWorkly Campus Ambassador program on veriworkly.com. An admin approves or rejects each application. There are no points or rewards.
 ---
 
-The Campus Ambassador program is application intake and admin review. You apply, an admin approves
-or rejects you, and an approved applicant gets the `AMBASSADOR` role.
+**To become a VeriWorkly Campus Ambassador, apply at
+[veriworkly.com/ambassador/apply](https://veriworkly.com/ambassador/apply) with your college,
+graduation year and a few short answers. An admin approves or rejects each application, and an
+approved applicant gets the ambassador role. The program has no points, vouchers or leaderboard.**
+Track your application at `/ambassador` in Studio. While the program is closed, both pages show
+a coming-soon screen instead.
 
 <Callout type="warn" title="No rewards system">
   There are no points, rewards, vouchers or leaderboard in the product, and no database model for
@@ -29,9 +34,7 @@ startup, so set it in every app that should open the program:
 
 ---
 
-## What's live today
-
-### Applying
+## How do I apply?
 
 The application form lives on the **marketing site** at
 [veriworkly.com/ambassador/apply](https://veriworkly.com/ambassador/apply), not in Studio.
@@ -55,7 +58,7 @@ already an `AMBASSADOR`, is rejected with a `409`.
 Applying sets the user's `ambassadorStatus` to `PENDING` in the same transaction that writes the
 application.
 
-### Checking status
+### How do I check my application status?
 
 `GET /api/v1/ambassador/me` returns the user's `name`, `email`, `role`, `ambassadorStatus`,
 `collegeName`, and `graduationYear`, plus the previous `application` answers (so a rejected
@@ -129,6 +132,9 @@ application status, and the `Role` enum includes a dedicated `AMBASSADOR` value.
 ## API
 
 See the [Ambassador API reference](/api-reference/ambassador/overview) for full request and response shapes.
+
+For a plain account of both programs, read [how affiliate and ambassador rewards actually
+work](https://blog.veriworkly.com/how-affiliate-and-ambassador-rewards-actually-work).
 
 ## Related
 

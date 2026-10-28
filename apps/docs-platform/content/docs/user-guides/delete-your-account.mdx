@@ -1,0 +1,102 @@
+---
+title: Delete Your Account
+metaTitle: How Do I Delete My VeriWorkly Account?
+description: Delete your VeriWorkly account from the Danger Zone on your Studio profile page. Download your data first. What is deleted, kept, and what blocks it.
+---
+
+import { Step, Steps } from "fumadocs-ui/components/steps";
+
+**Open your profile page in Studio ([app.veriworkly.com/profile](https://app.veriworkly.com/profile)),
+select Delete Account in the Danger Zone, download your data, type your email address, and confirm.
+Deletion is permanent and runs straight away. A live or recently cancelled subscription, an open
+checkout or a pending affiliate withdrawal blocks it until that is settled.**
+
+## How do I delete my account?
+
+You delete your account yourself from the Studio profile page. You must be signed in. The steps take
+about a minute, and the last one cannot be undone. Download your data before you confirm, because
+nothing can be restored afterwards.
+
+<Steps>
+  <Step>
+    Sign in to [app.veriworkly.com](https://app.veriworkly.com) and open **Profile** (`/profile`).
+  </Step>
+  <Step>In the **Danger Zone** card, select **Delete Account**.</Step>
+  <Step>
+    Select **Download my data** to save one JSON file with every document in your account and your
+    Master Profile.
+  </Step>
+  <Step>
+    Type the email address of your account in the confirmation box. Capital letters do not matter.
+  </Step>
+  <Step>
+    Select **Permanently Delete Everything**. Studio signs you out, clears this browser's copy of
+    your documents, and takes you to the VeriWorkly home page.
+  </Step>
+</Steps>
+
+## How do I download my data before deleting?
+
+Use **Download my data** in the delete dialog. It saves one JSON file with every document in your
+account and your Master Profile. To restore later, an editor's **Import JSON** brings back a document
+and **Profile > Advanced JSON > Import** brings back the Master Profile. For a PDF, open the document
+and download it.
+
+The dialog also counts the documents on this device and how many were never saved to the cloud.
+Deleting your account removes them from this device too. If the full download fails, the dialog
+offers **Download local documents only**, which saves just the documents on this device.
+
+## What gets deleted?
+
+Your account and everything tied to it: documents, the Master Profile, share links, your published
+portfolio and its uploaded images, API keys, sessions, and affiliate and ambassador records. Unused AI
+credits, credit packs and grants are lost without a refund. API keys stop working at once, and every
+signed-in device is signed out.
+
+## What does VeriWorkly keep after deletion?
+
+Billing records are kept, without your personal details. Subscriptions, credit history and payment
+provider events stay on file as long as tax law requires, detached from your account. The personal
+data the payment provider sent in those events is redacted. Copies may also remain in backups until
+those backups expire.
+
+After the deletion, VeriWorkly sends a confirmation email with the subject **Your VeriWorkly Account
+Has Been Deleted** to the address on the account.
+
+## Why can't I delete my account?
+
+The server refuses a deletion that would leave money or a charge unaccounted for. Each refusal tells
+you what to do. The table lists the exact messages and the fix for each.
+
+| Message you see                                                                                                     | What to do                                                                                                                                          |
+| :------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cancel your subscription before deleting your account: open Billing and use Manage Subscription. ...                | Open [Billing](https://app.veriworkly.com/billing), select **Manage subscription**, and cancel. Delete your account once the paid period has ended. |
+| Your subscription is cancelled and ends on _date_. You can delete your account once it has ended. ...               | Wait until that date, or contact support to have it deleted sooner.                                                                                 |
+| A checkout is still open for this account. Finish or cancel it before deleting the account.                         | Finish or cancel the checkout on the Billing page. An open checkout stays payable for up to 24 hours.                                               |
+| You have a withdrawal in progress. Wait for it to be paid or rejected before deleting your account.                 | Wait until the affiliate payout is paid or rejected.                                                                                                |
+| You have _amount_ USD in unpaid affiliate commissions. Deleting your account forfeits it. Confirm to delete anyway. | See the next section.                                                                                                                               |
+| Account deletion is temporarily unavailable. Try again shortly.                                                     | Try again in a few minutes.                                                                                                                         |
+
+A subscription blocks deletion while the payment provider can still charge it: active, paused, on
+hold or past due. VeriWorkly cannot cancel it for you, because it lives with the payment provider.
+Payments are admin-only in production today, so this applies once payments open at launch.
+
+## What if I have unpaid affiliate commissions?
+
+Deleting your account forfeits unpaid affiliate commissions. The server asks you to confirm the
+amount before it deletes, but Studio does not yet offer that confirmation step, so the deletion stops
+at the message. Email [info@veriworkly.com](mailto:info@veriworkly.com) from your account address and
+ask for the deletion.
+
+## Can I delete my account with an API key?
+
+No. Account deletion only works from a signed-in Studio session. A request to `DELETE /users/me` with
+an API key is refused with `403`, because the scope that renames an account must not be able to
+destroy it. See [Delete the current user](/api-reference/users/deleteCurrentUser) in the API
+reference.
+
+## Related
+
+- [Your account page](/docs/user-guides/your-account-page)
+- [Account management](/docs/user-guides/account-management)
+- [Privacy policy](/docs/legal/privacy-policy)

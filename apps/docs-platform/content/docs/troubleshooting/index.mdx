@@ -1,0 +1,45 @@
+---
+title: Troubleshooting
+metaTitle: VeriWorkly Error Messages and How to Fix Them
+description: Find the VeriWorkly error message you saw, what it means and how to fix it, from storage full and sync conflicts to quotas, credits and launch limits.
+---
+
+**Find the message you saw in the list below and open its page. Each page quotes the exact text from
+Studio, the public site or the API, says what it means, and gives the fix. Most messages come from
+browser storage, a sync conflict, a usage limit, AI credits, or the payment and publishing switch
+that stays off until launch.**
+
+## Which error did I get?
+
+Match the start of your message to a row. Studio sometimes shortens an API message, so both wordings
+are listed where they differ.
+
+| Message starts with                                                            | Page                                                                 |
+| :----------------------------------------------------------------------------- | :------------------------------------------------------------------- |
+| Storage is full. Remove older documents or exports and try again.              | [Storage is full](/docs/troubleshooting/storage-is-full)             |
+| This device's storage is full ...                                              | [Storage is full](/docs/troubleshooting/storage-is-full)             |
+| Conflict Detected / This document changed on another device.                   | [Document sync conflict](/docs/troubleshooting/document-conflict)    |
+| ATS scan quota exceeded. / ATS upload quota exceeded.                          | [Quota exceeded](/docs/troubleshooting/quota-exceeded)               |
+| Free accounts can import from LinkedIn once a month.                           | [Quota exceeded](/docs/troubleshooting/quota-exceeded)               |
+| Too many AI requests in progress.                                              | [Quota exceeded](/docs/troubleshooting/quota-exceeded)               |
+| Rate limit exceeded. You are allowed ... requests per 15 minutes.              | [Quota exceeded](/docs/troubleshooting/quota-exceeded)               |
+| Free accounts can keep 1 active resume at a time.                              | [Document limit](/docs/troubleshooting/document-limit)               |
+| Without a subscription or pass you can keep 1 resume at a time.                | [Document limit](/docs/troubleshooting/document-limit)               |
+| Not enough AI credits. / Not enough credits.                                   | [Not enough AI credits](/docs/troubleshooting/not-enough-ai-credits) |
+| Payments are disabled in production during this phase.                         | [Payments are disabled](/docs/troubleshooting/payments-disabled)     |
+| Payments open soon. Purchases are not available yet; nothing has been charged. | [Payments are disabled](/docs/troubleshooting/payments-disabled)     |
+| Publishing is disabled in production ...                                       | [Publishing is disabled](/docs/troubleshooting/publishing-disabled)  |
+
+## What if my message is not listed?
+
+Search these docs for a distinctive phrase from the message. If it came from deleting your account,
+see [Delete your account](/docs/user-guides/delete-your-account). For anything else, email
+[info@veriworkly.com](mailto:info@veriworkly.com) with the exact message, the page you were on and
+the time it happened.
+
+## Where do these messages come from?
+
+Messages that mention "this device" come from Studio and your browser's storage. Messages with an
+HTTP status, such as `402`, `403` or `429`, come from the VeriWorkly API, and Studio either shows
+them as they are or rewrites them in shorter words. API integrations receive the API wording in the
+`message` field of the error response.

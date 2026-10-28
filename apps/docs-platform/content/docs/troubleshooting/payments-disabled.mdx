@@ -1,0 +1,32 @@
+---
+title: Payments Are Disabled
+metaTitle: 'Fix "Payments are disabled in production" in VeriWorkly'
+description: '"Payments are disabled in production during this phase" means purchases are admin-only until launch. Nothing was charged; free features still work.'
+---
+
+**"Payments are disabled in production during this phase" means VeriWorkly is not taking payments
+yet. Purchases are admin-only in production until launch, and nothing was charged. There is nothing
+to fix on your side. Free features keep working, and plans, passes and credit packs can be bought
+once payments open at launch.**
+
+## Payments are disabled in production during this phase. Only administrators can perform payments.
+
+This is the API's message, returned with status `403` and `details.code: PAYMENTS_DISABLED`. It
+answers every checkout, plan change and credit pack purchase from anyone but the operator's admin
+account. The request stops before it reaches the payment provider, so no checkout is created.
+
+## Payments open soon. Purchases are not available yet; nothing has been charged.
+
+This is how Studio shows the same refusal on the Billing and checkout pages. The veriworkly.com
+pricing page shows "Payments are currently not accepted during this phase. All core document
+building features are free to use." The portfolio pricing page shows "Payments are disabled in
+production during this phase. Only system administrators can perform checkouts."
+
+## What can I do instead?
+
+Use the free tier until launch: one resume and one cover letter, exports, share links, ATS scans,
+GitHub import and the portfolio editor. See [Launch status](/docs/product/launch-status) for the full list
+and the [pricing page](https://veriworkly.com/pricing) for launch prices.
+
+If you run your own instance and see this, the API is running with `NODE_ENV=production` and your
+account's email does not match `ADMIN_EMAIL`. See [Self-hosting](/docs/self-hosting).

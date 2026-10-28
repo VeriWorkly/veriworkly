@@ -1,0 +1,43 @@
+---
+title: Document Sync Conflict
+metaTitle: Fix a Document Sync Conflict in VeriWorkly
+description: "A sync conflict means the cloud copy of a document changed on another device. Choose which version to keep: this device's or the cloud's."
+---
+
+**A conflict means the cloud copy of a document changed on another device after this device last
+synced it. Studio stops backing up that document until you choose. Open the document's sync details
+and keep this device's version, use the cloud version, or keep the document on this device only.
+The version you do not keep is lost.**
+
+## Conflict Detected
+
+The document shows a **Conflict** badge, and its sync details say: "The cloud version has progressed
+further or diverged from your local copy. Choose how to proceed." The sync error reads "This document
+changed on another device. Choose which version to keep." Backup for that document is paused until
+you pick one of the options below.
+
+## How do I resolve a sync conflict?
+
+Open the document's sync details from the **Documents** page or the overview and pick one option.
+Each choice asks you to confirm and states what is lost before anything changes. If you want to keep
+this device's version as a file whatever you choose, export it as JSON first.
+
+| Option                     | Confirm button     | What happens                                                                                                       |
+| :------------------------- | :----------------- | :----------------------------------------------------------------------------------------------------------------- |
+| Keep this device's version | Replace Cloud Copy | This device's version replaces the cloud copy on all your devices. Changes made elsewhere are lost.                |
+| Use cloud version          | Replace This Copy  | The cloud version replaces this device's copy. Changes made here that were never backed up are lost.               |
+| Keep on this device only   | Delete Cloud Copy  | The cloud copy is deleted on all your devices. Your local version stays on this device and is no longer backed up. |
+
+**Resolve in editor** opens the document in the editor, so you can read it before deciding.
+
+## How do I avoid sync conflicts?
+
+Edit a document on one device at a time, and let it finish backing up before you switch. A conflict
+happens when two devices change the same document and each one tries to save its own version to your
+account. The cloud keeps a revision number for each document, and a save based on an older revision
+is refused rather than allowed to overwrite newer work.
+
+## Related
+
+- [Account management](/docs/user-guides/account-management)
+- [Troubleshooting](/docs/troubleshooting)

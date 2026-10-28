@@ -1,18 +1,21 @@
 ---
 title: Exporting and Sharing
-description: The six export formats, and how public share links, passwords, expiry, and view analytics work.
+metaTitle: How to Export a Resume as PDF and Share It by Link
+description: Export a VeriWorkly resume as PDF, DOCX, HTML, Markdown, text or JSON in your browser, or share a read-only link with a password and expiry.
 ---
 
 import { FileText, FileDown, ShieldCheck, Link as LinkIcon } from "lucide-react";
 
-There are two ways to get a document out of VeriWorkly: **download a file**, or **publish a share
-link**. Downloads work logged out; share links require an account.
+**You can get a resume or cover letter out of VeriWorkly in two ways: download it as PDF, DOCX,
+HTML, Markdown, plain text or JSON, or publish a read-only share link. Downloads work in guest mode
+and are generated in your browser. Share links need an account and a username, and expire after 7
+days unless you choose otherwise.**
 
 ---
 
-## Exporting
+## Which formats can I export a resume in?
 
-Every document exports to six formats from a single menu:
+Six, from the export menu in the editor:
 
 | Format         | Engine                | Best for                                                           |
 | :------------- | :-------------------- | :----------------------------------------------------------------- |
@@ -25,17 +28,20 @@ Every document exports to six formats from a single menu:
 
 <Callout type="info" title="Nothing is uploaded to export">
   All six formats are generated inside your browser. Your document content is never sent to a server
-  to be rendered — there is no headless browser in the pipeline. See [Export
+  to be rendered, and there is no headless browser in the pipeline. See [Export
   Pipeline](/docs/architecture/pdf-generation).
 </Callout>
 
-### ATS considerations
+### Which format should I send to an ATS?
 
-PDF exports render every glyph as real text rather than an image, so applicant tracking systems can
+Use the PDF unless the posting asks for something else. PDF exports render every glyph as real text rather than an image, so applicant tracking systems can
 index the full contents, and fonts are embedded so layout does not shift on the reader's machine.
 
 If a system explicitly asks for pasted text, use the **plain text** export rather than copying out of
-the PDF — it produces cleaner, more predictable output.
+the PDF. It produces cleaner, more predictable output. For why some PDFs reach a parser empty, read
+[why some resume PDFs parse as blank](https://blog.veriworkly.com/why-some-resume-pdfs-parse-as-blank).
+
+### What happens to blank fields?
 
 <Callout type="info" title="Blank fields are omitted, but blank titles fall back">
   Empty dates, company names, and locations are dropped from the export rather than printed as
@@ -46,15 +52,15 @@ the PDF — it produces cleaner, more predictable output.
 
 ---
 
-## Share links
+## How do I share a resume with a link?
 
-A share link publishes a read-only web page for a document at
-`/share/{username}/{slug}`.
+Sign in, set a username, and create a share link for the document. It publishes a read-only web
+page for the document at `/share/{username}/{slug}`.
 
 ### Requirements
 
 - You must be **signed in**.
-- You must have set a **username** — share URLs are username-scoped, so sharing is unavailable until
+- You must have set a **username**: share URLs are username-scoped, so sharing is unavailable until
   one exists.
 
 ### Link options
@@ -84,7 +90,7 @@ A share link publishes a read-only web page for a document at
 
 <Callout type="warn" title="A share link serves a snapshot, not the live document">
   When you create a share link, VeriWorkly stores a **static copy** of the document as it was at
-  that moment. Editing the document afterwards does **not** change what recipients see — you must
+  that moment. Editing the document afterwards does **not** change what recipients see. You must
   refresh the share link to publish your latest version. This is deliberate: a link you sent to a
   recruiter cannot silently change under them mid-review.
 </Callout>
@@ -98,7 +104,7 @@ A share link publishes a read-only web page for a document at
 ### Security
 
 - Share passwords are hashed with **scrypt** and verified with a timing-safe comparison. They are
-  separate from your account credentials — VeriWorkly has no account password at all.
+  separate from your account credentials. VeriWorkly has no account password at all.
 - Password verification is rate-limited to **3 attempts per 5 minutes** per client, which makes
   brute-forcing a share password impractical.
 - Repeat views from the same IP within a 30-minute window are deduplicated before the view count is
@@ -106,9 +112,31 @@ A share link publishes a read-only web page for a document at
 
 ---
 
+## Frequently asked questions
+
+<Accordions>
+  <Accordion id="link-expiry" title="How long does a resume share link last?">
+    Seven days by default. When you create the link you can pick 7, 14, 30 or 90 days, or Never.
+    After it expires the page returns `410 Gone`, and you can share the document again to publish a
+    fresh link. Revoking a link takes the page down at once, whatever its expiry.
+  </Accordion>
+  <Accordion id="link-update" title="Does a share link update when I edit my resume?">
+    No. A share link serves a copy of the document taken when you shared it, so a recruiter never
+    sees it change mid-review. To publish your latest edits, share the document again: it updates
+    the same link rather than creating a second one.
+  </Accordion>
+  <Accordion id="docx-or-pdf" title="Should I send my resume as a PDF or a Word file?">
+    Send a PDF unless the employer asks for Word. A VeriWorkly PDF keeps its layout on any machine
+    and holds real, readable text. Some recruiters and older systems ask for DOCX so they can edit
+    or re-format it; export DOCX for those.
+  </Accordion>
+</Accordions>
+
+---
+
 ## Related
 
-- [Export Pipeline](/docs/architecture/pdf-generation) — the technical rendering detail.
+- [Export Pipeline](/docs/architecture/pdf-generation): the technical rendering detail.
 - [Creating Your First Resume](/docs/user-guides/creating-your-first-resume)
-- [Portfolio: Publishing & Analytics](/docs/product/portfolio/publishing) — publishing a full
+- [Portfolio: Publishing & Analytics](/docs/product/portfolio/publishing): publishing a full
   website rather than a document link.

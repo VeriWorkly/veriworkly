@@ -1,0 +1,33 @@
+---
+title: Not Enough AI Credits
+metaTitle: 'Fix "Not enough AI credits" in VeriWorkly'
+description: '"Not enough AI credits" means your balance cannot cover the AI action. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.'
+---
+
+**"Not enough AI credits" means your credit balance is lower than the cost of the AI action you
+started, so nothing ran and nothing was charged. AI writing, the AI ATS analysis, resume conversion
+and AI-assisted imports all spend credits. Add credits from the Billing page. Payments open at launch;
+they are admin-only in production today.**
+
+## Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.
+
+This is the API's message, returned with status `402`. Studio shortens it to "Not enough credits."
+and shows a **Get credits** or **Buy credits** link to the Billing page. Your balance and the cost of
+each action are on the AI credit usage page in Studio (`/credits`).
+
+## How do I get more AI credits?
+
+Credits come with a credit pack, a 3-Day Sprint Pass or 7-Day Hunt Pass, an AI Credits plan, or the
+Job Hunter Bundle. A credit pack adds credits only; it does not unlock Pro features. All of these are
+bought, and purchases open at launch. Until then the Billing page says "Payments open soon. Purchases
+are not available yet; nothing has been charged."
+
+See [Billing and credits](/docs/product/billing-and-credits) for how credits are granted and when
+they expire, and [Launch status](/docs/product/launch-status) for what works for free today.
+
+## Does the ATS checker need credits?
+
+The core ATS scan does not. It is a rules engine and costs no credits, only a scan from your
+allowance. The AI analysis and the AI resume conversion on the Studio ATS page spend credits, and
+Studio shows the price next to each one. See
+[Quota exceeded](/docs/troubleshooting/quota-exceeded) for the scan allowance.

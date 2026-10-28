@@ -1,0 +1,63 @@
+---
+title: Quota Exceeded
+metaTitle: 'Fix "Quota Exceeded" and 429 Errors in VeriWorkly'
+description: A 429 quota message means you used an allowance for now. The limits for ATS scans, uploads, imports, AI requests and API keys, and when each resets.
+---
+
+**A "quota exceeded" or 429 message means you have used an allowance for now: ATS scans, file
+uploads, profile imports, AI requests, or an API key's request budget. Nothing is broken. Each
+allowance resets on its own timer, and Studio tells you when. Wait for the reset, or sign in where a
+signed-in account gets more.**
+
+## ATS scan quota exceeded.
+
+You have used your ATS scans for the current window. Studio adds when they come back, for example
+"ATS scan quota exceeded. Resets in 1d 4h." The public checker says "You have used your scans for
+now. The note above says when they reset." A scan that fails because of a problem with your file
+does not use one up.
+
+| Who                                  | ATS scans                        |
+| :----------------------------------- | :------------------------------- |
+| No account (public checker)          | 1 every 48 hours, per connection |
+| Signed in, free                      | 2 every 24 hours                 |
+| Holds credits or a paid plan or pass | 300 per monthly period           |
+
+Wait for the reset shown in the message. Without an account, you can also sign in and scan from the
+Studio ATS page, which uses the free account allowance. See [ATS checker](/docs/product/ats-checker).
+
+## ATS upload quota exceeded.
+
+Reading text out of an uploaded file has its own allowance, separate from scans. Without an account
+you get 3 uploads per 48 hours; a free account gets 6 per 24 hours; credits or a paid plan give 300 per
+period. The public checker says "You have used your file uploads for now. Paste the text instead, or
+try later." Pasting the resume text skips the upload allowance.
+
+## Free accounts can import from LinkedIn once a month.
+
+Free accounts get one LinkedIn import a month and one GitHub import a day. The full message is "Free
+accounts can import from LinkedIn once a month. Unlimited imports come with any plan (AI Credits,
+Creator Pro or the Job Hunter Bundle) or a pass." The import window shows when the quota resets. A
+failed import does not use up your allowance.
+
+A paid account has a separate cap of 50 GitHub imports a day: "You've reached the daily limit of 50
+GitHub imports." Try again the next day. Plans and passes are bought at launch; payments are
+admin-only in production today (see [Launch status](/docs/product/launch-status)).
+
+## Too many AI requests in progress.
+
+Each account can run two AI requests at the same time. A third one started before either finishes is
+refused with "Too many AI requests in progress. Wait for one to finish and try again." Wait for a running
+request to finish, then try again. Requests started in other tabs count toward the same two.
+
+## Too many requests. Please try again later.
+
+The API limits how many requests one connection can send in a time window. Studio and the public
+checker may word it as "Too many requests from this connection. Wait a minute and try again." The
+response carries a `Retry-After` header with the seconds to wait. Wait that long, then retry.
+
+## Rate limit exceeded. You are allowed ... requests per 15 minutes.
+
+This is an API key's own budget. Each key allows a set number of requests per 15 minutes, 20 by
+default. The response carries `Retry-After` with the seconds to wait, plus `X-RateLimit-Limit`,
+`X-RateLimit-Remaining` and `X-RateLimit-Reset`. Wait for `Retry-After`, or rotate the key with a
+higher limit. See [API keys](/docs/api-keys).

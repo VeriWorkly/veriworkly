@@ -1,11 +1,18 @@
 ---
 title: "Portfolio: Editor"
-description: The three-pane portfolio editor, its section types, multi-page portfolios, and draft storage.
+metaTitle: "Portfolio Editor: Sections, Pages and Live Preview"
+description: The VeriWorkly portfolio editor has 18 section types, a live preview at phone, tablet and desktop widths, autosave, and extra pages on paid plans.
 ---
+
+**The portfolio editor is a three-pane workspace: one pane for the section structure, one for the
+content, and a live preview you can switch between phone, tablet and desktop widths. It offers 18 section types, autosaves every 12 seconds, and adds extra
+pages on a paid plan.** Open it at [portfolio.veriworkly.com](https://portfolio.veriworkly.com).
+
+## How does the editor work?
 
 A three-pane workspace: section structure, content, and a live preview rendered via a real `<iframe>` kept in sync over `postMessage`, with a mobile/tablet/desktop viewport-width toggle. The editor autosaves every 12 seconds while dirty, and warns via the browser's `beforeunload` event if you try to navigate away with unsaved changes.
 
-## Section types
+## Which sections can a portfolio have?
 
 The editor supports **18 section types**, each reorderable, hideable, and independently editable:
 
@@ -20,18 +27,20 @@ The canonical list is `portfolioSectionTypes` in `packages/profile-core`, re-exp
 every type the editor offers can be saved and published. A portfolio holds at most 24 sections, each
 with at most 24 items.
 
-## Premium: multi-page portfolios
+## Can a portfolio have more than one page?
+
+Yes, on a paid portfolio plan.
 
 On a paid portfolio plan the editor's **Pages** panel adds extra pages (up to 10): predefined
 pages such as Work, Writing, About and Contact, plus a detail page for any item in the Projects
 section. Each page has its own independent section list. Sub-page URLs are served only for a
 premium template on a paid portfolio plan; on any other portfolio they return `404`.
 
-## The separate preview route
+## How do I preview a portfolio before publishing?
 
 There's also a distinct **private live-preview route** (`/preview/[documentId]`), not the same as the editor's own preview pane or the published site. It's used for scenarios like a guest user previewing before ever saving, powered by a dedicated server-render endpoint that turns portfolio JSON into HTML on demand.
 
-## Draft storage and merging
+## Where is my portfolio draft saved?
 
 The editor implements its own local-first layer, independent of Studio's document sync engine. A
 guest draft is kept in the browser; on login, the local draft and the cloud draft are merged by

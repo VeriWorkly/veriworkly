@@ -1,0 +1,43 @@
+---
+title: Storage Is Full
+metaTitle: 'Fix "Storage is full" in VeriWorkly Studio'
+description: '"Storage is full" means your browser has no room left to save the document. Delete documents you no longer need, or back them up and free space.'
+---
+
+**"Storage is full" means your browser ran out of the space it gives VeriWorkly Studio, so the
+latest change was not saved on this device. Studio keeps every document in your browser's local
+storage first. Delete documents you no longer need, keep a JSON export of anything you want to keep,
+then try the change again.**
+
+## Storage is full. Remove older documents or exports and try again.
+
+Studio shows this when a save to your browser fails because its storage quota is used up. The edit
+you just made is not saved on this device. Browsers give each website a small, fixed amount of local
+storage, and every document, including cover letters, uses part of it.
+
+To fix it:
+
+1. Open **Documents** and delete documents you no longer need. Export a JSON copy first if you
+   might want one back; the editor's Import JSON restores it.
+2. Open the document again and redo the change that was not saved.
+
+## This device's storage is full ...
+
+The same cause shows up with other wording, depending on what Studio was trying to save:
+
+| Message                                                             | What did not save                                        |
+| :------------------------------------------------------------------ | :------------------------------------------------------- |
+| This device's storage is full, so the new title could not be saved. | A document rename                                        |
+| Could not update your documents: this device's storage is full.     | A backup setting change on the Settings page             |
+| This device's storage is full, so the sync could not start.         | The start of a cloud backup for one document             |
+| This device's storage is full.                                      | Recording which account owns the documents after sign-in |
+
+The fix is the same: free space by deleting documents you no longer need, then try again.
+
+## How do I stop this happening again?
+
+Sign in and turn on automatic backup, so a copy of each document is kept in your account and not
+only in this browser. Your documents still live in local storage, so the browser limit still
+applies; keep the number of documents on each device to the ones you are working on. See
+[Use VeriWorkly without an account](/docs/user-guides/use-without-an-account) for how guest storage
+works.

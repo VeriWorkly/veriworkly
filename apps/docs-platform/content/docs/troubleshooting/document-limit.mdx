@@ -1,0 +1,41 @@
+---
+title: Document Limit Reached
+metaTitle: 'Fix "Free accounts can keep 1 active resume" in VeriWorkly'
+description: Free accounts and guests keep one resume and one cover letter at a time. Reuse or delete the one you have, or unlock unlimited documents at launch.
+---
+
+**Free accounts and guest mode keep one active resume and one active cover letter at a time. The
+message appears when you try to create, duplicate or import a second one. Edit or delete the document
+you already have. Unlimited documents come with any paid plan or a pass, which you can buy once
+payments open at launch.**
+
+## Free accounts can keep 1 active resume at a time.
+
+This is the API's message, returned with status `402` and `details.code: DOCUMENT_LIMIT`. In full:
+"Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI
+Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only." The same
+message names "cover letter" for a second cover letter.
+
+## Without a subscription or pass you can keep 1 resume at a time.
+
+This is Studio's wording of the same limit, shown before anything is sent to the API: "Without a
+subscription or pass you can keep 1 resume at a time. Creator Pro, an AI Credits subscription, the
+Bundle or a 3- or 7-day pass unlock unlimited documents; credit packs do not." A guest is always on
+this limit.
+
+## How do I fix the document limit?
+
+Work in the document you already have, or delete it to start a new one. The limit counts documents
+of one type, so one resume and one cover letter can exist side by side. A document backed up to your
+account that is over the limit shows the sync status **Upgrade needed** ("Over the document limit")
+and stays on this device until you have room.
+
+To keep more than one, unlimited documents come with Creator Pro, AI Credits, the Job Hunter Bundle,
+or a 3-Day Sprint Pass or 7-Day Hunt Pass. A credit pack does not lift the limit. Purchases open at
+launch; see [Launch status](/docs/product/launch-status).
+
+## Does an AI action count toward the limit?
+
+Yes, when it makes a new document. An AI resume conversion or a profile import that would create a
+second resume is refused before any credits are charged, and the message names the limit rather than
+offering credits, because credits do not lift it.

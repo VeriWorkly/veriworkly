@@ -1,0 +1,106 @@
+---
+title: Self-Hosting
+metaTitle: Self-Host VeriWorkly with Docker Compose
+description: "Self-host VeriWorkly with Docker Compose: what the stack runs, required variables, email setup, what ADMIN_EMAIL unlocks, and common questions."
+---
+
+**VeriWorkly is MIT-licensed and can run on your own server. The repository's Docker Compose file
+runs the API, Redis, a one-off database migration, and the marketing site. You bring PostgreSQL,
+an email provider, and Cloudflare R2 storage. Studio, the portfolio app, docs and blog are separate
+Next.js apps you build and run yourself.**
+
+## What does the Docker Compose stack run?
+
+`compose.yaml` at the repository root defines four services and one development tool. The root
+`Dockerfile` builds the marketing site (`apps/site`), not Studio. The API has its own Dockerfile at
+`apps/server/Dockerfile`. PostgreSQL is not part of the stack: point `DATABASE_URL` at your own
+instance.
+
+| Service        | Builds or runs                                                      | Port             |
+| :------------- | :------------------------------------------------------------------ | :--------------- |
+| `web`          | The marketing site, from the root `Dockerfile`                      | `127.0.0.1:3000` |
+| `api`          | The Express API, from `apps/server/Dockerfile`                      | `127.0.0.1:8080` |
+| `migrate`      | `prisma migrate deploy` once, before `api` starts                   | none             |
+| `redis`        | `redis:7-alpine` with a password, append-only file and a memory cap | internal         |
+| `redisinsight` | Redis browser, only with `docker compose --profile dev up`          | `127.0.0.1:5540` |
+
+Both public ports bind to `127.0.0.1`, so a reverse proxy such as nginx on the host is the only way
+in. The step-by-step setup is in [Docker deployment](/docs/getting-started/docker-deployment).
+
+## How do I run Studio and the portfolio app?
+
+Build them from the monorepo; they are not in `compose.yaml`. `npm run build:studio` and
+`npm run build:portfolio` build the shared `@veriworkly/profile-core` package first, then the app.
+Point each app's `NEXT_PUBLIC_BACKEND_URL` at your API. Local development, ports and the full
+install steps are in [Local setup](/docs/getting-started/local-setup).
+
+## Which environment variables are required?
+
+Compose refuses to start the API until the required variables are set, and names each missing one.
+They include `DATABASE_URL`, `ALLOWED_ORIGINS`, `TRUST_PROXY`, `WEB_CONCURRENCY`, `REDIS_PASSWORD`,
+`AUTH_SECRET`, `AUTH_BASE_URL`, `ADMIN_EMAIL`, `API_KEY_HASH_SECRET`, `ANALYTICS_HASH_PEPPER`,
+`PORTFOLIO_URL`, `PORTFOLIO_REVALIDATE_SECRET`, the Dodo Payments keys and URLs, and the five R2
+variables.
+
+The API also checks formats when it boots in production: public URLs must use https and not point at
+localhost, and secrets must not be the example values. Every variable, with defaults, is in
+[Environment variables](/docs/operations/environment-variables).
+
+## Which email providers does VeriWorkly support?
+
+Two: SMTP and Resend. Set `AUTH_EMAIL_PROVIDER` to `smtp` (with `AUTH_SMTP_HOST`, `AUTH_SMTP_PORT`,
+`AUTH_SMTP_USER`, `AUTH_SMTP_PASS`) or `resend` (with `RESEND_API_KEY`), plus `AUTH_EMAIL_FROM`.
+Compose defaults to `resend`. A third value, `console`, prints sign-in codes to the logs for local
+development and is refused in production.
+
+Sign-in is passwordless, by emailed code, so email has to work before anyone can sign in. Google,
+GitHub and LinkedIn sign-in stay off until you set their client ID and secret.
+
+## What does ADMIN_EMAIL unlock?
+
+`ADMIN_EMAIL` names the operator account. That account opens the admin console in Studio (`/admin`)
+once its email is verified, and in production it is the only account that can take payments or
+publish a portfolio. The API creates the account on boot if it does not exist yet. If `ADMIN_EMAIL`
+is empty, nobody is an admin.
+
+## Self-hosting FAQ
+
+<Accordions>
+  <Accordion id="compose-studio" title="Can I run Studio with Docker Compose?">
+    Not with the provided file. `compose.yaml` builds the marketing site as `web`, plus the API,
+    Redis and the migration job. Build Studio with `npm run build:studio` and run it next to the
+    stack, or add your own service for it. Its `NEXT_PUBLIC_BACKEND_URL` must point at your API.
+  </Accordion>
+
+<Accordion id="postgres" title="Does the stack include PostgreSQL?">
+  No. Provide your own PostgreSQL and set `DATABASE_URL`. The `migrate` service applies pending
+  migrations before the API starts. If `DATABASE_URL` goes through a connection pooler, set
+  `DIRECT_DATABASE_URL` to the direct endpoint, because migrations need a direct connection.
+</Accordion>
+
+<Accordion id="payments" title="Why are payments and publishing off on my instance?">
+  The API blocks payments and portfolio publishing for everyone except `ADMIN_EMAIL` when it runs
+  with `NODE_ENV=production`. In development both work for every account. Billing also needs your
+  own Dodo Payments keys and product IDs.
+</Accordion>
+
+<Accordion id="ai" title="Do AI features work on a self-hosted instance?">
+  Only with your own AI gateway settings. Set `AI_API_KEY` and `AI_BASE_URL` and the AI action
+  variables; without them the AI actions are unavailable. The core ATS scan uses no AI, but it does
+  need an engine policy (`ATS_ENGINE_POLICY_PATH` or `ATS_ENGINE_POLICY_JSON`): without one it
+  answers `503`, and a production server refuses to start.
+</Accordion>
+
+  <Accordion id="templates" title="Are the portfolio templates included?">
+    No. The four portfolio templates live in a private Git submodule. See [the private template
+    submodule](/docs/architecture/monorepo#the-private-template-submodule) for what that means for
+    a self-hosted build.
+  </Accordion>
+</Accordions>
+
+## Related
+
+- [Docker deployment](/docs/getting-started/docker-deployment)
+- [Local setup](/docs/getting-started/local-setup)
+- [Environment variables](/docs/operations/environment-variables)
+- [Launch status](/docs/product/launch-status)

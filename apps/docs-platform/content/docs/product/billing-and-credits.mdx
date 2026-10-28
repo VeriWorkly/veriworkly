@@ -1,10 +1,17 @@
 ---
 title: Billing & Credits
-description: Entitlements and the AI credit wallet are two separate systems. The plan catalog, how they work together, and how checkout is validated.
+metaTitle: "VeriWorkly Plans and AI Credits: How Billing Works"
+description: VeriWorkly plans unlock portfolio features and AI credits. Monthly and annual plans grant 1,000 credits a month with no rollover. No free trials.
 ---
 
-Access in VeriWorkly is not a simple "free vs. premium" boolean. Two independent systems work
-together.
+**VeriWorkly is free to use for resumes, cover letters and exports. Paid plans, passes and credit
+packs add AI credits and premium portfolio features once payments open at launch. AI Credits and the
+Job Hunter Bundle grant 1,000 credits a month, monthly or annual, and unused credits never roll
+over. There are no free trials.** Current prices are on the [pricing
+page](https://veriworkly.com/pricing).
+
+Two independent systems work together: **entitlements**, which unlock features, and the **AI credit
+wallet**, which pays for AI actions.
 
 <Callout type="warn" title="Payments open at launch">
   Payments are closed in production today: only administrators can check out. The plans, passes and
@@ -12,7 +19,7 @@ together.
   the same notice.
 </Callout>
 
-## Entitlements
+## What does a paid plan unlock?
 
 Named capability grants, checked individually wherever a feature is gated:
 
@@ -42,7 +49,7 @@ plan, a pass or a pack, can spend them.
 
 ---
 
-## The plan catalog
+## Which plans are there?
 
 Three purchasable products, defined in `apps/server/src/services/productCatalog.ts`.
 
@@ -72,7 +79,7 @@ This applies to monthly and annual plans alike.
 
 ---
 
-## Time-boxed passes
+## What are the Sprint and Hunt passes?
 
 One-time purchases with no subscription, sold under the `bundle` product key. A pass does not
 renew, and it acts as the Job Hunter Bundle while it is active.
@@ -87,7 +94,9 @@ moves to a free template as soon as the pass ends, with no grace period.
 
 ---
 
-## One-time AI credit top-ups
+## Can I buy extra AI credits?
+
+Yes, as one-time credit packs.
 
 For extra credits without changing a subscription:
 
@@ -105,7 +114,7 @@ Pack **prices are set on the corresponding Dodo Payments product**; the server's
 
 ---
 
-## The AI credit wallet
+## How are AI credits spent?
 
 A full ledger, not a counter.
 
@@ -130,7 +139,7 @@ tiers, defined in the private AI policy rather than in application code. See
 
 ---
 
-## In-app pages
+## Where do I see my plan and credits?
 
 | Page            | Contents                                                                                                                                          |
 | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -140,7 +149,7 @@ tiers, defined in the private AI policy rather than in application code. See
 
 ---
 
-## Billing engine
+## How do payments, cancellation and failed payments work?
 
 **Dodo Payments** is the payment provider. VeriWorkly does not use Stripe anywhere.
 
@@ -161,6 +170,34 @@ tiers, defined in the private AI policy rather than in application code. See
   with the badge.
 
 ---
+
+## Frequently asked questions
+
+<Accordions>
+  <Accordion id="rollover" title="Do unused AI credits roll over to the next month?">
+    No. Subscription credits reset each month: the 1,000 you did not use expire when the next 1,000
+    arrive, on monthly and annual plans alike. Credit packs are separate. Pack credits last 90 days
+    from purchase and are not affected by the monthly reset.
+  </Accordion>
+  <Accordion id="trial" title="Is there a free trial?">
+    No. No plan has a trial period, and a subscription charges at checkout for the period you
+    choose. The free tier is the way to try VeriWorkly: every template, every export format, the
+    core ATS scan and free portfolio publishing (at launch) cost nothing.
+  </Accordion>
+  <Accordion id="cancel" title="How do I cancel my subscription?">
+    Open `/billing` in Studio and choose Manage subscription. That opens the Dodo Payments customer
+    portal, where you cancel. A cancelled plan keeps its access until the end of the period you paid
+    for, and a premium portfolio then moves to a free template rather than going offline.
+  </Accordion>
+  <Accordion id="pack-pro" title="Does a credit pack unlock Pro features?">
+    No. Packs are AI fuel only. They add credits that last 90 days, but they do not lift the
+    one-document limit, unlock premium portfolio templates, or remove the badge. Those come with
+    Creator Pro, the Job Hunter Bundle or a pass.
+  </Accordion>
+</Accordions>
+
+For how credits are reserved, spent and refunded, read [inside the AI credit
+system](https://blog.veriworkly.com/inside-the-ai-credit-system).
 
 ## API
 

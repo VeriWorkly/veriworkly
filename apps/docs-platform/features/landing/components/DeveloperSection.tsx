@@ -40,7 +40,7 @@ export const DeveloperSection = () => {
             asChild
             className="mt-4 h-12 rounded-2xl bg-white px-8 font-bold text-black hover:bg-zinc-200"
           >
-            <Link href="/docs/getting-started/quick-start">Read Quickstart</Link>
+            <Link href="/docs/getting-started/local-setup">Read Quickstart</Link>
           </Button>
         </div>
 
