@@ -13,6 +13,7 @@ import {
   getGeneration,
   singleFlight,
 } from "#lib/cacheGeneration";
+import { cacheNamespaces } from "#lib/cacheKeys";
 import { ShareService } from "#services/shareService";
 import { PortfolioService } from "#services/portfolioService";
 import { getAdminOverview } from "#services/admin/adminOverviewService";
@@ -323,5 +324,90 @@ describe("generation values never repeat", () => {
     await getRedis().del(generationCounterKey(namespace));
     expect(await getGeneration(namespace)).not.toBe(before);
     expect(BigInt((await getGeneration(namespace))!)).toBeGreaterThan(BigInt(after));
+  });
+});
+
+describe("a privacy invalidation survives a Redis blip (V-370)", () => {
+  /**
+   * Makes every generation bump fail while `failing()` is true, as a reconnecting or timing-out
+   * Redis would; every other command (the rate limiter, the cache reads) goes through.
+   */
+  function failBumpsWhile(failing: () => boolean) {
+    const redis = getRedis();
+    const original = redis.eval.bind(redis);
+    return vi.spyOn(redis, "eval").mockImplementation(((
+      script: string,
+      options?: { keys?: string[] },
+    ) => {
+      const isBump = script.includes("INCR") && options?.keys?.[0]?.startsWith("cache:gen:");
+      if (isBump && failing()) return Promise.reject(new Error("Redis command timed out"));
+      return original(script, options as never);
+    }) as typeof redis.eval);
+  }
+
+  async function sharedDocument() {
+    const username = `owner${letters(8)}`;
+    const user = await createUserWithSession({ username });
+    const api = asUser(user);
+    const { id, revision } = await createDocument(api, "Shared");
+    const share = await api.post("/api/v1/shares").send({ documentId: id, snapshot: { a: 1 } });
+    expect(share.status).toBe(201);
+    const path = `/api/v1/shares/public/${username}/${share.body.data.slug as string}`;
+    // Cached by this read.
+    expect((await publicGet(path)).status).toBe(200);
+    return { api, id, revision, shareId: share.body.data.id as string, path, username };
+  }
+
+  it("a revoke during a short blip still takes the public copy down at once", async () => {
+    const { api, id, shareId, path } = await sharedDocument();
+    let failures = 1;
+    failBumpsWhile(() => failures-- > 0);
+
+    const revoke = await api.delete(`/api/v1/shares/documents/${id}/links/${shareId}`);
+
+    expect(revoke.status).toBe(200);
+    expect((await publicGet(path)).status).toBe(404);
+  });
+
+  it("a revoke during a longer outage takes the public copy down once Redis is back", async () => {
+    const { api, id, shareId, path } = await sharedDocument();
+    let down = true;
+    failBumpsWhile(() => down);
+
+    const revoke = await api.delete(`/api/v1/shares/documents/${id}/links/${shareId}`);
+    expect(revoke.status).toBe(200);
+    down = false;
+
+    await vi.waitFor(async () => expect((await publicGet(path)).status).toBe(404), {
+      timeout: 10_000,
+      interval: 200,
+    });
+  });
+
+  it("making the document private during an outage hides the share once Redis is back", async () => {
+    const { api, id, revision, path } = await sharedDocument();
+    let down = true;
+    failBumpsWhile(() => down);
+
+    const hidden = await api
+      .patch(`/api/v1/documents/${id}`)
+      .send({ visibility: "PRIVATE", revision });
+    expect(hidden.status, JSON.stringify(hidden.body)).toBe(200);
+    down = false;
+
+    await vi.waitFor(async () => expect((await publicGet(path)).status).toBe(404), {
+      timeout: 10_000,
+      interval: 200,
+    });
+  });
+
+  it("never caches a public share for more than five minutes, whatever is lost", async () => {
+    const { path, username } = await sharedDocument();
+    const slug = path.split("/").pop()!;
+    const namespace = cacheNamespaces.publicShare(username);
+    const generation = (await getGeneration(namespace))!;
+    const ttl = await getRedis().ttl(generationalKey(namespace, generation, slug));
+    expect(ttl).toBeGreaterThan(0);
+    expect(ttl).toBeLessThanOrEqual(300);
   });
 });

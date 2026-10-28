@@ -137,7 +137,9 @@ describe("V-233 admin username edits follow the user rules", () => {
       target,
       request(app).get(`/api/v1/users/${wanted.toLowerCase()}/availability`),
     );
-    if (availability.status === 200) expect(availability.body.data.available).toBe(false);
+    // V-357: the status first; a 404 or 500 used to skip the check silently.
+    expect(availability.status, JSON.stringify(availability.body)).toBe(200);
+    expect(availability.body.data.available).toBe(false);
   });
 
   it.each(["admin", "api"])("refuses the reserved name %s", async (reserved) => {

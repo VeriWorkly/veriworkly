@@ -7,6 +7,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
+import { settleBillingNotifications } from "#services/billingNotifications";
 
 import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession, type TestUser } from "./helpers/auth.js";
@@ -152,12 +153,18 @@ function paymentEvent(input: {
   };
 }
 
-async function deliver(event: unknown, id?: string) {
+/**
+ * Signs and delivers one webhook. The status is checked here (V-399): a "nothing happens" money or
+ * access assertion after a delivery that failed proves nothing. A test that expects a refusal
+ * passes the status it expects.
+ */
+async function deliver(event: unknown, id?: string, expectedStatus = 200) {
   const body = JSON.stringify(event);
   const headers = signDodoWebhook(body, id ? { id } : {});
   const req = request(app).post(WEBHOOK_PATH);
   for (const [key, value] of Object.entries(headers)) req.set(key, value);
   const response = await req.send(body);
+  expect(response.status, JSON.stringify(response.body)).toBe(expectedStatus);
   return { response, eventId: headers["webhook-id"] };
 }
 
@@ -399,7 +406,7 @@ describe("V-172 dunning is visible", () => {
     expect((await deliver(event)).response.status).toBe(200);
 
     await vi.waitFor(() => expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1);
     expect(billingMailMock.sendPaymentFailedEmail.mock.calls[0]![1]).toMatchObject({
       productName: "AI Credits",
@@ -491,7 +498,7 @@ describe("V-177 purchase confirmation emails", () => {
     await vi.waitFor(() =>
       expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1),
     );
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1);
     const details = billingMailMock.sendPurchaseConfirmationEmail.mock.calls[0]![1];
     expect(details).toMatchObject({
@@ -535,7 +542,7 @@ describe("V-177 purchase confirmation emails", () => {
       nextBillingDate,
     };
     await deliver(subscriptionEvent({ ...base, status: "pending", at: eventTime(0) }));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPurchaseConfirmationEmail).not.toHaveBeenCalled();
 
     await deliver(subscriptionEvent({ ...base, status: "active", at: eventTime(1) }));
@@ -550,7 +557,7 @@ describe("V-177 purchase confirmation emails", () => {
     await vi.waitFor(() =>
       expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1),
     );
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     expect(billingMailMock.sendPurchaseConfirmationEmail).toHaveBeenCalledTimes(1);
     const details = billingMailMock.sendPurchaseConfirmationEmail.mock.calls[0]![1];
     expect(details).toMatchObject({
@@ -614,7 +621,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
       userId: user.id,
       subscriptionId,
       productId,
-      amount: 5_990,
+      amount: 5_988,
       at: periodStart,
       servicePeriod: { startsAt: periodStart, endsAt: periodEnd },
     });
@@ -849,7 +856,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         payment_id: payment.data.payment_id,
         status: "succeeded",
         is_partial: false,
-        amount: 5_990,
+        amount: 5_988,
         currency: "USD",
         created_at: new Date().toISOString(),
       },
@@ -874,7 +881,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         payment_id: payment.data.payment_id,
         status: "succeeded",
         is_partial: false,
-        amount: 5_990,
+        amount: 5_988,
         currency: "USD",
         created_at: new Date().toISOString(),
       },
@@ -891,7 +898,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
     expect(row).toMatchObject({
       type: "refund.succeeded",
       productName: "AI Credits (annual)",
-      amountCents: 5_990,
+      amountCents: 5_988,
       currency: "USD",
     });
   });
@@ -940,7 +947,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId: "sub_annual_renew",
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
         at: periodEnd,
         servicePeriod: { startsAt: periodEnd, endsAt: nextEnd },
       }),
@@ -973,7 +980,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
       userId: user.id,
       subscriptionId,
       productId: "prod_ai_credits_annual",
-      amount: 5_990,
+      amount: 5_988,
       at: firstPaidAt,
     });
     await deliver(firstPayment);
@@ -988,7 +995,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId,
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
       }),
     );
     // A redelivery of the first payment opens nothing.
@@ -1049,7 +1056,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
       }),
     );
     const base = { userId: user.id, subscriptionId, productId: "prod_ai_credits_annual" };
-    await deliver(paymentEvent({ ...base, amount: 5_990, at: firstPaidAt }));
+    await deliver(paymentEvent({ ...base, amount: 5_988, at: firstPaidAt }));
     // A proration for an upgrade, half-way through the year.
     await deliver(paymentEvent({ ...base, amount: 4_200 }));
 
@@ -1088,7 +1095,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId,
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
         at: periodStart,
         servicePeriod: { startsAt: periodStart, endsAt: periodEnd },
       }),
@@ -1111,7 +1118,7 @@ describe("owner decision: subscription credits reset monthly, nothing rolls over
         userId: user.id,
         subscriptionId,
         productId: "prod_ai_credits_annual",
-        amount: 5_990,
+        amount: 5_988,
         servicePeriod: { startsAt: legacyEnds, endsAt: addMonthsUtc(legacyEnds, 12) },
       }),
     );
@@ -1299,7 +1306,7 @@ describe("review fixes: admin status edits, dunning overlap and billing mail ret
       }),
     );
     await vi.waitFor(() => expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
 
     // The card went through on the provider's retry: the subscription is ACTIVE for a new period.
     await prisma.subscription.update({
@@ -1402,7 +1409,7 @@ describe("review fixes: admin status edits, dunning overlap and billing mail ret
       }),
     );
     await vi.waitFor(() => expect(billingMailMock.sendPaymentFailedEmail).toHaveBeenCalledTimes(1));
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await settleBillingNotifications();
     const claim = await prisma.billingNotification.findUniqueOrThrow({
       where: { kind_reference: { kind: "payment_failed", reference: "pay_failed_retry" } },
     });
@@ -1450,6 +1457,13 @@ describe("V-197 billing payloads carry what the studio shows", () => {
         name: "500 extra credits",
         credits: 500,
         price: 499,
+        currency: "USD",
+      }),
+      expect.objectContaining({
+        key: "credit_pack_1200",
+        name: "1,200 extra credits",
+        credits: 1_200,
+        price: 999,
         currency: "USD",
       }),
     ]);

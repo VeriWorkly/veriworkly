@@ -19,6 +19,8 @@
  */
 
 const DEFAULT_REDIS_URL = "redis://localhost:6379/15";
+/** Query parameters node-postgres honours that would move the connection off the checked URL. */
+const OVERRIDING_QUERY_PARAMETERS = new Set(["database", "dbname", "user", "port"]);
 
 type IntegrationEnv = {
   databaseUrl: string;
@@ -86,6 +88,17 @@ export function resolveIntegrationEnv(env: NodeJS.ProcessEnv = process.env): Int
       `Integration suite refuses database "${databaseName}" (${redact(databaseUrl)}): it ` +
         "truncates every table, so the database name must end in _test. Create one and point " +
         "INTEGRATION_DATABASE_URL at it.",
+    );
+
+  // node-postgres copies query parameters into the client config, so these would connect to a
+  // database, port or role the checked path never named (V-364).
+  const overriding = [...db.searchParams.keys()].find((key) =>
+    OVERRIDING_QUERY_PARAMETERS.has(key.toLowerCase()),
+  );
+  if (overriding !== undefined)
+    throw new Error(
+      `Integration suite refuses the query parameter "${overriding}" (${redact(databaseUrl)}): it ` +
+        "overrides where the URL connects. Put the database, port and user in the URL itself.",
     );
 
   if (!Number.isFinite(redisDbIndex) || redisDbIndex === 0)
@@ -165,7 +178,6 @@ export function applyServerEnv(target: NodeJS.ProcessEnv = process.env): Integra
     AUTH_SECRET: "integration-test-auth-secret-0123456789abcdef",
     AUTH_BASE_URL: "http://localhost:8080",
     AUTH_EMAIL_PROVIDER: "console",
-    AUTH_SESSION_CACHE_ENABLED: "false",
     ADMIN_EMAIL: "admin@example.test",
     API_KEY_HASH_SECRET: "integration-test-api-key-secret",
     ANALYTICS_HASH_PEPPER: "integration-test-pepper",
@@ -188,6 +200,7 @@ export function applyServerEnv(target: NodeJS.ProcessEnv = process.env): Integra
     DODO_PAYMENTS_BUNDLE_SEVEN_DAY_PRODUCT_ID: "prod_bundle_seven_day",
     DODO_PAYMENTS_CREDIT_PACK_250_PRODUCT_ID: "prod_pack_250",
     DODO_PAYMENTS_CREDIT_PACK_500_PRODUCT_ID: "prod_pack_500",
+    DODO_PAYMENTS_CREDIT_PACK_1200_PRODUCT_ID: "prod_pack_1200",
     GITHUB_SYNC_ENABLED: "false",
     CHANGELOG_RELEASE_SYNC_ENABLED: "false",
     AFFILIATE_PROGRAM_ENABLED: "true",

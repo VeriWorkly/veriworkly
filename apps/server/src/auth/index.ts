@@ -165,12 +165,31 @@ export const auth = betterAuth({
       }
     },
 
+    // Strict, unlike get and set (V-315). better-auth reads a session from here before Postgres,
+    // and it deletes here before it deletes the row: a delete Redis refused used to be swallowed,
+    // so sign-out or "sign out other devices" answered 200 with the row gone and the Redis entry
+    // still authenticating (for up to the session's 30 days) once Redis came back. Throwing stops
+    // better-auth before the row goes, so the request fails, nothing is half-revoked, and the
+    // client can retry. Only revocation and single-use-value cleanup delete here.
     delete: async (key) => {
       try {
-        const redis = getRedis();
-        await redis.del(key);
+        await getRedis().del(key);
       } catch (error) {
         logger.error("better-auth secondaryStorage delete failed", { error });
+        throw error;
+      }
+    },
+
+    // better-auth 1.7 spends single-use values through this: verification values live only here
+    // (no `verification.storeInDatabase`), so it is how a sign-in OTP is consumed. One GETDEL, so
+    // two requests racing with the same code cannot both read it before either deletes it.
+    // Without Redis nothing is consumed and the code is treated as invalid; the user asks again.
+    getAndDelete: async (key) => {
+      try {
+        return (await getRedis().getDel(key)) || null;
+      } catch (error) {
+        logger.error("better-auth secondaryStorage getAndDelete failed", { error });
+        return null;
       }
     },
 
@@ -243,11 +262,16 @@ export const auth = betterAuth({
     storeSessionInDatabase: true,
     expiresIn: config.auth.sessionTtlSeconds,
     updateAge: config.auth.sessionResetTtlOnUse,
-    cookieCache: {
-      enabled: config.auth.sessionCacheEnabled,
-      maxAge: config.auth.sessionCacheMaxAgeSeconds,
-      strategy: "jwt",
-    },
+    // Off, always (V-369 / V-312). better-auth's cookie cache answers from a signed cookie the
+    // client holds and never asks the store, so a revoked session (sign-out, "sign out other
+    // devices", admin revoke, account deletion) kept working until that cookie expired. The
+    // server has its own token-keyed Redis cache with revocation tombstones (utils/authCache.ts)
+    // in front of better-auth's Redis secondary storage, so a lookup that misses it costs one
+    // Redis read, not a Postgres query.
+    // `strategy` stays "jwt", the format of the `session_data` cookies browsers still hold from
+    // before the cache was turned off. better-auth 1.7 clears such a cookie without parsing it
+    // (1.6 parsed it, and the default "compact" parser threw on a JWT one), so this is harmless.
+    cookieCache: { enabled: false, strategy: "jwt" },
   },
 
   socialProviders: {
@@ -314,7 +338,7 @@ export const auth = betterAuth({
       if (recipient) await assertOtpRecipientQuotaAvailable(recipient);
 
       // A linked GitHub is never removed (V-265).
-      assertGithubUnlinkAllowed(ctx.path, ctx.body);
+      await assertGithubUnlinkAllowed(ctx.path, ctx.body);
 
       // Sign-out only. The request's own cookie is the session being ended there; on
       // /revoke-session(s) it is the caller's session, which stays valid, and the sessions that
@@ -427,7 +451,9 @@ export const auth = betterAuth({
 export const authNodeHandler = toNodeHandler(auth);
 
 export async function getSessionFromRequestHeaders(headers: Headers) {
-  return auth.api.getSession({ headers });
+  // Belt and braces with `cookieCache.enabled: false`: a `session_data` cookie must never stand in
+  // for the session store on an API request (V-369).
+  return auth.api.getSession({ headers, query: { disableCookieCache: true } });
 }
 
 export function convertNodeHeadersToWebHeaders(rawHeaders: IncomingHttpHeaders) {

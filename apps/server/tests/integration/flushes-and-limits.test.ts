@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
 import { prisma } from "#lib/prisma";
@@ -116,8 +116,13 @@ describe("portfolio views flush (V-103, V-124)", () => {
 });
 
 describe("portfolio view recording (V-114)", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("cannot overshoot the per-day field cap under concurrent views", async () => {
     const publication = await seedPublication();
+    // V-363: Date stands still for this test, so the request and the key read below name the same
+    // UTC day even when the run crosses midnight.
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() });
     const dateKey = new Date().toISOString().slice(0, 10);
     const key = `portfolio:views:buffer:${dateKey}`;
     const filler: Record<string, string> = {};
@@ -284,14 +289,26 @@ describe("JSON body limits (V-098)", () => {
     const response = await asUser(user)
       .put("/api/v1/portfolios/draft")
       .send({ subdomain: `big${randomUUID().slice(0, 8)}`, snapshot: { blob: big } });
-    expect(response.status).not.toBe(413);
+    // Parsed, so it reaches validation (V-415): a 400 naming the snapshot's fields, never the 413
+    // the 100 kb parser would give.
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: "snapshot.schemaVersion" })]),
+    );
   });
 
   it("parses a 200 kb body on the AI/ATS text routes (256 kb) but not 300 kb", async () => {
     const user = await createUserWithSession();
     const api = asUser(user);
-    expect((await api.post("/api/v1/ats/check").send({ resumeText: big })).status).not.toBe(413);
-    expect((await api.post("/api/v1/ai/generate").send({ prompt: big })).status).not.toBe(413);
+    // Parsed, so each reaches validation (V-415): 400 "Validation failed", not 413.
+    for (const parsed of [
+      await api.post("/api/v1/ats/check").send({ resumeText: big }),
+      await api.post("/api/v1/ai/generate").send({ prompt: big }),
+    ]) {
+      expect(parsed.status).toBe(400);
+      expect(parsed.body.message).toBe("Validation failed");
+    }
     const tooBig = "x".repeat(300 * 1024);
     expect((await api.post("/api/v1/ats/check").send({ resumeText: tooBig })).status).toBe(413);
   });
@@ -347,8 +364,13 @@ describe("autosave limiter class (V-130)", () => {
 });
 
 describe("portfolio view beacon (V-052)", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("counts a view without reading the published page, and 404s a subdomain that serves nothing", async () => {
     const publication = await seedPublication();
+    // V-363: Date stands still for this test, so the request and the key read below name the same
+    // UTC day even when the run crosses midnight.
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() });
     const pageRead = vi.spyOn(PortfolioService, "getPublicPortfolio");
 
     await PortfolioService.recordView(publication.subdomain, "https://www.google.com/");

@@ -20,7 +20,7 @@
     "@veriworkly/ats-engine": "^0.21.0",
     "@veriworkly/profile-core": "*",
     "@veriworkly/ui": "*",
-    "better-auth": "~1.6.25",
+    "better-auth": "~1.7.14",
     "clsx": "^2.1.1",
     "docx": "^9.8.1",
     "lucide-react": "^1.61.0",

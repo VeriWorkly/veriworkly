@@ -34,6 +34,8 @@ The backend engine for VeriWorkly — a Node/Express + TypeScript API covering a
 
    On servers run `npm run db:migrate:deploy -w @veriworkly/server` instead. Before that, if `DATABASE_URL` is the pooler (Neon `-pooler` host), set `DIRECT_DATABASE_URL` in the server's `.env` to the Neon direct host (the same URL without `-pooler`). Otherwise `prisma migrate deploy` refuses to run: the migration lock does not hold through a pooler. The `db:push` script was removed because it bypasses migrations and leaves the migration history out of step with the database.
 
+   **When a migration's guard stops the deploy.** A few migrations check the data first and raise an exception instead of changing anything (for example `20261025010000_affiliate_currency_and_payout_guards`, users with two open withdrawals, and `20261027120000_one_github_per_user`, users with two GitHub accounts). Their messages say to fix the rows and deploy or re-run again, but that alone is not enough: Prisma records the migration as failed, and every later `migrate deploy` stops with P3009 until it is marked rolled back. So: fix the rows the message names, then run `npx prisma migrate resolve --rolled-back <migration_name>` (from `apps/server`, with `DIRECT_DATABASE_URL` or `DATABASE_URL` set to the production database), then `npm run db:migrate:deploy -w @veriworkly/server` again. The old build keeps running meanwhile. (The messages themselves are not edited: changing an applied migration's file changes its checksum, and `prisma migrate dev` then asks every database that applied it to reset.)
+
    `db:migrate`, `db:drift`, the `seed:*` scripts, `smoke:boot` and the `backfill:*` scripts refuse any database URL whose host is not loopback, whatever `NODE_ENV` says; add `--allow-production` only when you really mean a remote database (`--wipe` is never allowed there).
 
 4. **Start development server**:
@@ -46,7 +48,7 @@ The API will be available at `http://localhost:8080`.
 ## 🚚 Deploy order notes
 
 - **Document list paging (V-263)**: `GET /api/v1/documents` pages with `limit` and `cursor` and answers with `nextCursor` and `total`. A request with neither still gets the old single response (up to 500 documents) so studios already in browsers keep working. Deploy the server after the studio that sends `limit`; a later change makes `limit` default to 20 and drops the unpaged response.
-- **Blank settings and ADMIN_EMAIL**: a boolean setting left blank (`NAME=`) now means "use the default", not "off". The flags whose default is on are `CLUSTERING_ENABLED` (production), `AUTH_SESSION_CACHE_ENABLED` (production), `GITHUB_SYNC_ENABLED`, `CHANGELOG_RELEASE_SYNC_ENABLED`, and `AFFILIATE_PROGRAM_ENABLED`/`AMBASSADOR_PROGRAM_ENABLED` outside production, so set each one to `true` or `false` in the server `.env` before deploying. `ADMIN_EMAIL` is required in every environment and must be a single plain address; the server refuses to boot otherwise.
+- **Blank settings and ADMIN_EMAIL**: a boolean setting left blank (`NAME=`) now means "use the default", not "off". The flags whose default is on are `CLUSTERING_ENABLED` (production), `GITHUB_SYNC_ENABLED`, `CHANGELOG_RELEASE_SYNC_ENABLED`, and `AFFILIATE_PROGRAM_ENABLED`/`AMBASSADOR_PROGRAM_ENABLED` outside production, so set each one to `true` or `false` in the server `.env` before deploying. `ADMIN_EMAIL` is required in every environment and must be a single plain address; the server refuses to boot otherwise. (`AUTH_SESSION_CACHE_ENABLED` is gone: better-auth's cookie cache is always off since V-369.)
 
 ## 🏗️ Architecture
 
@@ -102,20 +104,21 @@ Eight scheduled jobs (`src/jobs/`, listed once in `scheduledJobs.ts`), each guar
 
 `src/jobs/retentionJob.ts` runs daily at 03:15 UTC (no run at startup) under the shared job lock. Each rule is one setting; `0` disables it. Every statement touches at most 5,000 rows picked through an indexed column, and a run stops starting new batches after about 4 minutes, so a large backlog drains over several nights. It logs one line per run with the rows affected per rule, plus any rule that ran out of time or failed (a failing rule never stops the others).
 
-| Rule                                                                                                                                                                                                         | Setting                                                               | Default                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- | ------------------------- |
-| Delete expired `Session` rows                                                                                                                                                                                | `RETENTION_EXPIRED_SESSION_DAYS`                                      | 1 day after `expiresAt`   |
-| Delete expired `Verification` rows                                                                                                                                                                           | `RETENTION_EXPIRED_VERIFICATION_DAYS`                                 | 1 day after `expiresAt`   |
-| Redact `BillingWebhookEvent.payload` to `{ "redacted": true, "type": … }` for PROCESSED rows (row, ids, status and error kept; FAILED and PROCESSING rows untouched)                                         | `RETENTION_WEBHOOK_PAYLOAD_DAYS`                                      | 30 days                   |
-| Delete `AuditLog` (request log) rows                                                                                                                                                                         | `RETENTION_AUDIT_LOG_DAYS` (falls back to `AUDIT_LOG_RETENTION_DAYS`) | 90 days                   |
-| Delete `AdminAuditEntry` rows, except money actions and moderation records                                                                                                                                   | `RETENTION_ADMIN_AUDIT_DAYS`                                          | 365 days                  |
-| Delete money-action `AdminAuditEntry` rows (`billing.*`, affiliate commission and withdrawal changes); moderation records (`document.*`, `share_link.*`, `portfolio.*`) are never deleted                    | `RETENTION_ADMIN_MONEY_AUDIT_DAYS`                                    | 7 years (2555 days)       |
-| Delete COMMITTED, RELEASED and EXPIRED `CreditReservation` rows                                                                                                                                              | `RETENTION_CREDIT_RESERVATION_DAYS`                                   | 90 days after `updatedAt` |
-| Clear `CreditReservation.replay` (the stored AI result a retried request is answered from) on COMMITTED rows; a later retry answers 409                                                                      | `RETENTION_CREDIT_REPLAY_DAYS`                                        | 1 day after `updatedAt`   |
-| Delete `ViewFlushBatch` and `UsageMetricFlushBatch` markers                                                                                                                                                  | `RETENTION_FLUSH_BATCH_DAYS`                                          | 7 days                    |
-| Delete `AffiliateClick` rows                                                                                                                                                                                 | `RETENTION_AFFILIATE_CLICK_DAYS`                                      | 0 (off)                   |
-| Delete `PortfolioViewDaily` rows                                                                                                                                                                             | `RETENTION_PORTFOLIO_VIEW_DAYS`                                       | 0 (off)                   |
-| Set `content` to the marker `{ "purged": true }` on soft-deleted `Document` rows and blank their title, tags, metadata and slug; the same for their `ShareLink` and `PortfolioPublication` snapshots (V-206) | `RETENTION_DELETED_DOCUMENT_DAYS`                                     | 30 days after `deletedAt` |
+| Rule                                                                                                                                                                                                                                                                                            | Setting                                                               | Default                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------- |
+| Delete expired `Session` rows                                                                                                                                                                                                                                                                   | `RETENTION_EXPIRED_SESSION_DAYS`                                      | 1 day after `expiresAt`   |
+| Delete expired `Verification` rows                                                                                                                                                                                                                                                              | `RETENTION_EXPIRED_VERIFICATION_DAYS`                                 | 1 day after `expiresAt`   |
+| Redact `BillingWebhookEvent.payload` to `{ "redacted": true, "type": … }` for PROCESSED rows (row, ids, status and error kept; FAILED and PROCESSING rows wait for the next rule)                                                                                                               | `RETENTION_WEBHOOK_PAYLOAD_DAYS`                                      | 30 days                   |
+| The same redaction for FAILED and PROCESSING rows (product, amount, payment id, status and error kept)                                                                                                                                                                                          | `RETENTION_UNPROCESSED_WEBHOOK_PAYLOAD_DAYS`                          | 180 days                  |
+| Delete `AuditLog` (request log) rows                                                                                                                                                                                                                                                            | `RETENTION_AUDIT_LOG_DAYS` (falls back to `AUDIT_LOG_RETENTION_DAYS`) | 90 days                   |
+| Delete `AdminAuditEntry` rows, except money actions and takedown records. Other moderation entries (a document delete or restore, a share revoke) go at this age too                                                                                                                            | `RETENTION_ADMIN_AUDIT_DAYS`                                          | 365 days                  |
+| Delete money-action `AdminAuditEntry` rows (`billing.*`, affiliate commission, withdrawal, forfeited-balance and tier changes). Takedown records are never deleted: every document visibility decision, every portfolio force-unpublish, and a portfolio status change into or out of SUSPENDED | `RETENTION_ADMIN_MONEY_AUDIT_DAYS`                                    | 7 years (2555 days)       |
+| Delete COMMITTED, RELEASED and EXPIRED `CreditReservation` rows                                                                                                                                                                                                                                 | `RETENTION_CREDIT_RESERVATION_DAYS`                                   | 90 days after `updatedAt` |
+| Clear `CreditReservation.replay` (the stored AI result a retried request is answered from) on COMMITTED rows; a later retry answers 409                                                                                                                                                         | `RETENTION_CREDIT_REPLAY_DAYS`                                        | 1 day after `updatedAt`   |
+| Delete `ViewFlushBatch` and `UsageMetricFlushBatch` markers                                                                                                                                                                                                                                     | `RETENTION_FLUSH_BATCH_DAYS`                                          | 7 days                    |
+| Delete `AffiliateClick` rows                                                                                                                                                                                                                                                                    | `RETENTION_AFFILIATE_CLICK_DAYS`                                      | 0 (off)                   |
+| Delete `PortfolioViewDaily` rows                                                                                                                                                                                                                                                                | `RETENTION_PORTFOLIO_VIEW_DAYS`                                       | 0 (off)                   |
+| Set `content` to the marker `{ "purged": true }` on soft-deleted `Document` rows and blank their title, tags, metadata and slug; the same for their `ShareLink` and `PortfolioPublication` snapshots (V-206)                                                                                    | `RETENTION_DELETED_DOCUMENT_DAYS`                                     | 30 days after `deletedAt` |
 
 Soft-deleted documents keep their row: it is the sync tombstone that tells an offline device the document was deleted (and makes a re-create with that id a 409 instead of a resurrection), and deleting it would cascade away its share link and portfolio publication. An admin restore of a document carrying the purge marker answers 410 (owners cannot restore a deleted document); only the marker decides that, so a document that was simply empty restores, and changing `RETENTION_DELETED_DOCUMENT_DAYS` later never makes a purged one restorable.
 
@@ -138,7 +141,7 @@ When every rule is `0`, the job is not scheduled and `/health/jobs` reports it a
 ## 🐘 Database connections
 
 - **Per-replica budget.** Each cluster worker has its own `pg` pool, so one replica opens up to `WEB_CONCURRENCY × pool size` connections. `DB_POOL_MAX_TOTAL` (default 80 in production) is that per-replica budget; the per-worker pool is `max(2, floor(DB_POOL_MAX_TOTAL / workers))`. The master logs `Database connection budget: <workers> workers x <pool> = <total> of DB_POOL_MAX_TOTAL=<budget>` once at boot.
-- **Sizing.** Keep `DB_POOL_MAX_TOTAL × replicas` at or under about 80% of Postgres `max_connections`, leaving room for migrations, `db:studio` and an admin session. Example: `max_connections = 100` and two replicas gives `DB_POOL_MAX_TOTAL=40`.
+- **Sizing.** Keep `DB_POOL_MAX_TOTAL × replicas` at or under about 80% of Postgres `max_connections`, leaving room for migrations, `db:studio` and an admin session. Example: `max_connections = 100` and two replicas gives `DB_POOL_MAX_TOTAL=40`. The two pm2 copies in production are two replicas in this sense: `ecosystem.config.cjs` gives each `DB_POOL_MAX_TOTAL=40`, the 80 the single copy had.
 - **Refusal.** In production the server refuses to boot when the derived pool still overcommits the budget (the floor of 2 per worker against a small budget). Setting `DB_POOL_MAX` explicitly overrides the derived size for the pooler case; an over-budget value then only logs a warning.
 - **URLs.** `DATABASE_URL` should be the pooled host (Neon `-pooler`), so the budget above is spent on pooler client slots rather than Postgres backends. `DIRECT_DATABASE_URL` is the direct host and is what `prisma migrate` uses (`prisma.config.ts`).
 - **Per-connection settings.** Every connection sets `application_name = veriworkly-api-w<worker id>` (visible in `pg_stat_activity`), `statement_timeout` (`DB_POOL_STATEMENT_TIMEOUT_MS`, 30 s).
@@ -153,13 +156,16 @@ When every rule is `0`, the job is not scheduled and `/health/jobs` reports it a
 Two operator endpoints take the `x-internal-key` header (equal to `INTERNAL_API_KEY`, compared in constant time). They answer 401 without the key and 404 when `INTERNAL_API_KEY` is not set. A request carrying the valid key skips the global IP rate limiter, so a scraper is never 429'd; one without it is limited like any other request, so the key cannot be guessed at speed.
 
 - `GET /api/v1/health/metrics`: Prometheus text. Metrics live in each worker's memory, so a scrape sees **one worker per request** (whichever accepted the connection). Aggregate across scrapes with `sum`/`rate` and treat a single sample as one worker. Series: `http_request_duration_seconds{method,route,status_class}` (route is the matched pattern, such as `/api/v1/documents/:id`, or `unmatched` when no route handled the request, including router-level auth refusals), `redis_command_duration_seconds{command="ratelimit_eval"}`, `db_pool_connections{state="total|idle|waiting"}`, `ats_extract_queue_depth`, `ats_extract_queue_max`, `ats_extract_in_flight`, `process_uptime_seconds`.
-- `GET /api/v1/health/jobs`: JSON with each job's last success (`views-flush`, `usage-metrics`, `github-sync`, `changelog-sync`, `portfolio-access`, `credit-sweep`, `annual-credits`, `retention`). Successes are kept in Redis (`jobs:last-success`) as well as in memory, so any worker answers for all of them. A job is `stale: true` when it has not succeeded within twice its schedule (10 min, 24 h, 12 h, 24 h, 1 h, 1 h, 1 h, 24 h; `JOB_SCHEDULES` in `src/lib/metrics.ts`) or has never succeeded and twice its schedule has passed since the jobs baseline (`jobs:baseline` in Redis, written by the first worker to boot and kept by later ones, so a fresh deploy is not reported stale while the daily jobs wait for their first tick); the top-level `stale` is true when any enabled job is. A job that is not scheduled reports `enabled: false` and is never stale: changelog sync with `CHANGELOG_RELEASE_SYNC_ENABLED=false` or without `GITHUB_OWNER`/`GITHUB_REPO`/`GITHUB_TOKEN`, GitHub sync when disabled or without `GITHUB_OWNER`/`GITHUB_REPO`, and retention when every rule is `0`. A run in which any step failed is not recorded as a success.
+- `GET /api/v1/health/jobs`: JSON with each job's last success (`views-flush`, `usage-metrics`, `github-sync`, `changelog-sync`, `portfolio-access`, `credit-sweep`, `annual-credits`, `retention`). Successes are kept in Redis (`jobs:last-success`) as well as in memory, so any worker answers for all of them. A job is `stale: true` when it has not succeeded within twice its schedule (10 min, 24 h, 12 h, 24 h, 1 h, 1 h, 1 h, 24 h; `JOB_SCHEDULES` in `src/lib/metrics.ts`) or has never succeeded and twice its schedule has passed since the jobs baseline (`jobs:baseline` in Redis, written by the first worker to boot and kept by later ones, so a fresh deploy is not reported stale while the daily jobs wait for their first tick); the top-level `stale` is true when any enabled job is. A job that is not scheduled reports `enabled: false` and is never stale: changelog sync with `CHANGELOG_RELEASE_SYNC_ENABLED=false` or without `GITHUB_OWNER`/`GITHUB_REPO`/`GITHUB_TOKEN`, GitHub sync when disabled or without `GITHUB_OWNER`/`GITHUB_REPO`, and retention when every rule is `0`. A run in which any step failed is not recorded as a success. The same response carries the open money incidents (V-371): `billing.failedWebhooks` (webhooks that failed 5 times in the last 7 days, have not been replayed since and still have a payload to replay) and `billing.notedWebhooks` (events processed in the last 24 hours with a note for a person, such as a payment taken for a deleted account or an affiliate ledger shortfall), and `attention: true` while either is above 0.
+
+Each of those incidents, and a customer found holding two live subscriptions, is also mailed to `ADMIN_EMAIL` once (the account for that address must exist; it is created at boot). The mail goes through the billing notification claims, so a failed send is retried by the hourly billing job.
 
 What to alert on (example PromQL):
 
 | Alert                           | Condition                                                                                                                            |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Job staleness                   | `/health/jobs` returns `"stale": true` (an HTTP check with a body match, or a blackbox-exporter probe)                               |
+| Money incident open             | `/health/jobs` returns `"attention": true`                                                                                           |
 | Pool waiting for 1 min          | `min_over_time(db_pool_connections{state="waiting"}[1m]) > 0`                                                                        |
 | Rate-limiter Redis p95 > 100 ms | `histogram_quantile(0.95, sum by (le) (rate(redis_command_duration_seconds_bucket{command="ratelimit_eval"}[5m]))) > 0.1`            |
 | Extract queue at max            | `max_over_time(ats_extract_queue_depth[5m]) >= ats_extract_queue_max`                                                                |
@@ -177,28 +183,62 @@ The auth routes (`/api/v1/auth/*`) answer only to the host of `AUTH_BASE_URL`, t
 
 ## 🛑 Graceful shutdown and process managers
 
-On SIGTERM or SIGINT each worker stops accepting connections, drains HTTP for up to 10 s and lets a running background job finish for up to 20 s (both in parallel), then closes Redis and Prisma. The cluster master force-kills a worker still alive after 35 s. A process manager must therefore wait **at least 40 s** before its own SIGKILL, or it cuts a flush off mid-transaction:
+On SIGTERM or SIGINT each worker stops accepting connections and lets the requests in flight finish. After 10 s, AI calls still running are aborted: each one releases its credit reservation and AI slot, gives back an ATS scan it counted, and answers 503 `SERVER_RESTARTING` with `Retry-After: 5`, so nobody is charged for an answer they never get and the client retries on the other copy. The drain waits for the last request for up to 25 s in all, and a running background job may finish for up to 20 s in parallel. Redis and Prisma close only after that, never under a request still using them. The cluster master force-kills a worker still alive after 35 s. A process manager must therefore wait **at least 40 s** before its own SIGKILL, or it cuts a flush off mid-transaction. The numbers live in `SHUTDOWN_TIMINGS` (`src/lib/shutdown.ts`), and `tests/lifecycle/deploy-config.test.ts` checks that the files below keep up with them.
 
 - **Docker Compose:** `compose.yaml` sets `stop_grace_period: 40s` on `api` (the default is 10 s).
-- **pm2:** the default `kill_timeout` is 1600 ms. Set it in the ecosystem file (one pm2 process; the server forks its own workers, so do not use pm2 cluster mode):
+- **pm2:** the default `kill_timeout` is 1600 ms. `ecosystem.config.cjs` sets 40 s (the server forks its own workers, so do not use pm2 cluster mode).
 
-  ```js
-  // ecosystem.config.js
-  module.exports = {
-    apps: [
-      {
-        name: "veriworkly-server",
-        script: "dist/index.js",
-        cwd: "/path/to/apps/server",
-        exec_mode: "fork",
-        instances: 1,
-        kill_timeout: 40000,
-      },
-    ],
-  };
-  ```
+## 🚀 Deploying without downtime
 
-  Apply it with `pm2 delete veriworkly-server && pm2 start ecosystem.config.js` (a plain restart keeps the old setting). Without an ecosystem file, start the process with `pm2 start dist/index.js --name veriworkly-server --kill-timeout 40000`.
+One process restarting means nobody listens for the drain plus the boot (Redis connect, Prisma, admin check): nginx answers 502 to autosaves and to share and portfolio pages for that time. So production runs **two copies** of the API and restarts them one at a time (V-373). Every step below is required: skip one and a deploy is still an outage for whoever goes through it.
+
+1. **Two pm2 apps.** `ecosystem.config.cjs` defines `veriworkly-server-a` on port 7042 and `veriworkly-server-b` on 7043, each with one worker (`WEB_CONCURRENCY=1`) and its own Postgres budget (`DB_POOL_MAX_TOTAL=40`). The single copy ran 2 workers on a budget of 80, so the two copies together open at most the same 80 connections. If `.env` sets `DB_POOL_MAX_TOTAL`, set half of it in the ecosystem file instead (its values win over `.env`). Everything else still comes from `.env`. First switch-over:
+
+   ```sh
+   pm2 delete veriworkly-server
+   pm2 start ecosystem.config.cjs
+   pm2 save
+   ```
+
+2. **Public traffic over both copies.** nginx sends `api.veriworkly.com` to both. A copy that is draining refuses new connections, and nginx retries a refused connection on the other copy (also for POSTs, because nothing was sent yet):
+
+   ```nginx
+   upstream veriworkly_api {
+     server 127.0.0.1:7042 max_fails=1 fail_timeout=5s;
+     server 127.0.0.1:7043 max_fails=1 fail_timeout=5s;
+     keepalive 16;
+   }
+   # in the api.veriworkly.com server block, replacing the old proxy_pass to :7042
+   location / {
+     proxy_pass http://veriworkly_api;
+     proxy_http_version 1.1;
+     proxy_set_header Connection "";
+     proxy_next_upstream error timeout;
+     # keep the existing proxy_set_header lines (Host, X-Real-IP, X-Forwarded-For, X-Forwarded-Proto)
+   }
+   ```
+
+3. **Internal traffic over both copies.** The studio and portfolio render pages by calling the API from the same machine (`BACKEND_INTERNAL_URL`). Pointed at `127.0.0.1:7042`, every one of those calls fails while copy a drains and boots, so they must go through a loopback-only nginx listener over both copies. It passes the request through unchanged: it adds no `X-Forwarded-For`, so the API sees the same loopback caller as before, and `x-internal-key` / `x-forwarded-client-ip` reach it as sent.
+
+   ```nginx
+   # A server block of its own, reachable only from this machine.
+   server {
+     listen 127.0.0.1:7040;
+
+     location / {
+       proxy_pass http://veriworkly_api;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+       proxy_set_header Host $http_host;
+       proxy_next_upstream error timeout;
+       proxy_read_timeout 120s;
+     }
+   }
+   ```
+
+   Then, in the studio's and the portfolio's environment, set `BACKEND_INTERNAL_URL=http://127.0.0.1:7040/api/v1` and restart them. Reload nginx with `nginx -t && nginx -s reload`.
+
+4. **Each deploy**, after `npm run build` and the migrations: `sh scripts/rolling-restart.sh`. It restarts copy a only if copy b answers `/api/v1/health/ready`, waits until copy a is ready again, then does the same the other way round. If a copy is not healthy it stops without restarting anything and says which one. Both copies must work against the new schema, so run migrations first, as before.
 
 ## 📁 Folder Structure
 

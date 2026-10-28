@@ -1,6 +1,7 @@
 import type { Response } from "express";
 
 import { ApiError } from "#lib/errors";
+import { isShuttingDown, shutdownSignal } from "#lib/shutdown";
 
 /**
  * The time budget every billed AI call on a request shares (V-034).
@@ -60,12 +61,41 @@ export function requestClosedSignal(res: Response): AbortSignal {
   return controller.signal;
 }
 
-/** The signal every provider call on this request gets: the client leaving, or the deadline. */
+/**
+ * The signal every provider call on this request gets: the client leaving, the deadline, or the
+ * worker draining for a restart (V-313).
+ */
 export function aiRequestSignal(res: Response): AbortSignal {
-  return AbortSignal.any([requestClosedSignal(res), AbortSignal.timeout(AI_REQUEST_DEADLINE_MS)]);
+  return AbortSignal.any([
+    requestClosedSignal(res),
+    AbortSignal.timeout(AI_REQUEST_DEADLINE_MS),
+    shutdownSignal(),
+  ]);
+}
+
+/** How long a client told to retry during a restart waits: the other copy is serving by then. */
+const RESTART_RETRY_AFTER_SECONDS = 5;
+
+/** A request cut off because this worker is restarting: nothing was charged, retry it. */
+export function serverRestartingError() {
+  return new ApiError(503, "The server is restarting. Try again in a few seconds.", {
+    code: "SERVER_RESTARTING",
+    retryAfterSeconds: RESTART_RETRY_AFTER_SECONDS,
+  });
 }
 
 /** What an aborted call answers with when there is still someone to answer. */
 export function aiTimeoutError() {
+  if (isShuttingDown()) return serverRestartingError();
   return new ApiError(504, "The AI request timed out before the provider answered.");
+}
+
+/**
+ * Every AI route's last word on a failure (V-313 review): once the drain has aborted in-flight
+ * AI work, whatever the abort surfaced as (the provider's abort, the job fetch's "timed out"
+ * 400, a timeout 504) is answered 503 with `Retry-After`, since nothing was charged and the
+ * other copy can serve the retry.
+ */
+export function aiRouteError(error: unknown): unknown {
+  return isShuttingDown() ? serverRestartingError() : error;
 }

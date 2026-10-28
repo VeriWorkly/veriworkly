@@ -35,24 +35,31 @@ function githubRows(userId: string) {
 describe("GitHub linking rules (V-265)", () => {
   it("refuses to unlink GitHub with GITHUB_UNLINK_FORBIDDEN, and still unlinks other providers", async () => {
     const user = await createUserWithSession();
-    await linkAccount(user, "github", "gh-1");
-    await linkAccount(user, "google", "google-1");
+    const github = await linkAccount(user, "github", "gh-1");
+    const google = await linkAccount(user, "google", "google-1");
     await linkAccount(user, "linkedin", "linkedin-1");
 
-    const unlink = (providerId: string) =>
+    // better-auth 1.7 names the row to unlink by its own id (`accountId`), not by provider.
+    const unlink = (body: object) =>
       request(app)
         .post("/api/v1/auth/unlink-account")
         .set("Origin", STUDIO_ORIGIN)
         .set("Cookie", user.cookie)
-        .send({ providerId });
+        .send(body);
 
-    const refused = await unlink("github");
-    expect(refused.status).toBe(403);
-    expect(refused.body.code).toBe("GITHUB_UNLINK_FORBIDDEN");
-    expect(await githubRows(user.id)).toHaveLength(1);
+    for (const body of [
+      { accountId: github.id },
+      { accountId: github.id, providerId: "google" },
+      { providerId: "github" },
+    ]) {
+      const refused = await unlink(body);
+      expect(refused.status, JSON.stringify(body)).toBe(403);
+      expect(refused.body.code).toBe("GITHUB_UNLINK_FORBIDDEN");
+      expect(await githubRows(user.id)).toHaveLength(1);
+    }
 
-    const google = await unlink("google");
-    expect(google.status).toBe(200);
+    const unlinked = await unlink({ accountId: google.id });
+    expect(unlinked.status).toBe(200);
     expect(await prisma.account.count({ where: { userId: user.id, providerId: "google" } })).toBe(
       0,
     );

@@ -6,7 +6,7 @@ import { ZodError } from "zod";
 
 import { isProduction } from "#config";
 
-import { logger } from "#lib/logger";
+import { logger, maskEmails } from "#lib/logger";
 import { ApiError, createErrorResponse, handleValidationError } from "#lib/errors";
 
 // Cap on what we persist to AuditLog.error — an error carrying a large payload (a serialized
@@ -17,9 +17,12 @@ const MAX_AUDIT_ERROR_CHARS = 500;
  * Records the diagnostic that `loggingMiddleware` persists to AuditLog.error on the `finish`
  * event. Without this the column was written as NULL on every single row, so the audit log
  * recorded that a request failed but never why.
+ *
+ * The row is admin-visible, kept for the retention window and has no user link, so account
+ * deletion never erases it: addresses are masked as in the log lines (V-394).
  */
 function recordAuditError(res: Response, message: string) {
-  res.locals.errorMessage = message.slice(0, MAX_AUDIT_ERROR_CHARS);
+  res.locals.errorMessage = maskEmails(message).slice(0, MAX_AUDIT_ERROR_CHARS);
 }
 
 type ValidationDetail = { path: string; message: string };
@@ -179,10 +182,15 @@ export function errorHandler(error: unknown, req: Request, res: Response, next: 
     logger.warn(`API Error [${req.method} ${req.path}]: ${error.message}`, error.details);
     recordAuditError(res, error.message);
 
-    // A 429 that knows when to come back says so, like the limiter's own 429s.
+    // A 429 or 503 that knows when to come back says so, like the limiter's own 429s (a 503 for
+    // a restart, V-313 review).
     const retryAfter = (error.details as { retryAfterSeconds?: unknown } | undefined)
       ?.retryAfterSeconds;
-    if (error.statusCode === 429 && typeof retryAfter === "number" && retryAfter > 0)
+    if (
+      (error.statusCode === 429 || error.statusCode === 503) &&
+      typeof retryAfter === "number" &&
+      retryAfter > 0
+    )
       res.set("Retry-After", String(Math.ceil(retryAfter)));
 
     return res
@@ -248,8 +256,16 @@ export function errorHandler(error: unknown, req: Request, res: Response, next: 
     });
 
     // The audit log is internal and admin-only, so it keeps the real message even though the
-    // response body is generic in production.
-    recordAuditError(res, error.message);
+    // response body is generic in production. Not for a Prisma error, whose message can render
+    // the call's arguments (a validation error) or the conflicting values: its code or class
+    // name only, as the mapped branch above records (V-394).
+    const prismaError = error as PrismaLikeError;
+    recordAuditError(
+      res,
+      typeof prismaError.clientVersion === "string"
+        ? `Prisma ${typeof prismaError.code === "string" ? prismaError.code : error.name}`
+        : error.message,
+    );
 
     const message = isProduction ? "Internal server error" : error.message;
     return res.status(500).json(createErrorResponse(500, message));

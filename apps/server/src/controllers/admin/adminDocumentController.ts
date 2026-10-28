@@ -1,7 +1,7 @@
 import { adminHandler, deleteRequestInput } from "#controllers/admin/adminRequestHandler";
 
 import * as AdminDocumentService from "#services/admin/adminDocumentService";
-import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
+import { ADMIN_AUDIT_ACTIONS } from "#services/admin/adminAuditService";
 
 import { adminIdParamSchema } from "#validators/admin/adminCommonValidator";
 import {
@@ -90,18 +90,9 @@ export const AdminShareLinkController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminShareLinkRevokeSchema.parse(deleteRequestInput(req));
 
-    const result = await AdminDocumentService.revokeShareLink(id);
-
-    await recordAdminAudit({
+    return AdminDocumentService.revokeShareLink(id, input.confirm, {
       actorId,
-      action: ADMIN_AUDIT_ACTIONS.shareLinkRevoke,
-      targetType: "ShareLink",
-      targetId: id,
       reason: input.reason,
-      // Ids only, never the slug (made from the document title).
-      metadata: { documentId: result.documentId, ownerId: result.ownerId },
     });
-
-    return result;
   }, "Share link revoked successfully"),
 };

@@ -5,7 +5,7 @@ import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession } from "./helpers/auth.js";
 
 /**
- * Credit pack prices come from CREDIT_PACK_250_PRICE_CENTS / CREDIT_PACK_500_PRICE_CENTS. The
+ * Credit pack prices come from CREDIT_PACK_250/500/1200_PRICE_CENTS. The
  * per-file setup already loaded `#config` with the defaults, so this file sets the variables and
  * boots a second copy of the app from a fresh module graph, the way a restart with the new
  * environment would. The helpers above stay on the first graph; both talk to the same stores.
@@ -15,6 +15,7 @@ import { createUserWithSession } from "./helpers/auth.js";
 
 vi.stubEnv("CREDIT_PACK_250_PRICE_CENTS", "349");
 vi.stubEnv("CREDIT_PACK_500_PRICE_CENTS", "599");
+vi.stubEnv("CREDIT_PACK_1200_PRICE_CENTS", "1099");
 vi.resetModules();
 
 const { app } = await import("#app");
@@ -44,6 +45,7 @@ describe("credit pack prices from the environment", () => {
     expect(response.body.data.creditEconomics.packs).toEqual([
       expect.objectContaining({ key: "credit_pack_250", price: 349, currency: "USD" }),
       expect.objectContaining({ key: "credit_pack_500", price: 599, currency: "USD" }),
+      expect.objectContaining({ key: "credit_pack_1200", price: 1099, currency: "USD" }),
     ]);
   });
 });

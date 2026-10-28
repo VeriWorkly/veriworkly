@@ -3,14 +3,17 @@ import type { z } from "zod";
 
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
+import { assertConfirmation } from "#services/admin/adminConfirmation";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { assertDocumentNotPurged, PURGED_DOCUMENT_CONTENT } from "#jobs/retentionJob";
-import { cacheNamespaces, documentCacheNamespaces } from "#lib/cacheKeys";
+import { cacheNamespaces, documentCacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheDel } from "#lib/redis";
 
 import {
   isModerationLocked,
   MODERATION_SUSPENSION_PREFIX,
   NOT_MODERATION_LOCKED,
+  rememberReasonBeforeModeration,
 } from "#services/portfolioService";
 import { moderatorPrivateDocumentIds } from "#services/moderationRecord";
 import {
@@ -24,6 +27,10 @@ import type {
 } from "#validators/admin/adminDocumentValidator";
 import { listPage } from "#utils/pagination";
 import { USER_UNPUBLISHED_REASON } from "#services/portfolioAssetService";
+import {
+  isBillingSuspensionReason,
+  settleRestoredBillingSuspension,
+} from "#services/admin/adminPortfolioService";
 import {
   ADMIN_AUDIT_ACTIONS,
   getAuditHistory,
@@ -190,8 +197,18 @@ async function invalidateOwnerDocumentCaches(
     // The share list leaves out links on soft-deleted documents (V-030).
     cacheNamespaces.shareList(userId),
     ...(username && shareSlugs.length > 0 ? [cacheNamespaces.publicShare(username)] : []),
+    // The master profile and the account page count share links on live documents (V-306).
+    ...(shareSlugs.length > 0 ? [cacheNamespaces.masterProfile(userId)] : []),
   );
+  await cacheDel(userProfileCacheKey(userId));
 }
+
+type PublicationState = {
+  id: string;
+  subdomain: string;
+  status: string;
+  suspensionReason: string | null;
+};
 
 /**
  * A PORTFOLIO document is the source of a public site, which `getPublicPortfolio` serves from
@@ -199,28 +216,54 @@ async function invalidateOwnerDocumentCaches(
  * by itself. Deleting the document therefore also takes the publication down, as a sticky
  * moderation suspension (same rules as `adminPortfolioService.updatePublicationStatus`). A row
  * already under a moderation lock keeps its original reason.
+ *
+ * Runs on the delete's transaction (V-284): the delete, the suspension and both audit entries
+ * commit together, so a failed takedown leaves nothing deleted and the admin can retry. The
+ * `portfolio.status.change` entry into SUSPENDED is a takedown record, kept forever (decision 11).
+ * Returns the subdomain to flush once the transaction has committed, or null.
  */
-async function takeDownPortfolioPublication(documentId: string, reason: string) {
-  const publication = await prisma.portfolioPublication.findUnique({
-    where: { documentId },
-    select: { id: true, subdomain: true, status: true, suspensionReason: true },
-  });
+async function takeDownPortfolioPublication(
+  tx: Prisma.TransactionClient,
+  publication: PublicationState | null,
+  documentId: string,
+  reason: string,
+  audit: AdminAuditInput | undefined,
+  ownerId: string,
+) {
+  if (!publication || isModerationLocked(publication)) return null;
 
-  if (!publication || isModerationLocked(publication)) return;
-
+  const suspensionReason = `${MODERATION_SUSPENSION_PREFIX}${reason}`;
   // Conditional (V-226): a takedown that committed after the read keeps its own reason.
-  const { count } = await prisma.portfolioPublication.updateMany({
-    where: { id: publication.id, ...NOT_MODERATION_LOCKED },
+  const { count } = await tx.portfolioPublication.updateMany({
+    where: { id: publication.id, documentId, ...NOT_MODERATION_LOCKED },
     data: {
       status: "SUSPENDED",
-      suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${reason}`,
+      suspensionReason,
       suspendedAt: new Date(),
+      ...rememberReasonBeforeModeration(publication),
     },
   });
-  if (count === 0) return;
+  if (count === 0) return null;
 
-  await invalidatePublicPortfolioCaches([publication.subdomain]);
-  void revalidatePublicPortfolios([publication.subdomain]);
+  if (audit)
+    await writeAdminAudit(tx, {
+      actorId: audit.actorId,
+      action: ADMIN_AUDIT_ACTIONS.portfolioStatusChange,
+      targetType: "PortfolioPublication",
+      targetId: publication.id,
+      reason: audit.reason,
+      metadata: {
+        previousStatus: publication.status,
+        status: "SUSPENDED",
+        previousSuspensionReason: publication.suspensionReason,
+        suspensionReason,
+        subdomain: publication.subdomain,
+        documentId,
+        ownerId,
+      },
+    });
+
+  return publication.subdomain;
 }
 
 /** The audit entry of a delete or restore: ids only, a title outlives the purge otherwise (V-206). */
@@ -239,8 +282,8 @@ async function loadDocumentForMutation(documentId: string) {
       visibility: true,
       moderatedPrivateAt: true,
       deletedAt: true,
-      // For restoreDocument's purge check (assertDocumentNotPurged).
-      content: true,
+      // No `content` (V-298): a résumé can be megabytes, and only the restore needs to know whether
+      // it was purged, which its conditional write and the re-read after it answer.
       user: { select: { username: true } },
       shareLinks: { select: { slug: true } },
     },
@@ -272,22 +315,67 @@ export async function updateDocumentVisibility(
     document.type === "PORTFOLIO"
       ? await prisma.portfolioPublication.findUnique({
           where: { documentId },
-          select: { id: true, subdomain: true, status: true, suspensionReason: true },
+          select: {
+            id: true,
+            subdomain: true,
+            status: true,
+            suspensionReason: true,
+            reasonBeforeModeration: true,
+          },
         })
       : null;
   const locked = publication !== null && isModerationLocked(publication);
   const takeDown = publication !== null && visibility === "PRIVATE" && !locked;
   const lift = publication !== null && visibility !== "PRIVATE" && locked;
 
+  // Admins only pull a document toward private (V-286). UNLISTED on a PRIVATE document is a lift
+  // of a moderator's own decision, nothing else: on a document its owner made private it would
+  // switch the owner's old share links back on.
+  if (
+    visibility === "UNLISTED" &&
+    document.visibility === "PRIVATE" &&
+    !document.moderatedPrivateAt &&
+    !lift
+  )
+    throw new ApiError(
+      409,
+      "The owner made this document private. A moderator cannot make it visible again.",
+    );
+
+  // Lifting a portfolio's moderation lock from a document its owner made private leaves the
+  // document PRIVATE: only the publication's lock goes.
+  const nextVisibility =
+    visibility === "UNLISTED" && document.visibility === "PRIVATE" && !document.moderatedPrivateAt
+      ? document.visibility
+      : visibility;
+  // A lock put over the owner's or billing's own suspension lifts back to it (V-285).
+  const liftedReason = publication?.reasonBeforeModeration ?? USER_UNPUBLISHED_REASON;
+  const restoresBilling = isBillingSuspensionReason(liftedReason);
+
   const updated = await prisma.$transaction(async (tx) => {
-    const row = await tx.document.update({
-      where: { id: documentId },
+    // A lift takes the owner's billing lock first, as the status lift and `dropToFreeTier` do,
+    // then the Document row (below), then the publication: one order everywhere.
+    if (lift) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${document.userId}))`;
+
+    // Conditional on the visibility and lock read above, so the owner's own "make private" that
+    // commits in between is not turned into an unlist on a stale read.
+    const { count } = await tx.document.updateMany({
+      where: {
+        id: documentId,
+        visibility: document.visibility,
+        moderatedPrivateAt: document.moderatedPrivateAt,
+      },
       data: {
-        visibility,
+        visibility: nextVisibility,
         // An earlier lock keeps its date; a second "Make private" is not a new takedown.
         moderatedPrivateAt:
           visibility === "PRIVATE" ? (document.moderatedPrivateAt ?? new Date()) : null,
       },
+    });
+    if (count === 0)
+      throw new ApiError(409, "The document changed while this was being saved. Try again.");
+    const row = await tx.document.findUniqueOrThrow({
+      where: { id: documentId },
       select: DOCUMENT_LIST_SELECT,
     });
     await writeAdminAudit(tx, {
@@ -295,7 +383,7 @@ export async function updateDocumentVisibility(
       metadata: {
         ...audit.metadata,
         previousVisibility: document.visibility,
-        visibility,
+        visibility: nextVisibility,
         ownerId: document.userId,
       },
     });
@@ -320,16 +408,23 @@ export async function updateDocumentVisibility(
             status: "SUSPENDED",
             suspensionReason: `${MODERATION_SUSPENSION_PREFIX}document_hidden`,
             suspendedAt: new Date(),
+            ...rememberReasonBeforeModeration(publication),
           },
         }),
       );
 
     if (publication && unchanged && lift) {
-      // Still offline, so `suspendedAt` keeps the date it went down; only the lock goes.
+      // Still offline, so `suspendedAt` keeps the date it went down; only the lock goes. A billing
+      // reason comes back dated now, as the publication lift does it: the free-tier drop only
+      // takes billing suspensions inside its restore window. Settled after the commit, below.
       assertApplied(
         await tx.portfolioPublication.updateMany({
           where: unchanged,
-          data: { suspensionReason: USER_UNPUBLISHED_REASON },
+          data: {
+            suspensionReason: liftedReason,
+            reasonBeforeModeration: null,
+            ...(restoresBilling ? { suspendedAt: new Date() } : {}),
+          },
         }),
       );
       await writeAdminAudit(tx, {
@@ -342,7 +437,7 @@ export async function updateDocumentVisibility(
           previousStatus: publication.status,
           status: "SUSPENDED",
           previousSuspensionReason: publication.suspensionReason,
-          suspensionReason: USER_UNPUBLISHED_REASON,
+          suspensionReason: liftedReason,
           subdomain: publication.subdomain,
           documentId,
           ownerId: document.userId,
@@ -357,6 +452,9 @@ export async function updateDocumentVisibility(
     await invalidatePublicPortfolioCaches([publication.subdomain]);
     void revalidatePublicPortfolios([publication.subdomain]);
   }
+
+  if (publication && lift && restoresBilling)
+    await settleRestoredBillingSuspension(document.userId);
 
   await invalidateOwnerDocumentCaches(
     document.userId,
@@ -388,14 +486,37 @@ export async function softDeleteDocument(documentId: string, audit?: AdminAuditI
 
     if (audit) await writeAdminAudit(tx, ownerAudit(audit, document.userId));
 
-    return tx.document.findUniqueOrThrow({
+    // Read here, after the update above locked the document row: a publish of this document
+    // committing first is seen, and the owner republishing the site from another document is not
+    // mistaken for this one's.
+    const publication =
+      document.type === "PORTFOLIO"
+        ? await tx.portfolioPublication.findUnique({
+            where: { documentId },
+            select: { id: true, subdomain: true, status: true, suspensionReason: true },
+          })
+        : null;
+
+    const takenDown = await takeDownPortfolioPublication(
+      tx,
+      publication,
+      documentId,
+      "document_deleted",
+      audit,
+      document.userId,
+    );
+
+    const row = await tx.document.findUniqueOrThrow({
       where: { id: documentId },
       select: DOCUMENT_LIST_SELECT,
     });
+    return { row, takenDown };
   });
 
-  if (document.type === "PORTFOLIO")
-    await takeDownPortfolioPublication(documentId, "document_deleted");
+  if (updated.takenDown) {
+    await invalidatePublicPortfolioCaches([updated.takenDown]);
+    void revalidatePublicPortfolios([updated.takenDown]);
+  }
 
   await invalidateOwnerDocumentCaches(
     document.userId,
@@ -405,7 +526,7 @@ export async function softDeleteDocument(documentId: string, audit?: AdminAuditI
     document.shareLinks.map((share) => share.slug),
   );
 
-  return updated;
+  return updated.row;
 }
 
 /** Restores a soft-deleted document; the audit entry commits with the change (V-249). */
@@ -414,9 +535,8 @@ export async function restoreDocument(documentId: string, audit?: AdminAuditInpu
 
   if (!document.deletedAt) throw new ApiError(409, "Document is not deleted.");
 
-  assertDocumentNotPurged(document);
-
-  // Conditional, so a purge that lands between the read above and this write wins (410).
+  // Conditional on the content not being purged: a purged document, or a purge that lands
+  // between the read above and this write, is answered 410 by the re-read below.
   const restored = await prisma.$transaction(async (tx) => {
     const result = await tx.document.updateMany({
       where: {
@@ -502,7 +622,15 @@ export async function listShareLinks(query: ShareLinkListQuery) {
   );
 }
 
-export async function revokeShareLink(shareLinkId: string) {
+/**
+ * `confirm` is the slug the admin retyped (V-082), checked before the link is deleted. The audit
+ * entry commits with the delete (V-291).
+ */
+export async function revokeShareLink(
+  shareLinkId: string,
+  confirm: string | undefined,
+  audit: Pick<AdminAuditInput, "actorId" | "reason">,
+) {
   const share = await prisma.shareLink.findUnique({
     where: { id: shareLinkId },
     select: {
@@ -516,8 +644,23 @@ export async function revokeShareLink(shareLinkId: string) {
   });
 
   if (!share) throw new ApiError(404, "Share link not found.");
+  assertConfirmation(confirm, share.slug, "share link's slug");
 
-  await prisma.shareLink.delete({ where: { id: shareLinkId } });
+  // The delete and its audit entry commit together (V-291): a revoke with no record, or a record
+  // of a revoke that did not happen, is not possible. `deleteMany` so a concurrent revoke of the
+  // same link is a 404, not a P2025 500.
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.shareLink.deleteMany({ where: { id: shareLinkId } });
+    if (count === 0) throw new ApiError(404, "Share link not found.");
+    await writeAdminAudit(tx, {
+      ...audit,
+      action: ADMIN_AUDIT_ACTIONS.shareLinkRevoke,
+      targetType: "ShareLink",
+      targetId: shareLinkId,
+      // Ids only, never the slug (made from the document title).
+      metadata: { documentId: share.documentId, ownerId: share.userId },
+    });
+  });
 
   await invalidateOwnerDocumentCaches(
     share.userId,

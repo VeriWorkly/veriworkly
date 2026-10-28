@@ -18,7 +18,11 @@ import { startFakeRedis } from "./fakeRedisServer.js";
  * count, 503) runs instead.
  */
 
-const BOUND_MS = 2_000;
+/**
+ * Ten times the 500 ms command bound (V-384): an unbounded wait on the stalled fake never returns,
+ * so this still fails it, while a busy runner's scheduling delay cannot.
+ */
+const BOUND_MS = 5_000;
 const originalUrl = config.redis.url;
 let fake: Awaited<ReturnType<typeof startFakeRedis>>;
 

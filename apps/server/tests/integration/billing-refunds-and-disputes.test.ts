@@ -201,7 +201,7 @@ describe("V-216 full or partial, from the stored payment when the provider does 
       userId: user.id,
       subscriptionId,
       productId: "prod_ai_credits_annual",
-      amount: 5_990,
+      amount: 5_988,
       at: periodStart,
       servicePeriod: { startsAt: periodStart, endsAt: periodEnd },
     });
@@ -211,7 +211,7 @@ describe("V-216 full or partial, from the stored payment when the provider does 
       SET "payload" = jsonb_build_object('redacted', true, 'type', "type")
       WHERE "type" = 'payment.succeeded' AND "userId" = ${user.id}`;
 
-    await deliver(refundEvent(payment.data.payment_id, { amount: 5_990, isPartial: null }));
+    await deliver(refundEvent(payment.data.payment_id, { amount: 5_988, isPartial: null }));
 
     const schedule = await prisma.subscriptionCreditSchedule.findFirstOrThrow({
       where: { providerSubId: subscriptionId },
@@ -499,6 +499,31 @@ describe("review: reversals that add up to the whole payment", () => {
     await expectLedgerBalanced(buyer.id);
   });
 
+  /**
+   * V-407: the per-payment lock (`withPaymentLock`) is what makes two reversals arriving at the
+   * same moment add up. Without it each reads "nothing reversed yet", each is a partial refund,
+   * and the customer keeps the credits for a payment refunded in full.
+   */
+  it("two partial refunds delivered at the same moment still add up to the whole payment", async () => {
+    for (let round = 0; round < 4; round += 1) {
+      const buyer = await createUserWithSession();
+      const payment = packPayment(buyer.id, 200_000);
+      await deliver(payment);
+      const paymentId = payment.data.payment_id;
+
+      await Promise.all([
+        deliver(refundEvent(paymentId, { amount: 120_000, isPartial: true })),
+        deliver(refundEvent(paymentId, { amount: 80_000, isPartial: true })),
+      ]);
+
+      expect((await grantFor(buyer.id, paymentId)).remaining).toBe(0);
+      expect(
+        await prisma.creditTransaction.count({ where: { userId: buyer.id, type: "REFUND" } }),
+      ).toBe(1);
+      await expectLedgerBalanced(buyer.id);
+    }
+  });
+
   it("a partial refund and a lost dispute for the rest take everything back", async () => {
     const buyer = await createUserWithSession();
     const payment = packPayment(buyer.id, 499);
@@ -530,15 +555,16 @@ describe("review: payouts never mark a commission paid with a claw-back's money"
     const withdrawalId = requested.body.data.id as string;
     // Refunded while its money sits in the withdrawal: a 4,000 claw-back.
     await deliver(refundEvent(first.data.payment_id, { amount: 200_000 }));
-    const second = packPayment(buyer.id, 150_000);
+    // Large enough to repay the whole claw-back: a payout is refused while any is owed (V-321).
+    const second = packPayment(buyer.id, 250_000);
     await deliver(second);
     await AffiliateService.updateCommission(
       (await commissionFor(second.data.payment_id)).id,
       "AVAILABLE",
     );
     expect(await affiliateWallet(affiliate.id)).toMatchObject({
-      availableCents: 0,
-      clawbackCents: 1_000,
+      availableCents: 1_000,
+      clawbackCents: 0,
     });
 
     await AffiliateService.updateWithdrawal(withdrawalId, "APPROVED");

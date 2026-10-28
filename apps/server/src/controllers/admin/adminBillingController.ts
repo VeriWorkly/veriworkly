@@ -1,7 +1,7 @@
 import { adminHandler, deleteRequestInput } from "#controllers/admin/adminRequestHandler";
 
 import * as AdminBillingService from "#services/admin/adminBillingService";
-import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
+import { ADMIN_AUDIT_ACTIONS } from "#services/admin/adminAuditService";
 
 import { adminIdParamSchema } from "#validators/admin/adminCommonValidator";
 import {
@@ -154,17 +154,13 @@ export const AdminBillingController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminWebhookReplaySchema.parse(req.body);
 
-    const result = await AdminBillingService.replayWebhookEvent(id);
-
-    await recordAdminAudit({
+    // Audited before it runs, and refused if the entry cannot be written (V-291).
+    return AdminBillingService.replayWebhookEvent(id, {
       actorId,
       action: ADMIN_AUDIT_ACTIONS.webhookReplay,
       targetType: "BillingWebhookEvent",
       targetId: id,
       reason: input.reason,
-      metadata: { providerEventId: result.providerEventId, duplicate: result.duplicate },
     });
-
-    return result;
   }, "Webhook event replayed successfully"),
 };

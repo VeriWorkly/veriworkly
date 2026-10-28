@@ -5,6 +5,7 @@ import {
   unionPullRequests,
   reparseStoredRelease,
   assignPullRequestsToReleases,
+  pruneReassignedPullRequests,
 } from "../../src/services/github/index.js";
 
 describe("GitHub Release Body Parser", () => {
@@ -185,6 +186,52 @@ Intro.
     expect(assigned.get("v1-0-0")?.map((ref) => ref.number)).toEqual([1]);
     expect(assigned.get("v1-1-0")?.map((ref) => ref.number)).toEqual([4, 2]);
     expect(assigned.get("v1-1-0")?.[0]?.author?.login).toBe("dev4");
+  });
+
+  it("V-339: guesses a release only for PRs merged into the default branch, and a release's own list wins", () => {
+    const pr = (number: number, mergedAt: string, baseRef = "master") => ({
+      number,
+      title: `PR ${number}`,
+      url: `https://github.com/acme/app/pull/${number}`,
+      author: null,
+      mergedAt,
+      headRef: `feat/${number}`,
+      baseRef,
+    });
+
+    const assigned = assignPullRequestsToReleases(
+      [
+        { id: "v1-0-0", publishedAt: "2026-01-01T00:00:00Z", listed: [] },
+        { id: "v1-1-0", publishedAt: "2026-02-01T00:00:00Z", listed: [8] },
+      ],
+      [
+        // Merged into a long-lived feature branch: it shipped whenever that branch did.
+        pr(7, "2025-12-20T00:00:00Z", "feat/big-rework"),
+        // Also merged into the feature branch, but v1.1.0's notes name it.
+        pr(8, "2025-12-21T00:00:00Z", "feat/big-rework"),
+      ],
+    );
+    expect(assigned.get("v1-0-0")).toEqual([]);
+    expect(assigned.get("v1-1-0")?.map((ref) => ref.number)).toEqual([8]);
+
+    // A stored guess that another release's notes now claim is dropped from this one.
+    const stored = [
+      { number: 8, title: "PR 8" },
+      { number: 6, title: "PR 6" },
+    ];
+    expect(
+      pruneReassignedPullRequests(stored, {
+        listedHere: new Set<number>(),
+        listedElsewhere: new Set([8]),
+      }).map((ref) => ref.number),
+    ).toEqual([6]);
+    // Named by this release too: it stays.
+    expect(
+      pruneReassignedPullRequests(stored, {
+        listedHere: new Set([8]),
+        listedElsewhere: new Set([8]),
+      }).map((ref) => ref.number),
+    ).toEqual([8, 6]);
   });
 
   it("fills missing authors without dropping refs, and compares lists by content", () => {

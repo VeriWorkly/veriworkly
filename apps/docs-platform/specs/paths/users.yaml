@@ -59,13 +59,43 @@ getCurrentUser:
       - ProdSession: []
     summary: Delete Current User
     description: |
-      Permanently deletes the authenticated user's account and every document, portfolio, share
-      link, API key, credit and payout record attached to it, then clears the session cookies.
-      This cannot be undone.
+      Permanently deletes the authenticated user's account with its documents, portfolio, share
+      links, API keys and profile, then clears the session cookies. This cannot be undone.
+
+      Billing and payout records are kept, unlinked from the deleted account, for as long as the law
+      requires: subscriptions, purchases, entitlement grants, the credit wallet and its
+      transactions, affiliate commissions and withdrawals.
 
       Session only: a request authenticated with an API key is rejected with `403`, whatever its
-      scopes. While a subscription is active or past due and not set to cancel, the request is
-      refused with `409`; cancel it from Billing first.
+      scopes. The request is refused with `409` while something could still charge the card or
+      while the user holds an unpaid affiliate balance:
+
+      - a subscription that is active or past due and not set to cancel: cancel it from Billing
+        first;
+      - `details.code: "CHECKOUT_IN_PROGRESS"`: a checkout session is open; finish or cancel it
+        first;
+      - `details.code: "AFFILIATE_BALANCE_FORFEIT"`: deleting forfeits the unpaid commissions in
+        `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the
+        amount, then repeat the request with `confirmAffiliateForfeit: true` and
+        `confirmedAffiliateForfeitCents` set to the amount shown. If the balance has grown past
+        that amount, the request is refused again with the new one.
+    parameters:
+      - name: confirmAffiliateForfeit
+        in: query
+        required: false
+        description: Same as `confirmAffiliateForfeit` in the body, for clients that cannot send a body with `DELETE`.
+        schema:
+          type: string
+          enum: ["true"]
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/DeleteAccountRequest"
+          example:
+            confirmAffiliateForfeit: true
+            confirmedAffiliateForfeitCents: 4000
     responses:
       "200":
         description: Account deleted.
@@ -100,15 +130,42 @@ getCurrentUser:
               statusCode: 404
               message: "User not found"
       "409":
-        description: A live subscription must be cancelled first.
+        description: |
+          A live subscription must be cancelled first, a checkout is open
+          (`details.code: "CHECKOUT_IN_PROGRESS"`), or deleting would forfeit an unpaid affiliate
+          balance that was not confirmed (`details.code: "AFFILIATE_BALANCE_FORFEIT"`, with
+          `amountCents`, `currency`, `availableCents` and `pendingCents`).
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "../components/schemas.yaml#/ErrorResponse"
+                - $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            examples:
+              subscription:
+                summary: A live subscription
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Cancel your subscription before deleting your account. Open Billing and use Manage Subscription — we cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists."
+              affiliateForfeit:
+                summary: An unpaid affiliate balance
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "You have 40.00 USD in unpaid affiliate commissions. Deleting your account forfeits it. Confirm to delete anyway."
+                  details:
+                    code: "AFFILIATE_BALANCE_FORFEIT"
+                    amountCents: 4000
+                    currency: "USD"
+                    availableCents: 2500
+                    pendingCents: 1500
+      "503":
+        description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "Cancel your subscription before deleting your account. Open Billing and use Manage Subscription — we cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists."
 
 updateUserName:
   put:

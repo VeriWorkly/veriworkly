@@ -95,7 +95,8 @@ export const AdminAffiliateController = {
       action: ADMIN_AUDIT_ACTIONS.affiliateWithdrawalUpdate,
       targetType: "AffiliateWithdrawal",
       targetId: id,
-      reason: input.payoutNote,
+      // The internal reason stays in the audit log; the payout note is what the affiliate sees.
+      reason: input.reason ?? input.payoutNote,
     });
   }, "Withdrawal updated successfully"),
 

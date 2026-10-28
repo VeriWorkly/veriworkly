@@ -24,6 +24,17 @@ const AFFILIATE_COMMISSION_FIELDS = {
   createdAt: true,
 } as const;
 
+const AFFILIATE_WITHDRAWAL_FIELDS = {
+  id: true,
+  amountCents: true,
+  currency: true,
+  status: true,
+  payoutNote: true,
+  reviewedAt: true,
+  paidAt: true,
+  createdAt: true,
+} as const;
+
 async function buildDashboard(userId: string) {
   const [
     user,
@@ -67,6 +78,9 @@ async function buildDashboard(userId: string) {
     }),
     prisma.affiliateWithdrawal.findMany({
       where: { userId },
+      // The affiliate's own view (V-324): not the reviewing admin's user id. `payoutNote` stays:
+      // the admin writes it for the affiliate (the payout reference or the rejection reason).
+      select: AFFILIATE_WITHDRAWAL_FIELDS,
       orderBy: { createdAt: "desc" },
       take: 25,
     }),
@@ -84,6 +98,8 @@ async function buildDashboard(userId: string) {
     commissions,
     withdrawals,
     wallet: wallet ?? { pendingCents: 0, availableCents: 0, paidCents: 0, clawbackCents: 0 },
+    // What a withdrawal may request: the available balance less what is owed back (V-321).
+    withdrawableCents: Math.max(0, (wallet?.availableCents ?? 0) - (wallet?.clawbackCents ?? 0)),
     minimumWithdrawalCents: AFFILIATE_MINIMUM_WITHDRAWAL_CENTS,
     tierProgress: {
       currentConversions: tierConversions,

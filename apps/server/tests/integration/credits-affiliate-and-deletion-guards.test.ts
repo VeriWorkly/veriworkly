@@ -58,7 +58,7 @@ async function affiliateWithBalance(purchaseCents = 200_000) {
   return { affiliate: user, buyer, paymentId: payment.data.payment_id };
 }
 
-describe("V-204 only an ACTIVE affiliate's balance is paid out", () => {
+describe("V-204 only an ACTIVE affiliate's balance is approved for payout", () => {
   it("refuses a suspended affiliate's withdrawal with 403 and leaves the wallet alone", async () => {
     const { affiliate } = await affiliateWithBalance();
     await prisma.user.update({
@@ -76,7 +76,7 @@ describe("V-204 only an ACTIVE affiliate's balance is paid out", () => {
     expect(await prisma.affiliateWithdrawal.count({ where: { userId: affiliate.id } })).toBe(0);
   });
 
-  it("refuses to approve or pay a withdrawal once the affiliate is suspended, but lets it be rejected", async () => {
+  it("refuses to approve a withdrawal once the affiliate is suspended, but lets it be rejected", async () => {
     const { affiliate } = await affiliateWithBalance();
     const requested = await asUser(affiliate, "post", "/api/v1/affiliates/withdrawals").send({
       amountCents: 4_000,

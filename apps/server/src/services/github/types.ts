@@ -44,7 +44,10 @@ export interface GitHubIssuePayload {
   updated_at: string;
   labels: Array<{ name: string }>;
   state: "open" | "closed";
-  pull_request?: unknown;
+  /** Why a closed issue was closed: `completed`, `not_planned`, `duplicate` or `reopened`. */
+  state_reason?: string | null;
+  /** Present on a pull request; `merged_at` is null for one closed without merging. */
+  pull_request?: { merged_at?: string | null } | null;
 }
 
 export interface GitHubItemSnapshot {

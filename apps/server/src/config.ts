@@ -103,7 +103,6 @@ export const config = {
       .filter((header) => Boolean(header) && header !== "x-forwarded-client-ip"),
     sessionTtlSeconds: parseIntegerEnv(process.env.AUTH_SESSION_TTL_SECONDS, 2592000),
     sessionResetTtlOnUse: parseIntegerEnv(process.env.AUTH_SESSION_RESET_TTL_ON_USE, 86400),
-    sessionCacheEnabled: parseBoolean(process.env.AUTH_SESSION_CACHE_ENABLED, isProduction),
     sessionCacheMaxAgeSeconds: parseIntegerEnv(process.env.AUTH_SESSION_CACHE_MAX_AGE_SECONDS, 900),
     otpTtlSeconds: parseIntegerEnv(process.env.AUTH_OTP_TTL_SECONDS, 300),
     otpAllowedAttempts: parseIntegerEnv(process.env.AUTH_OTP_ALLOWED_ATTEMPTS, 3),
@@ -272,9 +271,11 @@ export const config = {
     bundleAnnualProductId: process.env.DODO_PAYMENTS_BUNDLE_ANNUAL_PRODUCT_ID || "",
     creditPack250ProductId: process.env.DODO_PAYMENTS_CREDIT_PACK_250_PRODUCT_ID || "",
     creditPack500ProductId: process.env.DODO_PAYMENTS_CREDIT_PACK_500_PRODUCT_ID || "",
+    creditPack1200ProductId: process.env.DODO_PAYMENTS_CREDIT_PACK_1200_PRODUCT_ID || "",
     // Display prices in USD cents; Dodo charges the product's own price, so keep them in step.
     creditPack250PriceCents: parseIntegerEnv(process.env.CREDIT_PACK_250_PRICE_CENTS, 299),
     creditPack500PriceCents: parseIntegerEnv(process.env.CREDIT_PACK_500_PRICE_CENTS, 499),
+    creditPack1200PriceCents: parseIntegerEnv(process.env.CREDIT_PACK_1200_PRICE_CENTS, 999),
     checkoutReturnUrl:
       process.env.DODO_PAYMENTS_CHECKOUT_RETURN_URL ||
       "http://localhost:3001/billing?checkout=complete",

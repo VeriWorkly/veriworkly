@@ -3,6 +3,7 @@ import type { z } from "zod";
 
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
+import { assertConfirmation } from "#services/admin/adminConfirmation";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { documentCacheNamespaces } from "#lib/cacheKeys";
 
@@ -10,7 +11,14 @@ import {
   invalidatePublicPortfolioCaches,
   revalidatePublicPortfolios,
 } from "#utils/portfolioPublicationCache";
-import { MODERATION_SUSPENSION_PREFIX } from "#services/portfolioService";
+import {
+  isModerationLocked,
+  MODERATION_SUSPENSION_PREFIX,
+  PortfolioService,
+  rememberReasonBeforeModeration,
+} from "#services/portfolioService";
+import { BILLING_SUSPENSION_REASONS, BillingService } from "#services/billingService";
+import { logger } from "#lib/logger";
 import { USER_UNPUBLISHED_REASON } from "#services/portfolioAssetService";
 import {
   ADMIN_AUDIT_ACTIONS,
@@ -66,7 +74,7 @@ export async function getPortfolioSummary() {
         orderBy: { _count: { templateId: "desc" } },
         take: 10,
       }),
-      prisma.portfolioPublication.count({ where: { publishedAt: { gte: since30 } } }),
+      prisma.portfolioPublication.count({ where: { firstPublishedAt: { gte: since30 } } }),
       prisma.portfolioViewDaily.aggregate({
         where: { date: { gte: since30 } },
         _sum: { count: true },
@@ -233,6 +241,12 @@ async function propagatePublicationChange(subdomain: string, userId: string, doc
  * back online while the document stays locked, and the owner's next Unpublish leaves them unable
  * to publish again. The document goes back to PUBLIC, as a publish leaves it, in the same
  * transaction and with its own audit entry.
+ *
+ * LIVE and GRACE never override anyone else's decision (V-285): a site the owner unpublished
+ * (their own Unpublish, or trashing the document) or billing suspended is refused with 409, as is
+ * any site whose document is in the trash. Only the owner's Publish, or billing, brings those back.
+ * The write is conditional on the status and reason read here, so a change that commits in
+ * between (the owner's unpublish, another moderator) is refused rather than overwritten.
  */
 export async function updatePublicationStatus(
   publicationId: string,
@@ -248,6 +262,8 @@ export async function updatePublicationStatus(
       documentId: true,
       subdomain: true,
       status: true,
+      suspensionReason: true,
+      reasonBeforeModeration: true,
       templateId: true,
     },
   });
@@ -261,22 +277,92 @@ export async function updatePublicationStatus(
       "A free-template portfolio has no grace period; use LIVE or SUSPENDED.",
     );
 
+  const lifting = status !== "SUSPENDED";
+  const locked = isModerationLocked(publication);
+
+  if (lifting && publication.status === "SUSPENDED" && !locked)
+    throw new ApiError(
+      409,
+      publication.suspensionReason === USER_UNPUBLISHED_REASON
+        ? "The owner took this portfolio offline. Only the owner can publish it again."
+        : "This portfolio is offline for billing. It moves to the free tier and comes back online on its own within the hour.",
+    );
+
+  // A lock put over the owner's own unpublish or a billing suspension lifts back to that reason,
+  // not online: the lock was the moderator's decision, the suspension under it was not.
+  const restoredReason = lifting && locked ? publication.reasonBeforeModeration : null;
+  const goesOnline = lifting && !restoredReason;
+  // A billing reason comes back dated now: the lock overwrote `suspendedAt`, and the free-tier
+  // drop only takes billing suspensions inside its restore window, so a long lock would strand
+  // the site offline against owner decision 6. Settled right after the commit, below.
+  const restoredBilling =
+    restoredReason !== null &&
+    (BILLING_SUSPENSION_REASONS as readonly string[]).includes(restoredReason);
+  const next = restoredReason
+    ? {
+        status: "SUSPENDED" as const,
+        suspensionReason: restoredReason,
+        reasonBeforeModeration: null,
+        ...(restoredBilling ? { suspendedAt: new Date() } : {}),
+      }
+    : status === "SUSPENDED"
+      ? {
+          status,
+          suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${reason}`,
+          // A second suspension over a lock is a new reason, not a new takedown: the site went
+          // down when the first one landed (V-294). The audit entry keeps both reasons.
+          ...(locked ? {} : { suspendedAt: new Date() }),
+          ...rememberReasonBeforeModeration(publication),
+        }
+      : { status, suspensionReason: null, suspendedAt: null, reasonBeforeModeration: null };
+
   const updated = await prisma.$transaction(async (tx) => {
-    const row = await tx.portfolioPublication.update({
-      where: { id: publicationId },
-      data: {
-        status,
-        suspensionReason:
-          status === "SUSPENDED" ? `${MODERATION_SUSPENSION_PREFIX}${reason}` : null,
-        suspendedAt: status === "SUSPENDED" ? new Date() : null,
+    // Every lift takes the owner's billing lock first, as `dropToFreeTier` takes it before its
+    // row locks, so the two never wait on each other in opposite orders.
+    if (lifting)
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${publication.userId}))`;
+    if (lifting) {
+      // Then the Document row, on every lift, in the order the owner's unpublish and delete take
+      // (Document, then the publication). A lift back to the reason under the lock writes the
+      // document after the publication too, so taking it only when going online let the two wait
+      // on each other. A delete committing first is seen here, and one arriving later finds the
+      // site LIVE and takes it down.
+      const [source] = await tx.$queryRaw<Array<{ deletedAt: Date | null }>>`
+        SELECT "deletedAt" FROM "Document" WHERE "id" = ${publication.documentId}
+        FOR NO KEY UPDATE`;
+      if (goesOnline && (!source || source.deletedAt))
+        throw new ApiError(
+          409,
+          "This portfolio's document is in the trash, so its site cannot go back online.",
+        );
+    }
+
+    const { count } = await tx.portfolioPublication.updateMany({
+      where: {
+        id: publicationId,
+        status: publication.status,
+        suspensionReason: publication.suspensionReason,
+        // The owner's unpublish recorded under the lock in between changes where the lift goes.
+        reasonBeforeModeration: publication.reasonBeforeModeration,
       },
+      data: next,
+    });
+    if (count === 0)
+      throw new ApiError(409, "The portfolio changed while this was being saved. Try again.");
+
+    const row = await tx.portfolioPublication.findUniqueOrThrow({
+      where: { id: publicationId },
       select: PUBLICATION_LIST_SELECT,
     });
 
-    if (status !== "SUSPENDED") {
+    if (lifting) {
+      // Back to PUBLIC, as a publish leaves it, only when the site goes back online.
       const lifted = await tx.document.updateMany({
         where: { id: publication.documentId, moderatedPrivateAt: { not: null } },
-        data: { moderatedPrivateAt: null, visibility: "PUBLIC" },
+        data: {
+          moderatedPrivateAt: null,
+          ...(goesOnline ? { visibility: "PUBLIC" as const } : {}),
+        },
       });
       if (lifted.count > 0 && audit)
         await writeAdminAudit(tx, {
@@ -287,7 +373,7 @@ export async function updatePublicationStatus(
           reason: audit.reason,
           metadata: {
             previousVisibility: "PRIVATE",
-            visibility: "PUBLIC",
+            visibility: goesOnline ? "PUBLIC" : "PRIVATE",
             liftedBy: ADMIN_AUDIT_ACTIONS.portfolioStatusChange,
             publicationId,
             ownerId: publication.userId,
@@ -300,7 +386,10 @@ export async function updatePublicationStatus(
         metadata: {
           ...audit.metadata,
           previousStatus: publication.status,
-          status,
+          status: next.status,
+          ...(next.status !== status ? { requestedStatus: status } : {}),
+          previousSuspensionReason: publication.suspensionReason,
+          suspensionReason: next.suspensionReason,
           subdomain: publication.subdomain,
           ownerId: publication.userId,
         },
@@ -314,7 +403,51 @@ export async function updatePublicationStatus(
     publication.documentId,
   );
 
+  if (restoredBilling && (await settleRestoredBillingSuspension(publication.userId)))
+    return {
+      publication: await prisma.portfolioPublication.findUniqueOrThrow({
+        where: { id: publicationId },
+        select: PUBLICATION_LIST_SELECT,
+      }),
+      previousStatus: publication.status,
+    };
+
   return { publication: updated, previousStatus: publication.status };
+}
+
+/** Whether a lift restores a billing suspension, which then has to be settled (below). */
+export function isBillingSuspensionReason(reason: string | null | undefined): boolean {
+  return reason != null && (BILLING_SUSPENSION_REASONS as readonly string[]).includes(reason);
+}
+
+/**
+ * After a lift put a billing suspension back. Billing's own sweep skips a locked row, so what
+ * happened to the account during the lock is applied now, not at the next billing event or
+ * hourly run: the billing reconcile first, which brings the site back online for a customer who
+ * paid during the lock, then the free-tier drop for one who did not. Committed already, so a
+ * failure here is logged and left to those runs. True when either changed something.
+ */
+export async function settleRestoredBillingSuspension(userId: string): Promise<boolean> {
+  try {
+    const before = await prisma.portfolioPublication.findUnique({
+      where: { userId },
+      select: { status: true, templateId: true },
+    });
+    await BillingService.reconcileAccess(userId);
+    const settled = await PortfolioService.settleLapsedPortfolioFor(userId);
+    const after = await prisma.portfolioPublication.findUnique({
+      where: { userId },
+      select: { status: true, templateId: true },
+    });
+    return (
+      settled.length > 0 ||
+      before?.status !== after?.status ||
+      before?.templateId !== after?.templateId
+    );
+  } catch (error) {
+    logger.error("Could not settle a portfolio after lifting a moderation lock", error);
+    return false;
+  }
 }
 
 /**
@@ -327,7 +460,12 @@ export async function updatePublicationStatus(
  * against the retention decision that daily portfolio views are kept (180 days), and the owner's
  * analytics would be gone if the takedown were ever lifted. The subdomain stays the owner's.
  */
-export async function forceUnpublish(publicationId: string, audit?: AdminAuditInput) {
+export async function forceUnpublish(
+  publicationId: string,
+  audit?: AdminAuditInput,
+  /** The subdomain the admin retyped (V-082); checked before anything changes. */
+  confirm?: string,
+) {
   const publication = await prisma.portfolioPublication.findUnique({
     where: { id: publicationId },
     select: {
@@ -341,6 +479,7 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
   });
 
   if (!publication) throw new ApiError(404, "Portfolio publication not found.");
+  assertConfirmation(confirm, publication.subdomain, "portfolio's subdomain");
 
   await prisma.$transaction(async (tx) => {
     // The lock on the row is what `madePrivateByModerator` reads (V-207): the owner cannot make
@@ -354,14 +493,24 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
       data: { visibility: "PRIVATE", moderatedPrivateAt: new Date() },
     });
 
-    await tx.portfolioPublication.update({
-      where: { id: publicationId },
+    // Conditional on the state read above, so the reason it keeps for the lift (V-285) is the
+    // one the row actually had.
+    const { count } = await tx.portfolioPublication.updateMany({
+      where: {
+        id: publicationId,
+        status: publication.status,
+        suspensionReason: publication.suspensionReason,
+      },
       data: {
         status: "SUSPENDED",
         suspensionReason: `${MODERATION_SUSPENSION_PREFIX}${audit?.reason?.trim() || "force_unpublished"}`,
-        suspendedAt: new Date(),
+        // Over an existing lock the site is already down: it keeps that date (V-294).
+        ...(isModerationLocked(publication) ? {} : { suspendedAt: new Date() }),
+        ...rememberReasonBeforeModeration(publication),
       },
     });
+    if (count === 0)
+      throw new ApiError(409, "The portfolio changed while this was being saved. Try again.");
 
     // `documentId` names the document in the takedown record, kept forever (decision 11).
     if (audit)

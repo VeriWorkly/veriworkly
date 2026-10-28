@@ -30,3 +30,13 @@ describe("checkout redirectUrl", () => {
     },
   );
 });
+
+describe("credit pack checkout packKey", () => {
+  it.each(["credit_pack_250", "credit_pack_500", "credit_pack_1200"])("accepts %s", (packKey) => {
+    expect(creditPackCheckoutSchema.parse({ packKey }).packKey).toBe(packKey);
+  });
+
+  it("refuses a pack the catalog does not sell", () => {
+    expect(creditPackCheckoutSchema.safeParse({ packKey: "credit_pack_1000" }).success).toBe(false);
+  });
+});

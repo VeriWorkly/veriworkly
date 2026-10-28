@@ -75,6 +75,21 @@ async function waitForAuthCache(keyHash: string) {
   throw new Error(`auth cache for ${keyHash.slice(0, 8)} never populated`);
 }
 
+/**
+ * Resolves once another connection is waiting on a row lock (the contender's `updateMany`
+ * blocked by the outer transaction). Polls `pg_stat_activity` on its own connection.
+ */
+async function waitForLockWaiter() {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const [{ waiting }] = await prisma.$queryRaw<{ waiting: bigint }[]>`
+      SELECT count(*) AS waiting FROM pg_stat_activity
+      WHERE datname = current_database() AND wait_event_type = 'Lock'`;
+    if (Number(waiting) > 0) return;
+    await sleep(25);
+  }
+  throw new Error("the contender never blocked on the row lock");
+}
+
 function revokedMarker(keyHash: string) {
   return cacheGet<number>(`apikey:revoked:${keyHash}`);
 }
@@ -114,10 +129,13 @@ async function whileRowRetired<T>(
         });
       }
 
-      // Start the contender now (not awaited: it cannot finish until we commit) and give it time
-      // to pass its precheck and block on the lock.
-      pending = fn();
-      await sleep(300);
+      // Start the contender now (not awaited: it cannot finish until we commit) and wait until
+      // it is blocked on this row lock (V-358). `Promise.resolve` matters: a supertest request is
+      // lazy and only sends once something calls `then`, so the old `fn()` plus a fixed sleep
+      // sent the contender after the commit, where the precheck turned it away without the
+      // re-evaluation under test.
+      pending = Promise.resolve(fn());
+      await waitForLockWaiter();
     },
     { timeout: 10_000 },
   );
@@ -497,6 +515,36 @@ describe("API keys through the real stack", () => {
     expect((await requestWithKey(limitedKey.key)).status).toBe(200);
   });
 
+  /**
+   * V-381: each key's own `rateLimit` is the customer's API quota. The counter is keyed by the
+   * key, the 429 carries the retry headers, and an admin raise applies once the cache drops.
+   */
+  it("(r) enforces the key's own limit, per key, and an admin raise applies at once", async () => {
+    const user = await createUserWithSession();
+    const limited = await createKey(user, { name: "limited" });
+    const other = await createKey(user, { name: "same user, own budget" });
+    await updateApiKey(limited.id, { rateLimit: 2, reason: "integration limit" });
+    await updateApiKey(other.id, { rateLimit: 2, reason: "integration limit" });
+
+    const first = await requestWithKey(limited.key);
+    const second = await requestWithKey(limited.key);
+    const third = await requestWithKey(limited.key);
+    expect([first.status, second.status, third.status]).toEqual([200, 200, 429]);
+    expect(first.headers["x-ratelimit-limit"]).toBe("2");
+    expect(first.headers["x-ratelimit-remaining"]).toBe("1");
+    expect(third.headers["x-ratelimit-remaining"]).toBe("0");
+    expect(Number(third.headers["retry-after"])).toBeGreaterThan(0);
+
+    // Another key of the same user, with the same small limit, has its own counter.
+    expect((await requestWithKey(other.key)).status).toBe(200);
+    expect((await requestWithKey(other.key)).status).toBe(200);
+
+    await updateApiKey(limited.id, { rateLimit: 10, reason: "integration raise" });
+    const raised = await requestWithKey(limited.key);
+    expect(raised.status).toBe(200);
+    expect(raised.headers["x-ratelimit-limit"]).toBe("10");
+  });
+
   it("(h2) admin Enable after Disable clears the revoked marker, so the key works at once (V-188)", async () => {
     const user = await createUserWithSession();
     const created = await createKey(user, { name: "admin-toggled" });
@@ -518,7 +566,10 @@ describe("API keys through the real stack", () => {
     const keyHash = hashKey(created.key);
 
     await revokeApiKey(created.id);
-    await updateApiKey(created.id, { isActive: true, reason: "integration enable" });
+    // Refused outright (V-293): a revocation is permanent.
+    await expect(
+      updateApiKey(created.id, { isActive: true, reason: "integration enable" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
     expect(await revokedMarker(keyHash)).not.toBeNull();
     expect((await requestWithKey(created.key)).status).toBe(401);
   });

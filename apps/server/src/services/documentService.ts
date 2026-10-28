@@ -15,7 +15,7 @@ import { ShareService } from "#services/shareService";
 import { prisma } from "#lib/prisma";
 import { logger } from "#lib/logger";
 import { ApiError } from "#lib/errors";
-import { buildUniqueSlugHelper } from "#utils/slugs";
+import { buildUniqueSlugHelper, RESERVED_SUBDOMAINS } from "#utils/slugs";
 import { cacheGet, cacheSet, cacheDel } from "#lib/redis";
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
 import { cacheNamespaces, documentCacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
@@ -31,7 +31,11 @@ import {
   type DocumentListFilter,
   type DocumentListPosition,
 } from "#services/documentListCursor";
-import { isModerationLocked, NOT_MODERATION_LOCKED } from "#services/portfolioService";
+import {
+  isModerationLocked,
+  NOT_MODERATION_LOCKED,
+  recordOwnerUnpublishUnderLock,
+} from "#services/portfolioService";
 
 const MODERATED_PRIVATE_MESSAGE = "This document was made private by a moderator.";
 
@@ -167,13 +171,22 @@ function keysetAfter(
 }
 
 export class DocumentService {
+  /**
+   * A PORTFOLIO document never gets a reserved subdomain as its slug (V-300), so `login`,
+   * `billing`, `admin`... are skipped like a taken name ("login-2"). A draft's subdomain has its
+   * own column since V-301 (`portfolioSubdomain`); this keeps a reserved name out of the slug a
+   * draft never saved through the portfolio routes still shows as its subdomain.
+   */
   private static async buildUniqueSlug(
     userId: string,
     title: string,
     documentId?: string,
     client: Prisma.TransactionClient = prisma,
+    type?: DocumentType,
   ) {
     return buildUniqueSlugHelper(title, async (candidate) => {
+      if (type === "PORTFOLIO" && RESERVED_SUBDOMAINS.has(candidate)) return true;
+
       const existing = await client.document.findFirst({
         where: {
           userId,
@@ -618,7 +631,13 @@ export class DocumentService {
 
     await this.assertFreeTierCapacity(userId, input.type, client);
 
-    const slug = await this.buildUniqueSlug(userId, prepared.slugSource, undefined, client);
+    const slug = await this.buildUniqueSlug(
+      userId,
+      prepared.slugSource,
+      undefined,
+      client,
+      input.type,
+    );
 
     const document = await client.document.create({
       data: {
@@ -763,14 +782,16 @@ export class DocumentService {
      * had set by hand (and, with `updateShareSlug`, the public share URL) on every keystroke.
      */
     let nextSlugSource: string | undefined;
+    let documentType: DocumentType | undefined;
 
     if (input.slug || input.title) {
       const current = await prisma.document.findFirst({
         where: { id: documentId, userId, deletedAt: null },
-        select: { title: true, slug: true },
+        select: { title: true, slug: true, type: true },
       });
 
       if (!current) throw new ApiError(404, "Document not found");
+      documentType = current.type;
 
       if (input.slug) {
         if (input.slug !== current.slug) nextSlugSource = input.slug;
@@ -785,7 +806,13 @@ export class DocumentService {
         select: { username: true },
       });
 
-      updateData.slug = await this.buildUniqueSlug(userId, nextSlugSource, documentId);
+      updateData.slug = await this.buildUniqueSlug(
+        userId,
+        nextSlugSource,
+        documentId,
+        prisma,
+        documentType,
+      );
 
       if (user?.username && updateData.slug && updateShareSlug) {
         const shareLink = await prisma.shareLink.findUnique({
@@ -842,6 +869,25 @@ export class DocumentService {
 
     if (incomingTemplateId) {
       updateData.templateId = incomingTemplateId;
+    }
+
+    /*
+     * A PORTFOLIO document's public page renders `content.templateId`, so a `templateId`-only
+     * PATCH moves the content with the column (V-299). Read at the expected revision: the update
+     * below is conditional on it, so a write in between still fails as a conflict.
+     */
+    if (input.templateId && !updateData.content) {
+      const current = await prisma.document.findFirst({
+        where: { id: documentId, userId, deletedAt: null, revision, type: "PORTFOLIO" },
+        select: { content: true },
+      });
+
+      if (
+        current?.content &&
+        typeof current.content === "object" &&
+        !Array.isArray(current.content)
+      )
+        updateData.content = current.content as Prisma.InputJsonValue;
     }
 
     if (
@@ -989,6 +1035,10 @@ export class DocumentService {
             },
           });
         }
+        // Under a moderator's lock the trash is recorded as the owner's unpublish, so the lift
+        // leaves the site offline (V-285). A no-op on a row with no lock.
+        if (publication)
+          await recordOwnerUnpublishUnderLock(tx, { id: publication.id, documentId });
 
         return row;
       });
@@ -1006,8 +1056,10 @@ export class DocumentService {
       ...(existing.user?.username && existing.shareLinks.length > 0
         ? [cacheNamespaces.publicShare(existing.user.username)]
         : []),
+      // The master profile's share count leaves out links on deleted documents (V-306).
+      ...(existing.shareLinks.length > 0 ? [cacheNamespaces.masterProfile(userId)] : []),
     );
-    // The account read counts live documents (V-186); create drops it too.
+    // The account read counts live documents (V-186) and their share links; create drops it too.
     await cacheDel(userProfileCacheKey(userId));
 
     if (livePublication) {

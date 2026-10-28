@@ -1,7 +1,7 @@
 import { promisify } from "node:util";
 import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type DocumentType } from "@prisma/client";
 
 import { prisma } from "#lib/prisma";
 import { getRedis } from "#lib/redis";
@@ -15,6 +15,7 @@ import { hashForAnalytics } from "#utils/analyticsHash";
 
 import { UserService } from "#services/userService";
 import { madePrivateByModerator } from "#services/moderationRecord";
+import { PURGED_DOCUMENT_CONTENT } from "#jobs/retentionJob";
 
 export { madePrivateByModerator };
 
@@ -49,6 +50,62 @@ const RECORD_SHARE_VIEW_SCRIPT = `
   return 1
 `;
 const DROPPED_SHARE_VIEWS_KEY = "share:views:dropped";
+
+type ShareLinkWriteInput = {
+  password?: string;
+  noExpiry?: boolean;
+  expiresAt?: string | Date | null;
+  updateSlug?: boolean;
+  removePassword?: boolean;
+  snapshot: Prisma.InputJsonValue;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** How long a share link lasts (owner rule): one of these many days, or never. */
+export const SHARE_EXPIRY_DAYS = [7, 14, 30, 90] as const;
+const DEFAULT_SHARE_EXPIRY_DAYS = 7;
+/** How far a client-computed date may sit from an option: clock skew and a slow request. */
+const SHARE_EXPIRY_TOLERANCE_MS = DAY_MS;
+
+/**
+ * A share link's expiry (V-412). "Never" is asked for only with `noExpiry: true`; a missing date
+ * used to mean never, so every link made through an API key was permanent.
+ * - `noExpiry: true`: never.
+ * - `expiresAt`: the link's own stored date (the studio's "keep"), or a future date within a day
+ *   of 7, 14, 30 or 90 days from now (clients compute it on their own clock). Anything else is 400.
+ * - neither: a new link lasts 7 days; a refresh keeps the stored expiry (V-309), the way the
+ *   password is kept.
+ */
+export function resolveShareExpiry(
+  data: Pick<ShareLinkWriteInput, "noExpiry" | "expiresAt">,
+  existing: { expiresAt: Date | null } | null,
+  now = Date.now(),
+): Date | null {
+  if (data.noExpiry) return null;
+
+  if (data.expiresAt) {
+    const requested = new Date(data.expiresAt);
+    if (existing?.expiresAt && requested.getTime() === existing.expiresAt.getTime())
+      return existing.expiresAt;
+
+    const fits =
+      requested.getTime() > now &&
+      SHARE_EXPIRY_DAYS.some(
+        (days) =>
+          Math.abs(requested.getTime() - (now + days * DAY_MS)) <= SHARE_EXPIRY_TOLERANCE_MS,
+      );
+    if (!fits)
+      throw new ApiError(
+        400,
+        "A share link expires 7, 14, 30 or 90 days from now, or never (noExpiry: true).",
+      );
+    return requested;
+  }
+
+  if (existing) return existing.expiresAt;
+  return new Date(now + DEFAULT_SHARE_EXPIRY_DAYS * DAY_MS);
+}
 
 /** Documents a share link can point at: a portfolio is published, never shared by link. */
 const SHAREABLE_DOCUMENT_TYPES = new Set(["RESUME", "COVER_LETTER"]);
@@ -313,18 +370,57 @@ export class ShareService {
     return deleted;
   }
 
-  static async createShareLink(
+  private static async withShareLinkRetry<T>(write: () => Promise<T>): Promise<T> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await write();
+      } catch (error) {
+        const raced =
+          error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+        if (!raced || attempt >= 3) throw error;
+      }
+    }
+  }
+
+  private static async writeShareLink(
     userId: string,
     documentId: string,
-    data: {
-      password?: string;
-      noExpiry?: boolean;
-      expiresAt?: string | Date | null;
-      updateSlug?: boolean;
-      removePassword?: boolean;
-      snapshot: Prisma.InputJsonValue;
-    },
+    documentSlug: string,
+    data: ShareLinkWriteInput,
   ) {
+    const existing = await prisma.shareLink.findUnique({
+      where: { userId_documentId: { userId, documentId } },
+      select: { id: true, slug: true, passwordHash: true, expiresAt: true },
+    });
+
+    const slug =
+      existing && !data.updateSlug
+        ? existing.slug
+        : await this.buildUniqueShareSlug(userId, documentSlug, existing?.id);
+
+    let passwordHash = existing ? existing.passwordHash : null;
+
+    if (data.removePassword) {
+      passwordHash = null;
+    } else if (data.password) {
+      passwordHash = await this.hashPassword(data.password);
+    }
+
+    const expiresAt = resolveShareExpiry(data, existing);
+
+    const shareLink = existing
+      ? await prisma.shareLink.update({
+          where: { id: existing.id },
+          data: { slug, snapshot: data.snapshot, passwordHash, expiresAt },
+        })
+      : await prisma.shareLink.create({
+          data: { userId, documentId, slug, snapshot: data.snapshot, passwordHash, expiresAt },
+        });
+
+    return { shareLink, existing };
+  }
+
+  static async createShareLink(userId: string, documentId: string, data: ShareLinkWriteInput) {
     const username = await UserService.requireUsernameForUser(userId);
     const document = await prisma.document.findFirst({
       where: { id: documentId, userId, deletedAt: null },
@@ -336,6 +432,30 @@ export class ShareService {
     // share link would also be a way around a portfolio takedown.
     if (!SHAREABLE_DOCUMENT_TYPES.has(document.type))
       throw new ApiError(400, "Only résumés and cover letters can be shared by link.");
+
+    // The snapshot is whatever the client posts, so a lock on one document alone was undone by
+    // sharing the same content from another, or from a copy made after deleting the locked one
+    // (V-302). While one of the account's résumés or cover letters is under a moderator's lock,
+    // no link is created or refreshed. A trashed one still counts, or trashing it would be the
+    // way round; once retention has purged its content there is nothing left to copy, and the
+    // hold lapses. A portfolio takedown does not count: it has its own publish lock. Otherwise
+    // lifted with the lock itself.
+    if (!document.moderatedPrivateAt) {
+      const held = await prisma.document.findFirst({
+        where: {
+          userId,
+          type: { in: [...SHAREABLE_DOCUMENT_TYPES] as DocumentType[] },
+          moderatedPrivateAt: { not: null },
+          NOT: { content: { equals: PURGED_DOCUMENT_CONTENT as Prisma.InputJsonObject } },
+        },
+        select: { id: true },
+      });
+      if (held)
+        throw new ApiError(
+          403,
+          "A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it.",
+        );
+    }
 
     // A share link is reachable by anyone with the URL, so a shared document is UNLISTED, and the
     // public lookup serves no link on a PRIVATE one (V-171). Documents start PRIVATE, so sharing
@@ -355,46 +475,11 @@ export class ShareService {
       await bumpGeneration(...documentCacheNamespaces(userId, document.id));
     }
 
-    const existing = await prisma.shareLink.findUnique({
-      where: { userId_documentId: { userId, documentId } },
-      select: { id: true, slug: true, passwordHash: true },
-    });
-
-    const slug =
-      existing && !data.updateSlug
-        ? existing.slug
-        : await this.buildUniqueShareSlug(userId, document.slug, existing?.id);
-
-    let passwordHash = existing ? existing.passwordHash : null;
-
-    if (data.removePassword) {
-      passwordHash = null;
-    } else if (data.password) {
-      passwordHash = await this.hashPassword(data.password);
-    }
-
-    const expiresAt = data.noExpiry ? null : data.expiresAt ? new Date(data.expiresAt) : null;
-
-    const shareLink = existing
-      ? await prisma.shareLink.update({
-          where: { id: existing.id },
-          data: {
-            slug,
-            snapshot: data.snapshot,
-            passwordHash,
-            expiresAt,
-          },
-        })
-      : await prisma.shareLink.create({
-          data: {
-            userId,
-            documentId,
-            slug,
-            snapshot: data.snapshot,
-            passwordHash,
-            expiresAt,
-          },
-        });
+    // Find-then-write, so two concurrent shares of one document both pass the find and one
+    // create hits the unique key (V-308). The loser runs again and updates the winner's row.
+    const { shareLink, existing } = await this.withShareLinkRetry(() =>
+      this.writeShareLink(userId, documentId, document.slug, data),
+    );
 
     return {
       shareLink: {

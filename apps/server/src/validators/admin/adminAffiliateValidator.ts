@@ -79,9 +79,14 @@ export const adminWithdrawalListQuerySchema = adminPaginationSchema
 
 export const adminWithdrawalStatusSchema = z.object({
   status: z.enum(["APPROVED", "REJECTED", "PAID"]),
-  /** The audit reason for the transition (V-081); shown to the affiliate as the payout note. */
-  // TODO(V-081): make required once the studio sends it
+  /** Shown to the affiliate on their withdrawal. */
   payoutNote: adminProvidedReasonSchema,
+  /**
+   * The internal audit reason (V-081). Kept in the admin audit log only, never on the withdrawal
+   * the affiliate reads. Without it the audit keeps the payout note, as before.
+   */
+  // TODO(V-081): make required once the studio sends it
+  reason: adminProvidedReasonSchema,
 });
 
 export const adminReferralListQuerySchema = adminPaginationSchema.merge(adminSearchSchema).extend({

@@ -771,7 +771,7 @@
           "name": "cursor",
           "in": "query",
           "required": false,
-          "schema": { "type": "string", "minLength": 1, "maxLength": 2048 }
+          "schema": { "type": "string", "minLength": 1, "maxLength": 8192 }
         }
       ]
     },
@@ -780,7 +780,7 @@
         "schema": {
           "type": "object",
           "properties": {
-            "id": { "type": "string" },
+            "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
             "type": {
               "type": "string",
               "enum": ["RESUME", "COVER_LETTER", "PORTFOLIO", "LINK_IN_BIO"]
@@ -965,6 +965,12 @@
     "GET /api/v1/portfolios/public": {
       "parameters": [
         {
+          "name": "order",
+          "in": "query",
+          "required": false,
+          "schema": { "type": "string", "enum": ["recent", "stable"] }
+        },
+        {
           "name": "limit",
           "in": "query",
           "required": false,
@@ -974,7 +980,7 @@
           "name": "offset",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 0, "maximum": 5000 }
+          "schema": { "type": "integer", "minimum": 0, "maximum": 49999 }
         }
       ]
     },
@@ -1261,10 +1267,50 @@
         "schema": {
           "type": "object",
           "properties": {
-            "packKey": { "type": "string", "enum": ["credit_pack_250", "credit_pack_500"] },
+            "packKey": {
+              "type": "string",
+              "enum": ["credit_pack_250", "credit_pack_500", "credit_pack_1200"]
+            },
             "redirectUrl": { "type": "string", "pattern": "^\\/(?!\\/)[^\\\\\\s]*$" }
           },
           "required": ["packKey"]
+        }
+      }
+    },
+    "POST /api/v1/billing/subscription/change-plan/preview": {
+      "requestBody": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "productKey": { "type": "string", "enum": ["ai_credits", "portfolio_pro", "bundle"] },
+            "interval": { "type": "string", "enum": ["monthly", "annual"] }
+          },
+          "required": ["productKey", "interval"]
+        }
+      }
+    },
+    "POST /api/v1/billing/subscription/change-plan": {
+      "requestBody": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "productKey": { "type": "string", "enum": ["ai_credits", "portfolio_pro", "bundle"] },
+            "interval": { "type": "string", "enum": ["monthly", "annual"] },
+            "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          "required": ["productKey", "interval"]
+        }
+      }
+    },
+    "POST /api/v1/stats/events": {
+      "requestBody": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "event": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "value": { "type": "integer", "exclusiveMinimum": 0, "maximum": 1000 }
+          },
+          "required": ["event"]
         }
       }
     },
@@ -1373,6 +1419,7 @@
     "GET /api/v1/shares/documents/{documentId}": "page/limit/offset are read leniently by parseOffsetPagination",
     "GET /api/v1/affiliates/leaderboard": "period: anything but all_time means monthly",
     "POST /api/v1/auth/email-otp/send-verification-otp": "Better Auth endpoint",
-    "POST /api/v1/auth/sign-in/email-otp": "Better Auth endpoint"
+    "POST /api/v1/auth/sign-in/email-otp": "Better Auth endpoint",
+    "DELETE /api/v1/users/me": "confirmAffiliateForfeit and confirmedAffiliateForfeitCents are read leniently by the controller"
   }
 }

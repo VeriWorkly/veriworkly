@@ -7,6 +7,7 @@ import {
   purchaseConfirmationTerms,
   renderPaymentFailedEmail,
   renderPurchaseConfirmationEmail,
+  renderSubscriptionCancelledEmail,
   subscriptionCancelledParagraphs,
 } from "#mail/index";
 import { formatMoney } from "../../src/mail/billing/billingFormat.js";
@@ -18,7 +19,7 @@ import { purchaseName, UNLOCK_PHRASES } from "#services/productNames";
 const subscription = {
   kind: "subscription" as const,
   productName: purchaseName("ai_credits", "annual"),
-  amountCents: 5_990,
+  amountCents: 5_988,
   currency: "USD",
   amountExcludesTax: true,
   accessEndsAt: new Date("2027-10-26T00:00:00Z"),
@@ -34,12 +35,12 @@ describe("purchase confirmation", () => {
     expect(subscription.productName).toBe("AI Credits (annual)");
     expect(purchaseConfirmationRows(subscription)).toEqual([
       ["Purchase", "AI Credits (annual)"],
-      ["Price", "$59.90 USD (before any tax) per year"],
+      ["Price", "$59.88 USD (before any tax) per year"],
       ["AI credits", subscription.creditsNote],
       ["Current period ends", "26 October 2027"],
     ]);
     expect(purchaseConfirmationTerms(subscription)).toContain(
-      "renews automatically on 26 October 2027 at $59.90 USD (before any tax) per year",
+      "renews automatically on 26 October 2027 at $59.88 USD (before any tax) per year",
     );
     const html = renderPurchaseConfirmationEmail("Ada <script>", subscription);
     expect(html).not.toContain("<script>");
@@ -111,6 +112,16 @@ describe("cancellation and plan change (V-212, V-219)", () => {
     expect(text).toMatch(/will not renew/);
   });
 
+  it("says what ends without claiming the account goes free, since other paid access may remain (V-334)", () => {
+    // Sent per subscription: someone cancelling AI Credits may still hold Creator Pro or a pass.
+    const notice = { productName: "AI Credits", accessEndsAt: new Date("2026-11-30T00:00:00Z") };
+    const text = subscriptionCancelledParagraphs(notice).join(" ");
+    expect(text).toContain("after that, what AI Credits includes ends");
+    expect(text).toMatch(/other plans, passes or credits you hold are not affected/i);
+    expect(text).not.toMatch(/free plan/i);
+    expect(renderSubscriptionCancelledEmail("Sam", notice)).not.toMatch(/free plan/i);
+  });
+
   it("states the new plan, the charge model and the next renewal", () => {
     const text = planChangedParagraphs({
       fromProductName: "Creator Pro (monthly)",
@@ -124,6 +135,26 @@ describe("cancellation and plan change (V-212, V-219)", () => {
     expect(text).toContain("Creator Pro (monthly) to Job Hunter Bundle (monthly)");
     expect(text).toContain("$14.99 USD (before any tax) per month");
     expect(text).toContain("30 November 2026");
+  });
+
+  it("V-279: says an upgrade was charged and a downgrade was not", () => {
+    const base = {
+      fromProductName: "Job Hunter Bundle (monthly)",
+      productName: "Creator Pro (monthly)",
+      amountCents: 999,
+      currency: "USD",
+      amountExcludesTax: true,
+      billingPeriod: "month" as const,
+      renewsAt: new Date("2026-11-30T00:00:00Z"),
+    };
+    const downgrade = planChangedParagraphs({ ...base, direction: "downgrade" }).join(" ");
+    expect(downgrade).not.toMatch(/difference .* was charged/);
+    expect(downgrade).toContain("Nothing extra was charged");
+
+    const upgrade = planChangedParagraphs({ ...base, direction: "upgrade" }).join(" ");
+    expect(upgrade).toContain("was charged when the change was made");
+
+    expect(planChangedParagraphs(base).join(" ")).not.toMatch(/difference .* was charged/);
   });
 });
 

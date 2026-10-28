@@ -32,7 +32,8 @@ interface PortfolioModerationActionsProps {
 /**
  * Suspending a portfolio removes it from the public internet immediately — the server clears
  * the Redis copy, the public list and the portfolio app's ISR cache in the same request.
- * Unpublishing goes further and frees the subdomain, so it is only offered on the detail page.
+ * Unpublishing goes further: it also forces the source document private under the moderator's
+ * lock, so it is only offered on the detail page. The row and the subdomain stay the owner's.
  */
 const PortfolioModerationActions = ({
   publicationId,
@@ -64,7 +65,7 @@ const PortfolioModerationActions = ({
         title={nextStatus === "SUSPENDED" ? "Suspend this portfolio" : "Change publication status"}
         description={
           nextStatus === "SUSPENDED"
-            ? `${subdomain} will stop serving publicly right away. The reason below is shown to the owner.`
+            ? `${subdomain} will stop serving publicly right away. The owner sees that it was suspended, not the reason.`
             : `${subdomain} moves from ${status} to ${nextStatus}.`
         }
         confirmLabel={nextStatus === "SUSPENDED" ? "Suspend portfolio" : "Update status"}
@@ -72,7 +73,7 @@ const PortfolioModerationActions = ({
         minReasonLength={nextStatus === "SUSPENDED" ? 10 : 3}
         reasonPlaceholder={
           nextStatus === "SUSPENDED"
-            ? "At least 10 characters — shown to the owner and recorded in the audit log."
+            ? "At least 10 characters — recorded in the admin audit log, not shown to the owner."
             : "Recorded in the admin audit log."
         }
         onConfirm={async (reason) => {
@@ -85,7 +86,7 @@ const PortfolioModerationActions = ({
           trigger="Unpublish"
           triggerClassName="text-destructive"
           title="Take this portfolio down permanently"
-          description={`Deletes the publication for ${subdomain}, forces the source document private, and frees the subdomain for reuse. The owner cannot publish it again until a moderator lifts the takedown on its document (Documents, Lift takedown).`}
+          description={`Takes ${subdomain} offline and forces the source document private. The publication, its view history and the subdomain stay the owner's. The owner cannot publish it again until a moderator lifts the takedown on its document (Documents, Lift takedown).`}
           confirmLabel="Unpublish"
           confirmPhrase={subdomain}
           confirmPhraseLabel={`Type ${subdomain} to confirm`}

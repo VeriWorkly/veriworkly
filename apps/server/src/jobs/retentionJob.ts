@@ -6,6 +6,7 @@ import { parseIntegerEnv } from "#config/parseEnv";
 import { ApiError } from "#lib/errors";
 import { createRunTracker, withJobLock } from "#lib/jobLock";
 import { logger } from "#lib/logger";
+import { isDraining } from "#lib/shutdown";
 import { prisma } from "#lib/prisma";
 import {
   ADMIN_AUDIT_ACTIONS,
@@ -38,6 +39,7 @@ export type RetentionSetting =
   | "expiredSessions"
   | "expiredVerifications"
   | "webhookPayloads"
+  | "unprocessedWebhookPayloads"
   | "auditLogs"
   | "adminAuditEntries"
   | "adminMoneyAuditEntries"
@@ -58,6 +60,8 @@ export function readRetentionSettings(env: NodeJS.ProcessEnv = process.env): Ret
     expiredSessions: days("RETENTION_EXPIRED_SESSION_DAYS", 1),
     expiredVerifications: days("RETENTION_EXPIRED_VERIFICATION_DAYS", 1),
     webhookPayloads: days("RETENTION_WEBHOOK_PAYLOAD_DAYS", 30),
+    // FAILED and PROCESSING payloads (V-340): kept long enough to replay or investigate, not for good.
+    unprocessedWebhookPayloads: days("RETENTION_UNPROCESSED_WEBHOOK_PAYLOAD_DAYS", 180),
     // Falls back to the older AUDIT_LOG_RETENTION_DAYS so an existing deployment keeps its window.
     auditLogs: days("RETENTION_AUDIT_LOG_DAYS", config.logging.auditRetentionDays),
     // Owner decision 11 (V-207): general admin entries a year, money actions 7 years; moderation
@@ -107,7 +111,7 @@ type CandidateQuery = (cutoff: Date, limit: number) => Prisma.Sql;
  */
 export const RETENTION_CANDIDATES = {
   // "BillingWebhookEvent_unredacted_idx". A redacted payload is `{ redacted, type }`; FAILED (and
-  // PROCESSING) rows keep their payload so they can still be replayed or investigated.
+  // PROCESSING) rows keep their payload for the longer window of `unprocessedWebhookPayloads`.
   webhookPayloadsRedacted: (cutoff, limit) => Prisma.sql`
     SELECT "id" FROM "BillingWebhookEvent"
     WHERE "status" = 'PROCESSED' AND ("payload" - 'type') <> '{"redacted": true}'::jsonb
@@ -193,14 +197,30 @@ const RULES: Array<{ name: string; setting: RetentionSetting; step: BatchStep }>
         SELECT "id" FROM "Verification" WHERE "expiresAt" < ${cutoff} LIMIT ${limit})`,
   },
   {
-    // Keeps the row, ids, status and error; FAILED (and PROCESSING) rows keep their payload so
-    // they can still be replayed or investigated.
+    // Keeps the row, ids, status and error; FAILED (and PROCESSING) rows keep their payload
+    // longer, for a replay or an investigation (`unprocessedWebhookPayloadsRedacted` below).
     name: "webhookPayloadsRedacted", // "BillingWebhookEvent_unredacted_idx" (createdAt)
     setting: "webhookPayloads",
     step: (cutoff, limit) => prisma.$executeRaw`
       UPDATE "BillingWebhookEvent"
       SET "payload" = jsonb_build_object('redacted', true, 'type', "type")
       WHERE "id" IN (${RETENTION_CANDIDATES.webhookPayloadsRedacted(cutoff, limit)})`,
+  },
+  {
+    // V-340: a FAILED event nobody replays, or a PROCESSING one whose handler died, kept the
+    // customer's name, email and address for good. After a window long enough for any replay or
+    // investigation its payload goes too; the summary columns (product, amount, payment id),
+    // status and error stay.
+    name: "unprocessedWebhookPayloadsRedacted", // BillingWebhookEvent(status, createdAt)
+    setting: "unprocessedWebhookPayloads",
+    step: (cutoff, limit) => prisma.$executeRaw`
+      UPDATE "BillingWebhookEvent"
+      SET "payload" = jsonb_build_object('redacted', true, 'type', "type")
+      WHERE "id" IN (
+        SELECT "id" FROM "BillingWebhookEvent"
+        WHERE "status" IN ('FAILED', 'PROCESSING') AND "createdAt" < ${cutoff}
+          AND ("payload" - 'type') <> '{"redacted": true}'::jsonb
+        LIMIT ${limit})`,
   },
   {
     name: "auditLogs", // AuditLog(createdAt)
@@ -336,6 +356,11 @@ type RetentionSummary = {
   /** Rules that stopped on the time budget with rows left; the next run continues them. */
   incomplete: string[];
   failed: string[];
+  /**
+   * The worker began draining (V-342): the rule in flight and every enabled rule after it are in
+   * `incomplete`, and the run is not a success.
+   */
+  stoppedForShutdown?: true;
 };
 
 /**
@@ -358,11 +383,23 @@ export async function applyRetention(
   const budgetMs = options.budgetMs ?? DEFAULT_BUDGET_MS;
   const nowMs = (options.now ?? new Date()).getTime();
   const deadline = Date.now() + budgetMs;
-  const summary: RetentionSummary = { affected: {}, incomplete: [], failed: [] };
+  const summary: RetentionSummary = {
+    affected: {},
+    incomplete: [],
+    failed: [],
+  };
 
   for (const rule of RULES) {
     const days = settings[rule.setting];
     if (!Number.isSafeInteger(days) || days <= 0) continue;
+    // A worker that is shutting down stops between batches (V-342): each batch is atomic, and the
+    // next run carries on, while a statement sent after the drain closed the pool would fail.
+    // Every enabled rule left is named as incomplete.
+    if (isDraining()) {
+      summary.stoppedForShutdown = true;
+      if (!summary.incomplete.includes(rule.name)) summary.incomplete.push(rule.name);
+      continue;
+    }
 
     const cutoff = new Date(nowMs - days * DAY_MS);
     let affected = 0;
@@ -372,8 +409,13 @@ export async function applyRetention(
         const count = await rule.step(cutoff, batchSize);
         affected += count;
         if (count < batchSize) break;
-        if (Date.now() >= deadline || (options.stillOwner && !(await options.stillOwner()))) {
+        if (
+          isDraining() ||
+          Date.now() >= deadline ||
+          (options.stillOwner && !(await options.stillOwner()))
+        ) {
           summary.incomplete.push(rule.name);
+          if (isDraining()) summary.stoppedForShutdown = true;
           break;
         }
       }
@@ -412,6 +454,11 @@ export async function runRetention(reason: "cron" | "manual" = "cron"): Promise<
       // Every rule ran; a failed one makes the run a failure for `/health/jobs`.
       if (summary.failed.length > 0)
         throw new Error(`Retention rules failed: ${summary.failed.join(", ")}`);
+      // Stopped by the drain (V-342): not a failure of any rule, but not a completed run either.
+      if (summary.stoppedForShutdown)
+        throw new Error(
+          `Retention run stopped: the worker is shutting down (${summary.incomplete.join(", ")} left for the next run)`,
+        );
     },
   );
 }

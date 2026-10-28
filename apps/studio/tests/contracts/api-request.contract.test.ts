@@ -34,7 +34,7 @@ const SERVER_TEMPLATE_VALUES: Record<string, string> = {
   "PRODUCT_NAMES.ai_credits": "AI Credits",
   "PRODUCT_NAMES.portfolio_pro": "Creator Pro",
   "PRODUCT_NAMES.bundle": "Job Hunter Bundle",
-  'paying.map((key) => productCatalog[key].name).join(", ")': "AI Credits",
+  'paying.join(", ")': "AI Credits",
 };
 
 function fillServerTemplate(literal: string) {

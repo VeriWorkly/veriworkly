@@ -25,6 +25,7 @@ export const PASS_NAMES = {
 export const CREDIT_PACK_NAMES = {
   credit_pack_250: "250 extra credits",
   credit_pack_500: "500 extra credits",
+  credit_pack_1200: "1,200 extra credits",
 } as const;
 
 type NamedProduct = keyof typeof PRODUCT_NAMES;

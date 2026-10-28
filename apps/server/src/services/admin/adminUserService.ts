@@ -6,7 +6,7 @@ import { cacheDel } from "#lib/redis";
 import { isAdminUser } from "#lib/isAdminUser";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
-import { revokeAllSessionsForUser, revokeAllSessionsForUserSafely } from "#auth/sessions";
+import { revokeAllSessionsForUser, revokeSessionsBeforeAccountDeletion } from "#auth/sessions";
 import { ApiKeyService } from "#services/apiKeyService";
 import {
   ADMIN_AUDIT_ACTIONS,
@@ -457,7 +457,7 @@ export async function deleteUser(userId: string, confirmEmail: string, audit: Ad
   // DEL, so a validation racing the cascade cannot re-cache them (V-122). If the transaction
   // below then fails the user is signed out but still exists, which is the safer side to err on.
   await ApiKeyService.markAllRevokedForUser(userId);
-  await revokeAllSessionsForUserSafely(userId);
+  await revokeSessionsBeforeAccountDeletion(userId);
 
   // Same transaction body as self-service deletion (allocation pre-delete + user cascade),
   // plus the audit row. `AdminAuditEntry.targetId` is not a foreign key, so it survives the

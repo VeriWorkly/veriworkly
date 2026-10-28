@@ -60,6 +60,11 @@ describe("copy stays free of the claims the audit found false", () => {
     [/field accuracy, /i, "ATS: the tiles are regression figures"],
     [/maya okafor|daniel reyes|alex morgan/i, "ATS: samples use plainly invented names"],
     [/zero paywalls •/i, "W-087: premium templates and AI credits are paid"],
+    [/\$(?:59\.9[09]|99\.99|143\.99|8\.33)\b/, "W-098: annual prices are $59.88, $95.88, $143.88"],
+    [
+      /save 20%[^.\n]{0,40}ai credits|ai credits[^.\n]{0,60}save 20%/i,
+      "W-098: AI Credits annual saves 17%",
+    ],
   ];
 
   const SHIPPED_DIRS = ["app", "components", "config", "features", "public"];
@@ -149,20 +154,52 @@ describe("the numbers on the site match the server's constants", () => {
     for (const [title, prices] of expected)
       for (const cents of prices) expect(section(title)).toContain(dollars(cents));
 
-    // llms.txt carries the headline prices only.
-    for (const cents of [...bundle, pro[0]!, ai[0]!]) expect(llmsTxt).toContain(dollars(cents));
+    // llms.txt carries every plan's monthly and annual price.
+    for (const cents of [...bundle, ...pro, ...ai]) expect(llmsTxt).toContain(dollars(cents));
   });
 
-  it("pricing.md and llms.txt quote the credit packs and their expiry", () => {
+  it("pricing.md and llms.txt quote every credit pack, its price and its expiry", async () => {
+    const { CREDIT_PACKS, CREDIT_PACK_VALID_DAYS } = await import("@/features/pricing/data/offers");
     const packs = [...catalog.matchAll(/credits: (\d+),\s*expiresInDays: (\d+)/g)];
+    const names = readServer("productNames.ts");
+    const config = readFileSync(join(serverServices, "..", "config.ts"), "utf8");
 
-    expect(packs.length).toBe(2);
+    expect(packs.map(([, credits]) => Number(credits))).toEqual(
+      CREDIT_PACKS.map((pack) => pack.credits),
+    );
 
-    for (const [, credits, days] of packs) {
-      const line = pricingMd.split("\n").find((l) => l.includes(`${credits} AI Credits`));
-      expect(line, `pricing.md has no ${credits} AI Credits line`).toBeDefined();
-      expect(line).toContain(`${days} days`);
-      expect(llmsTxt).toContain(`${credits} credits`);
+    for (const [, , days] of packs) expect(Number(days)).toBe(CREDIT_PACK_VALID_DAYS);
+
+    for (const pack of CREDIT_PACKS) {
+      expect(names).toContain(`credit_pack_${pack.credits}: "${pack.name}"`);
+      const [defaultCents] = numbers(
+        config,
+        new RegExp(`CREDIT_PACK_${pack.credits}_PRICE_CENTS, (\\d+)\\)`),
+        `the ${pack.credits} pack's default price`,
+      ) as [number];
+      expect(defaultCents).toBe(Math.round(pack.price * 100));
+
+      const line = pricingMd.split("\n").find((l) => l.includes(`**${pack.name}**`));
+      expect(line, `pricing.md has no ${pack.name} line`).toBeDefined();
+      expect(line).toContain(dollars(defaultCents));
+      expect(line).toContain(`${CREDIT_PACK_VALID_DAYS} days`);
+      expect(llmsTxt).toContain(
+        `${pack.credits.toLocaleString("en")} credits for ${dollars(defaultCents)}`,
+      );
+    }
+  });
+
+  it("each annual plan is exactly twelve of the monthly price it is quoted as", async () => {
+    const { PLAN_PRICES, annualPerMonth, annualSavingsPercent } =
+      await import("@/features/pricing/data/offers");
+
+    for (const plan of Object.keys(PLAN_PRICES) as (keyof typeof PLAN_PRICES)[]) {
+      expect(Math.round(annualPerMonth(plan) * 12 * 100)).toBe(
+        Math.round(PLAN_PRICES[plan].annual * 100),
+      );
+      expect(pricingMd).toContain(
+        `$${PLAN_PRICES[plan].annual.toFixed(2)} / year, which is $${annualPerMonth(plan).toFixed(2)} / month (save ${annualSavingsPercent(plan)}%)`,
+      );
     }
   });
 
@@ -247,16 +284,23 @@ describe("structured-data inputs match their sources", () => {
     join(siteRoot, "..", "server", "src", "services", "productCatalog.ts"),
     "utf8",
   );
+  const config = readFileSync(join(siteRoot, "..", "server", "src", "config.ts"), "utf8");
 
   it("the pricing page lists exactly the catalog prices", async () => {
     const { PRICING_OFFERS } = await import("@/features/pricing/data/offers");
 
     const onPage = new Set(PRICING_OFFERS.map((offer) => Math.round(offer.price * 100)));
-    const inCatalog = new Set(
-      [...catalog.matchAll(/prices: \{([^}]*)\}/g)].flatMap((match) =>
+    const packDefaults = [...config.matchAll(/CREDIT_PACK_\d+_PRICE_CENTS, (\d+)\)/g)].map((m) =>
+      Number(m[1]),
+    );
+    const inCatalog = new Set([
+      ...[...catalog.matchAll(/prices: \{([^}]*)\}/g)].flatMap((match) =>
         [...match[1]!.matchAll(/: ([\d_]+)/g)].map((m) => Number(m[1]!.replace(/_/g, ""))),
       ),
-    );
+      ...packDefaults,
+    ]);
+
+    expect(packDefaults.length).toBeGreaterThan(2);
 
     expect(inCatalog.size).toBeGreaterThan(5);
 

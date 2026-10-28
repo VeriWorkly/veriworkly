@@ -6,7 +6,11 @@ listPublicPortfolios:
     summary: List Public Portfolios
     description: |
       Lists the subdomains of every portfolio currently in `LIVE` or `GRACE` status, most recently
-      updated first. Returns subdomain and timestamp only — no portfolio content.
+      updated first. Returns subdomain and timestamp only — no portfolio content. Without
+      `limit` a page holds up to 1,000 portfolios; page through the rest with `offset` (up to
+      49,999, the sitemap protocol's 50,000 URLs). The default order, most recently updated first,
+      moves whenever a site is republished or its billing changes; to page through every site,
+      send `order=stable`, which lists by publication id and never moves.
 
       No user session is required, but the request must carry an API key or originate from a
       whitelisted first-party origin; otherwise it is rejected with `401`. Cached for 5 minutes.
@@ -27,7 +31,14 @@ listPublicPortfolios:
         schema:
           type: integer
           minimum: 0
-          maximum: 5000
+          maximum: 49999
+      - name: order
+        in: query
+        required: false
+        description: "`recent` (default): most recently updated first. `stable`: by publication id, for paging."
+        schema:
+          type: string
+          enum: [recent, stable]
     responses:
       "200":
         description: Portfolios fetched successfully
@@ -226,7 +237,7 @@ savePortfolioDraft:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
       "409":
-        description: Draft was changed in another session, or the subdomain conflicts with an existing document slug
+        description: Draft was changed in another session
         content:
           application/json:
             schema:

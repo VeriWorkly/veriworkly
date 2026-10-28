@@ -166,6 +166,12 @@ model Document {
   slug  String // Current editable document slug
   tags  String[]     @default([])
 
+  // A PORTFOLIO draft's chosen subdomain (V-301); null on every other type. Kept apart from
+  // `slug`, which is unique per user across every document (trashed ones included) and follows
+  // the title, so a subdomain matching a résumé's slug or a trashed draft's was refused, and a
+  // rename moved it. Not unique: the name is claimed by `PortfolioPublication.subdomain` on publish.
+  portfolioSubdomain String?
+
   content  Json // The main content (JSON Resume standard)
   metadata Json? // UI state, favorites, tags, etc.
 
@@ -613,12 +619,20 @@ model PortfolioPublication {
   publishedRevision Int                        @default(1)
   suspensionReason  String?
   suspendedAt       DateTime?
+  // The owner's or billing's own suspension reason a moderation lock covers, restored when the
+  // lock lifts; null when the site was online as the lock went on (V-285).
+  reasonBeforeModeration String?
+  // The latest publish: moves on every republish.
   publishedAt       DateTime                   @default(now())
+  // When the site first went online: set once on create, never updated (V-288). The admin
+  // dashboard's publication counts use this, so a republish does not re-date a site.
+  firstPublishedAt  DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   views             PortfolioViewDaily[]
 
   @@index([status, updatedAt])
   @@index([publishedAt])
+  @@index([firstPublishedAt])
 }
 
 enum BillingWebhookStatus {
@@ -644,6 +658,10 @@ model BillingWebhookEvent {
   // disputes find the payment they reverse through this indexed column, not a jsonb path, and it
   // survives the retention job's payload redaction. Null for subscription events.
   providerPaymentId String?
+  // The subscription a plan-change charge upgraded (V-372), null for every other event. Written
+  // when the event is stored, so a refund or chargeback still finds the upgrade it paid for after
+  // the retention job has redacted `payload`.
+  planChangeSubscriptionId String?
   status          BillingWebhookStatus @default(PROCESSING)
   error           String?
   processedAt     DateTime?
@@ -657,6 +675,7 @@ model BillingWebhookEvent {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@index([providerPaymentId, type])
+  @@index([planChangeSubscriptionId])
   // Also hand-written expression indexes for account deletion (V-237), migration 20261027140000:
   // "BillingWebhookEvent_payload_user_idx" (payload #>> '{data,metadata,veriworkly_user_id}') and
   // "BillingWebhookEvent_payload_subscription_idx" (payload #>> '{data,subscription_id}').
@@ -875,6 +894,15 @@ model ChangelogEntry {
 
   @@index([publishedAt])
   @@index([type])
+}
+
+// A GitHub release an admin deleted from the changelog (V-289). The release sync creates any
+// release with no row, so without this the next sync brought a deleted entry back. Keyed by the
+// entry id the sync derives from the tag; an admin writing that entry again by hand removes it.
+model ChangelogReleaseTombstone {
+  id        String   @id
+  version   String
+  deletedAt DateTime @default(now())
 }
 
 // Daily aggregated usage metrics flushed from Redis counters

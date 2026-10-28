@@ -5,9 +5,11 @@ import { requireAuthUser } from "#middleware/auth";
 import { createSuccessResponse, handleValidationError } from "#lib/errors";
 
 /**
- * The input of an admin DELETE: its JSON body, with `reason` also accepted as a query parameter,
- * because some proxies strip DELETE bodies (V-082). A body value wins. `confirmEmail` stays
- * body-only: access logs record full URIs, so a deleted user's email would outlive the deletion.
+ * The input of an admin DELETE: its JSON body, with `reason` and `confirm` also accepted as query
+ * parameters, because some proxies strip DELETE bodies (V-082). A body value wins. `confirm` is the
+ * target's public identifier (subdomain, share slug, key prefix), never a secret. `confirmEmail`
+ * stays body-only: access logs record full URIs, so a deleted user's email would outlive the
+ * deletion.
  */
 export function deleteRequestInput(req: Request): Record<string, unknown> {
   const body =
@@ -16,8 +18,10 @@ export function deleteRequestInput(req: Request): Record<string, unknown> {
       : {};
   const input: Record<string, unknown> = { ...body };
 
-  const reason = req.query.reason;
-  if (input.reason === undefined && typeof reason === "string") input.reason = reason;
+  for (const key of ["reason", "confirm"]) {
+    const value = req.query[key];
+    if (input[key] === undefined && typeof value === "string") input[key] = value;
+  }
 
   return input;
 }

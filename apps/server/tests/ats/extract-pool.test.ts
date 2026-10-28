@@ -80,4 +80,20 @@ describe("extractPool", () => {
     const after = await extractInChildProcess("text", Buffer.from("still alive"));
     expect(after.text).toBe("still alive");
   }, 60_000);
+
+  // V-386: one job runs and three wait; the fifth is refused with the 503 the controller refunds.
+  it("refuses a fifth job with 503 while one runs and three wait, and serves the four", async () => {
+    const jobs = [1, 2, 3, 4].map((n) => extractInChildProcess("text", Buffer.from(`job ${n}`)));
+
+    await expect(extractInChildProcess("text", Buffer.from("job 5"))).rejects.toMatchObject({
+      statusCode: 503,
+      message: "Too many resume extractions in progress. Please retry shortly.",
+    });
+    expect((await Promise.all(jobs)).map((result) => result.text)).toEqual([
+      "job 1",
+      "job 2",
+      "job 3",
+      "job 4",
+    ]);
+  }, 60_000);
 });

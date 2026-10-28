@@ -33,15 +33,6 @@ function githubAccount(accountId: string) {
   return { userId: "user-1", providerId: "github", accountId };
 }
 
-function caught(run: () => unknown): unknown {
-  try {
-    run();
-  } catch (error) {
-    return error;
-  }
-  return undefined;
-}
-
 async function caughtAsync(run: () => Promise<unknown>): Promise<unknown> {
   try {
     await run();
@@ -57,22 +48,48 @@ beforeEach(() => {
 });
 
 describe("unlinking GitHub", () => {
-  it("is refused with GITHUB_UNLINK_FORBIDDEN", () => {
-    const error = caught(() =>
-      assertGithubUnlinkAllowed("/unlink-account", { providerId: "github" }),
-    );
-
+  function expectForbidden(error: unknown) {
     expect(error).toBeInstanceOf(APIError);
     expect((error as APIError).statusCode).toBe(403);
     expect((error as APIError).body).toMatchObject({ code: GITHUB_UNLINK_FORBIDDEN });
+  }
+
+  it("is refused with GITHUB_UNLINK_FORBIDDEN for a GitHub row named by its id (better-auth 1.7)", async () => {
+    mockPrisma.account.findFirst.mockResolvedValue({ id: "row-gh" });
+
+    expectForbidden(
+      await caughtAsync(() =>
+        assertGithubUnlinkAllowed("/unlink-account", { accountId: "row-gh" }),
+      ),
+    );
+    expect(mockPrisma.account.findFirst).toHaveBeenCalledWith({
+      where: { id: "row-gh", providerId: "github" },
+      select: { id: true },
+    });
   });
 
-  it("leaves other providers and other endpoints alone", () => {
-    expect(() =>
+  it("is refused for the pre-1.7 body naming the provider", async () => {
+    expectForbidden(
+      await caughtAsync(() =>
+        assertGithubUnlinkAllowed("/unlink-account", { providerId: "github" }),
+      ),
+    );
+  });
+
+  it("leaves other providers' rows and other endpoints alone", async () => {
+    mockPrisma.account.findFirst.mockResolvedValue(null);
+
+    await expect(
+      assertGithubUnlinkAllowed("/unlink-account", { accountId: "row-google" }),
+    ).resolves.toBeUndefined();
+    await expect(
       assertGithubUnlinkAllowed("/unlink-account", { providerId: "google" }),
-    ).not.toThrow();
-    expect(() => assertGithubUnlinkAllowed("/link-social", { provider: "github" })).not.toThrow();
-    expect(() => assertGithubUnlinkAllowed("/unlink-account", undefined)).not.toThrow();
+    ).resolves.toBeUndefined();
+    await expect(
+      assertGithubUnlinkAllowed("/link-social", { provider: "github" }),
+    ).resolves.toBeUndefined();
+    await expect(assertGithubUnlinkAllowed("/unlink-account", undefined)).resolves.toBeUndefined();
+    expect(mockPrisma.account.findFirst).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 
 import { requireAuthUser } from "#middleware/auth";
 import { withAiSlot } from "#middleware/rateLimit";
-import { aiRequestSignal } from "#services/ats/aiDeadline";
+import { aiRequestSignal, aiRouteError } from "#services/ats/aiDeadline";
 
 import { ProfileService } from "#services/profileService";
 import { ProfileImportService } from "#services/profileImportService";
@@ -122,7 +122,7 @@ export class ProfileController {
       res.json(createSuccessResponse(doc, "LinkedIn profile imported successfully"));
     } catch (error) {
       if (error instanceof z.ZodError) return next(handleValidationError(error));
-      next(error);
+      next(aiRouteError(error));
     }
   }
 }

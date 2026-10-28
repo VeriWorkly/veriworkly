@@ -40,26 +40,40 @@ export async function runUsageMetricsFlush(reason: "startup" | "cron"): Promise<
         return;
       }
 
+      // Each day on its own (V-335), as the views flush does (V-068): one day whose counters the
+      // database refuses used to end the run there, so every later day waited behind it until
+      // its Redis TTL dropped it. The run still fails at the end, so `/health/jobs` sees it.
+      const failedDays: string[] = [];
       for (const dateKey of dateKeys) {
         if (!(await stillOwner())) {
           logger.warn(`Usage metrics flush (${reason}) stopped: lock lost to another worker`);
-          return;
+          break;
         }
 
-        const result = await flushUsageMetricsForDate(new Date(`${dateKey}T00:00:00.000Z`));
+        try {
+          const result = await flushUsageMetricsForDate(new Date(`${dateKey}T00:00:00.000Z`));
 
-        if ("skipped" in result && result.skipped) {
-          logger.warn(`Usage metrics flush (${reason}) skipped: another flush is in progress`, {
+          if ("skipped" in result && result.skipped) {
+            logger.warn(`Usage metrics flush (${reason}) skipped: another flush is in progress`, {
+              dateKey: result.dateKey,
+            });
+            continue;
+          }
+
+          logger.info(`Usage metrics flush (${reason}) completed`, {
             dateKey: result.dateKey,
+            flushedEvents: result.flushedEvents,
           });
-          continue;
+        } catch (error) {
+          failedDays.push(dateKey);
+          logger.error(`Usage metrics flush (${reason}) failed for ${dateKey}`, {
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
-
-        logger.info(`Usage metrics flush (${reason}) completed`, {
-          dateKey: result.dateKey,
-          flushedEvents: result.flushedEvents,
-        });
       }
+
+      if (failedDays.length > 0)
+        throw new Error(`Usage metrics flush failed for ${failedDays.join(", ")}`);
     },
   );
 }

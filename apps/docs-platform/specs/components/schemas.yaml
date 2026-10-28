@@ -2208,10 +2208,11 @@ AtsQuotaSummary:
   properties:
     tier:
       type: string
-      enum: [anonymous, free, subscriber]
+      enum: [anonymous, free, paused, subscriber]
+      description: "subscriber: spendable AI credits from any source, or a subscription or pass in effect even with an empty wallet (a paying customer is never free). paused: a paused subscription and no credits; the free limits apply. free: any other signed-in account, including one whose payment failed."
     limit:
       type: integer
-      description: "1 for anonymous callers per 48h window, 2 for free logged-in users per 24h window, 300 for subscribers per billing period."
+      description: "1 for anonymous callers per 48h window, 2 for free and paused logged-in users per 24h window, 300 for subscribers per billing period."
     used:
       type: integer
     remaining:
@@ -3026,7 +3027,10 @@ PortfolioDraft:
       type: string
     slug:
       type: string
-      description: Kept in sync with the portfolio subdomain.
+      description: |
+        The subdomain the draft was last saved under. It is not the document's own slug: a rename or
+        another document's slug never changes or blocks it. A PORTFOLIO document never saved as a
+        draft shows its document slug.
     templateId:
       type: string
       enum: [signal, atelier, nimbus, cipher]
@@ -3286,6 +3290,7 @@ BillingSummary:
     plan:
       type: string
       enum: [FREE, AI_CREDITS, PORTFOLIO_PRO, BUNDLE]
+      description: "The plan whose features are in effect, from subscription or pass access. A credit pack unlocks no plan features, so a customer whose only purchase is a pack is FREE here although they paid; show plan names from the product the customer bought, not from this field."
     productKey:
       type: string
       nullable: true
@@ -3296,7 +3301,10 @@ BillingSummary:
         type: string
     status:
       type: string
-      description: Subscription status (e.g. ACTIVE, TRIALING, INACTIVE).
+      enum: [INACTIVE, ACTIVE, PAST_DUE, CANCELED]
+      description: |
+        Status of the subscription in effect today. `INACTIVE` when none is (no plan, or one that
+        has ended); `PAST_DUE` while a failed renewal's grace runs. There are no trials.
     interval:
       type: string
       nullable: true
@@ -3493,6 +3501,17 @@ CancelCheckoutResponse:
       properties:
         success:
           type: boolean
+        cleared:
+          type: array
+          description: The products (`productKey`) and credit packs (`packKey`) whose open sessions were cleared.
+          items:
+            type: string
+        stillProcessing:
+          type: array
+          description: Present when a credit pack's payment is still processing. Those sessions are kept (and still block account deletion) until the payment lands; they never stop the rest from being cleared.
+          items:
+            type: string
+          example: ["500 extra credits"]
 
 BillingPortalResponse:
   type: object
@@ -3515,7 +3534,7 @@ CreditPackCheckoutRequest:
   properties:
     packKey:
       type: string
-      enum: [credit_pack_250, credit_pack_500]
+      enum: [credit_pack_250, credit_pack_500, credit_pack_1200]
     redirectUrl:
       type: string
       description: Relative path (must start with a single `/`) to return to after checkout.
@@ -3534,6 +3553,163 @@ CreditPackCheckoutResponse:
         url:
           type: string
           description: Dodo Payments hosted checkout URL for the one-time credit pack purchase.
+
+CodedErrorResponse:
+  type: object
+  description: |
+    An error whose `details` says why in machine form. `details.code` is stable; clients branch on
+    it, not on the message. The other `details` fields depend on the code.
+  required: [success, message, statusCode, details]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    statusCode:
+      type: integer
+    details:
+      type: object
+      required: [code]
+      additionalProperties: true
+      properties:
+        code:
+          type: string
+
+PlanChangePreviewRequest:
+  type: object
+  required: [productKey, interval]
+  properties:
+    productKey:
+      type: string
+      enum: [ai_credits, portfolio_pro, bundle]
+      description: The plan to price. Only an upgrade to `bundle` is accepted today.
+    interval:
+      type: string
+      enum: [monthly, annual]
+      description: Must match the current subscription's billing period.
+
+PlanChangeRequest:
+  type: object
+  required: [productKey, interval]
+  properties:
+    productKey:
+      type: string
+      enum: [ai_credits, portfolio_pro, bundle]
+      description: The plan to move to. Only an upgrade to `bundle` is accepted today.
+    interval:
+      type: string
+      enum: [monthly, annual]
+      description: Must match the current subscription's billing period.
+    idempotencyKey:
+      type: string
+      minLength: 1
+      maxLength: 128
+      description: Body alternative to the `Idempotency-Key` header; the header wins when both are sent.
+
+PlanChangePreviewResponse:
+  type: object
+  required: [success, message, data]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    data:
+      type: object
+      properties:
+        productKey:
+          type: string
+          enum: [ai_credits, portfolio_pro, bundle]
+        interval:
+          type: string
+          enum: [monthly, annual]
+        dueNow:
+          type: integer
+          description: The total charged now for the rest of the current period (the provider's prorated quote), in the currency's minor unit.
+        currency:
+          type: string
+          example: USD
+        nextAmount:
+          type: integer
+          description: The new plan's recurring amount before tax, in the minor unit.
+        nextBillingDate:
+          type: string
+          format: date-time
+
+PlanChangeResponse:
+  type: object
+  required: [success, message, data]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    data:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending]
+          description: The provider charges the difference; the plan moves once that payment succeeds and its webhook arrives. `GET /billing/me` shows the new plan then.
+        productKey:
+          type: string
+          enum: [ai_credits, portfolio_pro, bundle]
+        interval:
+          type: string
+          enum: [monthly, annual]
+        paymentId:
+          type: string
+          nullable: true
+        confirmed:
+          type: boolean
+          description: False when the provider's answer never arrived (the response is then `202`); the change may still apply.
+        replayed:
+          type: boolean
+          description: Present and true when this is the stored answer for an idempotency key already used.
+
+UsageEventRequest:
+  type: object
+  required: [event]
+  properties:
+    event:
+      type: string
+      minLength: 1
+      maxLength: 64
+      description: |
+        Normalized to lower case with spaces as `_`. Public callers may send only `resume_created`,
+        `resume_deleted`, `resume_exported`, `cover_letter_exported`, `auth_otp_sent`,
+        `dashboard_opened`, `roadmap_viewed`, `share_link_created`, `share_link_updated` and
+        `share_link_revoked`. Internal callers (`x-internal-key`) may also send `custom_*` names.
+    value:
+      type: integer
+      minimum: 1
+      maximum: 1000
+      description: Internal callers only; a public call always counts as 1.
+
+UsageEventResponse:
+  type: object
+  required: [success, message, data]
+  properties:
+    success:
+      type: boolean
+    message:
+      type: string
+    data:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+
+DeleteAccountRequest:
+  type: object
+  properties:
+    confirmAffiliateForfeit:
+      type: boolean
+      description: Send `true` after the user saw the `409 AFFILIATE_BALANCE_FORFEIT` amount and still wants the account deleted. The query parameter `confirmAffiliateForfeit=true` works the same way.
+    confirmedAffiliateForfeitCents:
+      type: integer
+      minimum: 0
+      description: The amount the user was shown, from `details.amountCents`. If the unpaid balance has grown past it, the request is refused again with the new amount.
 
 ##################################################
 # SHARE SCHEMA
@@ -3600,8 +3776,10 @@ ShareLinkCreateRequest:
       type: string
       format: date-time
       nullable: true
+      description: 7, 14, 30 or 90 days from now (within a day), or the link's current expiry to keep it. Omitted or null (without noExpiry), a new link lasts 7 days and an existing one keeps its expiry; null does not mean never. Send noExpiry true for a link that never expires.
     noExpiry:
       type: boolean
+      description: true for a link that never expires. Not allowed together with expiresAt.
     updateSlug:
       type: boolean
       description: Regenerate the public slug instead of reusing the existing one (if a link already exists for this document).
@@ -3808,9 +3986,35 @@ AffiliateDashboard:
         additionalProperties: true
     withdrawals:
       type: array
+      description: The 25 most recent withdrawals, newest first.
       items:
         type: object
-        additionalProperties: true
+        properties:
+          id:
+            type: string
+          amountCents:
+            type: integer
+          currency:
+            type: string
+            example: USD
+          status:
+            type: string
+            enum: [REQUESTED, APPROVED, REJECTED, PAID]
+          payoutNote:
+            type: string
+            nullable: true
+            description: Visible to the affiliate. The note the admin writes when approving, rejecting or paying the withdrawal (the payout reference, or the reason for a rejection), shown on the affiliate's payouts page as written.
+          reviewedAt:
+            type: string
+            format: date-time
+            nullable: true
+          paidAt:
+            type: string
+            format: date-time
+            nullable: true
+          createdAt:
+            type: string
+            format: date-time
     wallet:
       type: object
       properties:

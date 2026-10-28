@@ -14,11 +14,16 @@ export type SubscriptionCancelledNotice = {
   accessEndsAt: Date | null;
 };
 
+/**
+ * Sent per subscription, so it says only what this one's end takes away. It never says the
+ * account goes free: the customer may still pay for another plan, a pass or credits (V-334,
+ * owner decision 2).
+ */
 export function subscriptionCancelledParagraphs(details: SubscriptionCancelledNotice): string[] {
   return [
     details.accessEndsAt
-      ? `Your ${details.productName} subscription is cancelled and will not renew. You keep everything it includes until ${formatDate(details.accessEndsAt)}; after that your account moves to the free plan.`
-      : `Your ${details.productName} subscription is cancelled and will not renew.`,
+      ? `Your ${details.productName} subscription is cancelled and will not renew. You keep everything it includes until ${formatDate(details.accessEndsAt)}; after that, what ${details.productName} includes ends. Any other plans, passes or credits you hold are not affected.`
+      : `Your ${details.productName} subscription is cancelled and will not renew. Any other plans, passes or credits you hold are not affected.`,
     "Nothing you have created is deleted. Changed your mind? You can resume or resubscribe from Billing in VeriWorkly.",
   ];
 }

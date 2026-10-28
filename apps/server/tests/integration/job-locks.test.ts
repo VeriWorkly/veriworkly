@@ -23,15 +23,17 @@ describe("withJobLock", () => {
     const key = "test:job-lock:renew";
     const second = vi.fn(async () => "second");
 
-    const first = withJobLock(key, { ttlMs: 300, renewEveryMs: 100 }, async () => {
-      await sleep(1_000);
+    // V-362: a 1.5 s TTL renewed every 300 ms, so a stall shorter than a second on a busy runner
+    // cannot let the key lapse; the check comes after two full TTLs.
+    const first = withJobLock(key, { ttlMs: 1_500, renewEveryMs: 300 }, async () => {
+      await sleep(4_000);
       return "first";
     });
 
-    // Well past the 300 ms TTL: without renewal the key would be gone by now.
-    await sleep(600);
+    // Well past the 1.5 s TTL: without renewal the key would be gone by now.
+    await sleep(3_200);
     expect(await getRedis().pTTL(key)).toBeGreaterThan(0);
-    await expect(withJobLock(key, { ttlMs: 300 }, second)).resolves.toBeUndefined();
+    await expect(withJobLock(key, { ttlMs: 1_500 }, second)).resolves.toBeUndefined();
     expect(second).not.toHaveBeenCalled();
 
     await expect(first).resolves.toBe("first");

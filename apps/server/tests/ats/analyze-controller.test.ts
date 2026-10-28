@@ -242,11 +242,68 @@ describe("POST /ats/analyze — quota gates outbound egress", () => {
       vi.fn(),
     );
 
-    expect(refund).toHaveBeenCalledWith("user-1", "203.0.113.9");
+    expect(refund).toHaveBeenCalledWith(
+      "user-1",
+      "203.0.113.9",
+      expect.objectContaining({ tier: "free" }),
+      expect.any(Function),
+    );
     expect(json.mock.calls[0][0].data).toMatchObject({
       aiStatus: "unavailable",
       quota: { remaining: 2 },
     });
+  });
+
+  /**
+   * V-388: the refund decrements and then reads the summary back. If the read after the
+   * decrement throws, the scan is already back: refunding again (the outer catch used to) handed
+   * back two scans for one. If the failure came before the decrement, nothing went back yet and
+   * the refund is tried once more, or the scan is lost. `refund` reports the decrement through
+   * its `onReturned` callback, which is how the two are told apart.
+   */
+  const unrouted = async () => {
+    analyze.mockResolvedValue({ ai: null, creditsSpent: 0, routed: false });
+    const { res, json } = responseSpy();
+    const next = vi.fn();
+    await AtsAiController.analyze(
+      requestFor({ ...baseBody, fetchJobUrl: false, jobDescription: "pasted description" }),
+      res,
+      next,
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(json.mock.calls[0][0].data.aiStatus).toBe("unavailable");
+  };
+
+  it("does not refund again when the read after the decrement fails", async () => {
+    refund.mockImplementation(async (...args: unknown[]) => {
+      (args[3] as () => void)();
+      throw new Error("Redis GET failed after the DECR");
+    });
+
+    await unrouted();
+
+    expect(refund).toHaveBeenCalledTimes(1);
+  });
+
+  it("tries the refund once more when it failed before the decrement", async () => {
+    refund
+      .mockRejectedValueOnce(new Error("Redis down before the DECR"))
+      .mockImplementationOnce(async (...args: unknown[]) => {
+        (args[3] as () => void)();
+        return { tier: "free", remaining: 2 };
+      });
+
+    await unrouted();
+
+    expect(refund).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after a second failure before the decrement, and still answers", async () => {
+    refund.mockRejectedValue(new Error("Redis down"));
+
+    await unrouted();
+
+    expect(refund).toHaveBeenCalledTimes(2);
   });
 
   it("does not refund when the analysis actually ran", async () => {
@@ -301,13 +358,31 @@ describe("POST /ats/analyze — the balance gate comes before the fetch", () => 
     expect(fetchJobPage).not.toHaveBeenCalled();
   });
 
-  it("keeps the scan spent when the reservation itself answers 402 after the page was fetched", async () => {
+  it("keeps the scan spent when the reservation answers 402 because the wallet changed after the fetch", async () => {
     analyze.mockRejectedValue(new ApiError(402, "Not enough AI credits."));
+    // Enough at the gate; spent elsewhere by the time the analysis reserved.
+    getWallet.mockResolvedValueOnce({ available: 100 }).mockResolvedValue({ available: 3 });
     const next = vi.fn() as unknown as NextFunction;
 
     await AtsAiController.analyze(requestFor(baseBody), responseSpy().res, next);
 
     expect(fetchJobPage).toHaveBeenCalledTimes(1);
+    expect(refund).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 402 }));
+  });
+
+  it("V-327: keeps the scan spent on a 402 from a dearer bucket too, so a fetch is never free to repeat", async () => {
+    analyze.mockRejectedValue(new ApiError(402, "Not enough AI credits."));
+    // Covers the online minimum (10) but not the bucket a long posting routed to (up to 50), and
+    // the wallet did not change. Refunding would let the same request fetch the page forever.
+    getWallet.mockResolvedValue({ available: 30 });
+    const next = vi.fn() as unknown as NextFunction;
+
+    await AtsAiController.analyze(requestFor(baseBody), responseSpy().res, next);
+    await AtsAiController.analyze(requestFor(baseBody), responseSpy().res, next);
+
+    expect(fetchJobPage).toHaveBeenCalledTimes(2);
+    expect(consume).toHaveBeenCalledTimes(2);
     expect(refund).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 402 }));
   });

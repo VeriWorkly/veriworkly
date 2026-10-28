@@ -4,6 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
+import { settleBillingNotifications } from "#services/billingNotifications";
 
 import { createUserWithSession, type TestUser } from "./helpers/auth.js";
 import {
@@ -65,7 +66,12 @@ beforeEach(() => {
   }));
 });
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
+/**
+ * Every billing email the webhooks started has finished (V-354). The sends are fire-and-forget
+ * after the 200, so a fixed sleep could end before a late one: this waits for them instead, and a
+ * "still one email" or "no email" check after it is exact.
+ */
+const settle = () => settleBillingNotifications();
 
 async function subscribed(productId = "prod_portfolio_pro_monthly") {
   const user = await createUserWithSession();
@@ -148,6 +154,35 @@ describe("V-212 cancellation email", () => {
         expect.objectContaining({ productName: "Creator Pro" }),
       ),
     );
+  });
+});
+
+describe("V-354 waiting for the billing emails a webhook started", () => {
+  it("waits for a send slower than any fixed sleep, so the checks after it are exact", async () => {
+    const { subscriptionId, periodEnd, productId, user } = await subscribed();
+    billingMailMock.sendSubscriptionCancelledEmail.mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 700)),
+    );
+
+    await deliver(
+      subscriptionEvent({
+        userId: user.id,
+        subscriptionId,
+        productId,
+        status: "active",
+        type: "subscription.updated",
+        at: eventTime(1),
+        nextBillingDate: periodEnd,
+        cancelAtNextBillingDate: true,
+      }),
+    );
+    await settle();
+
+    expect(billingMailMock.sendSubscriptionCancelledEmail).toHaveBeenCalledTimes(1);
+    const claim = await prisma.billingNotification.findFirstOrThrow({
+      where: { userId: user.id, kind: "subscription_cancel_scheduled" },
+    });
+    expect(claim.sentAt).not.toBeNull();
   });
 });
 

@@ -65,17 +65,21 @@ export const AdminPortfolioController = {
     return publication;
   }, "Portfolio status updated successfully"),
 
-  /** DELETE /admin/portfolios/:id — hard takedown; frees the subdomain. */
+  /** DELETE /admin/portfolios/:id — hard takedown; the row and the subdomain stay the owner's. */
   unpublish: adminHandler(async ({ req, actorId }) => {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminPortfolioUnpublishSchema.parse(deleteRequestInput(req));
 
-    return AdminPortfolioService.forceUnpublish(id, {
-      actorId,
-      action: ADMIN_AUDIT_ACTIONS.portfolioUnpublish,
-      targetType: "PortfolioPublication",
-      targetId: id,
-      reason: input.reason,
-    });
+    return AdminPortfolioService.forceUnpublish(
+      id,
+      {
+        actorId,
+        action: ADMIN_AUDIT_ACTIONS.portfolioUnpublish,
+        targetType: "PortfolioPublication",
+        targetId: id,
+        reason: input.reason,
+      },
+      input.confirm,
+    );
   }, "Portfolio unpublished successfully"),
 };

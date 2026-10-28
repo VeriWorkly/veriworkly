@@ -142,11 +142,35 @@ createBillingCheckout:
               statusCode: 403
               message: "Payments are disabled in production during this phase. Only administrators can perform payments."
       "409":
-        description: A checkout is already active, or the caller already has an active subscription
+        description: |
+          The purchase would overlap something the customer already has, or a checkout is already
+          open. `details.code` says which:
+
+          - `CHECKOUT_IN_PROGRESS`: a checkout session is open or being created. Finish it, or
+            cancel it with `POST /billing/checkout/cancel`.
+          - `UPGRADE_AVAILABLE`: the live plan can be upgraded to the bundle in place.
+            `details.upgrade` (`{ productKey: "bundle", interval }`) is the body to send to
+            `POST /billing/subscription/change-plan`.
+          - `ALREADY_SUBSCRIBED`, `ALREADY_INCLUDED`, `SUBSCRIPTION_OVERLAP`: the customer already
+            pays for this, or for a plan that includes it. `details.activeProductKey` names the
+            live plan and `details.suggestedProductKey` the plan to move to, when there is one.
+          - `PAYMENT_OUTSTANDING`, `SUBSCRIPTION_PAUSED`: the live subscription needs attention in
+            the billing portal first.
         content:
           application/json:
             schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            example:
+              success: false
+              statusCode: 409
+              message: "You already have an active AI Credits subscription. AI Credits and Creator Pro together are the Job Hunter Bundle: upgrade AI Credits to the Job Hunter Bundle instead, and pay only the difference for the rest of this billing period."
+              details:
+                code: "UPGRADE_AVAILABLE"
+                activeProductKey: "ai_credits"
+                suggestedProductKey: "bundle"
+                upgrade:
+                  productKey: "bundle"
+                  interval: "monthly"
       "503":
         description: The selected billing product is not configured
         content:
@@ -163,7 +187,12 @@ cancelBillingCheckout:
       - LocalSession: []
       - ProdSession: []
     summary: Cancel In-Flight Checkout
-    description: Releases the Redis lock created by `POST /billing/checkout`, allowing a new checkout to be started. Session-authenticated only.
+    description: |
+      Forgets the open checkout sessions created by `POST /billing/checkout` and
+      `POST /billing/credits/checkout`, allowing a new checkout to be started (and an account with
+      no other open session to be deleted). Each session is checked with the billing provider
+      first: one whose payment succeeded or is processing stays until its webhook settles it.
+      Session-authenticated only.
     responses:
       "200":
         description: Checkout cancelled successfully
@@ -173,6 +202,18 @@ cancelBillingCheckout:
               $ref: "../components/schemas.yaml#/CancelCheckoutResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "409":
+        description: The subscription or pass session's payment is still processing, or a checkout is still being prepared. A credit pack still being paid does not cause this; it is reported in `stillProcessing`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+      "503":
+        description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
 
 createBillingPortal:
   post:
@@ -221,8 +262,10 @@ createCreditPackCheckout:
     summary: Create Extra Credit Pack Checkout
     description: |
       Creates a one-time Dodo Payments checkout session for an extra AI credit pack, on top of any
-      subscription. Session-authenticated only; blocked for non-admins in production during the
-      current rollout phase.
+      subscription. While the session can still be paid (24 hours, or until its payment lands or
+      `POST /billing/checkout/cancel` clears it), the account cannot be deleted.
+      Session-authenticated only; blocked for non-admins in production during the current rollout
+      phase.
     requestBody:
       required: true
       content:
@@ -250,6 +293,176 @@ createCreditPackCheckout:
               $ref: "../components/schemas.yaml#/ErrorResponse"
       "503":
         description: Extra credit checkout is not configured
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+
+previewPlanChange:
+  post:
+    tags:
+      - Billing
+    operationId: previewPlanChange
+    security:
+      - LocalSession: []
+      - ProdSession: []
+    summary: Preview Plan Upgrade
+    description: |
+      Prices an upgrade of the live subscription without changing anything: what is charged now
+      for the rest of the period, and what the new plan renews at. Only an upgrade to the
+      `bundle` in the same billing period is accepted (the one `UPGRADE_AVAILABLE` from
+      `POST /billing/checkout` offers). Session-authenticated only; blocked for non-admins in
+      production during the current rollout phase.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/PlanChangePreviewRequest"
+          example:
+            productKey: "bundle"
+            interval: "monthly"
+    responses:
+      "200":
+        description: The provider's quote for the upgrade.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/PlanChangePreviewResponse"
+      "400":
+        $ref: "../components/responses.yaml#/ValidationError"
+      "401":
+        $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        description: Payments disabled in production for non-admins
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+      "409":
+        description: |
+          This plan cannot be changed this way. `details.code` is one of: `NO_SUBSCRIPTION`,
+          `PLAN_CHANGE_UNAVAILABLE` (contact support), `PAYMENT_OUTSTANDING`,
+          `SUBSCRIPTION_PAUSED`, `ALREADY_SUBSCRIBED`, `PLAN_CHANGE_NOT_UPGRADE` (only an upgrade
+          to the bundle), `PLAN_CHANGE_INTERVAL` (the upgrade keeps the current billing period) or
+          `SUBSCRIPTION_ENDING` (resume the subscription first).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            example:
+              success: false
+              statusCode: 409
+              message: "Your AI Credits plan is billed monthly. The upgrade keeps that billing period."
+              details:
+                code: "PLAN_CHANGE_INTERVAL"
+      "502":
+        description: The billing provider could not price the upgrade; nothing was changed. `details.code` is `PROVIDER_UNAVAILABLE`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+      "503":
+        description: The selected billing product is not configured
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+
+changePlan:
+  post:
+    tags:
+      - Billing
+    operationId: changePlan
+    security:
+      - LocalSession: []
+      - ProdSession: []
+    summary: Upgrade Plan
+    description: |
+      Upgrades the live subscription to the `bundle` in place. The provider charges the prorated
+      difference, and the plan, its features and its credits move once that payment succeeds and
+      its webhook arrives; until then the answer is `status: "pending"`.
+
+      An idempotency key is required, in the `Idempotency-Key` header or as `idempotencyKey` in
+      the body (the header wins). Retrying with the same key never asks the provider twice: it
+      returns the stored answer with `replayed: true`. Session-authenticated only; blocked for
+      non-admins in production during the current rollout phase.
+    parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Up to 128 characters. Required unless `idempotencyKey` is in the body.
+        schema:
+          type: string
+          maxLength: 128
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/PlanChangeRequest"
+          example:
+            productKey: "bundle"
+            interval: "monthly"
+    responses:
+      "200":
+        description: "The provider accepted the change (`confirmed: true`)."
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/PlanChangeResponse"
+            example:
+              success: true
+              message: "Success"
+              data:
+                status: "pending"
+                productKey: "bundle"
+                interval: "monthly"
+                paymentId: "pay_123"
+                confirmed: true
+      "202":
+        description: "The provider's answer never arrived (`confirmed: false`). The change may still apply; it is held as pending, and a retry with the same key replays this answer."
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/PlanChangeResponse"
+      "400":
+        description: The body is invalid, or no idempotency key was sent (`details.code` `IDEMPOTENCY_KEY_REQUIRED`).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+      "401":
+        $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        description: Payments disabled in production for non-admins
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+      "409":
+        description: |
+          The change was refused. `details.code` is one of the preview's codes, or
+          `PLAN_CHANGE_PENDING` (a change for this subscription is already waiting for its
+          payment) or `IDEMPOTENCY_KEY_REUSED` (this key was used for a different plan change).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            example:
+              success: false
+              statusCode: 409
+              message: "A plan change for this subscription is already in progress. It completes once the payment is confirmed."
+              details:
+                code: "PLAN_CHANGE_PENDING"
+      "502":
+        description: The billing provider refused the change; nothing was changed and the same key may try again. `details.code` is `PROVIDER_UNAVAILABLE`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/CodedErrorResponse"
+      "503":
+        description: The selected billing product is not configured
         content:
           application/json:
             schema:

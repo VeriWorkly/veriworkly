@@ -1,7 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
 import { bumpGeneration, resolveGenerationalKey } from "#lib/cacheGeneration";
-import { ApiError } from "#lib/errors";
 import { prisma } from "#lib/prisma";
 import { cacheGet, cacheSet } from "#lib/redis";
 
@@ -97,6 +96,10 @@ export class EntitlementService {
     await bumpGeneration(cacheNamespace(userId));
   }
 
+  /**
+   * Every live key, read through the same cache as `has`. No request path calls it (V-283): the
+   * cache tests use it to see what the cache holds. Request code asks `has` or `isPaid`.
+   */
   static async listActive(userId: string, at = new Date()) {
     const grants = await loadGrants(userId);
     return [...new Set(grants.filter((grant) => isActive(grant, at)).map((grant) => grant.key))];
@@ -136,9 +139,5 @@ export class EntitlementService {
   static async isPaid(userId: string, at = new Date(), client: Prisma.TransactionClient = prisma) {
     for (const key of PAID_ACCESS_KEYS) if (await this.has(userId, key, at, client)) return true;
     return false;
-  }
-
-  static async require(userId: string, key: EntitlementKey, message: string) {
-    if (!(await this.has(userId, key))) throw new ApiError(402, message);
   }
 }

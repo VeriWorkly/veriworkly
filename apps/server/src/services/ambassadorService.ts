@@ -118,14 +118,6 @@ export class AmbassadorService {
     };
   }
 
-  static async listApplications(status?: "PENDING" | "APPROVED" | "REJECTED") {
-    return prisma.ambassadorApplication.findMany({
-      where: status ? { status } : undefined,
-      orderBy: { createdAt: "desc" },
-      include: { user: { select: { id: true, email: true, name: true, role: true } } },
-    });
-  }
-
   static async reviewApplication(
     applicationId: string,
     action: "APPROVE" | "REJECT",

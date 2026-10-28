@@ -26,7 +26,12 @@ import {
 import { prisma } from "#lib/prisma";
 import { logger } from "#lib/logger";
 import { ApiError, handleValidationError } from "#lib/errors";
-import { normalizePortfolioSubdomain, portfolioSubdomainLookupKey } from "#utils/slugs";
+import {
+  buildUniqueSlugHelper,
+  normalizePortfolioSubdomain,
+  portfolioSubdomainLookupKey,
+  RESERVED_SUBDOMAINS,
+} from "#utils/slugs";
 import { cacheGet, cacheSet, cacheDel, getRedis } from "#lib/redis";
 import { acquireJobLock } from "#lib/jobLock";
 import { bumpGeneration, singleFlight } from "#lib/cacheGeneration";
@@ -105,7 +110,8 @@ const SETTLE_PENDING_VIEWS_SCRIPT = `
 /** How long the view beacon trusts a subdomain → publication id lookup (V-052). */
 const VIEW_TARGET_TTL_SECONDS = 60;
 
-// The sitemap asks for everything; a bound keeps one unparameterised GET from streaming the table.
+// One page without a `limit`: the sitemap pages through with `offset` (V-310), and the bound keeps
+// one unparameterised GET from streaming the table.
 const PUBLIC_LIST_MAX = 1000;
 
 /**
@@ -137,6 +143,43 @@ export function isModerationLocked(publication: {
 }
 
 /**
+ * The `reasonBeforeModeration` a moderation lock records as it goes on (V-285): the owner's or
+ * billing's own suspension reason it covers, or null when the site was online. A row already
+ * under a lock keeps what its first lock recorded, so this returns `{}` for it.
+ */
+export function rememberReasonBeforeModeration(publication: {
+  status: string;
+  suspensionReason: string | null;
+}): { reasonBeforeModeration?: string | null } {
+  if (isModerationLocked(publication)) return {};
+
+  return {
+    reasonBeforeModeration:
+      publication.status === "SUSPENDED" ? publication.suspensionReason : null,
+  };
+}
+
+/**
+ * The owner's own unpublish (or trashing the document) while a moderator's lock is on: the lock
+ * and its reason stay, and the owner's choice is what the lift returns the site to (V-285).
+ * A no-op on a row with no lock, so callers run it beside their ordinary unpublish write.
+ */
+export function recordOwnerUnpublishUnderLock(
+  tx: Prisma.TransactionClient,
+  where: Prisma.PortfolioPublicationWhereInput,
+) {
+  return tx.portfolioPublication.updateMany({
+    where: {
+      AND: [
+        where,
+        { status: "SUSPENDED", suspensionReason: { startsWith: MODERATION_SUSPENSION_PREFIX } },
+      ],
+    },
+    data: { reasonBeforeModeration: USER_UNPUBLISHED_REASON },
+  });
+}
+
+/**
  * `isModerationLocked` as a write condition: a publication the caller may still change. Every
  * owner write (publish, unpublish, delete) and the admin takedown use it in a conditional
  * `updateMany`, so a takedown that commits after their read is never overwritten (V-226). A
@@ -159,26 +202,88 @@ function normalizeSubdomain(value: string, keep: Iterable<string> = []) {
 }
 
 /**
- * The subdomains a user already holds: their publication's and their draft's stored slug.
- * Re-saving or re-publishing one of these skips the new-name rules (reserved list, punycode,
- * trailing dash), so a site published before a name was reserved keeps working for its owner.
+ * The subdomain a user already holds: their publication's. Re-saving or re-publishing it skips
+ * the new-name rules (reserved list, punycode, trailing dash), so a site published before a name
+ * was reserved keeps working for its owner. A draft's `Document.slug` is NOT a held name (V-300):
+ * any client can set a PORTFOLIO document's slug through the generic document routes, which made
+ * `login`, `billing`, `admin`... claimable.
  */
-async function ownedSubdomains(userId: string, documentId?: string) {
-  const [publication, document] = await Promise.all([
-    prisma.portfolioPublication.findUnique({ where: { userId }, select: { subdomain: true } }),
-    prisma.document.findFirst({
-      where: {
-        userId,
-        type: "PORTFOLIO",
-        deletedAt: null,
-        ...(documentId ? { id: documentId } : {}),
-      },
-      orderBy: { updatedAt: "desc" },
-      select: { slug: true },
-    }),
-  ]);
+async function ownedSubdomains(userId: string) {
+  const publication = await prisma.portfolioPublication.findUnique({
+    where: { userId },
+    select: { subdomain: true },
+  });
 
-  return [publication?.subdomain, document?.slug].filter((name): name is string => Boolean(name));
+  return publication ? [publication.subdomain] : [];
+}
+
+const PORTFOLIO_DRAFT_TITLE = "Portfolio";
+
+/**
+ * What the draft routes return. `slug` is the draft's subdomain, as the portfolio editor has
+ * always read it (V-301 moved it to `portfolioSubdomain`); a PORTFOLIO document made through the
+ * generic document routes and never saved as a draft has none yet, and shows its document slug.
+ */
+const DRAFT_SELECT = {
+  id: true,
+  slug: true,
+  portfolioSubdomain: true,
+  templateId: true,
+  content: true,
+  revision: true,
+  updatedAt: true,
+} satisfies Prisma.DocumentSelect;
+
+function draftView({
+  portfolioSubdomain,
+  ...draft
+}: Prisma.DocumentGetPayload<{ select: typeof DRAFT_SELECT }>) {
+  return { ...draft, slug: portfolioSubdomain ?? draft.slug };
+}
+
+/**
+ * A first draft's document row. Its slug is checked free first; another document taking it
+ * before the insert (P2002 on `[userId, slug]`) is retried with a random suffix, rather than
+ * answered as a conflict the user cannot act on.
+ */
+async function createDraftDocument(
+  userId: string,
+  data: Pick<Prisma.DocumentUncheckedCreateInput, "portfolioSubdomain" | "content" | "templateId">,
+) {
+  for (let attempt = 0; ; attempt += 1) {
+    const slug =
+      attempt === 0
+        ? await freeDocumentSlug(userId, PORTFOLIO_DRAFT_TITLE)
+        : `portfolio-${randomUUID().slice(0, 8)}`;
+    try {
+      return await prisma.document.create({
+        data: {
+          ...data,
+          userId,
+          type: "PORTFOLIO",
+          title: PORTFOLIO_DRAFT_TITLE,
+          slug,
+          visibility: "PRIVATE",
+          lastSyncedAt: new Date(),
+        },
+        select: DRAFT_SELECT,
+      });
+    } catch (error) {
+      const slugTaken =
+        error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+      if (!slugTaken || attempt >= 2) throw error;
+    }
+  }
+}
+
+/** A document slug this user does not hold yet (any type, trashed ones included). */
+function freeDocumentSlug(userId: string, title: string) {
+  return buildUniqueSlugHelper(
+    title,
+    async (candidate) =>
+      RESERVED_SUBDOMAINS.has(candidate) ||
+      (await prisma.document.count({ where: { userId, slug: candidate } })) > 0,
+  );
 }
 
 /** The subscription products that carry premium publishing. */
@@ -327,6 +432,13 @@ function publicPortfolioUrl(subdomain: string) {
     : `https://${subdomain}.veriworkly.com`;
 }
 
+/** The `templateId` a document's content names, which is what the public page renders (V-299). */
+function contentTemplateId(content: Prisma.JsonValue): string | undefined {
+  if (!content || typeof content !== "object" || Array.isArray(content)) return undefined;
+  const templateId = (content as Record<string, unknown>).templateId;
+  return typeof templateId === "string" ? templateId : undefined;
+}
+
 /** A template id as the template picker names it ("atelier" → "Atelier"). */
 function templateName(templateId: string) {
   return templateId.charAt(0).toUpperCase() + templateId.slice(1);
@@ -405,10 +517,14 @@ function freeTierSnapshot(
 }
 
 export class PortfolioService {
-  static async listPublicPortfolios(limit?: number, offset?: number) {
+  static async listPublicPortfolios(
+    limit?: number,
+    offset?: number,
+    order: "recent" | "stable" = "recent",
+  ) {
     type PublicListItem = { subdomain: string; updatedAt: string | Date };
 
-    const cacheKey = await publicPortfolioListCacheKey(limit, offset);
+    const cacheKey = await publicPortfolioListCacheKey(limit, offset, order);
     const readCache = async () => (cacheKey ? cacheGet<PublicListItem[]>(cacheKey) : null);
     const cached = await readCache();
 
@@ -418,7 +534,9 @@ export class PortfolioService {
       const result = await prisma.portfolioPublication.findMany({
         where: servedPublicationWhere(new Date()),
         select: { subdomain: true, updatedAt: true },
-        orderBy: { updatedAt: "desc" },
+        // `stable` (the sitemap's paging, V-310) is by id, which never changes; the default is
+        // the most recently updated first, with the id breaking ties.
+        orderBy: order === "stable" ? { id: "asc" } : [{ updatedAt: "desc" }, { id: "asc" }],
         take: limit ?? PUBLIC_LIST_MAX,
         skip: offset,
       });
@@ -532,18 +650,13 @@ export class PortfolioService {
   }
 
   static async getDraft(userId: string) {
-    return prisma.document.findFirst({
+    const draft = await prisma.document.findFirst({
       where: { userId, type: "PORTFOLIO", deletedAt: null },
       orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        slug: true,
-        templateId: true,
-        content: true,
-        revision: true,
-        updatedAt: true,
-      },
+      select: DRAFT_SELECT,
     });
+
+    return draft && draftView(draft);
   }
 
   static async getMe(userId: string) {
@@ -596,10 +709,7 @@ export class PortfolioService {
       snapshot: PortfolioContentInput;
     },
   ) {
-    const subdomain = normalizeSubdomain(
-      input.subdomain,
-      await ownedSubdomains(userId, input.documentId),
-    );
+    const subdomain = normalizeSubdomain(input.subdomain, await ownedSubdomains(userId));
 
     // `content` too: the images the body being replaced referenced are released after the save.
     const existing = input.documentId
@@ -621,44 +731,24 @@ export class PortfolioService {
       });
 
     try {
+      // The subdomain has its own column (V-301); the document slug is an ordinary one, set once
+      // on create from the title and never tied to the subdomain.
       const document = existing
         ? await prisma.document.update({
             where: { id: existing.id },
             data: {
               content: input.snapshot as Prisma.InputJsonValue,
               templateId: input.snapshot.templateId,
-              slug: subdomain,
+              portfolioSubdomain: subdomain,
               revision: { increment: 1 },
               lastSyncedAt: new Date(),
             },
-            select: {
-              id: true,
-              slug: true,
-              templateId: true,
-              content: true,
-              revision: true,
-              updatedAt: true,
-            },
+            select: DRAFT_SELECT,
           })
-        : await prisma.document.create({
-            data: {
-              userId,
-              type: "PORTFOLIO",
-              title: "Portfolio",
-              slug: subdomain,
-              content: input.snapshot as Prisma.InputJsonValue,
-              templateId: input.snapshot.templateId,
-              visibility: "PRIVATE",
-              lastSyncedAt: new Date(),
-            },
-            select: {
-              id: true,
-              slug: true,
-              templateId: true,
-              content: true,
-              revision: true,
-              updatedAt: true,
-            },
+        : await createDraftDocument(userId, {
+            portfolioSubdomain: subdomain,
+            content: input.snapshot as Prisma.InputJsonValue,
+            templateId: input.snapshot.templateId,
           });
 
       await Promise.all([
@@ -673,13 +763,11 @@ export class PortfolioService {
           referencedAssetIds(existing.content),
         );
 
-      return document;
+      return draftView(document);
     } catch (error) {
+      // Only a first save still colliding on its document slug after the retries gets here.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
-        throw new ApiError(
-          409,
-          "That portfolio subdomain conflicts with an existing document slug.",
-        );
+        throw new ApiError(409, "The portfolio draft could not be saved. Try again.");
 
       throw error;
     }
@@ -702,10 +790,17 @@ export class PortfolioService {
     // conditionally, inside the transaction below (V-226).
     if (document.moderatedPrivateAt) throw new ApiError(403, MODERATED_MESSAGE);
 
-    if (isPremiumPortfolioTemplate(document.templateId) && !hasSubscription) {
+    // Both the column and the content's own `templateId` are checked (V-299): the public page
+    // renders the snapshot's, so a premium template in either is refused without a plan. The
+    // publication row and the snapshot both take the content's below.
+    const premiumTemplate = [contentTemplateId(document.content), document.templateId].find(
+      (templateId): templateId is string =>
+        typeof templateId === "string" && isPremiumPortfolioTemplate(templateId),
+    );
+    if (premiumTemplate && !hasSubscription) {
       throw new ApiError(
         402,
-        `Publishing the premium template "${templateName(document.templateId)}" requires ${UNLOCK_PHRASES.portfolioPro}.`,
+        `Publishing the premium template "${templateName(premiumTemplate)}" requires ${UNLOCK_PHRASES.portfolioPro}.`,
       );
     }
 
@@ -727,9 +822,8 @@ export class PortfolioService {
 
     const subdomain = normalizeSubdomain(
       input.subdomain,
-      [existingPublication?.subdomain, document.slug].filter((name): name is string =>
-        Boolean(name),
-      ),
+      // Only the published name is grandfathered, never the draft slug (V-300).
+      existingPublication ? [existingPublication.subdomain] : [],
     );
 
     const publishable = portfolioContentSchema.safeParse(document.content);
@@ -804,7 +898,7 @@ export class PortfolioService {
               userId,
               documentId: document.id,
               subdomain,
-              templateId: document.templateId,
+              templateId: publishable.data.templateId,
               snapshot: snapshot as Prisma.InputJsonValue,
               publishedRevision: document.revision,
             },
@@ -815,7 +909,7 @@ export class PortfolioService {
           data: {
             documentId: document.id,
             subdomain,
-            templateId: document.templateId,
+            templateId: publishable.data.templateId,
             snapshot: snapshot as Prisma.InputJsonValue,
             publishedRevision: document.revision,
             status: "LIVE",
@@ -889,9 +983,8 @@ export class PortfolioService {
 
       // A moderated row keeps its moderation reason: rewriting it as the user's own takedown
       // would let the next Publish lift the lock. Conditional, so a takedown committed after the
-      // read above is kept too (V-226).
-      if (isModerationLocked(publication)) return publication;
-
+      // read above is kept too (V-226). On a locked row the unpublish is recorded under the lock
+      // instead, so the moderator's lift leaves the site offline as the owner chose (V-285).
       await tx.portfolioPublication.updateMany({
         where: { userId, ...NOT_MODERATION_LOCKED },
         data: {
@@ -900,6 +993,7 @@ export class PortfolioService {
           suspendedAt: new Date(),
         },
       });
+      await recordOwnerUnpublishUnderLock(tx, { userId });
 
       return tx.portfolioPublication.findUniqueOrThrow({ where: { userId } });
     });

@@ -41,7 +41,11 @@ export function getAtsEnginePolicy(): AtsEnginePolicy {
     // configured: each resume is then read in the language it is written in.
     cached = withLocales(getAtsEnginePolicyJson() as AtsEnginePolicyInput, BUILT_IN_LOCALES);
   } catch (error) {
-    if (error instanceof ApiError) throw error;
+    // The loader's own errors name the file path, the working directory and the JSON parse
+    // position (V-329): logged, never passed through to the client, as the two AI policy loaders
+    // do (V-184).
+    if (error instanceof ApiError)
+      logger.error("ATS engine policy could not be loaded", { error: error.message });
     // The policy is operator-supplied and never reaches a caller, so the specific field that
     // failed belongs in the log. Without it a typo in one rule surfaces only as an opaque 503,
     // which is a miserable thing to debug against a file the process cannot show you.

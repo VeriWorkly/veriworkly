@@ -106,16 +106,16 @@ describe("admin overview caching", () => {
   });
 
   it("invalidates by bumping only its own generation, never a prefix delete", async () => {
-    // The legacy analytics dashboard owns `admin:dashboard:stats` and has its own invalidation
+    // The legacy analytics dashboard owns `admin:dashboard:totals` and has its own invalidation
     // triggered by the usage-metric flush; admin invalidation must leave it alone.
-    store.set("admin:dashboard:stats", JSON.stringify({ totals: {} }));
+    store.set("admin:dashboard:totals", JSON.stringify({ totals: {} }));
     const before = await adminActionQueueCacheKey();
 
     await invalidateAdminCaches();
 
     expect(await adminActionQueueCacheKey()).not.toBe(before);
     expect([...generations.keys()]).toEqual([ADMIN_CACHE_NAMESPACE]);
-    expect(store.has("admin:dashboard:stats")).toBe(true);
+    expect(store.has("admin:dashboard:totals")).toBe(true);
   });
 });
 

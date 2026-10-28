@@ -67,7 +67,9 @@ export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[keyof typeof ADMIN_A
  * Retention classes (owner decision 11, V-207):
  * - money, by action prefix so an action added later falls into its family (credit adjustments,
  *   entitlement grants and revokes, subscription status and cancel actions, webhook replays,
- *   commission and withdrawal changes and payouts): kept 7 years;
+ *   commission and withdrawal changes and payouts, a forfeited affiliate balance with its
+ *   unrecovered claw-back, and an affiliate's tier change, which sets the commission rate,
+ *   V-333/V-344): kept 7 years;
  * - takedown records, the moderation decisions that set or lift a takedown (`TAKEDOWN_RECORD`
  *   in retentionJob: every visibility decision, every force-unpublish, and the portfolio status
  *   changes into or out of SUSPENDED): never deleted;
@@ -77,6 +79,8 @@ export const MONEY_AUDIT_ACTION_PREFIXES = [
   "billing.",
   "affiliate.commission.",
   "affiliate.withdrawal.",
+  "affiliate.balance.",
+  "affiliate.update",
 ] as const;
 
 export interface AdminAuditInput {
@@ -107,6 +111,14 @@ function auditData(input: AdminAuditInput) {
  */
 export function writeAdminAudit(tx: Prisma.TransactionClient, input: AdminAuditInput) {
   return tx.adminAuditEntry.create({ data: auditData(input) });
+}
+
+/**
+ * Records an admin action after the fact and fails with it (V-291): for an action that is safe to
+ * repeat (a session revoke), so a lost record is a 500 the admin retries, never a silent 200.
+ */
+export function recordAdminAuditOrThrow(input: AdminAuditInput) {
+  return prisma.adminAuditEntry.create({ data: auditData(input) });
 }
 
 /**

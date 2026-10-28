@@ -224,7 +224,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://veriworkly:veriworkly@localhost:5432/veriworkly_test
       SHADOW_DATABASE_URL: postgresql://veriworkly:veriworkly@localhost:5432/veriworkly_shadow
-      REDIS_URL: redis://localhost:6379/1
+      INTEGRATION_REDIS_URL: redis://localhost:6379/1
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

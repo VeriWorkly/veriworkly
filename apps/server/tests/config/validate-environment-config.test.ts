@@ -357,6 +357,23 @@ describe("validateEnvironmentConfig", () => {
       ).not.toThrow();
     });
 
+    it("reads a blank integer as unset, as parseIntegerEnv does, so a blank compose pass-through boots (V-347)", () => {
+      expect(() =>
+        validateEnvironmentConfig({
+          ...validProductionEnv,
+          MAX_MEMORY_ENTRIES: "",
+          RETENTION_AUDIT_LOG_DAYS: " ",
+          DB_POOL_MAX: "",
+        }),
+      ).not.toThrow();
+    });
+
+    it("still requires a blank WEB_CONCURRENCY in production, since blank would silently default", () => {
+      expect(failingVariables({ ...validProductionEnv, WEB_CONCURRENCY: "" })).toEqual([
+        "WEB_CONCURRENCY",
+      ]);
+    });
+
     it("lists every bad numeric variable, not just the first", () => {
       expect(
         failingVariables({
@@ -401,6 +418,16 @@ describe("validateEnvironmentConfig", () => {
         "API_KEY_LAST_USED_TOUCH_INTERVAL_SECONDS",
         "AUTH_SESSION_RESET_TTL_ON_USE",
       ]);
+    });
+
+    it("V-318: checks the Redis timeouts, where 0 would make every Redis command time out", () => {
+      expect(
+        failingVariables({
+          ...devEnv,
+          REDIS_COMMAND_TIMEOUT_MS: "0",
+          REDIS_BOOT_TIMEOUT_MS: "15s",
+        }).sort(),
+      ).toEqual(["REDIS_BOOT_TIMEOUT_MS", "REDIS_COMMAND_TIMEOUT_MS"]);
     });
 
     it.each(["development", "test", "production"])(

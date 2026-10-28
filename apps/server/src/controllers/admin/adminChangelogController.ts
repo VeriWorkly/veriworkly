@@ -1,6 +1,4 @@
-import { Request, Response, NextFunction } from "express";
-
-import { adminHandler } from "#controllers/admin/adminRequestHandler";
+import { adminHandler, deleteRequestInput } from "#controllers/admin/adminRequestHandler";
 import {
   createChangelogEntry,
   deleteChangelogEntry,
@@ -13,12 +11,12 @@ import {
   changelogAdminCreateSchema,
   changelogAdminUpdateSchema,
 } from "#validators/changelogValidator";
-import { adminIdParamSchema } from "#validators/admin/adminCommonValidator";
+import {
+  adminIdParamSchema,
+  adminOptionalReasonSchema,
+} from "#validators/admin/adminCommonValidator";
 
 import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
-import { requireAuthUser } from "#middleware/auth";
-
-import { createSuccessResponse } from "#lib/errors";
 
 /**
  * Create a new changelog entry (admin only).
@@ -55,6 +53,7 @@ export const createChangelogEntryController = adminHandler(async ({ req, res, ac
     action: ADMIN_AUDIT_ACTIONS.changelogCreate,
     targetType: "ChangelogEntry",
     targetId: created.id,
+    reason: payload.reason,
     metadata: { version: created.version, title: created.title },
   });
 
@@ -100,7 +99,8 @@ export const updateChangelogEntryController = adminHandler(async ({ req, actorId
     action: ADMIN_AUDIT_ACTIONS.changelogUpdate,
     targetType: "ChangelogEntry",
     targetId: id,
-    metadata: { fields: Object.keys(payload) },
+    reason: payload.reason,
+    metadata: { fields: Object.keys(payload).filter((key) => key !== "reason") },
   });
 
   return updated;
@@ -112,47 +112,45 @@ export const updateChangelogEntryController = adminHandler(async ({ req, actorId
  * req.params:
  * - id: changelog entry id (required)
  *
+ * req.body or query:
+ * - reason: optional audit reason (V-081)
+ *
  * res:
  * - 200 with deleted id payload
- *
- * next:
- * - forwards runtime errors to global error handler
  */
 
-export async function deleteChangelogEntryController(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  try {
-    const { id } = adminIdParamSchema.parse(req.params);
+export const deleteChangelogEntryController = adminHandler(async ({ req, actorId }) => {
+  const { id } = adminIdParamSchema.parse(req.params);
+  const { reason } = adminOptionalReasonSchema.parse(deleteRequestInput(req));
 
-    const deleted = await deleteChangelogEntry(id);
+  const deleted = await deleteChangelogEntry(id);
 
-    await recordAdminAudit({
-      actorId: requireAuthUser(req).id,
-      action: ADMIN_AUDIT_ACTIONS.changelogDelete,
-      targetType: "ChangelogEntry",
-      targetId: id,
-    });
+  await recordAdminAudit({
+    actorId,
+    action: ADMIN_AUDIT_ACTIONS.changelogDelete,
+    targetType: "ChangelogEntry",
+    targetId: id,
+    reason,
+  });
 
-    res.json(createSuccessResponse(deleted, "Changelog entry deleted successfully"));
-  } catch (error) {
-    next(error);
-  }
-}
+  return deleted;
+}, "Changelog entry deleted successfully");
 
 /**
  * Manually trigger a sync of missing GitHub releases into the changelog (admin only).
  *
  * The sync pages through GitHub for minutes, so it runs in the background (V-080).
  *
+ * req.body:
+ * - reason: optional audit reason (V-081)
+ *
  * res:
  * - 202 with { status: "started", statusUrl }; poll GET /admin/changelog/sync for the outcome
  * - 409 if a sync is already in progress, 503 when Redis (which holds the lock) is down
  */
 
-export const syncChangelogReleasesController = adminHandler(async ({ res, actorId }) => {
+export const syncChangelogReleasesController = adminHandler(async ({ req, res, actorId }) => {
+  const { reason } = adminOptionalReasonSchema.parse(req.body ?? {});
   const started = await startChangelogSync();
 
   // After the start, so a refused sync (409/503) leaves no entry. Never throws: a failed write is
@@ -161,6 +159,7 @@ export const syncChangelogReleasesController = adminHandler(async ({ res, actorI
     actorId,
     action: ADMIN_AUDIT_ACTIONS.changelogSync,
     targetType: "ChangelogEntry",
+    reason,
   });
 
   res.status(202);

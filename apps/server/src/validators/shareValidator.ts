@@ -6,15 +6,26 @@ import { normalizeSlug, normalizeUsername } from "#utils/slugs";
  * Validation schemas for sharing-related requests
  */
 
-export const shareLinkCreateSchema = z.object({
-  documentId: z.string().min(1),
-  snapshot: z.record(z.string(), z.any()),
-  password: z.string().min(1).optional(),
-  expiresAt: z.string().datetime().nullable().optional(),
-  noExpiry: z.boolean().optional(),
-  updateSlug: z.boolean().optional(),
-  removePassword: z.boolean().optional(),
-});
+/**
+ * Expiry (V-412; the owner's rule is 7, 14, 30 or 90 days, or never, and 7 by default):
+ * `noExpiry: true` is never; `expiresAt` must be 7, 14, 30 or 90 days out, or the link's stored
+ * date; with neither, a new link lasts 7 days and a refresh keeps its expiry. The service checks
+ * the date.
+ */
+export const shareLinkCreateSchema = z
+  .object({
+    documentId: z.string().min(1),
+    snapshot: z.record(z.string(), z.any()),
+    password: z.string().min(1).optional(),
+    expiresAt: z.string().datetime().nullable().optional(),
+    noExpiry: z.boolean().optional(),
+    updateSlug: z.boolean().optional(),
+    removePassword: z.boolean().optional(),
+  })
+  .refine((body) => !(body.noExpiry && body.expiresAt), {
+    message: "Send either noExpiry or expiresAt, not both.",
+    path: ["expiresAt"],
+  });
 
 export const shareLinkPasswordSchema = z.object({
   password: z.string().min(1),

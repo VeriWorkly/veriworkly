@@ -15,7 +15,8 @@ import { config } from "#config";
 import { ApiError } from "#lib/errors";
 import { logger } from "#lib/logger";
 import { bumpGeneration } from "#lib/cacheGeneration";
-import { cacheNamespaces } from "#lib/cacheKeys";
+import { cacheNamespaces, userProfileCacheKey } from "#lib/cacheKeys";
+import { cacheDel } from "#lib/redis";
 import { masterProfileContentSchema } from "#validators/masterProfileValidator";
 import { getAtsAiPolicy } from "#services/ats/aiPolicy";
 import {
@@ -319,12 +320,13 @@ export class ProfileImportService {
       return created.document;
     });
 
-    // After commit: the list cache was cleared inside createDocument, but a reader between
-    // that clear and the commit could have re-cached the pre-import state.
-    await bumpGeneration(
-      cacheNamespaces.masterProfile(userId),
-      cacheNamespaces.documentList(userId),
-    );
+    // After commit: the list cache and the account read were cleared inside createDocument, but
+    // a reader between that clear and the commit could have re-cached the pre-import state; the
+    // account page's "Documents" count would then be stale for 30 minutes (V-311).
+    await Promise.all([
+      bumpGeneration(cacheNamespaces.masterProfile(userId), cacheNamespaces.documentList(userId)),
+      cacheDel(userProfileCacheKey(userId)),
+    ]);
 
     return document;
   }

@@ -102,7 +102,7 @@ export const faqs = [
     category: "billing",
     question: "Do unused AI credits roll over to the next month?",
     answer:
-      "No, unused subscription credits do not roll over; they reset at the start of each billing cycle. However, one-time add-on credit packs (250 credits for $2.99, 500 credits for $4.99) expire exactly 90 days from purchase, or immediately if you cancel your active paid subscription. For 3-day and 7-day passes, all credits expire when the pass duration ends.",
+      "No, unused subscription credits do not roll over; they reset at the start of each billing cycle. However, one-time add-on credit packs (250 credits for $2.99, 500 credits for $4.99) expire exactly 90 days from purchase, whether or not you keep a subscription. For 3-day and 7-day passes, all credits expire when the pass duration ends.",
   },
 
   {

@@ -121,6 +121,42 @@ describe("contact route", () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
+  // V-391: a timestamp from the future gave a negative elapsed time, which skipped the check.
+  it.each([
+    ["two hours ahead", () => Date.now() + 2 * 60 * 60_000],
+    ["far in the future", () => 9_999_999_999_999],
+  ])("treats a form timestamp %s as a bot", async (_label, ts) => {
+    req.body = {
+      name: "Future Bot",
+      email: "bot@future.com",
+      subject: "Spam Topic",
+      message: "This is a spam message with a form timestamp from the future.",
+      _ts: ts(),
+    };
+
+    await router(req as Request, res as Response, next);
+
+    expect(sendContactEmail).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  it.each([3_000, 50 * 60_000])(
+    "still sends a form whose browser clock runs %i ms ahead",
+    async (ahead) => {
+      req.body = {
+        name: "Skewed Clock",
+        email: "person@example.com",
+        subject: "Real question",
+        message: "A real message from a browser whose clock is slightly ahead.",
+        _ts: Date.now() + ahead,
+      };
+
+      await router(req as Request, res as Response, next);
+
+      expect(sendContactEmail).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("returns 400 validation error when fields are missing or message too short", async () => {
     req.body = {
       name: "",

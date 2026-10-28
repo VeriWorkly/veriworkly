@@ -15,7 +15,21 @@ const { dodoMock, loggerMock, lateWrite } = vi.hoisted(() => ({
 
 /** A tiny Redis: enough of SET NX/EX, GET, DEL and the compare-and-delete script. */
 const store = new Map<string, { value: string; ttl?: number }>();
+/** Hashes written through MULTI (the credit-pack session records, V-278). */
+const hashes = new Map<string, Map<string, string>>();
 const mockRedis = {
+  multi: vi.fn(() => {
+    const chain = {
+      hSet: (key: string, field: string, value: string) => {
+        if (!hashes.has(key)) hashes.set(key, new Map());
+        hashes.get(key)!.set(field, value);
+        return chain;
+      },
+      expire: () => chain,
+      exec: async () => [],
+    };
+    return chain;
+  }),
   set: vi.fn(
     async (key: string, value: string, options?: { NX?: boolean; EX?: number; PX?: number }) => {
       if (options?.NX && store.has(key)) return null;
@@ -24,6 +38,9 @@ const mockRedis = {
     },
   ),
   get: vi.fn(async (key: string) => store.get(key)?.value ?? null),
+  // The credit-pack session hash (V-278): none open in these tests.
+  hGetAll: vi.fn(async () => ({})),
+  hDel: vi.fn(async () => 0),
   del: vi.fn(async (keys: string | string[]) => {
     let removed = 0;
     for (const key of Array.isArray(keys) ? keys : [keys]) if (store.delete(key)) removed += 1;
@@ -53,7 +70,13 @@ const prismaMock = {
   },
   entitlementGrant: { updateMany: vi.fn(), upsert: vi.fn(), findFirst: vi.fn() },
   portfolioPublication: { updateMany: vi.fn(), findUnique: vi.fn() },
-  billingWebhookEvent: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+  billingWebhookEvent: {
+    create: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    findUnique: vi.fn(),
+    update: vi.fn(),
+  },
   affiliateReferral: { findUnique: vi.fn() },
   $executeRaw: vi.fn().mockResolvedValue(1),
   $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(prismaMock)),
@@ -119,6 +142,7 @@ vi.mock("#config", () => ({
       bundleSevenDayProductId: "prod_bundle_seven_day",
       aiCreditsMonthlyProductId: "prod_ai_monthly",
       aiCreditsAnnualProductId: "prod_ai_annual",
+      creditPack500ProductId: "prod_pack_500",
       checkoutReturnUrl: "http://localhost:3001/billing?checkout=complete",
       checkoutCancelUrl: "http://localhost:3001/billing?checkout=cancelled",
     },
@@ -135,6 +159,7 @@ const legacyKey = (product: string) => `billing:checkout:${USER}:${product}`;
 
 beforeEach(() => {
   store.clear();
+  hashes.clear();
   vi.clearAllMocks();
   dodoMock.clientOptions.length = 0;
   prismaMock.user.findUnique.mockResolvedValue({ id: USER, email: "u@example.test", name: "U" });
@@ -349,6 +374,58 @@ describe("createCheckout idempotency per user (V-125, V-218)", () => {
   });
 });
 
+/**
+ * V-378: the credit-pack checkout had no test. It names the buyer and the pack in the metadata
+ * the webhook grants from, sends the pack's product, carries the studio's return path, and
+ * refuses cleanly when the product is not configured or the provider returns no URL.
+ */
+describe("createCreditPackCheckout", () => {
+  it("opens a session for the pack's product, tagged with the buyer and the pack", async () => {
+    const result = await BillingService.createCreditPackCheckout(
+      USER,
+      "credit_pack_500",
+      "/credits",
+    );
+
+    expect(result).toEqual({ url: "https://pay.example/1" });
+    expect(dodoMock.create).toHaveBeenCalledTimes(1);
+    const session = dodoMock.create.mock.calls[0]![0] as {
+      product_cart: Array<{ product_id: string; quantity: number }>;
+      metadata: Record<string, string>;
+      customer: { email: string };
+      return_url: string;
+      cancel_url: string;
+    };
+    expect(session.product_cart).toEqual([{ product_id: "prod_pack_500", quantity: 1 }]);
+    expect(session.metadata).toEqual({
+      veriworkly_user_id: USER,
+      veriworkly_product: "credit_pack_500",
+    });
+    expect(session.customer.email).toBe("u@example.test");
+    expect(new URL(session.return_url).searchParams.get("callbackURL")).toBe("/credits");
+    expect(new URL(session.cancel_url).searchParams.get("callbackURL")).toBe("/credits");
+    // Recorded before the URL is handed out (V-278), so account deletion can see it.
+    const recorded = [...hashes.values()].flatMap((fields) => [...fields.entries()]);
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]![0]).toBe("cks_1");
+    expect(JSON.parse(recorded[0]![1])).toMatchObject({ packKey: "credit_pack_500" });
+  });
+
+  it("answers 503 for a pack whose product is not configured, without calling the provider", async () => {
+    await expect(
+      BillingService.createCreditPackCheckout(USER, "credit_pack_250"),
+    ).rejects.toMatchObject({ statusCode: 503 });
+    expect(dodoMock.create).not.toHaveBeenCalled();
+  });
+
+  it("answers 502 when the provider returns no checkout URL", async () => {
+    dodoMock.create.mockResolvedValueOnce({ session_id: "cks_x", checkout_url: null });
+    await expect(
+      BillingService.createCreditPackCheckout(USER, "credit_pack_500"),
+    ).rejects.toMatchObject({ statusCode: 502 });
+  });
+});
+
 describe("cancelCheckout", () => {
   it("keeps a session the provider reports as paying or paid, clears one that is not", async () => {
     await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
@@ -365,6 +442,94 @@ describe("cancelCheckout", () => {
     expect(store.has(key())).toBe(false);
     expect(mockRedis.del).not.toHaveBeenCalled();
   });
+
+  // V-377: a customer in 3-D Secure or a bank authorisation is mid-payment. Clearing the record
+  // there lets a second session for the same product be opened and paid. Only a session the
+  // provider says nobody is paying (none started, failed, cancelled, card refused) is cleared,
+  // and a status this code does not know is treated as paying.
+  it.each([
+    "succeeded",
+    "processing",
+    "requires_customer_action",
+    "requires_confirmation",
+    "requires_capture",
+    "requires_merchant_action",
+    "partially_captured",
+    "partially_captured_and_capturable",
+    "a_status_added_later",
+  ])("keeps a session whose payment is %s", async (paymentStatus) => {
+    await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+    dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+    await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
+    expect(store.has(key())).toBe(true);
+  });
+
+  /**
+   * V-377 review: a customer who abandons the 3-D Secure or bank page, or a state this code does
+   * not know, must not hold the checkout (and account deletion) for the session's whole 24 h.
+   * Once the session is an hour old those are cleared; money actually moving never is.
+   */
+  const ageOpenRecord = (minutes: number) => {
+    const record = JSON.parse(store.get(key())!.value) as { createdAt: string };
+    record.createdAt = new Date(Date.now() - minutes * 60_000).toISOString();
+    store.set(key(), { value: JSON.stringify(record) });
+  };
+
+  it.each(["requires_customer_action", "requires_confirmation", "a_status_added_later"])(
+    "clears a session stuck in %s once it is over an hour old",
+    async (paymentStatus) => {
+      await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+      ageOpenRecord(61);
+      dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+      await expect(BillingService.cancelCheckout(USER)).resolves.toMatchObject({
+        cleared: ["portfolio_pro"],
+      });
+      expect(store.has(key())).toBe(false);
+    },
+  );
+
+  it.each(["requires_customer_action", "requires_confirmation", "a_status_added_later"])(
+    "keeps a session in %s that is under an hour old",
+    async (paymentStatus) => {
+      await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+      ageOpenRecord(59);
+      dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+      await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
+      expect(store.has(key())).toBe(true);
+    },
+  );
+
+  it.each([
+    "succeeded",
+    "processing",
+    "requires_capture",
+    "requires_merchant_action",
+    "partially_captured",
+    "partially_captured_and_capturable",
+  ])("keeps a session whose payment is %s however old it is", async (paymentStatus) => {
+    await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+    ageOpenRecord(23 * 60);
+    dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+    await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
+    expect(store.has(key())).toBe(true);
+  });
+
+  it.each([null, undefined, "failed", "cancelled", "requires_payment_method"])(
+    "clears a session whose payment is %s",
+    async (paymentStatus) => {
+      await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
+      dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
+
+      await expect(BillingService.cancelCheckout(USER)).resolves.toMatchObject({
+        cleared: ["portfolio_pro"],
+      });
+      expect(store.has(key())).toBe(false);
+    },
+  );
 
   it("refuses to clear when the provider cannot be asked", async () => {
     await BillingService.createCheckout(USER, "portfolio_pro", "monthly");

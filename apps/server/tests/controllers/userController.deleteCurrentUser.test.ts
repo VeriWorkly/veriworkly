@@ -7,14 +7,27 @@ vi.mock("#utils/authCache", () => ({ invalidateSessionCache: vi.fn() }));
 
 import { UserController } from "#controllers/userController";
 
+/**
+ * V-314: a browser drops a `Set-Cookie` for a `__Secure-` name that lacks `Secure`, so the
+ * production clears must carry it; every better-auth cookie goes, not just the session token.
+ */
 describe("deleteCurrentUser", () => {
-  it("clears both session cookies with the configured cookie domain", async () => {
+  it("clears every auth cookie, with Secure on the __Secure- names, at the configured domain", async () => {
     const res = { clearCookie: vi.fn(), json: vi.fn() };
 
     await UserController.deleteCurrentUser({ headers: {} } as never, res as never, vi.fn());
 
-    const options = { path: "/", domain: ".veriworkly.com" };
-    expect(res.clearCookie).toHaveBeenCalledWith("veriworkly-auth.session_token", options);
-    expect(res.clearCookie).toHaveBeenCalledWith("__Secure-veriworkly-auth.session_token", options);
+    const plain = { path: "/", domain: ".veriworkly.com" };
+    const secure = { ...plain, secure: true };
+    for (const name of ["session_token", "session_data", "dont_remember"]) {
+      expect(res.clearCookie).toHaveBeenCalledWith(`veriworkly-auth.${name}`, plain);
+      expect(res.clearCookie).toHaveBeenCalledWith(`__Secure-veriworkly-auth.${name}`, secure);
+    }
+    // V-380: no `__Secure-` clear is ever sent without `Secure`: the browser would ignore it.
+    for (const [name, cookieOptions] of res.clearCookie.mock.calls as [
+      string,
+      { secure?: boolean },
+    ][])
+      if (name.startsWith("__Secure-")) expect(cookieOptions.secure).toBe(true);
   });
 });

@@ -91,6 +91,54 @@ async function paidPeriod(userId: string) {
   return { key: `ats:quota:subscriber:${userId}:${start.toISOString().slice(0, 10)}`, end };
 }
 
+/**
+ * Whether the account holds access someone paid for right now: a subscription's grant or a
+ * pass's (the `isPurchasedGrant` rule of the billing summary). Payers are never shown as free
+ * (owner decision 2, V-398), so a subscriber who spent every credit, or a Creator Pro subscriber
+ * who has none, keeps the paid scan tier; only the credit-priced features need a balance. An
+ * admin comp (MANUAL) or a promotion does not count. Asked only when the wallet is empty.
+ */
+async function holdsPurchasedAccess(userId: string) {
+  const now = new Date();
+  const grant = await prisma.entitlementGrant.findFirst({
+    where: {
+      userId,
+      startsAt: { lte: now },
+      revokedAt: null,
+      AND: [
+        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+        {
+          OR: [
+            { source: "SUBSCRIPTION" },
+            { source: "SYSTEM", metadata: { path: ["pass"], equals: true } },
+          ],
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  return grant !== null;
+}
+
+/**
+ * Owner decision 2026-10-28 (V-398): a paused subscription gives no paid features, so its scans
+ * are the free ones, but the customer is told it is paused, not free. Dunning (any other
+ * PAST_DUE) reads free: paid features stop the moment a payment fails (owner decision 9). Asked
+ * only when the account is not on the paid tier.
+ */
+async function hasPausedSubscription(userId: string) {
+  const paused = await prisma.subscription.findFirst({
+    where: { userId, status: "PAST_DUE", rawStatus: "paused" },
+    select: { id: true },
+  });
+  return paused !== null;
+}
+
+/** The counter a tier spends from: a paused account shares the free one. */
+function counterTier(tier: AtsQuotaSummary["tier"]) {
+  return tier === "paused" ? "free" : tier;
+}
+
 type QuotaContext = {
   tier: AtsQuotaSummary["tier"];
   paid: boolean;
@@ -116,8 +164,17 @@ type QuotaContext = {
  */
 async function resolveContext(userId: string | undefined, ip: string): Promise<QuotaContext> {
   const availableCredits = userId ? (await CreditService.getWallet(userId)).available : 0;
-  const paid = availableCredits > 0 ? await paidPeriod(userId!) : null;
-  const tier = paid ? "subscriber" : userId ? "free" : "anonymous";
+  const paying = Boolean(userId) && (availableCredits > 0 || (await holdsPurchasedAccess(userId!)));
+  const paid = paying ? await paidPeriod(userId!) : null;
+  const tier: AtsQuotaSummary["tier"] = paid
+    ? "subscriber"
+    : !userId
+      ? "anonymous"
+      : (await hasPausedSubscription(userId))
+        ? "paused"
+        : "free";
+  // A paused account counts on the free counter, so a pause or a resume never resets it.
+  const counter = counterTier(tier);
   const identity = userId ?? anonymousId(addressBucket(ip));
   const windowSeconds = userId ? FREE_WINDOW_SECONDS : ANONYMOUS_WINDOW_SECONDS;
 
@@ -125,8 +182,8 @@ async function resolveContext(userId: string | undefined, ip: string): Promise<Q
     tier,
     paid: Boolean(paid),
     availableCredits,
-    key: paid?.key ?? `ats:quota:${tier}:${identity}`,
-    extractKey: paid?.key ? `${paid.key}:extract` : `ats:extract-quota:${tier}:${identity}`,
+    key: paid?.key ?? `ats:quota:${counter}:${identity}`,
+    extractKey: paid?.key ? `${paid.key}:extract` : `ats:extract-quota:${counter}:${identity}`,
     limit: paid ? PAID_LIMIT : userId ? 2 : 1,
     extractLimit: paid ? PAID_EXTRACT_LIMIT : userId ? FREE_EXTRACT_LIMIT : ANONYMOUS_EXTRACT_LIMIT,
     windowSeconds,
@@ -134,6 +191,16 @@ async function resolveContext(userId: string | undefined, ip: string): Promise<Q
       ? Math.max(1, Math.ceil((paid.end.getTime() - Date.now()) / 1000))
       : windowSeconds,
   };
+}
+
+/** The scan counter of a tier for this caller, the key `resolveContext` builds for that tier. */
+async function scanKeyForTier(
+  tier: AtsQuotaSummary["tier"],
+  userId: string | undefined,
+  ip: string,
+): Promise<string> {
+  if (tier === "subscriber" && userId) return (await paidPeriod(userId)).key;
+  return `ats:quota:${counterTier(tier)}:${userId ?? anonymousId(addressBucket(ip))}`;
 }
 
 /**
@@ -248,10 +315,25 @@ export class AtsQuotaService {
    * runs before the outbound job-page fetch precisely so quota bounds server-initiated egress,
    * and refunding on a failed fetch would hand that budget straight back.
    */
-  static async refund(userId: string | undefined, ip: string) {
-    const ctx = await resolveContext(userId, ip);
-    await getRedis().eval(DECREMENT_SCRIPT, { keys: [ctx.key], arguments: [] });
-    return summarize(ctx);
+  static async refund(
+    userId: string | undefined,
+    ip: string,
+    /** What `consume` returned: the scan goes back to the counter of the tier it was taken from. */
+    spent: Pick<AtsQuotaSummary, "tier">,
+    /**
+     * Called once the scan is back on the counter, before the summary is read: a caller that
+     * sees this method throw can tell "nothing returned yet" from "returned, summary failed" (V-388).
+     */
+    onReturned?: () => void,
+  ) {
+    // Not the tier the caller has now (V-326): it follows the live balance, so a subscriber whose
+    // credits are held by a concurrent reservation would be refunded on the free counter.
+    await getRedis().eval(DECREMENT_SCRIPT, {
+      keys: [await scanKeyForTier(spent.tier, userId, ip)],
+      arguments: [],
+    });
+    onReturned?.();
+    return summarize(await resolveContext(userId, ip));
   }
 
   /**

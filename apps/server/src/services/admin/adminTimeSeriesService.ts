@@ -11,7 +11,7 @@ import { AFFILIATE_WALLET_CURRENCY } from "#services/affiliate/constants";
  * `date_trunc` query. The gap filling is deliberately done in TypeScript rather than with a
  * SQL `generate_series` join: a day with no rows must still render as a zero point, and doing
  * that in JS keeps every query a plain single-table range scan on the window column (indexed for
- * all but one: `createdAt`, `publishedAt`, `date`, `[type, createdAt]`; `AffiliateCommission`
+ * all but one: `createdAt`, `firstPublishedAt`, `date`, `[type, createdAt]`; `AffiliateCommission`
  * has only `[status, createdAt]`, so its series scans that small table).
  *
  * Day boundaries are UTC regardless of the session `TimeZone` (V-071). Prisma `DateTime` columns
@@ -23,7 +23,8 @@ import { AFFILIATE_WALLET_CURRENCY } from "#services/affiliate/constants";
  *
  * Every series counts what was *created* that day, whatever happened to the row afterwards: a
  * subscription cancelled later and a document soft-deleted later stay on their creation day
- * (`getDocumentSummary.createdLast30Days` follows the same rule). The one exception is money:
+ * (`getDocumentSummary.createdLast30Days` follows the same rule), and a portfolio counts on the day
+ * it first went online, not its latest republish (V-288). The one exception is money:
  * `commissionCents` leaves reversed commissions out (V-267), because a commission taken back was
  * never earned, so a refund shrinks its sale day's bar.
  *
@@ -106,9 +107,9 @@ async function buildAdminTimeSeries(days: number) {
       GROUP BY bucket
     `,
     prisma.$queryRaw<DailyRow[]>`
-      SELECT date_trunc('day', "publishedAt") AS bucket, COUNT(*) AS value
+      SELECT date_trunc('day', "firstPublishedAt") AS bucket, COUNT(*) AS value
       FROM "PortfolioPublication"
-      WHERE "publishedAt" >= ${since}
+      WHERE "firstPublishedAt" >= ${since}
       GROUP BY bucket
     `,
     prisma.$queryRaw<DailyRow[]>`

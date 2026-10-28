@@ -226,8 +226,17 @@ export class ProfileImportQuotaService {
           });
 
     if (result.count === 0) {
-      const status = await this.checkQuota(userId, provider);
-      throw this.quotaExceeded(provider, status.resetsInSeconds);
+      // From the row alone, on the caller's transaction (V-305): `checkQuota` asks GitHub for the
+      // linked username, and an HTTP call here would hold the import's pooled connection open
+      // and can run it past the transaction timeout, a 500 instead of this 429.
+      const user = await client.user.findUnique({
+        where: { id: userId },
+        select: { lastLinkedinImportAt: true, lastGithubImportAt: true },
+      });
+      const lastImport =
+        provider === "linkedin" ? user?.lastLinkedinImportAt : user?.lastGithubImportAt;
+      const elapsed = lastImport ? now.getTime() - lastImport.getTime() : limitDuration;
+      throw this.quotaExceeded(provider, Math.max(0, Math.ceil((limitDuration - elapsed) / 1000)));
     }
   }
 }

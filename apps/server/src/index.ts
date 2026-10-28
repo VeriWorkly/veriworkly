@@ -7,6 +7,7 @@ import { config, isDevelopment } from "#config";
 
 import { logger } from "#lib/logger";
 import { closePrisma } from "#lib/prisma";
+import { abortInFlightWork, beginDrain, SHUTDOWN_TIMINGS } from "#lib/shutdown";
 import { initRedis, closeRedis, RedisConfigError } from "#lib/redis";
 import { FATAL_CONFIG_EXIT_CODE, installWorkerRespawn } from "#lib/workerRespawn";
 import { markJobsBaseline } from "#lib/metrics";
@@ -26,11 +27,13 @@ import { parseCronRole } from "#config/cronRole";
 
 import { startScheduledJobs, stopScheduledJobs } from "#jobs/scheduledJobs";
 
-const SHUTDOWN_HTTP_GRACE_MS = 10_000;
-// Drains alongside the HTTP grace (both start at shutdown), so a worker needs at most ~20 s plus
-// closing Redis/Prisma; throng's `grace` (force kill) sits above that.
-const SHUTDOWN_JOB_DRAIN_MS = 20_000;
-const THRONG_GRACE_MS = 35_000;
+// The drain's timeline is documented with the numbers in `#lib/shutdown` (V-313).
+const {
+  httpGraceMs: SHUTDOWN_HTTP_GRACE_MS,
+  httpHardCapMs: SHUTDOWN_HTTP_HARD_CAP_MS,
+  jobDrainMs: SHUTDOWN_JOB_DRAIN_MS,
+  throngGraceMs: THRONG_GRACE_MS,
+} = SHUTDOWN_TIMINGS;
 
 let serverInstance: ReturnType<typeof app.listen> | null = null;
 
@@ -43,6 +46,8 @@ async function shutdownWorker(id: number, disconnect: () => void) {
   isShuttingDown = true;
 
   logger.info(`Worker ${id}: Shutting down gracefully...`);
+  // Long jobs stop between batches from now on (V-342), well inside the job drain cap.
+  beginDrain();
 
   // Stop scheduling first so no new run starts, and let a run already in progress finish while
   // HTTP drains (Phase 4 item 1). Every worker may have scheduled jobs (CRON_ROLE=all); the stop
@@ -62,21 +67,30 @@ async function shutdownWorker(id: number, disconnect: () => void) {
     logger.info(`Worker ${id}: Stopping HTTP server from accepting new requests...`);
 
     await new Promise<void>((resolve) => {
-      // Force timeout shutdown after the grace period. unref'd so it never holds the process
-      // open, and cleared once close completes so it doesn't fire (and log) after the fact.
-      const forceTimer = setTimeout(() => {
-        logger.warn(`Worker ${id}: Graceful HTTP shutdown timeout reached. Continuing.`);
-        resolve();
+      // At the grace, abort in-flight AI work so it ends while the pools are open; at the hard
+      // cap, stop waiting. Both unref'd so they never hold the process open, and cleared once
+      // close completes so they don't fire (and log) after the fact.
+      const graceTimer = setTimeout(() => {
+        logger.warn(
+          `Worker ${id}: Requests still running after the HTTP grace; aborting AI calls.`,
+        );
+        abortInFlightWork();
       }, SHUTDOWN_HTTP_GRACE_MS);
+      graceTimer.unref();
+      const forceTimer = setTimeout(() => {
+        logger.warn(`Worker ${id}: Graceful HTTP shutdown hard cap reached. Continuing.`);
+        resolve();
+      }, SHUTDOWN_HTTP_HARD_CAP_MS);
       forceTimer.unref();
 
       // `close` drops only the connections idle at that moment; a keep-alive connection whose
-      // request finishes later would hold the drain until the grace period. Sweep those as they
+      // request finishes later would hold the drain until the hard cap. Sweep those as they
       // go idle, so the drain ends when the last request in flight does.
       const idleSweep = setInterval(() => serverInstance?.closeIdleConnections(), 100);
       idleSweep.unref();
 
       serverInstance!.close(() => {
+        clearTimeout(graceTimer);
         clearTimeout(forceTimer);
         clearInterval(idleSweep);
         logger.info(`Worker ${id}: HTTP server stopped.`);

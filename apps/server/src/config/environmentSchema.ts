@@ -23,7 +23,7 @@ type RawEnv = Record<string, string | undefined>;
 
 const NODE_ENVS = ["development", "test", "production"] as const;
 
-/** Integer variables read by `config.ts`, `lib/prisma.ts` and `middleware/rateLimit.ts`. */
+/** Integer variables read by `config.ts`, `lib/prisma.ts`, `lib/redis.ts` and `middleware/rateLimit.ts`. */
 const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   PORT: { min: 1, max: 65535 },
   WEB_CONCURRENCY: { min: 1 },
@@ -51,6 +51,11 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   API_KEY_MAX_RATE_LIMIT: { min: 1 },
   API_KEY_DEFAULT_LIFETIME_DAYS: { min: 1 },
 
+  // lib/redis.ts (V-318): 0 would make every bounded Redis command time out at once, so sessions,
+  // OTP throttles (which fail closed) and locks would all act as if Redis were down.
+  REDIS_BOOT_TIMEOUT_MS: { min: 1 },
+  REDIS_COMMAND_TIMEOUT_MS: { min: 1 },
+
   RATE_LIMIT_WINDOW_MS: { min: 1 },
   RATE_LIMIT_MAX_REQUESTS: { min: 1 },
   RATE_LIMIT_REDIS_TIMEOUT_MS: { min: 1 },
@@ -64,6 +69,7 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   RETENTION_EXPIRED_SESSION_DAYS: { min: 0 },
   RETENTION_EXPIRED_VERIFICATION_DAYS: { min: 0 },
   RETENTION_WEBHOOK_PAYLOAD_DAYS: { min: 0 },
+  RETENTION_UNPROCESSED_WEBHOOK_PAYLOAD_DAYS: { min: 0 },
   RETENTION_AUDIT_LOG_DAYS: { min: 0 },
   RETENTION_ADMIN_AUDIT_DAYS: { min: 0 },
   RETENTION_ADMIN_MONEY_AUDIT_DAYS: { min: 0 },
@@ -95,6 +101,7 @@ const INTEGER_VARIABLES: Record<string, { min: number; max?: number }> = {
   // Credit pack display prices in USD cents; a free or negative pack price is a typo.
   CREDIT_PACK_250_PRICE_CENTS: { min: 1 },
   CREDIT_PACK_500_PRICE_CENTS: { min: 1 },
+  CREDIT_PACK_1200_PRICE_CENTS: { min: 1 },
 };
 
 /** Browser-facing URLs that must be public https in production when set. */
@@ -284,7 +291,7 @@ function validateProduction(env: RawEnv, ctx: z.RefinementCtx): void {
   if (trustProxy === undefined) {
     required(
       "TRUST_PROXY",
-      "set it to the number of proxy hops in front of the API, e.g. 1 behind a single nginx, or a comma-separated IP/CIDR list",
+      "set it to the number of proxy hops in front of the API, e.g. 1 behind a single nginx (with Cloudflare in front, only if nginx restores CF-Connecting-IP; see .env.example), or a comma-separated IP/CIDR list",
     );
   } else if (INTEGER_PATTERN.test(trustProxy)) {
     const hops = Number(trustProxy);
