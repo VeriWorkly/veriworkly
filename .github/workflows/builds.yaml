@@ -57,5 +57,9 @@ jobs:
         if: matrix.workspace != '@veriworkly/studio' && matrix.workspace != '@veriworkly/server'
         run: npm run build -w @veriworkly/profile-core --if-present
 
+      # The docs and blog bake SITE_URL into canonicals, sitemaps and social cards, so they build
+      # with their production host; the other apps keep the workflow default.
       - name: Build Application
         run: npm run build -w ${{ matrix.workspace }}
+        env:
+          SITE_URL: ${{ matrix.workspace == '@veriworkly/docs-platform' && 'https://docs.veriworkly.com' || matrix.workspace == '@veriworkly/blog-platform' && 'https://blog.veriworkly.com' || 'http://localhost:3000' }}
