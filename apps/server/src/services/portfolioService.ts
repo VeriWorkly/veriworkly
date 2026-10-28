@@ -425,8 +425,13 @@ const FREE_TEMPLATE_FOR_PREMIUM: Record<string, "signal" | "atelier"> = {
   cipher: "signal",
 };
 
-/** The public address of a published portfolio. */
-function publicPortfolioUrl(subdomain: string) {
+/**
+ * The public address of a published portfolio. Only a paid premium site is served on its own
+ * subdomain; the portfolio app redirects any other site's subdomain to its path on the portfolio
+ * host, so that path is the address mailed and handed back.
+ */
+function publicPortfolioUrl(subdomain: string, premium: boolean) {
+  if (!premium) return `${config.portfolio.url}/portfolio/${subdomain}`;
   return config.nodeEnv === "development"
     ? `http://${subdomain}.localhost:3004`
     : `https://${subdomain}.veriworkly.com`;
@@ -944,7 +949,11 @@ export class PortfolioService {
           referencedAssetIds(existingPublication.snapshot),
         );
 
-      const publicUrl = publicPortfolioUrl(publication.subdomain);
+      // A premium template only publishes with the plan (checked above), so it is a paid site.
+      const publicUrl = publicPortfolioUrl(
+        publication.subdomain,
+        hasSubscription && isPremiumPortfolioTemplate(publication.templateId),
+      );
 
       if (existingPublication?.status !== "LIVE") {
         void this.notifyPortfolioLive(userId, publicUrl);
@@ -1173,7 +1182,7 @@ export class PortfolioService {
       details: {
         freeTemplateName: templateName(freeTemplate),
         previousTemplateName: templateName(row.templateId),
-        portfolioUrl: publicPortfolioUrl(row.subdomain),
+        portfolioUrl: publicPortfolioUrl(row.subdomain, false),
         // A GRACE row stayed online; only a suspended one is "back".
         wasOffline: row.status === "SUSPENDED",
       },
