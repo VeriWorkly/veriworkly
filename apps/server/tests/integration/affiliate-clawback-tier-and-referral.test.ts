@@ -143,13 +143,11 @@ describe("V-321: money owed back can never be withdrawn", () => {
     expect(approve.status, JSON.stringify(approve.body)).toBe(409);
     expect(approve.body.details?.code).toBe("AFFILIATE_CLAWBACK_OUTSTANDING");
 
-    const reject = await asUser(admin)
-      .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({
-        status: "REJECTED",
-        payoutNote: "claw-back outstanding",
-        reason: "Reviewed by finance",
-      });
+    const reject = await asUser(admin).patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`).send({
+      status: "REJECTED",
+      payoutNote: "claw-back outstanding",
+      reason: "Reviewed by finance",
+    });
     expect(reject.status, JSON.stringify(reject.body)).toBe(200);
     expect(await wallet(user.id)).toMatchObject({ availableCents: 3_000, clawbackCents: 0 });
   });
