@@ -70,7 +70,7 @@ describe("AtsResumeExtractService", () => {
       AtsResumeExtractService.extract(
         file(Buffer.from("MZ"), "cv.exe", "application/octet-stream"),
       ),
-    ).rejects.toThrow(/PDF, DOCX, TXT/);
+    ).rejects.toThrow("Upload a PDF, DOCX, HTML, TXT, Markdown, or JSON resume.");
 
     expect(extractInChildProcessMock).not.toHaveBeenCalled();
   });
