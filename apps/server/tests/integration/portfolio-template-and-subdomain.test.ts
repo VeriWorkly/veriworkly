@@ -4,6 +4,7 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
 import { app } from "#app";
+import { config } from "#config";
 import { prisma } from "#lib/prisma";
 
 import { STUDIO_ORIGIN } from "./env.js";
@@ -302,5 +303,34 @@ describe("V-301: a portfolio subdomain is not one of the user's document slugs",
     expect(taken).not.toBeNull();
     const row = await prisma.document.findUniqueOrThrow({ where: { id: draft.body.data.id } });
     expect(row.slug).not.toBe(taken);
+  });
+});
+
+describe("the address a publish hands back is the one that serves the site", () => {
+  it("a free template gets the portfolio path, since its subdomain only redirects there", async () => {
+    const user = await createUserWithSession();
+    const subdomain = sub("free-url");
+    const draft = await saveDraft(user, subdomain, "signal");
+    expect(draft.status, JSON.stringify(draft.body)).toBe(200);
+
+    const response = await publish(user, draft.body.data.id, subdomain);
+
+    expect(response.status, JSON.stringify(response.body)).toBe(201);
+    expect(response.body.data.publicUrl).toBe(`${config.portfolio.url}/portfolio/${subdomain}`);
+  });
+
+  it("a paid premium template keeps its own subdomain", async () => {
+    const user = await createUserWithSession();
+    await prisma.entitlementGrant.create({
+      data: { userId: user.id, key: "portfolio_publish", source: "MANUAL", sourceId: randomUUID() },
+    });
+    const subdomain = sub("paid-url");
+    const draft = await saveDraft(user, subdomain, "nimbus");
+    expect(draft.status, JSON.stringify(draft.body)).toBe(200);
+
+    const response = await publish(user, draft.body.data.id, subdomain);
+
+    expect(response.status, JSON.stringify(response.body)).toBe(201);
+    expect(response.body.data.publicUrl).toBe(`https://${subdomain}.veriworkly.com`);
   });
 });
