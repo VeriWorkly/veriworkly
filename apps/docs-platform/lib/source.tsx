@@ -78,7 +78,7 @@ export const apiSource = loader({
   ],
 });
 
-export function getMethodColor(method: string) {
+function getMethodColor(method: string) {
   switch (method.toUpperCase()) {
     case "GET":
       return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20";

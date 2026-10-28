@@ -32,15 +32,11 @@ export const DocsHero = () => {
 
           <div className="flex flex-wrap items-center justify-start gap-4">
             <Button asChild size="lg" variant="primary">
-              <Link href="/docs" aria-label="Explore guides">
-                Start Building
-              </Link>
+              <Link href="/docs">Start Building</Link>
             </Button>
 
             <Button asChild size="lg" variant="secondary">
-              <Link href="/api-reference" aria-label="API reference">
-                API Reference
-              </Link>
+              <Link href="/api-reference">API Reference</Link>
             </Button>
           </div>
         </div>

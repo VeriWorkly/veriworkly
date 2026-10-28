@@ -8,15 +8,11 @@ export const revalidate = false;
 export async function GET() {
   const sections = await Promise.all(
     getEnginePagesInOrder().map(async (page) => {
-      const data = page.data as {
-        title?: string;
-        description?: string;
-        getText: (type: "raw" | "processed") => Promise<string>;
-      };
+      const { data } = page;
       // The size tags as their numbers: a model reads the Markdown, not the rendered page.
       const text = withEngineSizes(await data.getText("processed"));
 
-      return `# ${data.title ?? page.url}\n\nSource: ${siteConfig.url}${page.url}\n\n${data.description ? `${data.description}\n\n` : ""}${text}`;
+      return `# ${data.title}\n\nSource: ${siteConfig.url}${page.url}\n\n${data.description ? `${data.description}\n\n` : ""}${text}`;
     }),
   );
 

@@ -6,6 +6,7 @@
     "generate:api": "node scripts/generate-api-docs.mjs",
     "generate:engine": "node scripts/generate-engine-docs.mjs",
     "check:engine-samples": "node scripts/check-engine-samples.mjs",
+    "postinstall": "fumadocs-mdx",
     "predev": "npm run generate:api && npm run generate:engine",
     "dev": "next dev",
     "prebuild": "npm run generate:api && npm run generate:engine",
@@ -29,6 +30,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4",
     "@types/mdx": "^2.0.14",
     "@types/node": "^25",
     "@types/react": "^19",
@@ -36,6 +38,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "prettier": "^3.9.9",
-    "typescript": "^6"
+    "tailwindcss": "^4",
+    "typescript": "^6",
+    "yaml": "^2.9.1"
   }
 }

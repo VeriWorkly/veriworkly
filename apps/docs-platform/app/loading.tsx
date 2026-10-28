@@ -19,7 +19,7 @@ export default function AppLoading() {
         </p>
 
         <p className="text-muted mt-6 max-w-md text-base leading-7">
-          Please wait while we fetch the latest data and prepare the page for you.
+          Please wait while the page loads.
         </p>
 
         <div className="mt-10 flex w-full max-w-xs flex-col gap-4">

@@ -5,10 +5,8 @@ import { source } from "@/lib/source";
 import { baseOptions, docsTabs } from "@/app/layout.config";
 
 const DocsLayout = ({ children }: { children: React.ReactNode }) => {
-  const { nav, ...base } = baseOptions;
-
   return (
-    <FumadocsDocsLayout tree={source.getPageTree()} {...base} nav={{ ...nav }} tabs={docsTabs}>
+    <FumadocsDocsLayout tree={source.getPageTree()} {...baseOptions} tabs={docsTabs}>
       {children}
     </FumadocsDocsLayout>
   );

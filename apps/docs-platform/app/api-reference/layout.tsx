@@ -13,10 +13,8 @@ export const metadata: Metadata = {
 };
 
 const APIReferenceLayout = ({ children }: { children: ReactNode }) => {
-  const { nav, ...base } = baseOptions;
-
   return (
-    <FumadocsDocsLayout tree={apiSource.getPageTree()} {...base} nav={{ ...nav }} tabs={docsTabs}>
+    <FumadocsDocsLayout tree={apiSource.getPageTree()} {...baseOptions} tabs={docsTabs}>
       {children}
     </FumadocsDocsLayout>
   );
