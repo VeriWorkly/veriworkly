@@ -15,7 +15,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   if (!page) return new Response("Not found", { status: 404 });
 
   return renderOgCard({
-    title: page.data.title ?? "VeriWorkly API",
+    title: page.data.title,
     description:
       page.data.description ||
       "Technical documentation and API reference for the VeriWorkly platform.",

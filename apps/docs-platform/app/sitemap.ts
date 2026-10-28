@@ -3,14 +3,12 @@ import type { MetadataRoute } from "next";
 import { siteConfig } from "@/config/site";
 import { source, apiSource, engineSource } from "@/lib/source";
 
-type Page = { url: string; data: unknown };
+type Page = { url: string; data: { lastModified?: Date } };
 
 function entry(page: Page, priority: number): MetadataRoute.Sitemap[number] {
-  const { lastModified } = page.data as { lastModified?: Date };
-
   return {
     url: `${siteConfig.url}${page.url}`,
-    lastModified,
+    lastModified: page.data.lastModified,
     changeFrequency: "weekly",
     priority,
   };

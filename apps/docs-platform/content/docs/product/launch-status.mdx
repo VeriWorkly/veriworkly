@@ -1,0 +1,80 @@
+---
+title: Launch Status
+metaTitle: Why Can't I Publish a Portfolio or Pay Yet?
+description: Payments and portfolio publishing are admin-only in production until launch. Here are the exact messages you see and everything that works for free today.
+---
+
+**Payments and portfolio publishing are switched off in production for everyone except the
+operator's admin account until launch. Nothing is charged. You can still build resumes and cover
+letters, export them, share them, run ATS scans and edit portfolio drafts. Purchases and publishing
+open at launch.**
+
+## Why can't I buy a plan or credits?
+
+The API refuses every purchase in production unless the request comes from the configured admin
+account. That covers subscriptions, passes, plan changes and credit packs. The refusal happens before
+anything reaches the payment provider, so no card is charged and no checkout is created.
+
+The messages you may see:
+
+| Where                                          | Message                                                                                                     |
+| :--------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| Studio billing and checkout pages              | Payments open soon. Purchases are not available yet; nothing has been charged.                              |
+| veriworkly.com pricing page                    | Payments are currently not accepted during this phase. All core document building features are free to use. |
+| Portfolio pricing page                         | Payments are disabled in production during this phase. Only system administrators can perform checkouts.    |
+| API (`403`, `details.code: PAYMENTS_DISABLED`) | Payments are disabled in production during this phase. Only administrators can perform payments.            |
+
+Prices for launch are on the [pricing page](https://veriworkly.com/pricing).
+
+## Why can't I publish my portfolio?
+
+Publishing a portfolio is switched off in production for everyone except the admin account. You can
+open the portfolio editor, save drafts and preview your portfolio. Only making it public is blocked.
+At launch, free portfolios publish at `portfolio.veriworkly.com/portfolio/<name>`.
+
+The messages you may see:
+
+| Where                            | Message                                                                                                           |
+| :------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| Portfolio editor, Publish button | Publishing is disabled in production right now. It's available in development.                                    |
+| Portfolio settings               | Publishing is disabled in production right now, so live settings can't be updated. It's available in development. |
+| API (`403`)                      | Publishing is disabled in production during this phase.                                                           |
+
+## What works for free today?
+
+Everything that does not take a payment or publish a portfolio works now. A free account, or guest
+mode without an account, covers writing, exporting and checking a resume. The limits below are the
+free-tier limits the server applies today.
+
+| Feature                              | Free today                                                                                       |
+| :----------------------------------- | :----------------------------------------------------------------------------------------------- |
+| Resume and cover letter builder      | One active resume and one active cover letter at a time                                          |
+| Exports                              | PDF, DOCX, HTML, Markdown, plain text and JSON                                                   |
+| Cloud backup and share links         | Yes, with an account                                                                             |
+| ATS checker                          | 2 scans every 24 hours signed in; 1 scan every 48 hours on the public checker without an account |
+| LinkedIn import                      | Not yet: it spends AI credits, which go on sale at launch                                        |
+| GitHub import                        | Once a day                                                                                       |
+| Portfolio editor, drafts and preview | Yes                                                                                              |
+| AI writing help                      | Needs AI credits, which come with a purchase                                                     |
+
+AI actions spend credits. Credits come with a credit pack, a pass, an AI Credits plan or the Job
+Hunter Bundle, so the AI features open for most people when payments do. See
+[Billing and credits](/docs/product/billing-and-credits).
+
+## When do payments and publishing open?
+
+At launch. The switch is in the API: in production, only the email set as `ADMIN_EMAIL` can pay or
+publish, so the operator can test both flows end to end. No date is published in the docs; watch
+the [changelog](https://veriworkly.com/changelog) for the announcement.
+
+## Does this apply to a self-hosted instance?
+
+Yes, when the API runs with `NODE_ENV=production`. Only the account whose email matches
+`ADMIN_EMAIL` can pay or publish there. In development the switch is off, so every account can pay
+and publish. See the [self-hosting guide](/docs/self-hosting).
+
+## Related
+
+- [Troubleshooting: Payments are disabled](/docs/troubleshooting/payments-disabled)
+- [Troubleshooting: Publishing is disabled](/docs/troubleshooting/publishing-disabled)
+- [Portfolio publishing](/docs/product/portfolio/publishing)

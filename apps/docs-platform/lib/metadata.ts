@@ -6,7 +6,7 @@ type PageMetadata = {
   title: string;
   /** Overrides `title` in `<title>` only, where two pages would otherwise share one. */
   metaTitle?: string;
-  description: string;
+  description?: string;
   /** Path from the site root, e.g. `/docs/api-keys`. */
   path: string;
   /** Path of the page's social card. */

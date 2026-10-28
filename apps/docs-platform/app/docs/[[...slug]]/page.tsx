@@ -13,7 +13,9 @@ import { createRelativeLink } from "fumadocs-ui/mdx";
 import { source, ogImagePath } from "@/lib/source";
 import { pageMetadata } from "@/lib/metadata";
 import { contentEditUrl } from "@/lib/edit-links";
+import { docPageSchema } from "@/lib/structured-data";
 
+import { JsonLd } from "@/components/json-ld";
 import { getMDXComponents } from "@/components/mdx";
 
 export const dynamicParams = false;
@@ -28,17 +30,7 @@ export default async function Page(props: PageProps) {
 
   if (!page) notFound();
 
-  const pageData = page.data as unknown as {
-    title: string;
-    description: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    toc: any[];
-    full?: boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    body: any;
-  };
-
-  const MDX = pageData.body;
+  const MDX = page.data.body;
 
   return (
     <DocsPage
@@ -46,11 +38,20 @@ export default async function Page(props: PageProps) {
         style: "clerk",
         footer: <EditOnGitHub href={contentEditUrl("docs", page.path)} />,
       }}
-      toc={pageData.toc}
-      full={pageData.full}
+      toc={page.data.toc}
+      full={page.data.full}
     >
-      <DocsTitle>{pageData.title}</DocsTitle>
-      <DocsDescription>{pageData.description}</DocsDescription>
+      <JsonLd
+        data={docPageSchema({
+          page,
+          tree: source.getPageTree(),
+          section: { name: "Docs", url: "/docs" },
+          image: ogImagePath("docs", page.slugs),
+        })}
+      />
+
+      <DocsTitle>{page.data.title}</DocsTitle>
+      <DocsDescription>{page.data.description}</DocsDescription>
 
       <DocsBody>
         <MDX
@@ -74,14 +75,10 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   if (!page) notFound();
 
-  const pageData = page.data as unknown as {
-    title: string;
-    metaTitle?: string;
-    description: string;
-  };
-
   return pageMetadata({
-    ...pageData,
+    title: page.data.title,
+    metaTitle: page.data.metaTitle,
+    description: page.data.description,
     path: page.url,
     image: ogImagePath("docs", page.slugs),
   });

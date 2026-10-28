@@ -1,0 +1,167 @@
+---
+title: Adding a Template
+metaTitle: How to Add a Resume or Portfolio Template to VeriWorkly
+description: Add a resume template to VeriWorkly in four files (meta, skin, web, pdf) plus one registry entry. Portfolio templates live in a private submodule.
+---
+
+import { Step, Steps } from "fumadocs-ui/components/steps";
+
+**To add a resume template, create `apps/studio/templates/resume/<id>/` with `meta.ts`, `skin.ts`,
+`web.tsx` and `pdf.tsx`, register it in `templates/resume/registry.ts` and the template catalog,
+add a preview image, and check it on the PDF debug page. Contract tests fail if any of those steps
+is missing. Portfolio templates are not open to outside contributions.**
+
+For what each existing template looks like, see [Resume Templates](/docs/user-guides/resume-templates)
+and [Portfolio: Templates](/docs/product/portfolio/templates).
+
+---
+
+## How do resume and cover letter templates render?
+
+Each template is implemented twice against the same data:
+
+1. **Web engine (`web.tsx`)**: React and Tailwind CSS 4, powering the live paged preview.
+2. **PDF engine (`pdf.tsx`)**: `@react-pdf/renderer` primitives, producing the exported PDF with
+   embedded fonts and real vector text.
+
+Both read the same customisation object, which keeps the preview and the export aligned. See
+[Export Pipeline](/docs/architecture/pdf-generation).
+
+### Template metadata
+
+Each template exports a `meta.ts` describing itself to the picker:
+
+```typescript
+export const precisionAtsMeta = {
+  id: "precision-ats",
+  name: "Precision ATS",
+  documentType: "RESUME",
+  description: "A dense, recruiter-friendly layout …",
+  accentColor: "#10b981",
+  previewImage: "/templates/resume/precision-ats.png",
+  tags: ["One column", "ATS-friendly", "Compact", "Simple"],
+} satisfies TemplateMeta;
+```
+
+### Source reference
+
+| Template                              | Web engine                                                                                                               | PDF engine                                                                                                               |
+| :------------------------------------ | :----------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| **Precision ATS**                     | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/web.tsx)       | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/pdf.tsx)       |
+| **Executive Clarity**                 | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/web.tsx)   | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/pdf.tsx)   |
+| **Modern Minimal**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/web.tsx)      | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/pdf.tsx)      |
+| **Timeline Focus**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/web.tsx)      | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/pdf.tsx)      |
+| **Corporate Brief**                   | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/pdf.tsx)     |
+| **Bold Impact**                       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/web.tsx)         | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/pdf.tsx)         |
+| **VeriWorkly Special** (resume)       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/veriworkly-special/web.tsx)  | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/veriworkly-special/pdf.tsx)  |
+| **Professional** (cover letter)       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/web.tsx)  | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/pdf.tsx)  |
+| **VeriWorkly Special** (cover letter) | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/web.tsx)    | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/pdf.tsx)    |
+| **Minimalist** (cover letter)         | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/minimalist/web.tsx)    | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/minimalist/pdf.tsx)    |
+| **Executive** (cover letter)          | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/executive/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/executive/pdf.tsx)     |
+| **ATS Essential** (cover letter)      | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/ats-essential/web.tsx) | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/ats-essential/pdf.tsx) |
+
+---
+
+## How do I add a resume template?
+
+<Steps>
+  <Step>
+    ### Create the template folder
+
+    Create `apps/studio/templates/resume/<id>/` containing `meta.ts`, `skin.ts`, `web.tsx` and
+    `pdf.tsx`. Build the renderers with `createResumeWebTemplate` and `createResumePdfTemplate` from
+    `apps/studio/templates/resume/shared/`. They handle section ordering, item content, spacing and
+    pagination; a skin only supplies a type scale, a header and a section heading.
+
+    Put **every** number in `skin.ts` (the type scale plus a `geometry` object) and read it from both
+    `web.tsx` and `pdf.tsx`. Sizes must never be written twice.
+
+  </Step>
+
+  <Step>
+    ### Register it
+
+    Add an entry with the `meta` and lazy `loadWeb` and `loadPdf` imports to
+    `apps/studio/templates/resume/registry.ts`, then add the metadata to
+    `apps/studio/features/documents/core/template-catalog.ts`, which feeds the picker.
+
+  </Step>
+
+  <Step>
+    ### Add a preview image
+
+    Add `apps/studio/public/templates/resume/<id>.svg` or `.png`, matching `previewImage` in
+    `meta.ts`.
+
+  </Step>
+
+  <Step>
+    ### Check the PDF
+
+    Run the studio in development and open `/pdf-debug/resume/<id>`, the PDF rendering debugger. The
+    route returns 404 outside development. Then run the preview/PDF parity harness, as listed in
+    [Validate before committing](/docs/getting-started/local-setup#validate-before-committing).
+
+  </Step>
+</Steps>
+
+`tests/contracts/template-render.contract.test.tsx` fails if the registry, the catalog and the
+preview asset fall out of sync, so a half-registered template cannot ship.
+`template-geometry.contract.test.tsx` lays the PDF out and checks its real boxes against the scale.
+
+<Callout type="warn" title="A bare number in a react-pdf style means points">
+  `@react-pdf/stylesheet` returns unitless values untouched, and even the string `"3px"` is
+  converted with a default DPI of 72, so both mean 3pt, which is 4 CSS pixels. Every spatial value
+  in a `pdf.tsx` must go through `pxToPt`. Three more differences the shared engine already
+  neutralises: react-pdf inherits a *computed* line height (CSS re-multiplies the unitless factor),
+  `align-items: baseline` resolves to bottom alignment, and Yoga shrinks a `flexShrink: 0` box when
+  a sibling's minimum content width does not fit.
+</Callout>
+
+<Callout type="warn" title="Keep the DOM contract">
+  The live preview paginates by walking the direct children of `#resume-container`, expecting each
+  `<section>` to be exactly `[heading, itemsContainer]`. A template that wraps sections in extra
+  containers, or adds a full-height sidebar, will not split across pages correctly. The shared
+  engine enforces this shape for you.
+</Callout>
+
+New document templates are welcome contributions. Claim an issue first, as described in the
+[Contributing Guide](/docs/contributing).
+
+---
+
+## Can I contribute a portfolio template?
+
+Not today. The four portfolio templates live in a private submodule, described in [the private
+template submodule](/docs/architecture/monorepo#the-private-template-submodule), so outside
+contributions are not accepted. For maintainers with access, the steps are:
+
+1. Add a folder in `template-library/` with its React component, a `design.ts` detail file, and an
+   optional scoped stylesheet.
+2. Register it in `template-library/registry.ts` with its metadata, `isPremium` flag, and lazy
+   `loader`. `apps/portfolio/templates/catalog/templates.ts` derives the public gallery from that
+   registry, so the gallery and the renderer cannot drift apart.
+3. Add the template id to `PORTFOLIO_TEMPLATE_IDS` in
+   `apps/server/src/validators/portfolioValidator.ts`, and to `PREMIUM_PORTFOLIO_TEMPLATE_IDS` there
+   if it is premium. The server rejects any id outside that list. A premium template also needs a
+   free fallback in `FREE_TEMPLATE_FOR_PREMIUM` (`apps/server/src/services/portfolioService.ts`).
+4. Advance the submodule pointer in the main repository.
+
+The registry entry looks like this:
+
+```typescript
+export const templatesRegistry = {
+  signal: {
+    name: "Signal",
+    note: "…",
+    mood: "…",
+    audience: "…",
+    strengths: ["…"],
+    image: "/templates/signal-template-preview.png",
+    isPremium: false,
+    loader: () => import("./signal/SignalTemplate"),
+    design: signalDesign,
+  },
+  // atelier, nimbus, cipher …
+} satisfies Record<string, TemplateRegistryEntry>;
+```

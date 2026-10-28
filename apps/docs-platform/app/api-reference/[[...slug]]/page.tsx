@@ -13,8 +13,10 @@ import { notFound } from "next/navigation";
 import { apiSource, ogImagePath } from "@/lib/source";
 import { pageMetadata } from "@/lib/metadata";
 import { apiEditUrl } from "@/lib/edit-links";
-import { openapi } from "@/lib/openapi";
+import { openapi, slicePreloaded } from "@/lib/openapi";
+import { docPageSchema } from "@/lib/structured-data";
 
+import { JsonLd } from "@/components/json-ld";
 import { getMDXComponents } from "@/components/mdx";
 import { OpenAPIPage } from "@/components/api-page";
 
@@ -30,23 +32,13 @@ export default async function Page(props: PageProps) {
 
   if (!page) notFound();
 
-  const pageData = page.data as unknown as {
-    title: string;
-    description: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    toc: any[];
-    full?: boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    body: any;
-  };
-
-  const MDX = pageData.body;
+  const MDX = page.data.body;
 
   const { preloaded } = await openapi.preloadOpenAPIPage(page);
 
   const components = getMDXComponents({
     OpenAPIPage: (props: Omit<OpenAPIPageProps_Preloaded, "preloaded">) => (
-      <OpenAPIPage {...props} preloaded={preloaded} />
+      <OpenAPIPage {...props} preloaded={slicePreloaded(preloaded, props)} />
     ),
   });
 
@@ -56,11 +48,20 @@ export default async function Page(props: PageProps) {
         style: "clerk",
         footer: <EditOnGitHub href={apiEditUrl(page.path)} />,
       }}
-      toc={pageData.toc}
-      full={pageData.full}
+      toc={page.data.toc}
+      full={page.data.full}
     >
-      <DocsTitle>{pageData.title}</DocsTitle>
-      <DocsDescription>{pageData.description}</DocsDescription>
+      <JsonLd
+        data={docPageSchema({
+          page,
+          tree: apiSource.getPageTree(),
+          section: { name: "API Reference", url: "/api-reference" },
+          image: ogImagePath("api", page.slugs),
+        })}
+      />
+
+      <DocsTitle>{page.data.title}</DocsTitle>
+      <DocsDescription>{page.data.description}</DocsDescription>
 
       <DocsBody>
         <MDX components={components} />
@@ -79,14 +80,10 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   if (!page) notFound();
 
-  const pageData = page.data as unknown as {
-    title: string;
-    metaTitle?: string;
-    description: string;
-  };
-
   return pageMetadata({
-    ...pageData,
+    title: page.data.title,
+    metaTitle: page.data.metaTitle,
+    description: page.data.description,
     path: page.url,
     image: ogImagePath("api", page.slugs),
   });

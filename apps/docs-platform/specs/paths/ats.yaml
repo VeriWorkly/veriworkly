@@ -102,7 +102,7 @@ extractAtsResumeText:
                 value:
                   success: false
                   statusCode: 400
-                  message: "Upload a PDF, DOCX, TXT, Markdown, or JSON resume."
+                  message: "Upload a PDF, DOCX, HTML, TXT, Markdown, or JSON resume."
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "408":

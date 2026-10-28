@@ -332,7 +332,7 @@ paths:
               example:
                 success: false
                 statusCode: 403
-                message: This action cannot be performed with an API key. Sign in and delete your account from Settings.
+                message: This action cannot be performed with an API key. Sign in and delete your account from your Studio profile page.
         "404":
           description: User not found
           content:
@@ -3118,7 +3118,7 @@ paths:
                   value:
                     success: false
                     statusCode: 400
-                    message: Upload a PDF, DOCX, TXT, Markdown, or JSON resume.
+                    message: Upload a PDF, DOCX, HTML, TXT, Markdown, or JSON resume.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "408":

@@ -8,8 +8,8 @@ export const revalidate = false;
 /** An llmstxt.org index of the ATS Engine docs: every page, with its description. */
 export function GET() {
   const pages = getEnginePagesInOrder().map((page) => {
-    const { title, description } = page.data as { title?: string; description?: string };
-    return `- [${title ?? page.url}](${siteConfig.url}${page.url})${description ? `: ${description}` : ""}`;
+    const { title, description } = page.data;
+    return `- [${title}](${siteConfig.url}${page.url})${description ? `: ${description}` : ""}`;
   });
 
   const body = `# VeriWorkly ATS Engine

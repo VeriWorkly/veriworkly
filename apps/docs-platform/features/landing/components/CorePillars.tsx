@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Code, Cpu, Gauge, Shield } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { Card } from "@veriworkly/ui";
+import { Card, cn } from "@veriworkly/ui";
 import { siteConfig } from "@/config/site";
 
 const pillars = [

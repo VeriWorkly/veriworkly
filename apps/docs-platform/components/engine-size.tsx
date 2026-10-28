@@ -14,7 +14,7 @@ const measured = sizes as Sizes;
  * gzipped, as the installed engine measured it for its release (`sizes.json`). An unknown name
  * fails the build, so a page cannot quote a size the engine no longer reports.
  */
-export function engineSize(of: string, whole = false): string {
+function engineSize(of: string, whole = false): string {
   const size =
     measured.subpaths[of] ??
     Object.values(measured.imports).find(

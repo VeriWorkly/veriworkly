@@ -1,3 +1,5 @@
+import type { Author } from "@/lib/authors";
+
 import { siteConfig } from "@/config/site";
 
 type FaqItem = { question: string; answer: string };
@@ -5,7 +7,7 @@ type FaqItem = { question: string; answer: string };
 type PostSchemaInput = {
   title: string;
   description: string;
-  author: string;
+  author: Author;
   date: string | Date;
   updated?: string | Date;
   category?: string;
@@ -20,13 +22,14 @@ const toISO = (value: string | Date) => new Date(value).toISOString();
 
 const ORG_ID = `${siteConfig.url}/#organization`;
 const SITE_ID = `${siteConfig.url}/#website`;
+const BLOG_ID = `${siteConfig.url}/#blog`;
 
 /**
  * The publishing entity. AI systems and search engines resolve authors and publishers
  * as entities, so one canonical node is declared here and referenced by `@id` everywhere
  * else rather than being re-declared inline with slightly different properties.
  */
-export const organizationSchema = {
+const organizationSchema = {
   "@type": "Organization",
   "@id": ORG_ID,
   name: siteConfig.shortName,
@@ -40,19 +43,26 @@ export const organizationSchema = {
   sameAs: [siteConfig.links.twitter, siteConfig.links.github, siteConfig.links.linkedin],
 };
 
-/**
- * `author` in frontmatter is a byline ("VeriWorkly Team", "VeriWorkly Engineering"),
- * not the name of a legal entity. Emitting it as an `Organization` claimed two
- * organizations exist that do not, and split the publisher entity across three names.
- *
- * Modelled instead as an editorial team that is part of the one real organization,
- * which is both true and resolvable.
- */
-function authorNode(author: string) {
+/** A team byline is an editorial group inside the one real organization, not an entity of its own. */
+function authorNode(author: Author) {
+  const id = `${siteConfig.url}/#author-${encodeURIComponent(author.name.toLowerCase().replace(/\s+/g, "-"))}`;
+
+  if (author.type === "person") {
+    return {
+      "@type": "Person",
+      "@id": id,
+      name: author.name,
+      ...(author.url && { url: author.url }),
+      ...(author.jobTitle && { jobTitle: author.jobTitle }),
+      ...(author.sameAs?.length && { sameAs: author.sameAs }),
+      worksFor: { "@id": ORG_ID },
+    };
+  }
+
   return {
     "@type": "Organization",
-    "@id": `${siteConfig.url}/#author-${encodeURIComponent(author.toLowerCase().replace(/\s+/g, "-"))}`,
-    name: author,
+    "@id": id,
+    name: author.name,
     url: siteConfig.url,
     parentOrganization: { "@id": ORG_ID },
   };
@@ -75,7 +85,7 @@ export function buildSiteSchema() {
       },
       {
         "@type": "Blog",
-        "@id": `${siteConfig.url}/#blog`,
+        "@id": BLOG_ID,
         url: siteConfig.url,
         name: siteConfig.name,
         description: siteConfig.description,
@@ -88,8 +98,8 @@ export function buildSiteSchema() {
 }
 
 /**
- * Builds the JSON-LD graph for a post: BlogPosting, an optional FAQPage, and a
- * breadcrumb trail. Returned as a single `@graph` so one script tag covers all.
+ * Builds the JSON-LD graph for a post: BlogPosting, an optional FAQPage, and the
+ * Blog → Post breadcrumb trail. Returned as a single `@graph` so one script tag covers all.
  *
  * Note on FAQPage: Google restricted FAQ rich results to authoritative government and
  * health sites in August 2023, so this will not render an accordion in Google SERPs.
@@ -126,7 +136,7 @@ export function buildPostSchema({
       dateModified: toISO(updated ?? date),
       author: authorNode(author),
       publisher: { "@id": ORG_ID },
-      isPartOf: { "@id": `${siteConfig.url}/#blog` },
+      isPartOf: { "@id": BLOG_ID },
       mainEntityOfPage: { "@type": "WebPage", "@id": url },
       inLanguage: "en",
       ...(category && { articleSection: category }),
@@ -139,17 +149,7 @@ export function buildPostSchema({
       "@id": `${url}#breadcrumb`,
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Blog", item: siteConfig.url },
-        ...(category
-          ? [
-              {
-                "@type": "ListItem",
-                position: 2,
-                name: category,
-                item: `${siteConfig.url}/archive`,
-              },
-            ]
-          : []),
-        { "@type": "ListItem", position: category ? 3 : 2, name: title, item: url },
+        { "@type": "ListItem", position: 2, name: title, item: url },
       ],
     },
   ];
@@ -168,6 +168,40 @@ export function buildPostSchema({
   }
 
   return { "@context": "https://schema.org", "@graph": graph };
+}
+
+/** The archive page: a CollectionPage whose main entity is the list of every post. */
+export function buildArchiveSchema({
+  url,
+  name,
+  description,
+  posts,
+}: {
+  url: string;
+  name: string;
+  description: string;
+  posts: { url: string; title: string }[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${url}#page`,
+    url,
+    name,
+    description,
+    inLanguage: "en",
+    isPartOf: { "@id": SITE_ID },
+    about: { "@id": BLOG_ID },
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: posts.map((post, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: post.url,
+        name: post.title,
+      })),
+    },
+  };
 }
 
 /**

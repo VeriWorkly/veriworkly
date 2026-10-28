@@ -1,0 +1,102 @@
+---
+title: Cover Letter Fields
+metaTitle: "Cover Letter Fields in VeriWorkly: Every Field and Limit"
+description: Every field in the VeriWorkly cover letter editor, what each one prints, what the Master Profile fills in, and the limits on layout, colours and text.
+---
+
+**A VeriWorkly cover letter has four sections: Profile (your contact details), Links, Target (the
+role, company and recipient) and Letter (subject, greeting, opening, body, proof points, closing,
+signature and postscript). Text fields have no length limit. Layout settings have fixed ranges, and
+colours must be hex values.**
+
+## Which fields does a cover letter have?
+
+The editor groups the fields into four sections. Each section can be hidden from the printed letter
+in the settings panel without deleting what you typed. Every text field is optional; a blank one is
+never an error.
+
+### Profile
+
+| Field              | Stored as        | Pre-filled from the Master Profile                              |
+| :----------------- | :--------------- | :-------------------------------------------------------------- |
+| Full name          | `senderName`     | Full name                                                       |
+| Professional title | `senderTitle`    | Role, or the headline when the role is empty                    |
+| Email              | `senderEmail`    | Email                                                           |
+| Phone              | `senderPhone`    | Phone                                                           |
+| Location           | `senderLocation` | Location                                                        |
+| Website            | `senderWebsite`  | The first portfolio link with a URL, else the first custom link |
+
+### Links
+
+A list of links (`links`), copied from the Master Profile's links. Each link has a type, a label and a
+URL. The display mode is icon only, URL, or icon with username (the default). A row with an empty URL
+is kept while you fill it in and is skipped when the letter is rendered.
+
+### Target
+
+| Field               | Stored as         | Notes                                                                 |
+| :------------------ | :---------------- | :-------------------------------------------------------------------- |
+| Target role         | `jobTitle`        | The job you are applying for                                          |
+| Company             | `companyName`     |                                                                       |
+| Hiring manager      | `recipientName`   |                                                                       |
+| Recipient title     | `recipientTitle`  |                                                                       |
+| Company location    | `companyLocation` |                                                                       |
+| Date                | `date`            | Set to the day the letter is created, written like "October 28, 2026" |
+| Job post (optional) | `jobPost`         | Context for AI writing only; never printed                            |
+
+### Letter
+
+| Field        | Stored as    | Notes                                                           |
+| :----------- | :----------- | :-------------------------------------------------------------- |
+| Subject      | `subject`    |                                                                 |
+| Greeting     | `greeting`   |                                                                 |
+| Opening      | `opening`    |                                                                 |
+| Main body    | `body`       | AI can write it from a resume you pick in **Write from resume** |
+| Proof points | `highlights` |                                                                 |
+| Closing      | `closing`    |                                                                 |
+| Signature    | `signature`  | Pre-filled with your full name                                  |
+| Postscript   | `postscript` |                                                                 |
+
+When a letter is created with both a target role and a company, the subject starts as "Application
+for _role_ at _company_", the greeting as "Dear _hiring manager_," or "Dear _company_ Hiring Team,",
+and the closing as "Sincerely,". Otherwise they start empty, so the letter never says something you
+did not write.
+
+## What are the limits on cover letter fields?
+
+Text fields have no character limit in the editor. The checks below are the only ones, and the
+contact checks are advice: they show an error under the field but never block saving or exporting.
+The document title can be up to 255 characters when it is backed up to your account.
+
+| Field    | Check                                             | Message                                             |
+| :------- | :------------------------------------------------ | :-------------------------------------------------- |
+| Email    | Must look like an email address when filled       | Enter a valid email address.                        |
+| Phone    | Must be a valid number when filled                | Enter a valid phone number, including country code. |
+| Website  | Must be a web address; `https://` may be left off | Use a valid URL starting with http:// or https://.  |
+| Job post | AI requests accept up to 20,000 characters of it  |                                                     |
+
+## Which appearance settings can I change?
+
+The settings panel controls the letter's look. Numbers outside a range are pulled back to the nearest
+allowed value, and an invalid colour falls back to the default, so an imported file cannot break the
+page.
+
+| Setting            | Allowed values                               | New letter default |
+| :----------------- | :------------------------------------------- | :----------------- |
+| Font style         | Studio's font list                           | Geist              |
+| Paper size         | A4 or US Letter                              | A4                 |
+| Page margin        | 24 to 72 px                                  | 40 px              |
+| Paragraph gap      | 4 to 24 px                                   | 10 px              |
+| Line height        | 1.25 to 1.8                                  | 1.5                |
+| Document language  | A language tag such as `en`, `de` or `pt-BR` | English            |
+| Accent colour      | Hex colour                                   | `#2563eb`          |
+| Sidebar colour     | Hex colour                                   | `#f8fafc`          |
+| Page colour        | Hex colour                                   | `#ffffff`          |
+| Text colour        | Hex colour                                   | `#18181b`          |
+| Section visibility | Profile, Links, Target, Letter               | All shown          |
+
+## Related
+
+- [Cover letter builder](/docs/product/cover-letter-builder)
+- [Master Profile](/docs/product/master-profile)
+- [AI writing assistant](/docs/product/ai-writing-assistant)

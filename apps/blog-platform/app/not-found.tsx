@@ -5,7 +5,7 @@ import { Button, Container } from "@veriworkly/ui";
 
 const NotFound = () => {
   return (
-    // Not `main` — this renders inside MainLayout's `main`, and nesting landmarks
+    // Not `main`: this renders inside MainLayout's `main`, and nesting landmarks
     // is invalid HTML.
     <div className="surface-grid flex min-h-screen items-center justify-center">
       <Container className="flex flex-col items-center text-center">

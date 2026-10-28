@@ -1,9 +1,15 @@
 ---
 title: "Portfolio: Publishing & Analytics"
-description: Shared path vs. subdomain publishing, the premium gates, the readiness score, and analytics' two locked states.
+metaTitle: "How to Publish a Portfolio: Address, Readiness, Analytics"
+description: Publish a VeriWorkly portfolio at portfolio.veriworkly.com/portfolio/<name> free, or on <name>.veriworkly.com with a paid plan. Opens at launch.
 ---
 
-## Publishing
+**Publishing makes your portfolio a public website. A free portfolio publishes at
+`portfolio.veriworkly.com/portfolio/<name>` with a "Built with VeriWorkly" badge; Nimbus or Cipher
+on a paid plan adds `<name>.veriworkly.com` and lets you remove the badge. Publishing opens to
+everyone at launch; today it is admin-only. Edits stay in your draft until you publish again.**
+
+## Where is my portfolio published?
 
 | Portfolio   | Published at                                                                                         |
 | :---------- | :--------------------------------------------------------------------------------------------------- |
@@ -29,7 +35,7 @@ host and the shared path onto the same internal route.
   everyone. See [Portfolio: Overview](/docs/product/portfolio/overview).
 </Callout>
 
-### Publication lifecycle
+### What happens to a published portfolio when my plan ends?
 
 A `PortfolioPublication` record holds one of three statuses:
 
@@ -48,9 +54,9 @@ draft does not change the live site until you publish again.
 
 ---
 
-## Dashboard
+## What is the readiness score?
 
-Shows all-time views, published section and project counts, and a **readiness percentage**.
+The dashboard shows all-time views, published section and project counts, and a **readiness percentage**.
 
 Readiness is the share of a four-item checklist that is complete:
 
@@ -64,9 +70,9 @@ Each item is worth 25%. The score and the checklist come from the same calculati
 
 ---
 
-## Analytics
+## Who can see portfolio analytics?
 
-Total views, a recent-window trend, active days, and a referrer breakdown, aggregated daily per
+Accounts with a paid portfolio plan. Analytics shows total views, a recent-window trend, active days, and a referrer breakdown, aggregated daily per
 publication and referrer host.
 
 **Premium-gated** (the `analytics` entitlement), with two distinct locked states:
@@ -83,9 +89,9 @@ publication and referrer host.
 
 ---
 
-## Settings
+## Which portfolio settings are paid?
 
-The subdomain/slug editor (with an inline format hint), SEO meta title and description, and social
+All of them: the subdomain/slug editor (with an inline format hint), SEO meta title and description, and social
 share image upload.
 
 All are **disabled for free users**, with a banner naming the locked fields, and editable for
@@ -101,7 +107,9 @@ and ETag against what was declared. Only JPG, PNG, and WebP are accepted, capped
 
 ---
 
-## Watermark
+## Can I remove the "Built with VeriWorkly" badge?
+
+Yes, on a premium portfolio.
 
 A floating "Built with VeriWorkly" badge appears on every free published portfolio. On a premium
 portfolio, an account with the `watermark_removal` entitlement gets a per-portfolio toggle to remove

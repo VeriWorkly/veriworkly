@@ -15,7 +15,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   if (!page) return new Response("Not found", { status: 404 });
 
   return renderOgCard({
-    title: page.data.title ?? "VeriWorkly ATS Engine",
+    title: page.data.title,
     description:
       page.data.description ||
       "Open-source ATS resume parser and scorer for TypeScript and JavaScript.",

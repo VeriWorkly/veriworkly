@@ -1,12 +1,15 @@
 ---
 title: Cover Letter Builder
-description: A dedicated cover letter editor sharing Studio's live-preview and export pipeline.
+metaTitle: Free Cover Letter Builder with 5 Templates
+description: Write a cover letter in VeriWorkly for free. Fill sender, recipient and letter fields, pick one of five templates, and export PDF or DOCX.
 ---
 
-The cover letter builder is a dedicated editor with its own fields and schema, sharing the same
-live-preview and export pipeline as the resume builder.
+**To write a cover letter in VeriWorkly, create a new cover letter in Studio, fill in the sender,
+recipient and letter fields, pick one of five free templates, and export it as PDF, DOCX or four
+other formats. A new letter fills your details from your Master Profile, and AI can draft it from a
+pasted job post if you have credits.** Start one at [app.veriworkly.com](https://app.veriworkly.com).
 
-## Fields
+## Which fields does a cover letter have?
 
 The letter's shape is defined once, as `CoverLetterContent` in `packages/profile-core`, and shared
 by Studio and the server:
@@ -21,7 +24,7 @@ by Studio and the server:
 Studio adds three fields of its own: `jobPost` (the pasted job post, used as context for AI writing
 and never printed), `language` (the exported HTML's language tag), and the page size.
 
-## Templates
+## Which cover letter templates are there?
 
 Five templates, all freely selectable with no plan-based lock:
 
@@ -33,7 +36,7 @@ Five templates, all freely selectable with no plan-based lock:
 | **Executive**          | `executive`          | A centered double-rule masthead with a traditional dateline-over-address arrangement.            |
 | **ATS Essential**      | `ats-essential`      | The classic left-aligned block letter: no column split anywhere, the most parser-safe structure. |
 
-## How it fits into the platform
+## How does the cover letter builder fit with the rest of VeriWorkly?
 
 - **Seeding**: a new cover letter auto-seeds from your
   [Master Profile](/docs/product/master-profile) when created with no content.
@@ -50,6 +53,27 @@ Five templates, all freely selectable with no plan-based lock:
   also defines `PORTFOLIO` and `LINK_IN_BIO`, but portfolios are a separate product surface with
   their own editor, and link-in-bio is not built.
 </Callout>
+
+## Frequently asked questions
+
+<Accordions>
+  <Accordion id="need-cover-letter" title="Do I still need a cover letter?">
+    Often, yes. Many postings ignore it, but some ask for one, and a short letter that ties your
+    experience to the role helps when your resume alone does not make the fit obvious. The evidence
+    is weighed in [do you need a cover
+    letter?](https://blog.veriworkly.com/do-you-need-a-cover-letter)
+  </Accordion>
+  <Accordion id="ai-cover-letter" title="Can AI write my cover letter?">
+    Yes. Paste the job post into the letter and run the AI cover letter action. It spends AI
+    credits, shows the cost first, and gives you a draft to review rather than overwriting your
+    text. See the [AI Writing Assistant](/docs/product/ai-writing-assistant).
+  </Accordion>
+  <Accordion id="free-cover-letter" title="Is the cover letter builder free?">
+    Yes. Every template and every export format is free, with no watermark. A free account holds one
+    active cover letter at a time, alongside one resume; deleting a letter frees the slot. A paid
+    plan lifts that limit once payments open at launch.
+  </Accordion>
+</Accordions>
 
 ## Related
 

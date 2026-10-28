@@ -13,25 +13,19 @@ export type PostStats = { words: number; minutes: number; label: string };
  */
 const cache = new Map<string, PostStats>();
 
+/** Throws when the post file cannot be read: content is build-time, so that is a bug to fail on. */
 export function getPostStats(filename: string): PostStats {
   const cached = cache.get(filename);
   if (cached) return cached;
 
-  let stats: PostStats = { words: 0, minutes: 5, label: "5 min read" };
+  const fullPath = path.join(process.cwd(), "content", "blog", filename);
 
-  try {
-    const fullPath = path.join(process.cwd(), "content", "blog", filename);
+  // Frontmatter is metadata, not prose: counting its `faq` and `tags` blocks would inflate the total.
+  const content = fs.readFileSync(fullPath, "utf-8").replace(FRONTMATTER, "");
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.ceil(words / WORDS_PER_MINUTE));
 
-    // Frontmatter is metadata, not prose — counting it inflates long posts,
-    // which now carry sizeable `faq` and `tags` blocks.
-    const content = fs.readFileSync(fullPath, "utf-8").replace(FRONTMATTER, "");
-    const words = content.trim().split(/\s+/).filter(Boolean).length;
-    const minutes = Math.max(1, Math.ceil(words / WORDS_PER_MINUTE));
-
-    stats = { words, minutes, label: `${minutes} min read` };
-  } catch (error) {
-    console.error("Error reading post content for read time calculation:", error);
-  }
+  const stats = { words, minutes, label: `${minutes} min read` };
 
   cache.set(filename, stats);
 

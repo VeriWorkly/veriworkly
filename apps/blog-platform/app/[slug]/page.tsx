@@ -3,13 +3,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { DocsBody } from "fumadocs-ui/layouts/notebook/page";
+import { DocsBody } from "fumadocs-ui/page";
 import { ArrowLeft, Clock, Calendar, ArrowRight, RefreshCw } from "lucide-react";
 
 import { blog } from "@/lib/source";
 import { feedAlternates, siteConfig } from "@/config/site";
 import { getPostStats } from "@/lib/read-time";
 import { getRelatedPosts } from "@/lib/related";
+import { getAuthor } from "@/lib/authors";
+import { formatDate } from "@/lib/format-date";
 
 import PostActions from "@/components/blog/PostActions";
 import PostFaq from "@/components/blog/PostFaq";
@@ -18,20 +20,13 @@ import RelatedPosts from "@/components/blog/RelatedPosts";
 
 import { getMDXComponents } from "@/components/mdx";
 
-import { Container } from "@/components/layout/Container";
+import { Container } from "@veriworkly/ui";
 import { buildPostSchema, serializeSchema } from "@/lib/structured-data";
 import { cn } from "@/lib/utils";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
-
-const formatDate = (value: string | Date) =>
-  new Date(value).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 
 /** Built once per post by `app/og/[slug]/image.png/route.tsx`. */
 const ogImageFor = (slug: string) => `${siteConfig.url}/og/${slug}/image.png`;
@@ -46,7 +41,8 @@ export default async function BlogPostPage(props: PageProps) {
 
   const MDX = page.data.body;
   const postUrl = `${siteConfig.url}/${params.slug}`;
-  const { faq, tags, category, cluster, updated, date, title, description, author } = page.data;
+  const { faq, tags, category, cluster, updated, date, title, description } = page.data;
+  const author = getAuthor(page.data.author);
 
   const stats = getPostStats(page.data.info.path);
   const related = getRelatedPosts({ url: page.url, cluster, tags });
@@ -103,22 +99,20 @@ export default async function BlogPostPage(props: PageProps) {
 
             <div className="bg-border/50 h-px" />
 
-            <div className="prose prose-zinc dark:prose-invert max-w-none">
+            <div className="prose max-w-none">
               <DocsBody
                 className={cn(
                   "text-foreground/90 max-w-none leading-relaxed font-normal",
-                  // Headings - bold, crisp, properly spaced, with subtle top border on h2
-                  "[&_h1]:text-foreground [&_h1]:mt-12 [&_h1]:mb-4 [&_h1]:text-3xl [&_h1]:font-extrabold [&_h1]:tracking-tight [&_h1]:md:text-4xl",
+                  // Headings
                   "[&_h2]:border-border/40 [&_h2]:text-foreground [&_h2]:mt-14 [&_h2]:mb-5 [&_h2]:border-t [&_h2]:pt-6 [&_h2]:text-2xl [&_h2]:leading-snug [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:md:text-3xl",
                   "[&_h3]:text-foreground [&_h3]:mt-10 [&_h3]:mb-3 [&_h3]:text-xl [&_h3]:leading-snug [&_h3]:font-bold [&_h3]:tracking-tight [&_h3]:md:text-2xl",
                   "[&_h4]:text-foreground [&_h4]:mt-8 [&_h4]:mb-2 [&_h4]:text-lg [&_h4]:font-bold",
-                  // Heading Anchors - prevent heading text or icon links from turning blue or underlined
-                  "[&_h1_a]:text-foreground [&_h1_a]:font-bold [&_h1_a]:no-underline",
+                  // Heading anchors keep the heading colour and no underline
                   "[&_h2_a]:text-foreground hover:[&_h2_a]:text-foreground [&_h2_a]:font-bold [&_h2_a]:no-underline",
                   "[&_h3_a]:text-foreground hover:[&_h3_a]:text-foreground [&_h3_a]:font-bold [&_h3_a]:no-underline",
                   "[&_h4_a]:text-foreground hover:[&_h4_a]:text-foreground [&_h4_a]:font-bold [&_h4_a]:no-underline",
                   "[&_a.subheading-anchor]:text-muted-foreground/30 hover:[&_a.subheading-anchor]:text-foreground [&_a.subheading-anchor]:font-normal [&_a.subheading-anchor]:no-underline",
-                  // Body Links - sleek, professional underline, high contrast in light & dark mode, zero electric blue!
+                  // Body links
                   "[&_a]:text-foreground [&_a]:decoration-foreground/30 hover:[&_a]:decoration-foreground hover:[&_a]:text-foreground [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-[4px] [&_a]:transition-colors",
                   // Paragraphs & Text Formatting
                   "[&_p]:text-foreground/90 [&_p]:my-6 [&_p]:text-base [&_p]:leading-relaxed md:[&_p]:text-lg md:[&_p]:leading-8",
@@ -126,7 +120,7 @@ export default async function BlogPostPage(props: PageProps) {
                   // Lists
                   "[&_ol]:my-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:my-6 [&_ul]:list-disc [&_ul]:pl-6",
                   "[&_li]:text-foreground/90 [&_li]:my-2 [&_li]:leading-relaxed",
-                  // Blockquotes - subtle accent bar & elegant editorial styling
+                  // Blockquotes
                   "[&_blockquote]:border-foreground/30 [&_blockquote]:bg-muted/20 [&_blockquote]:text-foreground/85 [&_blockquote]:my-8 [&_blockquote]:rounded-r-lg [&_blockquote]:border-l-2 [&_blockquote]:px-6 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:italic",
                   // Code & Pre
                   "[&_code]:bg-muted/50 [&_code]:border-border/40 [&_code]:text-foreground [&_code]:rounded-md [&_code]:border [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.875em]",
@@ -163,8 +157,8 @@ export default async function BlogPostPage(props: PageProps) {
                   />
                 </div>
                 <div>
-                  <p className="text-foreground text-sm leading-none font-bold">{author}</p>
-                  <p className="text-muted-foreground mt-1 text-xs">Career &amp; hiring research</p>
+                  <p className="text-foreground text-sm leading-none font-bold">{author.name}</p>
+                  <p className="text-muted-foreground mt-1 text-xs">{author.role}</p>
                 </div>
               </div>
             </div>
@@ -247,7 +241,9 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   if (!page) notFound();
 
-  const { title, description, author, date, updated, tags } = page.data;
+  const { title, description, date, updated, tags } = page.data;
+  const author = getAuthor(page.data.author);
+  const authorUrl = author.type === "person" ? author.url : undefined;
 
   const ogUrl = ogImageFor(params.slug);
   const postUrl = `${siteConfig.url}/${params.slug}`;
@@ -256,7 +252,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     title,
     description,
 
-    authors: [{ name: author }],
+    authors: [{ name: author.name, ...(authorUrl && { url: authorUrl }) }],
     creator: siteConfig.creator,
     publisher: siteConfig.shortName,
 
@@ -274,7 +270,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       url: postUrl,
       publishedTime: new Date(date).toISOString(),
       modifiedTime: new Date(updated ?? date).toISOString(),
-      authors: [author],
+      ...(authorUrl && { authors: [authorUrl] }),
       tags: [...tags],
       images: [
         {

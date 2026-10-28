@@ -10,7 +10,7 @@ const Footer = () => {
       homeHref={siteConfig.links.main}
       brandName={siteConfig.name}
       shortName={siteConfig.shortName}
-      email="hello@veriworkly.com"
+      email={siteConfig.email}
       location="Open Source Everywhere"
       description="Resume, cover letter and portfolio tools for job seekers, with a free tier and MIT-licensed code."
       socialLinks={[

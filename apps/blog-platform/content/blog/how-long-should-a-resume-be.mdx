@@ -1,9 +1,9 @@
 ---
-title: "How Long Should a Resume Be? The One-Page Rule Is Mostly Wrong"
-description: "How many pages should a resume be? Use one page for a short, focused early-career history and two pages for most people with meaningful relevant experience. This guide separates the evidence from the one-page rule and shows what to cut when space is genuinely tight."
+title: "How Long Should a Resume Be? Pages and Word Count"
+description: "One page early in your career, two pages for most people with experience, about 200 to 1,500 words. The evidence, and what to cut when space is tight."
 author: VeriWorkly Team
 date: 2026-08-03
-updated: 2026-10-15
+updated: 2026-10-28
 category: Resume Writing
 cluster: resume-craft
 pillar: true
@@ -15,7 +15,7 @@ tags:
   - resume format
   - resume writing
 faq:
-  - question: How long should a resume be in 2026?
+  - question: How long should a resume be?
     answer: >-
       Two pages for most people with more than about three years of experience,
       one page for students and early-career candidates. The best available
@@ -27,7 +27,7 @@ faq:
       Only when you can fill one page well. The one-page rule survives because
       it prevents padding, not because screeners want less information. Cutting
       real, relevant achievements to hit an arbitrary page count removes exactly
-      the content that earns interviews.
+      the content that earns interviews, so use two pages when you need them.
   - question: Can a resume be three pages?
     answer: >-
       Rarely, outside academia, medicine, and government roles that require
@@ -40,19 +40,20 @@ faq:
       as a one-page resume, because they read the text layer rather than counting
       pages. Layout causes parsing failures, not length. Two columns, text boxes,
       and image-based PDFs are the real risks.
-  - question: What if my resume is one and a half pages?
+  - question: How many words should a resume be?
     answer: >-
-      Either fill the second page or cut back to one. A half-empty second page
-      reads as unfinished. The usual fix is adding scope and outcome detail to
-      recent roles, which is content worth having anyway, rather than stretching
-      margins and font size.
+      About 200 to 1,500 words, which is one to two pages. The open-source
+      VeriWorkly ATS Engine uses that band in its default scoring policy. Under
+      200 words it warns that the resume is too short to show what you did, and
+      over 1,500 it warns that the resume is too long for a reviewer to read
+      through.
 ---
 
-**Two pages for most people with more than a few years of experience, one page for students and early-career candidates, and the page count matters far less than whether the content earns its space.** The best experiment available on the question found recruiters preferred two-page resumes over one-page resumes by 2.3 to 1, and the preference grew as seniority increased.
+**A resume should be one page for students and early-career candidates and two pages for most people with more than a few years of experience. In words, that is about 200 to 1,500. The page count matters far less than whether every line earns its space.** The best experiment available found recruiters preferred two-page resumes over one-page resumes by 2.3 to 1, and the preference grew with seniority.
 
 The one-page rule is the most durable piece of advice in this category and one of the least supported. It is worth understanding where it came from, because the reason it persists is also the reason it still does some good.
 
-## How many pages should a resume be: one page or two?
+## How many pages should a resume be: one or two?
 
 **Use one page when you are a student, a recent graduate, or early in your career and can fill it with relevant evidence. Use two pages when cutting to one would remove recent achievements, scope, promotions, or job-relevant skills.** A third page belongs mainly to a CV or a role that explicitly asks for detailed history.
 
@@ -65,7 +66,23 @@ The one-page rule is the most durable piece of advice in this category and one o
 
 If the answer is "I have a half-empty second page," do not make the margins tiny. Either add useful scope and outcome detail to recent roles or cut back to one complete page. The page count should follow the evidence you need to show.
 
-## What the evidence actually shows
+## How many words should a resume be?
+
+**About 200 to 1,500 words. Under 200 words a resume rarely has room to show what you did and what came of it. Over 1,500 words it runs past two full pages, which the engine below flags as too long for a reviewer to read through. Inside that band, length is a content decision, not a rule.**
+
+That band is not a survey result. It is the length rule in the open-source [VeriWorkly ATS Engine](https://docs.veriworkly.com/ats-engine/reference/rubric), whose default policy publishes all 35 of its scoring rules. The rule is `ats-v2.format.length`, a warning, and it counts every word, "a" and "9" included:
+
+| Word count   | What the engine reports                                      |
+| ------------ | ------------------------------------------------------------ |
+| Under 200    | Too short to show what you did: add bullets to recent roles  |
+| 200 to 1,500 | A reasonable length: the rule passes                         |
+| Over 1,500   | Too long for a reviewer to read through: cut the older roles |
+
+The engine's authors set the ceiling at about two full pages of text. It is a warning, not a rejection: no parser stops reading at word 1,501. To see your own count, run the engine's command line tool on a plain-text copy of your resume with `npx @veriworkly/ats-engine check resume.txt --json`. The report states the count as "The resume is n words", and the plain report prints it whenever the count falls outside the band.
+
+## What does the research say about resume length?
+
+**The best study found recruiters preferred two-page resumes over equivalent one-page versions and spent longer reading them. It measured preference in a simulated review, not callbacks.**
 
 The strongest study on this is [ResumeGo's paired-resume experiment](https://www.resumego.net/research/one-or-two-page-resumes/). The design is unusually good for the category: 482 recruiters, hiring managers, HR professionals, and executives reviewed 7,712 resumes in a simulated hiring process. Every one-page resume had a two-page counterpart describing a candidate with equivalent credentials, so length was the variable being tested rather than a proxy for having more to say.
 
@@ -114,7 +131,7 @@ The useful question is not "how many pages am I allowed" but "does every line he
 
 Apply those three and the length answers itself. What you must not do is delete a quantified achievement to hit a page target, because that is deleting the content that produces interviews in order to satisfy a formatting preference nobody is measuring.
 
-## Length by situation
+## How long should my resume be for my situation?
 
 | Situation                         | Length        | Reasoning                                           |
 | --------------------------------- | ------------- | --------------------------------------------------- |
@@ -128,11 +145,11 @@ Apply those three and the length answers itself. What you must not do is delete 
 
 The awkward case is one and a half pages. A second page that trails off halfway reads as unfinished. Either fill it with scope and outcome detail on recent roles, which is content worth adding regardless, or tighten back to one full page. Do not solve it by widening margins and dropping to 9pt, which is visible and reads as evasion.
 
-## Length has nothing to do with ATS parsing
+## Does resume length affect ATS parsing?
 
-A persistent belief worth killing: two-page resumes get filtered by applicant tracking systems.
+**No. Applicant tracking systems read the text layer and map it to fields, and page count is not an input. A two-page resume parses exactly as well as a one-page resume with the same layout. Layout is what breaks parsing: columns, text boxes and image-only PDFs.**
 
-They do not. Parsers extract the text layer of a document and map it to fields. Page count is not an input. A two-page resume parses exactly as well as a one-page resume with the same layout, and there is no length threshold at which a system starts discarding content.
+Parsers extract the text layer of a document and map it to fields. Page count is not an input. A two-page resume parses exactly as well as a one-page resume with the same layout, and there is no length threshold at which a system starts discarding content.
 
 What does break parsing is layout. Two-column designs cause extractors to interleave lines across columns. Text boxes and headers can be skipped entirely. An image-based PDF, such as one made by screenshotting the page rather than writing text primitives, [parses as completely blank](/why-some-resume-pdfs-parse-as-blank) regardless of how many pages it has. Length is not the risk. Structure is.
 
@@ -148,7 +165,9 @@ The design implication is not "be short." It is that the top third of page one d
 
 That ordering matters more than page count, and it is the same principle behind [tailoring to a specific posting](/how-to-tailor-your-resume-to-a-job-description).
 
-## What to cut when you genuinely need to
+## How long is too long for a resume?
+
+**Outside academic CVs and federal applications, a third page or more than about 1,500 words is too long. At that point the resume usually carries old roles, duty bullets and padding. Cut those first, before you touch a quantified result.**
 
 In rough order of what goes first:
 

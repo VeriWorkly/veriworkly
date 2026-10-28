@@ -1,7 +1,15 @@
 ---
 title: Affiliate Program
-description: Commission tiers, enrolment states, tier promotion, and how payouts actually work.
+metaTitle: "VeriWorkly Affiliate Program: Commission and Payouts"
+description: VeriWorkly affiliates earn 2% to 5% of every payment a referred customer makes, with a $25 minimum withdrawal. Signups alone earn nothing.
 ---
+
+**VeriWorkly affiliates earn a commission of 2%, 3% or 5% on every payment a referred customer
+makes, net of tax, rising with the number of paying referrals. Signups alone earn nothing. An admin
+reviews each commission, and you can withdraw once your available balance reaches $25.** Read the
+terms at [veriworkly.com/affiliate](https://veriworkly.com/affiliate).
+
+## Where is the affiliate dashboard?
 
 A full affiliate dashboard lives in Studio across `/affiliate`, `/affiliate/tiers`,
 `/affiliate/referrals`, `/affiliate/commissions`, `/affiliate/payouts`, and
@@ -23,7 +31,9 @@ A full affiliate dashboard lives in Studio across `/affiliate`, `/affiliate/tier
 
 ---
 
-## Enrolment states
+## How do I join the affiliate program?
+
+Enrol from `/affiliate` in Studio. Enrolling makes your account active straight away.
 
 | State            | Behaviour                                                                                          |
 | :--------------- | :------------------------------------------------------------------------------------------------- |
@@ -34,7 +44,7 @@ A full affiliate dashboard lives in Studio across `/affiliate`, `/affiliate/tier
 
 ---
 
-## Commission tiers
+## How much commission do affiliates earn?
 
 A three-tier commission structure. Rates are stored in basis points and apply to every payment a
 referred customer makes, net of tax, at the affiliate's tier when the payment lands.
@@ -54,7 +64,7 @@ referred customer makes, net of tax, at the affiliate's tier when the payment la
 
 ---
 
-## Wallet and payouts
+## How do affiliate payouts work?
 
 - **Balances**: pending, available and paid, tracked in USD cents.
 - **Commission review**: every commission starts `PENDING`. An admin releases it to the available
@@ -84,7 +94,7 @@ dashboard for 1 minute.
 
 ---
 
-## Program terms
+## What are the affiliate program rules?
 
 Surfaced on the public marketing page at
 [veriworkly.com/affiliate](https://veriworkly.com/affiliate):
@@ -114,6 +124,9 @@ Affiliate fields also live directly on `User`: `affiliateStatus`, `affiliateTier
 
 See the [Affiliates API reference](/api-reference/affiliates/overview) for the full endpoint list, including
 the `503` response shape returned when the program flag is off.
+
+For a plain account of both programs, read [how affiliate and ambassador rewards actually
+work](https://blog.veriworkly.com/how-affiliate-and-ambassador-rewards-actually-work).
 
 ## Related
 

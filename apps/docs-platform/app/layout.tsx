@@ -5,7 +5,10 @@ import "./globals.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
 
 import { siteConfig } from "@/config/site";
+import { siteSchema } from "@/lib/structured-data";
 import { globalFontVariables } from "@veriworkly/ui";
+
+import { JsonLd } from "@/components/json-ld";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -57,35 +60,10 @@ export const metadata: Metadata = {
 };
 
 const DocsPlatformLayout = ({ children }: { children: React.ReactNode }) => {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "TechArticle",
-
-    name: "VeriWorkly Documentation",
-    url: siteConfig.url,
-
-    description: "Technical documentation and guides for VeriWorkly resume builder.",
-
-    publisher: {
-      "@type": "Organization",
-      name: "VeriWorkly",
-      logo: {
-        "@type": "ImageObject",
-        url: `${siteConfig.url}/veriworkly-logo.png`,
-      },
-    },
-  };
-
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
-        <script
-          id="json-ld"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-          }}
-        />
+        <JsonLd data={siteSchema()} />
       </head>
 
       <body

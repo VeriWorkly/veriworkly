@@ -18,8 +18,7 @@ export const UniversalSearch = () => {
           </h2>
 
           <p className="text-muted text-xl leading-relaxed font-medium">
-            Find documentation, blog posts, and API reference parameters in one unified search
-            interface.
+            Find guides, ATS Engine docs and API reference pages in one unified search interface.
           </p>
         </div>
 

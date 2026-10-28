@@ -1,11 +1,15 @@
 ---
 title: Importing Your Profile
-description: GitHub import is a direct pull with no AI; LinkedIn import is AI-parsed text that spends credits. Worth knowing which is which.
+metaTitle: Import Your Resume from GitHub, LinkedIn, PDF or JSON
+description: Import a resume into VeriWorkly from GitHub (free, no AI), LinkedIn text or PDF (AI, uses credits), an existing resume file, JSON or Markdown.
 ---
 
-Several distinct ways to get content into the builder, all backend-processed. The two most-used paths, GitHub and LinkedIn, work very differently from each other, and it's worth being precise about which is which.
+**You can import into VeriWorkly from GitHub, LinkedIn, an existing resume file, JSON or Markdown.
+GitHub import is a direct pull with no AI and no credits. LinkedIn import parses your pasted
+profile text or exported PDF with AI and spends credits. Both create a new resume and can also
+replace your Master Profile.** Start one in Studio at [app.veriworkly.com](https://app.veriworkly.com).
 
-## GitHub import
+## How do I import my resume from GitHub?
 
 Pulls a GitHub profile plus up to 30 recently updated repositories, and _deterministically_ (no AI) maps languages to skills and up to 15 repos to project entries.
 
@@ -22,7 +26,7 @@ Pulls a GitHub profile plus up to 30 recently updated repositories, and _determi
   need to match your VeriWorkly email.
 </Callout>
 
-## LinkedIn import
+## How do I import my LinkedIn profile?
 
 **Not an OAuth/API pull.** You paste your exported LinkedIn profile text (or upload a LinkedIn-exported PDF, which gets auto-extracted into the same paste box) and an AI call parses it into structured resume data.
 
@@ -41,11 +45,15 @@ the import succeeds.
   pass, not just a subscription. A credit pack does not lift them. Paid plans open at launch.
 </Callout>
 
-## Shared behavior
+## Does an import overwrite my existing resume?
 
-Both GitHub and LinkedIn import share a single **"Replace my Master Profile with this data"** checkbox in the same modal, and both always create a new resume document from the result. They never modify an existing document in place.
+No. GitHub and LinkedIn import always create a new resume from the result and never change an
+existing document in place. Both share one **"Replace my Master Profile with this data"** checkbox in
+the same modal; leave it unchecked to keep your Master Profile as it is.
 
-## Other import paths
+## Can I import an existing resume file?
+
+Yes, in four ways:
 
 - **Generic JSON import**: bring in a document exported from elsewhere, via the editor toolbar's Actions menu.
 - **Markdown import**: a hand-authored markdown resume/cover-letter format, hand-parsed (section headers, date ranges, bold/italic stripping).
@@ -57,6 +65,9 @@ Both GitHub and LinkedIn import share a single **"Replace my Master Profile with
 See the [Profile Import API reference](/api-reference/profile-import/overview) for the import-quota and import
 endpoints, and the [Profile API reference](/api-reference/profile/overview) for reading and replacing the
 Master Profile itself.
+
+For what each path really does, read [GitHub vs LinkedIn import: what is real, what is
+AI](https://blog.veriworkly.com/github-vs-linkedin-import-whats-real-whats-ai).
 
 ## Related
 

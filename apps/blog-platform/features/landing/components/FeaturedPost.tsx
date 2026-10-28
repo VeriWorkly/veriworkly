@@ -2,21 +2,12 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
+import type { BlogPost } from "@/lib/source";
 import { getReadingTime } from "@/lib/read-time";
+import { formatDate } from "@/lib/format-date";
 
 interface FeaturedPostProps {
-  post: {
-    url: string;
-    data: {
-      title: string;
-      description: string;
-      author: string;
-      date: string | Date;
-      info: {
-        path: string;
-      };
-    };
-  };
+  post: BlogPost;
 }
 
 export const FeaturedPost = ({ post }: FeaturedPostProps) => {
@@ -55,7 +46,7 @@ export const FeaturedPost = ({ post }: FeaturedPostProps) => {
                   </div>
 
                   <div className="text-accent font-mono text-sm tracking-widest uppercase">
-                    Case Study
+                    {meta.category}
                   </div>
                 </div>
               </div>
@@ -63,13 +54,7 @@ export const FeaturedPost = ({ post }: FeaturedPostProps) => {
 
             <div className="flex flex-col justify-center space-y-6 p-8 md:p-12">
               <div className="text-muted-foreground flex items-center gap-4 text-xs font-bold tracking-widest uppercase">
-                <span>
-                  {new Date(meta.date).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
+                <span>{formatDate(meta.date, "long")}</span>
 
                 <span className="bg-border size-1 rounded-full" />
 

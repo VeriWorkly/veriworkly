@@ -12,15 +12,8 @@ export const metadata: Metadata = {
 };
 
 const EngineDocsLayout = ({ children }: { children: React.ReactNode }) => {
-  const { nav, ...base } = baseOptions;
-
   return (
-    <FumadocsDocsLayout
-      tree={engineSource.getPageTree()}
-      {...base}
-      tabs={docsTabs}
-      nav={{ ...nav }}
-    >
+    <FumadocsDocsLayout tree={engineSource.getPageTree()} {...baseOptions} tabs={docsTabs}>
       {children}
     </FumadocsDocsLayout>
   );

@@ -15,15 +15,11 @@ type CurrentPost = {
 };
 
 /**
- * Surfaces related posts for the in-article footer.
- *
- * `cluster` and `tags` have been in the frontmatter schema since it was written, and
- * `CONTENT-STRATEGY.md` describes `cluster` as driving "related-post surfacing" — but
- * nothing read either field. Topical clusters only build authority if the pages
- * actually link to one another, so this closes the loop.
+ * Surfaces related posts for the in-article footer. Topical clusters only build authority
+ * if the pages link to one another.
  *
  * Ranking: same cluster first (an explicit editorial grouping), then shared tag count,
- * with `pillar` breaking ties since those are the pages worth passing link equity to.
+ * newest first on ties.
  */
 export function getRelatedPosts(current: CurrentPost, limit = 3): RelatedPost[] {
   const currentTags = new Set(current.tags);

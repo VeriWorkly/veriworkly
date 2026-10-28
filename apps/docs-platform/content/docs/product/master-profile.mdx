@@ -1,10 +1,15 @@
 ---
 title: Master Profile
-description: The single source of truth for a user's career facts, and how it feeds every document and portfolio.
+metaTitle: "What Is the Master Profile? One Record for Every Resume"
+description: The Master Profile is your one career record in VeriWorkly. New resumes and cover letters start from it, and editing a document never changes it.
 ---
 
-The Master Profile is a single, canonical career-facts record per user: every section a resume can
-have, stored as one JSON record.
+**The Master Profile is the one record of your career history in VeriWorkly: experience, education,
+projects, skills and every other section a resume can have. New resumes and cover letters fill
+themselves from it, and the portfolio editor can import it. Editing a document never writes back
+to it.** Edit yours at [app.veriworkly.com/profile/master](https://app.veriworkly.com/profile/master).
+
+## What does the Master Profile hold?
 
 It is deliberately **wider** than a single resume. Where a resume folds extended sections into a
 generic `customSections` array, the Master Profile keeps fully typed arrays for each: `languages`,
@@ -18,20 +23,21 @@ the exact type.
   check today: access is effectively available to every authenticated user, regardless of plan.
 </Callout>
 
-## How it's used
+## How does the Master Profile fill a new document?
 
 When a user creates a **new** resume or cover letter with no content yet, it auto-seeds from the Master Profile. This means starting a new document is instant if a Master Profile already exists: no re-typing your work history. The portfolio editor does not auto-seed; it has an explicit import action that copies your Master Profile into the portfolio draft.
 
-## The one-way rule
+## Does editing a resume change my Master Profile?
 
-Editing a specific document (a resume, say) **never writes back** to the Master Profile. Only an explicit action updates it:
+No. Editing a resume or cover letter **never writes back** to the Master Profile. Only two
+explicit actions update it:
 
 - Importing GitHub or LinkedIn data with **"Replace my Master Profile with this data"** checked.
 - Directly editing the Master Profile page itself.
 
 This means you can safely tailor one resume for a specific job (trimming sections, rewording bullets) without worrying it will change your canonical data or any other document that was seeded from it.
 
-## Where it lives
+## Where do I edit my Master Profile?
 
 The Master Profile is managed inside Studio:
 
@@ -50,6 +56,26 @@ It's designed to be shared across Studio and Portfolio, though Portfolio's own `
 `PUT` replaces the whole record; it is not a partial update.
 
 See the [Profile API reference](/api-reference/profile/overview) for request/response schemas.
+
+## Frequently asked questions
+
+<Accordions>
+  <Accordion id="need-account" title="Do I need an account to use the Master Profile?">
+    Yes. The Master Profile is stored with your account, so `/profile/master` needs you to sign in.
+    In guest mode you can still build and export resumes; they just start blank or from an import
+    instead of from a saved profile. Signing in costs nothing, and the Master Profile has no plan
+    gate.
+  </Accordion>
+  <Accordion id="update-docs" title="If I update my Master Profile, do my existing resumes change?">
+    No. A document copies the Master Profile once, when it is created empty. After that the two are
+    independent, so updating the profile only affects documents you create next. To refresh an
+    existing resume, use Reset to Defaults in its toolbar, which replaces its content with your
+    current Master Profile after you confirm.
+  </Accordion>
+</Accordions>
+
+For why one record beats many copies, read [your Master Profile: one source of
+truth](https://blog.veriworkly.com/your-master-profile-one-source-of-truth).
 
 ## Related
 

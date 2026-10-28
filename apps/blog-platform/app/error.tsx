@@ -1,19 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { OctagonAlert } from "lucide-react";
 
 import { Button, Container } from "@veriworkly/ui";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("Blog page failed to render:", error);
+  }, [error]);
+
   return (
-    // Not `main` — this renders inside MainLayout's `main`, and nesting landmarks
-    // is invalid HTML.
+    // Not `main`: this renders inside MainLayout's `main`, and nesting landmarks is invalid HTML.
     <div className="surface-grid flex min-h-screen items-center justify-center">
       <Container className="flex flex-col items-center text-center">
         <div className="bg-destructive/10 text-destructive shadow-destructive/5 mb-8 flex h-24 w-24 items-center justify-center rounded-full shadow-xl">
@@ -23,8 +28,8 @@ export default function Error({
         <h1 className="text-foreground text-4xl font-bold tracking-tight">Something went wrong</h1>
 
         <p className="text-muted mt-4 max-w-md text-base leading-6">
-          An unexpected error occurred. This might be due to a corrupted local storage or a
-          temporary glitch.
+          This page failed to load. Try again, or go back to the blog home page.
+          {error.digest && ` Reference: ${error.digest}.`}
         </p>
 
         <div className="mt-10 flex gap-4">

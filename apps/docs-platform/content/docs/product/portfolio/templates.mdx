@@ -1,10 +1,13 @@
 ---
 title: "Portfolio: Templates"
-description: The four portfolio templates, their design language, premium gating, and how the private submodule works.
+metaTitle: "Portfolio Templates: Which Are Free and Which Are Premium"
+description: VeriWorkly has four portfolio templates. Signal and Atelier are free with a badge; Nimbus and Cipher need a paid plan to publish, at launch.
 ---
 
-Four templates, sourced from a **private git submodule** (`apps/portfolio/template-library`, pinned
-to a specific upstream commit) and rendered server-side.
+**VeriWorkly has four portfolio website templates. Signal and Atelier are free: anyone can publish
+them, with a "Built with VeriWorkly" badge. Nimbus and Cipher are premium: anyone can select and
+preview them, but publishing one needs a paid portfolio plan or a pass, available at launch.** Browse
+them in the [template gallery](https://portfolio.veriworkly.com/templates).
 
 | Template    | Audience                           | Personality                  | Notable design elements                                                                      | Access         |
 | :---------- | :--------------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------- | :------------- |
@@ -13,83 +16,68 @@ to a specific upstream commit) and rendered server-side.
 | **Nimbus**  | Full-stack and frontend developers | Atmospheric / tech-editorial | Broadsheet layout with a cursor-follow ring, text-scramble hover and a marquee ticker        | **Premium**    |
 | **Cipher**  | Developers                         | Interactive CLI emulator     | An interactive terminal window with a boot sequence, a command line and a matrix-rain effect | **Premium**    |
 
----
-
-## Free and premium templates
-
-Signal and Atelier are free. Anyone can publish them, and a published free portfolio carries the
-"Built with VeriWorkly" badge.
-
-Nimbus and Cipher are premium. Premium gating is enforced at publish time, not just in the picker:
-
-- Any account can **select and preview** Nimbus or Cipher freely.
-- **Publishing** (or re-publishing after an edit) with a premium template is refused without the
-  `portfolio_publish` entitlement, which comes with Creator Pro, the Job Hunter Bundle, or a pass.
-  See [Billing & Credits](/docs/product/billing-and-credits).
-
-When paid access ends, a premium portfolio is not taken offline. After any grace period it moves to
-the closest free template (Nimbus to Atelier, Cipher to Signal) and shows the badge.
-
-Publishing opens to everyone at launch. Today it is admin-only in production.
+Every template is rendered on the server, so a published portfolio loads as a normal web page.
 
 ---
 
-## Custom domains
+## Which portfolio templates are free?
 
-<Callout type="warn" title="Only VeriWorkly-issued addresses are supported">
-  Custom domains are not supported. Published portfolios are served on `{username}.veriworkly.com`
-  (premium) or `portfolio.veriworkly.com/portfolio/{username}` (free).
+Signal and Atelier. A portfolio on either one publishes at
+`portfolio.veriworkly.com/portfolio/<name>` with the badge, and needs no paid plan once publishing
+opens at launch.
+
+## What do the premium templates add?
+
+A premium template published from a paid plan (Creator Pro, the Job Hunter Bundle, or a pass) gets:
+
+- its own address at `<name>.veriworkly.com`;
+- a toggle to remove the "Built with VeriWorkly" badge;
+- extra pages, up to 10, each with its own sections. See [Portfolio: Editor](/docs/product/portfolio/editor).
+
+Premium gating is enforced when you publish, not just in the picker. Publishing, or re-publishing
+after an edit, with Nimbus or Cipher is refused without the `portfolio_publish` entitlement. See
+[Billing & Credits](/docs/product/billing-and-credits) for the plans.
+
+<Callout type="warn" title="Publishing opens at launch">
+  Publishing is admin-only in production today. Everyone can build and preview a portfolio on any
+  template now. See [Portfolio: Publishing](/docs/product/portfolio/publishing).
 </Callout>
 
----
+## What happens to a premium portfolio when my plan ends?
 
-## How the registry works
+It stays online. After any grace period it moves to the closest free template (Nimbus to Atelier,
+Cipher to Signal), returns to the shared `portfolio.veriworkly.com/portfolio/<name>` address, and
+shows the badge. Your draft is untouched.
 
-`template-library/registry.ts` maps each template id to its metadata and a lazy `loader`:
+## Can I use a custom domain?
 
-```typescript
-export const templatesRegistry = {
-  signal: {
-    name: "Signal",
-    note: "…",
-    mood: "…",
-    audience: "…",
-    strengths: ["…"],
-    image: "/templates/signal-template-preview.png",
-    isPremium: false,
-    loader: () => import("./signal/SignalTemplate"),
-    design: signalDesign,
-  },
-  // atelier, nimbus, cipher …
-} satisfies Record<string, TemplateRegistryEntry>;
-```
-
-`apps/portfolio/templates/catalog/templates.ts` derives the public gallery list from that registry,
-so the gallery and the renderer can never drift apart. `isPremiumTemplate(id)` is the single source
-of truth for gating in the portfolio app.
-
-The backend's publish validator independently accepts only
-`"signal" | "atelier" | "nimbus" | "cipher"`, so an unknown template id is rejected server-side even
-if a client sends one. Its `PREMIUM_PORTFOLIO_TEMPLATE_IDS` list (`nimbus`, `cipher`) is what the
-server gates on.
+No. Published portfolios are served only on VeriWorkly addresses: `<name>.veriworkly.com` for a
+premium portfolio, or `portfolio.veriworkly.com/portfolio/<name>` for a free one.
 
 ---
 
-## Adding a template
+## Frequently asked questions
 
-Because templates live in a private submodule, this is not an open contribution path today. For
-maintainers, the steps are:
+<Accordions>
+  <Accordion id="try-premium" title="Can I try a premium portfolio template for free?">
+    Yes. Any account, including guest mode, can select Nimbus or Cipher and preview a full portfolio
+    on it. Only publishing a premium template needs a paid plan or a pass. You can switch to Signal
+    or Atelier at any time and publish for free once publishing opens.
+  </Accordion>
+  <Accordion id="switch-template" title="Do I lose content when I switch portfolio templates?">
+    No. The template controls how the portfolio looks; your sections and items stay the same. All
+    four templates read the same portfolio content, so you can switch and compare before you
+    publish.
+  </Accordion>
+  <Accordion id="need-portfolio" title="Do I need a portfolio website as well as a resume?">
+    It depends on your field. Designers and developers often benefit, because a portfolio shows the
+    work a resume can only describe. The trade-offs are covered in [Should you have a portfolio
+    website?](https://blog.veriworkly.com/should-you-have-a-portfolio-website)
+  </Accordion>
+</Accordions>
 
-1. Add a folder in `template-library/` with its React component, a `design.ts` detail file, and an
-   optional scoped stylesheet.
-2. Register it in `template-library/registry.ts` with its metadata, `isPremium` flag, and loader.
-3. Add the template id to the backend's `templateId` enum in
-   `apps/server/src/validators/portfolioValidator.ts`, and to `PREMIUM_PORTFOLIO_TEMPLATE_IDS` there
-   if it is premium. A premium template also needs a free fallback in `FREE_TEMPLATE_FOR_PREMIUM`
-   (`apps/server/src/services/portfolioService.ts`).
-4. Advance the submodule pointer in the main repository.
-
----
+Maintainers adding a portfolio template: see [Adding a
+Template](/docs/contributing/adding-a-template#can-i-contribute-a-portfolio-template).
 
 ## Related
 

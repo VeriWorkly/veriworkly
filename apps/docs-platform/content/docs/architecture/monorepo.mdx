@@ -1,5 +1,6 @@
 ---
 title: Monorepo Architecture
+metaTitle: "Monorepo Architecture: Next.js 16 and Shared Design System"
 description: How VeriWorkly runs five Next.js 16 App Router apps, an Express API and a shared design system in one npm workspaces monorepo.
 ---
 
@@ -12,6 +13,15 @@ API). Each app still builds and deploys on its own.
 <Callout type="info" title="Browse the source">
   The full repository is on [GitHub](https://github.com/VeriWorkly/veriworkly).
 </Callout>
+
+---
+
+## What is monorepo architecture?
+
+A monorepo architecture keeps several applications and their shared packages in one repository,
+with one dependency install, one lockfile and one CI setup, while each application still builds and
+deploys on its own. Shared code is imported as a versioned package by name, not copied between apps.
+VeriWorkly uses npm workspaces for this: one `npm install` at the root links every app and package.
 
 ---
 
@@ -113,6 +123,57 @@ reference.
 
 ---
 
+## What is the tech stack?
+
+Next.js 16 with the App Router, React 19 and Tailwind CSS 4 on the frontends; Node.js, Express 4,
+Prisma 7, PostgreSQL and Redis on the API. Zod 4 validates data on both sides.
+
+### Frontend stack
+
+| Layer                | Technology              | Purpose                                             |
+| :------------------- | :---------------------- | :-------------------------------------------------- |
+| **Framework**        | Next.js 16 (App Router) | Server rendering, routing and route handlers        |
+| **UI library**       | React 19                | Component runtime                                   |
+| **Styling**          | Tailwind CSS 4          | Utility-first CSS using the CSS-native `@theme` API |
+| **Design system**    | `@veriworkly/ui`        | In-house shared component library                   |
+| **PDF generation**   | `@react-pdf/renderer`   | Client-side PDF rendering                           |
+| **DOCX generation**  | `docx`                  | Client-side Word document generation                |
+| **State management** | Zustand                 | Stores, persisted to `localStorage`                 |
+| **Validation**       | Zod                     | Schema validation for imported and synced data      |
+| **Theming**          | `next-themes`           | Light, dark and system theme switching              |
+| **Icons**            | Lucide React            | Shared icon set                                     |
+| **Notifications**    | Sonner                  | Toast notifications in Studio                       |
+| **Docs and blog**    | Fumadocs and MDX        | Content platform for the docs and the blog          |
+
+### Backend stack
+
+| Layer              | Technology                    | Purpose                                                  |
+| :----------------- | :---------------------------- | :------------------------------------------------------- |
+| **Runtime**        | Node.js 22.12+                | Server runtime, clustered with `throng` in production    |
+| **Framework**      | Express 4                     | HTTP server                                              |
+| **Database**       | PostgreSQL through Prisma 7   | Primary store, type-safe access and migrations           |
+| **Cache**          | Redis                         | Sessions, rate limiting, quotas, view buffers, job locks |
+| **Authentication** | Better Auth                   | Email OTP plus Google, GitHub and LinkedIn OAuth         |
+| **Object storage** | Cloudflare R2 (S3-compatible) | Portfolio image uploads through presigned URLs           |
+| **Payments**       | Dodo Payments                 | Subscriptions, one-time purchases, customer portal       |
+| **AI**             | OpenAI-compatible client      | Requests go through the OpenRouter gateway               |
+| **File parsing**   | `pdf-parse`, `mammoth`        | Server-side PDF and DOCX text extraction                 |
+| **Email**          | Nodemailer (SMTP) or Resend   | Transactional email, with a console provider in dev      |
+| **Scheduling**     | `node-cron`                   | Eight background jobs, each guarded by a Redis lock      |
+| **Security**       | Helmet                        | HTTP security headers                                    |
+| **Testing**        | Vitest                        | Unit and integration tests                               |
+
+### Which parts run in the browser and which on the server?
+
+Document editing is local-first: resumes, cover letters and workspace settings are written to the
+browser's `localStorage`, and all six export formats are generated in the browser. See [State
+Management](/docs/architecture/state-management) and [Export
+Pipeline](/docs/architecture/pdf-generation). The API handles what needs a server: sign-in, cloud
+sync, share-link snapshots, AI generation, ATS analysis, file text extraction, and portfolio
+rendering and publishing.
+
+---
+
 ## How do builds and CI work?
 
 Every app builds on its own: `npm run build -w @veriworkly/<app>`, or the root shortcuts
@@ -154,10 +215,9 @@ their sources, so a spec or validator change must ship with its regenerated page
 
 `apps/portfolio/template-library` is a **git submodule** pointing at the private
 `VeriWorkly/portfolio-templates` repository. It holds the four portfolio templates (Signal,
-Atelier, Nimbus, Cipher) and their registry.
-
-Without access to that repository, run `node scripts/mock-template-library.mjs` to create
-stand-in templates, which is what CI does. Every other workspace builds and runs without it.
+Atelier, Nimbus, Cipher) and their registry, and it is not part of the public MIT repository.
+Every other workspace builds and runs without it. To build the portfolio app without access, use
+the mock templates described in [Local Development Setup](/docs/getting-started/local-setup#fork-and-clone).
 
 ---
 

@@ -1,0 +1,94 @@
+---
+title: ATS Checker FAQ
+metaTitle: "ATS Checker FAQ: Free Scans, Files, Scores and Limits"
+description: Answers about the VeriWorkly ATS checker. Is it free, do you need an account, which files it reads, why a PDF parses blank, and what the score means.
+---
+
+**The VeriWorkly ATS checker is free. Its core scan is a rules engine, not AI, so it costs no
+credits. Without an account you get one scan every 48 hours on the public checker; a free account
+gets two a day in Studio. It reads PDF, DOCX, HTML and text files up to 5 MB.** The answers below
+cover the questions people ask most. The full feature guide is [ATS checker](/docs/product/ats-checker).
+
+<Accordions>
+  <Accordion id="is-it-free" title="Is the ATS checker free?">
+    Yes. The core scan uses no AI and spends no credits, only one scan from your allowance. You can
+    run it on the public checker without an account, or in Studio with a free account. Only the
+    optional AI analysis and the AI resume conversion spend credits, and Studio shows the price
+    before you run either one.
+  </Accordion>
+
+<Accordion id="account" title="Do I need an account to check my resume?">
+  No. The public checker at [veriworkly.com/ats-checker](https://veriworkly.com/ats-checker) works
+  without signing in and gives you a score and a verdict. Signing in gets the full report: the
+  rule-by-rule breakdown, keyword lists and the recovered work history table. The ATS page inside
+  Studio asks you to sign in before it scans.
+</Accordion>
+
+<Accordion id="how-many" title="How many free ATS scans do I get?">
+  Without an account, one scan every 48 hours per connection. A free account gets two scans every 24
+  hours. An account that holds AI credits, a paid plan or a pass gets 300 a month. Uploading a file
+  has its own separate allowance, so reading your file never uses up a scan.
+</Accordion>
+
+<Accordion id="file-types" title="Which file types can the ATS checker read?">
+  PDF, DOCX, HTML, plain text, Markdown and JSON, up to 5 MB. RTF is not accepted, and old Word
+  `.doc` files should be saved as DOCX first. You can also paste the text, or pick a resume you
+  built in Studio. Uploaded PDF and Word files are checked for tables; only PDFs are checked for
+  columns, because a column split can only be measured on a laid-out page.
+</Accordion>
+
+<Accordion id="blank-pdf" title="Why does my resume PDF parse as blank?">
+  The PDF has no text layer: it is a scan, a photo, or a design export that turned text into shapes.
+  The checker then says the file "appears to be a scanned image or flattened graphic". A real ATS
+  cannot read it either. Export a text-based PDF or DOCX. See [why some resume PDFs parse as
+  blank](https://blog.veriworkly.com/why-some-resume-pdfs-parse-as-blank).
+</Accordion>
+
+<Accordion id="ai" title="Does the ATS checker use AI to score my resume?">
+  No. The score comes from a deterministic rules engine, the open-source, MIT-licensed VeriWorkly
+  ATS Engine, so the same resume always gets the same score. AI is a separate, optional analysis
+  that explains gaps and suggests fixes. [How the ATS checker actually
+  works](https://blog.veriworkly.com/how-the-ats-checker-actually-works) walks through both layers.
+</Accordion>
+
+<Accordion id="score" title="Does a high ATS score mean I will get an interview?">
+  No. The score measures whether software can read your resume and how well it covers a job post. A
+  person still decides. Treat a low parsing score as urgent, because job titles and dates may reach
+  the employer empty. [ATS resume myths: what the evidence
+  shows](https://blog.veriworkly.com/ats-resume-myths-what-the-evidence-shows) covers what an ATS
+  really filters.
+</Accordion>
+
+<Accordion id="format" title="What resume format passes an ATS?">
+  A single-column file with real text, standard headings such as Experience, Education and Skills on
+  their own lines, and no information hidden in images, tables or text boxes. The checker tests each
+  of these. The full checklist and a two-minute self-test are in [ATS-friendly resume
+  format](https://blog.veriworkly.com/ats-friendly-resume-format).
+</Accordion>
+
+<Accordion id="columns" title="Do two-column resumes fail ATS checks?">
+  They often read out of order. For an uploaded PDF, the checker measures how many lines are split
+  across a column gap and counts table grids, because both scramble the extracted text. Pasted text
+  and Studio documents have no page geometry, so those two checks are left out rather than counted
+  against you.
+</Accordion>
+
+<Accordion id="job-description" title="Should I add a job description to the scan?">
+  Yes, if you are applying for a specific role. With a job description, the report adds a job-match
+  score that checks which of the post's requirements your resume covers. Requirements count more
+  than nice-to-haves, and company boilerplate is ignored. The job description can be up to 20,000
+  characters.
+</Accordion>
+
+  <Accordion id="quota" title="What happens when I run out of ATS scans?">
+    The checker tells you when your scans come back, for example "ATS scan quota exceeded. Resets in
+    1d 4h." Nothing is lost. Wait for the reset, or sign in and scan in Studio, where a free account
+    gets two scans every 24 hours. See [Quota exceeded](/docs/troubleshooting/quota-exceeded).
+  </Accordion>
+</Accordions>
+
+## Related
+
+- [ATS checker](/docs/product/ats-checker)
+- [ATS Engine](/ats-engine)
+- [Troubleshooting](/docs/troubleshooting)

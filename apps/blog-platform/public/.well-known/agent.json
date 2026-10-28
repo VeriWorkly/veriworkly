@@ -11,8 +11,8 @@
   "api": {
     "type": "openapi",
     "url": "https://docs.veriworkly.com/openapi.json",
-    "has_user_authentication": false,
-    "base_url": "https://blog.veriworkly.com"
+    "has_user_authentication": true,
+    "base_url": "https://api.veriworkly.com/api/v1"
   },
 
   "services": [

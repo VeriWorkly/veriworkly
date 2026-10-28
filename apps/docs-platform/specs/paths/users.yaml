@@ -118,7 +118,7 @@ getCurrentUser:
             example:
               success: false
               statusCode: 403
-              message: "This action cannot be performed with an API key. Sign in and delete your account from Settings."
+              message: "This action cannot be performed with an API key. Sign in and delete your account from your Studio profile page."
       "404":
         description: User not found
         content:

@@ -1,0 +1,32 @@
+---
+title: Publishing Is Disabled
+metaTitle: 'Fix "Publishing is disabled in production" in VeriWorkly'
+description: '"Publishing is disabled in production" means portfolio publishing is admin-only until launch. Your drafts are saved; you can keep editing and previewing.'
+---
+
+**"Publishing is disabled in production" means portfolios cannot go public yet. Publishing is
+admin-only in production until launch. Your portfolio is not lost: the editor, saved drafts and
+previews keep working. Keep building it now and publish once publishing opens at launch, when free
+portfolios go live at `portfolio.veriworkly.com/portfolio/<name>`.**
+
+## Publishing is disabled in production during this phase.
+
+This is the API's message, returned with status `403` when anyone but the operator's admin account
+tries to publish. Only making the portfolio public is blocked. Saving a draft, previewing it and
+editing it all work.
+
+## Publishing is disabled in production right now. It's available in development.
+
+This is how the portfolio editor shows the same switch. The **Publish** button is disabled, and its
+tooltip reads "Publishing is disabled in production right now." The portfolio settings page shows
+"Publishing is disabled in production right now, so live settings can't be updated. It's available
+in development."
+
+## What can I do instead?
+
+Finish the portfolio in the editor and save it as a draft. Everything you save is kept for when
+publishing opens. See [Launch status](/docs/product/launch-status) for what works today and
+[Portfolio publishing](/docs/product/portfolio/publishing) for how publishing will work.
+
+If you run your own instance and see this, the API is running with `NODE_ENV=production` and your
+account's email does not match `ADMIN_EMAIL`. See [Self-hosting](/docs/self-hosting).

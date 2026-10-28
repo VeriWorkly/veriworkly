@@ -35,7 +35,6 @@ yarn-error.log*
 
 # except example file
 !.env.example
-!.env.docker.example
 
 # vercel
 .vercel
@@ -46,9 +45,3 @@ next-env.d.ts
 
 # fumadocs generated files
 .source
-
-# testing
-/test-results
-/app/test
-/app/og-generator
-/api-index

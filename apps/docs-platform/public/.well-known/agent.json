@@ -53,7 +53,7 @@
       "name": "Architecture & Integration Guides",
       "description": "Index technical guides on the local-first sync engine, the Master Profile data model, the client-side export pipeline, and scoped API keys.",
       "endpoints": [
-        "https://docs.veriworkly.com/docs/overview",
+        "https://docs.veriworkly.com/docs/architecture/monorepo",
         "https://docs.veriworkly.com/docs/architecture/state-management",
         "https://docs.veriworkly.com/docs/architecture/resume-schema",
         "https://docs.veriworkly.com/docs/architecture/pdf-generation",

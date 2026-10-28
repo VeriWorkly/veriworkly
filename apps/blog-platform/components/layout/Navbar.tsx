@@ -18,7 +18,7 @@ const Navbar = () => {
       logo={
         <MarketingNavLogo
           logoSrc="/veriworkly-logo.png"
-          homeHref={siteConfig.links.blog}
+          homeHref="/"
           shortName={siteConfig.shortName}
         />
       }

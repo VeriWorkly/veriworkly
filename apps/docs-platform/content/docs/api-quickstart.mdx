@@ -1,0 +1,108 @@
+---
+title: API Quickstart
+metaTitle: "VeriWorkly API Quickstart: Your First Request"
+description: Make your first VeriWorkly API request. Create a scoped key in Studio, call GET /api/v1/users/me with curl, and read the rate-limit headers.
+---
+
+import { Step, Steps } from "fumadocs-ui/components/steps";
+
+**To call the VeriWorkly API, sign in to Studio, open API keys, create a key with the `user:read`
+scope, and copy it. Then send `curl -H "X-API-Key: vw_..." https://api.veriworkly.com/api/v1/users/me`.
+The reply is your account as JSON. Every API path starts with `/api/v1`, and the full reference is
+in the [API reference](/api-reference).**
+
+## How do I create an API key?
+
+Create keys in Studio. You need an account; guest mode cannot create keys. A key is shown once, so
+copy it before you leave the page. Keys start with `vw_` followed by 64 hexadecimal characters.
+
+<Steps>
+  <Step>
+    Sign in to [app.veriworkly.com](https://app.veriworkly.com) and open **API keys** (`/api-keys`).
+  </Step>
+  <Step>Select **Create API key**.</Step>
+  <Step>
+    Name the key (up to 100 characters) and pick its scopes. For this quickstart, pick **Profile
+    access** (`user:read`).
+  </Step>
+  <Step>
+    Optionally set a rate limit (up to 600 requests per 15 minutes) and an expiry date. Without a
+    date, the key lasts one year.
+  </Step>
+  <Step>
+    Copy the key from the confirmation card. "For security reasons, this key will only be shown
+    once."
+  </Step>
+</Steps>
+
+## How do I make my first request?
+
+Check that the API is up with the health endpoint, which needs no key. Then call
+`GET /api/v1/users/me` with your key. It returns the account the key belongs to and needs the
+`user:read` scope. Replace `vw_your_key` with the key you copied.
+
+```bash
+curl https://api.veriworkly.com/api/v1/health
+```
+
+```bash
+curl -H "X-API-Key: vw_your_key" https://api.veriworkly.com/api/v1/users/me
+```
+
+A successful reply has the same envelope as every API response:
+
+```json
+{
+  "success": true,
+  "message": "User information fetched successfully",
+  "data": {
+    "id": "...",
+    "name": "Ada Lovelace",
+    "username": "ada",
+    "email": "ada@example.com",
+    "emailVerified": true,
+    "autoSyncEnabled": true,
+    "createdAt": "...",
+    "updatedAt": "...",
+    "_count": { "apiKeys": 1, "shareLinks": 0, "resumes": 1 }
+  }
+}
+```
+
+## Which headers do I send?
+
+Send the key in one header: `X-API-Key: vw_...` or `Authorization: Bearer vw_...`. Both are read the
+same way, and `X-API-Key` wins if you send both. Send `Content-Type: application/json` with any
+request that has a JSON body.
+
+```bash
+curl -H "Authorization: Bearer vw_your_key" https://api.veriworkly.com/api/v1/users/me
+```
+
+## How do I read the rate-limit headers?
+
+Every request made with a key returns three headers. Each key has its own budget per 15-minute
+window, 20 requests by default. When it runs out, the API answers `429` with a `Retry-After` header
+giving the seconds to wait.
+
+| Header                  | Meaning                                          |
+| :---------------------- | :----------------------------------------------- |
+| `X-RateLimit-Limit`     | Requests allowed in the current 15-minute window |
+| `X-RateLimit-Remaining` | Requests left in the window                      |
+| `X-RateLimit-Reset`     | Unix time, in seconds, when the window resets    |
+| `Retry-After`           | Seconds to wait, sent only with a `429`          |
+
+## What do the common errors mean?
+
+| Status | Message                                                                                      | Fix                                                            |
+| :----- | :------------------------------------------------------------------------------------------- | :------------------------------------------------------------- |
+| `401`  | API key is missing. Please provide it in the X-API-Key header or Authorization bearer token. | Add the header.                                                |
+| `401`  | Invalid or inactive API key.                                                                 | Check the key was copied whole, and is not revoked or expired. |
+| `403`  | This API key does not have permission for this action.                                       | Rotate the key with the scope the endpoint needs.              |
+| `429`  | Rate limit exceeded. You are allowed 20 requests per 15 minutes. ...                         | Wait for `Retry-After`.                                        |
+
+## Where is the full API reference?
+
+Every endpoint, with its scope, parameters and response, is in the [API reference](/api-reference).
+Scopes, rotation, revocation and key security are covered in [API keys](/docs/api-keys). Some
+actions refuse API keys on purpose: deleting an account only works from a signed-in Studio session.

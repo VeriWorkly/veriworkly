@@ -10,11 +10,8 @@ type PostTocProps = {
 };
 
 /**
- * Server-rendered contents list for the post sidebar.
- *
- * `page.data.toc` has always been produced by fumadocs-mdx and was never read. On
- * 2,000+ word pillars a contents list is the difference between a reader scanning
- * and a reader bouncing, and the in-page anchors give search engines section targets.
+ * Server-rendered contents list for the post sidebar. On 2,000+ word pillars it lets a
+ * reader scan, and the in-page anchors give search engines section targets.
  *
  * Deliberately static: no scroll-spy, no client bundle. The interactivity is not
  * worth shipping JavaScript for on a page whose entire job is reading.

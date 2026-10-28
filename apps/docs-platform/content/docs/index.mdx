@@ -1,27 +1,28 @@
 ---
 title: Introduction
-description: Official documentation for VeriWorkly — a privacy-first, local-first career workspace covering resumes, cover letters, portfolios, ATS scoring, and AI writing.
+metaTitle: "VeriWorkly Docs: Resume Builder, Portfolios and ATS"
+description: VeriWorkly is a free, open-source resume and cover letter builder with portfolios, an ATS checker and AI writing. Guides, API and self-hosting.
 ---
 
 import {
   Eye,
   Code2,
-  Rocket,
   Palette,
   FileDown,
   ShieldCheck,
   Globe,
   Sparkles,
   Target,
+  UserRound,
+  Server,
+  Boxes,
+  GitPullRequest,
 } from "lucide-react";
 
-**VeriWorkly** is a privacy-first career workspace. It is a resume and cover letter builder, a public
-portfolio/website builder, and the AI and career tooling that connects them — all built around one
-shared **Master Profile**, so your career facts live in one place and flow into every document and
-every portfolio.
-
-You can start building without an account: no login required. Signing in adds optional cloud sync
-and share links.
+**VeriWorkly is a privacy-first career workspace: a resume and cover letter builder, a portfolio
+website builder, an ATS checker and an AI writing assistant, all fed by one Master Profile. You can
+start without an account, no login required. Signing in adds cloud sync and share links.** Open it
+at [app.veriworkly.com](https://app.veriworkly.com).
 
 ![VeriWorkly Banner](/og/landing-page-og.png)
 
@@ -29,20 +30,20 @@ and share links.
 
 ## What is VeriWorkly?
 
-VeriWorkly is built around a simple idea: career tools should not force people to trade privacy for
-utility. Documents are written to your browser's `localStorage` first, so nothing is lost offline or
-before you sign in. Cloud sync is opt-in per account, and can be disabled per document.
+VeriWorkly keeps your career facts in one place and turns them into every document and portfolio
+you need. Documents are written to your browser's `localStorage` first, so nothing is lost offline
+or before you sign in. With an account, cloud sync is on by default, and you can turn it off.
 
 <Cards>
   <Card title="Privacy First" icon={<ShieldCheck />}>
     Documents live in your browser by default. No third-party behavioural tracking, no ad trackers, no
-    selling of user data — and an open-source codebase you can read.
+    selling of user data, and an open-source codebase you can read.
   </Card>
 
 <Card title="Resumes & Cover Letters" icon={<Palette />}>
   Seven resume templates (Executive Clarity, Precision ATS, Modern Minimal, Timeline Focus,
   Corporate Brief, Bold Impact, VeriWorkly Special) and five cover letter templates (Professional,
-  VeriWorkly Special, Minimalist, Executive, ATS Essential). All twelve are free — there is no
+  VeriWorkly Special, Minimalist, Executive, ATS Essential). All twelve are free. There is no
   template lock.
 </Card>
 
@@ -51,12 +52,12 @@ before you sign in. Cloud sync is opt-in per account, and can be disabled per do
 </Card>
 
 <Card title="Six Export Formats" icon={<FileDown />}>
-  PDF, DOCX, HTML, Markdown, plain text, and JSON — all generated in your browser, never uploaded to
+  PDF, DOCX, HTML, Markdown, plain text, and JSON, all generated in your browser, never uploaded to
   a server to be rendered.
 </Card>
 
 <Card title="Portfolio Builder" icon={<Globe />}>
-  A full website builder with four server-rendered templates, a three-pane editor, analytics, SEO
+  A website builder with four server-rendered templates, a three-pane editor, analytics, SEO
   controls, and publishing on a VeriWorkly address once publishing opens at launch.
 </Card>
 
@@ -78,9 +79,9 @@ before you sign in. Cloud sync is opt-in per account, and can be disabled per do
 <Accordions>
   <Accordion id="free-open-source" title="Free & Open Source (MIT)">
     VeriWorkly is licensed under the MIT License. You can use it for free, modify it, and host your
-    own instance. The codebase is on [GitHub](https://github.com/VeriWorkly/veriworkly). Note that
-    the four **portfolio templates** live in a separate private submodule and are not part of the
-    public MIT repository — see [Portfolio: Templates](/docs/product/portfolio/templates).
+    own instance. The codebase is on [GitHub](https://github.com/VeriWorkly/veriworkly). The four
+    portfolio templates are the one exception: see [the private template
+    submodule](/docs/architecture/monorepo#the-private-template-submodule).
   </Accordion>
 
 <Accordion id="no-account" title="No Account Required to Start">
@@ -90,9 +91,9 @@ before you sign in. Cloud sync is opt-in per account, and can be disabled per do
 </Accordion>
 
 <Accordion id="master-profile" title="One Master Profile, Many Documents">
-  Every new resume, cover letter, or portfolio auto-seeds from your Master Profile. Editing a
-  document never writes back to it, so you can tailor a resume to one job without changing your
-  canonical data. See [Master Profile](/docs/product/master-profile).
+  Every new resume or cover letter auto-seeds from your Master Profile, and the portfolio editor can
+  import it. Editing a document never writes back to it, so you can tailor a resume to one job
+  without changing your canonical data. See [Master Profile](/docs/product/master-profile).
 </Accordion>
 
 <Accordion id="rich-customization" title="Rich Customization">
@@ -108,28 +109,43 @@ before you sign in. Cloud sync is opt-in per account, and can be disabled per do
 
 ---
 
-## Getting Started
+## Where do I start?
 
-Whether you want to build a resume, understand the product, contribute to the code, or self-host,
-choose your path below:
+Pick the section that matches what you want to do. The sidebar follows the same order.
 
 <Cards>
-  <Card title="Quickstart & Local Setup" icon={<Rocket />} href="/docs/getting-started/quick-start">
-    Set up the frontends, backend, Redis, and PostgreSQL for local development.
+  <Card title="Product" icon={<Sparkles />} href="/docs/product/master-profile">
+    Resumes, cover letters, portfolios, the ATS checker, AI writing, billing and credits, and the
+    affiliate and ambassador programs.
   </Card>
 
-<Card title="Product Guides" icon={<Sparkles />} href="/docs/product/master-profile">
-  How the Master Profile, portfolio builder, ATS checker, AI assistant, billing, and growth programs
-  actually behave.
+<Card title="Account & data" icon={<UserRound />} href="/docs/user-guides/account-management">
+  Sign-in, cloud sync, exporting and share links, and deleting your account.
 </Card>
 
-  <Card title="API Reference" icon={<Code2 />} href="/api-reference">
-    OpenAPI documentation for every public v1 endpoint on the VeriWorkly backend.
+<Card title="Developers" icon={<Code2 />} href="/docs/api-keys">
+  API keys and the [API reference](/api-reference) for every public v1 endpoint.
+</Card>
+
+<Card title="Self-hosting" icon={<Server />} href="/docs/getting-started/local-setup">
+  Local development, Docker deployment, environment variables and service health.
+</Card>
+
+<Card title="Architecture" icon={<Boxes />} href="/docs/architecture/monorepo">
+  The monorepo, the tech stack, state and sync, the export pipeline, auth and the data model.
+</Card>
+
+  <Card title="Contributing" icon={<GitPullRequest />} href="/docs/contributing">
+    Issue claiming, branch naming, pull requests, coding standards and adding a template.
   </Card>
 </Cards>
 
+<Callout title="Machine-readable index">
+  A machine-readable summary of this documentation is at [docs.veriworkly.com/llms.txt](/llms.txt).
+</Callout>
+
 <Callout title="Need help?">
-  If you run into issues, read the [FAQ on veriworkly.com](https://veriworkly.com/faq), open a
-  [GitHub Discussion](https://github.com/VeriWorkly/veriworkly/discussions), or email
-  **info@veriworkly.com**.
+  Read the [FAQ on veriworkly.com](https://veriworkly.com/faq), open a [GitHub
+  Discussion](https://github.com/VeriWorkly/veriworkly/discussions), or email
+  **info@veriworkly.com**. Report vulnerabilities per the [Security Policy](/docs/legal/security).
 </Callout>

@@ -1,19 +1,21 @@
 ---
 title: Resume Templates
-description: "The document template system: the twelve built-in templates (7 resume, 5 cover letter), the dual-engine model, and how to add your own."
+metaTitle: Free ATS-Friendly Resume and Cover Letter Templates
+description: VeriWorkly has 7 resume templates and 5 cover letter templates, all free and single-column ATS-safe for resumes. Switching never changes your data.
 ---
 
 import { LayoutTemplate, Mail } from "lucide-react";
 
-VeriWorkly separates professional data (your Master Profile and documents) from visual presentation
-(the template). Switching templates never modifies or loses data, so you can cycle through the whole
-library to compare layouts.
+**VeriWorkly has seven resume templates and five cover letter templates, and all twelve are free:
+there is no template lock on any plan. Every resume template is single-column and ATS-safe.
+Switching templates never changes your data, so you can try each one on the same resume.** Pick one
+in the editor at [app.veriworkly.com](https://app.veriworkly.com).
 
 ---
 
-## Resume templates
+## Which resume templates are there?
 
-All seven resume templates and five cover letter templates are free. There is no template lock on resumes or cover letters.
+Seven, each with a different density, header treatment and default accent colour.
 
 <Cards>
   <Card title="Executive Clarity" icon={<LayoutTemplate />}>
@@ -37,7 +39,7 @@ All seven resume templates and five cover letter templates are free. There is no
 </Card>
 
 <Card title="Corporate Brief" icon={<LayoutTemplate />}>
-  A split letterhead — identity left, contact right — with accent-barred section headings that read
+  A split letterhead (identity left, contact right) with accent-barred section headings that read
   like an internal business brief. Default accent `#1d4ed8`.
 </Card>
 
@@ -54,7 +56,9 @@ All seven resume templates and five cover letter templates are free. There is no
 Every resume template is single-column and ATS-safe by design. They differ in density, header
 treatment, and typographic breathing room, not in parseability.
 
-## Cover letter templates
+## Which cover letter templates are there?
+
+Five, all free. See the [Cover Letter Builder](/docs/product/cover-letter-builder) for the fields each one uses.
 
 <Cards>
   <Card title="Professional" icon={<Mail />}>
@@ -83,72 +87,26 @@ treatment, and typographic breathing room, not in parseability.
   </Card>
 </Cards>
 
-See [Cover Letter Builder](/docs/product/cover-letter-builder).
-
 <Callout type="info" title="Portfolio templates are separate">
-  The four **portfolio** templates — Signal, Atelier, Nimbus, and Cipher — belong to the portfolio
+  The four **portfolio** templates (Signal, Atelier, Nimbus, and Cipher) belong to the portfolio
   builder, not the document builder, and two of them are premium. See [Portfolio:
   Templates](/docs/product/portfolio/templates).
 </Callout>
 
 ---
 
-## Dual-engine rendering
+## Does the preview match the exported PDF?
 
-Each template is implemented twice against the same data:
-
-1. **Web engine (`web.tsx`)** — React and Tailwind CSS 4, powering the live paged preview.
-2. **PDF engine (`pdf.tsx`)** — `@react-pdf/renderer` primitives, producing the exported PDF with
-   embedded fonts and real vector text.
-
-Both read the same `ResumeCustomization` object, which is what keeps the preview and the export
-visually aligned. See [Export Pipeline](/docs/architecture/pdf-generation).
+Yes, by design. Each template is drawn twice from the same data and the same customisation
+settings: once as HTML for the live paged preview, and once with `@react-pdf/renderer` for the PDF.
+The PDF holds real, selectable text with embedded fonts. See [Export
+Pipeline](/docs/architecture/pdf-generation) for how it works.
 
 ---
 
-## Source reference
+## What can I customise in a template?
 
-| Template                              | Web engine                                                                                                               | PDF engine                                                                                                               |
-| :------------------------------------ | :----------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
-| **Precision ATS**                     | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/web.tsx)       | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/precision-ats/pdf.tsx)       |
-| **Executive Clarity**                 | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/web.tsx)   | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/executive-clarity/pdf.tsx)   |
-| **Modern Minimal**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/web.tsx)      | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/modern-minimal/pdf.tsx)      |
-| **Timeline Focus**                    | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/web.tsx)      | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/timeline-focus/pdf.tsx)      |
-| **Corporate Brief**                   | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/corporate-brief/pdf.tsx)     |
-| **Bold Impact**                       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/web.tsx)         | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/bold-impact/pdf.tsx)         |
-| **VeriWorkly Special** (resume)       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/veriworkly-special/web.tsx)  | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/resume/veriworkly-special/pdf.tsx)  |
-| **Professional** (cover letter)       | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/web.tsx)  | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/professional/pdf.tsx)  |
-| **VeriWorkly Special** (cover letter) | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/web.tsx)    | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/veriworkly/pdf.tsx)    |
-| **Minimalist** (cover letter)         | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/minimalist/web.tsx)    | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/minimalist/pdf.tsx)    |
-| **Executive** (cover letter)          | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/executive/web.tsx)     | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/executive/pdf.tsx)     |
-| **ATS Essential** (cover letter)      | [web.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/ats-essential/web.tsx) | [pdf.tsx](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/cover-letter/ats-essential/pdf.tsx) |
-
-The registry that wires templates into Studio is
-[`apps/studio/templates/index.ts`](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/templates/index.ts).
-
----
-
-## Template metadata
-
-Each template exports a `meta.ts` describing itself to the picker:
-
-```typescript
-export const precisionAtsMeta = {
-  id: "precision-ats",
-  name: "Precision ATS",
-  documentType: "RESUME",
-  description: "A dense, recruiter-friendly layout …",
-  accentColor: "#10b981",
-  previewImage: "/templates/resume/precision-ats.png",
-  tags: ["One column", "ATS-friendly", "Compact", "Simple"],
-} satisfies TemplateMeta;
-```
-
----
-
-## Customisation
-
-Every template honours the same customisation object:
+Colours, fonts, spacing and which sections show. Every template honours the same settings:
 
 - **Colours**: accent, body text, muted text, page background, section background, borders, and
   section headings, each independently set.
@@ -160,42 +118,25 @@ See [Resume Schema](/docs/architecture/resume-schema#customization) for the full
 
 ---
 
-## Adding a template
+## Frequently asked questions
 
-1. Create `apps/studio/templates/resume/{your-template}/` containing `meta.ts`, `skin.ts`,
-   `web.tsx`, and `pdf.tsx`. Every template is built with `createResumeWebTemplate` /
-   `createResumePdfTemplate` from `apps/studio/templates/resume/shared/`, which handle section
-   ordering, item content, spacing, and pagination — a skin only supplies a type scale, a header,
-   and a section heading.
+<Accordions>
+  <Accordion id="ats-friendly" title="Are VeriWorkly resume templates ATS-friendly?">
+    Yes. All seven resume templates are single-column with standard section headings, and the PDF
+    export holds real text rather than an image, so an applicant tracking system can read it. They
+    differ in look and density, not in how well they parse. For the format rules behind this, read
+    [ATS-friendly resume format](https://blog.veriworkly.com/ats-friendly-resume-format).
+  </Accordion>
+  <Accordion id="two-column" title="Is there a two-column resume template?">
+    No. Every resume template is single-column, because a second column is one of the layouts most
+    likely to be read out of order by a parser. To check how your own file parses, run it through
+    the [ATS Checker](/docs/product/ats-checker).
+  </Accordion>
+  <Accordion id="switch" title="Do I lose content when I switch templates?">
+    No. A template only controls presentation. Your sections, entries and hidden sections stay
+    exactly as they are, so you can switch between all seven templates on the same resume and
+    compare them before exporting.
+  </Accordion>
+</Accordions>
 
-   Put **every** number in `skin.ts` (the type scale plus a `geometry` object) and read it from
-   both `web.tsx` and `pdf.tsx`. Sizes must never be written twice.
-
-2. Register the metadata and web renderer in `apps/studio/templates/index.ts`.
-3. Register the PDF component in `apps/studio/templates/resume/pdf/index.ts`.
-4. Add the metadata to `apps/studio/features/documents/core/template-catalog.ts` (the picker) and a
-   preview asset at `apps/studio/public/templates/resume/{your-template}.(svg|png)`.
-5. Verify against `/pdf-debug/resume/{your-template}`, the internal PDF rendering debugger.
-
-`tests/contracts/template-render.contract.test.tsx` fails if steps 2–4 fall out of sync, so a
-half-registered template cannot ship, and `template-geometry.contract.test.tsx` lays the PDF out
-and checks its real boxes against the scale.
-
-<Callout type="warn" title="A bare number in a react-pdf style means points">
-  `@react-pdf/stylesheet` returns unitless values untouched, and even the string `"3px"` is
-  converted with a default DPI of 72 — so both mean 3pt, which is 4 CSS pixels. Every spatial value
-  in a `pdf.tsx` must go through `pxToPt`. Three more differences the shared engine already
-  neutralises: react-pdf inherits a *computed* line height (CSS re-multiplies the unitless factor),
-  `align-items: baseline` resolves to bottom alignment, and Yoga shrinks a `flexShrink: 0` box when
-  a sibling's minimum content width does not fit.
-</Callout>
-
-<Callout type="warn" title="Keep the DOM contract">
-  The live preview paginates by walking the direct children of `#resume-container`, expecting each
-  `<section>` to be exactly `[heading, itemsContainer]`. A template that wraps sections in extra
-  containers — or introduces a full-height sidebar — will not split across pages correctly. The
-  shared engine enforces this shape automatically.
-</Callout>
-
-New templates are welcome contributions — see the
-[Contributing Guide](/docs/contributing).
+Want to build a new template? See [Adding a Template](/docs/contributing/adding-a-template).

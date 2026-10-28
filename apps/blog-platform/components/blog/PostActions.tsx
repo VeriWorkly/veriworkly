@@ -13,7 +13,7 @@ type PostActionsProps = {
 };
 
 const PostActions = ({ title, url, path }: PostActionsProps) => {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   const shareMessage = useMemo(() => `${title} - ${url}`, [title, url]);
@@ -22,23 +22,33 @@ const PostActions = ({ title, url, path }: PostActionsProps) => {
     try {
       await navigator.clipboard.writeText(url);
 
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1800);
     } catch {
-      setCopied(false);
+      // Clipboard access was denied: the share dialog shows the link for a manual copy.
+      setCopyState("failed");
+      setIsShareOpen(true);
     }
   };
 
+  const closeShare = () => {
+    setIsShareOpen(false);
+    setCopyState("idle");
+  };
+
   const handleNativeShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title, text: shareMessage, url });
-
-        return;
-      }
-
+    if (!navigator.share) {
       setIsShareOpen(true);
-    } catch {
+
+      return;
+    }
+
+    try {
+      await navigator.share({ title, text: shareMessage, url });
+    } catch (error) {
+      // AbortError is the reader closing the share sheet, not a failure.
+      if (error instanceof DOMException && error.name === "AbortError") return;
+
       setIsShareOpen(true);
     }
   };
@@ -81,7 +91,11 @@ const PostActions = ({ title, url, path }: PostActionsProps) => {
                   await handleCopy();
                 }}
               >
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copyState === "copied" ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
                 Copy Link
               </MenuItem>
 
@@ -135,7 +149,7 @@ const PostActions = ({ title, url, path }: PostActionsProps) => {
         </Menu>
       </div>
 
-      <Modal open={isShareOpen} onClose={() => setIsShareOpen(false)}>
+      <Modal open={isShareOpen} onClose={closeShare}>
         <Modal.Content className="md:max-w-xl">
           <Modal.Header>
             <Modal.Title>Share this article</Modal.Title>
@@ -155,7 +169,11 @@ const PostActions = ({ title, url, path }: PostActionsProps) => {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Button variant="secondary" onClick={handleCopy}>
-                {copied ? "Copied" : "Copy link"}
+                {copyState === "copied"
+                  ? "Copied"
+                  : copyState === "failed"
+                    ? "Copy failed"
+                    : "Copy link"}
               </Button>
 
               <Button
@@ -196,7 +214,7 @@ const PostActions = ({ title, url, path }: PostActionsProps) => {
           </Modal.Body>
 
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setIsShareOpen(false)}>
+            <Button variant="secondary" onClick={closeShare}>
               Close
             </Button>
           </Modal.Footer>
