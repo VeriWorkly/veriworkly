@@ -2046,6 +2046,8 @@ export class BillingService {
       throw new ApiError(
         409,
         `A payment for ${paying.join(", ")} is still being processed. Wait for the confirmation before starting another checkout.`,
+        // The studio matches on the code; the text is for people.
+        { code: "CHECKOUT_STILL_PROCESSING" },
       );
     if (preparing && cleared.length === 0)
       throw new ApiError(409, "A checkout is still being prepared. Try again in a moment.");

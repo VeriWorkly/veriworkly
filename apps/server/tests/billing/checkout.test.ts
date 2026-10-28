@@ -461,8 +461,28 @@ describe("cancelCheckout", () => {
     await BillingService.createCheckout(USER, "portfolio_pro", "monthly");
     dodoMock.retrieve.mockResolvedValueOnce({ id: "cks_1", payment_status: paymentStatus });
 
-    await expect(BillingService.cancelCheckout(USER)).rejects.toMatchObject({ statusCode: 409 });
+    // The studio matches on the code, not the text; the text stays as it was.
+    const refusal = (await BillingService.cancelCheckout(USER).catch(
+      (error: unknown) => error,
+    )) as {
+      statusCode?: number;
+      message?: string;
+      details?: unknown;
+    };
+    expect(refusal.statusCode).toBe(409);
+    expect(refusal.details).toEqual({ code: "CHECKOUT_STILL_PROCESSING" });
+    expect(refusal.message).toMatch(
+      /^A payment for .+ is still being processed\. Wait for the confirmation before starting another checkout\.$/,
+    );
     expect(store.has(key())).toBe(true);
+  });
+
+  it("a checkout still being prepared is not reported as still processing", async () => {
+    store.set(key(), { value: JSON.stringify({ state: "claimed" }) });
+
+    const refusal = await BillingService.cancelCheckout(USER).catch((error: unknown) => error);
+    expect(refusal).toMatchObject({ statusCode: 409 });
+    expect((refusal as { details?: unknown }).details).toBeUndefined();
   });
 
   /**
