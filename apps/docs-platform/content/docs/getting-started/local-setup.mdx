@@ -10,7 +10,7 @@ import { Laptop, Server } from "lucide-react";
 
 **To run VeriWorkly locally, install Node.js 22.12 or later and npm 11, clone the repository, run
 `npm install`, copy each app's `.env.example`, apply the Prisma migrations to a PostgreSQL database,
-start Redis, build `profile-core`, and run `npm run dev:all`. The repository holds five Next.js
+start Redis, build `profile-core`, and start each app with its own `npm run dev:*` script. The repository holds five Next.js
 apps, an Express API and two shared packages.**
 
 <Cards>
@@ -184,7 +184,7 @@ what each workspace does and the full tech stack.
   <Step>
     ### Start the development servers
 
-    **Option A: a single workspace**
+    Run each app you need in its own terminal:
 
     ```bash
     npm run dev            # marketing site  → http://localhost:3000
@@ -195,15 +195,9 @@ what each workspace does and the full tech stack.
     npm run dev:server     # Express API      → http://localhost:8080
     ```
 
-    `npm run dev` with no suffix starts the marketing site only.
-
-    **Option B: everything at once**
-
-    ```bash
-    npm run dev:all
-    ```
-
-    This runs the `dev` script in every workspace concurrently, including the API.
+    `npm run dev` with no suffix starts the marketing site only. Avoid `npm run dev:all`: npm runs
+    each workspace's `dev` script one after another, so it stops at the marketing site, whose server
+    never exits, and the other apps and the API never start.
 
   </Step>
 

@@ -7,7 +7,7 @@ description: Import a master profile from GitHub or from pasted LinkedIn text (A
 
 Two independent ways to bootstrap a Master Profile without typing it in by hand:
 
-- **GitHub import** is a real integration against the GitHub REST API — it fetches the account's
+- **GitHub import** is a real integration against the GitHub REST API: it fetches the account's
   public profile and up to 30 of its most recently updated repositories, and deterministically maps
   repository languages to a skills list. No AI is involved and no credits are spent. Free users may
   only import their own linked GitHub account, once a day. Users with any plan (AI Credits, Creator
@@ -36,6 +36,6 @@ The quota and entitlement rules above are keyed to the user who owns the key.
 
 ## Available Endpoints
 
-- `GET /profiles/import/quota` — [Get Profile Import Quota](./getImportQuota)
-- `POST /profiles/import/github` — [Import Profile From GitHub](./importGithub)
-- `POST /profiles/import/linkedin` — [Import Profile From LinkedIn](./importLinkedin)
+- `GET /profiles/import/quota`: [Get Profile Import Quota](./getImportQuota)
+- `POST /profiles/import/github`: [Import Profile From GitHub](./importGithub)
+- `POST /profiles/import/linkedin`: [Import Profile From LinkedIn](./importLinkedin)

@@ -65,7 +65,7 @@ const Footer = () => {
         { name: "Security", href: `${siteConfig.links.main}/security` },
       ]}
       tagline="Build for the future of work."
-      statusText="SYSTEMS OPERATIONAL | FREE TIER AVAILABLE"
+      statusText="MIT-LICENSED | FREE TIER AVAILABLE"
     />
   );
 };

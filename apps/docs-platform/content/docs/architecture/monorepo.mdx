@@ -147,21 +147,21 @@ Prisma 7, PostgreSQL and Redis on the API. Zod 4 validates data on both sides.
 
 ### Backend stack
 
-| Layer              | Technology                    | Purpose                                                  |
-| :----------------- | :---------------------------- | :------------------------------------------------------- |
-| **Runtime**        | Node.js 22.12+                | Server runtime, clustered with `throng` in production    |
-| **Framework**      | Express 4                     | HTTP server                                              |
-| **Database**       | PostgreSQL through Prisma 7   | Primary store, type-safe access and migrations           |
-| **Cache**          | Redis                         | Sessions, rate limiting, quotas, view buffers, job locks |
-| **Authentication** | Better Auth                   | Email OTP plus Google, GitHub and LinkedIn OAuth         |
-| **Object storage** | Cloudflare R2 (S3-compatible) | Portfolio image uploads through presigned URLs           |
-| **Payments**       | Dodo Payments                 | Subscriptions, one-time purchases, customer portal       |
-| **AI**             | OpenAI-compatible client      | Requests go through the OpenRouter gateway               |
-| **File parsing**   | `pdf-parse`, `mammoth`        | Server-side PDF and DOCX text extraction                 |
-| **Email**          | Nodemailer (SMTP) or Resend   | Transactional email, with a console provider in dev      |
-| **Scheduling**     | `node-cron`                   | Eight background jobs, each guarded by a Redis lock      |
-| **Security**       | Helmet                        | HTTP security headers                                    |
-| **Testing**        | Vitest                        | Unit and integration tests                               |
+| Layer              | Technology                    | Purpose                                                    |
+| :----------------- | :---------------------------- | :--------------------------------------------------------- |
+| **Runtime**        | Node.js 22.12+                | Server runtime, clustered with `throng` in production      |
+| **Framework**      | Express 4                     | HTTP server                                                |
+| **Database**       | PostgreSQL through Prisma 7   | Primary store, type-safe access and migrations             |
+| **Cache**          | Redis                         | Sessions, rate limiting, quotas, view buffers, job locks   |
+| **Authentication** | Better Auth                   | Email OTP plus Google, GitHub and LinkedIn OAuth           |
+| **Object storage** | Cloudflare R2 (S3-compatible) | Portfolio image uploads through presigned URLs             |
+| **Payments**       | Dodo Payments                 | Subscriptions, one-time purchases, customer portal         |
+| **AI**             | OpenAI-compatible client      | Requests go through the OpenRouter gateway (`AI_BASE_URL`) |
+| **File parsing**   | `pdf-parse`, `mammoth`        | Server-side PDF and DOCX text extraction                   |
+| **Email**          | Nodemailer (SMTP) or Resend   | Transactional email, with a console provider in dev        |
+| **Scheduling**     | `node-cron`                   | Eight background jobs, each guarded by a Redis lock        |
+| **Security**       | Helmet                        | HTTP security headers                                      |
+| **Testing**        | Vitest                        | Unit and integration tests                                 |
 
 ### Which parts run in the browser and which on the server?
 

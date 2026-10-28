@@ -289,10 +289,10 @@ the matching routes return `503`. The studio and the site read their own copies 
 | `GITHUB_SYNC_ENABLED`          | Enables the scheduled repository statistics sync. Without `GITHUB_OWNER` and `GITHUB_REPO` it is not scheduled. | `true`         |
 | `GITHUB_TOKEN`                 | Personal access token with repository read scope. Also used by GitHub profile imports.                          | —              |
 | `GITHUB_OWNER` / `GITHUB_REPO` | Target repository.                                                                                              | —              |
-| `GITHUB_PROJECT_URL`           | Project board URL surfaced in the roadmap UI.                                                                   | —              |
+| `GITHUB_PROJECT_URL`           | Project board URL linked from the site's stats page and the admin system view; it also keys the synced issues.  | —              |
 | `GITHUB_SYNC_CRON`             | Sync schedule.                                                                                                  | `0 0,12 * * *` |
 | `GITHUB_SYNC_TIMEZONE`         | Cron timezone.                                                                                                  | `UTC`          |
-| `INTERNAL_SYNC_API_KEY`        | Shared secret authorising the internal manual-sync endpoint.                                                    | —              |
+| `INTERNAL_SYNC_API_KEY`        | Unused: read into config, but no endpoint checks it.                                                            | —              |
 
 ### Changelog sync
 

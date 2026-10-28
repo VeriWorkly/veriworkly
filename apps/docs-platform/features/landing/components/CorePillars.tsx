@@ -7,7 +7,7 @@ import { siteConfig } from "@/config/site";
 const pillars = [
   {
     title: "Local-First Core",
-    desc: "Data remains on-device until you decide to sync. Learn about our sync protocol and storage architecture.",
+    desc: "As a guest, data stays in your browser. Signed-in accounts sync by default; keep any document on this device only. Learn about our sync protocol and storage architecture.",
     icon: Cpu,
     href: "/docs/architecture/monorepo",
     bg: "bg-blue-500/10",

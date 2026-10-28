@@ -11,7 +11,7 @@ Try it in the editor at [app.veriworkly.com](https://app.veriworkly.com).
 
 ## How do I use the AI writing assistant?
 
-An "Improve with AI" control embedded throughout the editors. Select a field or section, choose **Standard** or **Expert** mode (different credit costs), optionally give free-text direction, and review the AI's draft before choosing to replace the field or discard it.
+An "Improve with AI" control embedded throughout the editors. Select a field or section, choose **Standard** or **Expert** mode (each shows its credit cost on its button), optionally give free-text direction, and review the AI's draft before choosing to replace the field or discard it.
 
 <Callout type="info" title="Cost is always shown before you spend it">
   The credit cost for the selected mode is shown on the mode buttons themselves, and again on the
@@ -47,7 +47,7 @@ policy to balance quality against cost. It is not a user-facing setting.
 
 AI access is backed by a full credit ledger, not a boolean:
 
-- **Standard vs Expert cost tiers**: Expert mode costs more credits per action.
+- **Standard and Expert costs**: each mode has its own credit cost, shown on its button.
 - **Two-phase reserve → commit/release flow**: credits are reserved when a generation starts and either committed (on success) or released (on failure), so a failed generation doesn't burn credits.
 - **FIFO multi-grant allocation**: if you have multiple active credit grants (e.g. a subscription grant plus a leftover top-up), a debit draws from the soonest-to-expire grant first, via a dedicated allocation table that records exactly which grant(s) funded each transaction.
 

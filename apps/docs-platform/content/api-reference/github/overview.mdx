@@ -7,7 +7,7 @@ description: Fetch repository statistics, issues, and pull requests synced from 
 
 ## Description
 
-VeriWorkly is built in the open. The GitHub API module serves metrics that a background job syncs from the official VeriWorkly repository into our own database — reads never call GitHub at request time.
+VeriWorkly is built in the open. The GitHub API module serves metrics that a background job syncs from the official VeriWorkly repository into our own database; reads never call GitHub at request time.
 
 By routing these requests through our backend rather than fetching them directly from the client, we achieve three critical benefits:
 
@@ -36,7 +36,7 @@ Data is not fetched in real-time on every `GET` request. Instead, we use a backg
 | `POST` | `/admin/sync`       | **Admin**      | A session cookie whose email matches the configured `ADMIN_EMAIL`. |
 
 <Callout type="warn">
-  `POST /github/admin/sync` is strictly protected and **cannot be reached with an API key** — it
+  `POST /github/admin/sync` is strictly protected and **cannot be reached with an API key**; it
   requires an admin session. A request with no session returns `401 Unauthorized`; an authenticated
   non-admin returns `403 Forbidden`.
 </Callout>
@@ -51,6 +51,6 @@ Data is not fetched in real-time on every `GET` request. Instead, we use a backg
 
 ## Available Endpoints
 
-- `GET /github/stats` — [Fetch Repository Stats](./getGitHubStats)
-- `GET /github/issues` — [List Issues & PRs](./getGitHubIssues)
-- `POST /github/admin/sync` — [Trigger Manual Sync](./syncGitHubStats) (admin only)
+- `GET /github/stats`: [Fetch Repository Stats](./getGitHubStats)
+- `GET /github/issues`: [List Issues & PRs](./getGitHubIssues)
+- `POST /github/admin/sync`: [Trigger Manual Sync](./syncGitHubStats) (admin only)

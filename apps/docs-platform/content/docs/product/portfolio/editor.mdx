@@ -38,7 +38,9 @@ premium template on a paid portfolio plan; on any other portfolio they return `4
 
 ## How do I preview a portfolio before publishing?
 
-There's also a distinct **private live-preview route** (`/preview/[documentId]`), not the same as the editor's own preview pane or the published site. It's used for scenarios like a guest user previewing before ever saving, powered by a dedicated server-render endpoint that turns portfolio JSON into HTML on demand.
+The editor's preview pane is a private route, `/preview/[documentId]` (`/preview/guest` before you
+save), loaded in a frame. The editor sends your unsaved content to it as you type, and the browser
+renders it with your chosen template. Preview pages are not indexed and are not the published site.
 
 ## Where is my portfolio draft saved?
 

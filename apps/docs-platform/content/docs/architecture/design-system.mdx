@@ -14,8 +14,8 @@ applications:
 - **Blog** (`apps/blog-platform`, port 3003)
 - **Portfolio builder** (`apps/portfolio`, port 3004)
 
-The package is consumed **directly from source** — its `package.json` points `main` and `types` at
-`./src/index.ts` with no build step — so edits hot-reload in every consuming application
+The package is consumed **directly from source**: its `package.json` points `main` and `types` at
+`./src/index.ts` with no build step, so edits hot-reload in every consuming application
 immediately.
 
 <Callout type="info" title="No tailwind.config.ts">
@@ -159,7 +159,7 @@ This exposes `--font-geist-sans` and `--font-geist-mono` as CSS variables for th
     #### Implement it
 
     Create the file under `packages/ui/src/components/ui/` or `packages/ui/src/components/layout/`.
-    Style with Tailwind utilities and the shared `cn` helper — never hardcode hex colours; use theme
+    Style with Tailwind utilities and the shared `cn` helper. Never hardcode hex colours; use theme
     tokens so both themes work automatically.
 
     ```tsx
@@ -202,6 +202,6 @@ This exposes `--font-geist-sans` and `--font-geist-mono` as CSS variables for th
 
 ## Public style guide
 
-The marketing site publishes a live showcase of this design system — colours, typography,
-components, brand assets, motion, and layout rules — at
+The marketing site publishes a live showcase of this design system (colours, typography,
+components, brand assets, motion, and layout rules) at
 [veriworkly.com/style-guide](https://veriworkly.com/style-guide).

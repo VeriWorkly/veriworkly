@@ -10,15 +10,15 @@ codebase actually follows.
 
 ## TypeScript
 
-- **Strict mode is mandatory.** Avoid `any` — use `unknown` plus narrowing, or a precise interface.
+- **Strict mode is mandatory.** Avoid `any`: use `unknown` plus narrowing, or a precise interface.
 - **Validate every external input** with **Zod**: API request payloads, imported documents,
   environment configuration, and anything read back out of `localStorage`.
-- **File naming** — `kebab-case` for modules (`resume-store.ts`, `document-sync-service.ts`),
+- **File naming**: `kebab-case` for modules (`resume-store.ts`, `document-sync-service.ts`),
   `PascalCase` for React component files (`Button.tsx`, `SectionVisibilitySettings.tsx`).
-- **Interfaces vs types** — prefer `interface` for object shapes that form a public API, and `type`
+- **Interfaces vs types**: prefer `interface` for object shapes that form a public API, and `type`
   for unions, intersections, and derived types.
-- **Exhaustiveness** — when switching over a union, add an `assertNever` default case. The export
-  dispatcher does this for both document type and export format, which turns "someone added a
+- **Exhaustiveness**: when switching over a union, add an `assertNever` default case. The
+  per-type exporters do this over the export format, which turns "someone added a
   format and forgot a branch" into a compile error.
 
 ---
@@ -26,16 +26,16 @@ codebase actually follows.
 ## React and frontend
 
 - **Functional components with hooks.** No class components.
-- **Memoise the hot paths.** The resume editor re-renders a full paged preview on every keystroke —
-  use `React.memo`, `useMemo`, and `useCallback` in the sidebar, content panel, and preview.
+- **Memoise the hot paths.** The resume editor re-renders a full paged preview on every keystroke.
+  Use `React.memo`, `useMemo`, and `useCallback` in the sidebar, content panel, and preview.
 - **State management**:
   - **Zustand** for shared application state (the active document, the session user).
   - **Native React state** for local, ephemeral UI state.
-  - There is **no** form library in the repository — forms use controlled React state and Zod
+  - There is **no** form library in the repository; forms use controlled React state and Zod
     validation. Do not introduce React Hook Form or Formik without a discussion first.
 - **Persistence is explicit.** Zustand stores do not use persistence middleware; they expose
   `saveToStorage` / `hydrateFromStorage` actions that call a dedicated service module. Keep it that
-  way — implicit writes on every state change caused real bugs previously.
+  way. Implicit writes on every state change caused real bugs previously.
 - **Extract logic into custom hooks** rather than growing component bodies.
 
 ---
@@ -63,7 +63,7 @@ The project targets **WCAG 2.2 Level AA**:
 - `prefers-reduced-motion` honoured for animation.
 - Icon-only controls carry an accessible label (`aria-label` or `sr-only` text).
 
-Studio's internal audit still flags real gaps against this target — missing `aria-expanded` /
+Studio's internal audit still flags real gaps against this target: missing `aria-expanded` /
 `aria-controls` on some accordions, icon-only social links without a text fallback, and animation
 without reduced-motion handling. Treat it as an open punch list: fixing one while you are nearby is
 a welcome contribution.
@@ -90,14 +90,14 @@ a welcome contribution.
 ## Testing
 
 - **Unit tests** for pure utilities and service-layer business logic, with **Vitest**.
-- **Integration tests** for critical paths — auth middleware, billing webhooks, quota enforcement,
-  and view counting — also with Vitest.
+- **Integration tests** for critical paths (auth middleware, billing webhooks, quota enforcement,
+  and view counting), also with Vitest.
 - **Contract tests** in Studio and the marketing site verify that shared content models and template
   catalogs stay in sync between the frontend types and the backend validators. Portfolio has its own
   suite under `npm test -w @veriworkly/portfolio`.
 - **Parity tests** in Studio drive a real Chromium via Playwright to lay a document out in both
   renderers and diff the two box trees. This is the only suite that proves the live preview and the
-  exported PDF actually agree — the contract tests can only prove the PDF is internally consistent
+  exported PDF actually agree; the contract tests can only prove the PDF is internally consistent
   against the shared scale.
 
 ```bash
@@ -118,12 +118,12 @@ samples (`.github/workflows/tests.yaml`, job `test-docs`).
 
 <Callout type="info" title="The parity suite needs a real Chromium">
   It is deliberately separate from `vitest.config.ts` because it boots the app and takes minutes.
-  `tests/parity/browser.ts` tries an installed Chrome, then Edge, then Playwright's bundled Chromium
-  — the bundled build is an unsigned download that Windows Application Control blocks on some
-  machines. Install Google Chrome, or run `npx playwright install chromium`.
+  `tests/parity/browser.ts` tries an installed Chrome, then Edge, then Playwright's bundled
+  Chromium; the bundled build is an unsigned download that Windows Application Control blocks on
+  some machines. Install Google Chrome, or run `npx playwright install chromium`.
 </Callout>
 
-There is no full browser-driven **end-to-end** suite — the parity harness is a rendering-measurement
+There is no full browser-driven **end-to-end** suite. The parity harness is a rendering-measurement
 tool, not a user-journey runner.
 
 ---

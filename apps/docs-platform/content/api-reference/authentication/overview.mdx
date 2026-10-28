@@ -26,7 +26,7 @@ VeriWorkly follows a simple 2-step verification process:
 
 <Callout type="warn" title="These routes do not use the standard response envelope">
   Authentication is delegated to **Better Auth**, mounted at `/api/v1/auth`. Its endpoints return
-  Better Auth's own payload shapes — they are **not** wrapped in the `{ success, message, data }`
+  Better Auth's own payload shapes; they are **not** wrapped in the `{ success, message, data }`
   envelope used everywhere else in this API.
 </Callout>
 
@@ -46,10 +46,10 @@ VeriWorkly follows a simple 2-step verification process:
 
 ## Available Endpoints
 
-- `POST /auth/email-otp/send-verification-otp` — [Send OTP](./sendOTP)
-- `POST /auth/sign-in/email-otp` — [Sign In With Email OTP](./verifyOTP)
-- `GET /auth/get-session` — [Get Session](./getSession)
-- `POST /auth/sign-out` — [Sign Out](./signOut)
+- `POST /auth/email-otp/send-verification-otp`: [Send OTP](./sendOTP)
+- `POST /auth/sign-in/email-otp`: [Sign In With Email OTP](./verifyOTP)
+- `GET /auth/get-session`: [Get Session](./getSession)
+- `POST /auth/sign-out`: [Sign Out](./signOut)
 
 These four are the documented flow. Better Auth serves its other routes under `/auth/*` too, such
 as Google, GitHub, and LinkedIn sign-in when they are configured. `/auth/forget-password/email-otp`
