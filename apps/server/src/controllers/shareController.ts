@@ -63,6 +63,9 @@ function buildPublicSharePayload(shareLink: PublicShareLinkView, includeSnapshot
     resumeTitle: shareLink.document.title,
     documentTitle: shareLink.document.title,
     expiresAt: shareLink.expiresAt,
+    // V-421: whether the studio shows the Download button. A display preference, not access
+    // control. A copy cached before the column existed has no value, and links default to true.
+    allowDownload: shareLink.allowDownload ?? true,
     ...(includeSnapshot ? { snapshot: shareLink.snapshot } : {}),
   };
 }

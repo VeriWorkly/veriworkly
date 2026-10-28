@@ -1327,7 +1327,8 @@
             },
             "noExpiry": { "type": "boolean" },
             "updateSlug": { "type": "boolean" },
-            "removePassword": { "type": "boolean" }
+            "removePassword": { "type": "boolean" },
+            "allowDownload": { "type": "boolean" }
           },
           "required": ["documentId", "snapshot"]
         }

@@ -3742,6 +3742,12 @@ ShareLink:
     hasPassword:
       type: boolean
       description: The scrypt password hash itself is never returned in any API response.
+    allowDownload:
+      type: boolean
+      default: true
+      description: |
+        Whether the studio shows a Download button on the public page. A display preference, not a
+        security control: the studio hides the Download button, and viewers can still save the page.
     expiresAt:
       type: string
       format: date-time
@@ -3785,6 +3791,13 @@ ShareLinkCreateRequest:
       description: Regenerate the public slug instead of reusing the existing one (if a link already exists for this document).
     removePassword:
       type: boolean
+    allowDownload:
+      type: boolean
+      default: true
+      description: |
+        Whether the studio shows a Download button on the public page. A display preference, not a
+        security control: the studio hides the Download button, and viewers can still save the page.
+        A new link defaults to true; replacing an existing link without this field keeps its value.
 
 ShareLinkResponse:
   type: object
@@ -3845,6 +3858,12 @@ PublicSharePayload:
       type: string
       format: date-time
       nullable: true
+    allowDownload:
+      type: boolean
+      description: |
+        Whether the studio shows a Download button on the public page. A display preference, not a
+        security control: the studio hides the Download button, and viewers can still save the page.
+        Not present while a password is required.
     snapshot:
       type: object
       additionalProperties: true

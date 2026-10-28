@@ -25,6 +25,11 @@ createShareLink:
 
       The snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in
       the response, nor in the owner's list of links.
+
+      `allowDownload` (default `true`) says whether the public page shows a Download button.
+      Replacing an existing link without it keeps the stored value. It is a display preference,
+      not a security control: the studio hides the Download button, and viewers can still save
+      the page.
     requestBody:
       required: true
       content:
@@ -225,6 +230,9 @@ getPublicShareLink:
       Returns the shared document's title and snapshot, unless the link is password-protected — in
       which case only `passwordRequired: true` is returned and the caller must call
       `POST /shares/public/{username}/{slug}/verify` with the password.
+
+      `allowDownload` says whether to show a Download button. It is a display preference, not a
+      security control: the studio hides the Download button, and viewers can still save the page.
 
       No user session is required, but the request is still gated: it must carry an API key, or
       originate from a whitelisted first-party origin. A bare request from an unrecognised origin

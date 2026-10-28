@@ -4430,6 +4430,11 @@ paths:
 
         The snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in
         the response, nor in the owner's list of links.
+
+        `allowDownload` (default `true`) says whether the public page shows a Download button.
+        Replacing an existing link without it keeps the stored value. It is a display preference,
+        not a security control: the studio hides the Download button, and viewers can still save
+        the page.
       requestBody:
         required: true
         content:
@@ -4626,6 +4631,9 @@ paths:
         Returns the shared document's title and snapshot, unless the link is password-protected — in
         which case only `passwordRequired: true` is returned and the caller must call
         `POST /shares/public/{username}/{slug}/verify` with the password.
+
+        `allowDownload` says whether to show a Download button. It is a display preference, not a
+        security control: the studio hides the Download button, and viewers can still save the page.
 
         No user session is required, but the request is still gated: it must carry an API key, or
         originate from a whitelisted first-party origin. A bare request from an unrecognised origin
@@ -9453,6 +9461,12 @@ components:
         hasPassword:
           type: boolean
           description: The scrypt password hash itself is never returned in any API response.
+        allowDownload:
+          type: boolean
+          default: true
+          description: |
+            Whether the studio shows a Download button on the public page. A display preference, not a
+            security control: the studio hides the Download button, and viewers can still save the page.
         expiresAt:
           type: string
           format: date-time
@@ -9500,6 +9514,13 @@ components:
           description: Regenerate the public slug instead of reusing the existing one (if a link already exists for this document).
         removePassword:
           type: boolean
+        allowDownload:
+          type: boolean
+          default: true
+          description: |
+            Whether the studio shows a Download button on the public page. A display preference, not a
+            security control: the studio hides the Download button, and viewers can still save the page.
+            A new link defaults to true; replacing an existing link without this field keeps its value.
     ShareLinkResponse:
       type: object
       required:
@@ -9566,6 +9587,12 @@ components:
           type: string
           format: date-time
           nullable: true
+        allowDownload:
+          type: boolean
+          description: |
+            Whether the studio shows a Download button on the public page. A display preference, not a
+            security control: the studio hides the Download button, and viewers can still save the page.
+            Not present while a password is required.
         snapshot:
           type: object
           additionalProperties: true

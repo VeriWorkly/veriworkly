@@ -800,6 +800,9 @@ model ShareLink {
   expiresAt    DateTime?
   viewCount    Int       @default(0)
   lastViewedAt DateTime?
+  // Whether the studio shows the Download button on the public page (V-421). A display
+  // preference, not access control: a viewer can still save the page.
+  allowDownload Boolean @default(true)
 
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt

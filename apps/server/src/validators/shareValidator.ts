@@ -11,6 +11,9 @@ import { normalizeSlug, normalizeUsername } from "#utils/slugs";
  * `noExpiry: true` is never; `expiresAt` must be 7, 14, 30 or 90 days out, or the link's stored
  * date; with neither, a new link lasts 7 days and a refresh keeps its expiry. The service checks
  * the date.
+ *
+ * `allowDownload` (V-421) is whether the public page shows a Download button; true for a new
+ * link, and a refresh without it keeps the stored value.
  */
 export const shareLinkCreateSchema = z
   .object({
@@ -21,6 +24,7 @@ export const shareLinkCreateSchema = z
     noExpiry: z.boolean().optional(),
     updateSlug: z.boolean().optional(),
     removePassword: z.boolean().optional(),
+    allowDownload: z.boolean().optional(),
   })
   .refine((body) => !(body.noExpiry && body.expiresAt), {
     message: "Send either noExpiry or expiresAt, not both.",

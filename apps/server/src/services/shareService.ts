@@ -57,6 +57,8 @@ type ShareLinkWriteInput = {
   expiresAt?: string | Date | null;
   updateSlug?: boolean;
   removePassword?: boolean;
+  /** Missing on a refresh keeps the stored value; a new link defaults to true (V-421). */
+  allowDownload?: boolean;
   snapshot: Prisma.InputJsonValue;
 };
 
@@ -407,14 +409,25 @@ export class ShareService {
     }
 
     const expiresAt = resolveShareExpiry(data, existing);
+    // Left out of the write when not sent: the column's default for a new link, the stored value
+    // on a refresh (V-421).
+    const allowDownload = data.allowDownload;
 
     const shareLink = existing
       ? await prisma.shareLink.update({
           where: { id: existing.id },
-          data: { slug, snapshot: data.snapshot, passwordHash, expiresAt },
+          data: { slug, snapshot: data.snapshot, passwordHash, expiresAt, allowDownload },
         })
       : await prisma.shareLink.create({
-          data: { userId, documentId, slug, snapshot: data.snapshot, passwordHash, expiresAt },
+          data: {
+            userId,
+            documentId,
+            slug,
+            snapshot: data.snapshot,
+            passwordHash,
+            expiresAt,
+            allowDownload,
+          },
         });
 
     return { shareLink, existing };
