@@ -6,12 +6,12 @@ description: Presigned image uploads for portfolio avatars, project covers, and 
 ## Description
 
 Portfolio images (avatars, project cover images, social share images) are uploaded directly to
-Cloudflare R2 using presigned URLs — the API never proxies file bytes. The flow is:
+Cloudflare R2 using presigned URLs; the API never proxies file bytes. The flow is:
 
-1. `POST /portfolio-assets/upload-url` — request a presigned PUT URL (10-minute expiry) for a JPG,
+1. `POST /portfolio-assets/upload-url`: request a presigned PUT URL (10-minute expiry) for a JPG,
    PNG, or WebP image up to 5MB.
 2. Upload the file directly to that URL with a matching `Content-Type` / `Content-Length`.
-3. `POST /portfolio-assets/complete` — the server issues a `HEAD` request against R2 to verify the
+3. `POST /portfolio-assets/complete`: the server issues a `HEAD` request against R2 to verify the
    uploaded object's size, content type, and (optionally) checksum match what was declared, then
    marks the asset `READY` so it can be referenced from a portfolio.
 
@@ -21,10 +21,10 @@ When image storage is not configured on the server, these routes answer `503`.
 
 ## Authentication
 
-All routes in this group require a session cookie — none accept an API key.
+All routes in this group require a session cookie; none accept an API key.
 
 ## Available Endpoints
 
-- `POST /portfolio-assets/upload-url` — [Create Upload URL](./createPortfolioAssetUploadUrl)
-- `POST /portfolio-assets/complete` — [Complete Upload](./completePortfolioAssetUpload)
-- `DELETE /portfolio-assets/{id}` — [Delete Asset](./deletePortfolioAsset)
+- `POST /portfolio-assets/upload-url`: [Create Upload URL](./createPortfolioAssetUploadUrl)
+- `POST /portfolio-assets/complete`: [Complete Upload](./completePortfolioAssetUpload)
+- `DELETE /portfolio-assets/{id}`: [Delete Asset](./deletePortfolioAsset)

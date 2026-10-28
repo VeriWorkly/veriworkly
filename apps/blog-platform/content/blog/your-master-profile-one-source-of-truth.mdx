@@ -1,6 +1,6 @@
 ---
 title: "Your Master Profile: One Source of Truth"
-description: Why editing a tailored resume should never silently rewrite your canonical career data — and how VeriWorkly enforces that.
+description: Why editing a tailored resume should never silently rewrite your canonical career data, and how VeriWorkly enforces that.
 author: VeriWorkly Team
 date: 2026-07-27
 updated: 2026-10-28
@@ -11,24 +11,24 @@ tags:
   - resume versioning
 ---
 
-Most resume tools quietly assume you have one resume. In practice, everyone who's actually job-hunting has several — one tailored for a startup, one for a big-company ATS, one that leads with a side project instead of a job title. The problem those tools never solve is: where does the _real_ version of your career data live, and how do you stop your tailoring from corrupting it?
+Most resume tools quietly assume you have one resume. In practice, everyone who's actually job-hunting has several: one tailored for a startup, one for a big-company ATS, one that leads with a side project instead of a job title. The problem those tools never solve is: where does the _real_ version of your career data live, and how do you stop your tailoring from corrupting it?
 
 VeriWorkly's answer is the **Master Profile**.
 
 ## One record, every document
 
-Your Master Profile is a single JSON record — basics, experience, education, skills, projects, certifications, languages, awards, publications, volunteer work, references, and more. When you create a new resume, cover letter, or portfolio with no content yet, it auto-seeds from this record. No re-typing your work history for the fourth time this month.
+Your Master Profile is a single JSON record: basics, experience, education, skills, projects, certifications, languages, awards, publications, volunteer work, references, and more. When you create a new resume or cover letter with no content yet, it auto-seeds from this record. A portfolio does not seed itself: in the portfolio editor, **Import Profile** pulls your career data in from this record. No re-typing your work history for the fourth time this month.
 
 ## The one-way rule
 
-Here's the part that actually matters: **editing a document never writes back to your Master Profile.** Trim a section for a specific job, reword a bullet to match a job description, delete an entire experience block you don't want a particular recruiter to see — none of it touches your canonical data.
+Here's the part that actually matters: **editing a document never writes back to your Master Profile.** Trim a section for a specific job, reword a bullet to match a job description, delete an entire experience block you don't want a particular recruiter to see: none of it touches your canonical data.
 
 Only two things update the Master Profile:
 
 1. Directly editing the Master Profile page itself.
 2. Importing GitHub or LinkedIn data with **"Replace my Master Profile with this data"** explicitly checked.
 
-Everything else is a one-way seed, not a two-way sync. That's a deliberate design choice, not a missing feature — it means you can tailor as aggressively as you want for one application without any risk of quietly degrading the profile every other document depends on.
+Everything else is a one-way seed, not a two-way sync. That's a deliberate design choice, not a missing feature: it means you can tailor as aggressively as you want for one application without any risk of quietly degrading the profile every other document depends on.
 
 ## Where you manage it
 
@@ -38,4 +38,4 @@ If you're building on the API directly, `GET`/`PUT /profiles/master` gives you t
 
 ## Why this is worth calling out
 
-A lot of "unified profile" features in other tools are marketing language for "we'll pre-fill some fields once." The one-way rule is what makes VeriWorkly's version actually trustworthy to use aggressively — you can experiment with a resume without ever worrying you've damaged the source of truth everything else pulls from.
+A lot of "unified profile" features in other tools are marketing language for "we'll pre-fill some fields once." The one-way rule is what makes VeriWorkly's version actually trustworthy to use aggressively: you can experiment with a resume without ever worrying you've damaged the source of truth everything else pulls from.

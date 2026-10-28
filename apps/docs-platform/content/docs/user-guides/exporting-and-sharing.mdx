@@ -43,11 +43,10 @@ the PDF. It produces cleaner, more predictable output. For why some PDFs reach a
 
 ### What happens to blank fields?
 
-<Callout type="info" title="Blank fields are omitted, but blank titles fall back">
+<Callout type="info" title="Blank fields are omitted">
   Empty dates, company names, and locations are dropped from the export rather than printed as
-  placeholders. The one exception is an entry's **title**: an experience with no role renders as
-  `"Role"`, and the same applies to education (`"Education"`), projects (`"Project"`), and custom
-  items (`"Item"`). Give every entry a title, or hide the section.
+  placeholders. An entry with a blank **title** gets no placeholder either: it prints without one.
+  Give every entry a title, or hide the section.
 </Callout>
 
 ---
@@ -67,8 +66,9 @@ page for the document at `/share/{username}/{slug}`.
 
 <Cards>
   <Card title="Public link" icon={<LinkIcon />}>
-    A read-only page anyone with the URL can open. Viewers can download the document as PDF or DOCX
-    directly from the share page.
+    A read-only page anyone with the URL can open. By default, viewers can download it as PDF, HTML or
+    DOCX from the share page. Turn off **Allow downloads** to hide those buttons; viewers can still
+    save or print the page.
   </Card>
 
 <Card title="Password protection" icon={<ShieldCheck />}>
@@ -105,10 +105,9 @@ page for the document at `/share/{username}/{slug}`.
 
 - Share passwords are hashed with **scrypt** and verified with a timing-safe comparison. They are
   separate from your account credentials. VeriWorkly has no account password at all.
-- Password verification is rate-limited to **3 attempts per 5 minutes** per client, which makes
-  brute-forcing a share password impractical.
-- Repeat views from the same IP within a 30-minute window are deduplicated before the view count is
-  incremented, so refreshing a page does not inflate your analytics.
+- Password verification is rate-limited to **5 attempts per 5 minutes** per link and client
+  network, and a correct password resets the count.
+- Every view of the share page adds one to its view count, including a refresh.
 
 ---
 

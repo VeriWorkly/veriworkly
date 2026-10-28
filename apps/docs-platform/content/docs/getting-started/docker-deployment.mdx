@@ -169,9 +169,8 @@ host (Nginx, Traefik, or Caddy) is the only way in. It handles:
 - **Client addresses**: forward the visitor's IP in `X-Forwarded-For` and set `TRUST_PROXY` to the
   number of proxies in front of the API.
 
-If you also deploy the portfolio builder, free portfolios are served under a path on its own host,
-and premium portfolios on wildcard subdomains (`*.yourdomain.com`), which need a wildcard DNS record
-and a wildcard TLS certificate.
+If you also deploy the portfolio builder, note that portfolio subdomains are hard-coded to
+`<name>.veriworkly.com`, so they do not work on your own domain without a code change.
 
 ---
 

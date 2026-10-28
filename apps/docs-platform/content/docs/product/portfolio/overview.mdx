@@ -6,8 +6,8 @@ description: VeriWorkly's portfolio builder makes a personal portfolio website f
 
 **VeriWorkly's portfolio builder turns your career history into a personal portfolio website with
 four templates and a three-pane editor, plus visitor analytics on a paid plan. Anyone can build and preview a portfolio
-today, signed in or in guest mode. Publishing opens at launch: free portfolios publish at
-`portfolio.veriworkly.com/portfolio/<name>`, and premium ones on `<name>.veriworkly.com`.** Start at
+today, signed in or in guest mode. Publishing opens at launch: every portfolio, free or paid, publishes on its own
+`<name>.veriworkly.com` subdomain.** Start at
 [portfolio.veriworkly.com](https://portfolio.veriworkly.com).
 
 ## What is the portfolio builder?
@@ -16,12 +16,12 @@ It is a single Next.js application (`apps/portfolio`) serving three surfaces:
 
 1. **Public marketing**: the landing page, template gallery, pricing, and FAQ.
 2. **The workspace**: dashboard, editor, analytics, settings, and profile.
-3. **The published portfolio sites themselves**: served at
-   `portfolio.veriworkly.com/portfolio/{slug}` and, for premium portfolios, on `*.veriworkly.com`
-   subdomains.
+3. **The published portfolio sites themselves**: served on
+   `{slug}.veriworkly.com` subdomains, one per published portfolio, free or paid.
 
 A `proxy.ts` middleware routes all three: it gates workspace paths behind a session cookie or the
-guest-mode cookie, and rewrites both the subdomain host and the shared path onto the internal
+guest-mode cookie, and rewrites the subdomain host (and the `/portfolio/{slug}` and `/user/{slug}` alias paths, which
+also resolve) onto the internal
 `/portfolios/[username]/[[...slug]]` route.
 
 ## Can I publish my portfolio yet?

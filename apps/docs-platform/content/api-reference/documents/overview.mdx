@@ -5,7 +5,7 @@ description: CRUD for resumes, cover letters, portfolios, and link-in-bio pages.
 
 ## Description
 
-Documents are the unified content model behind every product surface — Resume, Cover Letter,
+Documents are the unified content model behind every product surface: Resume, Cover Letter,
 Portfolio, and Link-in-Bio all share one `Document` record shape (`type` distinguishes them). Free
 users can keep 1 active document per type; another one answers `402` with
 `details.code: "DOCUMENT_LIMIT"`. Any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a
@@ -15,7 +15,7 @@ Updates use **Optimistic Concurrency Control** via a `revision` integer instead 
 each successful update increments `revision` by 1, and a `PATCH` request must send back the
 revision it read, or the API rejects it with `409`.
 
-Deletes are **soft deletes** — a `deletedAt` timestamp is set and the document is immediately
+Deletes are **soft deletes**: a `deletedAt` timestamp is set and the document is immediately
 excluded from list/get responses. There is no public restore route. The content of a deleted
 document is wiped after 30 days by default.
 
@@ -31,8 +31,8 @@ toward the autosave limit of 600 requests per 15 minutes per user.
 
 ## Available Endpoints
 
-- `GET /documents` — [List Documents](./listDocuments)
-- `POST /documents` — [Create Document](./createDocument)
-- `GET /documents/{id}` — [Get Document](./getDocument)
-- `PATCH /documents/{id}` — [Update Document](./updateDocument)
-- `DELETE /documents/{id}` — [Delete Document](./deleteDocument)
+- `GET /documents`: [List Documents](./listDocuments)
+- `POST /documents`: [Create Document](./createDocument)
+- `GET /documents/{id}`: [Get Document](./getDocument)
+- `PATCH /documents/{id}`: [Update Document](./updateDocument)
+- `DELETE /documents/{id}`: [Delete Document](./deleteDocument)

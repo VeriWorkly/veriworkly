@@ -7,18 +7,18 @@ description: Deterministic and AI-assisted ATS resume scanning against a job des
 
 The ATS module scores a resume's readiness for applicant tracking systems in two layers:
 
-1. **A deterministic, rule-based scan** (`/ats/check`) — computed entirely server-side with no AI
+1. **A deterministic, rule-based scan** (`/ats/check`): computed entirely server-side with no AI
    call, works for anonymous callers, and produces a `readinessScore`, an optional `jobMatchScore`,
    and a list of prioritized fixes.
-2. **An AI deep-analysis pass** (`/ats/analyze`) — runs the same deterministic scan and layers an
+2. **An AI deep-analysis pass** (`/ats/analyze`): runs the same deterministic scan and layers an
    AI explanation, missing-evidence list, and keyword opportunities on top. Requires authentication.
 
 <Callout type="warn" title="Check and analyze share one quota">
-  `/ats/check` and `/ats/analyze` draw from the **same** ATS scan-quota bucket — there is no
-  separate "AI analysis" allowance. Limits: anonymous callers get 1 scan / 48 hours, free logged-in
-  users get 2 scans / 24 hours, and accounts that hold AI credits or a paid plan or pass get 300
-  scans a month. Check current usage with `GET /ats/quota`. `/ats/analyze` also spends AI credits; a
-  balance that cannot cover it answers `402`.
+  `/ats/check` and `/ats/analyze` draw from the **same** ATS scan-quota bucket; there is no separate
+  "AI analysis" allowance. Limits: anonymous callers get 1 scan / 48 hours, free logged-in users get
+  2 scans / 24 hours, and accounts that hold AI credits or a paid plan or pass get 300 scans a
+  month. Check current usage with `GET /ats/quota`. `/ats/analyze` also spends AI credits; a balance
+  that cannot cover it answers `402`.
 </Callout>
 
 <Callout type="info" title="The same engine is open source">
@@ -44,15 +44,15 @@ localhost/private/link-local addresses, resolves DNS once and pins that IP for t
 
 ## Authentication
 
-| Method                   | Access Level                | Requirement                                              |
-| :----------------------- | :-------------------------- | :------------------------------------------------------- |
-| Quota / Extract / Check  | **Public or Authenticated** | Optional — works anonymously, or with a session/API key. |
-| Analyze / Convert Resume | **Authenticated**           | Session cookie or API key with the `ai:write` scope.     |
+| Method                   | Access Level                | Requirement                                             |
+| :----------------------- | :-------------------------- | :------------------------------------------------------ |
+| Quota / Extract / Check  | **Public or Authenticated** | Optional. Works anonymously, or with a session/API key. |
+| Analyze / Convert Resume | **Authenticated**           | Session cookie or API key with the `ai:write` scope.    |
 
 ## Available Endpoints
 
-- `GET /ats/quota` — [Get ATS Scan Quota](./getAtsQuota)
-- `POST /ats/extract` — [Extract Resume Text](./extractAtsResumeText)
-- `POST /ats/check` — [Run Deterministic ATS Scan](./checkAtsResume)
-- `POST /ats/analyze` — [Run AI-Powered ATS Analysis](./analyzeAtsResume)
-- `POST /ats/convert-resume` — [Convert Resume Text To Structured JSON](./convertAtsResume)
+- `GET /ats/quota`: [Get ATS Scan Quota](./getAtsQuota)
+- `POST /ats/extract`: [Extract Resume Text](./extractAtsResumeText)
+- `POST /ats/check`: [Run Deterministic ATS Scan](./checkAtsResume)
+- `POST /ats/analyze`: [Run AI-Powered ATS Analysis](./analyzeAtsResume)
+- `POST /ats/convert-resume`: [Convert Resume Text To Structured JSON](./convertAtsResume)

@@ -294,8 +294,8 @@ or write it.
 ### ChangelogEntry
 
 One row per shipped release: `version` (unique), title, summary, a `type` (`major` / `minor` /
-`patch`), publish date, GitHub URL, and five categorised string arrays — `added`, `improved`,
-`fixed`, `breaking`, `security`, plus tags and PR references. A daily sync job can import missing
+`patch`), publish date, GitHub URL, and five categorised string arrays (`added`, `improved`,
+`fixed`, `breaking`, `security`), plus tags and PR references. A daily sync job can import missing
 entries from GitHub Releases. `ChangelogReleaseTombstone` remembers releases an admin deleted, so
 the sync does not import them again.
 

@@ -1,6 +1,6 @@
 ---
 title: How the ATS Checker Actually Works
-description: A deterministic rules engine and an AI analysis layer, sharing one quota — and why that nuance matters if you're testing the free tier.
+description: A deterministic rules engine and an AI analysis layer, sharing one quota, and why that nuance matters if you're testing the free tier.
 author: VeriWorkly Team
 date: 2026-07-27
 updated: 2026-10-28
@@ -11,33 +11,33 @@ tags:
   - resume scoring
 ---
 
-"ATS score" tools are everywhere, and most of them are opaque — you paste a resume, a number comes back, and you have no idea what actually produced it. We'd rather be specific about what VeriWorkly's ATS checker does, because the honest answer is more useful than a black-box percentage.
+"ATS score" tools are everywhere, and most of them are opaque: you paste a resume, a number comes back, and you have no idea what actually produced it. We'd rather be specific about what VeriWorkly's ATS checker does, because the honest answer is more useful than a black-box percentage.
 
 ## Two layers, not one
 
 The checker runs on the public page at [veriworkly.com/ats-checker](https://veriworkly.com/ats-checker) with no account, and at `/ats` in Studio. It runs two genuinely different kinds of analysis:
 
-**The core scan** is deterministic and free of AI cost — it's a rules engine, not a model. It checks word count, the presence of email/phone/links, whether Experience, Education and Skills appear as real headings on their own line, what share of your bullets open with an action verb, what share carry a number, and overall length. None of this touches an LLM.
+**The core scan** is deterministic and free of AI cost: it's a rules engine, not a model. It checks word count, the presence of email/phone/links, whether Experience, Education and Skills appear as real headings on their own line, what share of your bullets open with an action verb, what share carry a number, and overall length. None of this touches an LLM.
 
-Two of its checks read the document's geometry rather than its text, and only work on an uploaded PDF: the share of lines split across a column gutter — the signature of a two-column layout, a sidebar, or a floating text box, all of which extract in a scrambled order — and the number of ruled table grids, traced from the page's own drawing operators. Paste your resume in as text instead and there is no geometry to measure, so those two checks are left out of the report entirely rather than quietly passing.
+Two of its checks read the document's layout rather than its text. The first, measured in uploaded PDFs only, is the share of lines split across a column gutter: the signature of a two-column layout, a sidebar, or a floating text box, all of which extract in a scrambled order. The second is the number of tables, counted in uploaded PDF and Word files; in a PDF they are traced as ruled grids from the page's own drawing operators. Paste your resume in as text instead and there is no layout to measure, so those two checks are left out of the report entirely rather than quietly passing.
 
 If you paste in a job description, it also produces a keyword-match score. That one deserves a paragraph of its own, below.
 
 ## What the keyword match actually does
 
-Most keyword scores are a word-overlap count against the whole posting, which is why they tell you to add "dental" and "stipend". Ours segments the posting first — About us, benefits and equal-opportunity boilerplate are not scored at all — then weights requirements above nice-to-haves, and weights recognised skills and proper nouns above ordinary English.
+Most keyword scores are a word-overlap count against the whole posting, which is why they tell you to add "dental" and "stipend". Ours segments the posting first (About us, benefits and equal-opportunity boilerplate are not scored at all), then weights requirements above nice-to-haves, and weights recognised skills and proper nouns above ordinary English.
 
 Three behaviours worth knowing about:
 
 - **"Go or Java" is one requirement, not two.** A posting that offers you a choice shouldn't penalise you for not holding both sides of it. Comma lists work too: "React, Vue, or Angular" is a single ask satisfied by any one of them.
-- **Skills you've evidenced under another name still count.** List Terraform and you are credited with infrastructure-as-code; list PostgreSQL and you are credited with relational databases. This runs one way only — naming the concept does not credit you with the tool.
-- **Abbreviations fold together.** `k8s`, `Kubernetes`, `CI/CD` and `continuous integration` resolve to the same term on both sides.
+- **Skills you've evidenced under another name still count.** List Terraform and you are credited with infrastructure-as-code; list PostgreSQL and you are credited with relational databases. This runs one way only: naming the concept does not credit you with the tool.
+- **Abbreviations fold together.** `k8s` and `Kubernetes` resolve to the same term on both sides, and so do `CI` and `CI/CD`.
 
 **The AI-powered deep analysis** needs a signed-in account and [AI credits](/inside-the-ai-credit-system), which come only from a paid plan, a pass or a credit pack at launch (there are no free credits, and payments are admin-only in production today). It sits on top of the core scan: an LLM's plain-language explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities. It can also pull a job description straight from a URL instead of requiring you to paste it, with SSRF-hardened fetching underneath (private IP ranges blocked, resolved IP pinned, timeouts and size caps enforced) so that URL field can't be turned into a way to probe internal infrastructure.
 
 ## The quota nuance worth knowing
 
-Here's the part that surprises people: the core scan and the AI analysis draw from **the same scan-quota bucket**. Running the free core scan and then running the AI analysis on that same resume uses two scans against one shared limit — not one scan against each of two separate limits.
+Here's the part that surprises people: the core scan and the AI analysis draw from **the same scan-quota bucket**. Running the free core scan and then running the AI analysis on that same resume uses two scans against one shared limit, not one scan against each of two separate limits.
 
 Quotas, for reference:
 
@@ -49,8 +49,8 @@ If you're testing the free tier and wondering why you ran out faster than expect
 
 ## Getting content into it
 
-You can load a resume you've already built in Studio directly as the scan source, or upload/paste one fresh: PDF, DOCX, HTML, TXT, MD, or JSON, up to 5MB. Two optional AI steps around the upload are billed in credits like the analysis: repairing a file whose text extracted badly, and converting a scanned resume into an editable Studio document.
+You can load a resume you've already built in Studio directly as the scan source, or upload/paste one fresh: PDF, DOCX, TXT, MD, or JSON, up to 5MB. Two optional AI steps around the upload are billed in credits like the analysis: repairing a file whose text extracted badly, and converting a scanned resume into an editable Studio document.
 
 ## The takeaway
 
-A deterministic scan gives you a stable, explainable baseline. The AI layer gives you judgment and specific, contextual recommendations. Knowing they share a quota — and knowing which one is actually looking at your resume — makes the tool a lot more useful than treating the output as one mystery number.
+A deterministic scan gives you a stable, explainable baseline. The AI layer gives you judgment and specific, contextual recommendations. Knowing they share a quota, and knowing which one is actually looking at your resume, makes the tool a lot more useful than treating the output as one mystery number.

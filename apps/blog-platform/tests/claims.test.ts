@@ -321,6 +321,14 @@ const RULES: Rule[] = [
     /\b(?:credits?|they|balances?)\s+(?:will\s+|can\s+|do\s+)?(?:roll|carry)\s+(?:over|forward)\b|\bcredit rollover\b|\brollover credits\b/i,
     "subscription credits reset monthly and never roll over",
   ),
+  forbid(
+    /portfolio\.veriworkly\.com\/portfolio\/|\bshared path\b/i,
+    "every portfolio, free or paid, gets its own <name>.veriworkly.com subdomain",
+  ),
+  forbid(
+    /subdomain[^.|]{0,60}\b(?:paid plan|premium template|creator pro)|(?:paid plan|premium template)[^.|]{0,60}\badds?\b[^.|]{0,30}subdomain/i,
+    "the plan decides templates only, never the subdomain",
+  ),
   forbid(/100% free,? forever/i, "premium templates and AI credits are paid"),
   forbid(/all templates (?:are )?free/i, "Nimbus and Cipher are premium templates"),
   forbid(

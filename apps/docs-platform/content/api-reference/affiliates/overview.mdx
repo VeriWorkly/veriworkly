@@ -23,16 +23,16 @@ and so on). The smallest withdrawal is $25.
 
 ## Authentication
 
-| Method                                                  | Access Level      | Requirement                               |
-| :------------------------------------------------------ | :---------------- | :---------------------------------------- |
-| `POST /affiliates/click`, `GET /affiliates/leaderboard` | **Public**        | None.                                     |
-| All other routes                                        | **Authenticated** | Session cookie only — no API key support. |
+| Method                                                  | Access Level      | Requirement                              |
+| :------------------------------------------------------ | :---------------- | :--------------------------------------- |
+| `POST /affiliates/click`, `GET /affiliates/leaderboard` | **Public**        | None.                                    |
+| All other routes                                        | **Authenticated** | Session cookie only. No API key support. |
 
 ## Available Endpoints
 
-- `POST /affiliates/click` — [Track Affiliate Click](./trackAffiliateClick)
-- `GET /affiliates/leaderboard` — [Get Affiliate Leaderboard](./getAffiliateLeaderboard)
-- `GET /affiliates/me` — [Get My Affiliate Dashboard](./getMyAffiliateDashboard)
-- `POST /affiliates/enroll` — [Enroll As Affiliate](./enrollAsAffiliate)
-- `POST /affiliates/referral` — [Apply Affiliate Referral Code](./applyAffiliateReferral)
-- `POST /affiliates/withdrawals` — [Request Affiliate Withdrawal](./requestAffiliateWithdrawal)
+- `POST /affiliates/click`: [Track Affiliate Click](./trackAffiliateClick)
+- `GET /affiliates/leaderboard`: [Get Affiliate Leaderboard](./getAffiliateLeaderboard)
+- `GET /affiliates/me`: [Get My Affiliate Dashboard](./getMyAffiliateDashboard)
+- `POST /affiliates/enroll`: [Enroll As Affiliate](./enrollAsAffiliate)
+- `POST /affiliates/referral`: [Apply Affiliate Referral Code](./applyAffiliateReferral)
+- `POST /affiliates/withdrawals`: [Request Affiliate Withdrawal](./requestAffiliateWithdrawal)

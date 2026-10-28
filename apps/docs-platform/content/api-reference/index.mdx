@@ -62,7 +62,7 @@ All API endpoints are relative to the following base URLs depending on your envi
 
 There are two ways to authenticate, and which one you need depends on where the request comes from.
 
-### 1. API keys — for scripts, integrations, and these docs
+### 1. API keys: for scripts, integrations, and these docs
 
 Send your key in either header; both are accepted:
 
@@ -75,7 +75,7 @@ Keys are `vw_` followed by 64 hexadecimal characters and are scope-gated. Each k
 limit: 20 requests per 15 minutes unless you set another value, up to 600. See
 [API Keys](/api-reference/api-keys/overview) for scopes and lifecycle.
 
-### 2. Session cookies — for the VeriWorkly dashboard
+### 2. Session cookies: for the VeriWorkly dashboard
 
 `HttpOnly` cookies issued by **Better Auth**, honoured only for whitelisted first-party origins.
 
@@ -116,7 +116,7 @@ shares the session.
 ### Optimistic Concurrency Control
 
 To prevent data loss when editing across browser tabs or devices, VeriWorkly implements
-**Optimistic Concurrency Control** — but the token you send differs by resource:
+**Optimistic Concurrency Control**, but the token you send differs by resource:
 
 | Resource                                   | Field you send      | Type      | Source                             |
 | :----------------------------------------- | :------------------ | :-------- | :--------------------------------- |
@@ -124,7 +124,7 @@ To prevent data loss when editing across browser tabs or devices, VeriWorkly imp
 | Documents (`PATCH /documents/{id}`)        | `revision`          | integer   | The document's current `revision`. |
 | Portfolio drafts (`PUT /portfolios/draft`) | `revision`          | integer   | The draft's current `revision`.    |
 
-If your value matches the server's, the write succeeds — and for documents and drafts, `revision`
+If your value matches the server's, the write succeeds, and for documents and drafts, `revision`
 is incremented by 1. If it doesn't, the API rejects the request with `409 Conflict`; re-read the
 resource, reapply your changes, and retry.
 
@@ -137,7 +137,7 @@ resource, reapply your changes, and retry.
 
 ### Document Export Is Client-Side, Not a Background Job
 
-PDF, DOCX, HTML, Markdown, and JSON export are generated entirely in the browser (via `react-pdf` for PDF and the `docx` package for Word documents) — there is no server-side rendering job, queue, or webhook involved in producing an exported file. The API's own background jobs (GitHub sync, usage-metrics flush, portfolio access checks) are internal, Redis-lock-guarded scheduled tasks, not something a client polls or receives a webhook for.
+PDF, DOCX, HTML, Markdown, and JSON export are generated entirely in the browser (via `react-pdf` for PDF and the `docx` package for Word documents). There is no server-side rendering job, queue, or webhook involved in producing an exported file. The API's own background jobs (GitHub sync, usage-metrics flush, portfolio access checks) are internal, Redis-lock-guarded scheduled tasks, not something a client polls or receives a webhook for.
 
 ---
 
@@ -189,7 +189,7 @@ with a stable `code` you can branch on (for example `API_KEY_REQUIRED`, `CORS_RE
 ### Common HTTP Status Codes
 
 - **`200 OK`**: The request was successful.
-- **`201 Created`**: A resource was created — document creation, share links, API keys, publishing a portfolio.
+- **`201 Created`**: A resource was created: document creation, share links, API keys, publishing a portfolio.
 - **`202 Accepted`**: Queued for asynchronous processing (portfolio view tracking).
 - **`400 Bad Request`**: Validation error (missing parameters, malformed body, unsupported scope).
 - **`401 Unauthorized`**: No valid session and no valid API key, or the session expired.
@@ -282,7 +282,7 @@ defaults to 20 and the most is 50.
 }
 ```
 
-`nextCursor` is always `null` — these endpoints are offset-paginated, and the field exists only to
+`nextCursor` is always `null`: these endpoints are offset-paginated, and the field exists only to
 keep the envelope stable.
 
 ---

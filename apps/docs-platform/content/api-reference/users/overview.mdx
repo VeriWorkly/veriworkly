@@ -9,7 +9,7 @@ description: Manage authenticated user profiles, preferences, and account metada
 
 The Users module handles the core identity and profile metadata for authenticated VeriWorkly users.
 
-While VeriWorkly is heavily designed around a **local-first** philosophy, users who opt into creating an account (to utilize cloud sync, resume sharing, or managed backups) interact with these endpoints to manage their platform identity.
+While VeriWorkly is heavily designed around a **local-first** philosophy, users who opt into creating an account (to use cloud sync or resume sharing) interact with these endpoints to manage their platform identity.
 
 ---
 
@@ -51,9 +51,9 @@ The User profile returned by these endpoints _only_ contains top-level account m
 
 ## Available Endpoints
 
-- `GET /users/me` — [Get Current User](./getCurrentUser)
-- `PUT /users/me/name` — [Update User Name](./updateUserName)
-- `PUT /users/me/username` — [Set Username](./setUsername)
-- `GET /users/{username}/availability` — [Check Username Availability](./checkUsernameAvailability)
-- `PUT /users/me/sync` — [Update Auto-Sync Preference](./updateAutoSync)
-- `DELETE /users/me` — [Delete Current User](./deleteCurrentUser) (session only; an API key gets `403`)
+- `GET /users/me`: [Get Current User](./getCurrentUser)
+- `PUT /users/me/name`: [Update User Name](./updateUserName)
+- `PUT /users/me/username`: [Set Username](./setUsername)
+- `GET /users/{username}/availability`: [Check Username Availability](./checkUsernameAvailability)
+- `PUT /users/me/sync`: [Update Auto-Sync Preference](./updateAutoSync)
+- `DELETE /users/me`: [Delete Current User](./deleteCurrentUser) (session only; an API key gets `403`)

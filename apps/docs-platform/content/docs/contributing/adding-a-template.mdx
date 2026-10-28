@@ -138,8 +138,9 @@ contributions are not accepted. For maintainers with access, the steps are:
 
 1. Add a folder in `template-library/` with its React component, a `design.ts` detail file, and an
    optional scoped stylesheet.
-2. Register it in `template-library/registry.ts` with its metadata, `isPremium` flag, and lazy
-   `loader`. `apps/portfolio/templates/catalog/templates.ts` derives the public gallery from that
+2. Register it in `template-library/registry.ts`: an entry in `templatesRegistry` with its metadata,
+   `isPremium` flag and `design` details, and a lazy loader in `templateLoaders`.
+   `apps/portfolio/templates/catalog/templates.ts` derives the public gallery from that
    registry, so the gallery and the renderer cannot drift apart.
 3. Add the template id to `PORTFOLIO_TEMPLATE_IDS` in
    `apps/server/src/validators/portfolioValidator.ts`, and to `PREMIUM_PORTFOLIO_TEMPLATE_IDS` there
@@ -159,7 +160,6 @@ export const templatesRegistry = {
     strengths: ["…"],
     image: "/templates/signal-template-preview.png",
     isPremium: false,
-    loader: () => import("./signal/SignalTemplate"),
     design: signalDesign,
   },
   // atelier, nimbus, cipher …

@@ -6,7 +6,7 @@ description: Answers about the VeriWorkly ATS checker. Is it free, do you need a
 
 **The VeriWorkly ATS checker is free. Its core scan is a rules engine, not AI, so it costs no
 credits. Without an account you get one scan every 48 hours on the public checker; a free account
-gets two a day in Studio. It reads PDF, DOCX, HTML and text files up to 5 MB.** The answers below
+gets two a day in Studio. Its upload reads PDF, DOCX, text, Markdown and JSON files up to 5 MB.** The answers below
 cover the questions people ask most. The full feature guide is [ATS checker](/docs/product/ats-checker).
 
 <Accordions>
@@ -31,10 +31,11 @@ cover the questions people ask most. The full feature guide is [ATS checker](/do
 </Accordion>
 
 <Accordion id="file-types" title="Which file types can the ATS checker read?">
-  PDF, DOCX, HTML, plain text, Markdown and JSON, up to 5 MB. RTF is not accepted, and old Word
-  `.doc` files should be saved as DOCX first. You can also paste the text, or pick a resume you
-  built in Studio. Uploaded PDF and Word files are checked for tables; only PDFs are checked for
-  columns, because a column split can only be measured on a laid-out page.
+  The upload accepts PDF, DOCX, plain text, Markdown and JSON, up to 5 MB; the API also accepts
+  HTML. RTF is not accepted, and old Word `.doc` files should be saved as DOCX first. You can also
+  paste the text, or pick a resume you built in Studio. Uploaded PDF and Word files are checked for
+  tables; only PDFs are checked for columns, because a column split can only be measured on a
+  laid-out page.
 </Accordion>
 
 <Accordion id="blank-pdf" title="Why does my resume PDF parse as blank?">
@@ -68,9 +69,9 @@ cover the questions people ask most. The full feature guide is [ATS checker](/do
 
 <Accordion id="columns" title="Do two-column resumes fail ATS checks?">
   They often read out of order. For an uploaded PDF, the checker measures how many lines are split
-  across a column gap and counts table grids, because both scramble the extracted text. Pasted text
-  and Studio documents have no page geometry, so those two checks are left out rather than counted
-  against you.
+  across a column gap, and for an uploaded PDF or Word file it counts tables, because both scramble
+  the extracted text. Pasted text and Studio documents have no page geometry, so those two checks
+  are left out rather than counted against you.
 </Accordion>
 
 <Accordion id="job-description" title="Should I add a job description to the scan?">

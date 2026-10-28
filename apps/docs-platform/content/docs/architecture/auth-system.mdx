@@ -8,16 +8,15 @@ primary method and three OAuth providers alongside it.
 
 ## Authentication methods
 
-1. **Email OTP** — a one-time passcode is emailed to the user; verifying it establishes a session.
+1. **Email OTP**: a one-time passcode is emailed to the user; verifying it establishes a session.
    Configured through Better-Auth's `emailOTP` plugin.
 2. **Google OAuth**
 3. **GitHub OAuth**
 4. **LinkedIn OAuth**
 
 <Callout type="info" title="LinkedIn OAuth is for signing in only">
-  LinkedIn OAuth authenticates a user. It is **not** used to import LinkedIn profile data — that
-  flow is a paste-and-parse path. See [Importing Your
-  Profile](/docs/product/importing-your-profile).
+  LinkedIn OAuth authenticates a user. It is **not** used to import LinkedIn profile data. That flow
+  is a paste-and-parse path. See [Importing Your Profile](/docs/product/importing-your-profile).
 </Callout>
 
 Each OAuth provider is registered **only if** its client ID and secret are both configured, so an
@@ -48,8 +47,9 @@ Free accounts import only from their linked GitHub; paid plans can import any pu
 
 ## Architecture
 
-- **Frontends** (`apps/studio`, `apps/portfolio`, `apps/site`) use the Better-Auth client SDK for
-  session lifecycle and the OTP verification UI.
+- **Studio** (`apps/studio`) uses the Better-Auth client SDK for session lifecycle and the OTP
+  verification UI. The portfolio app forwards the session cookie to the API, and the site has no
+  auth client.
 - **Backend** (`apps/server`) is the authentication authority. Better-Auth is mounted at the
   `/api/v1/auth` base path and handles OTP generation, OAuth callbacks, session issuance, and email
   dispatch.
@@ -177,7 +177,7 @@ Transactional email goes out on account lifecycle events:
 ### Admin provisioning
 
 On server boot, if no admin account exists for the configured `ADMIN_EMAIL`, one is provisioned
-automatically. `ADMIN_EMAIL` is compared case-insensitively and is a **server-only** value — it is
+automatically. `ADMIN_EMAIL` is compared case-insensitively and is a **server-only** value; it is
 never sent to the browser.
 
 <Callout type="info" title="Account deletion">

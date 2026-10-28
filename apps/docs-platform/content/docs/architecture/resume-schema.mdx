@@ -3,20 +3,23 @@ title: Resume Schema
 description: TypeScript reference for ResumeData, MasterProfileData, and the customization model.
 ---
 
-Every resume and Master Profile in VeriWorkly follows a shared, type-safe schema defined in
+Every resume in VeriWorkly follows a type-safe schema defined in
 [`apps/studio/types/resume.ts`](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/types/resume.ts).
+The Master Profile is defined once in `@veriworkly/profile-core` (`packages/profile-core/src/schema/schema.ts`)
+and re-exported from that file.
 The same shapes flow through the local store, the sync engine, both rendering engines, and every
 export format.
 
 ---
 
-## `ResumeData` — a single resume document
+## `ResumeData`: a single resume document
 
 ```typescript
 export interface ResumeData {
   id: string;
   templateId: string;
   title?: string;
+  language?: string;
 
   basics: ResumeBasics;
   links: ResumeLinks;
@@ -25,8 +28,17 @@ export interface ResumeData {
   education: ResumeEducationItem[];
   projects: ResumeProjectItem[];
   skills: ResumeSkillGroup[];
-  customSections: ResumeCustomSection[];
 
+  languages: ResumeLanguage[];
+  interests: ResumeInterest[];
+  awards: ResumeAward[];
+  certificates: ResumeCertificate[];
+  publications: ResumePublication[];
+  volunteer: ResumeVolunteer[];
+  references: ResumeReference[];
+  achievements: ResumeAchievement[];
+
+  customSections: ResumeCustomSection[];
   sections: ResumeSection[];
   customization: ResumeCustomization;
 
@@ -35,20 +47,20 @@ export interface ResumeData {
 }
 ```
 
-Note the split: the **core sections** (experience, education, projects, skills) are top-level typed
-arrays, while everything else — certifications, awards, publications, languages, interests,
-volunteer, references, achievements, and freeform custom blocks — lives inside `customSections`,
-each tagged with a `kind`.
+Every standard section is a top-level typed array, the same eight extended arrays the Master Profile
+has, so the hand-off from profile to resume loses nothing. `customSections` holds only sections the
+user invented. `language` is the BCP-47 tag for the exported HTML.
 
 ---
 
-## `MasterProfileData` — the canonical career record
+## `MasterProfileData`: the canonical career record
 
-The Master Profile is deliberately **wider** than a single resume: it stores fully typed arrays for
-every extended section rather than folding them into generic custom sections.
+The Master Profile holds the same typed arrays as a resume. Its type is inferred from the zod schema
+in `@veriworkly/profile-core`, which also carries a `schemaVersion`.
 
 ```typescript
 export interface MasterProfileData {
+  schemaVersion: number;
   templateId: string;
 
   basics: ResumeBasics;
@@ -75,7 +87,7 @@ export interface MasterProfileData {
 }
 ```
 
-Unlike `ResumeData`, `MasterProfileData` carries no `id` and no `sync` state — it is a single
+Unlike `ResumeData`, `MasterProfileData` carries no `id` and no `sync` state; it is a single
 per-user record, synced through its own dedicated endpoints.
 
 ---
@@ -111,7 +123,7 @@ export interface ResumeSection {
 ```
 
 `sections` is what drives visibility and ordering in both the editor and the exports. Hiding a
-section keeps its data intact while removing it from the rendered document — this is how one Master
+section keeps its data intact while removing it from the rendered document. This is how one Master
 Profile produces several differently-scoped resumes.
 
 ---
@@ -260,12 +272,13 @@ export interface ResumeAdditionalItem {
 }
 ```
 
-`ResumeAdditionalItem` is intentionally a single generic shape reused across all nine kinds, so the
-editor and both rendering engines can handle a new section kind without new field-level code.
+`ResumeAdditionalItem` is the generic item shape for sections the user invented. New writes use
+`kind: "custom"`; a section stored with an older kind is folded back into the matching typed array
+when the document is normalised.
 
-The Master Profile's typed equivalents (`ResumeLanguage`, `ResumeAward`, `ResumeCertificate`,
+The typed arrays (`ResumeLanguage`, `ResumeAward`, `ResumeCertificate`,
 `ResumePublication`, `ResumeVolunteer`, `ResumeReference`, `ResumeAchievement`, `ResumeInterest`)
-carry richer per-kind fields — for example `ResumeLanguage.fluency` is a union of `"elementary" |
+carry their own per-kind fields. For example, `ResumeLanguage.fluency` is a union of `"elementary" |
 "limited" | "professional" | "fluent" | "native"`, and award/certificate/publication entries each
 carry an optional `website` plus a `showLink` toggle.
 

@@ -1,30 +1,30 @@
 ---
 title: "Portfolio: Publishing & Analytics"
 metaTitle: "How to Publish a Portfolio: Address, Readiness, Analytics"
-description: Publish a VeriWorkly portfolio at portfolio.veriworkly.com/portfolio/<name> free, or on <name>.veriworkly.com with a paid plan. Opens at launch.
+description: Every VeriWorkly portfolio, free or paid, publishes on its own <name>.veriworkly.com subdomain. Paid plans add premium templates. Opens at launch.
 ---
 
-**Publishing makes your portfolio a public website. A free portfolio publishes at
-`portfolio.veriworkly.com/portfolio/<name>` with a "Built with VeriWorkly" badge; Nimbus or Cipher
-on a paid plan adds `<name>.veriworkly.com` and lets you remove the badge. Publishing opens to
+**Publishing makes your portfolio a public website. Every portfolio, free or paid,
+publishes on its own `<name>.veriworkly.com` subdomain. Free portfolios use Signal or Atelier with a
+"Built with VeriWorkly" badge; a paid plan adds Nimbus and Cipher, badge removal, visitor analytics
+and SEO controls. Publishing opens to
 everyone at launch; today it is admin-only. Edits stay in your draft until you publish again.**
 
 ## Where is my portfolio published?
 
-| Portfolio   | Published at                                                                                         |
-| :---------- | :--------------------------------------------------------------------------------------------------- |
-| **Free**    | A shared path: `portfolio.veriworkly.com/portfolio/{your-slug}` (`/user/{your-slug}` also resolves). |
-| **Premium** | A subdomain: `{your-slug}.veriworkly.com`.                                                           |
+| Portfolio           | Published at                 |
+| :------------------ | :--------------------------- |
+| **Every portfolio** | `{your-slug}.veriworkly.com` |
 
 A premium portfolio is a premium template (Nimbus or Cipher) published by an account with the
 `portfolio_publish` entitlement (Creator Pro, the Job Hunter Bundle, or a pass).
 
-Both forms are handled by the portfolio app's `proxy.ts` middleware, which rewrites the subdomain
-host and the shared path onto the same internal route.
+The portfolio app's `proxy.ts` middleware rewrites the subdomain host onto an internal route; the
+`/portfolio/{your-slug}` and `/user/{your-slug}` alias paths on `portfolio.veriworkly.com` also resolve
+to it.
 
-- **Subdomain access is enforced at the routing layer**, not just in the UI. A request to the
-  subdomain of a free portfolio is server-redirected to the shared path, and multi-page slug routes
-  return `404` on a free portfolio.
+- **Multi-page access is enforced at the routing layer**, not just in the UI. Multi-page slug
+  routes return `404` on a free portfolio.
 - **Premium templates gate at publish time.** Publishing (or re-publishing after an edit) with
   Nimbus or Cipher is refused without the `portfolio_publish` entitlement.
 - **Unpublishing** takes the site down while leaving the draft intact.

@@ -7,10 +7,10 @@ description: Public, optionally password-protected share links for documents.
 
 Share links let a document owner hand out a public, read-only URL to a static content snapshot
 without exposing the live document. Each document can have at most one active share link at a
-time — creating a new one replaces the existing one.
+time; creating a new one replaces the existing one.
 
-Links can optionally be password-protected (scrypt-hashed, verified with a timing-safe comparison
-— the hash itself is never returned by any response). Every link expires after 7, 14, 30 or 90
+Links can optionally be password-protected (scrypt-hashed, verified with a timing-safe comparison;
+the hash itself is never returned by any response). Every link expires after 7, 14, 30 or 90
 days, or never if asked for with `noExpiry: true`; a link created without either lasts 7 days.
 
 Creating a link requires the owner to have **claimed a username** first, since it forms the public
@@ -45,9 +45,9 @@ times per 5 minutes across all links. It answers:
 
 ## Available Endpoints
 
-- `POST /shares` — [Create Share Link](./createShareLink)
-- `GET /shares/documents/shared-ids` — [List Shared Document IDs](./listSharedDocumentIds)
-- `GET /shares/documents/{documentId}` — [List Share Links For Document](./listShareLinksForDocument)
-- `DELETE /shares/documents/{documentId}/links/{shareLinkId}` — [Revoke Share Link](./revokeShareLink)
-- `GET /shares/public/{username}/{slug}` — [Get Public Share Link](./getPublicShareLink)
-- `POST /shares/public/{username}/{slug}/verify` — [Verify Public Share Link Password](./verifyPublicShareLinkPassword)
+- `POST /shares`: [Create Share Link](./createShareLink)
+- `GET /shares/documents/shared-ids`: [List Shared Document IDs](./listSharedDocumentIds)
+- `GET /shares/documents/{documentId}`: [List Share Links For Document](./listShareLinksForDocument)
+- `DELETE /shares/documents/{documentId}/links/{shareLinkId}`: [Revoke Share Link](./revokeShareLink)
+- `GET /shares/public/{username}/{slug}`: [Get Public Share Link](./getPublicShareLink)
+- `POST /shares/public/{username}/{slug}/verify`: [Verify Public Share Link Password](./verifyPublicShareLinkPassword)

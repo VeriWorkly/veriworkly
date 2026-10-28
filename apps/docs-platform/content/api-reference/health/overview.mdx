@@ -17,10 +17,10 @@ deployment health checks in CI/CD pipelines.
 
 ## Liveness vs. readiness
 
-| Endpoint            | What it checks                               | Cost                                   | Failure mode         |
-| :------------------ | :------------------------------------------- | :------------------------------------- | :------------------- |
-| `GET /health`       | Only that the Node.js process is responding. | Free — touches no external dependency. | Never returns `503`. |
-| `GET /health/ready` | PostgreSQL (`SELECT 1`) and Redis (`PING`).  | Wakes database compute on every call.  | Returns `503`.       |
+| Endpoint            | What it checks                               | Cost                                  | Failure mode         |
+| :------------------ | :------------------------------------------- | :------------------------------------ | :------------------- |
+| `GET /health`       | Only that the Node.js process is responding. | Free: touches no external dependency. | Never returns `503`. |
+| `GET /health/ready` | PostgreSQL (`SELECT 1`) and Redis (`PING`).  | Wakes database compute on every call. | Returns `503`.       |
 
 <Callout type="warn" title="Poll the liveness probe, not the readiness probe">
   `GET /health` intentionally performs **no** database or Redis check, so that frequent uptime
@@ -40,5 +40,5 @@ deployment health checks in CI/CD pipelines.
 
 ## Available Endpoints
 
-- `GET /health` — [Liveness Check](./healthCheck)
-- `GET /health/ready` — [Readiness Check](./healthReady)
+- `GET /health`: [Liveness Check](./healthCheck)
+- `GET /health/ready`: [Readiness Check](./healthReady)

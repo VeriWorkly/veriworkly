@@ -74,8 +74,8 @@ carries over to the portfolio builder.
 </Callout>
 
 You will also receive automatic emails on account events: a welcome email on signup, and a
-**new-device login alert** whenever a session is created from an unfamiliar device, showing the
-provider, IP, and user agent.
+**login alert** every time you sign in (except right after signup), showing the provider, IP, and
+user agent.
 
 ---
 
@@ -83,8 +83,9 @@ provider, IP, and user agent.
 
 Once signed in, documents sync in the background.
 
-- **Auto-sync toggle**: on by default, switchable at `/settings`, alongside a manual **Sync Now**
-  action.
+- **Auto-sync toggle**: on by default, switchable at `/settings`, which also shows your backup
+  status. To back up one document now, open **Backup details** from its actions menu on Documents
+  or the overview and choose **Back up now**.
 - **Per-document opt-out**: mark any single document "keep local only" to exclude it from sync
   entirely.
 - **Sync status**: every document shows one of `local-only`, `pending`, `syncing`, `synced`, or
@@ -94,8 +95,9 @@ Once signed in, documents sync in the background.
 
 VeriWorkly uses **optimistic concurrency**, not last-write-wins. Each document carries a revision
 counter; if the cloud copy has moved on since your device last synced, the write is **rejected** and
-the document is marked `conflicted` rather than overwritten. Resolve it from the conflict details
-view at `/settings`.
+the document is marked `conflicted` rather than overwritten. Resolve it from the document's
+**Backup details** on Documents or the overview: keep this device's version, keep the cloud copy,
+or resolve it in the editor.
 
 <Callout type="info" title="You can keep typing during a sync">
   When a sync request is in flight, the response only updates the document's sync metadata, never
@@ -109,7 +111,7 @@ view at `/settings`.
 `/settings` in Studio contains:
 
 - **Appearance**: light, dark, or follow-system theme.
-- **Sync**: the auto-sync toggle, manual sync, and conflict resolution.
+- **Sync**: the auto-sync toggle and your backup status.
 - **Developer API keys**: a link through to `/api-keys`. See [API Keys](/docs/api-keys).
 
 ---
@@ -157,8 +159,9 @@ device are removed too. A confirmation email follows.
   because it lives with the payment provider.
 - a checkout is still open. Finish or cancel it first.
 - an affiliate withdrawal is requested or approved but not yet paid.
-- you have unpaid affiliate commissions. The message states the amount you would forfeit. Sending
-  the request again with `{ "confirmAffiliateForfeit": true }` confirms it.
+- you have unpaid affiliate commissions. Studio shows the amount you would forfeit and a
+  **Forfeit _amount_ and delete** button. Over the API, sending the request again with
+  `{ "confirmAffiliateForfeit": true }` confirms it.
 
 </Callout>
 

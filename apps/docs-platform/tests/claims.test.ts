@@ -322,6 +322,15 @@ describe("claims that contradict the product rules", () => {
     ["annual credits granted up front", /12,000[^.]{0,40}\b(?:up ?front|at once|immediately)/i],
     ["credits that roll over", /\broll(?:s|ed)? ?over\b|\brollover\b/i],
     ["custom domains for portfolios", /custom domains?\b/i],
+    // Owner decision: every portfolio gets its own subdomain; the plan only decides templates.
+    [
+      "free portfolios on a shared path",
+      /portfolio\.veriworkly\.com\/portfolio\/|\bshared path\b/i,
+    ],
+    [
+      "a subdomain that needs a paid plan or premium template",
+      /subdomain[^.]{0,60}\b(?:paid plan|premium template|creator pro)|(?:paid plan|premium template)[^.]{0,60}\badds?\b[^.]{0,30}subdomain/i,
+    ],
   ];
 
   for (const [what, pattern] of RULES) {

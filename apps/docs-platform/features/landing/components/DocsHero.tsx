@@ -49,8 +49,8 @@ export const DocsHero = () => {
               </div>
 
               <div>
-                <p className="text-foreground font-semibold">E2EE</p>
-                <p className="text-muted text-xs">Privacy Standard</p>
+                <p className="text-foreground font-semibold">Local-First</p>
+                <p className="text-muted text-xs">Guest Mode, No Login</p>
               </div>
             </div>
           </Card>

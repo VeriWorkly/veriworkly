@@ -25,8 +25,8 @@ Each resume template ships two implementations of the same document:
    `Text`, `Image`) with a React-Native-style style object syntax, giving fixed-width layout control
    for print fidelity.
 
-Cover letters follow the same split, with a shared `CoverLetterPdf` component that selects its layout
-by `templateId`.
+Cover letters follow the same split: each template has its own `pdf.tsx`, which
+`createCoverLetterPdfElement` loads by `templateId` through the cover-letter template registry.
 
 <Callout type="info" title="Source">
   The live implementations are in the [templates
@@ -93,8 +93,9 @@ faces with `@react-pdf/renderer`, resolving font files to absolute URLs against 
 Registration is memoised, so switching between documents does not re-register the same family.
 
 A hyphenation callback turns `@react-pdf/renderer`'s own hyphenation off, as CSS does by default:
-words up to 60 characters are never split. A longer unbroken token, such as a long URL, may break at
-any character, and the PDF prints a hyphen at that break.
+no word is ever split by hyphenation. Line breaks come from `templates/pdf/line-breaks.ts`, and an
+unbroken token too long for its line, such as a long URL, breaks at the last character that fits,
+with no hyphen added, as the browser preview does.
 
 ### 3. Blob generation
 

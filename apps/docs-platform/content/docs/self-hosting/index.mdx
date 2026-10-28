@@ -60,8 +60,8 @@ GitHub and LinkedIn sign-in stay off until you set their client ID and secret.
 
 `ADMIN_EMAIL` names the operator account. That account opens the admin console in Studio (`/admin`)
 once its email is verified, and in production it is the only account that can take payments or
-publish a portfolio. The API creates the account on boot if it does not exist yet. If `ADMIN_EMAIL`
-is empty, nobody is an admin.
+publish a portfolio. The API creates the account on boot if it does not exist yet. The API will not
+start if `ADMIN_EMAIL` is unset or blank.
 
 ## Self-hosting FAQ
 
@@ -86,9 +86,10 @@ is empty, nobody is an admin.
 
 <Accordion id="ai" title="Do AI features work on a self-hosted instance?">
   Only with your own AI gateway settings. Set `AI_API_KEY` and `AI_BASE_URL` and the AI action
-  variables; without them the AI actions are unavailable. The core ATS scan uses no AI, but it does
-  need an engine policy (`ATS_ENGINE_POLICY_PATH` or `ATS_ENGINE_POLICY_JSON`): without one it
-  answers `503`, and a production server refuses to start.
+  variables. In development the AI actions are unavailable without them; in production the API will
+  not start without `AI_API_KEY`, the AI actions policy and the ATS AI policy. The core ATS scan
+  uses no AI, but it does need an engine policy (`ATS_ENGINE_POLICY_PATH` or
+  `ATS_ENGINE_POLICY_JSON`): without one it answers `503`, and a production server refuses to start.
 </Accordion>
 
   <Accordion id="templates" title="Are the portfolio templates included?">

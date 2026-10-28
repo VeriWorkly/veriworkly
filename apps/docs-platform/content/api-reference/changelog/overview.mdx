@@ -6,8 +6,8 @@ description: Published release notes, filtering, and contributor statistics.
 ## Description
 
 The Changelog module exposes VeriWorkly's published release notes as structured data rather than
-prose. Each entry carries its version, release type, and five separate change buckets — `added`,
-`improved`, `fixed`, `breaking`, and `security` — so a consumer can render or diff them without
+prose. Each entry carries its version, release type, and five separate change buckets (`added`,
+`improved`, `fixed`, `breaking`, and `security`), so a consumer can render or diff them without
 parsing markdown.
 
 Entries originate two ways: authored directly in the admin console, or imported from GitHub
@@ -43,6 +43,6 @@ either `limit`/`offset` or `page`/`pageSize`. A `limit` or `pageSize` above 50 i
 
 ## Available Endpoints
 
-- `GET /changelog` — [Get Changelog Entries](./getChangelogEntries)
-- `GET /changelog/stats` — [Get Changelog Stats](./getChangelogStats)
-- `GET /changelog/{id}` — [Get Changelog Entry by ID](./getChangelogEntryById)
+- `GET /changelog`: [Get Changelog Entries](./getChangelogEntries)
+- `GET /changelog/stats`: [Get Changelog Stats](./getChangelogStats)
+- `GET /changelog/{id}`: [Get Changelog Entry by ID](./getChangelogEntryById)
