@@ -4,12 +4,16 @@ import { getSafeAuthCallback, SESSION_COOKIE_NAMES } from "@/lib/auth-redirect";
 import { serverFetch } from "@/lib/server-fetch";
 import { isCorsRejection } from "@/lib/server-fetch-core";
 
-async function readApiMessage(response: Response) {
+/** The error body's `message` and `details` (`details.code` names a CORS refusal). */
+async function readApiError(response: Response) {
   try {
-    const body = (await response.json()) as { message?: unknown };
-    return typeof body.message === "string" ? body.message : undefined;
+    const body = (await response.json()) as { message?: unknown; details?: unknown };
+    return {
+      message: typeof body.message === "string" ? body.message : undefined,
+      details: body.details,
+    };
   } catch {
-    return undefined;
+    return { message: undefined, details: undefined };
   }
 }
 
@@ -43,10 +47,11 @@ export async function GET(request: NextRequest) {
 
   const response = await serverFetch("/users/me");
   const { status } = response;
-  const message = status === 403 ? await readApiMessage(response) : undefined;
+  const { message, details } =
+    status === 403 ? await readApiError(response) : { message: undefined, details: undefined };
 
   // A CORS refusal says nothing about the session: keep the cookie, and let the page report it.
-  if ((status !== 401 && status !== 403) || isCorsRejection(status, message)) {
+  if ((status !== 401 && status !== 403) || isCorsRejection(status, message, details)) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

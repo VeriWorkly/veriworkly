@@ -739,3 +739,73 @@ export function subscribeToWorkspaceClears(onCleared: () => void): () => void {
     window.removeEventListener("storage", onStorage);
   };
 }
+
+const SIGNED_IN_MESSAGE_PREFIX = "signed-in:";
+/** Written and removed at once, like the clear signal: its value is the account's id. */
+const SIGNED_IN_SIGNAL_KEY = "veriworkly:workspace-signed-in";
+
+const accountSwitchListeners = new Set<() => void>();
+
+/**
+ * Tells the other tabs which account this browser is now signed in as. A tab still showing
+ * another account would otherwise upload that account's documents with this one's cookie.
+ */
+export function announceSignedIn(userId: string) {
+  const channel = getWorkspaceChannel();
+
+  if (channel) {
+    channel.postMessage(`${SIGNED_IN_MESSAGE_PREFIX}${userId}`);
+    return;
+  }
+
+  safeSetLocalStorageItem(window.localStorage, SIGNED_IN_SIGNAL_KEY, userId);
+  window.localStorage.removeItem(SIGNED_IN_SIGNAL_KEY);
+}
+
+/**
+ * The browser's session belongs to another account than the one this tab shows. Its typing is
+ * kept on this device, every sync still in flight drops its reply, and the listeners stop the
+ * workers and leave the page.
+ */
+export function leaveSwitchedAccount() {
+  bumpWorkspaceEpoch();
+  flushPendingSaves();
+  invalidateDocumentIndexCache();
+
+  for (const listener of [...accountSwitchListeners]) listener();
+}
+
+/**
+ * Calls `onSwitched` when another tab signs in as an account other than this tab's viewer,
+ * or when this tab finds its session is someone else's (`leaveSwitchedAccount`). Returns the
+ * unsubscribe function.
+ */
+export function subscribeToAccountSwitches(onSwitched: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const handleSignedIn = (userId: string) => {
+    if (userId !== getWorkspaceViewer()) leaveSwitchedAccount();
+  };
+
+  const onMessage = (event: MessageEvent) => {
+    if (typeof event.data === "string" && event.data.startsWith(SIGNED_IN_MESSAGE_PREFIX)) {
+      handleSignedIn(event.data.slice(SIGNED_IN_MESSAGE_PREFIX.length));
+    }
+  };
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === SIGNED_IN_SIGNAL_KEY && event.newValue) handleSignedIn(event.newValue);
+  };
+
+  const channel = getWorkspaceChannel();
+
+  accountSwitchListeners.add(onSwitched);
+  channel?.addEventListener("message", onMessage);
+  window.addEventListener("storage", onStorage);
+
+  return () => {
+    accountSwitchListeners.delete(onSwitched);
+    channel?.removeEventListener("message", onMessage);
+    window.removeEventListener("storage", onStorage);
+  };
+}

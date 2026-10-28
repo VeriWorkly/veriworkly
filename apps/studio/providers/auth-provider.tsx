@@ -20,6 +20,8 @@ import {
   startAllDocumentSyncWorkers,
 } from "@/features/documents/services/document-sync";
 import {
+  announceSignedIn,
+  subscribeToAccountSwitches,
   subscribeToIndexRebuilds,
   subscribeToWorkspaceClears,
 } from "@/features/documents/services/document-workspace-service";
@@ -86,6 +88,37 @@ function startSettling(user: SessionUser, onUnclaimed: (found: UnclaimedDocument
   return settler;
 }
 
+/**
+ * What loading the studio does to this device's sync (S-239): a signed-in user's workers start
+ * at once, for every document type, once the documents here are known to be theirs; otherwise
+ * they wait for the user's answer. `setUser` runs after the claim: the library pulls as soon as
+ * it sees a signed-in user. Returns the settler asking about unclaimed documents, if any.
+ */
+export function startWorkspaceSession(
+  user: SessionUser | null,
+  setUser: (user: SessionUser | null) => void,
+  onUnclaimed: (found: UnclaimedDocuments) => void,
+) {
+  const claimed = user ? claimWorkspaceIfUncontested(user.id) : false;
+
+  setUser(user);
+
+  if (user) announceSignedIn(user.id);
+
+  if (!user) {
+    startAllDocumentSyncWorkers({ enabled: false });
+  } else if (claimed) {
+    applyAccountSync(user);
+  } else {
+    // Nothing syncs until the documents already here are claimed or the user has chosen.
+    startAllDocumentSyncWorkers({ enabled: false });
+
+    return startSettling(user, onUnclaimed);
+  }
+
+  return null;
+}
+
 /** Hands the server's user to `useSessionUser`, for the render before the store has it. */
 export function InitialUserProvider({
   user,
@@ -110,22 +143,7 @@ export function AuthInitializer({ initialUser }: { initialUser: SessionUser | nu
   const settlerRef = useRef<ReturnType<typeof startSettling> | null>(null);
 
   useEffect(() => {
-    // Before `setUser`: the library's pull runs as soon as it sees a signed-in user, and the
-    // device must already be claimed when the documents here are all the user's.
-    const claimed = initialUser ? claimWorkspaceIfUncontested(initialUser.id) : false;
-
-    setUser(initialUser);
-
-    if (!initialUser) {
-      startAllDocumentSyncWorkers({ enabled: false });
-    } else if (claimed) {
-      applyAccountSync(initialUser);
-    } else {
-      // Nothing syncs until the documents already here are claimed or the user has chosen.
-      startAllDocumentSyncWorkers({ enabled: false });
-
-      settlerRef.current = startSettling(initialUser, setUnclaimed);
-    }
+    settlerRef.current = startWorkspaceSession(initialUser, setUser, setUnclaimed);
 
     return () => {
       settlerRef.current?.cancel();
@@ -136,6 +154,17 @@ export function AuthInitializer({ initialUser }: { initialUser: SessionUser | nu
   // Another tab signed out or deleted the account: leave whatever this tab shows. The reload
   // lands on the sign-in page, or on an empty studio for a guest.
   useEffect(() => subscribeToWorkspaceClears(() => window.location.reload()), []);
+
+  // The browser is now signed in as another account (in another tab, or found on focus): this
+  // tab must not upload what it shows with that account's cookie. The reload shows the new one.
+  useEffect(
+    () =>
+      subscribeToAccountSwitches(() => {
+        startAllDocumentSyncWorkers({ enabled: false });
+        window.location.reload();
+      }),
+    [],
+  );
 
   // A rebuilt index leaves every document of unknown owner, which pauses backup: ask now.
   useEffect(() => {

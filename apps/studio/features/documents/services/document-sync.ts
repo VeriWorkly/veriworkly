@@ -21,7 +21,7 @@ import {
   DocumentSyncService,
 } from "./document-sync-service";
 import { SyncEngine, type SyncTelemetry } from "./sync-engine";
-import { canWorkspaceReachCloud } from "./workspace-owner";
+import { canWorkspaceReachCloud, confirmSessionIsViewer } from "./workspace-owner";
 import { getWorkspaceEpoch } from "./workspace-epoch";
 import { getWorkspaceViewer } from "./workspace-viewer";
 import {
@@ -78,6 +78,7 @@ function createGenericDocumentSyncService(type: DocumentType) {
     flushPendingEdits: (id) => flushPendingSave(type, id),
     rekeyLocal: (id) => rekeyDocument(type, id),
     canReachCloud: canWorkspaceReachCloud,
+    confirmSessionIsViewer,
   });
 }
 

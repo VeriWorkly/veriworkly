@@ -5,6 +5,7 @@ import type { DocumentMeta } from "@/features/documents/core/types";
 import type { DocumentType } from "@/features/documents/core/document-types";
 
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
+import { fetchApiData } from "@/utils/fetchApiData";
 
 import { DocumentApi, DOCUMENT_PAGE_SIZE } from "./document-api";
 import { SyncEngine } from "./sync-engine";
@@ -21,6 +22,7 @@ import {
 import {
   deleteDocument,
   getWorkspaceStorage,
+  leaveSwitchedAccount,
   listAllDocumentEntries,
   rekeyDocument,
   setDocumentOwners,
@@ -54,6 +56,80 @@ export function canWorkspaceReachCloud(): boolean {
   const all = listAllDocumentEntries();
 
   return entriesOwnedBy(all, viewer).length === all.length;
+}
+
+/** The check in flight, and the viewer it asks about. */
+let sessionCheck: { viewer: string; answer: Promise<boolean> } | null = null;
+/** The last answer that the session is the viewer's, and when it came. */
+let confirmedSession: { viewer: string; at: number } | null = null;
+
+/**
+ * How long a session check may take before it counts as unanswered. Every caller shares the
+ * one in flight, so a request that never settled (a dropped connection) held every upload
+ * and every later check behind it for as long as the tab stayed open.
+ */
+export const SESSION_CHECK_TIMEOUT_MS = 15_000;
+
+/**
+ * Asks the server whose session this browser holds before a worker uploads: another tab may
+ * have signed in as someone else while this one still shows the previous account, and the
+ * upload would carry the new account's cookie. A different account leaves this tab
+ * (`leaveSwitchedAccount`). Concurrent callers share one request; a guest needs none.
+ *
+ * `maxAgeMs` lets a caller reuse an answer that recent (the worker, between uploads); a tab
+ * coming back into focus asks again whatever the last answer was.
+ *
+ * Always settles. A 401 is "not confirmed", not a reason to leave for /login: the check runs
+ * on focus, from a background worker, and a session that expired while the tab sat unused
+ * would otherwise send the user away from what they were looking at just for switching back
+ * to it (and leave this promise, and every upload waiting on it, pending forever). The
+ * worker retries after its backoff; a page that needs the session redirects on its own.
+ */
+export function confirmSessionIsViewer(options: { maxAgeMs?: number } = {}): Promise<boolean> {
+  const viewer = getWorkspaceViewer();
+  if (viewer === null) return Promise.resolve(true);
+
+  const maxAgeMs = options.maxAgeMs ?? 0;
+  if (
+    maxAgeMs > 0 &&
+    confirmedSession?.viewer === viewer &&
+    Date.now() - confirmedSession.at < maxAgeMs
+  ) {
+    return Promise.resolve(true);
+  }
+
+  if (sessionCheck?.viewer === viewer) return sessionCheck.answer;
+
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), SESSION_CHECK_TIMEOUT_MS);
+
+  const answer: Promise<boolean> = fetchApiData<{ id: string }>("/users/me", {
+    method: "GET",
+    signal: controller.signal,
+    redirectOnInvalidSession: false,
+  })
+    .then((account) => {
+      if (account.id === viewer) {
+        confirmedSession = { viewer, at: Date.now() };
+        return true;
+      }
+
+      confirmedSession = null;
+      leaveSwitchedAccount();
+      return false;
+    })
+    .catch((error: unknown) => {
+      if (confirmedSession?.viewer === viewer) confirmedSession = null;
+      console.error("Could not confirm the signed-in account before syncing", error);
+      return false;
+    })
+    .finally(() => {
+      window.clearTimeout(timer);
+      if (sessionCheck?.answer === answer) sessionCheck = null;
+    });
+
+  sessionCheck = { viewer, answer };
+  return answer;
 }
 
 function entryKey(entry: Pick<DocumentIndexEntry, "type" | "id">) {

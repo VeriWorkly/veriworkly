@@ -659,6 +659,87 @@ describe("S-283: a device's documents belong to the account that made them", () 
   });
 });
 
+describe("S-239: sign-in starts the backup workers", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    stubBrowser("app.veriworkly.com");
+    vi.stubGlobal("navigator", {});
+  });
+
+  afterEach(() => {
+    vi.doUnmock("@/features/documents/services/document-sync");
+    vi.doUnmock("sonner");
+    vi.doUnmock("@/features/auth/components/UnclaimedDocumentsDialog");
+    vi.unstubAllGlobals();
+  });
+
+  async function loadSession() {
+    const startAllDocumentSyncWorkers = vi.fn();
+    vi.doMock("@/features/documents/services/document-sync", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("@/features/documents/services/document-sync")>()),
+      startAllDocumentSyncWorkers,
+    }));
+    // Its stylesheet is injected into a real document on import.
+    vi.doMock("sonner", () => ({ toast: { dismiss: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
+    vi.doMock("@/features/auth/components/UnclaimedDocumentsDialog", () => ({
+      UnclaimedDocumentsDialog: () => null,
+    }));
+    const { startWorkspaceSession } = await import("@/providers/auth-provider");
+
+    return { startWorkspaceSession, startAllDocumentSyncWorkers };
+  }
+
+  const user = { id: "user-a", email: "a@example.com", autoSyncEnabled: true };
+
+  it("S-239: a signed-in user's workers start at once, before any editor opens", async () => {
+    const { startWorkspaceSession, startAllDocumentSyncWorkers } = await loadSession();
+    const setUser = vi.fn();
+
+    expect(startWorkspaceSession(user, setUser, vi.fn())).toBeNull();
+
+    expect(setUser).toHaveBeenCalledWith(user);
+    expect(startAllDocumentSyncWorkers).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it("S-239: another account's documents on the device hold every worker until the user chooses", async () => {
+    const { startWorkspaceSession, startAllDocumentSyncWorkers } = await loadSession();
+    // The same module instances auth-provider loaded (the registry was reset above).
+    const owner = await import("@/features/documents/services/workspace-owner");
+    const workspace = await import("@/features/documents/services/document-workspace-service");
+
+    owner.setWorkspaceUser("user-b");
+    expect(owner.claimWorkspaceIfUncontested("user-b")).toBe(true);
+    workspace.createDocument("RESUME");
+    // The settler's account lookup stays in flight: nothing may start while it is unanswered.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+
+    const setUser = vi.fn();
+    const settler = startWorkspaceSession(user, setUser, vi.fn());
+
+    try {
+      expect(settler).not.toBeNull();
+      expect(setUser).toHaveBeenCalledWith(user);
+      expect(startAllDocumentSyncWorkers).toHaveBeenCalledWith({ enabled: false });
+      expect(startAllDocumentSyncWorkers).not.toHaveBeenCalledWith({ enabled: true });
+    } finally {
+      settler?.cancel();
+      owner.setWorkspaceUser(null);
+    }
+  });
+
+  it("S-239: a guest's workers start switched off", async () => {
+    const { startWorkspaceSession, startAllDocumentSyncWorkers } = await loadSession();
+
+    startWorkspaceSession(null, vi.fn(), vi.fn());
+
+    expect(startAllDocumentSyncWorkers).toHaveBeenCalledWith({ enabled: false });
+    expect(startAllDocumentSyncWorkers).not.toHaveBeenCalledWith({ enabled: true });
+  });
+});
+
 describe("S-320: a clear in one tab reaches the others", () => {
   type Listener = (event: { data: unknown }) => void;
 
@@ -752,6 +833,307 @@ describe("S-320: a clear in one tab reaches the others", () => {
     storageListener({ key: "veriworkly:workspace-cleared", newValue: "1" });
 
     expect(onCleared).toHaveBeenCalledOnce();
+  });
+
+  it("S-320 (b): a sign-in as another account in another tab keeps this tab's typing, drops its syncs and tells it to leave", async () => {
+    const workspace = await loadWorkspace(true);
+    const { setWorkspaceUser } = await import("@/features/documents/services/workspace-owner");
+    const { getWorkspaceEpoch } = await import("@/features/documents/services/workspace-epoch");
+    setWorkspaceUser("user-a");
+
+    const onSwitched = vi.fn();
+    workspace.subscribeToAccountSwitches(onSwitched);
+
+    const document = workspace.createDocument("COVER_LETTER");
+    const typed = { ...(document.content as object), senderName: "Typed before the switch" };
+    const updatedAt = new Date(Date.parse(document.updatedAt) + 1000).toISOString();
+    workspace.saveDocument({ ...document, content: typed, updatedAt }, { debounceMs: 300 });
+
+    const otherTab = new FakeChannel("veriworkly:workspace");
+    otherTab.postMessage("signed-in:user-a");
+    expect(onSwitched).not.toHaveBeenCalled();
+
+    const epoch = getWorkspaceEpoch();
+    otherTab.postMessage("signed-in:user-b");
+
+    expect(onSwitched).toHaveBeenCalledOnce();
+    expect(getWorkspaceEpoch()).toBe(epoch + 1);
+    expect(workspace.loadDocumentById("COVER_LETTER", document.id)?.content).toEqual(typed);
+  });
+
+  it("S-320 (b): a sign-in is announced to the other tabs, never to its own", async () => {
+    const workspace = await loadWorkspace(true);
+    const ownTab = vi.fn();
+    workspace.subscribeToAccountSwitches(ownTab);
+
+    const otherTab = vi.fn();
+    new FakeChannel("veriworkly:workspace").addEventListener("message", otherTab);
+
+    workspace.announceSignedIn("user-b");
+
+    expect(otherTab).toHaveBeenCalledWith({ data: "signed-in:user-b" });
+    expect(ownTab).not.toHaveBeenCalled();
+  });
+
+  it("S-320 (b): without BroadcastChannel the storage event carries the sign-in", async () => {
+    const workspace = await loadWorkspace(false);
+    const onSwitched = vi.fn();
+    workspace.subscribeToAccountSwitches(onSwitched);
+
+    workspace.announceSignedIn("user-b");
+    expect(localStorage.setItem).toHaveBeenCalledWith("veriworkly:workspace-signed-in", "user-b");
+
+    const storageListener = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([name]) => name === "storage")![1] as (event: unknown) => void;
+    storageListener({ key: "veriworkly:workspace-signed-in", newValue: "user-b" });
+
+    expect(onSwitched).toHaveBeenCalledOnce();
+  });
+
+  it("S-320 (b): a tab back in focus uploads only while the session is still its account's", async () => {
+    const workspace = await loadWorkspace(true);
+    const owner = await import("@/features/documents/services/workspace-owner");
+    const sync = await import("@/features/documents/services/document-sync");
+
+    vi.stubGlobal("navigator", {});
+    const timers: Array<() => void> = [];
+    Object.assign(window, {
+      setTimeout: (callback: () => void) => timers.push(callback),
+      clearTimeout: () => {},
+    });
+
+    let sessionUserId = "user-b";
+    const calls: Array<{ method: string; url: string }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const method = init?.method ?? "GET";
+        calls.push({ method, url });
+
+        if (url.endsWith("/users/me")) {
+          return Response.json({ data: { id: sessionUserId, email: "b@example.com" } });
+        }
+        if (method === "POST") {
+          const { id } = JSON.parse(String(init?.body)) as { id: string };
+          return Response.json(
+            {
+              data: {
+                id,
+                type: "RESUME",
+                title: id,
+                templateId: "template",
+                visibility: "PRIVATE",
+                revision: 1,
+                lastSyncedAt: "2026-10-27T00:00:00.000Z",
+                updatedAt: "2026-10-27T00:00:00.000Z",
+                createdAt: "2026-10-27T00:00:00.000Z",
+              },
+            },
+            { status: 201 },
+          );
+        }
+
+        return documentListReply([], url);
+      }),
+    );
+
+    owner.setWorkspaceUser("user-a");
+    expect(owner.claimWorkspaceIfUncontested("user-a")).toBe(true);
+    sync.startAllDocumentSyncWorkers({ enabled: true });
+    workspace.createDocument("RESUME");
+    sync.setAllDocumentsSyncEnabled(true);
+
+    const onSwitched = vi.fn();
+    workspace.subscribeToAccountSwitches(onSwitched);
+
+    const focus = async () => {
+      for (const [name, listener] of vi.mocked(window.addEventListener).mock.calls) {
+        if (name === "focus") (listener as (event: Event) => void)({ type: "focus" } as Event);
+      }
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+      while (timers.length > 0) timers.shift()!();
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+    };
+
+    // Another tab signed in as user B: this tab still shows user A.
+    await focus();
+    expect(calls.filter((call) => call.url.endsWith("/users/me"))).toHaveLength(1);
+    expect(calls.filter((call) => call.method === "POST")).toEqual([]);
+    expect(onSwitched).toHaveBeenCalledOnce();
+
+    sessionUserId = "user-a";
+    await focus();
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === "POST")).toHaveLength(1));
+  });
+
+  it("S-320 (b): the worker asks whose session it is right before an upload, focus or not", async () => {
+    const workspace = await loadWorkspace(true);
+    const owner = await import("@/features/documents/services/workspace-owner");
+    const sync = await import("@/features/documents/services/document-sync");
+
+    vi.stubGlobal("navigator", {});
+    const timers: Array<() => void> = [];
+    Object.assign(window, {
+      setTimeout: (callback: () => void) => timers.push(callback),
+      clearTimeout: () => {},
+    });
+
+    const calls: Array<{ method: string; url: string }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push({ method: init?.method ?? "GET", url });
+        // Another tab signed in as user B; no broadcast reached this one.
+        if (url.endsWith("/users/me")) {
+          return Response.json({ data: { id: "user-b", email: "b@example.com" } });
+        }
+        return documentListReply([], url);
+      }),
+    );
+
+    owner.setWorkspaceUser("user-a");
+    expect(owner.claimWorkspaceIfUncontested("user-a")).toBe(true);
+    sync.startAllDocumentSyncWorkers({ enabled: true });
+    const onSwitched = vi.fn();
+    workspace.subscribeToAccountSwitches(onSwitched);
+
+    // An edit queues the upload; only the worker's own timers run it.
+    workspace.createDocument("RESUME");
+    sync.setAllDocumentsSyncEnabled(true);
+    const { DOCUMENT_STORAGE_UPDATED_EVENT } =
+      await import("@/features/documents/services/storage-keys");
+    for (const [name, listener] of vi.mocked(window.addEventListener).mock.calls) {
+      if (name === DOCUMENT_STORAGE_UPDATED_EVENT) {
+        (listener as (event: Event) => void)({ type: name } as Event);
+      }
+    }
+    for (let round = 0; round < 5; round += 1) {
+      while (timers.length > 0) timers.shift()!();
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+    }
+
+    await vi.waitFor(() => expect(onSwitched).toHaveBeenCalled());
+    expect(calls.some((call) => call.url.endsWith("/users/me"))).toBe(true);
+    expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+  });
+
+  it("S-320 (b): an expired session is 'not confirmed', never a trip to /login", async () => {
+    const owner = await import("@/features/documents/services/workspace-owner");
+    const replace = vi.fn();
+    Object.assign(window, { location: { ...window.location, pathname: "/editor", replace } });
+
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(url);
+        return Response.json({ message: "Unauthorized" }, { status: 401 });
+      }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    owner.setWorkspaceUser("user-a");
+
+    // Settles, and false: the worker backs off and asks again later.
+    await expect(owner.confirmSessionIsViewer()).resolves.toBe(false);
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(calls.filter((url) => url.endsWith("/auth/sign-out"))).toEqual([]);
+
+    // Nothing is left in flight: the next check asks again.
+    await expect(owner.confirmSessionIsViewer()).resolves.toBe(false);
+    expect(calls.filter((url) => url.endsWith("/users/me"))).toHaveLength(2);
+  });
+
+  it("S-320 (b): a check the server never answers gives up, and the next one asks again", async () => {
+    const owner = await import("@/features/documents/services/workspace-owner");
+    const timers: Array<{ callback: () => void; delay: number }> = [];
+    Object.assign(window, {
+      setTimeout: (callback: () => void, delay: number) => timers.push({ callback, delay }),
+      clearTimeout: () => {},
+    });
+
+    let requests = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            requests += 1;
+            // A dropped connection: nothing comes back until the request is aborted.
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+          }),
+      ),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    owner.setWorkspaceUser("user-a");
+
+    const first = owner.confirmSessionIsViewer();
+    // Concurrent callers share the request in flight.
+    expect(owner.confirmSessionIsViewer()).toBe(first);
+    expect(requests).toBe(1);
+
+    const timeout = timers.find((timer) => timer.delay === owner.SESSION_CHECK_TIMEOUT_MS);
+    expect(timeout, "the check has no deadline").toBeDefined();
+    timeout!.callback();
+
+    await expect(first).resolves.toBe(false);
+
+    void owner.confirmSessionIsViewer();
+    expect(requests).toBe(2);
+  });
+
+  it("S-320 (b): switching away from the tab asks nothing; coming back asks once", async () => {
+    await loadWorkspace(true);
+    const owner = await import("@/features/documents/services/workspace-owner");
+    const sync = await import("@/features/documents/services/document-sync");
+
+    vi.stubGlobal("navigator", {});
+    let visibilityState: DocumentVisibilityState = "visible";
+    vi.stubGlobal("document", {
+      cookie: "",
+      get visibilityState() {
+        return visibilityState;
+      },
+    });
+
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(url);
+        if (url.endsWith("/users/me")) {
+          return Response.json({ data: { id: "user-a", email: "a@example.com" } });
+        }
+        return documentListReply([], url);
+      }),
+    );
+
+    owner.setWorkspaceUser("user-a");
+    expect(owner.claimWorkspaceIfUncontested("user-a")).toBe(true);
+    sync.startAllDocumentSyncWorkers({ enabled: true });
+
+    const visibilityChange = async () => {
+      for (const [name, listener] of vi.mocked(window.addEventListener).mock.calls) {
+        if (name === "visibilitychange") {
+          (listener as (event: Event) => void)({ type: "visibilitychange" } as Event);
+        }
+      }
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+    };
+    const sessionChecks = () => calls.filter((url) => url.endsWith("/users/me")).length;
+
+    visibilityState = "hidden";
+    await visibilityChange();
+    expect(sessionChecks()).toBe(0);
+
+    visibilityState = "visible";
+    await visibilityChange();
+    // One per worker would be one per document type; they share the request in flight.
+    expect(sessionChecks()).toBe(1);
   });
 });
 
