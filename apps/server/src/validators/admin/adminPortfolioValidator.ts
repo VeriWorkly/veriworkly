@@ -34,7 +34,6 @@ export const adminPortfolioStatusSchema = z
 export const adminPortfolioUnpublishSchema = z.object({
   reason: adminReasonSchema,
   /** The publication's `subdomain`, retyped (V-082). */
-  // TODO(V-082): make required once the studio sends it
   confirm: adminConfirmSchema,
 });
 

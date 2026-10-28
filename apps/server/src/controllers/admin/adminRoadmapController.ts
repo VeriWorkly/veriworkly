@@ -7,10 +7,7 @@ import {
 import { type RoadmapStatus } from "#services/roadmapService";
 
 import { roadmapAdminCreateSchema, roadmapAdminUpdateSchema } from "#validators/roadmapValidator";
-import {
-  adminIdParamSchema,
-  adminOptionalReasonSchema,
-} from "#validators/admin/adminCommonValidator";
+import { adminIdParamSchema, adminReasonOnlySchema } from "#validators/admin/adminCommonValidator";
 
 import { ADMIN_AUDIT_ACTIONS, recordAdminAudit } from "#services/admin/adminAuditService";
 
@@ -114,7 +111,7 @@ export const updateRoadmapFeatureController = adminHandler(async ({ req, actorId
  * - id: roadmap feature id (required)
  *
  * req.body or query:
- * - reason: optional audit reason (V-081)
+ * - reason: audit reason, required (V-081)
  *
  * res:
  * - 200 with deleted id payload
@@ -122,7 +119,7 @@ export const updateRoadmapFeatureController = adminHandler(async ({ req, actorId
 
 export const deleteRoadmapFeatureController = adminHandler(async ({ req, actorId }) => {
   const { id } = adminIdParamSchema.parse(req.params);
-  const { reason } = adminOptionalReasonSchema.parse(deleteRequestInput(req));
+  const { reason } = adminReasonOnlySchema.parse(deleteRequestInput(req));
 
   const deleted = await deleteRoadmapFeature(id);
 

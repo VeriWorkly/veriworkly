@@ -249,7 +249,7 @@ describe("V-039 sticky moderation", () => {
     const takedown = await asUser(
       await admin(),
       request(app).delete(`/api/v1/admin/portfolios/${publication.id}`),
-    ).send({ reason: "Phishing page" });
+    ).send({ reason: "Phishing page", confirm: publication.subdomain });
     expect(takedown.status, JSON.stringify(takedown.body)).toBe(200);
 
     const publish = await asUser(user, request(app).post("/api/v1/portfolios/publish")).send({
@@ -287,7 +287,7 @@ describe("V-039 sticky moderation", () => {
     const takedown = await asUser(
       await admin(),
       request(app).delete(`/api/v1/admin/portfolios/${publication.id}`),
-    ).send({ reason: "Phishing page" });
+    ).send({ reason: "Phishing page", confirm: publication.subdomain });
     expect(takedown.status, JSON.stringify(takedown.body)).toBe(200);
     expect(takedown.body.data).toMatchObject({
       id: publication.id,
@@ -788,7 +788,7 @@ describe("V-203 an admin unlisting a portfolio lifts a takedown and never suspen
     const takedown = await asUser(
       await admin(),
       request(app).delete(`/api/v1/admin/portfolios/${publication.id}`),
-    ).send({ reason: "Phishing page" });
+    ).send({ reason: "Phishing page", confirm: publication.subdomain });
     expect(takedown.status).toBe(200);
 
     expect((await setDocumentVisibility(document.id, "UNLISTED")).status).toBe(200);

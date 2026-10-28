@@ -235,7 +235,7 @@ describe("V-413 an admin revoke takes the public URL down at once", () => {
 
     const revoked = await admin
       .request("delete", `/admin/share-links/${shareLinkId}`)
-      .send({ reason: "Reported as impersonation" });
+      .send({ reason: "Reported as impersonation", confirm: slug });
     expect(revoked.status, JSON.stringify(revoked.body)).toBe(200);
 
     expect((await publicRead(username, slug)).status).toBe(404);
@@ -262,7 +262,7 @@ describe("V-413 an admin revoke takes the public URL down at once", () => {
     try {
       const revoked = await admin
         .request("delete", `/admin/share-links/${shareLinkId}`)
-        .send({ reason: "Reported" });
+        .send({ reason: "Reported", confirm: slug });
       expect(revoked.status).toBe(500);
     } finally {
       await prisma.$executeRawUnsafe(

@@ -375,7 +375,7 @@ describe("V-285 an admin LIVE or GRACE only lifts a moderation lock", () => {
 
     const takenDown = await admin
       .request("delete", `/admin/portfolios/${publication.id}`)
-      .send({ reason: "Phishing" });
+      .send({ reason: "Phishing", confirm: publication.subdomain });
     expect(takenDown.status, JSON.stringify(takenDown.body)).toBe(200);
 
     expect((await setStatus(publication.id, "LIVE")).status).toBe(200);

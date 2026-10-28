@@ -112,7 +112,9 @@ describe("V-291 an admin action and its audit entry go together", () => {
     const key = await createKey(owner);
 
     const response = await withRefused("AdminAuditEntry", () =>
-      admin.request("delete", `/admin/api-keys/${key.id}`).send({ reason: "Abuse report" }),
+      admin
+        .request("delete", `/admin/api-keys/${key.id}`)
+        .send({ reason: "Abuse report", confirm: key.key.slice(0, 8) }),
     );
     expect(response.status).toBe(500);
 
@@ -146,8 +148,11 @@ describe("V-291 an admin action and its audit entry go together", () => {
       ).status,
     ).toBe(200);
     expect(
-      (await admin.request("delete", `/admin/api-keys/${key.id}`).send({ reason: "Abuse report" }))
-        .status,
+      (
+        await admin
+          .request("delete", `/admin/api-keys/${key.id}`)
+          .send({ reason: "Abuse report", confirm: key.key.slice(0, 8) })
+      ).status,
     ).toBe(200);
 
     const actions = (
@@ -253,8 +258,11 @@ describe("V-293 a revoked key stays revoked", () => {
     const owner = await createUserWithSession();
     const key = await createKey(owner);
     expect(
-      (await admin.request("delete", `/admin/api-keys/${key.id}`).send({ reason: "Leaked key" }))
-        .status,
+      (
+        await admin
+          .request("delete", `/admin/api-keys/${key.id}`)
+          .send({ reason: "Leaked key", confirm: key.key.slice(0, 8) })
+      ).status,
     ).toBe(200);
 
     const enable = await admin
@@ -358,13 +366,14 @@ describe("V-295 roadmap quarter", () => {
       status: "done",
       completedAt: "2026-01-15T00:00:00.000Z",
       completedQuarter: "Q4 2026",
+      reason: "Shipped in Q4",
     });
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     expect(created.body.data.completedQuarter).toBe("Q4 2026");
 
     const edited = await admin
       .request("put" as "patch", `/admin/roadmap/${created.body.data.id}`)
-      .send({ title: "Shipped thing, renamed" });
+      .send({ title: "Shipped thing, renamed", reason: "Clearer title" });
     expect(edited.status, JSON.stringify(edited.body)).toBe(200);
     expect(edited.body.data.completedQuarter).toBe("Q4 2026");
   });

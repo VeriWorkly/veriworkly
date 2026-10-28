@@ -623,8 +623,8 @@ export async function listShareLinks(query: ShareLinkListQuery) {
 }
 
 /**
- * `confirm` is the slug the admin retyped (V-082), checked before the link is deleted. The audit
- * entry commits with the delete (V-291).
+ * `confirm` is the slug the admin retyped (V-082), required and checked before the link is
+ * deleted. The audit entry commits with the delete (V-291).
  */
 export async function revokeShareLink(
   shareLinkId: string,

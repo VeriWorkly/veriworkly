@@ -10,7 +10,7 @@ import { logger } from "#lib/logger";
 import { prisma } from "#lib/prisma";
 import { closeRedis } from "#lib/redis";
 import { invalidateRoadmapReadCaches } from "#services/roadmapService";
-import { roadmapAdminCreateSchema } from "#validators/roadmapValidator";
+import { roadmapFeatureFieldsSchema } from "#validators/roadmapValidator";
 
 import { assertSeedAllowed, invalidateReadCaches, parseAll, seedFlags } from "./seedSupport.js";
 
@@ -29,7 +29,7 @@ async function run() {
   const items = parseAll(
     raw,
     (item, index) => String((item as { id?: unknown })?.id ?? `#${index}`),
-    (item) => roadmapAdminCreateSchema.safeParse(item),
+    (item) => roadmapFeatureFieldsSchema.safeParse(item),
   );
 
   logger.info(`Loaded ${items.length} roadmap items from ${DATA_FILE}`);

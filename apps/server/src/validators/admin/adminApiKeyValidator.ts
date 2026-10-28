@@ -32,6 +32,5 @@ export const adminApiKeyUpdateSchema = z
 export const adminApiKeyRevokeSchema = z.object({
   reason: adminReasonSchema,
   /** The key's `keyPrefix`, retyped (V-082); not its name, which the owner chose and may repeat. */
-  // TODO(V-082): make required once the studio sends it
   confirm: adminConfirmSchema,
 });

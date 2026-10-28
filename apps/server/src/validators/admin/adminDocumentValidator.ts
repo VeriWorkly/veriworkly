@@ -41,6 +41,5 @@ export const adminShareLinkListQuerySchema = adminPaginationSchema.merge(adminSe
 export const adminShareLinkRevokeSchema = z.object({
   reason: adminReasonSchema,
   /** The share link's `slug`, retyped (V-082). */
-  // TODO(V-082): make required once the studio sends it
   confirm: adminConfirmSchema,
 });

@@ -51,6 +51,7 @@ async function approvedWithdrawal() {
   const approve = await asUser(admin, "patch", `/api/v1/admin/affiliates/withdrawals/${id}`).send({
     status: "APPROVED",
     payoutNote: "Sent by bank transfer",
+    reason: "Bank transfer confirmed",
   });
   expect(approve.status, JSON.stringify(approve.body)).toBe(200);
   return { affiliate, id };
@@ -88,6 +89,7 @@ describe("V-325 a withdrawal paid out of band, then the affiliate suspended", ()
     const paid = await asUser(admin, "patch", `/api/v1/admin/affiliates/withdrawals/${id}`).send({
       status: "PAID",
       payoutNote: "Transfer had already left",
+      reason: "Transfer left before the suspension",
     });
     expect(paid.status, JSON.stringify(paid.body)).toBe(200);
     expect((await prisma.affiliateWithdrawal.findUniqueOrThrow({ where: { id } })).status).toBe(

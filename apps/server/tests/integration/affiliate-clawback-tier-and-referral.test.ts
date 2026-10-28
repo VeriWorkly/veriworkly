@@ -139,13 +139,15 @@ describe("V-321: money owed back can never be withdrawn", () => {
 
     const approve = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({ status: "APPROVED" });
+      .send({ status: "APPROVED", reason: "Reviewed by finance" });
     expect(approve.status, JSON.stringify(approve.body)).toBe(409);
     expect(approve.body.details?.code).toBe("AFFILIATE_CLAWBACK_OUTSTANDING");
 
-    const reject = await asUser(admin)
-      .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({ status: "REJECTED", payoutNote: "claw-back outstanding" });
+    const reject = await asUser(admin).patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`).send({
+      status: "REJECTED",
+      payoutNote: "claw-back outstanding",
+      reason: "Reviewed by finance",
+    });
     expect(reject.status, JSON.stringify(reject.body)).toBe(200);
     expect(await wallet(user.id)).toMatchObject({ availableCents: 3_000, clawbackCents: 0 });
   });
@@ -158,7 +160,7 @@ describe("V-321: money owed back can never be withdrawn", () => {
     const withdrawalId = requested.body.data.id as string;
     const approve = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({ status: "APPROVED" });
+      .send({ status: "APPROVED", reason: "Reviewed by finance" });
     expect(approve.status).toBe(200);
 
     // Refunded after the admin approved (and wired the money by hand).
@@ -167,7 +169,7 @@ describe("V-321: money owed back can never be withdrawn", () => {
 
     const paid = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({ status: "PAID", payoutNote: "wire sent" });
+      .send({ status: "PAID", payoutNote: "wire sent", reason: "Reviewed by finance" });
     expect(paid.status, JSON.stringify(paid.body)).toBe(200);
     expect(await wallet(user.id)).toMatchObject({
       availableCents: 0,
@@ -192,11 +194,11 @@ describe("V-321: money owed back can never be withdrawn", () => {
 
     const approve = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({ status: "APPROVED" });
+      .send({ status: "APPROVED", reason: "Reviewed by finance" });
     expect(approve.status, JSON.stringify(approve.body)).toBe(200);
     const paid = await asUser(admin)
       .patch(`${ADMIN_BASE}/withdrawals/${withdrawalId}`)
-      .send({ status: "PAID", payoutNote: "wire sent" });
+      .send({ status: "PAID", payoutNote: "wire sent", reason: "Reviewed by finance" });
     expect(paid.status, JSON.stringify(paid.body)).toBe(200);
     expect(await wallet(user.id)).toMatchObject({ availableCents: 1_000, clawbackCents: 1_000 });
   });
