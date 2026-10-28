@@ -2,12 +2,18 @@ import path from "path";
 import type { NextConfig } from "next";
 import { createMDX } from "fumadocs-mdx/next";
 
+import { securityHeaders } from "./security-headers";
+
 const withMDX = createMDX();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   turbopack: {
     root: path.resolve(__dirname, "../../"),
+  },
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
   async redirects() {
     return [

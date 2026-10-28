@@ -2,13 +2,8 @@ import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/config/site";
 
-/**
- * `/api/og` is allowed explicitly ahead of the `/api/` block. Every post points its
- * `og:image` at that route, so a blanket `Disallow: /api/` tells crawlers they may
- * not fetch the social card they were just handed.
- */
-const allow = ["/", "/api/og"];
-const disallow = ["/api/", "/_next/", "/static/"];
+const allow = ["/"];
+const disallow = ["/api/"];
 
 export default function robots(): MetadataRoute.Robots {
   return {
