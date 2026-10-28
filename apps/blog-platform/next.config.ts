@@ -31,6 +31,7 @@ const nextConfig: NextConfig = {
       { source: "/web-app-manifest-:size.png", headers: assetCache },
       { source: "/ats-parser-readback.svg", headers: assetCache },
       { source: "/llms.txt", headers: textCache },
+      { source: "/llms-full.txt", headers: textCache },
       { source: "/pricing.md", headers: textCache },
       { source: "/.well-known/agent.json", headers: textCache },
       { source: "/rss.xml", headers: textCache },

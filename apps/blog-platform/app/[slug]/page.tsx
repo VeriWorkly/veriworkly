@@ -7,7 +7,7 @@ import { DocsBody } from "fumadocs-ui/page";
 import { ArrowLeft, Clock, Calendar, ArrowRight, RefreshCw } from "lucide-react";
 
 import { blog } from "@/lib/source";
-import { feedAlternates, siteConfig } from "@/config/site";
+import { feedAlternates, pageTitle, siteConfig } from "@/config/site";
 import { getPostStats } from "@/lib/read-time";
 import { getRelatedPosts } from "@/lib/related";
 import { getAuthor } from "@/lib/authors";
@@ -249,7 +249,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const postUrl = `${siteConfig.url}/${params.slug}`;
 
   return {
-    title,
+    title: pageTitle(title),
     description,
 
     authors: [{ name: author.name, ...(authorUrl && { url: authorUrl }) }],

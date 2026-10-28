@@ -4,7 +4,7 @@ import { siteConfig } from "@/config/site";
 /**
  * Feed generation for `/rss.xml` and `/atom.xml`.
  *
- * Both are advertised in `public/llms.txt` and in the document head, so they have to
+ * Both are advertised in `/llms.txt` and in the document head, so they have to
  * exist and stay in sync with the content collection rather than being hand-maintained.
  */
 

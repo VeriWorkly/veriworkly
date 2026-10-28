@@ -36,6 +36,16 @@ export const siteConfig = {
   ],
 } as const;
 
+/** The root layout's title template. */
+export const titleTemplate = `%s | ${siteConfig.shortName} Blog`;
+
+/** Search results cut titles near 60 characters, so a post drops the template rather than lose words. */
+export const TITLE_LIMIT = 60;
+
+export function pageTitle(title: string): string | { absolute: string } {
+  return titleTemplate.replace("%s", title).length <= TITLE_LIMIT ? title : { absolute: title };
+}
+
 /**
  * Next.js replaces `alternates` wholesale rather than deep-merging it, so a page that
  * sets its own canonical silently drops the feed links declared in the root layout.
