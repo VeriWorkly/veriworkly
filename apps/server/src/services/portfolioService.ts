@@ -733,9 +733,11 @@ export class PortfolioService {
     try {
       // The subdomain has its own column (V-301); the document slug is an ordinary one, set once
       // on create from the title and never tied to the subdomain.
+      // The write is conditional on the revision read above (V-304): a second tab saving the same
+      // revision in the meantime matches no row, and gets the 409 below instead of overwriting.
       const document = existing
         ? await prisma.document.update({
-            where: { id: existing.id },
+            where: { id: existing.id, revision: existing.revision },
             data: {
               content: input.snapshot as Prisma.InputJsonValue,
               templateId: input.snapshot.templateId,
@@ -765,6 +767,13 @@ export class PortfolioService {
 
       return draftView(document);
     } catch (error) {
+      if (
+        existing &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      )
+        throw new ApiError(409, "Portfolio draft changed in another session.");
+
       // Only a first save still colliding on its document slug after the retries gets here.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
         throw new ApiError(409, "The portfolio draft could not be saved. Try again.");
