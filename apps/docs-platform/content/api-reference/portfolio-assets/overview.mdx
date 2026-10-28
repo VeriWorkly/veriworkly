@@ -16,7 +16,8 @@ Cloudflare R2 using presigned URLs — the API never proxies file bytes. The flo
    marks the asset `READY` so it can be referenced from a portfolio.
 
 Assets left in `PENDING` for more than 24 hours (upload never completed) are cleaned up
-automatically.
+automatically. Each user can request 20 upload URLs an hour; past that `upload-url` answers `429`.
+When image storage is not configured on the server, these routes answer `503`.
 
 ## Authentication
 

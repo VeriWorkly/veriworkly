@@ -7,23 +7,49 @@ description: Subscriptions, AI credit wallet, and Dodo Payments checkout/portal 
 
 Billing is split across two independent systems that are easy to conflate:
 
-- **Entitlements** (e.g. `portfolio_publish`) — gate feature access based on an active subscription
-  plan (`ai_credits`, `portfolio_pro`, or `bundle`).
-- **The AI credit wallet** — a separate, spendable balance used by `/ai/generate` and the AI-gated
-  ATS endpoints. A plan can grant credits, publishing access, both (`bundle`), or neither (`FREE`).
+- **Entitlements** (`ai_credits`, `portfolio_publish`, `seo_controls`, `analytics`,
+  `watermark_removal`) gate feature access. They come from a plan: `ai_credits` (AI Credits),
+  `portfolio_pro` (Creator Pro), or `bundle` (Job Hunter Bundle, also sold as the 3-Day Sprint Pass
+  and the 7-Day Hunt Pass).
+- **The AI credit wallet** is a separate, spendable balance used by `/ai/generate`, the AI ATS
+  endpoints, and the LinkedIn import. There is one pool, whatever the source.
 
-`GET /billing/me` returns both in one summary, along with the public product catalog.
+How credits arrive:
+
+- AI Credits and the Job Hunter Bundle grant 1,000 credits each month, on monthly and annual plans
+  alike. An annual plan grants them month by month, not 12,000 up front. Unused subscription
+  credits expire at the end of each month and do not roll over.
+- The 3-Day Sprint Pass grants 150 credits and the 7-Day Hunt Pass 400.
+- Credit packs (250, 500, or 1,200 credits) are one-time purchases. Their credits last 90 days and
+  add AI credits only; a pack unlocks no other feature.
+- Creator Pro grants no credits.
+
+There are no free trials on any plan.
+
+`GET /billing/me` returns entitlements and the wallet in one summary, along with the public product
+catalog.
 
 Checkout and portal sessions are created through **Dodo Payments**. `POST /billing/checkout`
-validates `productKey` and `interval` against a fixed whitelist (the product catalog) before
-handing off to Dodo — arbitrary combinations are rejected with `400`. A Redis lock prevents
-starting a second checkout while one is already in flight; cancel it with
-`POST /billing/checkout/cancel` if needed.
+validates `productKey` and `interval` against the product catalog before handing off to Dodo, and
+rejects any other combination with `400`. A checkout that clashes with what the account already has
+answers `409` with a `details.code`: `CHECKOUT_IN_PROGRESS` (another checkout is still open; cancel
+it with `POST /billing/checkout/cancel`), `ALREADY_SUBSCRIBED`, `ALREADY_INCLUDED`,
+`SUBSCRIPTION_OVERLAP`, `UPGRADE_AVAILABLE`, `SUBSCRIPTION_PAUSED`, or `PAYMENT_OUTSTANDING`. For
+the codes about an existing subscription, `details` also carries `activeProductKey` and
+`suggestedProductKey`; `CHECKOUT_IN_PROGRESS` carries only `code`.
 
-<Callout type="warn" title="Payments are admin-gated in production during this phase">
-  In production, checkout, portal, and credit pack checkout are currently restricted to the
-  configured admin account. This is a rollout-phase restriction, not a permanent limitation, and
-  does not apply in development.
+The only plan change the API carries out is an upgrade of AI Credits or Creator Pro to the Job
+Hunter Bundle at the same billing interval. Any other change answers `409`
+(`PLAN_CHANGE_NOT_UPGRADE`, `PLAN_CHANGE_INTERVAL`, `ALREADY_SUBSCRIBED`, `SUBSCRIPTION_ENDING`,
+and others): to move to a smaller plan, cancel from the billing portal and subscribe again when
+the period ends. Preview the upgrade with `POST /billing/subscription/change-plan/preview`, then
+call
+`POST /billing/subscription/change-plan` with an `Idempotency-Key` header (or an `idempotencyKey` body field).
+
+<Callout type="warn" title="Payments are admin-only in production for now">
+  In production, subscription checkout, plan changes, and credit pack checkout answer `403` with
+  `details.code: "PAYMENTS_DISABLED"` for every account except the configured admin. This does not
+  apply in development.
 </Callout>
 
 ## Authentication
@@ -40,3 +66,5 @@ All routes in this group require a session cookie — none accept an API key.
 - `POST /billing/checkout/cancel` — [Cancel In-Flight Checkout](./cancelBillingCheckout)
 - `POST /billing/portal` — [Create Billing Portal Session](./createBillingPortal)
 - `POST /billing/credits/checkout` — [Create Extra Credit Pack Checkout](./createCreditPackCheckout)
+- `POST /billing/subscription/change-plan/preview` — [Preview Plan Upgrade](./previewPlanChange)
+- `POST /billing/subscription/change-plan` — [Upgrade Plan](./changePlan)

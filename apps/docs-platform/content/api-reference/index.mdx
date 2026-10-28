@@ -71,8 +71,9 @@ X-API-Key: vw_...
 Authorization: Bearer vw_...
 ```
 
-Keys are `vw_` followed by 64 hexadecimal characters, are scope-gated, and default to 20 requests
-per 15 minutes. See [API Keys](/api-reference/api-keys/overview) for scopes and lifecycle.
+Keys are `vw_` followed by 64 hexadecimal characters and are scope-gated. Each key has its own rate
+limit: 20 requests per 15 minutes unless you set another value, up to 600. See
+[API Keys](/api-reference/api-keys/overview) for scopes and lifecycle.
 
 ### 2. Session cookies — for the VeriWorkly dashboard
 
@@ -81,15 +82,26 @@ per 15 minutes. See [API Keys](/api-reference/api-keys/overview) for scopes and 
 - **Local Environment:** `veriworkly-auth.session_token`
 - **Production Environment:** `__Secure-veriworkly-auth.session_token`
 
+By default the cookie belongs to the API host only. When the server sets `AUTH_COOKIE_DOMAIN`
+(for example `.veriworkly.com`), the cookie is issued for that domain, and every subdomain under it
+shares the session.
+
 <Callout type="warn" title="Important for Frontend Integration">
   If you are calling this API from a browser or a frontend framework (like Next.js client components), you **must** configure your fetch requests to include cookies: `fetch(url, { credentials: 'include' })`. Axios users must set `withCredentials: true`.
 </Callout>
 
 <Callout type="warn" title="“Public” endpoints still need credentials">
-  Endpoints described as public — public portfolios, public share links, the roadmap, GitHub stats —
-  need no **logged-in user**, but they are not open to anonymous callers. Without an API key or a
-  whitelisted first-party `Origin`/`Referer` they return `401`. The only genuinely unauthenticated
-  endpoints on the whole API are `GET /health` and `GET /health/ready`.
+  Endpoints described as public (public portfolios, public share links, the roadmap, the changelog,
+  GitHub stats) need no **logged-in user**, but they are not open to anonymous callers. Without an
+  API key or a whitelisted first-party `Origin`/`Referer` they return `401` with `details.code:
+  "API_KEY_REQUIRED"`. The endpoints that need no key and no origin are `GET /health`, `GET
+  /health/ready`, `POST /affiliates/click`, `GET /affiliates/leaderboard`, `POST /contact`, and
+  everything under `/auth/*`.
+</Callout>
+
+<Callout type="info" title="Browser origins">
+  A browser request from an origin the server does not allow is refused with `403` and
+  `details.code: "CORS_REJECTED"`.
 </Callout>
 
 <Callout type="info" title="Auth routes are the one exception to the response format">
@@ -117,9 +129,10 @@ is incremented by 1. If it doesn't, the API rejects the request with `409 Confli
 resource, reapply your changes, and retry.
 
 <Callout type="info">
-  `PUT /profiles/master` is a **full replacement**, not a patch. Its payload is validated strictly:
-  every property must be present, and unknown keys are rejected. Read the profile first, modify the
-  object you got back, and send the whole thing.
+  `PUT /profiles/master` is a **full replacement**, not a patch. `templateId`, `basics`, `links`,
+  `summary`, and `customization` are required. A list section you leave out is saved as an empty
+  list, and unknown keys are dropped without an error. Read the profile first, change the object you
+  got back, and send the whole thing, or the sections you left out will be emptied.
 </Callout>
 
 ### Document Export Is Client-Side, Not a Background Job
@@ -154,7 +167,10 @@ Successful requests will return a `200 OK` status code and a payload containing 
 
 ### Error Handling & Validation
 
-Failed requests return `success: false`. When the failure is a validation error, a `details` array pinpoints the exact structural failure. `details` is omitted entirely for non-validation errors.
+Failed requests return `success: false`. When the failure is a validation error, `details` is an
+array that names each field that failed. Some other errors carry a `details` object instead, often
+with a stable `code` you can branch on (for example `API_KEY_REQUIRED`, `CORS_REJECTED`,
+`DOCUMENT_LIMIT`, or `CHECKOUT_IN_PROGRESS`). Many errors have no `details` at all.
 
 ```json
 {
@@ -177,56 +193,76 @@ Failed requests return `success: false`. When the failure is a validation error,
 - **`202 Accepted`**: Queued for asynchronous processing (portfolio view tracking).
 - **`400 Bad Request`**: Validation error (missing parameters, malformed body, unsupported scope).
 - **`401 Unauthorized`**: No valid session and no valid API key, or the session expired.
-- **`402 Payment Required`**: Not enough AI credits for the requested action.
-- **`403 Forbidden`**: Authenticated, but not allowed — an API key missing a required scope, a non-admin calling an admin route, or a feature gated to subscribers.
+- **`402 Payment Required`**: Not enough AI credits for the requested action, or a free account already has its one active document of that type (`details.code: "DOCUMENT_LIMIT"`).
+- **`403 Forbidden`**: Not allowed. An API key missing a required scope, a non-admin calling an admin route, a browser origin the server does not allow, or a feature that is switched off for your account.
 - **`404 Not Found`**: The requested resource does not exist, or is not yours.
 - **`408 Request Timeout`**: Resume text extraction took too long.
-- **`409 Conflict`**: Optimistic concurrency failure, or a uniqueness clash (slug/subdomain already in use).
+- **`409 Conflict`**: Optimistic concurrency failure, a uniqueness clash (slug or subdomain already in use), or a state that blocks the request (for example a checkout already in progress).
 - **`410 Gone`**: The share link expired.
-- **`413 Payload Too Large`**: Profile or document content exceeded the 1 MB limit.
-- **`429 Too Many Requests`**: Rate limit exceeded. Check the `Retry-After` header.
+- **`413 Payload Too Large`**: The request body is larger than the route accepts, the content is over about 1 MB, or an uploaded file is over 5 MB. See [Request size limits](#request-size-limits).
+- **`422 Unprocessable Entity`**: An uploaded resume file is too complex to read.
+- **`429 Too Many Requests`**: Rate limit or quota exceeded. Check the `Retry-After` header.
 - **`502 Bad Gateway`**: An upstream provider (AI or GitHub) failed.
 - **`503 Service Unavailable`**: A dependency is unreachable, a feature flag is off, or a required integration is unconfigured.
+- **`504 Gateway Timeout`**: The AI provider did not answer in time. No credits are charged.
+
+### Request size limits
+
+| Route                                                                                           | Largest JSON body |
+| :---------------------------------------------------------------------------------------------- | :---------------- |
+| `/documents`, `/profiles` (master profile and imports), `POST /shares`, `PUT /portfolios/draft` | 4 MB              |
+| `/ai/*`, `POST /ats/check`, `POST /ats/analyze`, `POST /ats/convert-resume`                     | 256 KB            |
+| Everything else                                                                                 | 100 KB            |
+
+A body over the limit is refused with `413` and the message `Request body too large`. Inside those
+limits, document content, master-profile content, and a share snapshot are each capped at about
+1 MB of JSON, which also answers `413`. A file sent to `POST /ats/extract` may be up to 5 MB.
 
 ## Rate Limiting
 
-Limits are enforced per IP, and additionally per key for API-key traffic. Rate limiting is disabled
-entirely in development.
+Limits are enforced per IP, and additionally per key for API-key traffic. The per-IP limits are
+off in development; per-key limits still apply there.
 
-| Scope                            | Limit                  |
-| :------------------------------- | :--------------------- |
-| Default (per route, per IP)      | 100 requests / 15 min  |
-| Global ceiling (per IP)          | 1000 requests / 15 min |
-| Per API key                      | 20 requests / 15 min   |
-| `/api/v1/auth/*`                 | 20 requests / min      |
-| `/api/v1/ai/*`                   | 20 requests / min      |
-| `/api/v1/contact`                | 5 requests / hour      |
-| `/api/v1/stats/events`           | 15 requests / min      |
-| Share-link password verification | 3 requests / 5 min     |
+| Scope                                                                              | Limit                                                     |
+| :--------------------------------------------------------------------------------- | :-------------------------------------------------------- |
+| Default (per route, per IP)                                                        | 100 requests / 15 min                                     |
+| Global ceiling (per IP)                                                            | 1000 requests / 15 min                                    |
+| Per API key                                                                        | 20 requests / 15 min by default, up to 600 if set per key |
+| `/api/v1/auth/*`                                                                   | 20 requests / min per endpoint                            |
+| `/api/v1/ai/*`, `/ats/analyze`, `/ats/convert-resume`, `/profiles/import/linkedin` | 20 requests / min                                         |
+| Autosave (`PATCH /documents/{id}`, `PUT /profiles/master`)                         | 600 requests / 15 min per user                            |
+| `/api/v1/contact`                                                                  | 5 requests / hour                                         |
+| `/api/v1/stats/events`                                                             | 15 requests / min                                         |
+| Share-link password verification                                                   | 20 requests / 5 min per IP                                |
 
-The default limit is keyed by (method, path, IP), so it bounds each endpoint independently rather
-than a client's total load. The global ceiling sits underneath every per-route bucket. The Dodo
-billing webhook is exempt from IP rate limiting — it is authenticated by HMAC signature, and
-throttling a provider retry storm would diverge payment state from reality.
+The default limit is keyed by (method, route, IP), so it bounds each endpoint independently rather
+than a client's total load. The global ceiling sits underneath every per-route bucket. Some routes
+add their own limits on top: sign-in codes are covered on the
+[Authentication](/api-reference/authentication/overview) page and share-link passwords on the
+[Shares](/api-reference/shares/overview) page. `GET /health`, `GET /health/ready`, and the Dodo
+billing webhook are not rate limited.
 
 A `429` response carries `Retry-After`. API-key traffic also gets `X-RateLimit-Limit`,
 `X-RateLimit-Remaining`, and `X-RateLimit-Reset`.
 
-<Callout type="info" title="Two rate-limited routes are not in this reference">
-  `/api/v1/contact` (the marketing site's contact form) and `/api/v1/stats/events` (usage-metric
-  ingestion) are internal first-party surfaces, listed above only because you may see their limits.
-  So is everything under `/api/v1/admin/*`. None of them are part of the supported public API.
+<Callout type="info" title="Routes for VeriWorkly's own apps">
+  `POST /api/v1/contact` (the marketing site's contact form) and `POST /api/v1/stats/events` (usage
+  counts from Studio) are documented for completeness, but they exist for VeriWorkly's own apps.
+  Everything under `/api/v1/admin/*` is internal and not in this reference.
 </Callout>
 
 ## Pagination
 
-Endpoints that return lists (like `/roadmap`, `/github/issues`, `/api-keys`, or
-`/shares/documents/{documentId}`) use **Offset Pagination**. Paginated payloads put the rows in
-`items` alongside the metadata below.
+`/roadmap`, `/changelog`, `/github/issues`, `/api-keys`, and `/shares/documents/{documentId}` use
+**Offset Pagination**. Paginated payloads put the rows in `items` alongside the metadata below.
 
-You can page two equivalent ways — `limit`/`offset`, or `page`/`pageSize`. The response echoes
-both. Page size defaults to 20 and is capped at 50; on `/roadmap` and `/github/issues` a `limit`
-above 50 is **rejected with `400`** rather than clamped.
+You can page with `limit`/`offset` or with `page`/`pageSize`. The response echoes both. Page size
+defaults to 20 and the most is 50.
+
+- On `/roadmap`, `/changelog`, and `/github/issues`, a `limit` or `pageSize` above 50 is
+  **rejected with `400`**, and so is a request that sends both `page` and `offset`.
+- On `/api-keys` and `/shares/documents/{documentId}`, a page size above 50 is lowered to 50. If you
+  send both `page` and `offset`, the rows start at `offset` and `page` is echoed as you sent it.
 
 ```json
 {

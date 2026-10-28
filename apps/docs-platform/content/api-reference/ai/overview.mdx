@@ -13,7 +13,9 @@ before calling `POST /ai/generate`.
 Credits use a two-phase **reserve → commit/release** flow: the cost for the chosen action and mode
 is reserved from the caller's AI credit wallet before the AI provider is called, and only committed
 after a successful response. If the AI call errors out, the reservation is released instead of
-committed — **a failed generation never burns credits.**
+committed: **a failed generation never burns credits.** Credits come from one pool, whether they
+were granted by a plan, a pass, or a credit pack. A balance that cannot cover the action answers
+`402`, and a provider that does not answer in time gives `504`.
 
 Expert mode routes to a stronger, more expensive model than Standard mode for the same action.
 

@@ -29,10 +29,11 @@ The User profile returned by these endpoints _only_ contains top-level account m
   routes. That data is strictly managed via the separate Profile and Resume domains.
 </Callout>
 
-<Callout type="warn" title="`_count.resumes` counts every document">
-  Despite the name, `_count.resumes` counts **all** of the user's documents — every type, including
-  soft-deleted ones. It is not a count of RESUME-type documents. Use [`GET
-  /documents`](/api-reference/documents/listDocuments) when you need an accurate, filterable list.
+<Callout type="info" title="What `_count.resumes` counts">
+  Despite the name, `_count.resumes` counts the user's active documents of every type except
+  portfolios, so cover letters and link-in-bio pages are included and deleted documents are not.
+  `_count.shareLinks` leaves out links on deleted documents. Use [`GET
+  /documents`](/api-reference/documents/listDocuments) when you need a filterable list.
 </Callout>
 
 ---

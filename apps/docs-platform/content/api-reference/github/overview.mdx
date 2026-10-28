@@ -21,8 +21,9 @@ By routing these requests through our backend rather than fetching them directly
 
 Data is not fetched in real-time on every `GET` request. Instead, we use a background polling mechanism to maintain system health:
 
-- **Automated Sync:** A background worker (`runGithubSyncOnce.ts`) runs on a cron schedule to poll GitHub and update our internal database.
-- **Latency Expectation:** Because of this caching layer, newly opened issues or merged PRs may take a short time to reflect on the VeriWorkly dashboard.
+- **Automated Sync:** A background job polls GitHub and updates our database on a schedule (`GITHUB_SYNC_CRON`, twice a day, at 00:00 and 12:00 UTC, by default).
+- **Latency Expectation:** Because of this, newly opened issues or merged PRs can take up to one sync interval to show up.
+- **Pagination:** `GET /github/issues` pages like the roadmap: 20 rows by default, at most 50. A `limit` or `pageSize` above 50, or `page` and `offset` sent together, is rejected with `400`.
 - **Resilience:** If GitHub experiences an outage, this API will gracefully fall back to serving the last known cached state.
 
 ---

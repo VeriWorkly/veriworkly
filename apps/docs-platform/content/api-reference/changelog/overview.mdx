@@ -11,7 +11,7 @@ prose. Each entry carries its version, release type, and five separate change bu
 parsing markdown.
 
 Entries originate two ways: authored directly in the admin console, or imported from GitHub
-Releases by the nightly `CHANGELOG_RELEASE_SYNC_CRON` job, which also resolves the pull requests
+Releases by a daily job (`CHANGELOG_RELEASE_SYNC_CRON`, 06:00 UTC by default), which also resolves the pull requests
 referenced in a release body into the `prRefs` array.
 
 <Callout type="info" title="Reads here, writes in the admin router">
@@ -25,22 +25,21 @@ referenced in a release body into the `prRefs` array.
 | :----- | :------------- | :------------------------------------------------------------------------------- |
 | `GET`  | **No session** | An API key with the `changelog:read` scope, or a whitelisted first-party origin. |
 
-<Callout type="warn" title="`changelog:read` has no checkbox in Studio yet">
-  The backend accepts `changelog:read` on any key, but the Studio scope picker does not surface it.
-  Request it through the API-key create or rotate endpoints — see [API Keys](/docs/api-keys#scopes).
-</Callout>
+`changelog:read` is offered in the Studio scope picker and accepted by the API-key create and rotate
+endpoints. See [API key scopes](/docs/api-keys#scopes).
 
 ## Caching
 
-Responses are cached in Redis for `CHANGELOG_CACHE_TTL_SECONDS` (default 30 days), keyed by the
-full query — type, tag, search term, and page window. An admin write busts the cache, so a newly
+List responses are cached in Redis for `CHANGELOG_CACHE_TTL_SECONDS` (default 30 days), keyed by
+type and page window. A request with a search term or a tag filter, or one that starts past row
+200, is read from the database and not cached. An admin write clears the cache, so a newly
 published release appears immediately rather than at the end of the TTL.
 
 ## Pagination
 
-`GET /changelog` uses the same offset pagination as the rest of the API: page size defaults to 20
-and is capped at 50, addressable as either `limit`/`offset` or `page`/`pageSize`. A `limit` above
-50 is rejected with `400`.
+`GET /changelog` uses offset pagination: page size defaults to 20 and the most is 50, addressable as
+either `limit`/`offset` or `page`/`pageSize`. A `limit` or `pageSize` above 50 is rejected with
+`400`, and so is a request that sends both `page` and `offset`.
 
 ## Available Endpoints
 

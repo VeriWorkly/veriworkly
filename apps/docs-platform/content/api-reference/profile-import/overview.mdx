@@ -1,6 +1,6 @@
 ---
 title: Profile Import
-description: Import a master profile from GitHub (real OAuth) or LinkedIn (AI-parsed paste).
+description: Import a master profile from GitHub or from pasted LinkedIn text (AI-parsed, costs credits).
 ---
 
 ## Description
@@ -9,29 +9,30 @@ Two independent ways to bootstrap a Master Profile without typing it in by hand:
 
 - **GitHub import** is a real integration against the GitHub REST API — it fetches the account's
   public profile and up to 30 of its most recently updated repositories, and deterministically maps
-  repository languages to a skills list. No AI is involved. Free users may only import their own
-  OAuth-connected GitHub account, once a day. Paid users (any active AI Credits or Portfolio
-  Pro/Bundle plan) may import any public GitHub username, but are still capped at a hidden 50
-  imports/day — this protects the single shared server-side GitHub token budget from being
-  exhausted by one account, not a real per-user usage ceiling.
-- **LinkedIn import** is not a LinkedIn API integration — LinkedIn does not offer one for this use
-  case. It is an AI parse of raw text the user pastes in (copied profile text, or text extracted
-  from an exported PDF). Free users get 1 import/month; paid users get unlimited imports.
+  repository languages to a skills list. No AI is involved and no credits are spent. Free users may
+  only import their own linked GitHub account, once a day. Users with any plan (AI Credits, Creator
+  Pro or the Job Hunter Bundle) or a pass may import any public GitHub username, up to 50 imports a
+  day (the day resets at midnight UTC). Past that the import answers `429`.
+- **LinkedIn import** is not a LinkedIn API integration, because LinkedIn does not offer one for
+  this use case. It is an AI parse of raw text the user pastes in (copied profile text, or text
+  extracted from an exported PDF). Each import costs AI credits, the same as
+  `POST /ats/convert-resume`; a balance that cannot cover it answers `402` and nothing runs. Credits
+  are charged only once the import succeeds. Free users can also import from LinkedIn only once every
+  30 days; users with a plan or a pass have no such limit.
 
 Both import types accept a `replaceMaster` boolean and, regardless of that flag, always create a
-brand-new RESUME document seeded from the imported data.
+brand-new RESUME document seeded from the imported data. A free account that already has an active
+resume gets `402` with `details.code: "DOCUMENT_LIMIT"` before anything is imported.
 
 ## Authentication
 
-| Method | Access Level      | Requirement                                                          |
-| :----- | :---------------- | :------------------------------------------------------------------- |
-| `GET`  | **Authenticated** | Session cookie, or any valid API key. No specific scope is required. |
-| `POST` | **Authenticated** | Session cookie, or any valid API key. No specific scope is required. |
+| Method                           | Access Level      | Requirement                                                                       |
+| :------------------------------- | :---------------- | :-------------------------------------------------------------------------------- |
+| `GET /profiles/import/quota`     | **Authenticated** | Session cookie, or an API key with the `resume:read` scope.                       |
+| `POST /profiles/import/github`   | **Authenticated** | Session cookie, or an API key with the `resume:write` scope.                      |
+| `POST /profiles/import/linkedin` | **Authenticated** | Session cookie, or an API key with both the `resume:write` and `ai:write` scopes. |
 
-<Callout type="info">
-  Unlike most modules, these routes carry no scope gate — any valid API key is accepted. The quota
-  and entitlement rules above still apply, and are keyed to the user who owns the key.
-</Callout>
+The quota and entitlement rules above are keyed to the user who owns the key.
 
 ## Available Endpoints
 

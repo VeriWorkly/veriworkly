@@ -17,7 +17,7 @@ Unlike the GitHub module (whose records originate from an external repository), 
 
 Because the roadmap will grow indefinitely over the lifecycle of the project, the list endpoint is heavily optimized for large datasets.
 
-- **Offset Pagination:** Lists are paginated with a default page size of **20** and a hard maximum of **50** — a `limit` above 50 is rejected with `400`, not clamped. You can page with either `limit`/`offset` or `page`/`pageSize`; the response echoes both, plus `totalPages`, `hasMore`, and a `pagination` block.
+- **Offset Pagination:** Lists are paginated with a default page size of **20** and a hard maximum of **50**. A `limit` or `pageSize` above 50 is rejected with `400`, not lowered. You can page with either `limit`/`offset` or `page`/`pageSize`, but not `page` and `offset` together (`400`). The response echoes both forms, plus `totalPages`, `hasMore`, and a `pagination` block.
 - **Granular Filtering:** Filter the pipeline by lifecycle `status` (`todo`, `in-progress`, `done`), and drop a specific entry with `excludeId` when building "related features" lists.
 - **Chronological Sorting:** Sort via `newest` (default), `oldest`, or `recently-completed`.
 
