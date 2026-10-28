@@ -3,6 +3,7 @@ title: Introducing the Portfolio Builder
 description: A public portfolio site, built from the same career data as your resume, with four distinct design languages to choose from.
 author: VeriWorkly Team
 date: 2026-07-27
+updated: 2026-10-28
 category: Product
 cluster: product
 tags:
@@ -10,31 +11,34 @@ tags:
   - personal website
 ---
 
-A resume gets you past a recruiter's first pass. A portfolio is what convinces them to actually reach out. VeriWorkly's Portfolio builder has been live in the product for a while now — this post is the proper introduction it never got.
+A resume gets you past a recruiter's first pass. A portfolio is what convinces them to reach out. This post introduces VeriWorkly's Portfolio builder and says plainly what you can do with it today.
 
 ## What it is
 
-Portfolio is a public website builder that lives alongside the resume/cover-letter editor you already know: a template gallery, a three-pane authenticated editor (structure, content, and a real live preview), a dashboard, and the published sites themselves — served at your own subdomain or a shared path.
+Portfolio is a public website builder that lives alongside the resume and cover letter editor: a template gallery, a three-pane editor (structure, content and a live preview), a dashboard, and the published sites themselves. A free portfolio is published at `portfolio.veriworkly.com/portfolio/your-name`; a premium template on a paid plan adds your own subdomain, `your-name.veriworkly.com`.
 
 ## Four templates, four different personalities
 
-Templates aren't just color swaps. Each one is a genuinely different design language, sourced from a private template library and rendered server-side:
+Templates are not just colour swaps. Each one is a different design language:
 
-- **Signal** — structured and technical, for engineers and product leads. Dual dark/light theme, scroll-stacking project cards, a real local-time display in the hero.
-- **Atelier** — expressive and editorial, for designers and creative builders. Print/magazine-style asymmetric masonry, serif headlines, flat cards.
-- **Nimbus** (premium) — atmospheric and tech-editorial. Cursor-follow ring, per-character text-scramble hover, a marquee ticker — and deliberately no cards, shadows, or blur anywhere.
-- **Cipher** (premium) — an interactive terminal emulator, complete with command autocomplete and a hidden matrix-rain easter egg.
+- **Signal** (free): structured and technical, for engineers and product leads. Dual dark/light theme, scroll-stacking project cards, a real local-time display in the hero.
+- **Atelier** (free): expressive and editorial, for designers and creative builders. Print/magazine-style asymmetric masonry, serif headlines, flat cards.
+- **Nimbus** (paid): atmospheric and tech-editorial. Cursor-follow ring, per-character text-scramble hover, a marquee ticker, and deliberately no cards, shadows or blur.
+- **Cipher** (paid): an interactive terminal emulator, complete with command autocomplete and a hidden matrix-rain easter egg.
 
 ## The editor
 
-A three-pane workspace — section list, content, live preview — autosaving every 12 seconds. It supports 18 different section types: projects, experience, education, services, skills, writing, testimonials, awards, certifications, languages, interests, publications, patents, test scores, achievements, volunteer, custom, and contact. Premium accounts additionally get multi-page portfolios, with dedicated Work, Writing, About, and Contact pages plus auto-generated detail pages per project.
+A three-pane workspace (section list, content, live preview) that autosaves every 12 seconds. It supports 18 section types: projects, experience, education, services, skills, writing, testimonials, awards, certifications, languages, interests, publications, patents, test scores, achievements, volunteer, custom and contact.
 
-## Publishing
+## Free and paid
 
-Free accounts publish at a shared path (`portfolio.veriworkly.com/portfolio/your-slug`). Premium accounts get a true custom subdomain (`your-slug.veriworkly.com`), enforced at the routing layer — not just hidden in the UI.
+- **Free:** the Signal and Atelier templates, published at `portfolio.veriworkly.com/portfolio/your-name`, with a "Built with VeriWorkly" badge on the page.
+- **Paid, at launch:** the Nimbus and Cipher templates, visitor analytics and SEO controls. A portfolio on Nimbus or Cipher also gets the `your-name.veriworkly.com` subdomain and the option to remove the badge; a paid account on Signal or Atelier keeps the free address and the badge. If a paid plan lapses, the portfolio switches to a free template with the badge and stays online at the free address.
+
+Plans and prices are on [veriworkly.com/pricing](https://veriworkly.com/pricing).
 
 ## Where things stand today
 
-The authenticated workspace — dashboard, editor, analytics, settings — is open to every logged-in user right now. You can build and preview a complete portfolio today, on any account. The one piece still opening up in stages is the publish button and checkout itself, as the launch path finishes getting validated end-to-end. Draft editing is unaffected either way.
+You can sign in, open the editor and build and preview a complete portfolio today. Publishing is admin-only in production for now, so no one else can put a portfolio live yet, on any plan. Payments are in the same state. Both open at launch.
 
-Try it from your Studio dashboard — the portfolio template gallery is public at portfolio.veriworkly.com/templates even before you sign in.
+The portfolio template gallery is public at [portfolio.veriworkly.com/templates](https://portfolio.veriworkly.com/templates), no sign-in needed.

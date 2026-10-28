@@ -30,6 +30,18 @@ const nextConfig: NextConfig = {
         destination: "https://docs.veriworkly.com/openapi.json",
         permanent: true,
       },
+      // Rewritten from code as a plain account of what is stored, sent and never seen.
+      {
+        source: "/privacy-future-local-first-resume-builder",
+        destination: "/what-veriworkly-stores-sends-and-never-sees",
+        statusCode: 301,
+      },
+      // Same topic as the docs monorepo page, which is the one search engines rank.
+      {
+        source: "/building-scalable-resume-platform-multi-app-architecture",
+        destination: "https://docs.veriworkly.com/docs/architecture/monorepo",
+        statusCode: 301,
+      },
     ];
   },
 };

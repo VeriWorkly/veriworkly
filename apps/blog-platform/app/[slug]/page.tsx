@@ -216,8 +216,8 @@ export default async function BlogPostPage(props: PageProps) {
               <h4 className="text-foreground text-sm font-bold">VeriWorkly Platform</h4>
 
               <p className="text-muted-foreground text-xs leading-relaxed">
-                Build a professional, ATS-friendly resume for free. 100% open-source and
-                privacy-first.
+                Build an ATS-friendly resume on the free tier: one resume, one cover letter, every
+                export format. The code is MIT-licensed.
               </p>
 
               <Link

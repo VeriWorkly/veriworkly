@@ -83,9 +83,8 @@ VeriWorkly Blog (`blog.veriworkly.com`) publishes evidence-backed career writing
 
 ## Engineering & Product Notes
 These are labelled separately from career guidance and are written about VeriWorkly's own implementation.
-- [Why Privacy is the Future of Resume Technology](https://blog.veriworkly.com/privacy-future-local-first-resume-builder) — local-first architecture, client-side export
+- [What VeriWorkly Stores, Sends and Never Sees](https://blog.veriworkly.com/what-veriworkly-stores-sends-and-never-sees): what stays in your browser, what syncs, what is counted, and the retention defaults
 - [Inside the AI Credit System](https://blog.veriworkly.com/inside-the-ai-credit-system) — reserve-then-commit accounting across multiple credit grants
-- [Building a Scalable Resume Platform](https://blog.veriworkly.com/building-scalable-resume-platform-multi-app-architecture) — multi-app repository rationale
 - [Your Master Profile: One Source of Truth](https://blog.veriworkly.com/your-master-profile-one-source-of-truth)
 - [How the ATS Checker Actually Works](https://blog.veriworkly.com/how-the-ats-checker-actually-works) — deterministic rules engine plus AI analysis layer, shared quota
 - [Introducing the Portfolio Builder](https://blog.veriworkly.com/introducing-the-portfolio-builder)
