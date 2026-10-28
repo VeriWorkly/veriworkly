@@ -3223,7 +3223,7 @@
                     "value": {
                       "success": false,
                       "statusCode": 402,
-                      "message": "Not enough AI credits."
+                      "message": "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
                     }
                   },
                   "documentLimit": {
@@ -3417,7 +3417,7 @@
                 "example": {
                   "success": false,
                   "statusCode": 402,
-                  "message": "Not enough AI credits."
+                  "message": "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
                 }
               }
             }

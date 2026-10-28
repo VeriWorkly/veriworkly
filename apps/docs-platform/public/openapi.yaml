@@ -3472,7 +3472,7 @@ paths:
                   value:
                     success: false
                     statusCode: 402
-                    message: Not enough AI credits.
+                    message: Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.
                 documentLimit:
                   summary: Free document limit
                   value:
@@ -3661,7 +3661,7 @@ paths:
               example:
                 success: false
                 statusCode: 402
-                message: Not enough AI credits.
+                message: Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.
         "403":
           description: API key is missing the ai:write scope
           content:
