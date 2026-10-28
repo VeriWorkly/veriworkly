@@ -90,7 +90,7 @@ The blank-page case deserves its own treatment because it is the one total failu
 
 ![Diagram of the PDF read-back regression check. A PDF export is extracted to text, then the recovered name, contact details, roles, education, and skills are compared with the source document. The test also fails image-only pages and hidden text.](/ats-parser-readback.svg)
 
-The artifact above summarizes the [public read-back contract](https://github.com/VeriWorkly/veriworkly/blob/main/apps/studio/tests/contracts/template-ats.contract.test.tsx). For every template and supported font, the test renders a PDF, extracts it again, and compares the recovered name, email, phone number, roles, education, and skills with the source resume. It also fails an export with an image-only page or hidden text.
+The artifact above summarizes the [public read-back contract](https://github.com/VeriWorkly/veriworkly/blob/master/apps/studio/tests/contracts/template-ats.contract.test.tsx). For every template and supported font, the test renders a PDF, extracts it again, and compares the recovered name, email, phone number, roles, education, and skills with the source resume. It also fails an export with an image-only page or hidden text.
 
 That result is intentionally narrow. It does not claim that one template will rank better in every employer's system. It proves the more basic thing a resume template must get right: the PDF it produces still contains the candidate's information as readable text.
 

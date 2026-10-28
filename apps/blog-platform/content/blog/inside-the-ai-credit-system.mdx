@@ -12,7 +12,7 @@ tags:
   - system design
 ---
 
-We've said before that VeriWorkly's AI features should show you the cost before you commit to it, and never silently overwrite your work. Both of those are user-facing promises. This post is about the ledger underneath them — because "show the cost, ask before replacing" only means something if the accounting behind it is actually solid.
+We've said before that VeriWorkly's AI features should show you the cost before you commit to it, and never silently overwrite your work. Both of those are user-facing promises. This post is about the ledger underneath them, because "show the cost, ask before replacing" only means something if the accounting behind it is actually solid.
 
 ## Where credits come from
 
@@ -26,19 +26,19 @@ It is one pool: the same credits pay for every AI feature in every VeriWorkly ap
 
 ## Reserve, then commit or release
 
-When you kick off an AI generation, VeriWorkly doesn't debit your balance immediately. It **reserves** the credit cost first. If the generation succeeds, the reservation is **committed** — the credits are actually spent. If it fails, the reservation is **released** — nothing is charged.
+When you kick off an AI generation, VeriWorkly doesn't debit your balance immediately. It **reserves** the credit cost first. If the generation succeeds, the reservation is **committed**: the credits are actually spent. If it fails, the reservation is **released**: nothing is charged.
 
 This two-phase flow is the whole reason a flaky generation, a timeout, or a model error doesn't cost you anything. Without it, "the AI call failed, please try again" would also mean "and we kept your credits anyway," which is exactly the kind of quiet unfairness the credit system is designed to avoid.
 
-## Not a single number — a ledger
+## Not a single number, a ledger
 
 Your credit balance isn't one integer that goes up and down. It's a full ledger: current balance, amount currently reserved, lifetime credited, lifetime debited, and a complete transaction history where every entry shows the action, the reason, the amount, and the resulting balance.
 
 ## FIFO across multiple grants
 
-Credits can come from more than one place at once — a monthly subscription allowance, a one-time top-up pack, a manual grant. Each of these is its own **credit grant**, with its own expiry.
+Credits can come from more than one place at once: a monthly subscription allowance, a one-time top-up pack, a manual grant. Each of these is its own **credit grant**, with its own expiry.
 
-When you spend credits, a dedicated allocation table records exactly which grant (or grants) funded that specific transaction, using a **FIFO-by-expiry** rule: the grant closest to expiring gets used first. If you have a subscription refill expiring at the end of the month and a leftover top-up pack that doesn't expire for another 60 days, your subscription credits get consumed first — so you're less likely to lose credits to expiry through no fault of your own.
+When you spend credits, a dedicated allocation table records exactly which grant (or grants) funded that specific transaction, using a **FIFO-by-expiry** rule: the grant closest to expiring gets used first. If you have a subscription refill expiring at the end of the month and a leftover top-up pack that doesn't expire for another 60 days, your subscription credits get consumed first, so you're less likely to lose credits to expiry through no fault of your own.
 
 ## Two cost tiers, shown upfront
 
@@ -46,4 +46,4 @@ AI actions come in **Standard** and **Expert** modes, each with its own credit c
 
 ## Why this level of detail is worth publishing
 
-Credit systems are an easy place for a product to be vague on purpose — "credits reset monthly" is technically true and tells you nothing about what happens when a generation fails, or which of your credits actually got spent when you have more than one active grant. We'd rather you know exactly how it works.
+Credit systems are an easy place for a product to be vague on purpose: "credits reset monthly" is technically true and tells you nothing about what happens when a generation fails, or which of your credits actually got spent when you have more than one active grant. We'd rather you know exactly how it works.
