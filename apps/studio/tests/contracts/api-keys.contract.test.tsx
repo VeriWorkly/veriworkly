@@ -492,8 +492,8 @@ describe("account and key pages say what is true (O7 LOW)", () => {
     const { updateRoadmapFeature, deleteRoadmapFeature } =
       await import("@/features/roadmap/services/admin-roadmap");
 
-    await updateRoadmapFeature("a/b", {});
-    await deleteRoadmapFeature("a/b");
+    await updateRoadmapFeature("a/b", { title: "T" }, "Renamed the item");
+    await deleteRoadmapFeature("a/b", "Shipped and retired");
 
     expect(spy.mock.calls.map((call) => call[0])).toEqual([
       "/admin/roadmap/a%2Fb",

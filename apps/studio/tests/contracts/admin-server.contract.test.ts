@@ -234,11 +234,17 @@ describe("admin mutation contract", () => {
       detailsJson: "",
     };
 
-    await createRoadmapFeature(buildRoadmapPayload(empty, "create"));
+    await createRoadmapFeature(buildRoadmapPayload(empty, "create"), "Planned for Q4");
 
     const body = JSON.parse(String(calls[0].init.body)) as Record<string, unknown>;
     expect(Object.values(body)).not.toContain(null);
-    expect(body).toEqual({ title: "New", description: "Desc", status: "todo", tags: [] });
+    expect(body).toEqual({
+      title: "New",
+      description: "Desc",
+      status: "todo",
+      tags: [],
+      reason: "Planned for Q4",
+    });
 
     // An edit still clears a field the operator emptied.
     expect(buildRoadmapPayload(empty, "edit").startedAt).toBeNull();
@@ -250,7 +256,7 @@ describe("admin mutation contract", () => {
     const { createRoadmapFeature } = await import("@/features/roadmap/services/admin-roadmap");
 
     await expect(
-      createRoadmapFeature({ title: "t", description: "d", status: "todo" }),
+      createRoadmapFeature({ title: "t", description: "d", status: "todo" }, "Planned for Q4"),
     ).rejects.toThrow("completedAt: Invalid datetime");
   });
 
@@ -691,7 +697,13 @@ describe("admin copy says what the server does", () => {
   it("S-335: an enabled API key works at once", async () => {
     const { default: ApiKeyActions } = await import("@/app/admin/api-keys/ApiKeyActions");
     const page = await renderAdminText(
-      createElement(ApiKeyActions, { id: "k1", name: "CI", isActive: false, revoked: false }),
+      createElement(ApiKeyActions, {
+        id: "k1",
+        name: "CI",
+        keyPrefix: "vw_3fa9c",
+        isActive: false,
+        revoked: false,
+      }),
     );
 
     expect(page).not.toMatch(/5½|few minutes/);

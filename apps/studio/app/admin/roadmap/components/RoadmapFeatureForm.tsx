@@ -8,6 +8,7 @@ import type { RoadmapStatus, RoadmapFeature } from "@/features/roadmap/services/
 import { Input, Button, Select, TextArea, cn } from "@veriworkly/ui";
 
 import Panel from "@/components/admin/Panel";
+import { ADMIN_REASON_MAX_LENGTH, isAdminReasonValid } from "@/components/admin/admin-reason";
 
 import {
   createRoadmapFeature,
@@ -55,6 +56,9 @@ export default function RoadmapFeatureForm({
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The audit reason every roadmap write carries (V-081); not a field of the item itself.
+  const [reason, setReason] = useState("");
+  const reasonValid = isAdminReasonValid(reason, { required: true, minLength: 3 });
 
   const [formData, setFormData] = useState({
     title: feature?.title ?? "",
@@ -86,6 +90,11 @@ export default function RoadmapFeatureForm({
     event.preventDefault();
     setError(null);
 
+    if (!reasonValid) {
+      setError("Give an audit reason of at least 3 characters.");
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -101,9 +110,9 @@ export default function RoadmapFeatureForm({
       );
 
       if (mode === "create") {
-        await createRoadmapFeature(payload);
+        await createRoadmapFeature(payload, reason.trim());
       } else if (feature?.id) {
-        await updateRoadmapFeature(feature.id, payload);
+        await updateRoadmapFeature(feature.id, payload, reason.trim());
       }
 
       router.push("/admin/roadmap");
@@ -342,6 +351,35 @@ export default function RoadmapFeatureForm({
 
           <p className="text-muted pl-1 text-xs">
             Valid JSON required. Used for technical highlights and impact metrics.
+          </p>
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-foreground text-sm font-semibold" htmlFor="auditReason">
+            Audit reason <span className="text-destructive">*</span>
+          </label>
+
+          <Input
+            id="auditReason"
+            disabled={isSaving}
+            value={reason}
+            maxLength={ADMIN_REASON_MAX_LENGTH}
+            autoComplete="off"
+            aria-required="true"
+            aria-invalid={reason.length > 0 && !reasonValid}
+            aria-describedby="auditReason-hint"
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Why you are making this change. Recorded in the admin audit log."
+          />
+
+          <p
+            id="auditReason-hint"
+            className={cn(
+              "pl-1 text-xs",
+              reason.length > 0 && !reasonValid ? "text-warning" : "text-muted",
+            )}
+          >
+            At least 3 characters. Every roadmap change is recorded with it in the admin audit log.
           </p>
         </div>
 

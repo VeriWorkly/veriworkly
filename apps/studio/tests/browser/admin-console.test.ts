@@ -274,6 +274,8 @@ describe("admin console review fixes", () => {
 
     await page.getByRole("button", { name: "Convert to USD" }).click();
     await page.getByRole("textbox", { name: "Purchase amount in USD" }).fill("12.50");
+    // The audit reason is required on every commission write (V-081).
+    await page.getByRole("textbox", { name: /Audit reason/ }).fill("EUR payment converted");
     await page.getByRole("button", { name: "Convert", exact: true }).click();
 
     await expect.poll(() => sent.length).toBe(1);
@@ -285,6 +287,7 @@ describe("admin console review fixes", () => {
       convertedFromId: "c-eur",
       subscriptionId: "sub_eur",
       status: "PENDING",
+      reason: "EUR payment converted",
     });
   });
 
@@ -296,6 +299,7 @@ describe("admin console review fixes", () => {
 
     await page.getByRole("button", { name: "Convert to USD" }).click();
     await page.getByRole("textbox", { name: "Purchase amount in USD" }).fill("12.50");
+    await page.getByRole("textbox", { name: /Audit reason/ }).fill("EUR payment converted");
     await page.getByRole("button", { name: "Convert", exact: true }).click();
 
     await expect
@@ -349,5 +353,44 @@ describe("admin console review fixes", () => {
     expect(new URL(editor.url()).pathname).toBe("/parity/admin-shell");
 
     await guest.close();
+  });
+});
+
+describe("portfolio lift that lands back on the owner's unpublish (SV-34, V-285)", () => {
+  it("says the site stays offline, from the SUSPENDED the server answers", async () => {
+    const sent: unknown[] = [];
+
+    // `updatePublicationStatus`: a lock over the owner's unpublish lifts back to that reason.
+    await context.route("**/api/v1/admin/portfolios/p-held", (route) => {
+      if (route.request().method() === "PATCH") sent.push(route.request().postDataJSON());
+      return json(route, 200, {
+        success: true,
+        data: {
+          id: "p-held",
+          subdomain: "held",
+          status: "SUSPENDED",
+          templateId: "signal",
+          suspensionReason: "user_unpublished",
+        },
+      });
+    });
+    await openHarness();
+
+    await page.getByRole("combobox", { name: "Publication status" }).selectOption("LIVE");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await page.getByRole("dialog").getByRole("textbox").fill("Appeal accepted");
+    await page.getByRole("button", { name: "Update status" }).click();
+
+    await expect
+      .poll(() =>
+        page
+          .getByRole("status")
+          .filter({
+            hasText: /owner had unpublished this portfolio before it, so it stays offline/,
+          })
+          .count(),
+      )
+      .toBe(1);
+    expect(sent).toEqual([{ status: "LIVE", reason: "Appeal accepted" }]);
   });
 });

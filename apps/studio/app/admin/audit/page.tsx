@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import AdminListPage from "@/components/admin/AdminListPage";
-import { adminAuditTargetHref, formatAuditMetadata } from "@/components/admin/AdminAuditList";
+import {
+  adminAuditTargetHref,
+  adminAuditTargetState,
+  formatAuditMetadata,
+} from "@/components/admin/AdminAuditList";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
 
 import {
@@ -38,6 +42,7 @@ const columns: Array<AdminTableColumn<AdminAuditEntry>> = [
     header: "Target",
     render: (entry) => {
       const href = adminAuditTargetHref(entry);
+      const state = adminAuditTargetState(entry);
 
       return (
         <div className="min-w-0">
@@ -49,6 +54,7 @@ const columns: Array<AdminTableColumn<AdminAuditEntry>> = [
             <p className="text-foreground text-sm">{entry.targetType}</p>
           )}
           <p className="text-muted truncate font-mono text-xs">{entry.targetId ?? "—"}</p>
+          {state ? <p className="text-muted text-xs">{state}</p> : null}
         </div>
       );
     },

@@ -8,6 +8,7 @@ import AdminActionDialog from "@/components/admin/AdminActionDialog";
 import AdminShell from "@/components/admin/shell/AdminShell";
 import AdminActionButtons from "@/app/admin/components/AdminActionButtons";
 import { CommissionActions } from "@/app/admin/affiliates/AffiliateActions";
+import PortfolioModerationActions from "@/app/admin/portfolios/PortfolioModerationActions";
 import { useServerDraft } from "@/features/admin/utils/use-server-draft";
 
 const UNKNOWN_QUEUE = {
@@ -68,6 +69,15 @@ export function AdminShellHarness() {
           providerPaymentId="pay_eur"
           subscriptionId="sub_eur"
           affiliateActive
+        />
+
+        {/* A takedown over the owner's own unpublish: lifting it answers SUSPENDED (V-285). */}
+        <PortfolioModerationActions
+          compact
+          publicationId="p-held"
+          subdomain="held"
+          status="SUSPENDED"
+          templateId="signal"
         />
 
         <DraftProbe server={server} />

@@ -112,6 +112,7 @@ const columns: Array<AdminTableColumn<AdminApiKeyRow>> = [
       <ApiKeyActions
         id={row.id}
         name={row.name}
+        keyPrefix={row.keyPrefix}
         isActive={row.isActive}
         revoked={Boolean(row.revokedAt)}
       />

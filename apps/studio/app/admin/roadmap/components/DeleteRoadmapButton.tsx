@@ -4,7 +4,7 @@ import AdminActionDialog from "@/components/admin/AdminActionDialog";
 
 import { deleteRoadmapFeature } from "@/features/roadmap/services/admin-roadmap";
 
-/** The roadmap delete endpoint takes no audit reason, so the dialog does not ask for one. */
+/** The delete is audited with the admin's reason (V-081). */
 export default function DeleteRoadmapButton({ id, title }: { id: string; title: string }) {
   return (
     <AdminActionDialog
@@ -14,9 +14,8 @@ export default function DeleteRoadmapButton({ id, title }: { id: string; title: 
       title="Delete this roadmap item"
       description={`"${title}" is removed from the public roadmap. This cannot be undone.`}
       confirmLabel="Delete item"
-      askReason={false}
-      onConfirm={async () => {
-        await deleteRoadmapFeature(id);
+      onConfirm={async (reason) => {
+        await deleteRoadmapFeature(id, reason);
       }}
     />
   );

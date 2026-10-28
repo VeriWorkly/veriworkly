@@ -17,10 +17,16 @@ import type {
 /**
  * Client-side admin mutations.
  *
- * Most of these take a required `reason`: the server writes it to `AdminAuditEntry`, and the
- * matching validator rejects anything shorter than three characters. Keeping the parameter
- * required here means a caller cannot forget it and discover the 400 at runtime. The affiliate
- * and ambassador reviews take an optional one, which may be blank but not shorter than three.
+ * Every write takes a required `reason` (V-081): the server writes it to `AdminAuditEntry`, and
+ * its validator takes 3–500 characters once trimmed. Keeping the parameter required here means
+ * a caller cannot forget it and discover the 400 at runtime. On a withdrawal and an ambassador
+ * review the reason is internal, kept apart from the `payoutNote`/`reviewNote` the affiliate or
+ * applicant reads.
+ *
+ * The three irreversible deletes also send `confirm` (V-082), the identifier the admin retyped:
+ * a portfolio's subdomain, a share link's slug, an API key's prefix. The server compares it,
+ * exactly after trimming, with the record as it is now, and answers a mismatch with 400
+ * `details.code: "CONFIRMATION_MISMATCH"`.
  */
 
 /** A record id inside a request path; an id with `/` or `?` must not change the route. */
@@ -74,7 +80,7 @@ export function updateAdminAffiliate(
   payload: {
     status?: "PENDING" | "ACTIVE" | "SUSPENDED";
     tier?: AffiliateTier;
-    reason?: string;
+    reason: string;
   },
 ) {
   return adminRequest(`/affiliates/${segment(userId)}`, "PATCH", payload);
@@ -86,7 +92,7 @@ export function createAdminCommission(payload: {
   purchaseAmountCents: number;
   subscriptionId?: string;
   status?: "PENDING" | "AVAILABLE";
-  reason?: string;
+  reason: string;
   /** ISO 4217 code of `purchaseAmountCents`; the server assumes USD. */
   currency?: string;
   /** Converting: the pending non-USD commission this USD one replaces (marked REVERSED with it). */
@@ -98,7 +104,7 @@ export function createAdminCommission(payload: {
 export function updateAdminCommission(
   id: string,
   status: "AVAILABLE" | "REVERSED",
-  reason?: string,
+  reason: string,
 ) {
   return adminRequest<AdminCommissionRow>(`/affiliates/commissions/${segment(id)}`, "PATCH", {
     status,
@@ -106,27 +112,36 @@ export function updateAdminCommission(
   });
 }
 
+/**
+ * `reason` is the internal audit reason; `payoutNote` is shown to the affiliate on their payout
+ * history (the payout reference, or why it was rejected). A blank note is left out.
+ */
 export function updateAdminWithdrawal(
   id: string,
   status: "APPROVED" | "REJECTED" | "PAID",
+  reason: string,
   payoutNote?: string,
 ) {
   return adminRequest<AdminWithdrawalRow>(`/affiliates/withdrawals/${segment(id)}`, "PATCH", {
     status,
-    payoutNote,
+    reason,
+    ...(payoutNote?.trim() ? { payoutNote: payoutNote.trim() } : {}),
   });
 }
 
 /* ── Ambassadors ──────────────────────────────────────────────────────────────────── */
 
+/** `reason` is internal; `reviewNote` is emailed to the applicant. A blank note is left out. */
 export function reviewAdminAmbassadorApplication(
   id: string,
   action: "APPROVE" | "REJECT",
+  reason: string,
   reviewNote?: string,
 ) {
   return adminRequest<AdminAmbassadorRow>(`/ambassadors/${segment(id)}`, "PATCH", {
     action,
-    reviewNote,
+    reason,
+    ...(reviewNote?.trim() ? { reviewNote: reviewNote.trim() } : {}),
   });
 }
 
@@ -140,9 +155,11 @@ export function updateAdminPortfolioStatus(
   return adminRequest<AdminPortfolioRow>(`/portfolios/${segment(id)}`, "PATCH", { status, reason });
 }
 
-export function unpublishAdminPortfolio(id: string, reason: string) {
+/** `confirm`: the portfolio's subdomain, as the admin retyped it. */
+export function unpublishAdminPortfolio(id: string, reason: string, confirm: string) {
   return adminRequest<{ id: string; subdomain: string }>(`/portfolios/${segment(id)}`, "DELETE", {
     reason,
+    confirm,
   });
 }
 
@@ -167,9 +184,11 @@ export function restoreAdminDocument(id: string, reason: string) {
   return adminRequest<AdminDocumentRow>(`/documents/${segment(id)}/restore`, "POST", { reason });
 }
 
-export function revokeAdminShareLink(id: string, reason: string) {
+/** `confirm`: the share link's slug, as the admin retyped it. */
+export function revokeAdminShareLink(id: string, reason: string, confirm: string) {
   return adminRequest<{ id: string; slug: string }>(`/share-links/${segment(id)}`, "DELETE", {
     reason,
+    confirm,
   });
 }
 
@@ -253,8 +272,9 @@ export function updateAdminApiKey(
   return adminRequest<AdminApiKeyRow>(`/api-keys/${segment(id)}`, "PATCH", payload);
 }
 
-export function revokeAdminApiKey(id: string, reason: string) {
-  return adminRequest<AdminApiKeyRow>(`/api-keys/${segment(id)}`, "DELETE", { reason });
+/** `confirm`: the key's prefix, as the admin retyped it. */
+export function revokeAdminApiKey(id: string, reason: string, confirm: string) {
+  return adminRequest<AdminApiKeyRow>(`/api-keys/${segment(id)}`, "DELETE", { reason, confirm });
 }
 
 /* ── System ───────────────────────────────────────────────────────────────────────── */

@@ -7,7 +7,11 @@ import { Button, Input, Modal, TextArea } from "@veriworkly/ui";
 
 import type { ButtonVariant } from "@veriworkly/ui";
 
-import { isAdminReasonValid } from "@/components/admin/admin-reason";
+import {
+  ADMIN_REASON_MAX_LENGTH,
+  describeAdminActionError,
+  isAdminReasonValid,
+} from "@/components/admin/admin-reason";
 import { createRequestId } from "@/features/ai/ai-api";
 
 interface AdminActionDialogProps {
@@ -27,7 +31,9 @@ interface AdminActionDialogProps {
 
   /**
    * Requires the operator to retype this exact string before the action can run. Used for
-   * irreversible actions (account deletion) where a misclick must not be sufficient.
+   * irreversible actions (account deletion, a portfolio takedown, a share-link or API-key revoke)
+   * where a misclick must not be sufficient. What was typed, trimmed, reaches `onConfirm` as
+   * `confirmation`, for the endpoints that check it again (V-082 `confirm`).
    */
   confirmPhrase?: string;
   confirmPhraseLabel?: string;
@@ -40,12 +46,16 @@ interface AdminActionDialogProps {
   minReasonLength?: number;
   /** Off for an endpoint that takes no reason at all, so the dialog does not ask for one. */
   askReason?: boolean;
+  /** Holds the confirm button back while a field of the caller's own (in `children`) is invalid. */
+  confirmDisabled?: boolean;
+  /** Runs whenever the dialog closes (cancel or success), to reset the caller's own fields. */
+  onClosed?: () => void;
 
   /**
    * `attemptKey` is created when the dialog opens and reused for every retry until it closes,
    * so an endpoint that accepts an idempotency key applies a retried submit only once.
    */
-  onConfirm: (reason: string, attemptKey: string) => Promise<unknown>;
+  onConfirm: (reason: string, attemptKey: string, confirmation: string) => Promise<unknown>;
 }
 
 /**
@@ -73,6 +83,8 @@ const AdminActionDialog = ({
   reasonRequired = true,
   minReasonLength = 3,
   askReason = true,
+  confirmDisabled = false,
+  onClosed,
   onConfirm,
 }: AdminActionDialogProps) => {
   const router = useRouter();
@@ -97,25 +109,29 @@ const AdminActionDialog = ({
     setReason("");
     setPhrase("");
     setError("");
+    onClosed?.();
   };
 
   const submit = async () => {
-    if (!reasonSatisfied || !phraseSatisfied) return;
+    if (!reasonSatisfied || !phraseSatisfied || confirmDisabled) return;
 
     setPending(true);
     setError("");
 
     try {
-      await onConfirm(reason.trim(), attemptKey);
+      await onConfirm(reason.trim(), attemptKey, phrase.trim());
 
       setOpen(false);
       setReason("");
       setPhrase("");
+      onClosed?.();
 
       // Re-fetch the server component that rendered this row so the table reflects the change.
       router.refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The action failed. Please try again.");
+      const failure = describeAdminActionError(cause);
+      if (failure.clearConfirmation) setPhrase("");
+      setError(failure.message);
     } finally {
       setPending(false);
     }
@@ -158,6 +174,7 @@ const AdminActionDialog = ({
                   id={`${titleId}-reason`}
                   rows={3}
                   value={reason}
+                  maxLength={ADMIN_REASON_MAX_LENGTH}
                   placeholder={reasonPlaceholder}
                   onChange={(event) => setReason(event.target.value)}
                 />
@@ -205,7 +222,7 @@ const AdminActionDialog = ({
               size="sm"
               variant={confirmVariant}
               loading={pending}
-              disabled={!reasonSatisfied || !phraseSatisfied}
+              disabled={!reasonSatisfied || !phraseSatisfied || confirmDisabled}
               onClick={() => void submit()}
             >
               {confirmLabel}
