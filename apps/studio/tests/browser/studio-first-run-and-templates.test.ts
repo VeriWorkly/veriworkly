@@ -97,11 +97,10 @@ describe("in-app template gallery (#131)", () => {
     await page.getByRole("link", { name: "Use the Precision ATS template" }).click();
 
     await page.waitForURL(/\/editor\/resume\/(?!new)[^/?]+$/);
-    await page.waitForTimeout(1_000);
 
     const id = page.url().split("/").pop()!;
 
-    expect((await storedResume(id))?.templateId).toBe("precision-ats");
+    await expect.poll(async () => (await storedResume(id))?.templateId).toBe("precision-ats");
   });
 
   it("S-360 a template link at the free limit asks before restyling the resume the guest has", async () => {
@@ -193,6 +192,7 @@ describe("guest backup reminder (S-214)", () => {
 
   it("is absent before the guest has a document", async () => {
     await page.goto(`${server.origin}/documents`, { waitUntil: "networkidle" });
+    // Deliberate negative check: the reminder must not turn up after hydration either.
     await page.waitForTimeout(500);
 
     expect(await page.getByRole("region", { name: "Backup reminder" }).count()).toBe(0);
@@ -204,7 +204,9 @@ describe("guest backup reminder (S-214)", () => {
 
     const field = page.locator("input[type='text'], input:not([type]), textarea").first();
     await field.fill("Guest Writer");
-    await page.waitForTimeout(800);
+    await expect
+      .poll(() => page.getByTestId("editor-status").innerText())
+      .toBe("Saved on this device");
 
     // The editor fills the screen and scrolls inside itself, so the banner stays off it.
     expect(await page.getByRole("region", { name: "Backup reminder" }).count()).toBe(0);
@@ -231,6 +233,7 @@ describe("guest backup reminder (S-214)", () => {
     expect(await page.getByRole("region", { name: "Backup reminder" }).count()).toBe(0);
 
     await page.goto(`${server.origin}/documents`, { waitUntil: "networkidle" });
+    // Deliberate negative check: the dismissed reminder must not come back after hydration.
     await page.waitForTimeout(500);
 
     expect(await page.getByRole("region", { name: "Backup reminder" }).count()).toBe(0);
@@ -247,7 +250,10 @@ describe("document library pages (Part H)", () => {
   async function seedResumes(count: number) {
     await page.goto(`${server.origin}/editor/resume/new`, { waitUntil: "networkidle" });
     await page.waitForFunction(() => !location.pathname.endsWith("/new"));
-    await page.waitForTimeout(800);
+    await page.waitForFunction(() => {
+      const indexKey = Object.keys(localStorage).find((key) => key.endsWith(":index"));
+      return Boolean(indexKey && localStorage.getItem(indexKey)?.includes('"RESUME:'));
+    });
 
     await page.evaluate((total) => {
       const indexKey = Object.keys(localStorage).find((key) => key.endsWith(":index"))!;

@@ -190,7 +190,7 @@ export default async function AdminAffiliateDetailPage({
             <div className="flex items-center justify-between">
               <h3 className="text-foreground font-semibold tracking-tight">Withdrawals</h3>
               <Link
-                href={`/admin/affiliates/withdrawals?query=${encodeURIComponent(affiliate.email)}`}
+                href={`/admin/affiliates/withdrawals?affiliateId=${encodeURIComponent(affiliate.id)}`}
                 className="text-accent text-xs font-semibold"
               >
                 Manage
@@ -224,7 +224,7 @@ export default async function AdminAffiliateDetailPage({
                 shown={withdrawals.length}
                 total={null}
                 noun="withdrawal"
-                href={`/admin/affiliates/withdrawals?query=${encodeURIComponent(affiliate.email)}`}
+                href={`/admin/affiliates/withdrawals?affiliateId=${encodeURIComponent(affiliate.id)}`}
               />
             ) : null}
           </Panel>

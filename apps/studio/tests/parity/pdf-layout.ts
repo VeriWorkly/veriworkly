@@ -49,7 +49,7 @@ export interface PdfDocumentShape {
   pageBox: { width: number; height: number };
   header?: LayoutNode;
   sections: PdfSection[];
-  /** Number of top-level blocks react-pdf placed on each page. */
+  /** Number of top-level blocks react-pdf drew on each page (stubs of moved blocks excluded). */
   blocksPerPage: number[];
 }
 
@@ -108,8 +108,91 @@ export function readResumeDocument(pages: LayoutNode[]): PdfDocumentShape {
     pageBox: { width: ptToPx(pages[0]?.box?.width), height: ptToPx(pages[0]?.box?.height) },
     header,
     sections,
-    blocksPerPage: pages.map((page) => (page.children ?? []).length),
+    blocksPerPage: pages.map((page) => drawnBlocks(page).length),
   };
+}
+
+/** The text a laid-out node draws, in tree order. Text nodes keep their broken lines. */
+export function pdfNodeText(node: LayoutNode | undefined): string {
+  if (!node) return "";
+
+  const lines = (node as LayoutNode & { lines?: { string?: string }[] }).lines;
+  const own = lines?.map((line) => line.string ?? "").join(" ") ?? "";
+
+  // A text node's lines already hold its inline children (a bold label, a link).
+  if (lines) return own;
+
+  return (node.children ?? []).map(pdfNodeText).join(" ");
+}
+
+/**
+ * What a page break is compared by: the blocks a page carries and the text it opens and
+ * closes with. See {@link pageTextKey} for why text is compared without whitespace.
+ */
+export interface PageSignature {
+  blocks: number;
+  first: string;
+  last: string;
+  /**
+   * Where the page's first line of text starts, in CSS px from the page top: a block that
+   * opens the page a margin lower in one engine draws everything below it lower too.
+   */
+  firstTop: number;
+}
+
+/** How many characters of a page's opening and closing text are compared. */
+export const PAGE_TEXT_KEY_LENGTH = 40;
+
+/**
+ * Text normalized so the two engines' output compares equal when it is the same text.
+ *
+ * The DOM's `textContent` concatenates block elements with no separator and the PDF's
+ * lines are joined here with one, so whitespace is dropped altogether. Hyphens go too:
+ * textkit draws one at a hyphenated line end, the browser a soft hyphen it never puts in
+ * the DOM. Bullet markers and the decorative "·" separators are kept: both engines draw
+ * them as text. Case goes as well: a template uppercases a label with CSS `text-transform`
+ * in the preview, which `textContent` does not apply, and in the string it hands react-pdf.
+ */
+export function pageTextKey(text: string): { first: string; last: string } {
+  const compact = text.toLowerCase().replace(/[\s­​-]+/g, "");
+
+  return {
+    first: compact.slice(0, PAGE_TEXT_KEY_LENGTH),
+    last: compact.slice(-PAGE_TEXT_KEY_LENGTH),
+  };
+}
+
+/** Top-level blocks that draw something: a moved section leaves a zero-height stub. */
+const drawnBlocks = (page: LayoutNode) =>
+  (page.children ?? []).filter(
+    (child) => (child.box?.height ?? 0) > 0 && pdfNodeText(child).trim() !== "",
+  );
+
+/** The absolute top of the first node that draws text, in CSS px; -1 for none. */
+function firstTextTop(node: LayoutNode, offset = 0): number {
+  const top = offset + ptToPx(node.box?.top);
+  const lines = (node as LayoutNode & { lines?: { string?: string }[] }).lines;
+
+  if (lines) return lines.some((line) => line.string?.trim()) ? top : -1;
+
+  for (const child of node.children ?? []) {
+    if ((child.box?.height ?? 0) === 0 && !(child as { lines?: unknown }).lines) continue;
+
+    const found = firstTextTop(child, top);
+    if (found !== -1) return found;
+  }
+
+  return -1;
+}
+
+/** One signature per PDF page. */
+export function pdfPageSignatures(pages: LayoutNode[]): PageSignature[] {
+  return pages.map((page) => ({
+    blocks: drawnBlocks(page).length,
+    ...pageTextKey(pdfNodeText(page)),
+    // The page box sits at 0; its children's tops are already page-relative.
+    firstTop: Number(firstTextTop({ ...page, box: { ...page.box, top: 0 } }).toFixed(2)),
+  }));
 }
 
 export const splitSectionIndexes = (shape: PdfDocumentShape) =>

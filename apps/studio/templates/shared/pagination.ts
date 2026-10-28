@@ -5,6 +5,14 @@
 export const SPLIT_ATTRIBUTE = "data-split";
 
 /**
+ * Marks an item the PDF draws as one `Text` (a skill line) rather than a `View`. react-pdf
+ * moves a `View` to the next page whole, top margin and all, but carries a `Text` over by
+ * splitting it, and the part on the new page loses its top margin — so on a continuation
+ * page the preview starts such an item flush with the top, and any other item one gap down.
+ */
+export const TEXT_ITEM_ATTRIBUTE = "data-text-item";
+
+/**
  * Body lines that must follow a section heading on its page when the section flows rather
  * than moving whole; with less room the heading moves to the next page with its content.
  */

@@ -108,7 +108,7 @@ const SectionVisibilitySettings = ({
               onChange={(e) => {
                 onUpdateSectionColumn(sectionKey, e.target.value as "left" | "right");
               }}
-              className="border-border bg-background hover:bg-card text-foreground focus:ring-accent h-7 rounded-lg border px-1.5 text-[11px] font-medium focus:ring-1 focus:outline-none"
+              className="border-border bg-background hover:bg-card text-foreground focus:ring-accent h-7 rounded-lg border px-1.5 text-xs font-medium focus:ring-1 focus:outline-none"
             >
               <option value="left">Col 1</option>
               <option value="right">Col 2</option>
@@ -124,7 +124,7 @@ const SectionVisibilitySettings = ({
                 const targetPos = Number(e.target.value);
                 onMove(index, targetPos - 1);
               }}
-              className="border-border bg-background hover:bg-card text-foreground focus:ring-accent h-7 rounded-lg border px-1.5 text-[11px] font-medium focus:ring-1 focus:outline-none"
+              className="border-border bg-background hover:bg-card text-foreground focus:ring-accent h-7 rounded-lg border px-1.5 text-xs font-medium focus:ring-1 focus:outline-none"
             >
               {sortedSections.map((_, idx) => {
                 if (idx < 2) return null; // Skip locked basics/links
@@ -155,7 +155,7 @@ const SectionVisibilitySettings = ({
 
       {isTwoColumn ? (
         <div className="space-y-3.5">
-          <p className="text-muted text-[11px] leading-relaxed font-medium">
+          <p className="text-muted text-xs leading-relaxed font-medium">
             Drag &amp; drop cards to reorder or move between columns. Or use dropdown selections.
           </p>
 
@@ -170,10 +170,10 @@ const SectionVisibilitySettings = ({
               )}
             >
               <div className="border-border/40 mb-1 flex items-center justify-between border-b px-1 pb-1.5">
-                <p className="text-foreground text-[10px] font-black tracking-wider uppercase">
+                <p className="text-foreground text-xs font-black tracking-wider uppercase">
                   Column 1
                 </p>
-                <span className="text-muted text-[9px] font-bold">
+                <span className="text-muted text-xs font-bold">
                   {pluralize(leftSections.length, "section")}
                 </span>
               </div>
@@ -190,10 +190,10 @@ const SectionVisibilitySettings = ({
               )}
             >
               <div className="border-border/40 mb-1 flex items-center justify-between border-b px-1 pb-1.5">
-                <p className="text-foreground text-[10px] font-black tracking-wider uppercase">
+                <p className="text-foreground text-xs font-black tracking-wider uppercase">
                   Column 2
                 </p>
-                <span className="text-muted text-[9px] font-bold">
+                <span className="text-muted text-xs font-bold">
                   {pluralize(rightSections.length, "section")}
                 </span>
               </div>

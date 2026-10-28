@@ -141,7 +141,9 @@ export function DocumentActionsMenu({
             >
               <Share2 className="h-4 w-4" />
               Share Document
-              {!isLoggedIn ? <span className="text-muted ml-auto text-[10px]">Sign in</span> : null}
+              {!isLoggedIn ? (
+                <span className="text-muted ml-auto text-xs whitespace-nowrap">Sign in</span>
+              ) : null}
             </MenuItem>
 
             <MenuItem
@@ -164,7 +166,9 @@ export function DocumentActionsMenu({
             >
               <RefreshCw className="h-4 w-4" />
               {syncing ? "Backing up..." : "Back up now"}
-              {!isLoggedIn ? <span className="text-muted ml-auto text-[10px]">Sign in</span> : null}
+              {!isLoggedIn ? (
+                <span className="text-muted ml-auto text-xs whitespace-nowrap">Sign in</span>
+              ) : null}
             </MenuItem>
 
             <MenuItem
@@ -193,7 +197,9 @@ export function DocumentActionsMenu({
             >
               <Cloud className="h-4 w-4" />
               Backup details
-              {!isLoggedIn ? <span className="text-muted ml-auto text-[10px]">Sign in</span> : null}
+              {!isLoggedIn ? (
+                <span className="text-muted ml-auto text-xs whitespace-nowrap">Sign in</span>
+              ) : null}
             </MenuItem>
 
             <MenuItem

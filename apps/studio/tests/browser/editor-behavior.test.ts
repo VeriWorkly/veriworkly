@@ -87,7 +87,8 @@ async function storedDocumentExists(id: string) {
 
 /** Creates a document through the app itself, so the stored shape is never hand-written. */
 async function seedDocument(path: string): Promise<string> {
-  await page.goto(`${server.origin}${path}`, { waitUntil: "networkidle" });
+  // The first visit compiles the editor under `next dev`, which alone can take most of 30 s.
+  await page.goto(`${server.origin}${path}`, { waitUntil: "networkidle", timeout: 90_000 });
 
   // A guest at the free limit gets their existing document; when the link names another
   // template, they are asked first whether to restyle it (S-360). These tests want the template.
@@ -165,8 +166,10 @@ async function anyVisible(namePattern: RegExp): Promise<boolean> {
 }
 
 async function openTab(label: string) {
-  await page.getByRole("tab", { name: new RegExp(`^${label}$`) }).click();
-  await page.waitForTimeout(300);
+  const tab = page.getByRole("tab", { name: new RegExp(`^${label}$`) });
+
+  await tab.click();
+  await expect.poll(() => tab.getAttribute("aria-selected")).toBe("true");
 }
 
 /**
@@ -247,7 +250,7 @@ describe("editor shell: mobile panel switching (VW-01)", () => {
     await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(800);
+    await page.getByRole("tab", { name: /^Preview$/ }).waitFor({ state: "visible" });
   });
 
   it("keeps rail collapsing off mobile entirely", async () => {
@@ -268,42 +271,38 @@ describe("editor shell: mobile panel switching (VW-01)", () => {
 
   it("is not blank on mobile after a session that collapsed both rails on desktop", async () => {
     await page.setViewportSize(DESKTOP);
-    await page.waitForTimeout(300);
+    await expect.poll(paintedRailCount).toBe(2);
 
     for (const label of [/collapse content panel/i, /collapse style settings panel/i]) {
       await page.getByRole("button", { name: label }).first().click();
-      await page.waitForTimeout(250);
     }
+    await expect.poll(paintedRailCount).toBe(0);
 
     await page.setViewportSize(MOBILE);
-    await page.waitForTimeout(300);
 
-    expect(await paintedBodyHeight()).toBeGreaterThan(100);
+    await expect.poll(paintedBodyHeight).toBeGreaterThan(100);
   });
 
   it("still collapses and re-expands rails on desktop", async () => {
     await page.setViewportSize(DESKTOP);
     await page.goto(page.url(), { waitUntil: "networkidle" });
-    await page.waitForTimeout(800);
 
-    expect(await paintedRailCount()).toBe(2);
+    await expect.poll(paintedRailCount).toBe(2);
 
     for (const label of [/collapse content panel/i, /collapse style settings panel/i]) {
       await page.getByRole("button", { name: label }).first().click();
-      await page.waitForTimeout(250);
     }
 
     // Collapsing unmounts the rail rather than leaving a hidden subtree re-rendering on
     // every keystroke.
-    expect(await paintedRailCount()).toBe(0);
+    await expect.poll(paintedRailCount).toBe(0);
     expect(await page.evaluate(() => document.querySelectorAll("aside").length)).toBe(0);
 
     for (const label of [/open content panel/i, /open style settings panel/i]) {
       await page.getByRole("button", { name: label }).first().click();
-      await page.waitForTimeout(250);
     }
 
-    expect(await paintedRailCount()).toBe(2);
+    await expect.poll(paintedRailCount).toBe(2);
   });
 
   it("behaves the same in the cover letter editor, which mounts the same shell", async () => {
@@ -311,7 +310,7 @@ describe("editor shell: mobile panel switching (VW-01)", () => {
     await page.goto(`${server.origin}/editor/cover-letter/${await seedCoverLetter()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(800);
+    await page.getByRole("tab", { name: /^Preview$/ }).waitFor({ state: "visible" });
 
     expect(await anyVisible(/collapse .* panel/i)).toBe(false);
 
@@ -336,9 +335,7 @@ describe("resume hydration by route id (VW-02)", () => {
     await page.goto(`${server.origin}/editor/resume/does-not-exist-xyz`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_200);
-
-    expect(await page.getByText(/resume not found/i).isVisible()).toBe(true);
+    await page.getByText(/resume not found/i).waitFor({ state: "visible" });
     expect(await page.getByRole("button", { name: /back to documents/i }).isVisible()).toBe(true);
 
     // No editor: an editable field here would mean the user is typing into some other resume.
@@ -414,15 +411,12 @@ describe("resume hydration by route id (VW-02)", () => {
 
     try {
       await page.goto(`${server.origin}/editor/resume/${cloudId}`, { waitUntil: "networkidle" });
-      await page.waitForTimeout(2_000);
+      await page
+        .getByLabel(/full name/i)
+        .first()
+        .waitFor({ state: "visible", timeout: 15_000 });
 
       expect(await page.getByText(/resume not found/i).count()).toBe(0);
-      expect(
-        await page
-          .getByLabel(/full name/i)
-          .first()
-          .isVisible(),
-      ).toBe(true);
 
       const landedInStorage = await page.evaluate((id) => {
         for (let index = 0; index < localStorage.length; index += 1) {
@@ -527,7 +521,10 @@ describe("HTML export carries no hidden duplicate (VW-04)", () => {
 
     // Pagination is debounced and runs off the rendered DOM, so the pages the export
     // clones only exist after a measuring pass has completed.
-    await page.waitForTimeout(1_500);
+    await page.waitForFunction(
+      (name) => document.querySelector("[data-resume-pages]")?.textContent?.includes(name),
+      CANDIDATE,
+    );
 
     // The exporter hands a Blob to `downloadBlob`, which is the last point the produced
     // file exists in the page. Capturing it here beats reading it back off disk.
@@ -547,7 +544,9 @@ describe("HTML export carries no hidden duplicate (VW-04)", () => {
 
     await page.getByRole("button", { name: /^export$/i }).click();
     await page.getByRole("menuitem", { name: /^html$/i }).click();
-    await page.waitForTimeout(1_500);
+    await page.waitForFunction(() =>
+      Boolean((window as unknown as { __exportedBlob: Blob | null }).__exportedBlob),
+    );
 
     exportedHtml =
       (await page.evaluate(async () => {
@@ -600,7 +599,8 @@ describe("preview route does not write to storage (VW-05)", () => {
     await page.goto(`${server.origin}/editor/resume/${previewed}/preview`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_500);
+    // Any write would come from opening it, which is done once the page is drawn.
+    await page.locator("article.resume-page-preview").first().waitFor({ state: "visible" });
 
     expect(await readBody(previewed)).toBe(before);
   });
@@ -696,7 +696,7 @@ async function openSection(id: string) {
   const button = page.locator(`[id="section-accordion-button-${id}"]`);
 
   if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
-  await page.waitForTimeout(250);
+  await page.locator(`[id="section-accordion-panel-${id}"]`).waitFor({ state: "visible" });
 }
 
 /** Opens a list section and adds entries until at least `count` exist. */
@@ -769,9 +769,9 @@ describe("editor input (Phase 2)", () => {
 
     await openSection("interests");
     await page.getByRole("button", { name: /^add interest$/i }).click();
-    await page.waitForTimeout(250);
 
     const keywords = page.getByLabel("Keywords (comma separated)");
+    await keywords.waitFor({ state: "visible" });
 
     await keywords.pressSequentially("a, b", { delay: 60 });
 
@@ -834,16 +834,11 @@ describe("editor input (Phase 2)", () => {
         .getByRole("combobox")
         .first();
       await picker.selectOption({ index: 0 });
-      await page.waitForTimeout(250);
-
       await page.getByRole("button", { name: /(improve|write) with ai/i }).click();
-
-      expect(await signIn().count()).toBe(1);
+      await expect.poll(() => signIn().count()).toBe(1);
 
       await picker.selectOption({ index: 1 });
-      await page.waitForTimeout(250);
-
-      expect(await signIn().count()).toBe(0);
+      await expect.poll(() => signIn().count()).toBe(0);
       expect(await page.getByRole("button", { name: /(improve|write) with ai/i }).count()).toBe(1);
     });
 
@@ -888,11 +883,11 @@ describe("editor input (Phase 2)", () => {
       const first = customButtons.first();
 
       if ((await first.getAttribute("aria-expanded")) !== "true") await first.click();
-      await page.waitForTimeout(250);
 
+      const before = await customButtons.count();
       await page.getByRole("button", { name: /^remove this section$/i }).click();
       await page.getByRole("button", { name: /^remove section$/i }).click();
-      await page.waitForTimeout(300);
+      await expect.poll(() => customButtons.count()).toBeLessThan(before);
     }
 
     expect(await customButtons.count()).toBe(0);
@@ -902,9 +897,8 @@ describe("editor input (Phase 2)", () => {
     expect(await add.isVisible()).toBe(true);
 
     await add.click();
-    await page.waitForTimeout(300);
 
-    expect(await customButtons.count()).toBe(1);
+    await expect.poll(() => customButtons.count()).toBe(1);
   });
 
   it("asks before removing a list entry (S-068)", async () => {
@@ -924,7 +918,7 @@ describe("editor input (Phase 2)", () => {
     expect(await page.getByText("Remove this entry?").isVisible()).toBe(true);
 
     await page.getByRole("button", { name: /^cancel$/i }).click();
-    await page.waitForTimeout(250);
+    await page.getByText("Remove this entry?").waitFor({ state: "hidden" });
     expect(await options.count()).toBe(before);
 
     await remove.click();
@@ -932,8 +926,7 @@ describe("editor input (Phase 2)", () => {
       .getByRole("dialog")
       .getByRole("button", { name: /^remove$/i })
       .click();
-    await page.waitForTimeout(250);
-    expect(await options.count()).toBe(before - 1);
+    await expect.poll(() => options.count()).toBe(before - 1);
   });
 
   it("raised no page error anywhere in this block", () => {
@@ -1014,7 +1007,8 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
         })
         .toBe(1);
 
-      // The queued autosave's time comes and goes: it must not land on the other version.
+      // Deliberate negative check: the queued autosave's (stretched) time comes and goes, and
+      // it must not land on the other version.
       await page.waitForTimeout(9_000);
       expect(await storedName()).toBe("Theirs From Tab B");
 
@@ -1235,7 +1229,7 @@ describe("editors (Phase 9)", () => {
     await page.goto(`${server.origin}/editor/resume/${resumeId}/preview`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(2_000);
+    await expect.poll(() => page.locator("article.resume-page-preview").count()).toBeGreaterThan(0);
 
     const layout = await page.evaluate(() => ({
       pages: [...document.querySelectorAll("article.resume-page-preview")].map((article) =>
@@ -1284,11 +1278,13 @@ describe("editors (Phase 9)", () => {
       await page.goto(`${server.origin}/editor/resume/${cloudId}/preview`, {
         waitUntil: "networkidle",
       });
-      await page.waitForTimeout(2_000);
+      await page
+        .locator("article.resume-page-preview")
+        .first()
+        .waitFor({ state: "visible", timeout: 15_000 });
 
       expect(await page.getByText(/not found/i).count()).toBe(0);
-      expect(await page.locator("article.resume-page-preview").count()).toBeGreaterThan(0);
-      expect(await page.title()).toMatch(/^Cloud Only Preview preview/);
+      await expect.poll(() => page.title()).toMatch(/^Cloud Only Preview preview/);
     } finally {
       await page.unroute("**/documents/*");
     }
@@ -1308,7 +1304,7 @@ describe("editors (Phase 9)", () => {
 
     for (const id of ids) {
       await page.goto(`${server.origin}/editor/cover-letter/${id}`, { waitUntil: "networkidle" });
-      await page.waitForTimeout(1_000);
+      await page.getByRole("button", { name: /^actions$/i }).waitFor({ state: "visible" });
 
       await page.getByRole("button", { name: /^actions$/i }).click();
       await page.getByRole("menuitem", { name: /^delete$/i }).click();
@@ -1317,7 +1313,7 @@ describe("editors (Phase 9)", () => {
         .getByRole("dialog")
         .getByRole("button", { name: /^confirm$/i })
         .click();
-      await page.waitForTimeout(1_500);
+      await page.waitForURL((url) => !url.pathname.endsWith(id), { timeout: 30_000 });
     }
 
     // The first visit to the library compiles it in dev, so wait for the navigation.
@@ -1363,12 +1359,15 @@ describe("a scaled preview still shows every line on exactly one page (S-287)", 
   }
 
   async function expectEveryTokenOnce(where: string) {
-    await page.waitForTimeout(2_500);
+    const wrong = async () => {
+      const counts = await visibleTokenCounts();
+      return TOKENS.filter((token) => counts[token] !== 1);
+    };
 
-    const counts = await visibleTokenCounts();
-    const wrong = TOKENS.filter((token) => counts[token] !== 1);
-
-    expect(wrong, `${where}: tokens not drawn exactly once`).toEqual([]);
+    // Pagination is debounced; the pages settle once the text has been measured.
+    await expect
+      .poll(wrong, { message: `${where}: tokens not drawn exactly once`, timeout: 15_000 })
+      .toEqual([]);
   }
 
   it("resume: Full Preview on a phone and the editor at its default zoom", async () => {
@@ -1400,7 +1399,6 @@ describe("a scaled preview still shows every line on exactly one page (S-287)", 
     await page.goto(`${server.origin}/editor/cover-letter/${letterId}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
     await page.locator('[id="section-accordion-button-letter"]').click();
     await page.getByLabel("Main body").fill(LONG_TEXT);
 
@@ -1448,7 +1446,8 @@ describe("exports (Phase 9: S-285, S-288)", () => {
     await page.goto(`${server.origin}/editor/resume/${await seedResume()}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_500);
+    // The drawn pages, not the whole resume the root holds until they are measured.
+    await page.waitForSelector("[data-resume-pages] > article");
 
     const layoutWidth = await page.evaluate(
       () => (document.querySelector("[data-resume-pages]") as HTMLElement).offsetWidth,
@@ -1459,7 +1458,9 @@ describe("exports (Phase 9: S-285, S-288)", () => {
 
     await captureNextBlob();
     await exportAs(/^html$/i);
-    await page.waitForTimeout(1_500);
+    await page.waitForFunction(() =>
+      Boolean((window as unknown as { __exportedBlob: Blob | null }).__exportedBlob),
+    );
 
     const html = await exportedText();
 
@@ -1501,12 +1502,13 @@ describe("exports (Phase 9: S-285, S-288)", () => {
   it("S-285: exports the generated document from a phone's Content tab", async () => {
     await page.setViewportSize(MOBILE);
     await page.reload({ waitUntil: "networkidle" });
-    await page.waitForTimeout(800);
     await openTab("Content");
 
     await captureNextBlob();
     await exportAs(/^html$/i);
-    await page.waitForTimeout(1_500);
+    await page.waitForFunction(() =>
+      Boolean((window as unknown as { __exportedBlob: Blob | null }).__exportedBlob),
+    );
 
     const html = await exportedText();
 
@@ -1525,7 +1527,9 @@ describe("exports (Phase 9: S-285, S-288)", () => {
       .getByLabel(/full name/i)
       .first()
       .fill("山田太郎");
-    await page.waitForTimeout(800);
+    await expect
+      .poll(() => page.getByTestId("editor-status").innerText())
+      .toBe("Saved on this device");
 
     await captureNextBlob();
     await exportAs(/^pdf$/i);
@@ -1585,7 +1589,7 @@ describe("exports (Phase 9: S-285, S-288)", () => {
     await page.goto(`${server.origin}/editor/cover-letter/${letterId}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1_000);
+    await page.getByLabel("Location", { exact: true }).waitFor({ state: "visible" });
 
     const notice = page.getByRole("note").filter({ hasText: /too long for the VeriWorkly rail/ });
     const railOverflows = () =>
@@ -1603,11 +1607,10 @@ describe("exports (Phase 9: S-285, S-288)", () => {
     await page
       .getByLabel("Website", { exact: true })
       .fill(`https://example.com/${"a-long-path-segment/".repeat(25)}`);
-    await page.waitForTimeout(1_500);
 
-    expect(await notice.first().isVisible()).toBe(true);
+    await notice.first().waitFor({ state: "visible" });
     // The estimate is not crying wolf: the rendered rail really is taller than the page.
-    expect(await railOverflows()).toBe(true);
+    await expect.poll(railOverflows).toBe(true);
   });
 });
 
@@ -1636,7 +1639,10 @@ describe("a phone scrolls the preview natively (S-351)", () => {
       timeout: 30_000,
     });
     await touchPage.getByRole("tab", { name: /^Preview$/ }).click();
-    await touchPage.waitForTimeout(1_500);
+    await touchPage
+      .locator("[style*='translate3d'] article.resume-page-preview")
+      .first()
+      .waitFor({ state: "visible" });
 
     const scroll = await touchPage.evaluate(() => {
       // The scaled page: the only element the shell transforms with translate3d and scale.
@@ -1665,6 +1671,7 @@ describe("a phone scrolls the preview natively (S-351)", () => {
     const canvas = touchPage.getByRole("group", { name: /Document preview canvas/ });
     await canvas.hover();
     await touchPage.mouse.wheel(0, 400);
+    // Deliberate negative check: a pan would land within a frame or two of the wheel.
     await touchPage.waitForTimeout(500);
 
     const transform = await touchPage.evaluate(
@@ -1775,5 +1782,227 @@ describe("paper size (owner decision 9)", () => {
     await page.getByLabel("Paper size").waitFor({ state: "visible", timeout: 30_000 });
 
     await switchesShape("article.shadow-sm");
+  });
+});
+
+describe("the public share page's height (check (c))", () => {
+  it.each([
+    ["a4", 1122],
+    ["letter", 1056],
+  ])(
+    "a one-page resume on %s shows, and downloads as HTML, one page tall",
+    async (paper, pageHeight) => {
+      await page.setViewportSize(DESKTOP);
+      await page.goto(
+        `${server.origin}/parity/resume/executive-clarity?mode=share&fixture=short&paper=${paper}`,
+        { waitUntil: "networkidle" },
+      );
+      await page.waitForSelector("main[data-parity-ready='1']", { timeout: 30_000 });
+
+      // The share page cuts the resume into the editor's pages: one page, one page tall.
+      const pages = page.locator("#share-preview article.resume-page-preview");
+      await pages.first().waitFor({ state: "visible" });
+
+      expect(await pages.count()).toBe(1);
+      expect(await pages.first().evaluate((element) => (element as HTMLElement).offsetHeight)).toBe(
+        pageHeight,
+      );
+
+      await page.evaluate(() => {
+        const w = window as unknown as { __exportedBlob: Blob | null; __realCreate?: unknown };
+        const real = (w.__realCreate ??=
+          URL.createObjectURL.bind(URL)) as typeof URL.createObjectURL;
+
+        w.__exportedBlob = null;
+        URL.createObjectURL = (object: Blob | MediaSource) => {
+          if (object instanceof Blob) w.__exportedBlob = object;
+          return real(object);
+        };
+      });
+
+      await page.getByRole("button", { name: /download/i }).click();
+      await page.getByRole("menuitem", { name: /html/i }).click();
+
+      const exported = () =>
+        page.evaluate(async () => {
+          const blob = (window as unknown as { __exportedBlob: Blob | null }).__exportedBlob;
+          return blob ? await blob.text() : "";
+        });
+      await expect.poll(async () => (await exported()).length).toBeGreaterThan(0);
+
+      const file = await context.newPage();
+
+      try {
+        await file.setViewportSize(DESKTOP);
+        await file.setContent(await exported());
+
+        expect(
+          await file.evaluate(() => (document.body.firstElementChild as HTMLElement).offsetHeight),
+        ).toBe(pageHeight);
+      } finally {
+        await file.close();
+      }
+    },
+  );
+});
+
+describe("S-134: a measuring pass that throws", () => {
+  it("S-134: reaches the error boundary instead of leaving the preview stuck", async () => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(`${server.origin}/parity/resume/executive-clarity?mode=paged`, {
+      waitUntil: "networkidle",
+    });
+    await page.waitForSelector("main[data-parity-ready='1']", { timeout: 30_000 });
+    await expect.poll(() => page.locator("article.resume-page-preview").count()).toBeGreaterThan(0);
+
+    // The next pass fails where it reads the template's page; a font finishing triggers one.
+    await page.evaluate(() => {
+      const real = window.getComputedStyle.bind(window);
+
+      window.getComputedStyle = (element, pseudo) => {
+        if ((element as HTMLElement).id === "resume-container") {
+          throw new Error("S-134 measure failed");
+        }
+        return real(element, pseudo);
+      };
+      document.fonts.dispatchEvent(new Event("loadingdone"));
+    });
+
+    await page.getByText("We could not load this workspace").waitFor({ timeout: 15_000 });
+  });
+});
+
+describe("S-221: from the resume editor to the ATS checker", () => {
+  it("S-221: the editor offers the check, and the checker opens on that resume", async () => {
+    await page.setViewportSize(DESKTOP);
+    const resumeId = await seedResume();
+
+    await page.getByRole("button", { name: /^actions$/i }).click();
+    const check = page.getByRole("menuitem", { name: /check with ats/i });
+    await check.waitFor({ state: "visible" });
+    // A guest is asked to sign in first, as on the ATS page itself.
+    expect(await check.textContent()).toContain("Sign in");
+    await page.keyboard.press("Escape");
+
+    // The ATS route's first compile under `next dev` can take most of the default 30 s.
+    await page.goto(`${server.origin}/ats?document=${resumeId}`, {
+      waitUntil: "networkidle",
+      timeout: 90_000,
+    });
+    const resumeText = page.getByLabel("Resume text");
+
+    await expect.poll(() => resumeText.inputValue()).not.toBe("");
+    await page.getByText(/^Using: /).waitFor({ state: "attached" });
+
+    await page.goto(`${server.origin}/ats`, { waitUntil: "networkidle" });
+    await page.getByLabel("Resume text").waitFor({ state: "attached" });
+    expect(await page.getByLabel("Resume text").inputValue()).toBe("");
+  });
+});
+
+describe("S-243: the username that will be stored is the one confirmed", () => {
+  it("S-243: a handle the server folds is shown, named on the button, and saved as folded", async () => {
+    const tab = await context.newPage();
+    const saved: string[] = [];
+
+    try {
+      await tab.route("**/api/v1/users/**", async (route) => {
+        const request = route.request();
+        const headers = {
+          "Access-Control-Allow-Origin": server.origin,
+          "Access-Control-Allow-Credentials": "true",
+          "Access-Control-Allow-Methods": "GET, PUT",
+          "Access-Control-Allow-Headers":
+            request.headers()["access-control-request-headers"] ?? "content-type",
+        };
+
+        if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+
+        if (request.method() === "PUT") {
+          const { username } = JSON.parse(request.postData() ?? "{}") as { username: string };
+          saved.push(username);
+          return route.fulfill({
+            status: 200,
+            headers,
+            contentType: "application/json",
+            body: JSON.stringify({ data: { id: "u1", email: "a@example.com", username } }),
+          });
+        }
+
+        return route.fulfill({
+          status: 200,
+          headers,
+          contentType: "application/json",
+          body: JSON.stringify({ data: { available: true, normalizedUsername: "jane-doe" } }),
+        });
+      });
+
+      await tab.goto(`${server.origin}/parity/username`, {
+        waitUntil: "networkidle",
+        timeout: 90_000,
+      });
+      await tab.getByRole("textbox", { name: "Username" }).fill("jane--doe-");
+
+      const save = tab.getByRole("button", { name: 'Set Username "jane-doe"' });
+      await save.waitFor({ state: "visible" });
+      expect(await tab.getByText("It will be saved as").textContent()).toContain("jane-doe");
+
+      await save.click();
+
+      await expect.poll(() => tab.getByTestId("saved-username").textContent()).toBe("jane-doe");
+      expect(saved).toEqual(["jane-doe"]);
+    } finally {
+      await tab.close();
+    }
+  });
+});
+
+describe("S-265: the delete dialog says where the document goes", () => {
+  async function deleteDialogText() {
+    await page.getByRole("button", { name: /^actions$/i }).click();
+    await page.getByRole("menuitem", { name: /^delete/i }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible" });
+    const text = (await dialog.textContent()) ?? "";
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    return text;
+  }
+
+  it("S-265: device-only until it has a cloud copy, then erased from the servers after 30 days", async () => {
+    await page.setViewportSize(DESKTOP);
+    // A guest at the free limit is handed their existing resume, which an earlier test may have
+    // linked to a cloud copy: this one needs a document that never left the device.
+    await page.goto(`${server.origin}/documents`, { waitUntil: "networkidle" });
+    await page.evaluate(() => localStorage.clear());
+    const resumeId = await seedResume();
+
+    const local = await deleteDialogText();
+    expect(local).toContain("removed from this device and cannot be recovered");
+    expect(local).not.toContain("30 days");
+
+    // As if the worker had backed it up: every stored copy of its sync block names a cloud id.
+    await page.evaluate((id) => {
+      const link = (value: unknown): void => {
+        if (!value || typeof value !== "object") return;
+        const record = value as Record<string, unknown>;
+        if ("cloudDocumentId" in record) record.cloudDocumentId = "cloud-s265";
+        Object.values(record).forEach(link);
+      };
+
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index)!;
+        const raw = localStorage.getItem(key) ?? "";
+        if (!raw.includes(id)) continue;
+        const parsed = JSON.parse(raw) as unknown;
+        link(parsed);
+        localStorage.setItem(key, JSON.stringify(parsed));
+      }
+    }, resumeId);
+
+    await page.goto(`${server.origin}/editor/resume/${resumeId}`, { waitUntil: "networkidle" });
+    await editorReady();
+
+    expect(await deleteDialogText()).toContain("erased from our servers after 30 days");
   });
 });

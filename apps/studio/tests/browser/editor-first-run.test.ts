@@ -49,9 +49,16 @@ async function clearStorage() {
 async function createThroughApp(type: "resume" | "cover-letter"): Promise<string> {
   await page.goto(`${server.origin}/editor/${type}/new`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => !location.pathname.endsWith("/new"));
-  await page.waitForTimeout(1_000);
 
-  return page.url().split("/").pop()!.split("?")[0];
+  const id = page.url().split("/").pop()!.split("?")[0];
+
+  // Created once the stored copy exists, which the tests below read and edit.
+  await page.waitForFunction(
+    (documentId) => Object.keys(localStorage).some((key) => key.endsWith(`:${documentId}`)),
+    id,
+  );
+
+  return id;
 }
 
 /**
@@ -118,9 +125,7 @@ describe("editors show the document the URL names (S-061, S-163)", () => {
 
     await clientNavigate("/editor/cover-letter/does-not-exist-xyz");
     await page.waitForURL(/does-not-exist-xyz/);
-    await page.waitForTimeout(1_500);
-
-    expect(await page.getByText(/cover letter not found/i).isVisible()).toBe(true);
+    await page.getByText(/cover letter not found/i).waitFor({ state: "visible" });
     expect(await page.getByText("Letter Alpha").count()).toBe(0);
   });
 
@@ -152,7 +157,7 @@ describe("editors show the document the URL names (S-061, S-163)", () => {
     await clientNavigate(`/editor/cover-letter/${bravo}`);
     await page.waitForURL(new RegExp(bravo));
     await page.getByText("Letter Bravo").first().waitFor();
-    await page.waitForTimeout(1_000);
+    await expect.poll(() => page.title()).toBe("Letter Bravo – VeriWorkly Studio");
 
     const staleFrames = await page.evaluate(() => {
       const state = window as unknown as { __staleFrames: number; __watching: boolean };
@@ -174,9 +179,8 @@ describe("mobile preview fits the screen (S-213)", () => {
     await page.goto(`${server.origin}/editor/resume/${await createThroughApp("resume")}`, {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(800);
     await page.getByRole("tab", { name: /^Preview$/ }).click();
-    await page.waitForTimeout(800);
+    await page.locator("[id^='resume-preview-']").first().waitFor({ state: "visible" });
   });
 
   function pageWidth(): Promise<number> {
@@ -186,6 +190,8 @@ describe("mobile preview fits the screen (S-213)", () => {
   }
 
   it("shows the whole page width on a 375px phone", async () => {
+    // The fit is measured after the preview lays out.
+    await expect.poll(pageWidth).toBeLessThanOrEqual(PHONE.width);
     const width = await pageWidth();
 
     expect(width).toBeLessThanOrEqual(PHONE.width);
@@ -198,13 +204,11 @@ describe("mobile preview fits the screen (S-213)", () => {
       await page.getByRole("button", { name: "Zoom in" }).click();
     }
 
-    await page.waitForTimeout(300);
-    expect(await pageWidth()).toBeGreaterThan(PHONE.width);
+    await expect.poll(pageWidth).toBeGreaterThan(PHONE.width);
 
     await page.getByRole("button", { name: "Fit canvas" }).click();
-    await page.waitForTimeout(300);
 
-    expect(await pageWidth()).toBeLessThanOrEqual(PHONE.width);
+    await expect.poll(pageWidth).toBeLessThanOrEqual(PHONE.width);
   });
 
   it("leaves pinch-zoom to the browser", async () => {
@@ -242,7 +246,10 @@ describe("new document flow (S-069, S-211)", () => {
       .dblclick();
 
     await page.waitForURL(/\/editor\/resume\/(?!new)/);
-    await page.waitForTimeout(1_500);
+    await page
+      .getByLabel(/full name/i)
+      .first()
+      .waitFor({ state: "visible", timeout: 30_000 });
 
     expect(await countStored("resume")).toBe(1);
     expect(

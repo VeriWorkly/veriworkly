@@ -235,3 +235,39 @@ describe("AI context sends what the text is about, not who wrote it (S-313)", ()
     expect(JSON.parse(coverLetterAiContext(letter, null)).resume).toBeUndefined();
   });
 });
+
+describe("the balance after an AI request (S-199)", () => {
+  const request = {
+    action: "rewrite_section",
+    mode: "standard",
+    input: { text: "", context: "", jobDescription: "", instructions: "" },
+    requestId: "request-1",
+  } as Parameters<typeof import("@/features/ai/AiFieldAssist").requestAiDraft>[0];
+
+  it("S-199: the wallet is read again after a request that succeeded", async () => {
+    const { requestAiDraft } = await import("@/features/ai/AiFieldAssist");
+    fetchApiDataMock.mockResolvedValueOnce({ content: "Draft", credits: { spent: 4 } });
+    const reloadWallet = vi.fn();
+
+    await requestAiDraft(request, new AbortController().signal, reloadWallet);
+
+    expect(reloadWallet).toHaveBeenCalledOnce();
+  });
+
+  it("S-199: and after one the server refused, but not after the user cancelled it", async () => {
+    const { requestAiDraft } = await import("@/features/ai/AiFieldAssist");
+    const reloadWallet = vi.fn();
+
+    fetchApiDataMock.mockRejectedValueOnce(new ApiRequestError("Not enough credits.", 402));
+    await expect(
+      requestAiDraft(request, new AbortController().signal, reloadWallet),
+    ).rejects.toThrow();
+    expect(reloadWallet).toHaveBeenCalledOnce();
+
+    const cancelled = new AbortController();
+    cancelled.abort();
+    fetchApiDataMock.mockRejectedValueOnce(new DOMException("aborted", "AbortError"));
+    await expect(requestAiDraft(request, cancelled.signal, reloadWallet)).rejects.toThrow();
+    expect(reloadWallet).toHaveBeenCalledOnce();
+  });
+});

@@ -91,7 +91,7 @@ export const fetchServerAccount = cache(async (): Promise<AccountProfileSummary 
     if (
       error instanceof ApiRequestError &&
       (error.status === 401 || error.status === 403) &&
-      !isCorsRejection(error.status, error.message)
+      !isCorsRejection(error.status, error.message, error.details)
     ) {
       return null;
     }

@@ -101,10 +101,7 @@ const ConfirmDialogContent = ({
           </Modal.Title>
 
           <p
-            className={cn(
-              "text-[9px] font-black tracking-widest uppercase opacity-80",
-              config.color,
-            )}
+            className={cn("text-xs font-black tracking-widest uppercase opacity-80", config.color)}
           >
             {confirmPhrase ? "Type to confirm" : "Please confirm"}
           </p>
@@ -127,7 +124,7 @@ const ConfirmDialogContent = ({
               <div className="space-y-1">
                 <label
                   htmlFor="confirm-phrase-input"
-                  className="text-muted-foreground/80 text-[10px] font-bold tracking-widest uppercase"
+                  className="text-muted-foreground/80 text-xs font-bold tracking-widest uppercase"
                 >
                   Verification Required
                 </label>

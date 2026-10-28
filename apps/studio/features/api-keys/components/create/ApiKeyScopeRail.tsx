@@ -60,7 +60,7 @@ export function ApiKeyScopeRail({
             <section key={group.key} className="border-border/70 border-t p-2.5">
               <div className="mb-2">
                 <h3 className="text-xs font-black">{group.label}</h3>
-                <p className="text-muted mt-0.5 text-[11px] leading-4">{group.description}</p>
+                <p className="text-muted mt-0.5 text-xs leading-4">{group.description}</p>
               </div>
 
               <div className="space-y-1.5">
@@ -88,9 +88,7 @@ export function ApiKeyScopeRail({
                         className="w-full [&>span:last-child]:min-w-0 [&>span:last-child]:truncate [&>span:last-child]:text-xs [&>span:last-child]:font-bold"
                       />
 
-                      <span className="text-muted block truncate pl-8 text-[11px]">
-                        {scope.value}
-                      </span>
+                      <span className="text-muted block truncate pl-8 text-xs">{scope.value}</span>
                     </div>
                   );
                 })}

@@ -8,6 +8,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AtsPage() {
-  return <AtsWorkspace />;
+export default async function AtsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ document?: string | string[] }>;
+}) {
+  const { document } = await searchParams;
+
+  // Opened from a resume's editor: that resume is picked for the scan.
+  return <AtsWorkspace initialDocumentId={typeof document === "string" ? document : undefined} />;
 }

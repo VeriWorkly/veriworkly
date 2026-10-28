@@ -46,10 +46,15 @@ export function htmlLink(
 /**
  * The page around a template's CSS and body. Long emails and URLs wrap anywhere rather
  * than overflow their column, as in the preview.
+ *
+ * `dir` names the language's direction for readers and tools, but the sheet keeps the
+ * left-to-right layout the preview and the PDF draw: under `dir="rtl"` an Arabic or Hebrew
+ * letter came out mirrored — header columns swapped, every paragraph right-aligned, a phone
+ * number printed "2671 555 415 1+" — in the one output that was supposed to match them.
  */
 export function coverLetterHtmlDocument(state: CoverLetterState, css: string, body: string) {
   const { appearance, palette } = state;
 
   return `<!doctype html><html lang="${state.language}" dir="${state.direction}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(getCoverLetterDocumentTitle(state))}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${escapeHtml(getFontStylesheetHref(appearance.fontFamily))}"><style>
-*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:${palette.surface};color:${palette.text};font-family:${FONT_FAMILY_MAP[appearance.fontFamily]};overflow-wrap:anywhere}a.icon-link{display:flex;align-items:center;column-gap:4px}${css}</style></head><body>${body}</body></html>`;
+*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:${palette.surface};color:${palette.text};font-family:${FONT_FAMILY_MAP[appearance.fontFamily]};overflow-wrap:anywhere}a.icon-link{display:flex;align-items:center;column-gap:4px}.page{direction:ltr}${css}</style></head><body>${body}</body></html>`;
 }

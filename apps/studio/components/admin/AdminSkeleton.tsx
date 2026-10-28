@@ -121,7 +121,7 @@ function DashboardSkeleton() {
 
       <SkeletonBlock className="h-14 w-full rounded-xl" />
 
-      <SkeletonStats count={4} />
+      <SkeletonStats count={5} />
 
       <div className="grid gap-3 lg:grid-cols-3">
         <div className="border-border bg-card rounded-xl border lg:col-span-2">

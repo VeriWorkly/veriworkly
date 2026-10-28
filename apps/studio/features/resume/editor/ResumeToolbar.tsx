@@ -25,6 +25,7 @@ import { useResumeStore } from "@/features/resume/store/resume-store";
 import { getMasterProfileForReset } from "@/features/resume/services/master-profile";
 
 import { getDocumentPreviewPath } from "@/features/documents/core/routes";
+import { flushPendingSave } from "@/features/documents/services/document-workspace-service";
 
 interface ToolbarProps {
   resumeId: string;
@@ -187,6 +188,11 @@ const ResumeToolbar = memo(function ResumeToolbar({
           }}
           onSync={handleSync}
           onFullPreview={() => router.push(getDocumentPreviewPath("RESUME", resumeId))}
+          onCheckAts={() => {
+            // The checker reads the saved resume: the last keystrokes go with it.
+            flushPendingSave("RESUME", resumeId);
+            router.push(`/ats?document=${encodeURIComponent(resumeId)}`);
+          }}
           onPdfDebug={
             process.env.NODE_ENV === "development"
               ? () => window.open(`/pdf-debug/resume/${templateId}?id=${resumeId}`, "_blank")

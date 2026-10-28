@@ -225,7 +225,7 @@ export function NewDocumentModal({
         </Modal.Body>
 
         <div className="border-border/70 bg-card/10 border-t p-4 sm:p-5">
-          <p className="text-accent mb-3 text-[10px] font-bold tracking-[0.2em] uppercase">
+          <p className="text-accent mb-3 text-xs font-bold tracking-[0.2em] uppercase">
             Import from LinkedIn or GitHub
           </p>
           <div className="grid grid-cols-2 gap-3">

@@ -130,9 +130,7 @@ export function PdfDebugClient({ documentId, templateId, type }: PdfDebugClientP
     <main className="bg-background flex min-h-screen flex-col">
       <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
         <div>
-          <p className="text-muted text-[11px] font-semibold tracking-[0.22em] uppercase">
-            PDF Debug
-          </p>
+          <p className="text-muted text-xs font-semibold tracking-[0.22em] uppercase">PDF Debug</p>
 
           <h1 className="text-foreground text-sm font-semibold">{title}</h1>
         </div>

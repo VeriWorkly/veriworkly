@@ -134,7 +134,7 @@ export function NavGroup({
   return (
     <div className="space-y-1.5">
       {label && !collapsed ? (
-        <p className="text-muted px-2 pb-1 text-[10px] font-semibold tracking-[0.18em] uppercase">
+        <p className="text-muted px-2 pb-1 text-xs font-semibold tracking-[0.18em] uppercase">
           {label}
         </p>
       ) : null}

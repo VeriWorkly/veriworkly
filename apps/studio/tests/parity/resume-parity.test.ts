@@ -10,9 +10,13 @@ import { launchParityBrowser } from "./browser";
 import {
   describeResumePdf,
   layoutPages,
+  pageTextKey,
+  pdfPageSignatures,
   readResumeDocument,
   splitSectionIndexes,
+  type PageSignature,
 } from "./pdf-layout";
+import { downloadText, expectPrintedSheets, printHtml } from "./print-html";
 import { measurePagination, measureResume } from "./web-measure";
 import { recordReport } from "./report";
 import { startParityServer } from "./server";
@@ -48,27 +52,13 @@ const TEMPLATES: Record<string, "stacked" | "gutter"> = {
  */
 const TOLERANCE_PX = 0.5;
 
-/**
- * Cases where the two engines break a line in different places, for reasons no
- * template can reach.
- *
- * `@react-pdf/textkit` runs its line breaker with
- * `shrinkWhitespaceFactor: { before: -0.5, after: -0.5 }`: it may compress the
- * spaces on a line by up to half their width to avoid a break. CSS has no such
- * behaviour. A paragraph whose natural width lands within (spaces x half a
- * space) of its column therefore fits on one line in the PDF and wraps in the
- * preview — 595.79px of text in a 590px column, 712.42px in a 710px column.
- *
- * These are recorded rather than tolerated silently: anything that is not on
- * this list still fails, and each entry names what makes it unreachable.
+/*
+ * No box is excused. Both engines shape text with the same font files, and the PDF breaks
+ * lines by the browser's rules (`templates/pdf/line-breaks.ts`). Before that, textkit's
+ * Knuth–Plass breaker shrank spaces to keep text up to a few pixels too wide on one line
+ * (595.79px in Timeline Focus's 590px column, 712.42px in Executive Clarity's 710px), so
+ * those boxes came out a line shorter in the PDF than in the preview.
  */
-const KNOWN_ENGINE_DIFFERENCES: Record<string, string> = {
-  "timeline-focus/default/a4":
-    "experience bullet 4 measures 595.79px in a 590px column; textkit shrinks its 13 spaces to fit",
-  "timeline-focus/spill/a4": "the same bullet as timeline-focus/default, in the same 590px column",
-  "executive-clarity/dense/a4":
-    "project bullets measure 712.42px in a 710px column; textkit shrinks their spaces to fit",
-};
 
 /**
  * CJK is checked by `tests/contracts/font-coverage.contract.test.ts` instead.
@@ -80,9 +70,9 @@ const KNOWN_ENGINE_DIFFERENCES: Record<string, string> = {
 const MEASURABLE_FIXTURES = PARITY_FIXTURE_IDS.filter((id) => id !== "cjk");
 
 /**
- * Box-by-box comparison stops at blocks taller than a page: both engines break those
- * mid-paragraph, and the two line breakers put the break a line apart. Pagination and
- * clipping are still checked for them below.
+ * Box-by-box comparison stops at blocks taller than a page: the PDF's boxes are the parts
+ * on each page, the preview measured here is one unbroken column, so the two cannot be
+ * matched box for box. Pagination and clipping are still checked for them below.
  */
 const GEOMETRY_FIXTURES = MEASURABLE_FIXTURES.filter((id) => id !== "overflow");
 
@@ -182,15 +172,6 @@ describe("resume preview and PDF lay out the same boxes", () => {
 
             expect(webNodes.length, "the preview rendered nothing").toBeGreaterThan(0);
 
-            const known = KNOWN_ENGINE_DIFFERENCES[name];
-
-            if (known) {
-              // Still asserted, just the other way round: if this ever comes out
-              // clean the entry is stale and should be deleted.
-              expect(report, `${name} no longer differs — ${known}`).not.toBe("");
-              return;
-            }
-
             expect(report, report).toBe("");
           },
           180_000,
@@ -199,6 +180,66 @@ describe("resume preview and PDF lay out the same boxes", () => {
     }
   }
 });
+
+/** One page's signature as the browser drew it. */
+function webSignatures(preview: {
+  blocksPerPage: number[];
+  texts: string[];
+  firstTops: number[];
+}): PageSignature[] {
+  return preview.texts.map((text, index) => ({
+    blocks: preview.blocksPerPage[index] ?? 0,
+    ...pageTextKey(text),
+    firstTop: preview.firstTops[index] ?? -1,
+  }));
+}
+
+/**
+ * Every page where the two disagree on what the page carries: how many blocks, and the
+ * text it opens and closes with. Exact — a page that ends one line earlier in one engine
+ * ends with different text, and that is the difference the owner sees.
+ */
+function diffSignatures(web: PageSignature[], pdf: PageSignature[]): string {
+  const lines: string[] = [];
+
+  if (web.length !== pdf.length) lines.push(`pages: web ${web.length} vs pdf ${pdf.length}`);
+
+  for (let index = 0; index < Math.min(web.length, pdf.length); index += 1) {
+    const a = web[index];
+    const b = pdf[index];
+
+    if (a.blocks !== b.blocks) {
+      lines.push(`page ${index + 1} blocks: web ${a.blocks} vs pdf ${b.blocks}`);
+    }
+    if (a.first !== b.first) {
+      lines.push(`page ${index + 1} opens: web "${a.first}" vs pdf "${b.first}"`);
+    }
+    if (a.last !== b.last) {
+      lines.push(`page ${index + 1} closes: web "${a.last}" vs pdf "${b.last}"`);
+    }
+    // Half a pixel, the box comparison's tolerance: below it the engines are rounding.
+    if (Math.abs(a.firstTop - b.firstTop) > 0.5) {
+      lines.push(`page ${index + 1} text starts: web ${a.firstTop}px vs pdf ${b.firstTop}px`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/*
+ * No page split is excused either. The overflow fixture (a 1,500-word paragraph) used to
+ * set the same number of lines per page with different words on them — Knuth–Plass
+ * balances a paragraph, the browser fills each line first — and the preview kept a line
+ * on the page whenever its glyphs, not its line box, ended above the foot, and had no
+ * widows/orphans rule (`features/resume/editor/ResumePagedPreview.tsx`).
+ */
+
+async function pdfPagesFor(templateId: string, fixture: string, paperSize: PaperSize) {
+  const resume = fixtureResume(fixture, templateId, paperSize);
+  const pages = await layoutPages(await loadTemplatePdfComponentById(templateId), { resume });
+
+  return { pages, shape: readResumeDocument(pages), signatures: pdfPageSignatures(pages) };
+}
 
 describe("resume preview and PDF break pages at the same place", () => {
   for (const paperSize of PAPER_SIZES) {
@@ -209,30 +250,39 @@ describe("resume preview and PDF break pages at the same place", () => {
         it(
           name,
           async () => {
-            const resume = fixtureResume(fixture, templateId, paperSize);
             const { widthPx, heightPx } = getPageGeometry(paperSize);
-            const shape = readResumeDocument(
-              await layoutPages(await loadTemplatePdfComponentById(templateId), { resume }),
-            );
+            const { shape, signatures } = await pdfPagesFor(templateId, fixture, paperSize);
 
-            const preview = await measure(
+            const { preview, html } = await measure(
               `/parity/resume/${templateId}?mode=paged&fixture=${fixture}&paper=${paperSize}`,
               async (page) => {
                 await page.waitForSelector("article.resume-page-preview");
-                return page.evaluate(measurePagination);
+                const measured = await page.evaluate(
+                  measurePagination,
+                  "#parity-preview article.resume-page-preview",
+                );
+                const exported = await downloadText(page, () =>
+                  page.click("[data-parity-export-html]"),
+                );
+
+                return { preview: measured, html: exported };
               },
             );
 
-            const message =
-              `preview ${preview.pages} page(s) [${preview.blocksPerPage.join("/")}] vs ` +
-              `pdf ${shape.pageCount} [${shape.blocksPerPage.join("/")}]`;
+            const report = diffSignatures(webSignatures(preview), signatures);
+            const printed = await printHtml(browser, html);
 
-            recordReport(`pagination ${name}`, preview.pages === shape.pageCount ? "" : message, {
+            recordReport(`pagination ${name}`, report, {
               preview: preview.pages,
               pdf: shape.pageCount,
+              html: printed.pages,
+              blocks: `${preview.blocksPerPage.join("/")} vs ${shape.blocksPerPage.join("/")}`,
+              tops: `${preview.firstTops.join("/")} vs ${signatures.map((s) => s.firstTop).join("/")}`,
             });
 
-            expect(preview.pages, `${name}: ${message}`).toBe(shape.pageCount);
+            expect(preview.pages, `${name}: ${report}`).toBe(shape.pageCount);
+            expect(report, report).toBe("");
+
             // A block taller than a page flows on; the page must not cut it off.
             expect(preview.clippedPages, `${name}: clipped preview pages`).toEqual([]);
             // Both draw the paper the resume asks for.
@@ -241,6 +291,62 @@ describe("resume preview and PDF break pages at the same place", () => {
             );
             expect(shape.pageBox.width, `${name}: pdf page width`).toBeCloseTo(widthPx, 1);
             expect(shape.pageBox.height, `${name}: pdf page height`).toBeCloseTo(heightPx, 1);
+
+            // The editor's "Export → HTML", printed, comes out as the same sheets.
+            expectPrintedSheets(printed, preview.pages, paperSize, `${name}: printed HTML export`);
+          },
+          180_000,
+        );
+      }
+    }
+  }
+});
+
+describe("the public share page shows the PDF's pages", () => {
+  for (const paperSize of PAPER_SIZES) {
+    for (const templateId of Object.keys(TEMPLATES)) {
+      for (const fixture of MEASURABLE_FIXTURES) {
+        const name = `${templateId}/${fixture}/${paperSize}`;
+
+        it(
+          name,
+          async () => {
+            const { widthPx, heightPx } = getPageGeometry(paperSize);
+            const { shape, signatures } = await pdfPagesFor(templateId, fixture, paperSize);
+
+            const { preview, html } = await measure(
+              `/parity/resume/${templateId}?mode=share&fixture=${fixture}&paper=${paperSize}`,
+              async (page) => {
+                const selector = "#share-preview article.resume-page-preview";
+
+                await page.waitForSelector(selector);
+                const measured = await page.evaluate(measurePagination, selector);
+                const exported = await downloadText(page, async () => {
+                  await page.getByRole("button", { name: /download/i }).click();
+                  await page.getByRole("menuitem", { name: /html/i }).click();
+                });
+
+                return { preview: measured, html: exported };
+              },
+            );
+
+            const report = diffSignatures(webSignatures(preview), signatures);
+            const printed = await printHtml(browser, html);
+
+            recordReport(`share ${name}`, report, {
+              share: preview.pages,
+              pdf: shape.pageCount,
+              html: printed.pages,
+            });
+
+            expect(preview.pages, `${name}: ${report}`).toBe(shape.pageCount);
+            expect(report, report).toBe("");
+
+            expect(preview.boxes, `${name}: share page boxes`).toEqual(
+              preview.boxes.map(() => ({ width: widthPx, height: heightPx })),
+            );
+            expect(preview.clippedPages, `${name}: clipped share pages`).toEqual([]);
+            expectPrintedSheets(printed, preview.pages, paperSize, `${name}: printed share HTML`);
           },
           180_000,
         );

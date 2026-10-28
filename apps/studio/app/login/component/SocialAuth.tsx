@@ -61,7 +61,7 @@ const SocialAuth = ({ isLoading, setIsLoading }: SocialAuthProps) => {
       <div className="my-6 flex items-center gap-3">
         <div className="border-border/80 h-px flex-1 border-t border-dashed" />
 
-        <span className="text-muted shrink-0 text-[10px] font-medium tracking-wider uppercase">
+        <span className="text-muted shrink-0 text-xs font-medium tracking-wider uppercase">
           or continue with
         </span>
 

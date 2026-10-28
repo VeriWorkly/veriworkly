@@ -25,6 +25,22 @@ import { useUserStore } from "@/store/useUserStore";
 import { fetchApiData } from "@/utils/fetchApiData";
 
 /**
+ * One AI request. The wallet is read again once the server has answered, a success included:
+ * the balance next to the price must show what the request spent (S-199).
+ */
+export async function requestAiDraft(
+  request: Parameters<typeof generateAiContent>[0],
+  signal: AbortSignal,
+  reloadWallet: () => void,
+) {
+  try {
+    return await generateAiContent(request, signal);
+  } finally {
+    if (!signal.aborted) reloadWallet();
+  }
+}
+
+/**
  * Callers render this with `key` set to the entry it edits, so the open panel, the draft and
  * any in-flight request belong to that entry and are dropped when the user switches to
  * another one.
@@ -118,15 +134,10 @@ export function AiFieldAssist({
     setFailure(null);
 
     try {
-      const response = await generateAiContent(
-        {
-          action,
-          mode,
-          input,
-          requestId,
-          documentId,
-        },
+      const response = await requestAiDraft(
+        { action, mode, input, requestId, documentId },
         controller.signal,
+        loadWallet,
       );
 
       settleRequestId(pendingRequestRef);
@@ -144,10 +155,7 @@ export function AiFieldAssist({
       if (described.buyCredits) setFailure(described);
       else toast.error(described.message);
     } finally {
-      if (!controller.signal.aborted) {
-        setLoading(false);
-        loadWallet();
-      }
+      if (!controller.signal.aborted) setLoading(false);
     }
   }
 

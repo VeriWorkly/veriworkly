@@ -48,7 +48,7 @@ export function DocumentPreviewCard({
         <div className="flex h-5 items-center justify-between gap-2">
           <h2 className="text-foreground truncate pr-2 text-sm font-bold">{doc.title}</h2>
 
-          <Badge className="shrink-0 px-2 py-0.5 text-[10px] leading-none">
+          <Badge className="shrink-0 px-2 py-0.5 text-xs leading-none">
             {getDocumentDefinition(doc.type).label}
           </Badge>
         </div>
@@ -65,7 +65,7 @@ export function DocumentPreviewCard({
             </span>
           </div>
 
-          <dl className="text-muted-foreground grid grid-cols-2 gap-2 text-[11px]">
+          <dl className="text-muted-foreground grid grid-cols-2 gap-2 text-xs">
             <div className="bg-muted/20 border-border/40 min-w-0 rounded-lg border px-2 py-1.5">
               <dt className="sr-only">Status</dt>
               <dd className="text-foreground truncate font-medium">

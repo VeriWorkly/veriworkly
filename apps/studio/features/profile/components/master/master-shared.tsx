@@ -43,7 +43,7 @@ export function SectionCard({
           {badge ? (
             <span
               className={cn(
-                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                "rounded-full border px-2 py-0.5 text-xs font-semibold",
                 badgeClassName,
               )}
             >

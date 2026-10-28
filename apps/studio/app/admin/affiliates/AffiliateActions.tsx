@@ -176,7 +176,7 @@ function CommissionConvertAction({
     <AdminActionDialog
       trigger="Convert to USD"
       title="Record this commission in USD"
-      description={`The ${amount} commission is replaced by one in USD: enter what the customer's ${currency} purchase came to in US dollars. The USD commission uses the affiliate's current tier rate, which may differ from the ${(rateBps / 100).toFixed(1)}% this one used. It starts pending; the ${currency} one is closed in the same step.`}
+      description={`The ${amount} commission is replaced by one in USD: enter what the customer's ${currency} purchase came to in US dollars. The USD commission uses the same ${(rateBps / 100).toFixed(1)}% rate as the original. It starts pending; the ${currency} one is closed in the same step.`}
       confirmLabel="Convert"
       reasonRequired={false}
       onConfirm={async (reason) => {
@@ -218,9 +218,10 @@ function CommissionConvertAction({
 }
 
 /**
- * Release or reverse a pending commission. Non-pending rows are terminal server-side. The
- * wallet is a USD balance, so a commission in another currency cannot be released: the server
- * keeps it PENDING until it is converted and recorded in USD.
+ * Release or reverse a pending commission, or reverse a released or paid one. The wallet is a
+ * USD balance, so a commission in another currency cannot be released: the server keeps it
+ * PENDING until it is converted and recorded in USD. A refusal (409, e.g. the row changed while
+ * it was being reversed) shows the server's message in the dialog.
  */
 export function CommissionActions({
   id,
@@ -245,17 +246,23 @@ export function CommissionActions({
   /** The server converts only for an ACTIVE affiliate; `false` also when that is unknown. */
   affiliateActive: boolean;
 }) {
-  // The server moves only PENDING commissions; a released one cannot be taken back here.
-  if (status === "AVAILABLE") {
+  const amount = formatCents(amountCents, currency);
+
+  // Released money is taken back the way a refund takes it (`reverseLockedCommission`).
+  if (status === "AVAILABLE" || status === "PAID") {
     return (
-      <span className="text-muted max-w-48 text-xs">
-        Released. A refund after release cannot be reversed from the console yet.
-      </span>
+      <AdminActionDialog
+        trigger="Reverse"
+        title="Reverse this commission"
+        description={`${amount} comes back out of the affiliate's available balance first; whatever it cannot cover is owed back and repaid from their next commissions. Use this for a refund or chargeback settled outside the payment provider.`}
+        confirmLabel="Reverse commission"
+        onConfirm={async (reason) => {
+          await updateAdminCommission(id, "REVERSED", reason);
+        }}
+      />
     );
   }
   if (status !== "PENDING") return <span className="text-muted text-xs">No action</span>;
-
-  const amount = formatCents(amountCents, currency);
 
   return (
     <div className="flex flex-wrap gap-2">

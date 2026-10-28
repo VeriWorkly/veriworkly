@@ -209,7 +209,7 @@ const OtpForm = ({
           {timeLeft === 0 && "Verification code resend is now available."}
         </div>
 
-        <div className="text-muted-foreground/60 border-border/40 flex items-center justify-center gap-5 border-t pt-4 text-[10px] select-none">
+        <div className="text-muted-foreground/60 border-border/40 flex items-center justify-center gap-5 border-t pt-4 text-xs select-none">
           <span className="flex items-center gap-1">
             <Check className="h-3.5 w-3.5 text-emerald-500" /> Local First
           </span>

@@ -163,6 +163,15 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
           expiresInDays: 90,
           configured: true,
         },
+        {
+          key: "credit_pack_1200",
+          name: "1,200 extra credits",
+          credits: 1200,
+          price: 999,
+          currency: "USD",
+          expiresInDays: 90,
+          configured: true,
+        },
       ],
     },
     ...overrides,
@@ -453,6 +462,7 @@ describe("billing page describes what the customer actually bought", () => {
 
     expect(page).toMatch(/Buy 250 credits \$2\.99/);
     expect(page).toMatch(/Buy 500 credits \$4\.99/);
+    expect(page).toMatch(/Buy 1,200 credits \$9\.99/);
     expect(page).toContain("Payment received · Creator Pro (monthly)");
     expect(page).toContain("$9.99");
     expect(page).toContain("Subscription updated");
@@ -954,6 +964,38 @@ describe("affiliate payouts", () => {
       expect(page, String(status)).not.toContain("$25.00");
     }
   });
+
+  it("S-259: a payout's note from the admin is shown on its row", async () => {
+    programData.affiliate = {
+      affiliateStatus: "ACTIVE",
+      wallet: { pendingCents: 0, availableCents: 0, paidCents: 5000 },
+      minimumWithdrawalCents: 2500,
+      withdrawals: [
+        {
+          id: "w1",
+          amountCents: 5000,
+          currency: "USD",
+          status: "REJECTED",
+          createdAt: "2026-10-01T00:00:00.000Z",
+          payoutNote: "PayPal account could not be verified",
+        },
+        {
+          id: "w2",
+          amountCents: 2500,
+          currency: "USD",
+          status: "PAID",
+          createdAt: "2026-10-02T00:00:00.000Z",
+          payoutNote: null,
+        },
+      ],
+    };
+    const { default: AffiliatePayoutsPage } =
+      await import("@/app/(main)/(dashboard)/affiliate/payouts/page");
+    const page = text(renderToStaticMarkup(await AffiliatePayoutsPage()));
+
+    expect(page).toContain("Note: PayPal account could not be verified");
+    expect(page.match(/Note:/g)).toHaveLength(1);
+  });
 });
 
 describe("paid AI actions", () => {
@@ -983,6 +1025,44 @@ describe("paid AI actions", () => {
 
     expect(failure.message).toBe("ATS scan quota exceeded. Resets in 5h 12m.");
     expect(failure.quota).toBe(quota);
+  });
+
+  it("S-198: Scans left and the out-of-scans state say when the allowance comes back", async () => {
+    const { ScansLeftMetric, outOfScansDetail } = await import("@/features/ats/AtsWorkspace");
+    const now = Date.parse("2026-10-26T10:00:00Z");
+    const quota = {
+      tier: "free",
+      limit: 2,
+      used: 2,
+      remaining: 0,
+      resetsAt: new Date(now + (2 * 24 * 60 + 3 * 60) * 60 * 1000).toISOString(),
+    } as AtsQuota;
+
+    const metric = renderToStaticMarkup(<ScansLeftMetric quota={quota} now={now} />);
+
+    expect(metric).toContain("0/2");
+    expect(metric).toContain("Resets in 2d 3h");
+    expect(outOfScansDetail(quota, now)).toBe("No scans left in this period. Resets in 2d 3h");
+    expect(renderToStaticMarkup(<ScansLeftMetric quota={null} />)).not.toContain("Resets");
+  });
+
+  it("S-197: AI parse repair is offered only when the server says this account can use it", async () => {
+    const { canOfferRepair } = await import("@/features/ats/AtsWorkspace");
+    const quota = (canRepair: boolean, parseRepairCredits?: number) =>
+      ({
+        canRepair,
+        pricing: {
+          analysisCredits: { min: 4, max: 12 },
+          jobUrlAnalysisCredits: { min: 6, max: 18 },
+          resumeConversionCredits: 25,
+          parseRepairCredits,
+        },
+      }) as AtsQuota;
+
+    expect(canOfferRepair(quota(true, 5))).toBe(true);
+    expect(canOfferRepair(quota(false, 5))).toBe(false);
+    expect(canOfferRepair(quota(true))).toBe(false);
+    expect(canOfferRepair(null)).toBe(false);
   });
 
   it("S-198: ats-api sends the uploaded file's name and size, keeps the extract quota and throws ApiRequestError", async () => {

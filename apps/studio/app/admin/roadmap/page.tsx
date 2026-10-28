@@ -135,7 +135,7 @@ const AdminRoadmapPage = async ({ searchParams }: { searchParams: Promise<AdminS
                             {item.tags.map((tag) => (
                               <Badge
                                 key={`${item.id}-${tag}`}
-                                className="rounded-md px-1.5 py-0 text-[11px] capitalize"
+                                className="rounded-md px-1.5 py-0 text-xs capitalize"
                               >
                                 {tag}
                               </Badge>

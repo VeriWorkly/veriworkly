@@ -5,7 +5,7 @@ import { escapeHtml, getResumeFileBaseName } from "@/features/resume/services/re
 import { getResumeRenderStyle } from "@/features/documents/rendering/resume-rendering";
 import { getPdfFontEntries } from "@/features/documents/constants/fonts";
 import { documentDirection, toDocumentLanguage } from "@/features/documents/utils/formatters";
-import { getPageGeometry } from "@/templates/shared/page-geometry";
+import { documentPrintCss } from "@/templates/shared/print-styles";
 
 import { downloadBlob } from "./download";
 import { EXPORT_EXCLUDE_ATTRIBUTE, EXPORT_ROOT_ATTRIBUTE } from "./export-dom-markers";
@@ -154,13 +154,24 @@ function contentHtml(content: ResumeExportContent): string {
   }
 }
 
+/** The generated document's printed page margin, in CSS px: its card padding on screen. */
+const GENERATED_PAGE_MARGIN = 32;
+
 /**
  * A self-contained document generated from the resume, for surfaces with no rendered preview
  * to capture. Every value is escaped: it is user text going into markup.
  */
 export function buildHtml(resume: ResumeData): string {
   const document = getResumeExportDocument(resume);
-  const page = getPageGeometry(resume.customization?.paperSize);
+  // On paper the card around the document goes and the page margins take its place.
+  const print = documentPrintCss({
+    paperSize: resume.customization?.paperSize,
+    pageMarginY: GENERATED_PAGE_MARGIN,
+    sheet: "main",
+    sheetPrint: `max-width:none;border:0;border-radius:0;padding:0 ${GENERATED_PAGE_MARGIN}px`,
+    keepTogether: ["article", "h2", "h3"],
+    keepWithNext: ["h2", "h3"],
+  });
   const title = document.name ? `${escapeHtml(document.name)} - Resume` : "Resume";
 
   const header = [
@@ -195,7 +206,6 @@ export function buildHtml(resume: ResumeData): string {
   <title>${title}</title>
   <style>
     :root { color-scheme: light; }
-    @page { size: ${page.widthPx}px ${page.heightPx}px; }
     body { margin: 0; padding: 40px 20px; font-family: "Segoe UI", Arial, sans-serif; background: #f6f7fb; color: #111827; }
     main { max-width: 880px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; }
     h1 { margin: 0 0 8px; font-size: 2rem; line-height: 1.1; }
@@ -210,6 +220,7 @@ export function buildHtml(resume: ResumeData): string {
     .dot { opacity: 0.5; }
     a { color: #0f4dbf; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    ${print}
   </style>
 </head>
 <body>
@@ -284,7 +295,14 @@ async function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): 
   clonedResume.style.boxSizing = "border-box";
 
   const fontFaces = await buildEmbeddedFontFaces(resume);
-  const page = getPageGeometry(resume.customization?.paperSize);
+  // One preview page per sheet. The clone carries its computed size and gaps inline, hence
+  // !important: the screen height includes the gaps and would print a blank sheet.
+  const print = documentPrintCss({
+    paperSize: resume.customization?.paperSize,
+    sheet: `[${EXPORT_ROOT_ATTRIBUTE}] > *`,
+    sheetPrint: "break-after:page",
+    print: `[${EXPORT_ROOT_ATTRIBUTE}]{row-gap:0!important;margin:0!important;width:auto!important;height:auto!important}[${EXPORT_ROOT_ATTRIBUTE}] > :last-child{break-after:auto}`,
+  });
   const name = getResumeExportDocument(resume).name;
   const title = name ? `${escapeHtml(name)} - Resume` : "Resume";
 
@@ -305,35 +323,8 @@ async function buildRenderedHtmlDocument(targetId: string, resume: ResumeData): 
       background: #f6f7fb;
       display: flex;
       justify-content: center;
-      print-color-adjust: exact;
     }
-    /* One preview page per sheet. The clone carries its computed size and gaps inline, hence
-       !important: the screen height includes the gaps and would print a blank sheet. */
-    @page {
-      size: ${page.widthPx}px ${page.heightPx}px;
-      margin: 0;
-    }
-    @media print {
-      body {
-        padding: 0;
-        background: none;
-        display: block;
-      }
-      [${EXPORT_ROOT_ATTRIBUTE}] {
-        row-gap: 0 !important;
-        margin: 0 !important;
-        width: auto !important;
-        height: auto !important;
-      }
-      [${EXPORT_ROOT_ATTRIBUTE}] > * {
-        box-shadow: none !important;
-        margin: 0 !important;
-        break-after: page;
-      }
-      [${EXPORT_ROOT_ATTRIBUTE}] > :last-child {
-        break-after: auto;
-      }
-    }
+    ${print}
   </style>
 </head>
 <body>

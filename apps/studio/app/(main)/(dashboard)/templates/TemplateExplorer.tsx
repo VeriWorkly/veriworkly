@@ -45,7 +45,7 @@ function TemplateCard({ template }: { template: GalleryTemplate }) {
           <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Template traits">
             {template.tags.slice(0, 3).map((tag) => (
               <li key={tag}>
-                <Badge className="px-2 py-0.5 text-[11px]">{tag}</Badge>
+                <Badge className="px-2 py-0.5 text-xs">{tag}</Badge>
               </li>
             ))}
           </ul>

@@ -40,7 +40,7 @@ function DataLine({
 }) {
   return (
     <div className="bg-muted/10 min-w-0 rounded-xl p-3">
-      <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+      <p className="text-muted flex items-center gap-2 text-xs font-bold tracking-wider uppercase">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </p>
@@ -123,7 +123,7 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
             }}
           >
             <div className="flex items-center justify-between">
-              <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+              <p className="text-muted flex items-center gap-2 text-xs font-bold tracking-wider uppercase">
                 <UserRound className="h-3.5 w-3.5" />
                 Name
               </p>
@@ -169,7 +169,7 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
             }}
           >
             <div className="flex items-center justify-between">
-              <p className="text-muted flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+              <p className="text-muted flex items-center gap-2 text-xs font-bold tracking-wider uppercase">
                 <AtSign className="h-3.5 w-3.5" />
                 Username
               </p>
@@ -200,7 +200,7 @@ export default function ProfileDataPanel({ profile }: { profile: AccountProfile 
           <DataLine icon={Mail} label="Email" value={email} />
           <DataLine
             icon={RefreshCw}
-            label="Auto sync"
+            label="Automatic backup"
             value={profile?.autoSyncEnabled ? "On" : "Off"}
           />
           <DataLine icon={CalendarClock} label="Created" value={formatDate(profile?.createdAt)} />

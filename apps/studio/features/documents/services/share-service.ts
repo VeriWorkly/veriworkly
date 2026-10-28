@@ -184,42 +184,6 @@ export function toShareSnapshot(document: BaseDocument): ShareSnapshot {
   return envelope;
 }
 
-export type SharedDocumentView =
-  | { kind: "resume"; resume: ResumeData }
-  | { kind: "cover-letter"; content: CoverLetterContent; templateId: string }
-  | { kind: "unsupported" }
-  | { kind: "empty" };
-
-/**
- * Reads a public snapshot: a document envelope, or the bare `ResumeData` that links made
- * before snapshots carried the envelope still hold.
- */
-export function readShareSnapshot(snapshot: unknown): SharedDocumentView {
-  if (!snapshot || typeof snapshot !== "object") return { kind: "empty" };
-
-  if (!("type" in snapshot) || !("content" in snapshot)) {
-    return { kind: "resume", resume: normalizeResumeData(snapshot as Partial<ResumeData>) };
-  }
-
-  const envelope = snapshot as ShareSnapshot;
-
-  if (!envelope.content) return { kind: "empty" };
-
-  if (envelope.type === "RESUME") {
-    return { kind: "resume", resume: normalizeResumeData(envelope.content as Partial<ResumeData>) };
-  }
-
-  if (envelope.type === "COVER_LETTER") {
-    return {
-      kind: "cover-letter",
-      content: envelope.content as CoverLetterContent,
-      templateId: envelope.templateId,
-    };
-  }
-
-  return { kind: "unsupported" };
-}
-
 export async function createShareLink(
   document: BaseDocument,
   options: CreateShareLinkOptions = {},

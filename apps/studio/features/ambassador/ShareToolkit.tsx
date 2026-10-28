@@ -58,7 +58,7 @@ export function ShareToolkit({ siteUrl }: { siteUrl: string }) {
       {templates.map((template) => (
         <li key={template.id} className="border-border bg-background rounded-xl border p-4">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-muted text-[10px] font-black tracking-widest uppercase">
+            <p className="text-muted text-xs font-black tracking-widest uppercase">
               {template.channel}
             </p>
             <button

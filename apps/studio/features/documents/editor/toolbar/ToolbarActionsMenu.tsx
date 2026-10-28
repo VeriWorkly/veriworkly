@@ -12,6 +12,7 @@ import {
   FileCode2,
   FileSearch,
   FolderInput,
+  ScanSearch,
   ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
@@ -38,6 +39,8 @@ interface ToolbarActionsMenuProps {
   onSync: () => void;
   onEmptyFields: () => void;
   onFullPreview?: () => void;
+  /** Resumes only: opens the ATS checker on this document. */
+  onCheckAts?: () => void;
   onPdfDebug?: () => void;
 }
 
@@ -53,6 +56,7 @@ const ToolbarActionsMenu = ({
   onSync,
   onEmptyFields,
   onFullPreview,
+  onCheckAts,
   onPdfDebug,
 }: ToolbarActionsMenuProps) => {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
@@ -89,6 +93,7 @@ const ToolbarActionsMenu = ({
         onShare={onShare}
         onSync={onSync}
         onFullPreview={onFullPreview}
+        onCheckAts={onCheckAts}
         onPdfDebug={onPdfDebug}
         onRequestReset={() => setPendingWipe("reset")}
         onRequestEmpty={() => setPendingWipe("empty")}
@@ -120,6 +125,7 @@ interface ToolbarActionsMenuTriggerProps {
   onShare: () => void;
   onSync: () => void;
   onFullPreview?: () => void;
+  onCheckAts?: () => void;
   onPdfDebug?: () => void;
   onRequestReset: () => void;
   onRequestEmpty: () => void;
@@ -134,6 +140,7 @@ const ToolbarActionsMenuTrigger = ({
   onShare,
   onSync,
   onFullPreview,
+  onCheckAts,
   onPdfDebug,
   onRequestReset,
   onRequestEmpty,
@@ -171,6 +178,35 @@ const ToolbarActionsMenuTrigger = ({
             </MenuItem>
           ) : null}
 
+          {onCheckAts ? (
+            <MenuItem
+              className={cn(
+                !isLoggedIn && "opacity-50 hover:bg-transparent focus-visible:bg-transparent",
+              )}
+              aria-disabled={!isLoggedIn || undefined}
+              onClick={(e) => {
+                // The checker scans with the account's allowance, as on the ATS page.
+                if (!isLoggedIn) {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  toastSignInRequired("Sign in to check resumes with ATS.");
+
+                  return;
+                }
+
+                close();
+                onCheckAts();
+              }}
+            >
+              <ScanSearch className="h-4 w-4" />
+              Check with ATS
+              {!isLoggedIn ? (
+                <span className="text-muted ml-auto text-xs whitespace-nowrap">Sign in</span>
+              ) : null}
+            </MenuItem>
+          ) : null}
+
           {onPdfDebug ? (
             <MenuItem
               onClick={() => {
@@ -183,7 +219,7 @@ const ToolbarActionsMenuTrigger = ({
             </MenuItem>
           ) : null}
 
-          {onFullPreview || onPdfDebug ? <MenuSeparator /> : null}
+          {onFullPreview || onCheckAts || onPdfDebug ? <MenuSeparator /> : null}
 
           {onDuplicate ? (
             <MenuItem
@@ -240,7 +276,9 @@ const ToolbarActionsMenuTrigger = ({
           >
             <Share2 className="h-4 w-4" />
             Create Share Link
-            {!isLoggedIn ? <span className="text-muted ml-auto text-[10px]">Sign in</span> : null}
+            {!isLoggedIn ? (
+              <span className="text-muted ml-auto text-xs whitespace-nowrap">Sign in</span>
+            ) : null}
           </MenuItem>
 
           <MenuItem
@@ -264,7 +302,9 @@ const ToolbarActionsMenuTrigger = ({
           >
             <Cloud className="h-4 w-4" />
             Back up now
-            {!isLoggedIn ? <span className="text-muted ml-auto text-[10px]">Sign in</span> : null}
+            {!isLoggedIn ? (
+              <span className="text-muted ml-auto text-xs whitespace-nowrap">Sign in</span>
+            ) : null}
           </MenuItem>
 
           <MenuSeparator />

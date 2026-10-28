@@ -6,8 +6,8 @@ import AdminListPage from "@/components/admin/AdminListPage";
 import type { AdminTableColumn } from "@/components/admin/AdminTable";
 
 import { fetchAdminUsers } from "@/features/admin/services/admin-server";
-import type { AdminUserRow } from "@/features/admin/types/admin-types";
-import { formatDate, formatNumber, humanizeKey } from "@/features/admin/utils/admin-format";
+import { adminAccessLabel, type AdminUserRow } from "@/features/admin/types/admin-types";
+import { formatDate, formatNumber } from "@/features/admin/utils/admin-format";
 import {
   toSingleValueParams,
   type AdminSearchParams,
@@ -81,20 +81,17 @@ const columns: Array<AdminTableColumn<AdminUserRow>> = [
   },
   { key: "role", header: "Role", render: (user) => <AdminStatusBadge status={user.role} /> },
   {
-    key: "subscription",
-    // Only the live subscription: this list cannot see passes or credit packs, so a row without
-    // one is not called "Free" (a payer must never read as free). The user page has the access.
-    header: "Subscription",
+    key: "access",
+    // The customer's own access summary from the server: a pass holder or a credit buyer has no
+    // subscription row, and a payer must never read as free.
+    header: "Access",
     hideOnMobile: true,
-    render: (user) =>
-      user.subscription ? (
-        <div className="space-y-1">
-          <AdminStatusBadge status={user.subscription.status} />
-          <p className="text-muted text-xs">{humanizeKey(user.subscription.productKey)}</p>
-        </div>
-      ) : (
-        <span className="text-muted text-xs">None</span>
-      ),
+    render: (user) => (
+      <div className="space-y-1">
+        <p className="text-foreground text-xs">{adminAccessLabel(user.access)}</p>
+        {user.subscription ? <AdminStatusBadge status={user.subscription.status} /> : null}
+      </div>
+    ),
   },
   {
     key: "portfolio",

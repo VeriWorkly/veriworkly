@@ -105,7 +105,7 @@ export function AmbassadorPage({ status }: { status: AmbassadorStatus | null }) 
 
         {!isPending && application?.reviewNote && (
           <div className="mt-5 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
-            <p className="text-[10px] font-black tracking-widest text-amber-600 uppercase">
+            <p className="text-xs font-black tracking-widest text-amber-600 uppercase">
               Note from the reviewer
             </p>
             <p className="mt-1.5 text-sm leading-6">{application.reviewNote}</p>
@@ -281,7 +281,7 @@ function Detail({
 }) {
   return (
     <div className="border-border bg-background rounded-xl border p-4">
-      <p className="text-muted flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase">
+      <p className="text-muted flex items-center gap-1.5 text-xs font-black tracking-widest uppercase">
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         {label}
       </p>

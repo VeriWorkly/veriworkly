@@ -17,7 +17,7 @@ import { Button, cn } from "@veriworkly/ui";
 import { siteConfig } from "@/config/site";
 import { useSessionUser } from "@/store/session-user";
 import { buyCreditPack, openBillingPortal, cancelCheckout } from "@/features/billing/billing-api";
-import type { BillingActivity, BillingSummary } from "@/features/billing/types";
+import type { BillingActivity, BillingSummary, CreditPackKey } from "@/features/billing/types";
 import {
   purchaseFingerprint,
   recordPurchaseBaseline,
@@ -244,7 +244,7 @@ export function BillingPage({
     }
   };
 
-  const buyPack = async (packKey: "credit_pack_250" | "credit_pack_500") => {
+  const buyPack = async (packKey: CreditPackKey) => {
     setLoading(packKey);
     setError(null);
     try {
@@ -440,12 +440,14 @@ export function BillingPage({
                 {(billing?.creditEconomics.packs ?? []).map((pack) => (
                   <Button
                     key={pack.key}
-                    className="h-auto flex-col py-2"
+                    className="h-auto flex-col py-2 odd:last:col-span-2"
                     loading={loading === pack.key}
                     disabled={!pack.configured || !user}
                     onClick={() => void buyPack(pack.key)}
                   >
-                    {pack.configured ? `Buy ${pack.credits} credits` : "Coming soon"}
+                    {pack.configured
+                      ? `Buy ${pack.credits.toLocaleString("en-US")} credits`
+                      : "Coming soon"}
                     <span className="text-xs font-semibold opacity-80">
                       {pack.configured ? `${formatCents(pack.price, pack.currency)} · ` : null}
                       valid {pack.expiresInDays} days

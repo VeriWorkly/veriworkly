@@ -140,23 +140,50 @@ export function measureResume(options: WebMeasureOptions): GeomNode[] {
  * Page count and per-page block count of the paginated preview, each page's box, and the pages
  * whose content runs past their bottom edge — which a page cuts off.
  */
-export function measurePagination(): {
+export function measurePagination(selector: string): {
   pages: number;
   blocksPerPage: number[];
+  /** Each page's `textContent`, normalized on the Node side by `pageTextKey`. */
+  texts: string[];
+  /** Where each page's first line of text starts, in CSS px from the page top; -1 for none. */
+  firstTops: number[];
   clippedPages: number[];
   boxes: { width: number; height: number }[];
 } {
-  const pages = Array.from(document.querySelectorAll("article.resume-page-preview"));
+  const pages = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
 
   return {
     pages: pages.length,
-    blocksPerPage: pages.map((page) => page.children.length),
+    // Blocks that draw text, as `pdfPageSignatures` counts them on the PDF side.
+    blocksPerPage: pages.map(
+      (page) => Array.from(page.children).filter((child) => child.textContent?.trim()).length,
+    ),
+    texts: pages.map((page) => page.textContent ?? ""),
+    // The first element that holds text itself: its box is the line box react-pdf reports
+    // for a Text node (an inline run's box would be the glyphs' content area instead).
+    firstTops: pages.map((page) => {
+      const scale = page.getBoundingClientRect().height / page.offsetHeight || 1;
+      const holder = Array.from(page.querySelectorAll("*")).find((element) =>
+        Array.from(element.childNodes).some(
+          (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+        ),
+      );
+
+      if (!holder) return -1;
+
+      const block =
+        window.getComputedStyle(holder).display === "inline"
+          ? (holder.parentElement ?? holder)
+          : holder;
+
+      return Number(
+        ((block.getBoundingClientRect().top - page.getBoundingClientRect().top) / scale).toFixed(2),
+      );
+    }),
     clippedPages: pages.flatMap((page, index) =>
       page.scrollHeight > page.clientHeight + 1 ? [index + 1] : [],
     ),
-    boxes: pages.map((page) => {
-      const rect = page.getBoundingClientRect();
-      return { width: rect.width, height: rect.height };
-    }),
+    // Layout size, not the on-screen rect: the share page scales its pages down to fit.
+    boxes: pages.map((page) => ({ width: page.offsetWidth, height: page.offsetHeight })),
   };
 }

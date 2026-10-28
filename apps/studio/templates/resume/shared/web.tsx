@@ -27,7 +27,7 @@ import { WebSocialIcon } from "@/templates/shared/web-social-icon";
 import { buildResumeSections } from "./model";
 import { createResumeTokens, webText } from "./tokens";
 import { createResumeKeepTogether } from "./keep-together";
-import { SPLIT_ATTRIBUTE } from "@/templates/shared/pagination";
+import { SPLIT_ATTRIBUTE, TEXT_ITEM_ATTRIBUTE } from "@/templates/shared/pagination";
 import { webFixedWidth, webFlexible } from "@/templates/shared/box";
 import { BULLET_MARKER } from "./typography";
 
@@ -487,7 +487,7 @@ export function createResumeWebTemplate(skin: ResumeWebSkin): React.FC<TemplateR
       skills: (lines) => ({
         start: lines[0] ? { text: `${lines[0].label}: ${lines[0].value}` } : null,
         nodes: lines.map((line) => (
-          <article className="break-inside-avoid" key={line.id}>
+          <article className="break-inside-avoid" key={line.id} {...{ [TEXT_ITEM_ATTRIBUTE]: "" }}>
             <p style={webText(tokens.body)}>
               <span style={{ fontWeight: 700 }}>{line.label}: </span>
               {line.value}
@@ -511,7 +511,7 @@ export function createResumeWebTemplate(skin: ResumeWebSkin): React.FC<TemplateR
             fontFamily: FONT_FAMILY_MAP[style.fontFamily],
             fontSize: px(scale.body),
             lineHeight: px(scale.body * style.bodyLineHeight),
-            minHeight: px(page.heightPx * 2),
+            minHeight: px(page.heightPx),
             padding: px(pagePadding),
             width: px(page.widthPx),
           } as React.CSSProperties

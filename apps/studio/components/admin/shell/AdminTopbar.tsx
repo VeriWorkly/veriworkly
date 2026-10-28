@@ -116,7 +116,7 @@ const AdminTopbar = ({ adminEmail, onOpenSidebar, onOpenPalette }: AdminTopbarPr
       >
         <Search className="h-3.5 w-3.5" aria-hidden="true" />
         <span className="hidden sm:inline">Search…</span>
-        <kbd className="border-border hidden rounded border px-1 py-px text-[10px] font-medium sm:inline">
+        <kbd className="border-border hidden rounded border px-1 py-px text-xs font-medium sm:inline">
           <ShortcutKey letter="K" />
         </kbd>
       </button>

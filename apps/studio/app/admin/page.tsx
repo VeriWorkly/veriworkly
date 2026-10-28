@@ -140,8 +140,8 @@ export default async function AdminPage({
   );
   const hasUnknownQueue = openQueues.some((item) => overview.actionQueue[item.key] === null);
 
-  // USD only, reversed rows left out, all time. The daily series adds every currency's cents and
-  // counts reversed commissions, so it is neither the amount nor its trend: the card has no line.
+  // USD only (the server sums the wallet currency), reversed rows left out, all time. The daily
+  // series counts the same rows, so it is the card's line.
   const commissionEarnedUsd = affiliates
     ? (["PENDING", "AVAILABLE", "PAID"] as const).reduce(
         (sum, status) => sum + (affiliates.commissionsByStatus[status]?.amountCents ?? 0),
@@ -239,11 +239,39 @@ export default async function AdminPage({
         </section>
       )}
 
-      {/* The four numbers that describe the business. Everything below is a breakdown of one. */}
+      {/* The numbers that describe the business. Everything below is a breakdown of one. */}
       <section
         aria-label="Key metrics"
-        className="grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-5"
       >
+        {/* Per currency: amounts in different currencies never add up. Net of refunds and lost
+            disputes. Full width on two columns so the four cards after it pair up. */}
+        <MetricCard
+          label="Revenue · last 30 days"
+          value={
+            !billing ? (
+              UNAVAILABLE
+            ) : billing.revenue.last30Days.length === 0 ? (
+              "None"
+            ) : (
+              <span className="block space-y-0.5">
+                {billing.revenue.last30Days.map((row) => (
+                  <span key={row.currency} className="block">
+                    {formatCents(row.netCents, row.currency)}
+                  </span>
+                ))}
+              </span>
+            )
+          }
+          hint={
+            billing
+              ? `All time: ${billing.revenue.allTime.map((row) => formatCents(row.netCents, row.currency)).join(" · ") || "none"}`
+              : undefined
+          }
+          href="/admin/billing"
+          className="sm:col-span-2 xl:col-span-1"
+        />
+
         <MetricCard
           label="Total users"
           value={users ? formatNumber(users.total) : UNAVAILABLE}
@@ -285,6 +313,9 @@ export default async function AdminPage({
         <MetricCard
           label="Commission earned · USD, all time"
           value={commissionEarnedUsd === null ? UNAVAILABLE : formatCents(commissionEarnedUsd)}
+          delta={trendFromSeries(series.commissionCents)}
+          trend={series.commissionCents}
+          series={4}
           hint={
             affiliates
               ? `${formatCents(affiliates.wallets.pendingCents + affiliates.wallets.availableCents)} owed to affiliates${affiliates.commissionsAwaitingConversion > 0 ? ` · ${formatNumber(affiliates.commissionsAwaitingConversion)} in other currencies` : ""}`
@@ -306,10 +337,7 @@ export default async function AdminPage({
                   { label: "Subscriptions", series: 3 as ChartSeries },
                   { label: "Publishes", series: 2 as ChartSeries },
                 ].map((legend) => (
-                  <span
-                    key={legend.label}
-                    className="text-muted flex items-center gap-1.5 text-[11px]"
-                  >
+                  <span key={legend.label} className="text-muted flex items-center gap-1.5 text-xs">
                     <span
                       className="h-1.5 w-1.5 rounded-full"
                       style={{ background: `var(--chart-${legend.series})` }}
@@ -413,11 +441,7 @@ export default async function AdminPage({
         <AdminStatCard
           label="Enabled API keys"
           value={apiKeys ? formatNumber(apiKeys.active) : UNAVAILABLE}
-          hint={
-            apiKeys
-              ? `${formatNumber(apiKeys.usedLast7Days)} used in 7 days · expired ones included`
-              : undefined
-          }
+          hint={apiKeys ? `${formatNumber(apiKeys.usedLast7Days)} used in 7 days` : undefined}
           href="/admin/api-keys"
         />
       </section>

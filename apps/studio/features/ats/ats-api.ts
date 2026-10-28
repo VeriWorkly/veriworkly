@@ -65,6 +65,11 @@ function formatWait(ms: number) {
   return `${minutes}m`;
 }
 
+/** When the scan allowance comes back, from the quota's `resetsAt`: "Resets in 2d 4h". */
+export function quotaResetLabel(quota: Pick<AtsQuota, "resetsAt">, now = Date.now()) {
+  return `Resets in ${formatWait(Date.parse(quota.resetsAt) - now)}`;
+}
+
 function isQuota(value: unknown): value is AtsQuota {
   return typeof (value as AtsQuota | null)?.resetsAt === "string";
 }
@@ -80,9 +85,8 @@ export function describeAtsError(
   now = Date.now(),
 ): PaidActionError & { quota?: AtsQuota } {
   if (error instanceof ApiRequestError && error.status === 429 && isQuota(error.details)) {
-    const wait = formatWait(Date.parse(error.details.resetsAt) - now);
     return {
-      message: `${error.message} Resets in ${wait}.`,
+      message: `${error.message} ${quotaResetLabel(error.details, now)}.`,
       buyCredits: false,
       quota: error.details,
     };

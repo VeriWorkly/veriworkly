@@ -1,8 +1,8 @@
 import { join } from "node:path";
-import { createRequire } from "node:module";
 
 import { createElement } from "react";
 import { Font, pdf } from "@react-pdf/renderer";
+import layoutDocument from "@react-pdf/layout";
 
 import type { ComponentType, ReactElement } from "react";
 import type { DocumentProps } from "@react-pdf/renderer";
@@ -45,17 +45,12 @@ export function registerPdfTestFonts() {
 }
 
 /**
- * `@react-pdf/layout` is a transitive dependency; resolve it via the renderer. `N` is the slice
- * of the node shape the caller reads.
+ * `@react-pdf/layout` as the export runs it: imported through the bundler (a transitive
+ * dependency, inlined by the vitest config), so its textkit is the one
+ * `templates/pdf/textkit.ts` replaces. `N` is the slice of the node shape the caller reads.
  */
 export function resolveLayoutEngine<N = LayoutNode>() {
-  const fromHere = createRequire(import.meta.url);
-  const fromRenderer = createRequire(fromHere.resolve("@react-pdf/renderer"));
-
-  return fromRenderer("@react-pdf/layout").default as (
-    document: N,
-    fontStore: unknown,
-  ) => Promise<N>;
+  return layoutDocument as unknown as (document: N, fontStore: unknown) => Promise<N>;
 }
 
 export async function layoutPages<P extends object>(

@@ -643,6 +643,17 @@ describe("S-296: the letter's date and language", () => {
     }
   });
 
+  it("a right-to-left letter's HTML keeps the sheet laid out as the preview and PDF draw it", async () => {
+    for (const templateId of TEMPLATE_IDS) {
+      const html = await buildCoverLetterHtml(letter({ language: "ar" }), templateId);
+
+      // `dir` stays for readers and tools; the sheet itself is not mirrored.
+      expect(html, templateId).toContain('dir="rtl"');
+      expect(html, templateId).toMatch(/\.page\{direction:ltr\}/);
+      expect(html, templateId).toContain('<article class="page">');
+    }
+  });
+
   it("S-296: the language survives a round trip and stays absent on an older letter", () => {
     expect(parseCoverLetterContent({ ...letter(), language: "es-MX" }).language).toBe("es-MX");
     expect("language" in parseCoverLetterContent(letter())).toBe(false);

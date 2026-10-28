@@ -305,6 +305,20 @@ describe("admin console review fixes", () => {
       .toBe(1);
   });
 
+  it("S-344: a refused reversal shows the server's 409 message", async () => {
+    const retry = "The commission changed while it was being reversed. Retry.";
+    await context.route("**/api/v1/admin/affiliates/commissions/c-eur", (route) =>
+      json(route, 409, { success: false, message: retry }),
+    );
+    await openHarness();
+
+    await page.getByRole("button", { name: "Reverse" }).click();
+    await page.getByRole("dialog").getByRole("textbox").fill("Refunded by bank transfer");
+    await page.getByRole("button", { name: "Reverse commission" }).click();
+
+    await expect.poll(() => page.getByRole("alert").filter({ hasText: retry }).count()).toBe(1);
+  });
+
   it("topbar: sign-out is refused while this device holds unsynced documents", async () => {
     const guest = await browser.newContext({ viewport: DESKTOP });
     await guest.addCookies([{ name: "veriworkly-guest-mode", value: "true", url: server.origin }]);
@@ -316,9 +330,11 @@ describe("admin console review fixes", () => {
     });
 
     const editor = await guest.newPage();
-    // A guest's new resume is a local-only document: not synced.
+    // A guest's new resume is a local-only document: not synced. The editor's first compile
+    // under `next dev` alone can take most of the default 30 s when this file runs first.
     await editor.goto(`${server.origin}/editor/resume/new?template=executive-clarity`, {
       waitUntil: "networkidle",
+      timeout: 90_000,
     });
     await editor.waitForFunction(() => !location.pathname.endsWith("/new"));
 

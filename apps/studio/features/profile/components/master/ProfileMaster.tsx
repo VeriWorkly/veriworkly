@@ -324,14 +324,14 @@ const ProfileMaster = ({
             />
 
             <div className="flex flex-col">
-              <span className="text-[10px] font-black tracking-widest uppercase">
+              <span className="text-xs font-black tracking-widest uppercase">
                 {hasUnsavedChanges ? "Unsaved changes" : neverSaved ? "Not saved yet" : "Saved"}
               </span>
 
               {status && (
                 <span
                   className={cn(
-                    "text-[10px] leading-tight font-bold",
+                    "text-xs leading-tight font-bold",
                     status.type === "error" ? "text-destructive" : "text-emerald-600",
                   )}
                 >

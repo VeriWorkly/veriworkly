@@ -194,7 +194,7 @@ export default function ApiKeyList({
                 )}
 
                 <div className="border-border/60 mt-3 flex items-center justify-between gap-3 border-t pt-2">
-                  <Badge className={`shrink-0 px-2 py-0 text-[10px] ${statusClass(status)}`}>
+                  <Badge className={`shrink-0 px-2 py-0 text-xs ${statusClass(status)}`}>
                     {API_KEY_STATUS_LABELS[status]}
                   </Badge>
 

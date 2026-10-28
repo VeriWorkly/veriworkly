@@ -5,7 +5,10 @@ import {
   EXPORT_EXCLUDE_ATTRIBUTE,
   EXPORT_ROOT_ATTRIBUTE,
 } from "@/features/documents/export/export-dom-markers";
-import { ResumePagedPreview } from "@/features/resume/editor/ResumePagedPreview";
+import {
+  ResumePagedPreview,
+  flowContainerProps,
+} from "@/features/resume/editor/ResumePagedPreview";
 
 /**
  * The "Export → HTML" action clones the rendered preview out of the DOM.
@@ -43,32 +46,40 @@ describe("resume export source contract", () => {
     expect(occurrences(previewMarkup(), EXPORT_ROOT_ATTRIBUTE)).toBe(1);
   });
 
-  it("keeps the off-screen measuring copy behind the export-exclude marker", () => {
+  it("before the pages are measured, the one copy is the export root, and visible", () => {
     const markup = previewMarkup();
 
-    expect(occurrences(markup, EXPORT_EXCLUDE_ATTRIBUTE)).toBe(1);
-
-    // DOM order: the measuring container precedes the visible pages container.
-    expect(markup.indexOf(EXPORT_EXCLUDE_ATTRIBUTE)).toBeLessThan(
-      markup.indexOf(EXPORT_ROOT_ATTRIBUTE),
-    );
-  });
-
-  it("puts every copy of the resume body outside the export root at rest", () => {
-    const markup = previewMarkup();
-
-    // Pagination runs in an effect, so server-rendered pages are empty: the only copy of
-    // the document here is the measuring one. If a second, unmarked copy is ever added
-    // ahead of the pages container, this catches it.
+    // Pagination runs in an effect, so the server renders no pages: the whole resume is the
+    // document until then — for the server's HTML, a reader with no script, and a screen
+    // reader. It is the export root, so nothing exports an empty page meanwhile.
     expect(occurrences(markup, CANDIDATE)).toBe(1);
-    expect(markup.slice(markup.indexOf(EXPORT_ROOT_ATTRIBUTE))).not.toContain(CANDIDATE);
+    expect(occurrences(markup, EXPORT_EXCLUDE_ATTRIBUTE)).toBe(0);
+
+    const root = markup.match(new RegExp(`<div[^>]*${EXPORT_ROOT_ATTRIBUTE}[^>]*>`))?.[0];
+
+    expect(root).toBeDefined();
+    expect(markup.slice(markup.indexOf(root!))).toContain(CANDIDATE);
+    expect(root).not.toMatch(/aria-hidden|\binert|opacity-0|-10000/);
   });
 
-  it("S-311: keeps the measuring copy's links out of the tab order", () => {
-    const measuring = previewMarkup().match(
-      new RegExp(`<div[^>]*${EXPORT_EXCLUDE_ATTRIBUTE}[^>]*>`),
-    );
+  it("once pages are drawn, the measuring copy leaves the export, the screen and the tab order", () => {
+    const hidden = flowContainerProps(false, 794);
+    const shown = flowContainerProps(true, 794);
 
-    expect(measuring?.[0]).toMatch(/\binert=""/);
+    expect(hidden).toMatchObject({ [EXPORT_EXCLUDE_ATTRIBUTE]: "true", "aria-hidden": "true" });
+    expect(hidden).not.toHaveProperty(EXPORT_ROOT_ATTRIBUTE);
+    expect(hidden.className).toContain("opacity-0");
+    expect(hidden.style).toMatchObject({ left: -10000, width: 794 });
+
+    expect(shown).toMatchObject({ [EXPORT_ROOT_ATTRIBUTE]: "true" });
+    expect(shown).not.toHaveProperty(EXPORT_EXCLUDE_ATTRIBUTE);
+    expect(shown).not.toHaveProperty("aria-hidden");
+    expect(shown.style).toEqual({ width: 794 });
+  });
+
+  it("S-311: keeps the measuring copy's links out of the tab order once it is a copy", () => {
+    // S-311: its links are copies the user cannot see.
+    expect(flowContainerProps(false, 794)).toMatchObject({ inert: true });
+    expect(flowContainerProps(true, 794)).not.toHaveProperty("inert");
   });
 });

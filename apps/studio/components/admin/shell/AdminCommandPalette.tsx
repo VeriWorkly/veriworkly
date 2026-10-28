@@ -147,7 +147,7 @@ const AdminCommandPalette = ({ onClose }: AdminCommandPaletteProps) => {
             className="text-foreground placeholder:text-muted h-12 min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
 
-          <kbd className="border-border text-muted hidden shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium sm:block">
+          <kbd className="border-border text-muted hidden shrink-0 rounded border px-1.5 py-0.5 text-xs font-medium sm:block">
             ESC
           </kbd>
         </div>
@@ -189,7 +189,7 @@ const AdminCommandPalette = ({ onClose }: AdminCommandPaletteProps) => {
                 {index === activeIndex ? (
                   <CornerDownLeft className="text-muted h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 ) : (
-                  <span className="text-muted shrink-0 text-[11px]">{entry.group}</span>
+                  <span className="text-muted shrink-0 text-xs">{entry.group}</span>
                 )}
               </li>
             ))}

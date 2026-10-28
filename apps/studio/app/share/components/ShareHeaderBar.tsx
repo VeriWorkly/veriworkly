@@ -22,7 +22,11 @@ interface ShareHeaderBarProps {
  */
 export const ShareHeaderBar = ({ title, expiresAt, actions }: ShareHeaderBarProps) => {
   return (
-    <header className="z-50 mx-auto w-full max-w-7xl px-3 pt-3 md:sticky md:top-0 md:px-6 md:pt-6 md:pb-4">
+    // Left off a printout of the shared resume (`sharePrintCss`): the sheets are the document.
+    <header
+      data-share-chrome=""
+      className="z-50 mx-auto w-full max-w-7xl px-3 pt-3 md:sticky md:top-0 md:px-6 md:pt-6 md:pb-4"
+    >
       <div className="border-border bg-card/80 relative overflow-visible rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-md md:rounded-full md:px-8 md:py-4 lg:px-10">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-5">
           <div className="flex min-w-0 flex-col gap-1">

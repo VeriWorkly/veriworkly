@@ -2,6 +2,7 @@ import { fetchApiData } from "@/utils/fetchApiData";
 
 import type {
   BillingCycle,
+  CreditPackKey,
   PlanChangePreview,
   PlanChangeResult,
   ProductKey,
@@ -20,7 +21,7 @@ export function openBillingPortal() {
   return fetchApiData<{ url: string }>("/billing/portal", { method: "POST", body: "{}" });
 }
 
-export function buyCreditPack(packKey: "credit_pack_250" | "credit_pack_500") {
+export function buyCreditPack(packKey: CreditPackKey) {
   return fetchApiData<{ url: string }>("/billing/credits/checkout", {
     method: "POST",
     body: JSON.stringify({ packKey, redirectUrl: "/billing" }),

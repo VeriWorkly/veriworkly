@@ -85,14 +85,14 @@ export default function AppearanceSection() {
                   {opt.label}
                 </span>
 
-                <p className="text-muted-foreground/60 text-[10px] leading-tight tracking-widest uppercase">
+                <p className="text-muted-foreground/60 text-xs leading-tight tracking-widest uppercase">
                   {opt.description}
                 </p>
               </div>
 
               {isActive && (
                 <div className="animate-in fade-in zoom-in absolute top-4 right-4 duration-300">
-                  <Badge className="bg-accent flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold text-white">
+                  <Badge className="bg-accent flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-white">
                     <CheckCircle2 className="h-2.5 w-2.5" /> Active
                   </Badge>
                 </div>

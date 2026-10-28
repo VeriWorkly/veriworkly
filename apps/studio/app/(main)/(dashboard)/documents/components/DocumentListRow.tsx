@@ -46,12 +46,12 @@ export function DocumentListRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="truncate text-sm font-bold">{doc.title}</h2>
-          <Badge className="px-2 py-0.5 text-[10px]">{getDocumentDefinition(doc.type).label}</Badge>
+          <Badge className="px-2 py-0.5 text-xs">{getDocumentDefinition(doc.type).label}</Badge>
         </div>
 
         <p className="text-muted mt-1 truncate text-xs">{doc.description}</p>
 
-        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
           <span className="bg-muted/25 rounded-md px-2 py-1">{doc.templateName}</span>
 
           <span className="bg-muted/25 rounded-md px-2 py-1">

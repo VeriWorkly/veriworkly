@@ -88,6 +88,52 @@ const isSlugMatching = (token: string, documentTitle: string) => {
   return false;
 };
 
+/** True when the document was edited after the link's snapshot was taken. */
+export function isShareSnapshotStale(documentUpdatedAt: string | null, sharedAt: string) {
+  return documentUpdatedAt !== null && Date.parse(documentUpdatedAt) > Date.parse(sharedAt);
+}
+
+/** When the shared snapshot was taken and, once the document moved on, a way to update it. */
+export function SharedVersionNotice({
+  sharedAt,
+  stale,
+  busy,
+  onUpdate,
+}: {
+  sharedAt: string;
+  stale: boolean;
+  busy: boolean;
+  onUpdate: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between",
+        stale ? "border-orange-500/25 bg-orange-500/5" : "border-border bg-muted/20",
+      )}
+    >
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        Shared version from {new Date(sharedAt).toLocaleString()}.
+        {stale
+          ? " You have edited this document since, and the link still shows the older version."
+          : null}
+      </p>
+
+      {stale ? (
+        <Button
+          size="sm"
+          variant="secondary"
+          loading={busy}
+          onClick={onUpdate}
+          className="shrink-0"
+        >
+          Update shared version
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 const ActiveLinkRow = ({
   link,
   onRevoke,
@@ -126,7 +172,7 @@ const ActiveLinkRow = ({
           )}
         </div>
 
-        <div className="text-muted-foreground mt-1.5 flex items-center gap-2.5 text-[10px] font-bold tracking-wider uppercase">
+        <div className="text-muted-foreground mt-1.5 flex items-center gap-2.5 text-xs font-bold tracking-wider uppercase">
           <span className="flex items-center gap-1">
             <Eye className="h-3 w-3 opacity-60" /> {pluralize(link.viewCount, "view")}
           </span>
@@ -236,7 +282,7 @@ const ShareDocumentModal = ({
     const updatedAt =
       document?.updatedAt ?? loadDocumentById(documentType, documentId)?.updatedAt ?? null;
 
-    return updatedAt !== null && Date.parse(updatedAt) > Date.parse(activeLink.updatedAt);
+    return isShareSnapshotStale(updatedAt, activeLink.updatedAt);
   }, [activeLink, document?.updatedAt, documentId, documentType]);
 
   // Tracks the most recently *requested* document id so a slow response for a
@@ -410,9 +456,9 @@ const ShareDocumentModal = ({
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
 
-                  <p className="text-[11px] leading-relaxed font-medium text-amber-600 dark:text-amber-400">
+                  <p className="text-xs leading-relaxed font-medium text-amber-600 dark:text-amber-400">
                     Your username is used in share link URLs (e.g.{" "}
-                    <code className="text-foreground rounded bg-zinc-500/10 px-1 py-0.5 font-mono text-[10px]">
+                    <code className="text-foreground rounded bg-zinc-500/10 px-1 py-0.5 font-mono text-xs">
                       /share/your-username/document-slug
                     </code>
                     ) and can only be set once.
@@ -432,33 +478,12 @@ const ShareDocumentModal = ({
           ) : (
             <>
               {hasActiveLink && activeLink && (
-                <div
-                  className={cn(
-                    "flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between",
-                    isSnapshotStale
-                      ? "border-orange-500/25 bg-orange-500/5"
-                      : "border-border bg-muted/20",
-                  )}
-                >
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Shared version from {new Date(activeLink.updatedAt).toLocaleString()}.
-                    {isSnapshotStale
-                      ? " You have edited this document since, and the link still shows the older version."
-                      : null}
-                  </p>
-
-                  {isSnapshotStale ? (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      loading={busy}
-                      onClick={() => void handleCreate()}
-                      className="shrink-0"
-                    >
-                      Update shared version
-                    </Button>
-                  ) : null}
-                </div>
+                <SharedVersionNotice
+                  sharedAt={activeLink.updatedAt}
+                  stale={isSnapshotStale}
+                  busy={busy}
+                  onUpdate={() => void handleCreate()}
+                />
               )}
 
               {backupNotice ? (
@@ -466,7 +491,7 @@ const ShareDocumentModal = ({
                   <div className="flex gap-2.5">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
 
-                    <p className="text-[11px] leading-relaxed font-medium text-amber-700 dark:text-amber-400">
+                    <p className="text-xs leading-relaxed font-medium text-amber-700 dark:text-amber-400">
                       {backupNotice.message}
                     </p>
                   </div>
@@ -493,10 +518,10 @@ const ShareDocumentModal = ({
                         Document Title Renamed
                       </p>
 
-                      <p className="text-muted-foreground text-[11px] leading-relaxed">
+                      <p className="text-muted-foreground text-xs leading-relaxed">
                         This document has been renamed, but your public link is still using the
                         older slug:{" "}
-                        <code className="text-foreground rounded bg-zinc-500/10 px-1 py-0.5 font-mono text-[10px]">
+                        <code className="text-foreground rounded bg-zinc-500/10 px-1 py-0.5 font-mono text-xs">
                           {activeLink.token}
                         </code>
                         .
@@ -507,7 +532,7 @@ const ShareDocumentModal = ({
                   <div className="mt-1 flex items-center justify-between border-t border-orange-500/10 pt-2">
                     <label
                       htmlFor="update-slug-checkbox"
-                      className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase"
+                      className="text-muted-foreground text-xs font-bold tracking-wider uppercase"
                     >
                       Sync link slug with new title
                     </label>
@@ -520,7 +545,7 @@ const ShareDocumentModal = ({
                   </div>
 
                   {updateSlug && (
-                    <p className="mt-1 text-[10px] leading-tight font-medium text-orange-500">
+                    <p className="mt-1 text-xs leading-tight font-medium text-orange-500">
                       Updating the link address breaks the old one: anyone opening it will see
                       &quot;not found&quot;.
                     </p>
@@ -532,7 +557,7 @@ const ShareDocumentModal = ({
                 <div className="space-y-2">
                   <label
                     htmlFor="share-password-input"
-                    className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase"
+                    className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
                   >
                     <Lock className="h-3.5 w-3.5 opacity-70" /> Password
                   </label>
@@ -561,7 +586,7 @@ const ShareDocumentModal = ({
                     <div className="mt-1.5 flex items-center justify-between">
                       <label
                         htmlFor="remove-password-checkbox"
-                        className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase"
+                        className="text-muted-foreground text-xs font-bold tracking-wider uppercase"
                       >
                         Remove password
                       </label>
@@ -584,7 +609,7 @@ const ShareDocumentModal = ({
                 <div className="space-y-2">
                   <label
                     htmlFor="share-expiry-input"
-                    className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase"
+                    className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
                   >
                     <Calendar className="h-3.5 w-3.5 opacity-70" /> Expires after
                   </label>
@@ -622,10 +647,10 @@ const ShareDocumentModal = ({
 
               <div className="border-t pt-5">
                 <div className="mb-4 flex items-center justify-between">
-                  <h4 className="text-muted-foreground flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase">
+                  <h4 className="text-muted-foreground flex items-center gap-2 text-xs font-bold tracking-widest uppercase">
                     Active Links
                     {activeLinks.length > 0 && (
-                      <Badge className="bg-accent/10 text-accent border-none px-1.5 py-0.5 text-[10px] font-bold">
+                      <Badge className="bg-accent/10 text-accent border-none px-1.5 py-0.5 text-xs font-bold">
                         {activeLinks.length}
                       </Badge>
                     )}
@@ -649,9 +674,7 @@ const ShareDocumentModal = ({
 
                       <p className="text-xs font-medium">No active share links found</p>
 
-                      <p className="mt-1 text-[10px] opacity-60">
-                        Create one to share this document
-                      </p>
+                      <p className="mt-1 text-xs opacity-60">Create one to share this document</p>
                     </div>
                   ) : (
                     activeLinks.map((link) => (

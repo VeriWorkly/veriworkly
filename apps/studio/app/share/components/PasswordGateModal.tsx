@@ -42,7 +42,7 @@ const PasswordGateModal = ({
               <div className="space-y-1.5">
                 <label
                   htmlFor="share-password"
-                  className="text-muted ml-1 text-[9px] font-black tracking-[0.25em] uppercase md:text-[10px]"
+                  className="text-muted ml-1 text-xs font-black tracking-[0.25em] uppercase"
                 >
                   Password
                 </label>
@@ -62,7 +62,7 @@ const PasswordGateModal = ({
               {error ? (
                 <p
                   role="alert"
-                  className="text-accent text-center text-[9px] font-black tracking-widest uppercase md:text-[10px]"
+                  className="text-accent text-center text-xs font-black tracking-widest uppercase"
                 >
                   {error}
                 </p>
@@ -71,7 +71,7 @@ const PasswordGateModal = ({
               <Button
                 onClick={onUnlock}
                 loading={verifying}
-                className="bg-accent text-accent-foreground h-12 w-full rounded-xl text-[10px] font-black tracking-[0.2em] uppercase transition-transform active:scale-[0.98] md:h-14 md:rounded-2xl md:text-xs"
+                className="bg-accent text-accent-foreground h-12 w-full rounded-xl text-xs font-black tracking-[0.2em] uppercase transition-transform active:scale-[0.98] md:h-14 md:rounded-2xl md:text-xs"
               >
                 Unlock Document
               </Button>

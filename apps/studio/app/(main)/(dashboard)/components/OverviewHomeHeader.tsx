@@ -17,7 +17,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="border-border bg-background/70 min-w-20 rounded-xl border px-3 py-2">
       <p className="text-lg font-black">{value}</p>
-      <p className="text-muted text-[11px]">{label}</p>
+      <p className="text-muted text-xs">{label}</p>
     </div>
   );
 }

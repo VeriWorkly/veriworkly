@@ -201,13 +201,33 @@ describe("server fetch contract", () => {
       "utf8",
     );
     const [, message] = /new ApiError\(403, "([^"]+)"\)/.exec(source) ?? [];
+    const [, code] = /details = \{ code: "([^"]+)" \}/.exec(source) ?? [];
 
     expect(message).toBeTruthy();
+    expect(code).toBeTruthy();
+    // V-264: the code is the tell; the message still matches an API without it.
+    expect(isCorsRejection(403, "Forbidden origin", { code })).toBe(true);
     expect(isCorsRejection(403, message)).toBe(true);
+    expect(isCorsRejection(403, "Forbidden", { code: "OTHER" })).toBe(false);
+    expect(isCorsRejection(401, message, { code })).toBe(false);
   });
 
   it("a CORS refusal (403 'Not allowed by CORS') is an outage, not a signed-out user", async () => {
     respondWith(403, { message: "Not allowed by CORS" });
+    await expect(fetchCurrentUser()).rejects.toMatchObject({ status: 403 });
+
+    const response = await clearExpiredSession(
+      new NextRequest("https://app.veriworkly.com/auth/session-expired", {
+        headers: { cookie: SESSION },
+      }),
+    );
+
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(response.headers.get("location")).toBe("https://app.veriworkly.com/");
+  });
+
+  it("V-264: a CORS_REJECTED code is a CORS refusal whatever the message says", async () => {
+    respondWith(403, { message: "Forbidden origin", details: { code: "CORS_REJECTED" } });
     await expect(fetchCurrentUser()).rejects.toMatchObject({ status: 403 });
 
     const response = await clearExpiredSession(

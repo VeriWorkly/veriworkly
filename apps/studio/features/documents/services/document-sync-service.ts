@@ -33,6 +33,10 @@ const MAX_RETRY_DELAY_MS = 15 * 60 * 1000;
  * mid-request) and becomes due again.
  */
 const STALE_SYNCING_MS = 2 * 60 * 1000;
+/** How long a check that the session is still this tab's account covers the next uploads. */
+const SESSION_CONFIRM_MAX_AGE_MS = 30 * 1000;
+/** After a check that failed or found another account, when the worker asks again. */
+const SESSION_RECHECK_MS = 30 * 1000;
 
 export type SyncResult = {
   ok: boolean;
@@ -103,6 +107,12 @@ export interface DocumentSyncConfig<T extends BaseDocumentData> {
    * workspace-owner.ts): nothing is uploaded or pulled until the user has chosen. Default true.
    */
   canReachCloud?: () => boolean;
+  /**
+   * Resolves false when the browser's session is no longer this tab's account. Asked when a tab
+   * comes back into focus and before each worker upload: the tab may have sat behind a sign-in
+   * as someone else. `maxAgeMs` allows reusing an answer that recent.
+   */
+  confirmSessionIsViewer?: (options?: { maxAgeMs?: number }) => Promise<boolean>;
 }
 
 type SyncFailure =
@@ -200,6 +210,10 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     return this.config.documentType;
   }
 
+  private sessionIsViewer() {
+    return this.config.confirmSessionIsViewer?.({ maxAgeMs: SESSION_CONFIRM_MAX_AGE_MS }) ?? true;
+  }
+
   private canReachCloud() {
     return this.config.canReachCloud?.() ?? true;
   }
@@ -245,6 +259,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     // that settles it restarts the workers.
     if (!this.workerEnabled || this.workerTickInFlight || !this.canReachCloud()) return;
 
+    let sessionRefused = false;
+
     try {
       const due = this.getNextDueOutboxItem();
 
@@ -256,6 +272,12 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       }
 
       this.workerTickInFlight = true;
+
+      // The upload carries whatever session cookie the browser holds now (S-320 (b)).
+      if (!(await this.sessionIsViewer())) {
+        sessionRefused = true;
+        return;
+      }
 
       const item = this.config.localStorage.loadById(due.item.id);
 
@@ -271,7 +293,12 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
       try {
         const nextDue = this.getNextDueOutboxItem();
-        if (this.workerEnabled && nextDue) this.scheduleWorkerTick(nextDue.delayMs);
+        // An unconfirmed session is asked again later, not in a loop.
+        if (this.workerEnabled && nextDue) {
+          this.scheduleWorkerTick(
+            sessionRefused ? Math.max(nextDue.delayMs, SESSION_RECHECK_MS) : nextDue.delayMs,
+          );
+        }
       } catch (error) {
         console.error(`Document sync worker (${this.type}) could not reschedule`, error);
       }
@@ -296,10 +323,23 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       }
     };
 
+    const confirmThenRun = (event: Event) => {
+      if (!this.workerEnabled) return;
+      // `visibilitychange` fires going away too; only coming back is a reason to ask.
+      if (event.type === "visibilitychange" && document.visibilityState === "hidden") return;
+
+      const confirm = this.config.confirmSessionIsViewer;
+      if (!confirm) return requeueAndRun(event);
+
+      void confirm().then((confirmed) => {
+        if (confirmed) requeueAndRun(event);
+      });
+    };
+
     window.addEventListener(this.config.updatedEventName, requeueAndRun);
     window.addEventListener("online", requeueAndRun);
-    window.addEventListener("focus", requeueAndRun);
-    window.addEventListener("visibilitychange", requeueAndRun);
+    window.addEventListener("focus", confirmThenRun);
+    window.addEventListener("visibilitychange", confirmThenRun);
 
     this.listenersAttached = true;
   }

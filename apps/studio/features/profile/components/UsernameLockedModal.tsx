@@ -30,7 +30,7 @@ const UsernameLockedModal = ({ open, onClose }: UsernameLockedModalProps) => {
               Username Locked
             </Modal.Title>
 
-            <p className="text-muted-foreground text-[10px] font-black tracking-widest uppercase opacity-80">
+            <p className="text-muted-foreground text-xs font-black tracking-widest uppercase opacity-80">
               Account settings
             </p>
           </div>
