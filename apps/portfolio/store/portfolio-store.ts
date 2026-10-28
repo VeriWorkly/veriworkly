@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import { useStore } from "zustand";
-import { createStore } from "zustand/vanilla";
+import { createStore, type StoreApi } from "zustand/vanilla";
 import { subscribeWithSelector } from "zustand/middleware";
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import { backendApiUrl } from "@/lib/backend";
@@ -180,8 +180,81 @@ export type PortfolioStoreApi = ReturnType<typeof createPortfolioStore>;
  * One store per provider mount removes that constraint: each request gets its own
  * instance, seeded with exactly its own bootstrap.
  */
+/** One draft save, of the store's content as it is when sent. Only `saveDraft` calls it. */
+async function sendDraft(
+  store: StoreApi<PortfolioStoreState>,
+): Promise<CloudPortfolioDraft | null> {
+  const { getState: get, setState: set } = store;
+  const current = get();
+  set({ status: "Saving" });
+  savePortfolioCache({ slug: current.slug, content: current.content });
+  if (!current.user) {
+    set({
+      status: "Saved",
+      isDirty: false,
+      message: "Saved locally. Log in to sync to cloud.",
+    });
+    return null;
+  }
+  try {
+    const response = await authenticatedFetch("/portfolios/draft", {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        documentId: current.draft?.id,
+        subdomain: current.slug,
+        revision: current.draft?.revision,
+        snapshot: current.content,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 409) {
+      set({
+        status: "Conflict",
+        message: "This draft changed in another session. Refresh before continuing.",
+      });
+      return null;
+    }
+    if (!response.ok) throw new Error(payload.message || "Draft sync failed.");
+    const saved = {
+      ...payload.data,
+      content: parsePortfolioContent(payload.data.content),
+    } as CloudPortfolioDraft;
+    // An edit made while this save was on the wire is not in it, and stays unsaved.
+    const changed = get().content !== current.content || get().slug !== current.slug;
+    set({
+      draft: saved,
+      status: changed ? "Unsaved changes" : "Saved",
+      isDirty: changed,
+      message: "",
+      previewIssue: "",
+    });
+    return saved;
+  } catch (error) {
+    set({
+      status: "Offline",
+      previewIssue: "Live preview is unavailable while your draft cannot sync.",
+      message:
+        error instanceof Error
+          ? `${error.message} Your changes remain in this browser.`
+          : "Draft sync failed. Your changes remain in this browser.",
+    });
+    return null;
+  }
+}
+
 export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
-  return createStore<PortfolioStoreState>()(
+  let saveInFlight: Promise<CloudPortfolioDraft | null> | null = null;
+  let saveQueued: Promise<CloudPortfolioDraft | null> | null = null;
+  const startSave = (): Promise<CloudPortfolioDraft | null> => {
+    saveInFlight = sendDraft(store).finally(() => {
+      saveInFlight = null;
+    });
+    return saveInFlight;
+  };
+
+  const store: StoreApi<PortfolioStoreState> = createStore<PortfolioStoreState>()(
     subscribeWithSelector((set, get) => ({
       content: createDefaultPortfolio(),
       slug: "portfolio",
@@ -577,62 +650,19 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         return loadWorkspaceInFlight;
       },
 
-      saveDraft: async () => {
-        const current = get();
-        set({ status: "Saving" });
-        savePortfolioCache({ slug: current.slug, content: current.content });
-        if (!current.user) {
-          set({
-            status: "Saved",
-            isDirty: false,
-            message: "Saved locally. Log in to sync to cloud.",
+      saveDraft: () => {
+        // One save on the wire at a time (SV-08). The autosave, a manual Save and Publish all
+        // land here; sent together they carried the same revision, which the server refuses as
+        // stale (V-304). A save asked for mid-flight waits, then sends the content as it is then
+        // with the revision the first one returned; every call made meanwhile shares it.
+        if (saveInFlight) {
+          saveQueued ??= saveInFlight.then(() => {
+            saveQueued = null;
+            return startSave();
           });
-          return null;
+          return saveQueued;
         }
-        try {
-          const response = await authenticatedFetch("/portfolios/draft", {
-            method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              documentId: current.draft?.id,
-              subdomain: current.slug,
-              revision: current.draft?.revision,
-              snapshot: current.content,
-            }),
-          });
-          const payload = await response.json().catch(() => ({}));
-          if (response.status === 409) {
-            set({
-              status: "Conflict",
-              message: "This draft changed in another session. Refresh before continuing.",
-            });
-            return null;
-          }
-          if (!response.ok) throw new Error(payload.message || "Draft sync failed.");
-          const saved = {
-            ...payload.data,
-            content: parsePortfolioContent(payload.data.content),
-          } as CloudPortfolioDraft;
-          set({
-            draft: saved,
-            status: "Saved",
-            isDirty: false,
-            message: "",
-            previewIssue: "",
-          });
-          return saved;
-        } catch (error) {
-          set({
-            status: "Offline",
-            previewIssue: "Live preview is unavailable while your draft cannot sync.",
-            message:
-              error instanceof Error
-                ? `${error.message} Your changes remain in this browser.`
-                : "Draft sync failed. Your changes remain in this browser.",
-          });
-          return null;
-        }
+        return startSave();
       },
 
       publish: async () => {
@@ -700,6 +730,8 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       ...preloaded,
     })),
   );
+
+  return store;
 }
 
 const PortfolioStoreContext = createContext<PortfolioStoreApi | null>(null);
