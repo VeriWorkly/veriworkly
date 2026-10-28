@@ -35,12 +35,7 @@ export function PortfolioDashboardWorkspace() {
   return (
     <main className="surface-grid min-h-[calc(100dvh-4.25rem)] px-4 py-8 sm:px-6 sm:py-10 xl:px-10">
       <div className="mx-auto max-w-7xl">
-        <DashboardHeader
-          userName={data.user?.name}
-          slug={draft?.slug}
-          isLive={isLive}
-          canPublish={canPublish}
-        />
+        <DashboardHeader userName={data.user?.name} slug={draft?.slug} isLive={isLive} />
 
         <DashboardMetrics
           totalViews={analytics?.totalViews ?? 0}
@@ -50,7 +45,6 @@ export function PortfolioDashboardWorkspace() {
           readiness={readiness.percent}
           isLive={isLive}
           slug={draft?.slug}
-          canPublish={canPublish}
         />
 
         <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,.55fr)]">

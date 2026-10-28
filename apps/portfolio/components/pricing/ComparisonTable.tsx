@@ -16,7 +16,7 @@ const comparisonRows: ComparisonRow[] = [
   },
   {
     label: "Public Portfolio Webpage",
-    values: ["Draft only", "Subdomain", "Not included", "Subdomain"],
+    values: ["Subdomain", "Subdomain", "Subdomain", "Subdomain"],
   },
   {
     label: "Monthly AI Credits",
@@ -100,8 +100,8 @@ const ComparisonTable = ({ paymentsBlocked = false }: { paymentsBlocked?: boolea
           </div>
 
           <p className="border-t border-white/20 pt-5 text-base leading-7 text-[#f5f4ef]/70">
-            Core resume and portfolio editors stay free forever. Upgrade when you need active
-            subdomain hosting, custom SEO configurations, or advanced AI content tailoring.
+            Core resume and portfolio editors stay free forever. Upgrade when you need premium
+            templates, custom SEO configurations, or advanced AI content tailoring.
           </p>
         </div>
 

@@ -54,18 +54,12 @@ export function portfolioPublicUrl(subdomain: string) {
 }
 
 /**
- * The address to show the *owner* for their own portfolio.
- *
- * A dedicated subdomain is the Creator Pro perk; free portfolios live on the
- * platform host under `/portfolio/{slug}`. Both forms resolve (the proxy rewrites
- * either to the same route), but the workspace has to advertise the one the user
- * actually has — the dashboard used to hand every free account a subdomain URL
- * while the editor showed them the path form, for the same portfolio.
+ * The address to show the *owner* for their own portfolio: its subdomain, free or paid (owner
+ * rule, 2026-10-28). The plan decides the templates, the badge and the extra pages, not the
+ * address.
  */
-export function portfolioWorkspaceUrl(slug: string, canPublish: boolean) {
-  const href = canPublish
-    ? portfolioPublicUrl(slug)
-    : `${siteConfig.links.portfolio}/portfolio/${slug}`;
+export function portfolioWorkspaceUrl(slug: string) {
+  const href = portfolioPublicUrl(slug);
 
   return { href, display: href.replace(/^https?:\/\//, "") };
 }

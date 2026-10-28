@@ -358,7 +358,7 @@ export async function GET(request: Request) {
                     textTransform: "uppercase",
                   }}
                 >
-                  PORTFOLIO PRO
+                  CREATOR PRO
                 </span>
                 <span
                   style={{
@@ -390,14 +390,14 @@ export async function GET(request: Request) {
                     color: textMain,
                   }}
                 >
-                  $8.99
+                  $9.99
                 </span>
                 <span style={{ fontSize: "14px", color: textMuted, fontWeight: 500 }}>/ month</span>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {[
-                  "Custom Subdomain (name.veriworkly.com)",
+                  'No "Built with VeriWorkly" badge',
                   "Visitor Analytics dashboard",
                   "Hosted Media & Optimization",
                   "Switch between premium templates",

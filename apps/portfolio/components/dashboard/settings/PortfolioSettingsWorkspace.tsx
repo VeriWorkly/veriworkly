@@ -106,7 +106,7 @@ export function PortfolioSettingsWorkspace() {
 
   const title = content.seo.title || `${content.identity.name} | Portfolio`;
   const description = content.seo.description || content.identity.bio;
-  const url = portfolioWorkspaceUrl(slug, isPremium).display;
+  const url = portfolioWorkspaceUrl(slug).display;
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 xl:px-10">

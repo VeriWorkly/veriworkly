@@ -42,13 +42,13 @@ const CustomPlansSection = ({ paymentsBlocked = false }: { paymentsBlocked?: boo
               </div>
 
               <p className="text-ink/75 mt-6 text-sm leading-6">
-                Publish a professional web presence under your own subdomain with CDN media hosting,
+                Make your subdomain site your own with premium templates, CDN media hosting,
                 watermark removal, and custom metadata controls.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-2">
                 {[
-                  "Public subdomain",
+                  "Premium templates",
                   "Unlimited pageviews",
                   "SEO meta controls",
                   "Watermark removed",
