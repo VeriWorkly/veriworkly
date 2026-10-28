@@ -765,7 +765,7 @@
           "name": "limit",
           "in": "query",
           "required": false,
-          "schema": { "type": "integer", "minimum": 1, "maximum": 50 }
+          "schema": { "default": 20, "type": "integer", "minimum": 1, "maximum": 50 }
         },
         {
           "name": "cursor",
@@ -1327,7 +1327,8 @@
             },
             "noExpiry": { "type": "boolean" },
             "updateSlug": { "type": "boolean" },
-            "removePassword": { "type": "boolean" }
+            "removePassword": { "type": "boolean" },
+            "allowDownload": { "type": "boolean" }
           },
           "required": ["documentId", "snapshot"]
         }

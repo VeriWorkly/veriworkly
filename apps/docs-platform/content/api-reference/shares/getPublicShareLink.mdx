@@ -9,6 +9,13 @@ description: >
   `POST /shares/public/{username}/{slug}/verify` with the password.
 
 
+  `allowDownload` says whether to show a Download button. It is a display
+  preference, not a
+
+  security control: the studio hides the Download button, and viewers can still
+  save the page.
+
+
   No user session is required, but the request is still gated: it must carry an
   API key, or
 
@@ -34,6 +41,13 @@ _openapi:
           must call
 
           `POST /shares/public/{username}/{slug}/verify` with the password.
+
+
+          `allowDownload` says whether to show a Download button. It is a
+          display preference, not a
+
+          security control: the studio hides the Download button, and viewers
+          can still save the page.
 
 
           No user session is required, but the request is still gated: it must

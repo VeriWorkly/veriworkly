@@ -24,6 +24,8 @@ export interface PublicShareLink {
   slug: string;
   passwordHash: string | null;
   expiresAt: string | Date | null;
+  /** Optional only for a public read cached before the column existed: missing means true. */
+  allowDownload?: boolean;
   snapshot: Prisma.JsonValue;
   document: {
     title: string;

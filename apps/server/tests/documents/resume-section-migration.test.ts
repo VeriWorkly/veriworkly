@@ -16,6 +16,7 @@ const { prismaMock, cacheGetMock, cacheSetMock } = vi.hoisted(() => ({
     document: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(async () => 1),
     },
   },
   cacheGetMock: vi.fn(async () => null),
@@ -181,8 +182,9 @@ describe("stored resume documents migrate to the typed section model on read", (
   it("migrates list results only when content was requested", async () => {
     prismaMock.document.findMany.mockResolvedValue([legacyResumeDocument()]);
 
-    const { documents } = await DocumentService.listDocuments("user-1", undefined, {
+    const { documents } = await DocumentService.listDocumentPage("user-1", undefined, {
       includeContent: true,
+      limit: 20,
     });
     const [withContent] = documents as Array<{ content: { references: unknown[] } }>;
 

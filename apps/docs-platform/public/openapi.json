@@ -2303,7 +2303,7 @@
         "operationId": "listDocuments",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "List Documents",
-        "description": "Lists the authenticated user's documents (resumes, cover letters, portfolios, link-in-bio\npages), optionally filtered by type. Soft-deleted documents are excluded. Document bodies\nare left out unless `includeContent=true`.\n\n**Paging.** Send `limit` (and, after the first page, `cursor`) to read the list a page at a\ntime. Each page adds `nextCursor`, the value to send as `cursor` for the next page (`null`\non the last page), and `total`, the number of live documents of this type. Send the same\n`type`, `updatedSince` and `includeContent` on every page of one walk; a cursor that was\nnot issued for them is rejected with `400` and `details.code` `INVALID_DOCUMENT_CURSOR`.\n\n- The plain list goes newest first, by `updatedAt` then `id`.\n- A sync walk (`updatedSince` set, or `includeContent=true`) goes oldest first, by\n  `updatedAt` then `id`. A document edited during the walk comes back again on a later\n  page, so none is skipped; keep the copy you saw last.\n- With `updatedSince`, documents deleted since then come back in `deleted`, also paged\n  (up to `limit` per page, oldest deletion first) beside the documents. Keep following\n  `nextCursor` until it is `null`.\n- Every page of one walk repeats the first page's `serverTime`. Use it as the next\n  `updatedSince` only after the last page.\n\n**Without `limit` or `cursor`** the response is the older single list: up to 500\ndocuments, most recently updated first, with no `nextCursor` or `total`. It is kept while\nclients move to paging; a later release makes `limit` default to 20.\n",
+        "description": "Lists the authenticated user's documents (resumes, cover letters, portfolios, link-in-bio\npages), optionally filtered by type. Soft-deleted documents are excluded. Document bodies\nare left out unless `includeContent=true`.\n\n**Paging.** Every response is one page: `limit` documents, 20 when it is not sent. To read\nthe whole list, send each page's `nextCursor` back as `cursor` until it is `null`. `total`\nis the number of live documents of this type. Send the same\n`type`, `updatedSince` and `includeContent` on every page of one walk; a cursor that was\nnot issued for them is rejected with `400` and `details.code` `INVALID_DOCUMENT_CURSOR`.\n\n- The plain list goes newest first, by `updatedAt` then `id`.\n- A sync walk (`updatedSince` set, or `includeContent=true`) goes oldest first, by\n  `updatedAt` then `id`. A document edited during the walk comes back again on a later\n  page, so none is skipped; keep the copy you saw last.\n- With `updatedSince`, documents deleted since then come back in `deleted`, also paged\n  (up to `limit` per page, oldest deletion first) beside the documents. Keep following\n  `nextCursor` until it is `null`.\n- Every page of one walk repeats the first page's `serverTime`. Use it as the next\n  `updatedSince` only after the last page.\n\nA request without `limit` used to get one unpaged list of up to 500 documents; it now gets\nthe first page of 20, with `nextCursor`.\n",
         "parameters": [
           {
             "name": "type",
@@ -2333,8 +2333,8 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50 },
-            "description": "Documents per page, at most 50, or at most 20 with `includeContent=true` (a larger value is rejected with `400`). Sending it turns on paging; with `cursor` but no `limit`, pages hold 20."
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 },
+            "description": "Documents per page, 20 by default, at most 50, or at most 20 with `includeContent=true` (a larger value is rejected with `400`)."
           },
           {
             "name": "cursor",
@@ -4181,7 +4181,7 @@
         "operationId": "createShareLink",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Share Link",
-        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response.\n\nA link expires 7, 14, 30 or 90 days after it is made, or never. Send `noExpiry: true` for\nnever, or an `expiresAt` 7, 14, 30 or 90 days from now (within a day, for clock skew). With\nneither (an `expiresAt` of `null` counts as neither, not as never), a new link lasts **7 days**\nand replacing an existing link keeps its expiry. Any\nother date, or `noExpiry` together with a date, is `400`.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n\nThe snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in\nthe response, nor in the owner's list of links.\n",
+        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response.\n\nA link expires 7, 14, 30 or 90 days after it is made, or never. Send `noExpiry: true` for\nnever, or an `expiresAt` 7, 14, 30 or 90 days from now (within a day, for clock skew). With\nneither (an `expiresAt` of `null` counts as neither, not as never), a new link lasts **7 days**\nand replacing an existing link keeps its expiry. Any\nother date, or `noExpiry` together with a date, is `400`.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n\nThe snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in\nthe response, nor in the owner's list of links.\n\n`allowDownload` (default `true`) says whether the public page shows a Download button.\nReplacing an existing link without it keeps the stored value. It is a display preference,\nnot a security control: the studio hides the Download button, and viewers can still save\nthe page.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -4373,7 +4373,7 @@
         "tags": ["Shares"],
         "operationId": "getPublicShareLink",
         "summary": "Get Public Share Link",
-        "description": "Returns the shared document's title and snapshot, unless the link is password-protected — in\nwhich case only `passwordRequired: true` is returned and the caller must call\n`POST /shares/public/{username}/{slug}/verify` with the password.\n\nNo user session is required, but the request is still gated: it must carry an API key, or\noriginate from a whitelisted first-party origin. A bare request from an unrecognised origin\nis rejected with `401`.\n",
+        "description": "Returns the shared document's title and snapshot, unless the link is password-protected — in\nwhich case only `passwordRequired: true` is returned and the caller must call\n`POST /shares/public/{username}/{slug}/verify` with the password.\n\n`allowDownload` says whether to show a Download button. It is a display preference, not a\nsecurity control: the studio hides the Download button, and viewers can still save the page.\n\nNo user session is required, but the request is still gated: it must carry an API key, or\noriginate from a whitelisted first-party origin. A bare request from an unrecognised origin\nis rejected with `401`.\n",
         "security": [{ "ApiKeyAuth": [] }, {}],
         "parameters": [
           { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } },
@@ -6121,15 +6121,15 @@
       },
       "DocumentListResponse": {
         "type": "object",
-        "description": "`nextCursor` and `total` are present only when the request sent `limit` or `cursor`. Without\nthem `data` is the older single list of up to 500 documents.\n",
-        "required": ["success", "message", "data", "serverTime", "deleted"],
+        "description": "One page of the list, `limit` documents (20 by default). Follow `nextCursor` for the rest.\n",
+        "required": ["success", "message", "data", "serverTime", "deleted", "nextCursor", "total"],
         "properties": {
           "success": { "type": "boolean" },
           "message": { "type": "string" },
           "data": {
             "type": "array",
-            "maxItems": 500,
-            "description": "This page's documents; at most `limit` when paging.",
+            "maxItems": 50,
+            "description": "This page's documents, at most `limit`.",
             "items": { "$ref": "#/components/schemas/DocumentSummary" }
           },
           "serverTime": {
@@ -8065,6 +8065,11 @@
             "type": "boolean",
             "description": "The scrypt password hash itself is never returned in any API response."
           },
+          "allowDownload": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether the studio shows a Download button on the public page. A display preference, not a\nsecurity control: the studio hides the Download button, and viewers can still save the page.\n"
+          },
           "expiresAt": { "type": "string", "format": "date-time", "nullable": true },
           "viewCount": { "type": "integer" },
           "lastViewedAt": { "type": "string", "format": "date-time", "nullable": true },
@@ -8099,7 +8104,12 @@
             "type": "boolean",
             "description": "Regenerate the public slug instead of reusing the existing one (if a link already exists for this document)."
           },
-          "removePassword": { "type": "boolean" }
+          "removePassword": { "type": "boolean" },
+          "allowDownload": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether the studio shows a Download button on the public page. A display preference, not a\nsecurity control: the studio hides the Download button, and viewers can still save the page.\nA new link defaults to true; replacing an existing link without this field keeps its value.\n"
+          }
         }
       },
       "ShareLinkResponse": {
@@ -8153,6 +8163,10 @@
           "resumeTitle": { "type": "string" },
           "documentTitle": { "type": "string" },
           "expiresAt": { "type": "string", "format": "date-time", "nullable": true },
+          "allowDownload": {
+            "type": "boolean",
+            "description": "Whether the studio shows a Download button on the public page. A display preference, not a\nsecurity control: the studio hides the Download button, and viewers can still save the page.\nNot present while a password is required.\n"
+          },
           "snapshot": {
             "type": "object",
             "additionalProperties": true,

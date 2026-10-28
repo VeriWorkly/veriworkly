@@ -80,22 +80,21 @@ export const documentListQuerySchema = z
       .optional()
       .transform((value) => value === "true"),
     /**
-     * Page size (V-263). Sending `limit` or `cursor` turns on keyset paging; a request with
-     * neither still gets the legacy single response (up to 500 documents) while the studio
-     * switches over. A later change makes `limit` default to 20 for every request.
+     * Page size (V-263). Every request is one keyset page, 20 by default (V-422); the unpaged
+     * single response of up to 500 documents is gone.
      */
-    limit: z.coerce.number().int().min(1).max(DOCUMENT_PAGE_MAX_LIMIT).optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(DOCUMENT_PAGE_MAX_LIMIT)
+      .optional()
+      .default(DOCUMENT_PAGE_DEFAULT_LIMIT),
     /** The previous page's `nextCursor`, sent back unchanged with the same filters. */
     // Room for a cursor naming a document id stored before ids were bounded (V-303).
     cursor: z.string().min(1).max(8192).optional(),
   })
-  .refine(
-    (query) =>
-      !query.includeContent ||
-      query.limit === undefined ||
-      query.limit <= DOCUMENT_PAGE_MAX_LIMIT_WITH_CONTENT,
-    {
-      message: `limit can be at most ${DOCUMENT_PAGE_MAX_LIMIT_WITH_CONTENT} when includeContent=true`,
-      path: ["limit"],
-    },
-  );
+  .refine((query) => !query.includeContent || query.limit <= DOCUMENT_PAGE_MAX_LIMIT_WITH_CONTENT, {
+    message: `limit can be at most ${DOCUMENT_PAGE_MAX_LIMIT_WITH_CONTENT} when includeContent=true`,
+    path: ["limit"],
+  });

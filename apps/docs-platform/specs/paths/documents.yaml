@@ -13,9 +13,9 @@ documentCollection:
       pages), optionally filtered by type. Soft-deleted documents are excluded. Document bodies
       are left out unless `includeContent=true`.
 
-      **Paging.** Send `limit` (and, after the first page, `cursor`) to read the list a page at a
-      time. Each page adds `nextCursor`, the value to send as `cursor` for the next page (`null`
-      on the last page), and `total`, the number of live documents of this type. Send the same
+      **Paging.** Every response is one page: `limit` documents, 20 when it is not sent. To read
+      the whole list, send each page's `nextCursor` back as `cursor` until it is `null`. `total`
+      is the number of live documents of this type. Send the same
       `type`, `updatedSince` and `includeContent` on every page of one walk; a cursor that was
       not issued for them is rejected with `400` and `details.code` `INVALID_DOCUMENT_CURSOR`.
 
@@ -29,9 +29,8 @@ documentCollection:
       - Every page of one walk repeats the first page's `serverTime`. Use it as the next
         `updatedSince` only after the last page.
 
-      **Without `limit` or `cursor`** the response is the older single list: up to 500
-      documents, most recently updated first, with no `nextCursor` or `total`. It is kept while
-      clients move to paging; a later release makes `limit` default to 20.
+      A request without `limit` used to get one unpaged list of up to 500 documents; it now gets
+      the first page of 20, with `nextCursor`.
     parameters:
       - name: type
         in: query
@@ -62,7 +61,8 @@ documentCollection:
           type: integer
           minimum: 1
           maximum: 50
-        description: Documents per page, at most 50, or at most 20 with `includeContent=true` (a larger value is rejected with `400`). Sending it turns on paging; with `cursor` but no `limit`, pages hold 20.
+          default: 20
+        description: Documents per page, 20 by default, at most 50, or at most 20 with `includeContent=true` (a larger value is rejected with `400`).
       - name: cursor
         in: query
         required: false
