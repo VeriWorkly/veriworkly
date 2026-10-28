@@ -1,5 +1,7 @@
-# Normalise line endings in the repository; checkouts follow core.autocrlf.
-* text=auto
+# Text is stored with LF and checked out with LF on every OS, so Prettier (endOfLine "lf"), the
+# shell scripts and the generated docs agree on Windows too. Before, Windows checkouts followed
+# core.autocrlf and `prettier --write` rewrote every CRLF file it touched.
+* text=auto eol=lf
 
 *.png binary
 *.jpg binary
@@ -13,11 +15,3 @@
 *.ttf binary
 *.zip binary
 *.pdf binary
-
-# Generated files are written with LF. Keep them LF on Windows checkouts so a rebuild does not show them as modified.
-apps/docs-platform/specs/generated/** text eol=lf
-apps/docs-platform/public/openapi.json text eol=lf
-apps/docs-platform/openapi.yaml text eol=lf
-apps/docs-platform/public/openapi.yaml text eol=lf
-apps/docs-platform/content/api-reference/** text eol=lf
-apps/docs-platform/content/ats-engine/** text eol=lf

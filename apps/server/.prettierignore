@@ -1,5 +1,6 @@
-{
-  "rules": {
-    "**/*.{js,jsx,ts,tsx}": ["eslint", "prettier"]
-  }
-}
+# Used by `npm run format` inside apps/server; the root check uses the root .prettierignore.
+node_modules
+dist
+coverage
+email-previews
+package-lock.json
