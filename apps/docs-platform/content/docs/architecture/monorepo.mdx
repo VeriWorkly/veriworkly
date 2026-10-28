@@ -53,9 +53,9 @@ repository and is installed from npm, already built, by the site, the studio, th
   browser first and synced to the API in the background. Templates render twice: as HTML for the
   live preview and through `@react-pdf/renderer` for the PDF.
 - **Portfolio** (`apps/portfolio`): the template gallery, the editor workspace, and the published
-  sites. Free portfolios are served at `portfolio.veriworkly.com/portfolio/<name>`; a premium
-  portfolio also gets `<name>.veriworkly.com`. `proxy.ts` rewrites both forms onto the internal
-  `/portfolios/[username]` route.
+  sites. Every published portfolio, free or paid, is served on its own `<name>.veriworkly.com`
+  subdomain. `proxy.ts` rewrites the subdomain host, and the `/portfolio/<name>` and `/user/<name>`
+  alias paths that also resolve, onto the internal `/portfolios/[username]` route.
 - **Server** (`apps/server`): PostgreSQL through Prisma, Redis for sessions, rate limits, quotas
   and job locks, clustered with `throng` in production, and eight `node-cron` background jobs
   guarded by Redis locks.
