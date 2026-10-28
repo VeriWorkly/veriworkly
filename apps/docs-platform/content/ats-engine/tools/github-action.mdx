@@ -27,16 +27,16 @@ The step runs the published [command line](/ats-engine/tools/cli) with `npx`, at
 
 ## Inputs
 
-| Input       | Required | Default  | What it does                                                                                                                                                                                  |
-| ----------- | -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `resume`    | Yes      |          | Path to the resume: `.pdf`, `.docx`, `.html`, `.txt`, `.md`, or a `.json` resume document.                                                                                                    |
-| `job`       | No       | none     | Path to a job posting to match against: `.txt`, `.md`, `.pdf`, `.docx`, or a saved `.html` page.                                                                                              |
-| `min-score` | No       | none     | Fail the step when the readiness score is below this number, 0 to 100. Empty means never fail on the score.                                                                                   |
-| `language`  | No       | detected | Read the resume in this language: `en`, `de`, `fr`, `hi`, `es` or `pt`. Needs `version` 0.19.0 or later.                                                                                      |
-| `region`    | No       | inferred | Read the resume as from this country: `US`, `GB`, `DE`, `FR`, `IN`, `ES`, `BR`, `PT`, `MX`, `AR`, `CO` or `CL`.                                                                               |
-| `version`   | No       | `0.21.0` | Version of `@veriworkly/ats-engine` to run: a version or a dist-tag. Defaults to the engine release the action ships with, which changes when `@main` moves. Set it to keep your score fixed. |
-| `ats`       | No       | none     | The ATS you are applying through: `greenhouse`, `lever` or `taleo`. Adds its documented notes to the advice, which is never scored. Needs `version` 0.3.0 or later.                           |
-| `summary`   | No       | `true`   | Write the report to the job summary. `false` leaves it out.                                                                                                                                   |
+| Input       | Required | Default                        | What it does                                                                                                                                                                                  |
+| ----------- | -------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resume`    | Yes      |                                | Path to the resume: `.pdf`, `.docx`, `.html`, `.txt`, `.md`, or a `.json` resume document.                                                                                                    |
+| `job`       | No       | none                           | Path to a job posting to match against: `.txt`, `.md`, `.pdf`, `.docx`, or a saved `.html` page.                                                                                              |
+| `min-score` | No       | none                           | Fail the step when the readiness score is below this number, 0 to 100. Empty means never fail on the score.                                                                                   |
+| `language`  | No       | detected                       | Read the resume in this language: `en`, `de`, `fr`, `hi`, `es` or `pt`. Needs `version` 0.19.0 or later.                                                                                      |
+| `region`    | No       | inferred                       | Read the resume as from this country: `US`, `GB`, `DE`, `FR`, `IN`, `ES`, `BR`, `PT`, `MX`, `AR`, `CO` or `CL`.                                                                               |
+| `version`   | No       | <code><EngineVersion /></code> | Version of `@veriworkly/ats-engine` to run: a version or a dist-tag. Defaults to the engine release the action ships with, which changes when `@main` moves. Set it to keep your score fixed. |
+| `ats`       | No       | none                           | The ATS you are applying through: `greenhouse`, `lever` or `taleo`. Adds its documented notes to the advice, which is never scored. Needs `version` 0.3.0 or later.                           |
+| `summary`   | No       | `true`                         | Write the report to the job summary. `false` leaves it out.                                                                                                                                   |
 
 The action has no input for `--job-url` or `--ai`. For those, run the command line in a `run` step.
 

@@ -3,7 +3,7 @@ title: MCP server
 description: Let Claude, Cursor or VS Code check your own resume with @veriworkly/ats-engine-mcp, a local stdio server with four tools and the rubric as a resource.
 ---
 
-`@veriworkly/ats-engine-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that lets an AI assistant read your own resume the way an applicant tracking system does and score it with the VeriWorkly ATS Engine's rubric. Version 0.15.0 runs engine 0.21.0.
+`@veriworkly/ats-engine-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that lets an AI assistant read your own resume the way an applicant tracking system does and score it with the VeriWorkly ATS Engine's rubric. Its current release runs engine <EngineVersion />.
 
 It is a local stdio server. It makes no network requests and calls no AI model. The score comes from the [rubric](/ats-engine/reference/rubric). The server attaches the built-in language and region packs, so the library gives the same score when you call `check(input, withLocales(DEFAULT_POLICY, BUILT_IN_LOCALES))`. The reference date defaults to the current time, so tenure and timeline results move as time passes. The assistant explains the result and helps you fix what failed.
 
