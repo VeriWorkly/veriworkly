@@ -15,8 +15,7 @@ import { STUDIO_ORIGIN } from "./env.js";
 import { createUserWithSession, type TestUser } from "./helpers/auth.js";
 
 /**
- * Phase 11 documents and portfolios (P3): a draft save conditional on its revision (V-304, held
- * back, see below), a
+ * Phase 11 documents and portfolios (P3): a draft save conditional on its revision (V-304), a
  * free user's import quota race never calls GitHub inside the transaction (V-305), share counts
  * leave out deleted documents (V-306), the import drops the account read after it commits
  * (V-311), and a portfolio preview is the owner's alone (V-419).
@@ -50,10 +49,9 @@ function saveDraft(user: TestUser, body: Record<string, unknown>) {
 }
 
 describe("V-304 two saves of one draft revision", () => {
-  // Waits on the portfolio editor saving one draft at a time: its 12 s autosave can overlap a
-  // manual Save or Publish on the same revision, which this rule would answer with a false 409.
-  // The server check is held back until the editor queues its saves (V-304 stays open).
-  it.skip("one wins and the other gets 409, so no edit is silently overwritten", async () => {
+  // The portfolio editor sends one save at a time (portfolio SV-08), so only a second tab or a
+  // stale editor reaches the 409.
+  it("one wins and the other gets 409, so no edit is silently overwritten", async () => {
     const owner = await createUserWithSession();
     const subdomain = `draft-${randomUUID().slice(0, 8)}`;
     const first = await saveDraft(owner, { subdomain, snapshot: draftContent() });
