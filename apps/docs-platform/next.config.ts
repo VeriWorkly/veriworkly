@@ -23,6 +23,7 @@ const textFiles = [
   "/openapi.json",
   "/openapi.yaml",
   "/llms.txt",
+  "/llms-full.txt",
   "/.well-known/agent.json",
   "/pricing.md",
 ];

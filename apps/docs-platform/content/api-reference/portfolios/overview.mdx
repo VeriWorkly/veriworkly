@@ -5,8 +5,8 @@ description: Public portfolio pages, drafts, publishing, and analytics.
 
 ## Description
 
-Portfolios are published from a single PORTFOLIO-type [Document](/api-reference/documents/overview) to a
-subdomain of `veriworkly.com`. The flow is: save a draft (`PUT /portfolios/draft`), preview it,
+Portfolios are published from a single PORTFOLIO-type [Document](/api-reference/documents/overview)
+to their own `<name>.veriworkly.com` subdomain, on any plan. The flow is: save a draft (`PUT /portfolios/draft`), preview it,
 then publish it (`POST /portfolios/publish`) once the content passes the full validation schema.
 The free templates (`signal`, `atelier`) publish on any account and show a VeriWorkly badge.
 Premium templates (`nimbus`, `cipher`) need Creator Pro, the Job Hunter Bundle, or a pass. When

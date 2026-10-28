@@ -6,19 +6,19 @@ import lastModified from "fumadocs-mdx/plugins/last-modified";
 // `metaTitle` replaces `title` in `<title>` where two pages would otherwise share one.
 const schema = pageSchema.extend({ metaTitle: z.string().optional() });
 
+// Every page is kept as Markdown for /llms-full.txt and /ats-engine/llms-full.txt.
 export const docs = defineDocs({
   dir: "content/docs",
-  docs: { schema },
+  docs: { schema, postprocess: { includeProcessedMarkdown: true } },
 });
 
 export const api = defineDocs({
   dir: "content/api-reference",
-  docs: { schema },
+  docs: { schema, postprocess: { includeProcessedMarkdown: true } },
 });
 
 export const engine = defineDocs({
   dir: "content/ats-engine",
-  // Kept as Markdown for /ats-engine/llms-full.txt.
   docs: { schema, postprocess: { includeProcessedMarkdown: true } },
 });
 
