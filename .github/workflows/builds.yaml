@@ -63,3 +63,11 @@ jobs:
         run: npm run build -w ${{ matrix.workspace }}
         env:
           SITE_URL: ${{ matrix.workspace == '@veriworkly/docs-platform' && 'https://docs.veriworkly.com' || matrix.workspace == '@veriworkly/blog-platform' && 'https://blog.veriworkly.com' || 'http://localhost:3000' }}
+
+      # Every sitemap page of the docs and blog: one h1, a self canonical, title and description
+      # lengths, valid JSON-LD, no noindex.
+      - name: Check Built Pages
+        if: matrix.workspace == '@veriworkly/docs-platform' || matrix.workspace == '@veriworkly/blog-platform'
+        run: npm run check:html -w ${{ matrix.workspace }}
+        env:
+          SITE_URL: ${{ matrix.workspace == '@veriworkly/docs-platform' && 'https://docs.veriworkly.com' || 'https://blog.veriworkly.com' }}
