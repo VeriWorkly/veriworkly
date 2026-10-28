@@ -27,7 +27,7 @@ export function adminClient() {
     get id() {
       return admin.id;
     },
-    request(method: "get" | "patch" | "post" | "delete", path: string) {
+    request(method: "get" | "patch" | "post" | "put" | "delete", path: string) {
       return request(app)
         [method](`/api/v1${path}`)
         .set("Origin", STUDIO_ORIGIN)

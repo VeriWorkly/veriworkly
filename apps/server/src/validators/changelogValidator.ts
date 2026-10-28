@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { adminProvidedReasonSchema } from "#validators/admin/adminCommonValidator";
 import {
   notBothPageAndOffset,
   notBothPageAndOffsetError,
@@ -54,6 +55,8 @@ export const changelogAdminCreateSchema = z.object({
   security: z.array(z.string().trim()).default([]),
   tags: z.array(z.string().trim()).default([]),
   prRefs: prRefsSchema,
+  // TODO(V-081): make required once the studio sends it
+  reason: adminProvidedReasonSchema,
 });
 
 export const changelogAdminUpdateSchema = z
@@ -71,7 +74,10 @@ export const changelogAdminUpdateSchema = z
     security: z.array(z.string().trim()).optional(),
     tags: z.array(z.string().trim()).optional(),
     prRefs: prRefsSchema,
+    // TODO(V-081): make required once the studio sends it
+    reason: adminProvidedReasonSchema,
   })
-  .refine((value) => Object.keys(value).length > 0, {
+  // The audit reason alone is not an edit.
+  .refine((value) => Object.keys(value).some((key) => key !== "reason"), {
     message: "At least one field is required for update",
   });

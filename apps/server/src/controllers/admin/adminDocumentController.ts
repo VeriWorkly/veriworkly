@@ -90,7 +90,7 @@ export const AdminShareLinkController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminShareLinkRevokeSchema.parse(deleteRequestInput(req));
 
-    const result = await AdminDocumentService.revokeShareLink(id);
+    const result = await AdminDocumentService.revokeShareLink(id, input.confirm);
 
     await recordAdminAudit({
       actorId,

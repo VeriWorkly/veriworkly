@@ -3,6 +3,7 @@ import type { z } from "zod";
 
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
+import { assertConfirmation } from "#services/admin/adminConfirmation";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { documentCacheNamespaces } from "#lib/cacheKeys";
 
@@ -428,7 +429,12 @@ export async function updatePublicationStatus(
  * against the retention decision that daily portfolio views are kept (180 days), and the owner's
  * analytics would be gone if the takedown were ever lifted. The subdomain stays the owner's.
  */
-export async function forceUnpublish(publicationId: string, audit?: AdminAuditInput) {
+export async function forceUnpublish(
+  publicationId: string,
+  audit?: AdminAuditInput,
+  /** The subdomain the admin retyped (V-082); checked before anything changes. */
+  confirm?: string,
+) {
   const publication = await prisma.portfolioPublication.findUnique({
     where: { id: publicationId },
     select: {
@@ -442,6 +448,7 @@ export async function forceUnpublish(publicationId: string, audit?: AdminAuditIn
   });
 
   if (!publication) throw new ApiError(404, "Portfolio publication not found.");
+  assertConfirmation(confirm, publication.subdomain, "portfolio's subdomain");
 
   await prisma.$transaction(async (tx) => {
     // The lock on the row is what `madePrivateByModerator` reads (V-207): the owner cannot make

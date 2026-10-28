@@ -3,6 +3,7 @@ import type { z } from "zod";
 
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
+import { assertConfirmation } from "#services/admin/adminConfirmation";
 import { ApiKeyService } from "#services/apiKeyService";
 
 import type {
@@ -130,13 +131,15 @@ export async function updateApiKey(apiKeyId: string, input: ApiKeyUpdateInput) {
   return { apiKey: updated, previous: existing };
 }
 
-export async function revokeApiKey(apiKeyId: string) {
+/** `confirm` is the key prefix the admin retyped (V-082), checked before anything changes. */
+export async function revokeApiKey(apiKeyId: string, confirm?: string) {
   const existing = await prisma.apiKey.findUnique({
     where: { id: apiKeyId },
-    select: { id: true, revokedAt: true, userId: true },
+    select: { id: true, revokedAt: true, userId: true, keyPrefix: true },
   });
 
   if (!existing) throw new ApiError(404, "API key not found.");
+  assertConfirmation(confirm, existing.keyPrefix, "API key's prefix");
   if (existing.revokedAt) throw new ApiError(409, "This API key is already revoked.");
 
   // Marker before the row update: see updateApiKey and ApiKeyService.markRevokedById (V-122).

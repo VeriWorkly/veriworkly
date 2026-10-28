@@ -22,9 +22,11 @@ export type AdminAmbassadorListQuery = z.infer<typeof adminAmbassadorListQuerySc
 
 export const adminAmbassadorReviewSchema = z.object({
   action: z.enum(["APPROVE", "REJECT"]),
-  /** Also the audit reason for the review (V-081). */
-  // TODO(V-081): make required once the studio sends it
+  /** Shown to the applicant; also the audit reason when `reason` is absent. */
   reviewNote: adminProvidedReasonSchema,
+  /** The internal audit reason (V-081); never shown to the applicant. */
+  // TODO(V-081): make required once the studio sends it
+  reason: adminProvidedReasonSchema,
 });
 
 export const adminAmbassadorRosterQuerySchema = adminPaginationSchema.merge(adminSearchSchema);

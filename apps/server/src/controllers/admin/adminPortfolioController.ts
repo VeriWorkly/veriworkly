@@ -70,12 +70,16 @@ export const AdminPortfolioController = {
     const { id } = adminIdParamSchema.parse(req.params);
     const input = adminPortfolioUnpublishSchema.parse(deleteRequestInput(req));
 
-    return AdminPortfolioService.forceUnpublish(id, {
-      actorId,
-      action: ADMIN_AUDIT_ACTIONS.portfolioUnpublish,
-      targetType: "PortfolioPublication",
-      targetId: id,
-      reason: input.reason,
-    });
+    return AdminPortfolioService.forceUnpublish(
+      id,
+      {
+        actorId,
+        action: ADMIN_AUDIT_ACTIONS.portfolioUnpublish,
+        targetType: "PortfolioPublication",
+        targetId: id,
+        reason: input.reason,
+      },
+      input.confirm,
+    );
   }, "Portfolio unpublished successfully"),
 };

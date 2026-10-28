@@ -3,6 +3,7 @@ import type { z } from "zod";
 
 import { prisma } from "#lib/prisma";
 import { ApiError } from "#lib/errors";
+import { assertConfirmation } from "#services/admin/adminConfirmation";
 import { bumpGeneration } from "#lib/cacheGeneration";
 import { assertDocumentNotPurged, PURGED_DOCUMENT_CONTENT } from "#jobs/retentionJob";
 import { cacheNamespaces, documentCacheNamespaces } from "#lib/cacheKeys";
@@ -600,7 +601,8 @@ export async function listShareLinks(query: ShareLinkListQuery) {
   );
 }
 
-export async function revokeShareLink(shareLinkId: string) {
+/** `confirm` is the slug the admin retyped (V-082), checked before the link is deleted. */
+export async function revokeShareLink(shareLinkId: string, confirm?: string) {
   const share = await prisma.shareLink.findUnique({
     where: { id: shareLinkId },
     select: {
@@ -614,6 +616,7 @@ export async function revokeShareLink(shareLinkId: string) {
   });
 
   if (!share) throw new ApiError(404, "Share link not found.");
+  assertConfirmation(confirm, share.slug, "share link's slug");
 
   await prisma.shareLink.delete({ where: { id: shareLinkId } });
 
