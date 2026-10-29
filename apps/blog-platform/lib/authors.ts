@@ -25,15 +25,12 @@ type PersonAuthor = AuthorBase & {
 export type Author = TeamAuthor | PersonAuthor;
 
 const authors: Record<string, Author> = {
-  "VeriWorkly Team": {
-    type: "team",
-    name: "VeriWorkly Team",
-    role: "Career & hiring research",
-  },
-  "VeriWorkly Engineering": {
-    type: "team",
-    name: "VeriWorkly Engineering",
-    role: "Product engineering",
+  "Gautam Raj": {
+    type: "person",
+    name: "Gautam Raj",
+    role: "VeriWorkly",
+    url: "https://gautam-raj.vercel.app",
+    sameAs: ["https://github.com/Gautam25Raj", "https://x.com/noober_boy"],
   },
 };
 

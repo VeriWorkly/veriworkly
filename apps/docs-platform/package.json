@@ -19,7 +19,7 @@
     "check:html": "node scripts/check-built-html.mjs"
   },
   "dependencies": {
-    "@veriworkly/ats-engine": "0.21.0",
+    "@veriworkly/ats-engine": "0.22.0",
     "@veriworkly/ui": "*",
     "fumadocs-core": "16.17.8",
     "fumadocs-mdx": "15.4.10",
