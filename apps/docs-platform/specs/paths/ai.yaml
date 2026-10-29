@@ -29,16 +29,31 @@ getAiActions:
               $ref: "../components/schemas.yaml#/AiActionsResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
       "503":
-        description: The AI policy is missing or invalid, or AI model routing is not configured on the server.
+        description: |
+          The server's AI policy is missing or invalid, or the session store cannot be read
+          (`details.code` `AUTH_UNAVAILABLE`).
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 503
-              message: "AI generation is unavailable right now. Please try again later."
+            examples:
+              documented:
+                summary: The AI policy is missing or invalid
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "AI generation is unavailable right now. Please try again later."
+              authUnavailableCode:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+                  details:
+                    code: AUTH_UNAVAILABLE
 
 generateAiContent:
   post:
@@ -60,6 +75,9 @@ generateAiContent:
       reservation is released instead of committed — a failed generation never burns credits.
 
       Expert mode uses a stronger, more expensive model than Standard mode for the same action.
+
+      The body is validated before the caller is: a first-party request with no session and an
+      invalid body gets `400`, not `401`.
     requestBody:
       required: true
       content:
@@ -95,15 +113,24 @@ generateAiContent:
                   spent: 4
                   balance: 46
       "400":
-        description: Validation error, or text/context exceeds the action's character limit
+        description: Validation error, or text/context exceeds the action's character limit. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Provide text, context, or a job description for this AI action."
+            examples:
+              documented:
+                summary: Validation error, or text/context exceeds the action's character limit
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Provide text, context, or a job description for this AI action."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "402":
@@ -127,35 +154,129 @@ generateAiContent:
               statusCode: 403
               message: "This API key does not have permission for this action."
       "409":
-        description: requestId was already used, or is still processing
+        description: |
+          The `requestId` was already used (for another action or input, or it already completed
+          or failed), it is still processing, or the credit balance changed while the credits were
+          being held (retry the action).
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "This AI request id can no longer be reused."
-      "502":
-        description: AI provider error
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 502
-              message: "The AI provider could not complete the request."
+            examples:
+              noLongerReusable:
+                summary: The id cannot be reused
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request id can no longer be reused."
+              otherOperation:
+                summary: Id used for another action or input
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "AI request id was already used for another operation."
+              processing:
+                summary: The same request is still running
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request is processing."
+              completed:
+                summary: The request already completed
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request already completed."
+              balanceChanged:
+                summary: The balance moved while credits were held
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Credit balance changed. Retry the action."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+        description: |
+          The caller already has two AI requests in progress (`Retry-After` 10), or a rate limit
+          was hit: the per-IP AI limit (20 requests per minute) or, with an API key, the per-key
+          limit.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "Too many AI requests in progress. Wait for one to finish and try again."
+            examples:
+              documented:
+                summary: The caller already has two AI requests in progress
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "Too many AI requests in progress. Wait for one to finish and try again."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
+      "502":
+        description: The AI provider failed or returned nothing. The reservation is released.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              failed:
+                summary: Provider error
+                value:
+                  success: false
+                  statusCode: 502
+                  message: "The AI provider could not complete the request."
+              empty:
+                summary: Empty answer
+                value:
+                  success: false
+                  statusCode: 502
+                  message: "The AI provider returned an empty response."
+      "503":
+        description: |-
+          The server's AI settings are missing or invalid, the AI gateway credentials are not
+          configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+          `Retry-After`). Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              documented:
+                summary: The server's AI settings are missing or invalid, the AI gateway credentials are not configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with `Retry-After`)
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "AI provider credentials are not configured."
+              authUnavailableCode:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+                  details:
+                    code: AUTH_UNAVAILABLE
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
       "504":
         description: The AI request ran past its deadline.
         content:
@@ -166,16 +287,3 @@ generateAiContent:
               success: false
               statusCode: 504
               message: "The AI request timed out before the provider answered."
-      "503":
-        description: |
-          The server's AI settings are missing or invalid, the AI gateway credentials are not
-          configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
-          `Retry-After`).
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 503
-              message: "AI provider credentials are not configured."

@@ -22,34 +22,36 @@ apiKeyCollection:
         required: false
         schema:
           type: integer
-          minimum: 1
-          maximum: 50
           default: 20
+        description: |
+          Keys per page. Read leniently: a value above 50 is lowered to 50, and a value that is not
+          a positive integer is ignored (the default applies). Neither is refused.
       - name: offset
         in: query
         required: false
         schema:
           type: integer
-          minimum: 0
           default: 0
+        description: |
+          Rows to skip. A value that is not a non-negative integer is ignored. An offset past row
+          1,000,000 is refused with `400`.
       - name: page
         in: query
         required: false
         schema:
           type: integer
-          minimum: 1
-          default: 1
         description: |
-          1-based page index. An alternative to `offset`. When both are sent, `offset` decides
-          the window and the response echoes the `page` that was sent.
+          1-based page index, the first page when left out. An alternative to `offset`. When both
+          are sent, `offset` decides the window and the response echoes the `page` that was sent.
+          A value that is not a positive integer is ignored.
       - name: pageSize
         in: query
         required: false
         schema:
           type: integer
-          minimum: 1
-          maximum: 50
-        description: Alternative spelling of `limit`. Takes precedence over `limit` when both are sent.
+        description: |
+          Alternative spelling of `limit`, with the same lenient reading. Takes precedence over
+          `limit` when both are sent.
     responses:
       "200":
         description: A list of API keys.
@@ -68,6 +70,8 @@ apiKeyCollection:
                     isActive: true
                     createdAt: "2026-04-11T10:37:35.584Z"
                     lastUsed: "2026-04-25T19:35:44.409Z"
+                    expiresAt: "2027-04-11T10:37:35.584Z"
+                    revokedAt: null
                 total: 1
                 limit: 20
                 offset: 0
@@ -79,8 +83,25 @@ apiKeyCollection:
                   mode: "offset"
                   nextOffset: null
                   nextCursor: null
+      "400":
+        description: The requested window reaches past row 1,000,000.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 400
+              message: "Validation failed"
+              details:
+                - path: "offset"
+                  message: "Must not reach past row 1000000"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
   post:
     tags:
@@ -114,8 +135,8 @@ apiKeyCollection:
               scopes:
                 type: array
                 description: |
-                  Scopes granted to the new key. Defaults to `["user:read"]` when omitted (the
-                  server's `API_KEY_DEFAULT_SCOPES`). A comma-separated string such as
+                  Scopes granted to the new key. Defaults to `["user:read"]` (the server's
+                  `API_KEY_DEFAULT_SCOPES`) when omitted, empty, or an empty string. A comma-separated string such as
                   `"user:read,resume:read"` is also accepted. Any value outside the listed set is
                   rejected with `400`.
                 items:
@@ -123,12 +144,12 @@ apiKeyCollection:
               rateLimit:
                 type: integer
                 minimum: 1
-                maximum: 600
                 description: |
                   Requests allowed per 15-minute window. Defaults to 20 (the server's
                   `API_KEY_DEFAULT_RATE_LIMIT`). The ceiling is `API_KEY_MAX_RATE_LIMIT`, 600 by
-                  default: a larger value is lowered to the ceiling, not rejected. A value that is
-                  not a positive integer is rejected with `400`.
+                  default: a larger value is lowered to the ceiling, not rejected. A numeric string
+                  such as `"50"` is accepted. A value that is not a positive integer is rejected
+                  with `400`.
                 example: 20
               expiresAt:
                 type: string
@@ -167,7 +188,7 @@ apiKeyCollection:
                 updatedAt: "2026-04-11T10:37:35.584Z"
                 lastUsed: null
       "400":
-        description: Missing name, an unsupported scope, or a malformed `rateLimit`/`expiresAt`.
+        description: Missing name, an unsupported scope, or a malformed `rateLimit`/`expiresAt`. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -203,8 +224,14 @@ apiKeyCollection:
                   success: false
                   statusCode: 400
                   message: "rateLimit must be a positive integer"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "409":
         description: The caller already has 10 active, unexpired keys. Revoke or delete one first.
         content:
@@ -218,6 +245,12 @@ apiKeyCollection:
               details:
                 code: "API_KEY_LIMIT"
                 limit: 10
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 apiKeyRotate:
   post:
@@ -260,17 +293,17 @@ apiKeyRotate:
               scopes:
                 type: array
                 description: |
-                  Scopes for the replacement key. Carried over from the old key when omitted. A
-                  comma-separated string is also accepted.
+                  Scopes for the replacement key. Carried over from the old key when omitted, empty,
+                  or an empty string. A comma-separated string is also accepted.
                 items:
                   $ref: "../components/schemas.yaml#/ApiKeyScope"
               rateLimit:
                 type: integer
                 minimum: 1
-                maximum: 600
                 description: |
                   Requests allowed per 15-minute window. Carried over unchanged when omitted. A value
-                  you send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger.
+                  you send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger,
+                  not rejected. A numeric string is accepted.
               expiresAt:
                 type: string
                 format: date-time
@@ -293,7 +326,7 @@ apiKeyRotate:
                 id: "cmnu7awv4000063lk18zpon2n"
                 key: "vw_9e8d7c6b5a4938271605f4e3d2c1b0a99887766554433221100ffeeddccbbaa9"
                 keyPrefix: "vw_9e8d7"
-                keySuffix: "ccbbaa9"
+                keySuffix: "ddccbbaa"
                 name: "My Documentation Key"
                 userId: "cmnu7awv4000063lk18zpon2x"
                 isActive: true
@@ -306,13 +339,20 @@ apiKeyRotate:
                 lastUsed: null
                 rotatedFromId: "cmnu7awv4000063lk18zpon2m"
       "400":
-        description: An unsupported scope, or a malformed `rateLimit`/`expiresAt`.
+        description: An unsupported scope, or a malformed `rateLimit`/`expiresAt`. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -342,6 +382,12 @@ apiKeyRotate:
                   success: false
                   statusCode: 409
                   message: "Key has expired, create a new one"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 apiKeyRevoke:
   post:
@@ -355,8 +401,9 @@ apiKeyRevoke:
       `revokedAt` is stamped. The cached authentication record is purged at the same time, so the
       secret stops working right away rather than after the cache expires.
 
-      A revoked key cannot be reactivated; rotate or create a new one instead. `data` is `null` on
-      success.
+      A revoked key cannot be reactivated; rotate or create a new one instead. Revoking is
+      idempotent: revoking a key that is already revoked, or was retired by a rotation, answers
+      `200` again and keeps its original `revokedAt`. `data` is `null` on success.
     security:
       - LocalSession: []
       - ProdSession: []
@@ -379,7 +426,7 @@ apiKeyRevoke:
               message: "API key revoked successfully"
               data: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -390,6 +437,10 @@ apiKeyRevoke:
               success: false
               statusCode: 404
               message: "API key not found"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 apiKeyItem:
   get:
@@ -429,7 +480,7 @@ apiKeyItem:
               data:
                 id: "cmnu7bxq2000163lk4d1zqp8n"
                 keyPrefix: "vw_a1b2c"
-                keySuffix: "9f8e7d6"
+                keySuffix: "a09f8e7d"
                 name: "CI pipeline"
                 userId: "cmnu7awv4000063lk18zpon2m"
                 isActive: true
@@ -441,7 +492,7 @@ apiKeyItem:
                 updatedAt: "2026-04-11T10:37:35.584Z"
                 lastUsed: "2026-07-29T09:55:00.000Z"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -452,6 +503,10 @@ apiKeyItem:
               success: false
               statusCode: 404
               message: "API key not found"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
   delete:
     tags:
@@ -486,7 +541,7 @@ apiKeyItem:
               message: "API key deleted successfully"
               data: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -497,3 +552,7 @@ apiKeyItem:
               success: false
               statusCode: 404
               message: "API key not found"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError

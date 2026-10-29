@@ -76,19 +76,27 @@ info:
     client. Better Auth's other routes are also served: social sign-in and account linking (Google, GitHub
     and LinkedIn when configured, through `/sign-in/social`, `/link-social` and `/callback/{provider}`),
     session management (`/list-sessions`, `/revoke-session`, `/revoke-sessions`,
-    `/revoke-other-sessions`) and `/email-otp/request-password-reset`. Those follow Better
-    Auth's own documentation and are not described here. `/forget-password/email-otp` is
-    switched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`
+    `/revoke-other-sessions`), and the rest of the email code plugin:
+    `/email-otp/check-verification-otp`, `/email-otp/verify-email`,
+    `/email-otp/request-password-reset` and `/email-otp/reset-password`. Those follow Better
+    Auth's own documentation and are not described here. `/email-otp/request-email-change` and
+    `/email-otp/change-email` are served but email change is not enabled, so both answer `400`
+    "Change email with OTP is disabled". `/forget-password/email-otp` is switched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`
     with code `GITHUB_UNLINK_FORBIDDEN`), and an account can link only one GitHub account
     (`GITHUB_ALREADY_LINKED`, sent as an `error` query parameter on the OAuth redirect, or as a
     `403` code elsewhere).
 
     ### Not Documented Here
 
-    `POST /api/v1/client-errors` (crash reports from VeriWorkly's own site),
-    `GET /api/v1/health/metrics` and `GET /api/v1/health/jobs` (behind the server's internal key)
-    and everything under `/api/v1/admin/*` are internal first-party routes. They are left out
-    of this reference on purpose and are not part of the supported public API.
+    These routes are internal or first-party only. They are left out of this reference on
+    purpose and are not part of the supported public API:
+
+    - `POST /api/v1/client-errors`: crash reports from VeriWorkly's own site;
+    - `GET /api/v1/health/metrics` and `GET /api/v1/health/jobs`: behind the server's internal
+      key;
+    - `POST /api/v1/billing/webhooks/dodo`: the billing provider's signed webhook;
+    - `POST /api/v1/github/admin/sync` and `GET /api/v1/stats/admin/dashboard`: admin sessions
+      only, like everything under `/api/v1/admin/*`.
 
     ### Contact form
     `POST /api/v1/contact` sends a message to the VeriWorkly team. It is open (no key or
@@ -97,8 +105,11 @@ info:
     the time the form was loaded in milliseconds since the epoch, which is required. `website`
     is a hidden field that must stay empty. A bad body answers `400` "Validation failed" with
     `details`; success answers `{ name, email, subject, timestamp }` with the message "Message
-    sent successfully". A submission sent less than 1.2 seconds after `_ts`, or with `website`
-    filled, gets the same success answer and is dropped.
+    sent successfully". A submission sent less than 1.2 seconds after `_ts`, with a `_ts` from
+    before 2024 or more than an hour in the future, or with `website` filled, gets the same
+    success answer and is dropped. A failure to send the email answers `500` "Internal server
+    error. Failed to send message.". The rate limit fails closed: while it cannot be counted,
+    the route answers `503` "Rate limiting is temporarily unavailable. Please retry shortly.".
 
 servers:
   - url: https://api.veriworkly.com
@@ -181,8 +192,6 @@ paths:
     $ref: "./paths/github.yaml#/getGitHubStats"
   /api/v1/github/issues:
     $ref: "./paths/github.yaml#/getGitHubIssues"
-  /api/v1/github/admin/sync:
-    $ref: "./paths/github.yaml#/syncGitHubStats"
 
   /api/v1/auth/email-otp/send-verification-otp:
     $ref: "./paths/auth.yaml#/sendOtp"

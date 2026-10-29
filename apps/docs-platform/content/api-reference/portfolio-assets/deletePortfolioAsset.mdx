@@ -1,9 +1,19 @@
 ---
 title: Delete Portfolio Asset
 description: >
-  Deletes the R2 object and its metadata row. `data` is `null` on success.
+  Deletes the R2 object and its metadata row. An asset created in the last 15
+  minutes (the
 
-  Session-authenticated only.
+  upload URL's lifetime plus 5 minutes) keeps its row, marked `DELETED`, so a
+  late completion
+
+  cannot revive it. `data` is `null` on success. Session-authenticated only.
+
+
+  An image the published portfolio still shows cannot be deleted (`409`):
+  publish without it
+
+  first.
 
 
   This does not rewrite any portfolio that still references the asset — remove
@@ -21,10 +31,20 @@ _openapi:
     headings: []
     contents:
       - content: >
-          Deletes the R2 object and its metadata row. `data` is `null` on
-          success.
+          Deletes the R2 object and its metadata row. An asset created in the
+          last 15 minutes (the
 
-          Session-authenticated only.
+          upload URL's lifetime plus 5 minutes) keeps its row, marked `DELETED`,
+          so a late completion
+
+          cannot revive it. `data` is `null` on success. Session-authenticated
+          only.
+
+
+          An image the published portfolio still shows cannot be deleted
+          (`409`): publish without it
+
+          first.
 
 
           This does not rewrite any portfolio that still references the asset —

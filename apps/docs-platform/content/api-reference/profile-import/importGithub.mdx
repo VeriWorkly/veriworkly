@@ -7,8 +7,11 @@ description: >
   creates a new RESUME document from the result. Free users can only import
   their own linked
 
-  GitHub account (`usernameOrUrl` is ignored in that case); paid users may
-  import any public
+  GitHub account: `usernameOrUrl` is still required and must be a valid GitHub
+  username or
+
+  profile URL, but the linked login is imported instead; paid users may import
+  any public
 
   username, up to 50 imports a day (see `GET /profiles/import/quota`). Requires
   the
@@ -31,8 +34,11 @@ _openapi:
           creates a new RESUME document from the result. Free users can only
           import their own linked
 
-          GitHub account (`usernameOrUrl` is ignored in that case); paid users
-          may import any public
+          GitHub account: `usernameOrUrl` is still required and must be a valid
+          GitHub username or
+
+          profile URL, but the linked login is imported instead; paid users may
+          import any public
 
           username, up to 50 imports a day (see `GET /profiles/import/quota`).
           Requires the

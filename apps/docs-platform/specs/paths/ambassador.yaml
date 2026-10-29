@@ -26,18 +26,23 @@ getAmbassadorStatus:
               success: true
               message: "Success"
               data:
+                name: "Jane Doe"
+                email: "jane@example.com"
                 role: "USER"
                 ambassadorStatus: "NONE"
                 collegeName: null
                 graduationYear: null
+                application: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: User not found
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"
 
@@ -51,9 +56,10 @@ applyForAmbassador:
       - ProdSession: []
     summary: Apply For Campus Ambassador Program
     description: |
-      Submits (or resubmits, once previously rejected) a campus ambassador application. Rejects a
-      duplicate application from a user who already has one pending review, and rejects existing
-      ambassadors from re-applying. `graduationYear` is validated as a real 4-digit year on both the
+      Submits (or resubmits, once previously rejected) a campus ambassador application. Answers
+      `409` for a user who already has one pending review, or whose account role is
+      `AMBASSADOR`. Only the role is checked, so an account with another role (an admin, say)
+      whose application was approved can apply again. `graduationYear` is validated as a real 4-digit year on both the
       client and the server. Session-authenticated only.
     requestBody:
       required: true
@@ -83,25 +89,61 @@ applyForAmbassador:
                 collegeName: "State University"
                 graduationYear: "2027"
       "400":
-        description: Already an ambassador, application already pending, or validation error
+        description: The body fails validation, or is not valid JSON.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              validation:
+                summary: A field failed validation
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "graduationYear"
+                      message: "Enter a real 4-digit graduation year"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
+      "401":
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "404":
+        description: The account no longer exists.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 404
+              message: "User not found."
+      "409":
+        description: Already an ambassador, or an application is already pending review.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
               alreadyAmbassador:
-                summary: Already approved
+                summary: Already an ambassador
                 value:
                   success: false
-                  statusCode: 400
+                  statusCode: 409
                   message: "You are already a campus ambassador."
               alreadyPending:
                 summary: Application already pending
                 value:
                   success: false
-                  statusCode: 400
+                  statusCode: 409
                   message: "Your ambassador application is already pending review."
-      "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"

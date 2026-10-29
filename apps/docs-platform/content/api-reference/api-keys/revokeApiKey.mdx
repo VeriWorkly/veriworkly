@@ -11,9 +11,12 @@ description: >
 
 
   A revoked key cannot be reactivated; rotate or create a new one instead.
-  `data` is `null` on
+  Revoking is
 
-  success.
+  idempotent: revoking a key that is already revoked, or was retired by a
+  rotation, answers
+
+  `200` again and keeps its original `revokedAt`. `data` is `null` on success.
 full: true
 _openapi:
   preload:
@@ -35,8 +38,12 @@ _openapi:
 
 
           A revoked key cannot be reactivated; rotate or create a new one
-          instead. `data` is `null` on
+          instead. Revoking is
 
+          idempotent: revoking a key that is already revoked, or was retired by
+          a rotation, answers
+
+          `200` again and keeps its original `revokedAt`. `data` is `null` on
           success.
 ---
 
