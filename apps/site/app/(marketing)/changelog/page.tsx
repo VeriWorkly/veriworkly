@@ -9,6 +9,8 @@ import { buildPageMetadata } from "@/utils/metadata";
 
 import {
   type ChangelogType,
+  CHANGELOG_MAX_PAGE,
+  CHANGELOG_SEARCH_MAX_LENGTH,
   fetchChangelogFromBackend,
 } from "@/features/changelog/services/changelog-backend";
 
@@ -70,7 +72,8 @@ async function readParams(searchParams: ChangelogPageProps["searchParams"]) {
   const params = await searchParams;
   return {
     type: parseType(firstParam(params.type)),
-    search: firstParam(params.search)?.trim() || undefined,
+    search:
+      firstParam(params.search)?.trim().slice(0, CHANGELOG_SEARCH_MAX_LENGTH).trim() || undefined,
     page: parsePage(firstParam(params.page)),
   };
 }
@@ -96,6 +99,8 @@ export async function generateMetadata({ searchParams }: ChangelogPageProps): Pr
 
 const ChangelogPage = async ({ searchParams }: ChangelogPageProps) => {
   const { type, search, page } = await readParams(searchParams);
+
+  if (page > CHANGELOG_MAX_PAGE) notFound();
 
   const data = await fetchChangelogFromBackend({ type, search }, page);
 

@@ -103,7 +103,7 @@ const PricingAlaCarte = ({
               <CheckoutButton
                 className="bg-foreground text-background hover:bg-foreground/95 mt-3 w-full"
                 loading={loading === `${customPlan}:${billing}`}
-                disabled={paymentsBlocked}
+                disabled={paymentsBlocked || Boolean(loading)}
                 onClick={() => void onCheckout(customPlan, billing)}
               >
                 {paymentsBlocked ? "Payments disabled" : `Choose ${selectedCustom.title}`}

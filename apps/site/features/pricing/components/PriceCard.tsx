@@ -15,7 +15,10 @@ interface PriceCardProps {
   featured?: boolean;
   loading: boolean;
   toggle?: React.ReactNode;
-  disabled?: boolean;
+  /** Payments are switched off: the button says so. */
+  blocked: boolean;
+  /** Another checkout is opening: the button is inert but keeps its label. */
+  busy: boolean;
 }
 
 const PriceCard = ({
@@ -31,7 +34,8 @@ const PriceCard = ({
   loading,
   toggle,
   onCheckout,
-  disabled,
+  blocked,
+  busy,
 }: PriceCardProps) => {
   return (
     <article
@@ -96,10 +100,10 @@ const PriceCard = ({
               : "bg-foreground text-background hover:bg-foreground/95"
           }`}
           loading={loading}
-          disabled={disabled}
+          disabled={blocked || busy}
           onClick={onCheckout}
         >
-          {disabled ? "Payments disabled" : `Choose ${title}`}
+          {blocked ? "Payments disabled" : `Choose ${title}`}
         </CheckoutButton>
       </div>
     </article>

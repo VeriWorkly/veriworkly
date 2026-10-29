@@ -32,7 +32,7 @@ describe("program flags", () => {
     // A flag flipped on the API must reach these pages within five minutes.
     for (const file of pages(appDir)) {
       const source = readFileSync(file, "utf8");
-      const seconds = /export const revalidate = (d+);/.exec(source)?.[1];
+      const seconds = /export const revalidate = (\d+);/.exec(source)?.[1];
       if (source.includes("@/lib/feature-flags") && seconds)
         expect(Number(seconds), relative(appDir, file)).toBeLessThanOrEqual(300);
     }

@@ -37,6 +37,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    # Server errors go to stderr when ERROR_REPORT_URL is unset; cap what an outage can write.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
 
   api:

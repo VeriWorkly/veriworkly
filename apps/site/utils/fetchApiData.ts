@@ -1,9 +1,5 @@
 import { siteConfig } from "@/config/site";
 
-declare const process: {
-  env: Record<string, string | undefined>;
-};
-
 interface ApiSuccessResponse<T> {
   success: boolean;
   message: string;
@@ -22,23 +18,30 @@ export class ApiRequestError extends Error {
   }
 }
 
-/** Wall-clock budget per backend call: a hanging connection would otherwise pin a Node render worker indefinitely. */
+/** One short log line (status and message, no stack): an outage repeats it on every render. */
+export function describeError(error: unknown) {
+  if (error instanceof ApiRequestError) return `${error.status} ${error.message}`;
+  return error instanceof Error ? error.message : String(error);
+}
 
-export const DEFAULT_API_TIMEOUT_MS = 8_000;
+/** Wall-clock budget per backend call: a hanging connection would otherwise pin a Node render worker indefinitely. */
+const DEFAULT_API_TIMEOUT_MS = 8_000;
 
 const NEXT_PUBLIC_BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "") || "";
 
 const INTERNAL_BACKEND_BASE_URL = process.env.BACKEND_INTERNAL_URL?.replace(/\/+$/, "") || "";
 
-export const BACKEND_BASE_URL =
+const BACKEND_BASE_URL =
   typeof window === "undefined"
     ? INTERNAL_BACKEND_BASE_URL || NEXT_PUBLIC_BACKEND_BASE_URL
     : NEXT_PUBLIC_BACKEND_BASE_URL;
 
-export function backendApiUrl(path: string) {
+/** Paths on the configured backend only: a server-side call can carry the session cookie and the internal key. */
+function backendApiUrl(path: string) {
   const trimmedPath = path.trim();
 
-  if (/^https?:\/\//i.test(trimmedPath)) return trimmedPath;
+  if (/^[a-z][a-z\d+.-]*:|^[/\\]{2}/i.test(trimmedPath))
+    throw new Error("fetchApiData takes a backend path, not an absolute URL.");
 
   const normalizedPath = trimmedPath.startsWith("/") ? trimmedPath : `/${trimmedPath}`;
 
@@ -69,10 +72,7 @@ function firstPartyServerHeaders(headers?: HeadersInit) {
 
   if (!siteOrigin) return normalizedHeaders;
 
-  return {
-    Origin: siteOrigin,
-    ...normalizedHeaders,
-  };
+  return { ...normalizedHeaders, origin: siteOrigin };
 }
 
 export async function fetchApiData<T>(

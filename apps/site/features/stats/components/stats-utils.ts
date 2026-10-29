@@ -6,6 +6,9 @@ import type {
 
 export const PAGE_SIZE = 20;
 
+/** 5,000 items. A page past it is a 404 without a backend call, so page numbers cannot spend the API's rate limit. */
+export const MAX_PAGE = 250;
+
 export const STATUS_META: Record<GitHubStatus, { label: string; dot: string }> = {
   todo: { label: "To do", dot: "bg-foreground/25" },
   "in-progress": { label: "In progress", dot: "bg-warning" },
