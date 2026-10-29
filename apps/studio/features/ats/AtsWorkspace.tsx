@@ -284,7 +284,8 @@ export function AtsWorkspace({ initialDocumentId }: { initialDocumentId?: string
         resume,
         requestId: requestIdFor(pendingConversionRef, resume),
       });
-      settleRequestId(pendingConversionRef);
+      // The id is kept after a success: the draft can be cleared by the next click, and preparing
+      // the same text again is then answered from the server's stored result, not charged (S-382).
       setConverted(response.resume);
       toast.success(
         response.replayed
