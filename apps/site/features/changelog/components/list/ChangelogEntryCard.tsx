@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Children, cloneElement, createElement, isValidElement, type ReactNode } from "react";
 
 import { cn } from "@veriworkly/ui";
 
@@ -7,6 +8,7 @@ import {
   changelogEntryHref,
   formatChangelogDate,
 } from "@/features/changelog/utils/changelog-utils";
+import { renderInlineMarkdown } from "@/features/changelog/components/detail/ChangelogRichText";
 import { TYPE } from "@/components/marketing/PageLayout";
 import CardCategories from "./CardCategories";
 import CardAuthors from "./CardAuthors";
@@ -20,14 +22,16 @@ interface ChangelogEntryCardProps {
 /**
  * The whole card is one link, so the summary must not render links of its own (`#123`, `@user`,
  * markdown links): an `<a>` inside an `<a>` is split by the HTML parser and breaks hydration.
- * Markdown is reduced to its text; the release page renders it in full.
+ * Each link the inline renderer makes becomes a span with the same classes; the rest is untouched.
  */
-export function plainSummary(markdown: string) {
-  return markdown
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/(\d+)/g, "#$1")
-    .replace(/(\*\*|__|~~|`)(.+?)\1/g, "$2")
-    .replace(/(^|[\s(])[*_]([^*_\s][^*_]*?)[*_](?=$|[\s).,:;!?])/g, "$1$2");
+export function withoutLinks(nodes: ReactNode): ReactNode {
+  return Children.map(nodes, (node) => {
+    if (!isValidElement<{ className?: string; children?: ReactNode }>(node)) return node;
+    const { className, children } = node.props;
+    if (node.type === Link)
+      return createElement("span", { key: node.key, className }, withoutLinks(children));
+    return children === undefined ? node : cloneElement(node, undefined, withoutLinks(children));
+  });
 }
 
 const ChangelogEntryCard = ({ entry, isLatest }: ChangelogEntryCardProps) => {
@@ -63,7 +67,7 @@ const ChangelogEntryCard = ({ entry, isLatest }: ChangelogEntryCardProps) => {
 
         {entry.summary && (
           <p className="text-muted mt-2 line-clamp-2 max-w-3xl text-base leading-7 text-pretty">
-            {plainSummary(entry.summary)}
+            <span>{withoutLinks(renderInlineMarkdown(entry.summary, "rt-inline"))}</span>
           </p>
         )}
 
