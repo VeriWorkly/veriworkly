@@ -40,102 +40,89 @@ const sizeStyles: Record<LandingButtonSize, string> = {
   sm: "h-8.5 px-3.5 text-xs sm:h-9 sm:px-4",
 };
 
-export const LandingButton = React.forwardRef<
-  HTMLAnchorElement | HTMLButtonElement,
-  LandingButtonProps
->(
-  (
-    {
-      children,
-      href,
-      external,
-      variant = "primary",
-      size = "md",
-      className,
-      target,
-      rel,
-      icon: Icon,
-      showArrow = false,
-      disabled = false,
-      onClick,
-      type = "button",
-      ...props
-    },
-    ref,
-  ) => {
-    const combinedClassName = cn(
-      "inline-flex items-center justify-center gap-2 rounded-full font-medium select-none cursor-pointer active:scale-[0.97] transition-transform",
-      variantStyles[variant],
-      sizeStyles[size],
-      disabled && "pointer-events-none opacity-50 cursor-not-allowed",
-      className,
-    );
+export const LandingButton = ({
+  children,
+  href,
+  external,
+  variant = "primary",
+  size = "md",
+  className,
+  target,
+  rel,
+  icon: Icon,
+  showArrow = false,
+  disabled = false,
+  onClick,
+  type = "button",
+  ...props
+}: LandingButtonProps) => {
+  const combinedClassName = cn(
+    "inline-flex items-center justify-center gap-2 rounded-full font-medium select-none cursor-pointer active:scale-[0.97] transition-transform",
+    variantStyles[variant],
+    sizeStyles[size],
+    disabled && "pointer-events-none opacity-50 cursor-not-allowed",
+    className,
+  );
 
-    const content = (
-      <>
-        {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
+  const content = (
+    <>
+      {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
 
-        <span>{children}</span>
+      <span>{children}</span>
 
-        {showArrow && (
-          <ArrowRight
-            aria-hidden="true"
-            className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1"
-          />
-        )}
-      </>
-    );
+      {showArrow && (
+        <ArrowRight
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1"
+        />
+      )}
+    </>
+  );
 
-    if (href) {
-      const isInternal =
-        !external && href.startsWith("/") && !href.startsWith("//") && target !== "_blank";
+  if (href) {
+    const isInternal =
+      !external && href.startsWith("/") && !href.startsWith("//") && target !== "_blank";
 
-      if (isInternal) {
-        return (
-          <Link
-            href={href}
-            aria-disabled={disabled}
-            className={combinedClassName}
-            ref={ref as React.Ref<HTMLAnchorElement>}
-            onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
-            {...props}
-          >
-            {content}
-          </Link>
-        );
-      }
-
+    if (isInternal) {
       return (
-        <a
+        <Link
           href={href}
-          target={target}
           aria-disabled={disabled}
           className={combinedClassName}
-          ref={ref as React.Ref<HTMLAnchorElement>}
-          onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
-          rel={target === "_blank" ? (rel ?? "noopener noreferrer") : rel}
+          onClick={onClick}
           {...props}
         >
           {content}
-        </a>
+        </Link>
       );
     }
 
     return (
-      <button
-        type={type}
-        disabled={disabled}
+      <a
+        href={href}
+        target={target}
+        aria-disabled={disabled}
         className={combinedClassName}
-        ref={ref as React.Ref<HTMLButtonElement>}
-        onClick={onClick as unknown as React.MouseEventHandler<HTMLButtonElement>}
-        {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+        onClick={onClick}
+        rel={target === "_blank" ? (rel ?? "noopener noreferrer") : rel}
+        {...props}
       >
         {content}
-      </button>
+      </a>
     );
-  },
-);
+  }
 
-LandingButton.displayName = "LandingButton";
+  return (
+    <button
+      type={type}
+      disabled={disabled}
+      className={combinedClassName}
+      onClick={onClick as unknown as React.MouseEventHandler<HTMLButtonElement>}
+      {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+    >
+      {content}
+    </button>
+  );
+};
 
 export default LandingButton;
