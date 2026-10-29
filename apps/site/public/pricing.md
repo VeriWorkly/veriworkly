@@ -17,8 +17,9 @@ expire rather than renew. Nothing converts from free to paid on its own.
   - Master Profile Store & Local Draft Storage
   - Exports: PDF, DOCX, HTML, Markdown, Plain Text, JSON (all formats, ungated, no watermark)
   - Free ATS Resume & Job Match Scanning (1 scan/48h guest, 2 scans/24h logged-in)
-  - GitHub & LinkedIn profile import. Free tier: 1 GitHub import per rolling 24 hours,
-    restricted to your own connected account; 1 LinkedIn import per rolling 30 days.
+  - GitHub profile import: 1 import per rolling 24 hours, restricted to your own connected
+    account. LinkedIn import is AI-parsed and spends AI credits on every plan, so on the free
+    tier it needs a credit pack; without a paid plan it runs at most once per rolling 30 days.
     Both limits are measured from your last import, not reset on a calendar boundary.
   - Portfolio publishing on a `username.veriworkly.com` subdomain using the free core
     templates (Signal, Atelier), which display a "Built with VeriWorkly" badge

@@ -104,7 +104,7 @@ export default function AtsCheckerPage() {
         "@type": "HowToStep",
         position: 1,
         name: "Add your resume",
-        text: "Upload a PDF, DOCX, TXT, or Markdown resume, or paste the text directly. Nothing is stored on servers.",
+        text: "Upload a PDF, DOCX, TXT, Markdown or JSON Resume file, or paste the text directly. Nothing is stored on servers.",
         url: scanUrl,
       },
       {
