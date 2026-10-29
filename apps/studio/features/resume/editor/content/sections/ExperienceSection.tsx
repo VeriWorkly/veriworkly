@@ -3,6 +3,7 @@
 import { useResumeStore } from "@/features/resume/store/resume-store";
 import { isMonthDate } from "@/features/documents/validation/rules";
 import { normalizeMonthDate } from "@/features/resume/utils/normalize-data";
+import { endBeforeStartError } from "@/features/resume/utils/validation";
 import { AiFieldAssist } from "@/features/ai/AiFieldAssist";
 
 import {
@@ -88,7 +89,13 @@ const ExperienceSection = ({ isOpen, onToggle }: BaseSectionProps) => {
               disabled={activeExperience.current}
               value={activeExperience.endDate}
               error={
-                activeExperience.current ? undefined : monthDateError(activeExperience.endDate)
+                activeExperience.current
+                  ? undefined
+                  : (monthDateError(activeExperience.endDate) ??
+                    endBeforeStartError(
+                      normalizeMonthDate(activeExperience.startDate),
+                      normalizeMonthDate(activeExperience.endDate),
+                    ))
               }
               onValueChange={(endDate) => updateExperience(list.index, { endDate })}
             />

@@ -236,6 +236,15 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     );
   }
 
+  /** Whether a sync of `id` is running now: in this tab, or recently started in another. */
+  private isSyncLive(id: string) {
+    if (this.inFlight.has(id)) return true;
+
+    const item = SyncEngine.getOutboxItem(id, this.type);
+
+    return item?.state === "syncing" && Date.now() - item.updatedAt < STALE_SYNCING_MS;
+  }
+
   private scheduleWorkerTick(delayMs: number) {
     if (!this.isBrowser()) return;
 
@@ -1147,6 +1156,11 @@ export class DocumentSyncService<T extends BaseDocumentData> {
         ) {
           continue;
         }
+
+        // A sync of this copy is in flight: the newer revision may be its own PATCH landing
+        // (S-381). The PATCH settles it, as synced or as a real 409 conflict. A "syncing" left
+        // behind by a tab closed mid-request is not live, and conflicts like any other edit.
+        if (local.sync.status === "syncing" && this.isSyncLive(cloudItem.id)) continue;
 
         if (local.sync.status !== "synced") {
           conflicts.push(cloudItem.id);

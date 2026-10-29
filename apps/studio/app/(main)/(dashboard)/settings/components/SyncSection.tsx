@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { CloudSync, CheckCircle2, History, LucideIcon } from "lucide-react";
 
@@ -19,6 +19,7 @@ import {
 import {
   setAutoSyncEnabledInLocalStorage,
   loadWorkspaceSettingsFromLocalStorage,
+  subscribeToWorkspaceSettings,
 } from "@/features/documents/services/workspace-settings";
 import { getAutoSyncControlState } from "./sync-section-state";
 
@@ -33,7 +34,13 @@ interface TelemetryState {
 export default function SyncSection() {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [loading, setLoading] = useState(false);
-  const [autoSync, setAutoSync] = useState(false);
+  // Followed, not read once: sign-in writes the account's choice only after the device's
+  // documents are settled, which may be after this page opened (S-380).
+  const autoSync = useSyncExternalStore(
+    subscribeToWorkspaceSettings,
+    () => loadWorkspaceSettingsFromLocalStorage().autoSyncEnabled,
+    () => false,
+  );
 
   const [telemetry, setTelemetry] = useState<TelemetryState>({
     lastAttemptAt: null,
@@ -41,10 +48,6 @@ export default function SyncSection() {
   });
 
   useEffect(() => {
-    const settings = loadWorkspaceSettingsFromLocalStorage();
-
-    const timer = setTimeout(() => setAutoSync(settings.autoSyncEnabled), 0);
-
     const update = () => {
       const data = getWorkspaceSyncTelemetry();
 
@@ -59,7 +62,6 @@ export default function SyncSection() {
     window.addEventListener(DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT, update);
 
     return () => {
-      clearTimeout(timer);
       window.removeEventListener(DOCUMENT_SYNC_OUTBOX_UPDATED_EVENT, update);
     };
   }, []);
@@ -84,13 +86,11 @@ export default function SyncSection() {
     // stays local) instead of flattening every document to the old global value.
     const previousStates = captureAllDocumentSyncStates();
 
-    setAutoSync(checked);
     setAutoSyncEnabledInLocalStorage(checked);
 
     const applied = setAllDocumentsSyncEnabled(checked);
 
     if (!applied.ok) {
-      setAutoSync(previous);
       setAutoSyncEnabledInLocalStorage(previous);
       restoreAllDocumentSyncStates(previousStates);
       toast.error("Could not update your documents: this device's storage is full.");
@@ -102,7 +102,6 @@ export default function SyncSection() {
     } catch (err) {
       // Roll back the optimistic update — the UI must not keep showing a state the
       // server rejected, silently disagreeing with the backend indefinitely.
-      setAutoSync(previous);
       setAutoSyncEnabledInLocalStorage(previous);
       restoreAllDocumentSyncStates(previousStates);
       toast.error(

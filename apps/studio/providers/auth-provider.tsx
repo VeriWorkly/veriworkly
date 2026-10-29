@@ -8,6 +8,7 @@ import { useUserStore } from "../store/useUserStore";
 
 import type { SessionUser } from "@/features/auth/services/current-user";
 
+import { signInHref } from "@/lib/sign-in";
 import { UnclaimedDocumentsDialog } from "@/features/auth/components/UnclaimedDocumentsDialog";
 import {
   setAutoSyncEnabledInLocalStorage,
@@ -29,6 +30,7 @@ import {
   resolveUnclaimedDocuments,
   setWorkspaceUser,
   settleWorkspaceOwnership,
+  subscribeToSessionEnded,
   type UnclaimedDocuments,
   type UnclaimedDocumentsChoice,
 } from "@/features/documents/services/workspace-owner";
@@ -54,6 +56,7 @@ async function pullAccountDocuments() {
 }
 
 const BACKUP_PAUSED_TOAST_ID = "backup-paused";
+const SIGNED_OUT_TOAST_ID = "signed-out";
 
 /**
  * Asks about the documents on this device that may be the user's (a guest's, or linked to a
@@ -165,6 +168,23 @@ export function AuthInitializer({ initialUser }: { initialUser: SessionUser | nu
       }),
     [],
   );
+
+  // The session ended under an open tab: autosave goes on here, but nothing backs up until the
+  // user signs in again. They stay where they are, and are told (S-374).
+  useEffect(() => {
+    if (!initialUser) return;
+
+    return subscribeToSessionEnded(() => {
+      toast.warning(
+        "You were signed out. Your changes are saved on this device. Sign in to back them up.",
+        {
+          id: SIGNED_OUT_TOAST_ID,
+          duration: Infinity,
+          action: { label: "Sign in", onClick: () => window.location.assign(signInHref()) },
+        },
+      );
+    });
+  }, [initialUser]);
 
   // A rebuilt index leaves every document of unknown owner, which pauses backup: ask now.
   useEffect(() => {

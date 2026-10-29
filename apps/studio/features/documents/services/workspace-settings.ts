@@ -62,11 +62,38 @@ function saveWorkspaceSettingsToLocalStorage(settings: WorkspaceSettings): Local
     return { ok: true };
   }
 
-  return safeSetLocalStorageItem(
+  const result = safeSetLocalStorageItem(
     window.localStorage,
     WORKSPACE_SETTINGS_STORAGE_KEY,
     JSON.stringify(workspaceSettingsSchema.parse(settings)),
   );
+
+  if (result.ok) window.dispatchEvent(new Event(WORKSPACE_SETTINGS_UPDATED_EVENT));
+
+  return result;
+}
+
+const WORKSPACE_SETTINGS_UPDATED_EVENT = "veriworkly:workspace-settings-updated";
+
+/**
+ * Calls `listener` whenever the settings change, in this tab or another. Sign-in writes the
+ * account's auto-sync choice only after the device's documents are settled, so a page that
+ * read the settings once kept showing the old value (S-380). Returns the unsubscribe function.
+ */
+export function subscribeToWorkspaceSettings(listener: () => void): () => void {
+  if (!isBrowser()) return () => {};
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === WORKSPACE_SETTINGS_STORAGE_KEY) listener();
+  };
+
+  window.addEventListener(WORKSPACE_SETTINGS_UPDATED_EVENT, listener);
+  window.addEventListener("storage", onStorage);
+
+  return () => {
+    window.removeEventListener(WORKSPACE_SETTINGS_UPDATED_EVENT, listener);
+    window.removeEventListener("storage", onStorage);
+  };
 }
 
 export function setAutoSyncEnabledInLocalStorage(

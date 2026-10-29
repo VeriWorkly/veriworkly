@@ -42,9 +42,25 @@ export function validateEducation(
 
   if (!isYearDate(item.endDate) && !item.current) {
     errors.endDate = "Use YYYY format.";
+  } else if (!item.current && endBeforeStartError(item.startDate, item.endDate)) {
+    errors.endDate = endBeforeStartError(item.startDate, item.endDate);
   }
 
   return errors;
+}
+
+/**
+ * Advice, never a block (S-413): an end before the start prints as "Feb 2023 – May 2021". Both
+ * dates in the same form (YYYY or YYYY-MM) compare as text; anything else is left alone.
+ */
+export function endBeforeStartError(startDate: string, endDate: string): string | undefined {
+  const start = startDate.trim();
+  const end = endDate.trim();
+
+  if (!start || !end || start.length !== end.length || end >= start) return undefined;
+  if (!/^\d{4}(-\d{2})?$/.test(start) || !/^\d{4}(-\d{2})?$/.test(end)) return undefined;
+
+  return "Ends before it starts. Check the start and end dates.";
 }
 
 export function validateProject(item: ResumeProjectItem): ValidationErrors<"link"> {

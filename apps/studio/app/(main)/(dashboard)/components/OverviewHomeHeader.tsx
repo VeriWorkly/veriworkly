@@ -23,10 +23,13 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 const OverviewHomeHeader = ({
+  hideCounts = false,
   totalCount,
   coverLetterCount,
   resumeCount,
 }: {
+  /** While the counts would be wrong, e.g. before the device's documents are answered for. */
+  hideCounts?: boolean;
   totalCount: number;
   coverLetterCount: number;
   resumeCount: number;
@@ -61,11 +64,13 @@ const OverviewHomeHeader = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Documents" value={totalCount} />
-          <Stat label="Resumes" value={resumeCount} />
-          <Stat label="Letters" value={coverLetterCount} />
-        </div>
+        {hideCounts ? null : (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <Stat label="Documents" value={totalCount} />
+            <Stat label="Resumes" value={resumeCount} />
+            <Stat label="Letters" value={coverLetterCount} />
+          </div>
+        )}
       </div>
     </header>
   );

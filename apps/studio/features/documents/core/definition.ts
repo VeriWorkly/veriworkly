@@ -49,9 +49,14 @@ export interface DocumentDefinition<TContent = unknown> {
    * `master` is the user's master profile when the caller could resolve one — every type
    * seeds from it, through its own `projectTo*` in `@veriworkly/profile-core`. It stays
    * optional because creation must still work for a guest, offline, or before a profile
-   * exists; each type decides what its own no-profile fallback is.
+   * exists; each type decides what its own no-profile fallback is. `sample` says the user
+   * picked the sample: no profile, cached or not, may stand in for it (S-410).
    */
-  createDefault: (id: string, master?: MasterProfileData) => BaseDocument<TContent>;
+  createDefault: (
+    id: string,
+    master?: MasterProfileData,
+    options?: { sample?: boolean },
+  ) => BaseDocument<TContent>;
   parse: (value: unknown) => BaseDocument<TContent> | null;
   /**
    * Parses a user-supplied JSON file into a new document's content.

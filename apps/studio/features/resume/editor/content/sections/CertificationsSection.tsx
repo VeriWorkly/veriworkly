@@ -2,7 +2,7 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { TextInputField } from "@/features/documents/editor/form";
+import { CheckboxField, TextAreaField, TextInputField } from "@/features/documents/editor/form";
 import TypedSectionEditor from "./TypedSectionEditor";
 
 const CertificationsSection = (props: BaseSectionProps) => {
@@ -18,40 +18,58 @@ const CertificationsSection = (props: BaseSectionProps) => {
       labelFor={(item) => item.title}
     >
       {({ item: certificate, update }) => (
-        <div className="grid gap-4 md:grid-cols-2">
-          <TextInputField
-            label="Certificate name"
-            value={certificate.title}
-            onValueChange={(title) => update({ title })}
-          />
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextInputField
+              label="Certificate name"
+              value={certificate.title}
+              onValueChange={(title) => update({ title })}
+            />
 
-          <TextInputField
-            label="Issuer"
-            value={certificate.issuer}
-            onValueChange={(issuer) => update({ issuer })}
-          />
+            <TextInputField
+              label="Issuer"
+              value={certificate.issuer}
+              onValueChange={(issuer) => update({ issuer })}
+            />
 
-          <TextInputField
-            type="month"
-            label="Issue date (YYYY-MM)"
-            value={certificate.date}
-            onValueChange={(date) => update({ date })}
-          />
+            <TextInputField
+              type="month"
+              label="Issue date (YYYY-MM)"
+              value={certificate.date}
+              onValueChange={(date) => update({ date })}
+            />
 
-          <TextInputField
-            label="Credential ID"
-            value={certificate.referenceId ?? ""}
-            onValueChange={(referenceId) => update({ referenceId })}
-          />
+            <TextInputField
+              label="Credential ID"
+              value={certificate.referenceId ?? ""}
+              onValueChange={(referenceId) => update({ referenceId })}
+            />
 
-          <TextInputField
-            type="url"
-            label="Verification link"
-            placeholder="https://..."
-            value={certificate.website ?? ""}
-            onValueChange={(website) => update({ website })}
-          />
-        </div>
+            <TextInputField
+              type="url"
+              label="Verification link"
+              placeholder="https://..."
+              value={certificate.website ?? ""}
+              onValueChange={(website) => update({ website })}
+            />
+
+            <CheckboxField
+              className="md:col-span-2"
+              checked={certificate.showLink}
+              onCheckedChange={(showLink) => update({ showLink })}
+            >
+              Show the link on the resume
+            </CheckboxField>
+          </div>
+
+          <div className="mt-4">
+            <TextAreaField
+              label="Description"
+              value={certificate.description}
+              onValueChange={(description) => update({ description })}
+            />
+          </div>
+        </>
       )}
     </TypedSectionEditor>
   );

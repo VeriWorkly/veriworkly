@@ -26,6 +26,7 @@ import {
   type RecoveredEdits,
   isOwnVersion,
   getDocumentIndexEntry,
+  forgetDocumentRemovedElsewhere,
 } from "@/features/documents/services/document-workspace-service";
 import {
   DOCUMENT_INDEX_STORAGE_KEY,
@@ -33,12 +34,17 @@ import {
 } from "@/features/documents/services/storage-keys";
 import {
   loadStateFor,
+  editorStatusMessage,
   INITIAL_LOAD_STATE,
   cloudLoadFailureState,
+  shouldRefreshBeforeEditing,
+  LOADING_LATEST_MESSAGE,
+  OPEN_REFRESH_TIMEOUT_MS,
   type KeyedLoadState,
 } from "@/features/documents/editor/editor-load-status";
 import {
   describeSaveResult,
+  leavingLosesEdits,
   SAVE_QUEUED_MESSAGE,
   SAVE_PERSISTED_MESSAGE,
 } from "@/features/documents/services/save-failure-message";
@@ -163,6 +169,31 @@ export function useDocumentEditorSession({
       }
 
       if (loadStored(documentId)) {
+        const entry = getDocumentIndexEntry(type, documentId);
+
+        if (shouldRefreshBeforeEditing(entry, useUserStore.getState().isLoggedIn)) {
+          // Not editable until the cloud answers (or the wait runs out): a keystroke on the
+          // older copy would turn another device's edit into a conflict (S-364).
+          setLoadState({ id: documentId, status: "loading", message: LOADING_LATEST_MESSAGE });
+          cloudCheckedRef.current = documentId;
+
+          const result = await Promise.race([
+            hydrateCloudDocumentByIdToLocalStorage(type, documentId),
+            new Promise<null>((resolve) =>
+              window.setTimeout(resolve, OPEN_REFRESH_TIMEOUT_MS, null),
+            ),
+          ]);
+
+          if (cancelled) return;
+
+          // A merged newer copy replaces the older one in the store; otherwise this reloads the same.
+          loadStored(documentId);
+
+          if (result && !result.ok && result.reason !== "in-progress") {
+            setMessage(`Could not check the cloud for a newer version: ${result.message}`);
+          }
+        }
+
         hasHydratedRef.current = true;
         setLoadState({ id: documentId, status: "ready" });
         return;
@@ -202,11 +233,29 @@ export function useDocumentEditorSession({
 
     // Only on transition — a persistent failure would otherwise toast per keystroke.
     if (failure && failure !== lastSaveFailureRef.current) {
-      toast.error(failure);
+      toast.error(failure, {
+        description: "Use Download → JSON to keep a copy of your latest edits.",
+      });
     }
 
     lastSaveFailureRef.current = failure;
   }, []);
+
+  // The edits since a failed save exist only in this page: unloading it asks first (S-408).
+  // The back arrow asks too (ToolbarHeader).
+  const savesFailing = leavingLosesEdits(message);
+
+  useEffect(() => {
+    if (!savesFailing) return;
+
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [savesFailing]);
 
   // The document moved to a new id (its cloud copy had been deleted). The store switches to
   // it before the route does, so typing in between is saved to the new id, not the old one.
@@ -332,7 +381,18 @@ export function useDocumentEditorSession({
     };
 
     const onStorage = (event: StorageEvent) => {
-      if (event.key === DOCUMENT_INDEX_STORAGE_KEY) check();
+      if (event.key !== DOCUMENT_INDEX_STORAGE_KEY) return;
+
+      // Deleted in another tab. This tab's storage never saw the delete, so a local-only
+      // document would be written back by the next keystroke (S-403). A delete in this tab, or
+      // by the sync worker, is handled by the remote-deletion and save paths.
+      if (forgetDocumentRemovedElsewhere(type, documentId)) {
+        toast.error("This document was deleted in another tab.");
+        router.replace("/documents");
+        return;
+      }
+
+      check();
     };
 
     // Opened on a document that is already in conflict.
@@ -347,7 +407,7 @@ export function useDocumentEditorSession({
       window.removeEventListener(DOCUMENT_STORAGE_UPDATED_EVENT, check);
       window.removeEventListener("storage", onStorage);
     };
-  }, [type, documentId, isReady, loadStored]);
+  }, [type, documentId, isReady, loadStored, router]);
 
   // Held edits exist only in this page until the user chooses. Unloading the page asks first;
   // any leave (in-app navigation fires no unload) keeps them to be offered back next time.
@@ -499,7 +559,7 @@ export function useDocumentEditorSession({
     load,
     isReady,
     retryLoad,
-    message,
+    message: editorStatusMessage(message, changedElsewhere),
     setMessage,
     shareModalOpen,
     openShare,

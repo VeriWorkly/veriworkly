@@ -58,9 +58,9 @@ const CoverLetterEditor = dynamic(() => import("@/features/cover-letter/editor/C
  * Sync state is intentionally left at the derived value: `createDocument` overwrites it
  * from `workspaceSettings.autoSyncEnabled` immediately afterwards, and that setting must win.
  */
-function createStartingResume(id: string, master?: MasterProfileData): ResumeData {
-  const cached = loadMasterProfileFromLocalStorage();
-  const profile = master ?? (cached.status === "ok" ? cached.profile : undefined);
+function createStartingResume(id: string, master?: MasterProfileData, sample = false): ResumeData {
+  const cached = sample ? null : loadMasterProfileFromLocalStorage();
+  const profile = master ?? (cached?.status === "ok" ? cached.profile : undefined);
 
   if (profile) return deriveResumeFromMasterProfile(id, profile);
 
@@ -82,8 +82,15 @@ function createStartingResume(id: string, master?: MasterProfileData): ResumeDat
  */
 const NEW_RESUME_TITLE = "Untitled resume";
 
-function wrapResumeDocument(id: string, master?: MasterProfileData): BaseDocument {
-  const resume = { ...createStartingResume(id, master), title: NEW_RESUME_TITLE };
+function wrapResumeDocument(
+  id: string,
+  master?: MasterProfileData,
+  options?: { sample?: boolean },
+): BaseDocument {
+  const resume = {
+    ...createStartingResume(id, master, options?.sample),
+    title: NEW_RESUME_TITLE,
+  };
 
   return {
     id: resume.id,

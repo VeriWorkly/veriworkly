@@ -98,9 +98,28 @@ export function EditorEntryRedirect({ type, templateId }: EditorEntryRedirectPro
           }
 
           toast.info(`Opened "${existing.title}" instead. ${result.message}`, {
-            action: { label: "Upgrade", onClick: () => router.push("/billing") },
+            action: {
+              label: result.paymentIssue ? "Update card" : "Upgrade",
+              onClick: () => router.push("/billing"),
+            },
           });
           router.replace(getDocumentEditorPath(type, existing.id));
+          return;
+        }
+
+        // The account's document is in the cloud but not on this device yet (S-404): the
+        // editor opens it from there. The template is not applied to a document not seen here.
+        if (result.reason === "limit") {
+          toast.info(
+            `Opened the ${getDocumentDefinition(type).label.toLowerCase()} you already have. ${result.message}`,
+            {
+              action: {
+                label: result.paymentIssue ? "Update card" : "Upgrade",
+                onClick: () => router.push("/billing"),
+              },
+            },
+          );
+          router.replace(getDocumentEditorPath(type, result.existingId));
           return;
         }
 

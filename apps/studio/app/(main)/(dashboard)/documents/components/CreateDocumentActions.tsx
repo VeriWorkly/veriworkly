@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { Plus, Upload } from "lucide-react";
+import { ArchiveRestore, Plus, Upload } from "lucide-react";
 
 import { Button, cn } from "@veriworkly/ui";
 
 import { useCreateDocument } from "@/components/dashboard/hooks/useCreateDocument";
+import { useDocumentJsonImport } from "@/features/documents/editor/toolbar/useDocumentJsonImport";
+import { useHiddenFileInput } from "@/features/documents/editor/toolbar/useHiddenFileInput";
+
+/** Every outcome of a restore is toasted; there is no status line here. */
+const ignoreMessage = () => {};
 
 const NewDocumentModal = dynamic(
   () =>
@@ -41,6 +46,13 @@ export function CreateDocumentActions({
   const [createOpen, setCreateOpen] = useState(false);
   const [importProvider, setImportProvider] = useState<ImportProvider | null>(null);
   const { createNewDocument } = useCreateDocument();
+  // The sign-out and delete-account backup restores from here, with no document needed: making
+  // one first to reach an editor's Import JSON filled the free slot the backup needed (S-409).
+  const {
+    ref: backupRef,
+    onChange: onBackupFile,
+    open: openBackupFile,
+  } = useHiddenFileInput(useDocumentJsonImport("RESUME", ignoreMessage));
 
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
@@ -64,6 +76,28 @@ export function CreateDocumentActions({
           <Upload className="h-4 w-4" aria-hidden="true" />
           Import from LinkedIn/GitHub
         </Button>
+      ) : null}
+
+      {showImport ? (
+        <>
+          <input
+            type="file"
+            className="hidden"
+            ref={backupRef}
+            accept="application/json"
+            onChange={onBackupFile}
+          />
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={openBackupFile}
+            className="h-10 w-full gap-2 rounded-xl px-4 sm:w-auto"
+          >
+            <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
+            Restore a backup
+          </Button>
+        </>
       ) : null}
 
       {createOpen ? (

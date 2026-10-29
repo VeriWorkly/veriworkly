@@ -11,6 +11,7 @@ import { Modal, Input, Button, Checkbox } from "@veriworkly/ui";
 import { renameDocument } from "@/features/documents/services/document-workspace-service";
 import { syncDocumentNow } from "@/features/documents/services/document-sync";
 import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { DOCUMENT_TITLE_MAX_LENGTH } from "@/features/documents/core/document-title";
 
 interface RenameDocumentModalProps {
   open: boolean;
@@ -107,6 +108,7 @@ export default function RenameDocumentModal({
                 required
                 autoFocus
                 value={title}
+                maxLength={DOCUMENT_TITLE_MAX_LENGTH}
                 inputSize="sm"
                 className="h-10"
                 variant="outline"

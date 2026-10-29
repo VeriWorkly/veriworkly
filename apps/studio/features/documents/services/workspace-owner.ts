@@ -5,7 +5,7 @@ import type { DocumentMeta } from "@/features/documents/core/types";
 import type { DocumentType } from "@/features/documents/core/document-types";
 
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
-import { fetchApiData } from "@/utils/fetchApiData";
+import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 import { DocumentApi, DOCUMENT_PAGE_SIZE } from "./document-api";
 import { SyncEngine } from "./sync-engine";
@@ -57,6 +57,28 @@ export function canWorkspaceReachCloud(): boolean {
   return entriesAwaitingAnswer(listAllDocumentEntries()).length === 0;
 }
 
+/**
+ * Whether the signed-in user has documents on this device still waiting for their answer (a
+ * guest's, or of unknown owner): until then they are not listed as the user's, so an overview
+ * reading "0 documents" would be wrong (S-368).
+ */
+export function hasDocumentsAwaitingAnswer(): boolean {
+  return getWorkspaceViewer() !== null && !canWorkspaceReachCloud();
+}
+
+const sessionEndedListeners = new Set<() => void>();
+
+/**
+ * Called when a session check finds the browser signed out while this tab still shows the
+ * account. Returns the unsubscribe function.
+ */
+export function subscribeToSessionEnded(listener: () => void): () => void {
+  sessionEndedListeners.add(listener);
+  return () => {
+    sessionEndedListeners.delete(listener);
+  };
+}
+
 /** The check in flight, and the viewer it asks about. */
 let sessionCheck: { viewer: string; answer: Promise<boolean> } | null = null;
 /** The last answer that the session is the viewer's, and when it came. */
@@ -82,7 +104,8 @@ export const SESSION_CHECK_TIMEOUT_MS = 15_000;
  * on focus, from a background worker, and a session that expired while the tab sat unused
  * would otherwise send the user away from what they were looking at just for switching back
  * to it (and leave this promise, and every upload waiting on it, pending forever). The
- * worker retries after its backoff; a page that needs the session redirects on its own.
+ * worker retries after its backoff; a page that needs the session redirects on its own. The
+ * 401 is announced ({@link subscribeToSessionEnded}), so the user is told backup stopped.
  */
 export function confirmSessionIsViewer(options: { maxAgeMs?: number } = {}): Promise<boolean> {
   const viewer = getWorkspaceViewer();
@@ -120,6 +143,13 @@ export function confirmSessionIsViewer(options: { maxAgeMs?: number } = {}): Pro
     .catch((error: unknown) => {
       if (confirmedSession?.viewer === viewer) confirmedSession = null;
       console.error("Could not confirm the signed-in account before syncing", error);
+
+      // The session ended (revoked, expired, signed out elsewhere): nothing backs up until the
+      // user signs in again, and they have to be told (S-374). A network failure is not that.
+      if (error instanceof ApiRequestError && error.status === 401) {
+        sessionEndedListeners.forEach((listener) => listener());
+      }
+
       return false;
     })
     .finally(() => {

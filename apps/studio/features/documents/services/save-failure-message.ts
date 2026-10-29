@@ -37,3 +37,15 @@ export function describeSaveResult(result: SaveDocumentResult): string | null {
  */
 export const SAVE_QUEUED_MESSAGE = "Saving...";
 export const SAVE_PERSISTED_MESSAGE = "Saved on this device";
+
+/**
+ * Whether the editor's status line says the last save failed, so the edits since exist only
+ * in the page and leaving it (back arrow, reload, closing the tab) would lose them (S-408).
+ * A guest has no cloud copy to fall back on.
+ */
+export function leavingLosesEdits(statusMessage: string): boolean {
+  return (
+    statusMessage === getSaveFailureMessage("quota-exceeded") ||
+    statusMessage === getSaveFailureMessage("unknown")
+  );
+}

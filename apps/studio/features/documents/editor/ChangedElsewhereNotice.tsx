@@ -21,7 +21,7 @@ const COPY: Record<ChangedElsewhere, { title: string; body: string; other: strin
   },
   tab: {
     title: "This document changed elsewhere",
-    body: "Another tab or a cloud update saved a different version while you were editing. Your edits in this tab are not saved until you choose, and are lost if you leave first.",
+    body: "Another tab or a cloud update saved a different version while you were editing. Your edits in this tab are not saved until you choose. If you leave now, they are kept and offered back next time you open it.",
     other: "Use the other version",
   },
 };

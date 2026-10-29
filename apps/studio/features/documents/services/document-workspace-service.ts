@@ -38,6 +38,7 @@ import { getMasterProfileForNewDocument } from "@/features/resume/services/maste
 import { withDocumentIdentity } from "@/features/documents/core/content-identity";
 import { loadWorkspaceSettingsFromLocalStorage } from "@/features/documents/services/workspace-settings";
 import { DOCUMENT_TYPES } from "@/features/documents/core/document-types";
+import { DOCUMENT_TITLE_MAX_LENGTH } from "@/features/documents/core/document-title";
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
 import {
   DOCUMENT_INDEX_STORAGE_KEY,
@@ -364,6 +365,9 @@ export function renameDocument(
   const stored = loadDocumentById(type, id);
   if (!stored) return null;
 
+  // The server refuses a longer title, which would stop every backup (S-405).
+  title = title.slice(0, DOCUMENT_TITLE_MAX_LENGTH);
+
   const document: BaseDocument = {
     ...stored,
     title,
@@ -549,9 +553,13 @@ export type CreatedDocument = BaseDocument & {
   saveResult: SaveDocumentResult;
 };
 
-export function createDocument(type: DocumentType, master?: MasterProfileData): CreatedDocument {
+export function createDocument(
+  type: DocumentType,
+  master?: MasterProfileData,
+  options?: { sample?: boolean },
+): CreatedDocument {
   const id = buildDocumentId(type);
-  const defaultDoc = getDocumentDefinition(type).createDefault(id, master);
+  const defaultDoc = getDocumentDefinition(type).createDefault(id, master, options);
   const workspaceSettings = loadWorkspaceSettingsFromLocalStorage();
 
   const sync: BaseDocument["sync"] = {
@@ -598,6 +606,26 @@ export function deleteDocument(type: DocumentType, id: string): LocalStorageWrit
   }
 
   return result;
+}
+
+/**
+ * For an editor whose document left storage in another tab (S-403): when it is gone, and not
+ * moved to a new id (whose saves follow it), its pending autosave is dropped and every later
+ * save of it is refused, so a local-only document the user deleted is not written back by the
+ * next keystroke. Returns whether it was gone. The body is checked as well as the index, which
+ * reads as empty while it is being rebuilt.
+ */
+export function forgetDocumentRemovedElsewhere(type: DocumentType, id: string): boolean {
+  if (getDocumentIndexEntry(type, id) || window.localStorage.getItem(getDocumentKey(type, id))) {
+    return false;
+  }
+
+  if (resolveMovedDocumentId(type, id)) return false;
+
+  clearPendingSave(type, id);
+  getWorkspaceStorage(type).markRemoved(id);
+
+  return true;
 }
 
 /**

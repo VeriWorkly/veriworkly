@@ -5,6 +5,7 @@ import type { BaseDocument, DocumentSyncState } from "@/features/documents/core/
 import type { SaveDocumentResult } from "./local-storage-service";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { toDocumentTitle } from "@/features/documents/core/document-title";
 import { DOCUMENT_TYPES, type DocumentType } from "@/features/documents/core/document-types";
 import {
   deleteDocument,
@@ -72,7 +73,8 @@ function createGenericDocumentSyncService(type: DocumentType) {
     localStorage: storage,
     updatedEventName: DOCUMENT_STORAGE_UPDATED_EVENT,
     parseItem: (input) => getDocumentDefinition(type).parse(input),
-    getDocumentTitle: (item) => item.title,
+    getDocumentTitle: (item) =>
+      toDocumentTitle(item.title, `Untitled ${getDocumentDefinition(type).label}`),
     removeLocal: (id) => {
       deleteDocument(type, id);
     },

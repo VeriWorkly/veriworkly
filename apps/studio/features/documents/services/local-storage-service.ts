@@ -555,6 +555,14 @@ export class LocalStorageService<T extends BaseDocumentData> {
     return { ok: true };
   }
 
+  /**
+   * Records a document deleted outside this service (in another tab), so a save from an editor
+   * still holding it is refused like one deleted here, instead of writing it back.
+   */
+  markRemoved(id: string): void {
+    this.removedIds.add(id);
+  }
+
   clear(): LocalStorageWriteResult {
     if (!this.isBrowser()) return { ok: true };
 

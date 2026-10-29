@@ -5,9 +5,11 @@ import { ArrowLeft, Pencil } from "lucide-react";
 
 import { Button } from "@veriworkly/ui";
 import {
+  leavingLosesEdits,
   SAVE_PERSISTED_MESSAGE,
   SAVE_QUEUED_MESSAGE,
 } from "@/features/documents/services/save-failure-message";
+import { DOCUMENT_TITLE_MAX_LENGTH } from "@/features/documents/core/document-title";
 
 interface ToolbarHeaderProps {
   message: string;
@@ -44,7 +46,19 @@ const ToolbarHeader = ({
       <Button
         size="sm"
         variant="ghost"
-        onClick={onBack}
+        onClick={() => {
+          // The edits since a failed save exist only in this page (S-408).
+          if (
+            leavingLosesEdits(message) &&
+            !window.confirm(
+              "Your latest edits could not be saved on this device and will be lost if you leave. Use Download → JSON first to keep them. Leave anyway?",
+            )
+          ) {
+            return;
+          }
+
+          onBack();
+        }}
         title="Back to documents"
         aria-label="Back to documents"
         className="h-9 w-9 shrink-0 rounded-xl px-0"
@@ -59,6 +73,7 @@ const ToolbarHeader = ({
               ref={inputRef}
               aria-label="Document title"
               value={draft}
+              maxLength={DOCUMENT_TITLE_MAX_LENGTH}
               autoFocus
               className="text-foreground w-full bg-transparent text-sm font-semibold outline-none"
               onChange={(e) => setDraft(e.target.value)}

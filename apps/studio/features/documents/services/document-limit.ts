@@ -4,7 +4,7 @@ import type { MasterProfileData } from "@veriworkly/profile-core";
 
 import type { BillingSummary } from "@/features/billing/types";
 import type { BaseDocument } from "@/features/documents/core/types";
-import type { DocumentType } from "@/features/documents/core/document-types";
+import { DOCUMENT_TYPES, type DocumentType } from "@/features/documents/core/document-types";
 import type { DocumentImportDraft } from "@/features/documents/core/definition";
 
 import {
@@ -22,6 +22,9 @@ import {
   getMasterProfileForNewDocument,
 } from "@/features/resume/services/master-profile";
 import { fetchApiData } from "@/utils/fetchApiData";
+import { accountPaymentNotice } from "@/features/billing/checkout-rules";
+
+import { DocumentApi } from "./document-api";
 import { useUserStore } from "@/store/useUserStore";
 
 /** Where a new document's starting content comes from. */
@@ -31,7 +34,11 @@ export type CreateWithinLimitResult =
   | { ok: true; document: CreatedDocument }
   /** Another create of this type is still running; the caller does nothing. */
   | { ok: false; reason: "busy" }
-  | { ok: false; reason: "limit"; message: string; existingId: string }
+  /**
+   * `existingId` may name a document still in the cloud only (not pulled here yet); the editor
+   * opens it from there. `paymentIssue`: a subscriber whose card failed, offered the card update.
+   */
+  | { ok: false; reason: "limit"; message: string; existingId: string; paymentIssue: boolean }
   | { ok: false; reason: "billing" | "save"; message: string };
 
 export const FREE_DOCUMENTS_PER_TYPE = 1;
@@ -43,6 +50,67 @@ export function freeLimitMessage(type: DocumentType) {
 
   // Said to credit-pack buyers too, who are paying customers: no "free plan" wording.
   return `Without a subscription or pass you can keep 1 ${label} at a time. Creator Pro, an AI Credits subscription, the Bundle or a 3- or 7-day pass unlock unlimited documents; credit packs do not.`;
+}
+
+/**
+ * Said instead of the plan pitch to a subscriber whose renewal failed (S-386): they are a payer,
+ * never told they are free or asked to buy what they already have.
+ */
+export function paymentFailedLimitMessage(type: DocumentType) {
+  const label = type.toLowerCase().replace("_", " ");
+
+  return `Your payment failed. Update your card to restore unlimited documents; until then you can keep 1 ${label} at a time.`;
+}
+
+/**
+ * The id of one of the account's cloud documents of `type`, or null. A signed-in user on a new
+ * device has none here until the pull lands, and a second document the server would refuse
+ * (402) could otherwise be started (S-404). A failed lookup is null: the first document of a
+ * type can still be started offline, and the server keeps the real limit.
+ */
+async function findCloudDocumentId(type: DocumentType): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      DocumentApi.list(type, { limit: 1 }).then((page) => page.documents[0]?.id ?? null),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(resolve, CLOUD_LOOKUP_TIMEOUT_MS, null);
+      }),
+    ]);
+  } catch (error) {
+    console.warn("Could not count the account's cloud documents.", error);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * How long New and the template link wait for the cloud lookup before going on as if there were
+ * none; the documents API's own timeout (30 s) would stall them on a slow network.
+ */
+const CLOUD_LOOKUP_TIMEOUT_MS = 5_000;
+
+/**
+ * How many documents of each type the user has: this device's or, for a signed-in user with
+ * none of a type here, one when the account holds one in the cloud (S-404). A backup restore
+ * counts with it, so a free account on a new device is not given a document the server will
+ * refuse.
+ */
+export async function countDocumentsPerType(
+  isLoggedIn: boolean,
+): Promise<Record<DocumentType, number>> {
+  const counts = await Promise.all(
+    DOCUMENT_TYPES.map(async (type) => {
+      const local = listDocuments(type).length;
+      const inCloud = local === 0 && isLoggedIn && (await findCloudDocumentId(type)) !== null;
+
+      return [type, inCloud ? 1 : local] as const;
+    }),
+  );
+
+  return Object.fromEntries(counts) as Record<DocumentType, number>;
 }
 
 /**
@@ -68,9 +136,11 @@ async function resolveStartingProfile(
  * `/editor?type=&template=` entry, Duplicate and a single-file import.
  *
  * A second call for the same type while one is running returns `busy`, so a double click
- * makes one document. The count is read after `prepare`, because another tab or entry point
- * may have created a document in the meantime; `build` is synchronous so nothing can slip in
- * between the count and the write. The plan matters only past the free limit, so it is looked
+ * makes one document. The count is read after every await (`prepare`, the cloud lookup),
+ * because another tab or entry point may have created a document in the meantime; `build` is
+ * synchronous so nothing can slip in between the last count and the write. A signed-in user
+ * with nothing of the type here is asked about the account's cloud documents too, which a new
+ * device has not pulled yet (S-404). The plan matters only past the free limit, so it is looked
  * up only then: a signed-in user who is offline can still make their first document. When it
  * is needed, a failed lookup is an error, never "free": that would refuse a paying customer.
  * A guest is always on the free limit.
@@ -87,12 +157,26 @@ async function withinLimit<P>(
   try {
     const prepared = await prepare();
 
-    if (listDocuments(type).length >= FREE_DOCUMENTS_PER_TYPE) {
-      let unlimited = false;
+    const isLoggedIn = useUserStore.getState().isLoggedIn;
+    let existingId: string | null = listDocuments(type)[0]?.id ?? null;
 
-      if (useUserStore.getState().isLoggedIn) {
+    if (!existingId && isLoggedIn) {
+      existingId = await findCloudDocumentId(type);
+      // Counted again after the await: another tab may have made the first one meanwhile.
+      existingId ??= listDocuments(type)[0]?.id ?? null;
+    }
+
+    // The free limit is one document per type, so any existing one reaches it.
+    if (existingId) {
+      let unlimited = false;
+      let paymentIssue = false;
+
+      if (isLoggedIn) {
         try {
-          unlimited = hasUnlimitedDocuments(await fetchApiData<BillingSummary>("/billing/me"));
+          const billing = await fetchApiData<BillingSummary>("/billing/me");
+          unlimited = hasUnlimitedDocuments(billing);
+          // Older replies carry no `access`; read as no payment issue.
+          paymentIssue = Boolean(billing.access && accountPaymentNotice(billing.access));
         } catch (error) {
           return {
             ok: false,
@@ -107,8 +191,9 @@ async function withinLimit<P>(
         return {
           ok: false,
           reason: "limit",
-          message: freeLimitMessage(type),
-          existingId: listDocuments(type)[0].id,
+          message: paymentIssue ? paymentFailedLimitMessage(type) : freeLimitMessage(type),
+          existingId: listDocuments(type)[0]?.id ?? existingId,
+          paymentIssue,
         };
       }
     }
@@ -129,7 +214,7 @@ export function createDocumentWithinLimit(
   return withinLimit(
     type,
     () => resolveStartingProfile(source),
-    (master) => createDocument(type, master),
+    (master) => createDocument(type, master, { sample: source === "sample" }),
   );
 }
 
