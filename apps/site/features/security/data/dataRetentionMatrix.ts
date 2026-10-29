@@ -33,7 +33,7 @@ export const DATA_RETENTION_MATRIX: DataRetentionRow[] = [
     platformArea: "Security reports",
     storageLocation: "Security inbox",
     retentionPeriod: "90 days after the fix (kept as an audit log)",
-    deletionMethod: "Deleted automatically after that",
+    deletionMethod: "Deleted by hand after that",
     encryption: "Email over TLS (we do not currently publish a PGP key)",
   },
 ];

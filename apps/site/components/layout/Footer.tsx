@@ -6,6 +6,7 @@ import {
 } from "./LandingFooter";
 
 import { siteConfig } from "@/config/site";
+import { isAffiliateProgramEnabled, isAmbassadorProgramEnabled } from "@/lib/feature-flags";
 
 const footerColumns: LandingFooterColumn[] = [
   {
@@ -42,11 +43,20 @@ const footerColumns: LandingFooterColumn[] = [
       { name: "Our Mission", href: "/about" },
       { name: "Contact Team", href: "/contact" },
       { name: "Product Roadmap", href: "/roadmap" },
-      { name: "Affiliate Program", href: "/affiliate" },
-      { name: "Student Ambassador", href: "/ambassador" },
     ],
   },
 ];
+
+/**
+ * The marketing pages are static, so this reads the flags at build: turning a program on needs a
+ * rebuild before its footer link appears. The program pages themselves re-read every 5 minutes.
+ */
+function programLinks(): LandingFooterLink[] {
+  return [
+    ...(isAffiliateProgramEnabled() ? [{ name: "Affiliate Program", href: "/affiliate" }] : []),
+    ...(isAmbassadorProgramEnabled() ? [{ name: "Student Ambassador", href: "/ambassador" }] : []),
+  ];
+}
 
 const socialLinks: LandingFooterSocialLink[] = [
   { name: "GitHub", href: siteConfig.links.github, iconSrc: "/icons/socials/github.svg" },
@@ -65,6 +75,12 @@ const legalLinks: LandingFooterLink[] = [
 ];
 
 const Footer = () => {
+  const columns = footerColumns.map((column) =>
+    column.title === "Organization"
+      ? { ...column, links: [...column.links, ...programLinks()] }
+      : column,
+  );
+
   return (
     <LandingFooter
       ctaHref="/contact"
@@ -73,7 +89,7 @@ const Footer = () => {
       legalLinks={legalLinks}
       socialLinks={socialLinks}
       ctaText="Talk to the team"
-      footerColumns={footerColumns}
+      footerColumns={columns}
       logoSrc="/veriworkly-logo.png"
       shortName={siteConfig.shortName}
       headingPrefix="Are You Interested"

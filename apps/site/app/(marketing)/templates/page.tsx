@@ -91,7 +91,7 @@ const TemplatesPortalPage = () => {
       <PageHero
         title="Templates,"
         highlight="seen first."
-        lede={`VeriWorkly has ${templateSummaries.length} free templates: ${countOf("resume")} resumes, ${countOf("cover-letter")} cover letters and ${countOf("portfolio-website")} portfolio websites. Each preview shows the layout; the studio fills it from your profile and exports it free.`}
+        lede={`VeriWorkly has ${templateSummaries.length} templates (2 premium):${countOf("resume")} resumes, ${countOf("cover-letter")} cover letters and ${countOf("portfolio-website")} portfolio websites. Each preview shows the layout; the studio fills it from your profile and exports it free.`}
         aside={
           <>
             <dl className="mb-6 grid grid-cols-3 gap-4">

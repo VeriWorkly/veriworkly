@@ -41,8 +41,8 @@ All prices in USD. Exports are free on every tier.
 - Free: the resume and cover letter editor, Master Profile, all six export formats, ATS scans (1 every 48 hours without an account, 2 every 24 hours with a free account), the Signal and Atelier portfolio templates. One active document per type.
 - 3-Day Sprint Pass: $2.99 once, 150 AI credits and Creator Pro features for 3 days.
 - 7-Day Hunt Pass: $5.99 once, 400 AI credits and Creator Pro features for 7 days.
-- Job Hunter Bundle: $14.99 a month, or $143.88 a year ($11.99 a month); 1,000 AI credits a month, Creator Pro features, 300 ATS scans a month.
-- Creator Pro: $9.99 a month, or $95.88 a year ($7.99 a month); premium portfolio templates, badge removal, analytics and SEO controls, no AI credits.
+- Job Hunter Bundle: $14.99 a month, or $143.88 a year ($11.99 a month); 1,000 AI credits a month, Creator Pro features (including multi-page portfolios), 300 ATS scans a month.
+- Creator Pro: $9.99 a month, or $95.88 a year ($7.99 a month); premium portfolio templates, multi-page portfolios, badge removal, analytics and SEO controls, no AI credits.
 - AI Credits: $5.99 a month, or $59.88 a year ($4.99 a month); 1,000 AI credits a month.
 - Credit packs: 250 credits for $2.99, 500 credits for $4.99 or 1,200 credits for $9.99, valid 90 days.
 
@@ -53,8 +53,8 @@ All prices in USD. Exports are free on every tier.
 - [Changelog](https://veriworkly.com/changelog): Every release, from the public GitHub history.
 - [Roadmap](https://veriworkly.com/roadmap): What is planned, in progress and shipped.
 - [Development stats](https://veriworkly.com/stats): Issues, pull requests and completion rate from GitHub.
-- [Affiliate program](https://veriworkly.com/affiliate): 2%, 3% and 5% recurring commission tiers; payouts are reviewed by hand once a balance reaches $25.
-- [Student ambassador program](https://veriworkly.com/ambassador): A campus program in its first intake; applications are read by a person and rewards are not yet published.
+- [Affiliate program](https://veriworkly.com/affiliate): 2%, 3% and 5% recurring commission tiers; payouts are reviewed by hand once a balance reaches $25. Sign-ups are not open yet; the page says when they are.
+- [Student ambassador program](https://veriworkly.com/ambassador): A campus program for a founding cohort; applications are not open yet, will be read by a person, and rewards are not yet published.
 - [Brand kit](https://veriworkly.com/brand-kit): Logos, colours and usage.
 - [Privacy policy](https://veriworkly.com/privacy)
 - [Terms of service](https://veriworkly.com/terms)

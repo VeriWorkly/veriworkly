@@ -31,7 +31,12 @@ export const SecurityHero = () => (
     }
     aside={
       <div className="flex flex-wrap gap-3">
-        <LandingButton showArrow size="lg" variant="solid" href={`mailto:${siteConfig.email}`}>
+        <LandingButton
+          showArrow
+          size="lg"
+          variant="solid"
+          href={`mailto:${siteConfig.securityEmail}`}
+        >
           Report an issue
         </LandingButton>
         <LandingButton size="lg" variant="outline" href={SECURITY_POLICY_URL} target="_blank">

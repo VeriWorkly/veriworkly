@@ -25,7 +25,7 @@ export const ComparePricingSection = ({ competitor }: ComparePricingSectionProps
   <PageSection
     id="pricing"
     title={`${competitor.name} pricing in ${PRICES_CHECKED.year}.`}
-    lede={`${competitor.name} prices as published on its own site, checked in ${PRICES_CHECKED.month} ${PRICES_CHECKED.year}, beside VeriWorkly. No renewal traps or per-download fees hidden in the small print.`}
+    lede={`${competitor.name} prices as published on its own site, checked in ${PRICES_CHECKED.month} ${PRICES_CHECKED.year}, beside VeriWorkly. Subscriptions are optional, and no per-download fees hide in the small print.`}
   >
     <div className="grid gap-6 lg:grid-cols-2">
       <article className="bg-card reveal flex flex-col rounded-3xl p-7 lg:p-9">

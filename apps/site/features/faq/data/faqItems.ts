@@ -296,7 +296,7 @@ export const faqs: FaqItem[] = [
     category: "billing",
     question: "Do you have an affiliate or campus ambassador program?",
     answer:
-      "Yes. The affiliate program pays 2% to 5% recurring commission on referred customers, paid out once your balance reaches $25. The Student Ambassador program is in its first intake: applications are reviewed by hand, and the rewards (free access to paid features, not cash) will be published before anyone is asked to earn them.",
+      "Both are built and opening soon; each program page says when sign-ups open. The affiliate program pays 2% to 5% recurring commission on referred customers, paid out once your balance reaches $25. The Student Ambassador program starts with a founding cohort: applications are reviewed by hand, and the rewards (free access to paid features, not cash) will be published before anyone is asked to earn them.",
   },
 
   {

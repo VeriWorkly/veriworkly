@@ -128,11 +128,6 @@ const AmbassadorFooter = () => {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-6 border-t border-zinc-200 pt-8 text-[10px] font-bold tracking-wider text-zinc-500 uppercase md:flex-row dark:border-white/10 dark:text-zinc-500">
-          <div className="flex items-center gap-2 rounded-full border border-zinc-200/60 bg-zinc-50 px-3 py-1 shadow-inner dark:border-white/10 dark:bg-zinc-900/40">
-            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
-            <span>All systems operational</span>
-          </div>
-
           <div className="flex flex-wrap items-center justify-center gap-6">
             <span>&copy; {currentYear} VeriWorkly. All rights reserved.</span>
             <Link

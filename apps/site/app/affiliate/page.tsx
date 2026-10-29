@@ -7,6 +7,7 @@ import "./affiliate.css";
 import { siteConfig } from "@/config/site";
 import { jsonLdScriptProps } from "@/utils/json-ld";
 import { webSiteRef } from "@/utils/schema";
+import { buildPageMetadata } from "@/utils/metadata";
 import { isAffiliateProgramEnabled } from "@/lib/feature-flags";
 
 import AffiliateNav from "@/features/affiliate/AffiliateNav";
@@ -29,39 +30,27 @@ const pageOgImage = ogPageImage("affiliate");
 // Flags come from the runtime env (the build does not pass them), so re-read them every 5 minutes.
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: "Partner Affiliate Program | VeriWorkly",
-  description:
-    "Join the VeriWorkly Affiliate Program. Help professionals build private portfolios and earn recurring commissions of 2%, 3%, or 5%.",
+// Kept out of the index while sign-ups are closed: the page can only say "open soon".
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/affiliate",
+    noIndex: !isAffiliateProgramEnabled(),
 
-  openGraph: {
-    title: "Partner Affiliate Program | VeriWorkly",
+    title: `Partner Affiliate Program | ${siteConfig.shortName}`,
     description:
-      "Share a privacy-first resume and web portfolio builder. Earn recurring payouts starting at a low $25 threshold.",
-    url: pageUrl,
-    siteName: siteConfig.shortName,
-    type: "website",
-    images: [
-      {
-        url: pageOgImage,
-        width: 1200,
-        height: 630,
-        alt: "VeriWorkly Affiliate Tiers",
-      },
-    ],
-  },
+      "The VeriWorkly Affiliate Program: help professionals build private portfolios and earn recurring commissions of 2%, 3%, or 5%.",
 
-  twitter: {
-    card: "summary_large_image",
-    title: "Partner Affiliate Program | VeriWorkly",
-    description: "Earn recurring commissions by promoting user sovereignty in career documents.",
-    images: [pageOgImage],
-  },
+    ogTitle: "Partner Affiliate Program",
+    ogDescription:
+      "Share a privacy-first resume and web portfolio builder. Payouts are reviewed by hand once your balance reaches $25.",
 
-  alternates: {
-    canonical: pageUrl,
-  },
-};
+    twitterTitle: "VeriWorkly Partner Affiliate Program",
+    twitterDescription: "Recurring commissions of 2%, 3%, or 5% for referring VeriWorkly.",
+
+    image: pageOgImage,
+    imageAlt: "VeriWorkly Affiliate Tiers",
+  });
+}
 
 const AffiliatePage = async () => {
   const programEnabled = isAffiliateProgramEnabled();

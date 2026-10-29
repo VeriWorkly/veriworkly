@@ -5,7 +5,7 @@ import type { DisclosureStepItem } from "../types";
 export const DISCLOSURE_STEPS: DisclosureStepItem[] = [
   {
     label: "You report privately",
-    detail: `Send the details directly to ${siteConfig.email}. Please do not open a public issue or post publicly before a fix is out.`,
+    detail: `Send the details directly to ${siteConfig.securityEmail}. Please do not open a public issue or post publicly before a fix is out.`,
   },
   {
     label: "We acknowledge within 24 to 48 hours",

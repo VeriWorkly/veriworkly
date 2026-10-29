@@ -63,7 +63,7 @@ export const OG_PAGES = {
   },
   stats: {
     title: "Development & AI Platform Statistics",
-    description: "Live platform development stats, AI feature logs, and release metrics.",
+    description: "Live issue, pull request, and completion-rate stats from our GitHub.",
   },
   affiliate: {
     title: "Partner Affiliate Program",
@@ -71,7 +71,7 @@ export const OG_PAGES = {
   },
   ambassador: {
     title: "Student Ambassador Program",
-    description: "Represent VeriWorkly on campus. Founding cohort applications open.",
+    description: "Represent VeriWorkly on campus. A founding cohort, read by a person.",
   },
 } satisfies Record<string, OgCard>;
 

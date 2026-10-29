@@ -33,13 +33,6 @@ const AffiliateFooter = () => {
               with paid plans for premium portfolio templates and AI credits.
             </p>
           </div>
-
-          <div className="flex items-center justify-start lg:col-span-7 lg:justify-end">
-            <div className="text-muted flex w-fit items-center gap-2 rounded-full border border-zinc-200/50 bg-zinc-50 px-4 py-1.5 text-[10px] font-bold shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-              <span>Operational</span>
-            </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-10 pt-12 md:grid-cols-4">
@@ -196,7 +189,9 @@ const AffiliateFooter = () => {
           <Link href="/privacy" className="hover:text-foreground transition-colors">
             Privacy
           </Link>
-          <button className="hover:text-foreground transition-colors">Cookie Preferences</button>
+          <Link href="/privacy#cookies" className="hover:text-foreground transition-colors">
+            Cookies
+          </Link>
         </div>
       </div>
     </footer>

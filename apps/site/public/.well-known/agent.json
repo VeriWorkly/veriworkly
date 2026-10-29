@@ -104,7 +104,7 @@
     },
     {
       "name": "Affiliate & Ambassador Programs",
-      "description": "Track referral links, affiliate commissions, and student ambassador applications.",
+      "description": "Track referral links, affiliate commissions, and student ambassador applications. Not open yet: while a program is off, its endpoints answer 503.",
       "endpoints": ["/api/v1/affiliates/me", "/api/v1/ambassador/apply"]
     },
     {

@@ -55,7 +55,8 @@ expire rather than renew. Nothing converts from free to paid on its own.
   - Creator Pro portfolio features on `username.veriworkly.com`
   - 1,000 AI Writing Credits a month; unused credits expire at the end of the month (no rollover)
   - 300 ATS Scans a month (any account with AI credits gets these, credit packs included)
-  - Premium portfolio templates (Nimbus, Cipher), badge removal & full portfolio analytics
+  - Premium portfolio templates (Nimbus, Cipher), multi-page portfolios, badge removal & full
+    portfolio analytics
   - Higher import limits: up to 50 GitHub imports a day, and LinkedIn imports without the
     free tier's 30-day gap
 
