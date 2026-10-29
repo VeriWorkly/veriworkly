@@ -41,7 +41,6 @@ export const OG_PAGES = {
     description:
       "See how VeriWorkly compares to Rezi, Teal, Kickresume, Novoresume, Zety, and Enhancv on pricing, downloads, and ATS checks.",
   },
-  "compare-missing": { title: "Not Found" },
   features: {
     title: "Platform Features & Career Tools",
     description:
