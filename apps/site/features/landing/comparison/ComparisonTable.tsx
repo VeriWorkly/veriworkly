@@ -1,12 +1,6 @@
 import { Check, X } from "lucide-react";
 
-export interface ComparisonRow {
-  feature: string;
-  veriworkly: string;
-  competitor: string;
-}
-
-const rows: ComparisonRow[] = [
+const rows = [
   {
     feature: "Starting price",
     veriworkly: "$0, free forever",
@@ -96,17 +90,11 @@ const ComparisonTable = () => {
 
                 <td className="border-t border-zinc-100 px-4 py-3.5 sm:px-6 sm:py-5 dark:border-zinc-900">
                   <div className="flex items-start gap-2 sm:gap-2.5">
-                    {row.competitor === "-" ? (
-                      <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-zinc-100 font-mono text-[10px] font-bold text-zinc-400 sm:h-5 sm:w-5 sm:text-xs dark:bg-zinc-900 dark:text-zinc-500">
-                        –
-                      </span>
-                    ) : (
-                      <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 sm:h-5 sm:w-5 dark:bg-zinc-900 dark:text-zinc-600">
-                        <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" strokeWidth={3} />
-                      </span>
-                    )}
+                    <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 sm:h-5 sm:w-5 dark:bg-zinc-900 dark:text-zinc-600">
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" strokeWidth={3} />
+                    </span>
                     <span className="text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
-                      {row.competitor === "-" ? "Varies by vendor" : row.competitor}
+                      {row.competitor}
                     </span>
                   </div>
                 </td>

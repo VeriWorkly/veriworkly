@@ -1,9 +1,6 @@
 import Link from "next/link";
 
-import {
-  type RoadmapStatus,
-  type RoadmapResponse,
-} from "@/features/roadmap/services/roadmap-backend";
+import { type RoadmapResponse } from "@/features/roadmap/services/roadmap-backend";
 
 import { Container } from "@veriworkly/ui";
 
@@ -17,7 +14,7 @@ import RoadmapStatusFilters from "./RoadmapStatusFilters";
 interface RoadmapPageShellProps {
   title: string;
   description: string;
-  data: RoadmapResponse | null;
+  data: RoadmapResponse;
   basePath: string;
   activeStatus: "all" | "todo" | "in-progress" | "done";
   rootPath?: string;
@@ -33,30 +30,11 @@ const RoadmapPageShell = ({
 }: RoadmapPageShellProps) => {
   const normalizedRootPath = rootPath.replace(/\/$/, "");
 
-  const sections = data?.sections ?? [
-    {
-      title: "To Do",
-      status: "todo" as RoadmapStatus,
-      items: [],
-      fetchedAt: new Date().toISOString(),
-    },
-    {
-      title: "In Progress",
-      status: "in-progress" as RoadmapStatus,
-      items: [],
-      fetchedAt: new Date().toISOString(),
-    },
-    {
-      title: "Done",
-      status: "done" as RoadmapStatus,
-      items: [],
-      fetchedAt: new Date().toISOString(),
-    },
-  ];
+  const { sections } = data;
 
   const columns: KanbanColumn[] = sections.map((section) => ({
     title: section.title,
-    items: (section.items ?? []).map((item) => ({
+    items: section.items.map((item) => ({
       ...item,
       eta: item.eta ?? undefined,
       startedAt: item.startedAt ?? undefined,
@@ -66,7 +44,7 @@ const RoadmapPageShell = ({
   }));
 
   // A column the backend could not deliver says so; a genuinely empty backlog does not.
-  const boardFailed = (data?.failedStatuses.length ?? 1) > 0;
+  const boardFailed = data.failedStatuses.length > 0;
 
   const columnHrefMap = {
     "To Do": `${normalizedRootPath}/todo`,

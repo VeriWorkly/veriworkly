@@ -87,12 +87,7 @@ export function buildChangelogHref(basePath: string, updates: Record<string, str
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(updates)) {
-    if (value === undefined || value === "") {
-      params.delete(key);
-      continue;
-    }
-
-    params.set(key, value);
+    if (value) params.set(key, value);
   }
 
   const query = params.toString();
