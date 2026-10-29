@@ -47,8 +47,29 @@ None is required to start the site; set `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_
 | `ERROR_REPORT_URL`                                        | Runtime | none (errors go to stderr)   | Receives server-side errors as plain JSON.                                               |
 | `NEXT_PUBLIC_VITALS_URL`                                  | Build   | none (nothing is sent)       | Receives real-user Web Vitals as plain JSON. An OTLP collector does not accept it.       |
 | `BUILD_STANDALONE`                                        | Build   | unset                        | `1` for container builds that run `node apps/site/server.js`.                            |
+| `INTERNAL_API_KEY`                                        | Runtime | none                         | Same value as the API's. Lets the API rate-limit the ambassador page per visitor.        |
+| `SITE_REVALIDATE_SECRET`                                  | Runtime | none (hook off)              | Same value as the API's, at least 32 characters; shorter turns `/api/revalidate` off.    |
 
-The site holds no secrets. In Docker, `compose.yaml` passes these to the `web` service from the root `.env`.
+The two secrets are optional. In Docker, `compose.yaml` passes these to the `web` service from the root `.env`.
+
+## 🌐 Behind nginx
+
+`npm start` binds to `127.0.0.1`: a request straight to the port would skip nginx and set its own `X-Real-IP`, which the ambassador page's server render forwards to the API as the visitor's address. The Docker image listens on `0.0.0.0` inside the container, and `compose.yaml` publishes it on the host's loopback only.
+
+nginx in front of the site must set both address headers from the connection, not pass on the visitor's copies:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Appending with `$proxy_add_x_forwarded_for` lets a visitor put any address first. Behind Cloudflare, configure nginx's `real_ip` module so `$remote_addr` is the visitor. The site drops any forwarded value that is not an IP address, and the API ignores the forwarded IP without a matching `INTERNAL_API_KEY`.
 
 ## 📄 What's on this site
 
