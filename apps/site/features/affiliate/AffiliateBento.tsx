@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { m, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { m, AnimatePresence, useInView } from "framer-motion";
 import { Sparkles, TrendingUp, BadgeDollarSign, ShieldCheck, Check, Terminal } from "lucide-react";
 import { siteConfig } from "@/config/site";
+
+const FIREWALL_LOGS = [
+  "Securing device session...",
+  "Self-referral check: blocked at signup.",
+  "One referral per account: enforced.",
+  "Commission queued for manual review.",
+  "Conversion locked successfully.",
+];
 
 const AffiliateBento = () => {
   const [username, setUsername] = useState("yourcode");
@@ -12,7 +20,13 @@ const AffiliateBento = () => {
 
   // Mirrors the studio's CopyReferralLinkButton; the real code is assigned on join, so this only previews the shape.
   const referralLink = `${siteConfig.links.app}/login?ref=${encodeURIComponent(username || "yourcode")}`;
-  const [scans, setScans] = useState<string[]>(["Filter initialized.", "Network trace: OK."]);
+  const [scans, setScans] = useState([
+    { id: 0, text: "Filter initialized." },
+    { id: 1, text: "Network trace: OK." },
+  ]);
+  const nextScan = useRef({ id: 2, log: 0 });
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const terminalOnScreen = useInView(terminalRef);
 
   const handleCopy = async () => {
     try {
@@ -29,20 +43,18 @@ const AffiliateBento = () => {
   };
 
   useEffect(() => {
-    const logs = [
-      "Securing device session...",
-      "Self-referral check: blocked at signup.",
-      "One referral per account: enforced.",
-      "Commission queued for manual review.",
-      "Conversion locked successfully.",
-    ];
-    let i = 0;
+    if (!terminalOnScreen) return;
+
     const interval = setInterval(() => {
-      setScans((prev) => [...prev.slice(-3), logs[i]]);
-      i = (i + 1) % logs.length;
+      if (document.hidden) return;
+
+      const { id, log } = nextScan.current;
+      nextScan.current = { id: id + 1, log: (log + 1) % FIREWALL_LOGS.length };
+      setScans((prev) => [...prev.slice(-3), { id, text: FIREWALL_LOGS[log]! }]);
     }, 3000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [terminalOnScreen]);
 
   return (
     <section className="mx-auto max-w-7xl border-t border-zinc-200/50 px-6 py-24 md:py-32 dark:border-zinc-800/30">
@@ -230,15 +242,18 @@ const AffiliateBento = () => {
             </div>
           </div>
 
-          <div className="flex h-36 flex-col justify-end gap-1.5 overflow-hidden rounded-2xl border border-zinc-900 bg-black/60 p-4 font-mono text-[10px] text-zinc-400 shadow-inner">
+          <div
+            ref={terminalRef}
+            className="flex h-36 flex-col justify-end gap-1.5 overflow-hidden rounded-2xl border border-zinc-900 bg-black/60 p-4 font-mono text-[10px] text-zinc-400 shadow-inner"
+          >
             <div className="mb-1.5 flex items-center gap-1.5 border-b border-zinc-900 pb-2 text-zinc-500 select-none">
               <Terminal className="h-3.5 w-3.5 text-rose-500" />
               <span>veriworkly_firewall.sh</span>
             </div>
             <AnimatePresence mode="popLayout">
-              {scans.map((log, idx) => (
+              {scans.map((scan) => (
                 <m.div
-                  key={log + idx}
+                  key={scan.id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, y: -10 }}
@@ -246,7 +261,7 @@ const AffiliateBento = () => {
                   className="flex items-center gap-1.5 truncate"
                 >
                   <span className="font-black text-rose-500/80">❯</span>
-                  <span className="text-zinc-300">{log}</span>
+                  <span className="text-zinc-300">{scan.text}</span>
                 </m.div>
               ))}
             </AnimatePresence>
