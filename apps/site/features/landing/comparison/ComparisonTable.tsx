@@ -29,7 +29,7 @@ const rows: ComparisonRow[] = [
   },
   {
     feature: "Billing & commitments",
-    veriworkly: "No credit card, no auto-renewal",
+    veriworkly: "No card for the free builder, plans optional",
     competitor: "Subscriptions auto-renew monthly",
   },
   {

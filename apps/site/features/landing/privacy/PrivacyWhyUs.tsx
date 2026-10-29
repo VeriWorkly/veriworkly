@@ -26,9 +26,10 @@ const PrivacyWhyUs = () => {
             </h2>
 
             <p className="mb-8 max-w-[50ch] text-base leading-relaxed text-zinc-500 sm:text-lg dark:text-zinc-400">
-              VeriWorkly runs the entire parsing, AI tailoring, and database engine directly inside
-              your client browser. Built open-source and local-first, your career facts and personal
-              data remain strictly under your control.
+              VeriWorkly keeps your drafts in your browser and builds your PDF and Word exports
+              right there too. LinkedIn and GitHub imports and AI tailoring run on our server, only
+              when you ask for them. Built open-source and local-first, your career facts and
+              personal data remain strictly under your control.
             </p>
 
             <div className="space-y-4">
@@ -67,8 +68,8 @@ const PrivacyWhyUs = () => {
 
                 <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   <span className="font-bold text-zinc-900 dark:text-zinc-100">Audit-Ready:</span>{" "}
-                  Open-core repository structure lets developers inspect and audit all client-side
-                  parsing code.
+                  Open-core repository structure lets developers inspect and audit the code that
+                  handles your data.
                 </p>
               </div>
             </div>
