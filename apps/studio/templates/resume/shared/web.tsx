@@ -24,7 +24,7 @@ import {
   normalizeLinkHref,
 } from "@/features/documents/rendering/resume-rendering";
 import { WebSocialIcon } from "@/templates/shared/web-social-icon";
-import { buildResumeSections } from "./model";
+import { buildResumeSections, getSkillLineText } from "./model";
 import { createResumeTokens, webText } from "./tokens";
 import { createResumeKeepTogether } from "./keep-together";
 import { SPLIT_ATTRIBUTE, TEXT_ITEM_ATTRIBUTE } from "@/templates/shared/pagination";
@@ -485,11 +485,11 @@ export function createResumeWebTemplate(skin: ResumeWebSkin): React.FC<TemplateR
         start: { text: value },
       }),
       skills: (lines) => ({
-        start: lines[0] ? { text: `${lines[0].label}: ${lines[0].value}` } : null,
+        start: lines[0] ? { text: getSkillLineText(lines[0]) } : null,
         nodes: lines.map((line) => (
           <article className="break-inside-avoid" key={line.id} {...{ [TEXT_ITEM_ATTRIBUTE]: "" }}>
             <p style={webText(tokens.body)}>
-              <span style={{ fontWeight: 700 }}>{line.label}: </span>
+              {line.label ? <span style={{ fontWeight: 700 }}>{line.label}: </span> : null}
               {line.value}
             </p>
           </article>

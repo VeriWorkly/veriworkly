@@ -276,10 +276,9 @@ function hasProjectContent(item: ResumeData["projects"][number]): boolean {
   );
 }
 
+/** The keywords are the content; a group's name is optional and prints only as their label. */
 function hasSkillGroupContent(item: ResumeData["skills"][number]): boolean {
-  return Boolean(
-    cleanResumeText(item.name) && item.keywords.some((keyword) => cleanResumeText(keyword)),
-  );
+  return item.keywords.some((keyword) => cleanResumeText(keyword));
 }
 
 export function hasCustomItemContent(item: ResumeData["customSections"][number]["items"][number]) {

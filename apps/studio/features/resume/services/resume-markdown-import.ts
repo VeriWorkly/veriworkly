@@ -254,18 +254,20 @@ function parseProjects(lines: string[]): ResumeProjectItem[] {
   });
 }
 
+/** "- **Name:** a, b", or "- a, b" for a group without a name (S-395). */
 function parseSkills(lines: string[]): ResumeSkillGroup[] {
   return lines
-    .map((line) => line.trim().match(/^[-*]\s+\*\*(.+?):\*\*\s*(.*)$/))
+    .map((line) => line.trim().match(/^[-*]\s+(?:\*\*(.+?):\*\*\s*)?(.*)$/))
     .filter((match): match is RegExpMatchArray => Boolean(match))
-    .map((match, index) => ({
-      id: `skill-${index + 1}`,
-      name: unescapeMarkdown(match[1]),
+    .map((match) => ({
+      name: match[1] ? unescapeMarkdown(match[1]) : "",
       keywords: unescapeMarkdown(match[2])
         .split(",")
         .map((keyword) => keyword.trim())
         .filter(Boolean),
-    }));
+    }))
+    .filter((group) => group.name || group.keywords.length > 0)
+    .map((group, index) => ({ id: `skill-${index + 1}`, ...group }));
 }
 
 /** "a | b" back into its fields, the second empty when the renderer printed one. */

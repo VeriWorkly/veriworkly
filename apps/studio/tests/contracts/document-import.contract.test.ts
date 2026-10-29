@@ -288,6 +288,11 @@ describe("resume Markdown import, every printed section", () => {
   function everySectionResume(): ResumeData {
     const resume = structuredClone(defaultResume);
 
+    // S-395: a group without a name prints its keywords alone and must read back.
+    resume.skills = [
+      ...resume.skills,
+      { id: "skills-nameless", name: "", keywords: ["Rust", "Go"] },
+    ];
     resume.certificates = [
       {
         id: "c1",

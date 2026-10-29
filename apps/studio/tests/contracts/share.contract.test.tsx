@@ -182,6 +182,22 @@ describe("share contract", () => {
       expect(isShareSnapshotStale(null, "2026-10-27T10:00:00.000Z")).toBe(false);
     });
 
+    it("S-254 a view after the edit does not hide the warning: the snapshot time is compared", async () => {
+      const { isShareSnapshotStale } = await import("@/components/modals/ShareDocumentModal");
+      const { shareSnapshotTime } = await import("@/features/documents/services/share-service");
+
+      // Shared at T0, edited at T1, then the view flush moved `updatedAt` to T2.
+      const link = {
+        updatedAt: "2026-10-27T12:00:00.000Z",
+        snapshotAt: "2026-10-27T10:00:00.000Z",
+      };
+
+      expect(shareSnapshotTime(link)).toBe("2026-10-27T10:00:00.000Z");
+      expect(isShareSnapshotStale("2026-10-27T11:00:00.000Z", shareSnapshotTime(link))).toBe(true);
+      // A list cached before the server sent `snapshotAt` falls back to `updatedAt`.
+      expect(shareSnapshotTime({ updatedAt: link.updatedAt })).toBe(link.updatedAt);
+    });
+
     it("S-254 a stale link offers to update the shared version; a current one does not", async () => {
       const { SharedVersionNotice } = await import("@/components/modals/ShareDocumentModal");
       const notice = (stale: boolean) =>
@@ -314,6 +330,46 @@ describe("share contract", () => {
       );
       // A public read cached before the setting existed carries none: the buttons stay.
       expect(await renderPage(200, { data })).toContain("lucide-download");
+    });
+
+    it("S-399 the share page's PDF download warns first when characters would print blank", async () => {
+      const { pdfCharacterWarning } =
+        await import("@/features/documents/export/pdf-unsupported-text");
+      const resume = structuredClone(defaultResume);
+      resume.basics.fullName = "राहुल शर्मा";
+
+      expect(pdfCharacterWarning({ type: "RESUME", content: resume })).toMatch(
+        /^These characters will be blank in the PDF: Name \(/,
+      );
+      expect(pdfCharacterWarning({ type: "RESUME", content: defaultResume })).toBeNull();
+
+      // The reader's Download menu runs the editor's check and dialog before the PDF.
+      const source = readFileSync(
+        join(__dirname, "..", "..", "app/share/components/DownloadActions.tsx"),
+        "utf8",
+      );
+      expect(source).toMatch(/pdfCharacterWarning\(\{ type: "RESUME", content: resume \}\)/);
+      expect(source).toContain("<PdfCharacterWarning");
+    });
+
+    it("S-398 the modal offers the download switch only where the page has a Download button", async () => {
+      const { shareOffersDownloads, toShareSnapshot } =
+        await import("@/features/documents/services/share-service");
+      const letter = createDefaultCoverLetter("letter-1");
+
+      const html = await renderPage(200, {
+        data: {
+          passwordRequired: false,
+          documentTitle: "Letter",
+          expiresAt: null,
+          allowDownload: true,
+          snapshot: toShareSnapshot(letter),
+        },
+      });
+
+      expect(html).not.toContain("lucide-download");
+      expect(shareOffersDownloads("COVER_LETTER")).toBe(false);
+      expect(shareOffersDownloads("RESUME")).toBe(true);
     });
 
     it("S-044 401 and 403 say the document is not available", async () => {

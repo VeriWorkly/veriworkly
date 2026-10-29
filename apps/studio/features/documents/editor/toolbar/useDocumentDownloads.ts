@@ -69,11 +69,9 @@ export function useDocumentDownloads({
     let warning: string | null = null;
 
     try {
-      const { describeUndrawablePdfText, findTextPdfCannotDraw } =
+      const { pdfCharacterWarning } =
         await import("@/features/documents/export/pdf-unsupported-text");
-      const blanks = findTextPdfCannotDraw(document);
-
-      if (blanks.length > 0) warning = describeUndrawablePdfText(blanks);
+      warning = pdfCharacterWarning(document);
     } catch (error) {
       console.error("PDF character check failed; exporting without it", error);
     } finally {
