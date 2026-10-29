@@ -4,6 +4,12 @@ import { sortOrders } from "@/features/roadmap/sort-orders";
 
 process.env.NEXT_PUBLIC_BACKEND_URL ??= "http://127.0.0.1:1/api/v1";
 
+// @veriworkly/ui loads next/font at import, which only works inside a Next build.
+vi.mock("next/font/google", () => ({
+  Geist: () => ({ variable: "" }),
+  Geist_Mono: () => ({ variable: "" }),
+}));
+
 describe("roadmap client-side sort orders match the server's", () => {
   const item = (id: string, createdAt: string, completedAt?: string, updatedAt = createdAt) => ({
     id,
@@ -177,5 +183,19 @@ describe("real release ids reach the backend", () => {
     expect((await fetchChangelogEntryById("v3-31-0"))?.title).toBe("Release");
     expect(urls).toHaveLength(1);
     expect(urls[0]).toMatch(/\/changelog\/v3-31-0$/);
+  });
+});
+
+describe("a shipped card's month (W-096)", () => {
+  it("is the UTC month, whatever zone renders it", async () => {
+    const { shippedMonth } = await import("@/components/roadmap/KanbanItemCard");
+    const zone = process.env.TZ;
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      expect(shippedMonth("2026-10-01T00:00:00Z")).toBe("Oct 2026");
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
   });
 });

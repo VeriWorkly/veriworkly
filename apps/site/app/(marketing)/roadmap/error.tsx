@@ -5,6 +5,8 @@ import { useEffect } from "react";
 
 import { Button, Container } from "@veriworkly/ui";
 
+import { reportClientError } from "@/utils/report-client-error";
+
 export default function RoadmapError({
   error,
   retry,
@@ -14,6 +16,8 @@ export default function RoadmapError({
 }) {
   useEffect(() => {
     console.error("Roadmap failed to render:", error);
+    // "marketing": the API accepts only root/marketing/global, and the logged URL already says roadmap.
+    reportClientError(error, "marketing");
   }, [error]);
 
   return (

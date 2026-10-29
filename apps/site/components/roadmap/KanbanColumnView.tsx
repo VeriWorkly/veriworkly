@@ -38,6 +38,12 @@ const columnIcons = {
   ),
 };
 
+const emptyText: Record<string, string> = {
+  "To Do": "Planned items will appear here.",
+  "In Progress": "Items in progress will appear here.",
+  Done: "Shipped items will appear here.",
+};
+
 const KanbanColumnView = ({
   column,
   columnHref,
@@ -113,7 +119,9 @@ const KanbanColumnView = ({
               No items
             </p>
 
-            <p className="text-muted/60 mt-1 text-[11px]">Planned items will appear here.</p>
+            <p className="text-muted/60 mt-1 text-[11px]">
+              {emptyText[column.title] ?? "Items will appear here."}
+            </p>
           </div>
         ) : (
           <SortedItems orders={sortOrders(column.items)}>

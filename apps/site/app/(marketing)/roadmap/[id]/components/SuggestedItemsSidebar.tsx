@@ -31,14 +31,15 @@ const SuggestedItemsSidebar = ({
           </p>
         </div>
 
-        <Link href={`/roadmap/${currentStatus}`} className="shrink-0">
-          <Button
-            variant="secondary"
-            className="border-border/40 flex items-center gap-2 border px-5 py-3 text-xs font-bold tracking-widest uppercase"
-          >
+        <Button
+          asChild
+          variant="secondary"
+          className="border-border/40 flex shrink-0 items-center gap-2 border px-5 py-3 text-xs font-bold tracking-widest uppercase"
+        >
+          <Link href={`/roadmap/${currentStatus}`}>
             View All {statusLabels[currentStatus]} <ArrowRight className="size-3.5" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {suggestedItems.length === 0 ? (
