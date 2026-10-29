@@ -76,19 +76,27 @@ info:
     client. Better Auth's other routes are also served: social sign-in and account linking (Google, GitHub
     and LinkedIn when configured, through `/sign-in/social`, `/link-social` and `/callback/{provider}`),
     session management (`/list-sessions`, `/revoke-session`, `/revoke-sessions`,
-    `/revoke-other-sessions`) and `/email-otp/request-password-reset`. Those follow Better
-    Auth's own documentation and are not described here. `/forget-password/email-otp` is
-    switched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`
+    `/revoke-other-sessions`), and the rest of the email code plugin:
+    `/email-otp/check-verification-otp`, `/email-otp/verify-email`,
+    `/email-otp/request-password-reset` and `/email-otp/reset-password`. Those follow Better
+    Auth's own documentation and are not described here. `/email-otp/request-email-change` and
+    `/email-otp/change-email` are served but email change is not enabled, so both answer `400`
+    "Change email with OTP is disabled". `/forget-password/email-otp` is switched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`
     with code `GITHUB_UNLINK_FORBIDDEN`), and an account can link only one GitHub account
     (`GITHUB_ALREADY_LINKED`, sent as an `error` query parameter on the OAuth redirect, or as a
     `403` code elsewhere).
 
     ### Not Documented Here
 
-    `POST /api/v1/client-errors` (crash reports from VeriWorkly's own site),
-    `GET /api/v1/health/metrics` and `GET /api/v1/health/jobs` (behind the server's internal key)
-    and everything under `/api/v1/admin/*` are internal first-party routes. They are left out
-    of this reference on purpose and are not part of the supported public API.
+    These routes are internal or first-party only. They are left out of this reference on
+    purpose and are not part of the supported public API:
+
+    - `POST /api/v1/client-errors`: crash reports from VeriWorkly's own site;
+    - `GET /api/v1/health/metrics` and `GET /api/v1/health/jobs`: behind the server's internal
+      key;
+    - `POST /api/v1/billing/webhooks/dodo`: the billing provider's signed webhook;
+    - `POST /api/v1/github/admin/sync` and `GET /api/v1/stats/admin/dashboard`: admin sessions
+      only, like everything under `/api/v1/admin/*`.
 
     ### Contact form
     `POST /api/v1/contact` sends a message to the VeriWorkly team. It is open (no key or
@@ -97,8 +105,11 @@ info:
     the time the form was loaded in milliseconds since the epoch, which is required. `website`
     is a hidden field that must stay empty. A bad body answers `400` "Validation failed" with
     `details`; success answers `{ name, email, subject, timestamp }` with the message "Message
-    sent successfully". A submission sent less than 1.2 seconds after `_ts`, or with `website`
-    filled, gets the same success answer and is dropped.
+    sent successfully". A submission sent less than 1.2 seconds after `_ts`, with a `_ts` from
+    before 2024 or more than an hour in the future, or with `website` filled, gets the same
+    success answer and is dropped. A failure to send the email answers `500` "Internal server
+    error. Failed to send message.". The rate limit fails closed: while it cannot be counted,
+    the route answers `503` "Rate limiting is temporarily unavailable. Please retry shortly.".
 servers:
   - url: https://api.veriworkly.com
     description: Production Server
@@ -1563,83 +1574,6 @@ paths:
           $ref: "#/components/responses/RateLimitError"
         "503":
           $ref: "#/components/responses/DatabaseUnavailableError"
-  /api/v1/github/admin/sync:
-    post:
-      tags:
-        - GitHub
-      operationId: syncGitHubStats
-      security:
-        - LocalSession: []
-        - ProdSession: []
-      summary: (Admin) Sync GitHub
-      description: |
-        Manually triggers a GitHub sync. **Administrators only** — the caller's session email must
-        match the configured `ADMIN_EMAIL`; an API key cannot reach this route.
-
-        Incremental by default: only issues updated since the last sync are refetched. The run is
-        guarded by a 10-minute Redis lock, so a concurrent attempt fails with `409` rather than
-        double-syncing.
-
-        A sync can take minutes, so it runs in the background: the response is `202` as soon as
-        the lock is taken. `GET /github/stats` shows the new `syncedAt` once it has finished; a
-        failed run leaves the previous data in place.
-      responses:
-        "202":
-          description: The sync started and is running in the background.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericSuccessResponse"
-              example:
-                success: true
-                message: GitHub sync started
-                data:
-                  status: started
-                  statusUrl: /api/v1/admin/system/github
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "403":
-          description: The authenticated user is not the configured administrator.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 403
-                message: Forbidden
-        "409":
-          description: A sync is already running.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: GitHub sync is already in progress
-        "500":
-          description: The server has no `ADMIN_EMAIL` set, so no one can be the administrator.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 500
-                message: ADMIN_EMAIL is not configured
-        "503":
-          description: |
-            The sync cannot start: Redis, which holds its lock, is unreachable, or
-            `GITHUB_OWNER`/`GITHUB_REPO` are not configured.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 503
-                message: Syncing is unavailable right now. Try again shortly.
   /api/v1/auth/email-otp/send-verification-otp:
     post:
       tags:

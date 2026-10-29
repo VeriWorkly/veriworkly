@@ -57,6 +57,12 @@ const nextConfig: NextConfig = {
       { source: "/faq", destination: "https://veriworkly.com/faq", statusCode: 301 },
       { source: "/templates", destination: "https://veriworkly.com/templates", statusCode: 301 },
       { source: "/roadmap", destination: "https://veriworkly.com/roadmap", statusCode: 301 },
+      // An admin-only route, removed from the public API reference.
+      {
+        source: "/api-reference/github/syncGitHubStats",
+        destination: "/api-reference/github/overview",
+        statusCode: 301,
+      },
       ...folderRedirects().map((redirect) => ({ ...redirect, statusCode: 301 as const })),
     ];
   },

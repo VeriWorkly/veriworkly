@@ -3,7 +3,7 @@
   "info": {
     "title": "VeriWorkly API",
     "version": "1.0.0",
-    "description": "The official API reference for VeriWorkly.\n\n### Authentication Methods\n\nVeriWorkly supports two authentication methods:\n\n#### 1. API Key Authentication (recommended for scripts and integrations)\nFor programmatic access, send your key either way — both are accepted:\n\n- `X-API-Key: vw_...`\n- `Authorization: Bearer vw_...`\n\nA key is **required** for any request that does not originate from a whitelisted VeriWorkly\norigin, including requests made from these documentation pages.\n\n- **Format**: `vw_` followed by 64 hexadecimal characters.\n- **Rate limit**: 20 requests per 15 minutes per key by default, configurable per key at\n  creation up to 600 (the server's `API_KEY_MAX_RATE_LIMIT`). Responses carry\n  `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`.\n- **Scopes**: keys are scope-gated. A key missing a route's required scope gets `403`. Session\n  callers are never scope-gated.\n\n#### 2. Session Authentication (dashboard only)\nUsed internally by the VeriWorkly dashboard and resume builder, via secure HTTP-only cookies\nissued by Better Auth.\n\n- **Cookies**:\n  - Local: `veriworkly-auth.session_token`\n  - Production: `__Secure-veriworkly-auth.session_token`\n- **Note**: sessions are only honoured for whitelisted origins. Send `credentials: 'include'`\n  (fetch) or `withCredentials: true` (axios). Requests from these documentation pages **must**\n  use an API key.\n- **Cookie domain**: when the server sets `AUTH_COOKIE_DOMAIN`, the session cookie is issued\n  for that domain so it is shared across its subdomains. Without it the cookie belongs to the\n  API host only.\n\n#### Endpoints that need neither\nThese are fully open, with no key, session or first-party origin:\n\n- `GET /api/v1/health` and `GET /api/v1/health/ready`\n- `POST /api/v1/affiliates/click` and `GET /api/v1/affiliates/leaderboard` (while the\n  affiliate program is switched on)\n- the Better Auth routes under `/api/v1/auth/*`\n- `POST /api/v1/contact`\n\nEverything else, including the endpoints labelled \"public\" such as public portfolios and\nshare links, requires an API key or a whitelisted first-party origin, and returns `401`\nwithout one.\n\n#### Cross-origin requests\nA browser request whose `Origin` is not on the server's allowlist is refused with `403`,\nmessage \"Not allowed by CORS\" and `details.code` `CORS_REJECTED`, whatever credentials it\ncarries. Requests without an `Origin` header (scripts, servers) are not affected.\n\n### Response Envelope\n\nEvery endpoint under `/api/v1` except the Better Auth routes at `/api/v1/auth/*` returns\n`{ success, message, data }` on success and `{ success, message, statusCode, details? }` on\nfailure. Better Auth endpoints return their own payload shapes. `details` is an array of\n`{ path, message }` on a validation failure and an object (such as `{ code }`) elsewhere.\n\nA body larger than the route accepts is refused with `413` \"Request body too large\". Most\nroutes accept 100 kb; documents, the master profile, profile imports, share links and the\nportfolio draft accept 4 MB; the AI and ATS text routes accept 256 kb. A body that is not\nvalid JSON is refused with `400` \"Invalid JSON body\".\n\n### Sign-in coverage\nBetter Auth answers every path under `/api/v1/auth/*`. This reference documents the email\ncode sign-in (`/email-otp/send-verification-otp`, `/sign-in/email-otp`),\n`/get-session` and `/sign-out`, which are the supported way to sign in from your own\nclient. Better Auth's other routes are also served: social sign-in and account linking (Google, GitHub\nand LinkedIn when configured, through `/sign-in/social`, `/link-social` and `/callback/{provider}`),\nsession management (`/list-sessions`, `/revoke-session`, `/revoke-sessions`,\n`/revoke-other-sessions`) and `/email-otp/request-password-reset`. Those follow Better\nAuth's own documentation and are not described here. `/forget-password/email-otp` is\nswitched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`\nwith code `GITHUB_UNLINK_FORBIDDEN`), and an account can link only one GitHub account\n(`GITHUB_ALREADY_LINKED`, sent as an `error` query parameter on the OAuth redirect, or as a\n`403` code elsewhere).\n\n### Not Documented Here\n\n`POST /api/v1/client-errors` (crash reports from VeriWorkly's own site),\n`GET /api/v1/health/metrics` and `GET /api/v1/health/jobs` (behind the server's internal key)\nand everything under `/api/v1/admin/*` are internal first-party routes. They are left out\nof this reference on purpose and are not part of the supported public API.\n\n### Contact form\n`POST /api/v1/contact` sends a message to the VeriWorkly team. It is open (no key or\nsession) and limited to 5 requests per hour per IP. The JSON body takes `name` (1 to 100\ncharacters), `email` (up to 254), `subject` (1 to 200), `message` (10 to 5,000) and `_ts`,\nthe time the form was loaded in milliseconds since the epoch, which is required. `website`\nis a hidden field that must stay empty. A bad body answers `400` \"Validation failed\" with\n`details`; success answers `{ name, email, subject, timestamp }` with the message \"Message\nsent successfully\". A submission sent less than 1.2 seconds after `_ts`, or with `website`\nfilled, gets the same success answer and is dropped.\n"
+    "description": "The official API reference for VeriWorkly.\n\n### Authentication Methods\n\nVeriWorkly supports two authentication methods:\n\n#### 1. API Key Authentication (recommended for scripts and integrations)\nFor programmatic access, send your key either way — both are accepted:\n\n- `X-API-Key: vw_...`\n- `Authorization: Bearer vw_...`\n\nA key is **required** for any request that does not originate from a whitelisted VeriWorkly\norigin, including requests made from these documentation pages.\n\n- **Format**: `vw_` followed by 64 hexadecimal characters.\n- **Rate limit**: 20 requests per 15 minutes per key by default, configurable per key at\n  creation up to 600 (the server's `API_KEY_MAX_RATE_LIMIT`). Responses carry\n  `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`.\n- **Scopes**: keys are scope-gated. A key missing a route's required scope gets `403`. Session\n  callers are never scope-gated.\n\n#### 2. Session Authentication (dashboard only)\nUsed internally by the VeriWorkly dashboard and resume builder, via secure HTTP-only cookies\nissued by Better Auth.\n\n- **Cookies**:\n  - Local: `veriworkly-auth.session_token`\n  - Production: `__Secure-veriworkly-auth.session_token`\n- **Note**: sessions are only honoured for whitelisted origins. Send `credentials: 'include'`\n  (fetch) or `withCredentials: true` (axios). Requests from these documentation pages **must**\n  use an API key.\n- **Cookie domain**: when the server sets `AUTH_COOKIE_DOMAIN`, the session cookie is issued\n  for that domain so it is shared across its subdomains. Without it the cookie belongs to the\n  API host only.\n\n#### Endpoints that need neither\nThese are fully open, with no key, session or first-party origin:\n\n- `GET /api/v1/health` and `GET /api/v1/health/ready`\n- `POST /api/v1/affiliates/click` and `GET /api/v1/affiliates/leaderboard` (while the\n  affiliate program is switched on)\n- the Better Auth routes under `/api/v1/auth/*`\n- `POST /api/v1/contact`\n\nEverything else, including the endpoints labelled \"public\" such as public portfolios and\nshare links, requires an API key or a whitelisted first-party origin, and returns `401`\nwithout one.\n\n#### Cross-origin requests\nA browser request whose `Origin` is not on the server's allowlist is refused with `403`,\nmessage \"Not allowed by CORS\" and `details.code` `CORS_REJECTED`, whatever credentials it\ncarries. Requests without an `Origin` header (scripts, servers) are not affected.\n\n### Response Envelope\n\nEvery endpoint under `/api/v1` except the Better Auth routes at `/api/v1/auth/*` returns\n`{ success, message, data }` on success and `{ success, message, statusCode, details? }` on\nfailure. Better Auth endpoints return their own payload shapes. `details` is an array of\n`{ path, message }` on a validation failure and an object (such as `{ code }`) elsewhere.\n\nA body larger than the route accepts is refused with `413` \"Request body too large\". Most\nroutes accept 100 kb; documents, the master profile, profile imports, share links and the\nportfolio draft accept 4 MB; the AI and ATS text routes accept 256 kb. A body that is not\nvalid JSON is refused with `400` \"Invalid JSON body\".\n\n### Sign-in coverage\nBetter Auth answers every path under `/api/v1/auth/*`. This reference documents the email\ncode sign-in (`/email-otp/send-verification-otp`, `/sign-in/email-otp`),\n`/get-session` and `/sign-out`, which are the supported way to sign in from your own\nclient. Better Auth's other routes are also served: social sign-in and account linking (Google, GitHub\nand LinkedIn when configured, through `/sign-in/social`, `/link-social` and `/callback/{provider}`),\nsession management (`/list-sessions`, `/revoke-session`, `/revoke-sessions`,\n`/revoke-other-sessions`), and the rest of the email code plugin:\n`/email-otp/check-verification-otp`, `/email-otp/verify-email`,\n`/email-otp/request-password-reset` and `/email-otp/reset-password`. Those follow Better\nAuth's own documentation and are not described here. `/email-otp/request-email-change` and\n`/email-otp/change-email` are served but email change is not enabled, so both answer `400`\n\"Change email with OTP is disabled\". `/forget-password/email-otp` is switched off. A linked GitHub account cannot be removed (`/unlink-account` answers `403`\nwith code `GITHUB_UNLINK_FORBIDDEN`), and an account can link only one GitHub account\n(`GITHUB_ALREADY_LINKED`, sent as an `error` query parameter on the OAuth redirect, or as a\n`403` code elsewhere).\n\n### Not Documented Here\n\nThese routes are internal or first-party only. They are left out of this reference on\npurpose and are not part of the supported public API:\n\n- `POST /api/v1/client-errors`: crash reports from VeriWorkly's own site;\n- `GET /api/v1/health/metrics` and `GET /api/v1/health/jobs`: behind the server's internal\n  key;\n- `POST /api/v1/billing/webhooks/dodo`: the billing provider's signed webhook;\n- `POST /api/v1/github/admin/sync` and `GET /api/v1/stats/admin/dashboard`: admin sessions\n  only, like everything under `/api/v1/admin/*`.\n\n### Contact form\n`POST /api/v1/contact` sends a message to the VeriWorkly team. It is open (no key or\nsession) and limited to 5 requests per hour per IP. The JSON body takes `name` (1 to 100\ncharacters), `email` (up to 254), `subject` (1 to 200), `message` (10 to 5,000) and `_ts`,\nthe time the form was loaded in milliseconds since the epoch, which is required. `website`\nis a hidden field that must stay empty. A bad body answers `400` \"Validation failed\" with\n`details`; success answers `{ name, email, subject, timestamp }` with the message \"Message\nsent successfully\". A submission sent less than 1.2 seconds after `_ts`, with a `_ts` from\nbefore 2024 or more than an hour in the future, or with `website` filled, gets the same\nsuccess answer and is dropped. A failure to send the email answers `500` \"Internal server\nerror. Failed to send message.\". The rate limit fails closed: while it cannot be counted,\nthe route answers `503` \"Rate limiting is temporarily unavailable. Please retry shortly.\".\n"
   },
   "servers": [
     { "url": "https://api.veriworkly.com", "description": "Production Server" },
@@ -1378,79 +1378,6 @@
           "403": { "$ref": "#/components/responses/InsufficientScopeError" },
           "429": { "$ref": "#/components/responses/RateLimitError" },
           "503": { "$ref": "#/components/responses/DatabaseUnavailableError" }
-        }
-      }
-    },
-    "/api/v1/github/admin/sync": {
-      "post": {
-        "tags": ["GitHub"],
-        "operationId": "syncGitHubStats",
-        "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
-        "summary": "(Admin) Sync GitHub",
-        "description": "Manually triggers a GitHub sync. **Administrators only** — the caller's session email must\nmatch the configured `ADMIN_EMAIL`; an API key cannot reach this route.\n\nIncremental by default: only issues updated since the last sync are refetched. The run is\nguarded by a 10-minute Redis lock, so a concurrent attempt fails with `409` rather than\ndouble-syncing.\n\nA sync can take minutes, so it runs in the background: the response is `202` as soon as\nthe lock is taken. `GET /github/stats` shows the new `syncedAt` once it has finished; a\nfailed run leaves the previous data in place.\n",
-        "responses": {
-          "202": {
-            "description": "The sync started and is running in the background.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/GenericSuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "GitHub sync started",
-                  "data": { "status": "started", "statusUrl": "/api/v1/admin/system/github" }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "403": {
-            "description": "The authenticated user is not the configured administrator.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": { "success": false, "statusCode": 403, "message": "Forbidden" }
-              }
-            }
-          },
-          "409": {
-            "description": "A sync is already running.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 409,
-                  "message": "GitHub sync is already in progress"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "The server has no `ADMIN_EMAIL` set, so no one can be the administrator.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 500,
-                  "message": "ADMIN_EMAIL is not configured"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "The sync cannot start: Redis, which holds its lock, is unreachable, or\n`GITHUB_OWNER`/`GITHUB_REPO` are not configured.\n",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 503,
-                  "message": "Syncing is unavailable right now. Try again shortly."
-                }
-              }
-            }
-          }
         }
       }
     },

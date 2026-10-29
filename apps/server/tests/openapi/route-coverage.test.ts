@@ -18,6 +18,7 @@ const bundledSpecPath = path.resolve(serverRoot, "../docs-platform/public/openap
 /** Mounted, and deliberately left out of the public reference. */
 const NOT_PUBLIC: Record<string, string> = {
   "GET /api/v1/stats/admin/dashboard": "admin console",
+  "POST /api/v1/github/admin/sync": "admin console trigger, admin session only",
   "GET /api/v1/health/metrics": "operator scrape, x-internal-key only",
   "GET /api/v1/health/jobs": "operator check, x-internal-key only",
   "POST /api/v1/contact": "the marketing site's contact form",
