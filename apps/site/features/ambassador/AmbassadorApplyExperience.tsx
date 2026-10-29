@@ -78,7 +78,12 @@ export const AmbassadorApplyExperience = ({
       } catch (err) {
         // Session expired before submit: keep the answers and sign in, which returns and submits. Only once, or a second 401 loops.
         if (err instanceof ApiRequestError && err.status === 401 && !afterSignIn) {
-          writeDraft({ form: payload, stepIndex: REVIEW_INDEX, pendingSubmit: true });
+          writeDraft({
+            owner: viewer.viewerKey,
+            form: payload,
+            stepIndex: REVIEW_INDEX,
+            pendingSubmit: true,
+          });
           window.location.href = loginUrl;
           return;
         }
@@ -90,7 +95,7 @@ export const AmbassadorApplyExperience = ({
         setSubmitting(false);
       }
     },
-    [loginUrl],
+    [loginUrl, viewer.viewerKey],
   );
 
   const restored = useRef(false);
@@ -98,7 +103,7 @@ export const AmbassadorApplyExperience = ({
     if (restored.current) return;
     restored.current = true;
 
-    const draft = readDraft();
+    const draft = readDraft(viewer.viewerKey);
     if (!draft) return;
 
     const merged: FormState = {
@@ -125,12 +130,18 @@ export const AmbassadorApplyExperience = ({
     }
 
     setStepIndex(draft.stepIndex);
-  }, [prefilled.collegeName, prefilled.graduationYear, viewer.isAuthenticated, submitApplication]);
+  }, [
+    prefilled.collegeName,
+    prefilled.graduationYear,
+    viewer.isAuthenticated,
+    viewer.viewerKey,
+    submitApplication,
+  ]);
 
   useEffect(() => {
     if (submitted || !restored.current) return;
-    writeDraft({ form, stepIndex, pendingSubmit: false });
-  }, [form, stepIndex, submitted]);
+    writeDraft({ owner: viewer.viewerKey, form, stepIndex, pendingSubmit: false });
+  }, [form, stepIndex, submitted, viewer.viewerKey]);
 
   const updateField = useCallback((patch: Partial<FormState>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -164,7 +175,7 @@ export const AmbassadorApplyExperience = ({
     }
 
     if (!viewer.isAuthenticated) {
-      writeDraft({ form, stepIndex, pendingSubmit: true });
+      writeDraft({ owner: viewer.viewerKey, form, stepIndex, pendingSubmit: true });
       window.location.href = loginUrl;
       return;
     }

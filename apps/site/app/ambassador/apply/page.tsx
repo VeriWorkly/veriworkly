@@ -31,6 +31,7 @@ export const metadata: Metadata = {
 
 const GUEST_VIEWER: ApplyViewer = {
   isAuthenticated: false,
+  viewerKey: null,
   name: null,
   draft: null,
   reviewNote: null,
@@ -98,6 +99,7 @@ export default async function AmbassadorApplyPage() {
 
   const viewer: ApplyViewer = {
     isAuthenticated: true,
+    viewerKey: status.email?.toLowerCase() ?? null,
     name: status.name,
     // Prefill from the account, plus previous answers when re-applying after a rejection.
     draft: {

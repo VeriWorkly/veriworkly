@@ -42,8 +42,14 @@ const COMPLETE: FormState = {
   socialHandle: " ",
 };
 
-const signedIn: ApplyViewer = { isAuthenticated: true, name: "Ada", draft: null, reviewNote: null };
-const guest: ApplyViewer = { ...signedIn, isAuthenticated: false, name: null };
+const signedIn: ApplyViewer = {
+  isAuthenticated: true,
+  viewerKey: "ada@example.com",
+  name: "Ada",
+  draft: null,
+  reviewNote: null,
+};
+const guest: ApplyViewer = { ...signedIn, isAuthenticated: false, viewerKey: null, name: null };
 
 let store: Map<string, string>;
 let location: { href: string };
@@ -97,18 +103,21 @@ describe("draft restore", () => {
     });
 
     expect(byProp(view.tree, "id", "collegeName")?.props.value).toBe("Stanford");
-    expect(readDraft()?.form).toMatchObject({ collegeName: "Stanford", graduationYear: "2027" });
+    expect(readDraft(signedIn.viewerKey)?.form).toMatchObject({
+      collegeName: "Stanford",
+      graduationYear: "2027",
+    });
   });
 
   it("clamps a tampered step index and ignores a draft without answers", () => {
     store.set(DRAFT_KEY, JSON.stringify({ form: EMPTY_FORM, stepIndex: 99 }));
-    expect(readDraft()?.stepIndex).toBe(STEP_ORDER.length - 1);
+    expect(readDraft(null)?.stepIndex).toBe(STEP_ORDER.length - 1);
 
     store.set(DRAFT_KEY, JSON.stringify({ stepIndex: 2 }));
-    expect(readDraft()).toBeNull();
+    expect(readDraft(null)).toBeNull();
 
     store.set(DRAFT_KEY, "{not json");
-    expect(readDraft()).toBeNull();
+    expect(readDraft(null)).toBeNull();
   });
 });
 
@@ -121,7 +130,7 @@ describe("sign-in resume", () => {
 
     expect(location.href).toBe(LOGIN_URL);
     expect(submit).not.toHaveBeenCalled();
-    expect(readDraft()).toMatchObject({ pendingSubmit: true, stepIndex: REVIEW_INDEX });
+    expect(readDraft(null)).toMatchObject({ pendingSubmit: true, stepIndex: REVIEW_INDEX });
   });
 
   it("submits the saved answers once on return, trimmed, and clears the draft", async () => {
@@ -177,7 +186,10 @@ describe("401 loop guard", () => {
     await view.settle();
 
     expect(location.href).toBe(LOGIN_URL);
-    expect(readDraft()).toMatchObject({ pendingSubmit: true, stepIndex: REVIEW_INDEX });
+    expect(readDraft(signedIn.viewerKey)).toMatchObject({
+      pendingSubmit: true,
+      stepIndex: REVIEW_INDEX,
+    });
   });
 
   it("on a 401 after returning from sign-in shows the error instead of redirecting again", async () => {
@@ -190,7 +202,7 @@ describe("401 loop guard", () => {
     expect(location.href).not.toBe(LOGIN_URL);
     expect(text(view.tree)).toContain("Please sign in again.");
     // The draft is saved again without the pending flag, so a reload does not retry the submit.
-    expect(readDraft()?.pendingSubmit).toBe(false);
+    expect(readDraft(signedIn.viewerKey)?.pendingSubmit).toBe(false);
   });
 
   it("shows any other failure without leaving the page", async () => {
@@ -203,5 +215,41 @@ describe("401 loop guard", () => {
 
     expect(location.href).not.toBe(LOGIN_URL);
     expect(text(view.tree)).toContain("You already applied.");
+  });
+});
+
+describe("draft belongs to the viewer who saved it", () => {
+  const saveOwned = (owner: string | null, pendingSubmit: boolean) =>
+    store.set(
+      DRAFT_KEY,
+      JSON.stringify({ owner, form: COMPLETE, stepIndex: REVIEW_INDEX, pendingSubmit }),
+    );
+
+  it("never submits or shows another account's pending draft, and drops it", async () => {
+    submit.mockResolvedValue(undefined);
+    saveOwned("someone-else@example.com", true);
+
+    const view = render(signedIn);
+    await view.settle();
+
+    expect(submit).not.toHaveBeenCalled();
+    expect(text(view.tree)).not.toContain("University of Michigan");
+    expect(readDraft(signedIn.viewerKey)?.form).toEqual(EMPTY_FORM);
+  });
+
+  it("does not hand a signed-in viewer's draft to a signed-out visitor", () => {
+    saveOwned(signedIn.viewerKey, false);
+
+    const view = render(guest);
+
+    expect(text(view.tree)).not.toContain("University of Michigan");
+    expect(readDraft(null)?.form ?? EMPTY_FORM).toEqual(EMPTY_FORM);
+  });
+
+  it("saves the draft under the signed-in viewer", () => {
+    const view = render(signedIn);
+    expect(view.tree).toBeDefined();
+
+    expect(JSON.parse(store.get(DRAFT_KEY)!).owner).toBe(signedIn.viewerKey);
   });
 });

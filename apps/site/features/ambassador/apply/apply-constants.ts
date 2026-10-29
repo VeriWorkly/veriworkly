@@ -63,12 +63,18 @@ export const FIELD_LIMITS = {
 export const DRAFT_KEY = "veriworkly:ambassador-apply-draft";
 
 export type StoredDraft = {
+  /** `ApplyViewer.viewerKey` of whoever saved it; null when a guest saved it. */
+  owner: string | null;
   form: FormState;
   stepIndex: number;
   pendingSubmit: boolean;
 };
 
-export function readDraft(): StoredDraft | null {
+/**
+ * A guest's draft is handed to whoever signs in next in this tab (that is the sign-in round trip);
+ * a signed-in viewer's draft is only ever handed back to that same account, and dropped otherwise.
+ */
+export function readDraft(viewerKey: string | null): StoredDraft | null {
   try {
     const raw = window.sessionStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
@@ -76,7 +82,14 @@ export function readDraft(): StoredDraft | null {
     const parsed = JSON.parse(raw) as Partial<StoredDraft>;
     if (!parsed || typeof parsed !== "object" || !parsed.form) return null;
 
+    const owner = typeof parsed.owner === "string" ? parsed.owner : null;
+    if (owner !== null && owner !== viewerKey) {
+      clearDraft();
+      return null;
+    }
+
     return {
+      owner,
       form: { ...EMPTY_FORM, ...parsed.form },
       stepIndex:
         typeof parsed.stepIndex === "number"

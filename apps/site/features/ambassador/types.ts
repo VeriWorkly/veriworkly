@@ -35,6 +35,8 @@ export type AmbassadorApplicationPayload = {
 
 export type ApplyViewer = {
   isAuthenticated: boolean;
+  /** The signed-in account's email, used to keep one viewer's saved draft from another; null for a guest. */
+  viewerKey: string | null;
   name: string | null;
   draft: Partial<AmbassadorApplicationPayload> | null;
   reviewNote: string | null;
