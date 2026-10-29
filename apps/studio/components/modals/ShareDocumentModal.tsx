@@ -43,6 +43,8 @@ import { useUserStore } from "@/store/useUserStore";
 import ConfirmDialog from "./ConfirmDialog";
 import {
   SHARE_EXPIRY_OPTIONS,
+  canKeepShareExpiry,
+  effectiveShareExpiryChoice,
   shareExpiryPayload,
   type ShareExpiryChoice,
 } from "@/features/documents/services/share-expiry";
@@ -206,7 +208,8 @@ const ActiveLinkRow = ({
             {link.expiresAt ? (
               <>
                 <Calendar className="h-3 w-3" />
-                Expires {new Date(link.expiresAt).toLocaleDateString()}
+                {new Date(link.expiresAt) <= new Date() ? "Expired" : "Expires"}{" "}
+                {new Date(link.expiresAt).toLocaleDateString()}
               </>
             ) : (
               "Permanent Access"
@@ -296,6 +299,7 @@ const ShareDocumentModal = ({
 
   const hasActiveLink = shareLinks.length > 0;
   const activeLink = shareLinks[0];
+  const shownExpiryChoice = effectiveShareExpiryChoice(expiryChoice, activeLink);
   const allowDownload = downloadChoice ?? shareAllowsDownload(activeLink);
 
   const isSlugOutofSync = useMemo(() => {
@@ -329,7 +333,7 @@ const ShareDocumentModal = ({
 
       setShareLinks(links);
 
-      setExpiryChoice(links.length > 0 ? "keep" : "7");
+      setExpiryChoice(canKeepShareExpiry(links[0]) ? "keep" : "7");
 
       setRemovePassword(false);
       setUpdateSlug(false);
@@ -370,7 +374,7 @@ const ShareDocumentModal = ({
 
       const shareLink = await createShareLink(prepared.document, {
         password: password.trim() || undefined,
-        ...shareExpiryPayload(expiryChoice, activeLink?.expiresAt ?? null),
+        ...shareExpiryPayload(shownExpiryChoice, activeLink),
         updateSlug,
         removePassword,
         ...shareDownloadPayload(downloadChoice),
@@ -647,11 +651,11 @@ const ShareDocumentModal = ({
 
                   <Select
                     id="share-expiry-input"
-                    value={expiryChoice}
+                    value={shownExpiryChoice}
                     onChange={(event) => setExpiryChoice(event.target.value as ShareExpiryChoice)}
                     className="h-9"
                   >
-                    {hasActiveLink && activeLink ? (
+                    {canKeepShareExpiry(activeLink) ? (
                       <option value="keep">
                         {activeLink.expiresAt
                           ? `Keep: until ${new Date(activeLink.expiresAt).toLocaleDateString()}`

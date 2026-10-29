@@ -548,7 +548,7 @@ describe("share-link expiry (owner decision B)", () => {
       "Never",
     ]);
     expect(source).toContain('useState<ShareExpiryChoice>("7")');
-    expect(source).toContain('setExpiryChoice(links.length > 0 ? "keep" : "7")');
+    expect(source).toContain('setExpiryChoice(canKeepShareExpiry(links[0]) ? "keep" : "7")');
   });
 
   it("each period becomes an expiresAt that many days from now; Never sends null", async () => {
@@ -561,7 +561,7 @@ describe("share-link expiry (owner decision B)", () => {
       });
     }
 
-    expect(shareExpiryPayload("never", inDaysFrom(3), now)).toEqual({
+    expect(shareExpiryPayload("never", { expiresAt: inDaysFrom(3) }, now)).toEqual({
       expiresAt: null,
       noExpiry: true,
     });
@@ -570,10 +570,50 @@ describe("share-link expiry (owner decision B)", () => {
   it("an existing link keeps its stored expiry, including none", async () => {
     const { shareExpiryPayload } = await import("@/features/documents/services/share-expiry");
 
-    expect(shareExpiryPayload("keep", "2026-12-01T00:00:00.000Z", now)).toEqual({
+    expect(shareExpiryPayload("keep", { expiresAt: "2026-12-01T00:00:00.000Z" }, now)).toEqual({
       expiresAt: "2026-12-01T00:00:00.000Z",
       noExpiry: false,
     });
-    expect(shareExpiryPayload("keep", null, now)).toEqual({ expiresAt: null, noExpiry: true });
+    expect(shareExpiryPayload("keep", { expiresAt: null }, now)).toEqual({
+      expiresAt: null,
+      noExpiry: true,
+    });
+  });
+
+  it("S-393 keep with no link left (revoked) is the 7-day default, never permanent", async () => {
+    const { effectiveShareExpiryChoice, shareExpiryPayload } =
+      await import("@/features/documents/services/share-expiry");
+
+    expect(effectiveShareExpiryChoice("keep", undefined, now)).toBe("7");
+    expect(shareExpiryPayload("keep", undefined, now)).toEqual({
+      expiresAt: inDaysFrom(7),
+      noExpiry: false,
+    });
+  });
+
+  it("S-394 an expired link cannot keep its past date; updating it renews for 7 days", async () => {
+    const { canKeepShareExpiry, effectiveShareExpiryChoice, shareExpiryPayload } =
+      await import("@/features/documents/services/share-expiry");
+    const expired = { expiresAt: inDaysFrom(-1) };
+
+    expect(canKeepShareExpiry(expired, now)).toBe(false);
+    expect(effectiveShareExpiryChoice("keep", expired, now)).toBe("7");
+    expect(shareExpiryPayload("keep", expired, now)).toEqual({
+      expiresAt: inDaysFrom(7),
+      noExpiry: false,
+    });
+    expect(canKeepShareExpiry({ expiresAt: inDaysFrom(1) }, now)).toBe(true);
+  });
+
+  it("S-393 S-394 the modal sends and shows the same choice, and marks expired links", () => {
+    const source = readFileSync(
+      join(__dirname, "..", "..", "components/modals/ShareDocumentModal.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain("effectiveShareExpiryChoice(expiryChoice, activeLink)");
+    expect(source).toContain("shareExpiryPayload(shownExpiryChoice, activeLink)");
+    expect(source).toContain("value={shownExpiryChoice}");
+    expect(source).toContain('"Expired" : "Expires"');
   });
 });
