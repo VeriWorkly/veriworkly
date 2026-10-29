@@ -45,7 +45,7 @@ export const faqs: FaqItem[] = [
     category: "general",
     question: "Where is my resume and personal career data stored?",
     answer:
-      "Your documents stay on your own device by default: VeriWorkly saves your drafts in your browser's local storage, and keeps them in our database only if you turn on cloud sync or publish a web portfolio. A few features send content to our servers to do their job: an ATS scan reads your resume in memory and does not keep it, AI actions send the text you choose to our AI provider, and GitHub or LinkedIn imports read the profile you point them at. Our Privacy Policy lists each one.",
+      "As a guest, your documents stay in your browser's local storage. Once you sign in, cloud sync is on by default and keeps a copy in our database; you can turn it off, or keep a single document local only. Publishing a web portfolio also stores its content with us. A few features send content to our servers to do their job: an ATS scan reads your resume in memory and does not keep it, AI actions send the text you choose to our AI provider, and GitHub or LinkedIn imports read the profile you point them at. Our Privacy Policy lists each one.",
   },
   {
     id: "account-requirement",
@@ -304,7 +304,7 @@ export const faqs: FaqItem[] = [
     category: "developer",
     question: "How does LinkedIn profile import work?",
     answer:
-      "You can upload your exported LinkedIn profile data or paste the text directly into the importer. Our parser automatically organizes your job titles, company names, dates, descriptions, and skills into your Master Profile in seconds.",
+      "Paste your LinkedIn profile text, or upload the PDF LinkedIn lets you export, and an AI call sorts your job titles, companies, dates, descriptions and skills into a new resume. You can also choose to replace your Master Profile with the result. Every LinkedIn import spends AI credits, and the importer shows the cost and your balance before you run it. Without a paid plan it can run once every 30 days.",
   },
   {
     id: "github-repository-import",

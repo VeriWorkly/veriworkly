@@ -8,7 +8,6 @@ import { webSiteRef } from "@/utils/schema";
 import AmbassadorNav from "@/features/ambassador/AmbassadorNav";
 import AmbassadorHero from "@/features/ambassador/AmbassadorHero";
 import AmbassadorPerks from "@/features/ambassador/AmbassadorPerks";
-import AmbassadorLeaderboard from "@/features/ambassador/AmbassadorLeaderboard";
 import AmbassadorFAQ from "@/features/ambassador/AmbassadorFAQ";
 import AmbassadorFooter from "@/features/ambassador/AmbassadorFooter";
 import "./ambassador.css";
@@ -78,7 +77,6 @@ const AmbassadorPage = async () => {
           <AmbassadorHero programEnabled={programEnabled} />
           <AmbassadorPerks />
           <AmbassadorPlaybook />
-          <AmbassadorLeaderboard />
           <AmbassadorFAQ />
         </main>
 

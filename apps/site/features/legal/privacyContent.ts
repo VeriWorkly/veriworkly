@@ -3,7 +3,7 @@ import type { LegalSection } from "./types";
 import { siteConfig } from "@/config/site";
 
 export const privacyEffectiveDate = "July 23, 2026";
-export const privacyLastUpdated = "2026-07-23";
+export const privacyLastUpdated = "2026-10-29";
 
 export const privacySections: LegalSection[] = [
   {
@@ -263,17 +263,20 @@ export const privacySections: LegalSection[] = [
       {
         list: [
           "Account, Master Profile, and synced document data: kept while your Account is active. If you delete your Account we remove this data within 30 days, other than anything we must keep under the rows below.",
-          "Guest Session (local-first, no Account): stays in your browser. The Guest Session cookie expires 30 days after your last visit. We hold nothing server-side for guest use.",
+          "Guest Session (local-first, no Account): stays in your browser. The Guest Session cookie is set for 30 days when you choose guest mode and is not extended by later visits. We hold nothing server-side for guest use.",
           "ATS scans: your resume text and the resulting report are never written to our database. A scan is processed in memory and discarded when the response is sent. We do record that a scan happened, against your quota, so the rate limits can work — that counter holds no document content.",
           "AI request text: not retained by us after the request completes. The model provider's own retention applies to the request itself, which is why Section 8 asks you to treat an AI action as a deliberate choice.",
-          "Server and security logs: we do store these. They hold request metadata (IP address, user agent, timestamps, error traces), not the contents of your documents. We have not yet built an automatic deletion schedule for them, so we will not quote you a number we do not enforce: today they are kept as long as our hosting provider retains them, and we delete them when they are no longer useful for security, abuse prevention, or debugging. If you want yours removed sooner, ask our Grievance Officer.",
+          "Server and security logs: our request log records failed requests (IP address, user agent, timestamp, path and error), never the contents of your documents, and is deleted after 90 days. Records of administrator actions are deleted after 1 year, and those about money (billing, affiliate commissions and withdrawals) after 7 years; takedown decisions are kept so we can apply our repeat-infringer policy. Expired sign-in sessions and one-time login codes are deleted a day after they expire. Our hosting provider's own logs follow its retention. If you want yours removed sooner, ask our Grievance Officer.",
+          "Deleted documents: 30 days after you delete a document, its content, title and share snapshots are permanently removed.",
+          "Affiliate clicks and portfolio view counts: after 180 days a click keeps only its count and referring site, and its hashed IP address and browser identifiers are removed. Daily portfolio view counts older than 180 days are merged into one lifetime total per referring site.",
+          "Payment provider messages: the details of a processed billing notification are removed after 30 days (180 days if it failed), keeping only the product, amount, payment ID and status.",
           "Takedown and grievance records: kept for up to 3 years from resolution, so we can apply our repeat-infringer policy consistently and show how a complaint was handled. These are reviewed and cleared by hand rather than by an automated job.",
           "Billing and tax records: kept for as long as tax, accounting, and financial-regulation law requires of us, which is a period of years rather than months. We cannot delete these on request, and closing your Account does not remove them.",
           "Aggregate usage telemetry: kept indefinitely in de-identified, aggregated form, from which you cannot be re-identified.",
         ],
         paragraphs: [
           "Two of these pull in opposite directions and we would rather say so plainly than let you discover it. We keep no record of your ATS scans, but we must keep billing records for years — so if you paid us, closing your Account removes your documents and profile, not the fact of the transaction.",
-          "A note on how these periods work in practice. Account deletion is a real, immediate operation: it removes the rows and the uploaded files. The other periods above are policies we follow, not timers enforced by scheduled jobs — we are a small team and we have not built that automation yet. We have written what we actually do rather than the tidier version, because a retention period you can hold us to is worth more than one that only reads well.",
+          "A note on how these periods work in practice. Account deletion is a real, immediate operation: it removes the rows and the uploaded files. The periods for logs, sessions, deleted documents, affiliate clicks, portfolio views and payment provider messages are enforced by a scheduled job that runs every night. Takedown, grievance and billing records are reviewed and cleared by hand.",
         ],
       },
     ],
