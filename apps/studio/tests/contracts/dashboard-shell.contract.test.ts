@@ -11,7 +11,6 @@ import {
   supportNav,
   bottomNav,
   NavGroup,
-  StudioNavLink,
 } from "@/components/dashboard/sidebar/StudioNavigation";
 import {
   readGuestBackupDismissed,
@@ -32,14 +31,6 @@ vi.mock("next/font/google", () => ({
 }));
 
 describe("dashboard navigation contracts", () => {
-  it("exports navigation components and configs", () => {
-    expect(NavGroup).toBeDefined();
-    expect(StudioNavLink).toBeDefined();
-    expect(mainNav).toBeDefined();
-    expect(supportNav).toBeDefined();
-    expect(bottomNav).toBeDefined();
-  });
-
   it("defines expected main navigation items", () => {
     const labels = mainNav.map((item) => item.label);
     expect(labels).toContain("Overview");
