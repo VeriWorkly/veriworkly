@@ -1,10 +1,7 @@
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { Sparkles, ArrowRight } from "lucide-react";
 
-const TemplateShowcaseTracks = dynamic(
-  () => import("@/features/landing/template-showcase/TemplateShowcaseTracks"),
-);
+import TemplateShowcaseTracks from "@/features/landing/template-showcase/TemplateShowcaseTracks";
 
 const TemplateShowcase = () => {
   return (

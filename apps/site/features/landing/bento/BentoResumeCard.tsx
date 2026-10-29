@@ -5,14 +5,12 @@ import BentoCard from "./BentoCard";
 
 interface BentoResumeCardProps {
   drift: "up" | "down";
-  canHover: boolean;
 }
 
-const BentoResumeCard = ({ drift, canHover }: BentoResumeCardProps) => {
+const BentoResumeCard = ({ drift }: BentoResumeCardProps) => {
   return (
     <BentoCard
       drift={drift}
-      canHover={canHover}
       glowColor="rgba(59,130,246,0.12)"
       className="col-span-1 flex flex-col justify-between border-zinc-800 bg-[#060606] sm:col-span-2 sm:row-span-2 dark:border-white/5"
     >

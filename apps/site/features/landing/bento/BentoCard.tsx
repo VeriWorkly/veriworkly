@@ -9,7 +9,6 @@ interface BentoCardProps {
   className?: string;
   glowColor?: string;
   drift?: "up" | "down";
-  canHover?: boolean;
 }
 
 const BentoCard = ({
@@ -17,7 +16,6 @@ const BentoCard = ({
   className = "",
   glowColor = "rgba(59,130,246,0.15)",
   drift,
-  canHover = true,
 }: BentoCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const rectRef = useRef<DOMRect | null>(null);
@@ -50,18 +48,14 @@ const BentoCard = ({
       )}
     >
       <div
-        className={`pointer-events-none absolute inset-0 -z-10 opacity-0 transition-opacity duration-300 ${
-          canHover ? "group-hover:opacity-100" : ""
-        }`}
+        className="pointer-events-none absolute inset-0 -z-10 opacity-0 transition-opacity duration-300 pointer-fine:group-hover:opacity-100"
         style={{
           background: `radial-gradient(350px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}, transparent 80%)`,
         }}
       />
 
       <div
-        className={`pointer-events-none absolute inset-0 -z-10 rounded-[2.5rem] p-px opacity-0 transition-opacity duration-300 ${
-          canHover ? "group-hover:opacity-100" : ""
-        }`}
+        className="pointer-events-none absolute inset-0 -z-10 rounded-[2.5rem] p-px opacity-0 transition-opacity duration-300 pointer-fine:group-hover:opacity-100"
         style={{
           background: `radial-gradient(180px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(255,255,255,0.08), transparent)`,
         }}
