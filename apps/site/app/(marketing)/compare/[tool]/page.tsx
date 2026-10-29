@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
-import { COMPETITORS, PRICES_CHECKED, getCompetitor } from "@/features/compare/data/competitors";
+import { COMPETITORS, getCompetitor } from "@/features/compare/data/competitors";
+import { PRICES_CHECKED } from "@/features/compare/data/featureMatrix";
 import CompareClosing from "@/features/compare/components/shared/CompareClosing";
 import CompareHighlights from "@/features/compare/components/detail/CompareHighlights";
 import CompareScoreboard from "@/features/compare/components/shared/CompareScoreboard";
