@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 
 import AdminActionButtons from "@/app/admin/components/AdminActionButtons";
-import AdminWindowSelector, { parseWindowDays } from "@/app/admin/components/AdminWindowSelector";
+import AdminWindowSelector from "@/app/admin/components/AdminWindowSelector";
+import { parseWindowDays } from "@/app/admin/components/admin-window";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import AdminStatCard from "@/components/admin/AdminStatCard";
 import AdminStatusBadge from "@/components/admin/AdminStatusBadge";

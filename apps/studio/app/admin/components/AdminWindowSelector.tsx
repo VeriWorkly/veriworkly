@@ -4,26 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "@veriworkly/ui";
 
-/** Matches the range the backend's time-series validator accepts (floored at 7, capped at 180). */
-const WINDOWS = [
-  { days: 7, label: "7d" },
-  { days: 30, label: "30d" },
-  { days: 90, label: "90d" },
-  { days: 180, label: "180d" },
-] as const;
-
-const DEFAULT_WINDOW_DAYS = 30;
-
-/**
- * Parses `?days=` into one of the offered windows.
- *
- * Exported so the dashboard's server component and this control agree on what an absent or
- * malformed param means.
- */
-export function parseWindowDays(value: string | undefined) {
-  const parsed = Number(value);
-  return WINDOWS.some((window) => window.days === parsed) ? parsed : DEFAULT_WINDOW_DAYS;
-}
+import { ADMIN_WINDOWS, parseWindowDays } from "./admin-window";
 
 const AdminWindowSelector = () => {
   const router = useRouter();
@@ -37,7 +18,7 @@ const AdminWindowSelector = () => {
       aria-label="Time window"
       className="border-border bg-card inline-flex items-center gap-0.5 rounded-lg border p-0.5"
     >
-      {WINDOWS.map((window) => (
+      {ADMIN_WINDOWS.map((window) => (
         <button
           key={window.days}
           type="button"
