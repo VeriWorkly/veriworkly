@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   schedule: vi.fn(() => ({ stop: vi.fn() })),
   executeRaw: vi.fn(),
+  queryRaw: vi.fn(async () => [{ moved: 0n }]),
   withJobLock: vi.fn(),
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
@@ -15,7 +16,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("node-cron", () => ({ default: { schedule: mocks.schedule } }));
 vi.mock("#config", () => ({ config: { logging: { auditRetentionDays: 90 } } }));
 vi.mock("#lib/logger", () => ({ logger: mocks.logger }));
-vi.mock("#lib/prisma", () => ({ prisma: { $executeRaw: mocks.executeRaw } }));
+vi.mock("#lib/prisma", () => ({
+  prisma: { $executeRaw: mocks.executeRaw, $queryRaw: mocks.queryRaw },
+}));
 vi.mock("#lib/jobLock", () => ({
   withJobLock: mocks.withJobLock,
   createRunTracker: () => ({ track: vi.fn(), idle: async () => undefined }),
@@ -74,10 +77,12 @@ describe("retention job", () => {
 
     expect(summary.failed).toEqual(["expiredSessions"]);
     expect(summary.affected.expiredSessions).toBe(0);
-    // Every other enabled rule still ran: 15 statements (portfolio views and affiliate clicks are
-    // off by default; admin audit has a money class, V-207; the purge has share and publication
-    // snapshot rules and the audit title rule, V-206; unprocessed webhook payloads, V-340).
-    expect(mocks.executeRaw).toHaveBeenCalledTimes(15);
+    // Every other enabled rule still ran: 16 statements here (admin audit has a money class,
+    // V-207; the purge has share and publication snapshot rules and the audit title rule, V-206;
+    // unprocessed webhook payloads, V-340; affiliate clicks are anonymised in place) and the
+    // portfolio view fold, which reads back how many rows it moved.
+    expect(mocks.executeRaw).toHaveBeenCalledTimes(16);
+    expect(mocks.queryRaw).toHaveBeenCalledTimes(1);
     expect(mocks.logger.error).toHaveBeenCalledWith(
       "Retention rule expiredSessions failed",
       expect.objectContaining({ error: "deadlock" }),

@@ -328,8 +328,8 @@ days. `0` turns a rule off. If every rule is `0`, the job is not scheduled.
 | `RETENTION_CREDIT_RESERVATION_DAYS`          | Settled credit reservations. Keep it long: a reservation is the duplicate-request record for its request ID.                                                     | `90`             |
 | `RETENTION_CREDIT_REPLAY_DAYS`               | The stored result of a paid AI request, kept so a retry after a lost response can be answered. After it is cleared, a retry with the same request ID gets `409`. | `1`              |
 | `RETENTION_FLUSH_BATCH_DAYS`                 | View and usage-metric flush markers.                                                                                                                             | `7`              |
-| `RETENTION_AFFILIATE_CLICK_DAYS`             | Affiliate click rows. Off by default: lifetime click totals count every row.                                                                                     | `0` (kept)       |
-| `RETENTION_PORTFOLIO_VIEW_DAYS`              | Daily portfolio view rows. Off by default: a portfolio's total views is the sum of these rows.                                                                   | `0` (kept)       |
+| `RETENTION_AFFILIATE_CLICK_DAYS`             | The IP and user-agent hashes of affiliate clicks are cleared. The click row stays, so click totals do not shrink.                                                | `180`            |
+| `RETENTION_PORTFOLIO_VIEW_DAYS`              | Daily portfolio view rows are folded into one lifetime row per portfolio and referrer. Total views stay; the day-by-day history goes.                            | `180`            |
 | `RETENTION_DELETED_DOCUMENT_DAYS`            | The content of documents deleted more than this many days ago. The row stays; a purged document can never be restored.                                           | `30`             |
 | `AUDIT_LOG_RETENTION_DAYS`                   | Deprecated. Used only when `RETENTION_AUDIT_LOG_DAYS` is unset.                                                                                                  | `90`             |
 

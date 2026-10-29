@@ -8,6 +8,7 @@ import { createRunTracker, withJobLock } from "#lib/jobLock";
 import { logger } from "#lib/logger";
 import { isDraining } from "#lib/shutdown";
 import { prisma } from "#lib/prisma";
+import { VIEW_ROLLUP_DATE } from "#lib/portfolioViewRollup";
 import {
   ADMIN_AUDIT_ACTIONS,
   MONEY_AUDIT_ACTION_PREFIXES,
@@ -76,12 +77,12 @@ export function readRetentionSettings(env: NodeJS.ProcessEnv = process.env): Ret
     // content: a day covers any client retry, after which a retry answers 409 as it used to.
     creditReplays: days("RETENTION_CREDIT_REPLAY_DAYS", 1),
     flushBatches: days("RETENTION_FLUSH_BATCH_DAYS", 7),
-    // Off by default: the affiliate dashboard and admin affiliate stats count every click row, so
-    // pruning would shrink lifetime click totals.
-    affiliateClicks: days("RETENTION_AFFILIATE_CLICK_DAYS", 0),
-    // Off by default: a portfolio's total views is the SUM over these rows, so deleting old ones
-    // silently turns "total" into a rolling window.
-    portfolioViews: days("RETENTION_PORTFOLIO_VIEW_DAYS", 0),
+    // Owner decision (2026-10-29): 180 days for both. A click past it loses its IP and user-agent
+    // hashes but keeps its row, because the affiliate dashboard and admin stats count rows.
+    affiliateClicks: days("RETENTION_AFFILIATE_CLICK_DAYS", 180),
+    // Daily view rows past it are folded into one lifetime row per publication and referrer host
+    // (VIEW_ROLLUP_DATE), so total views, the SUM over these rows, never shrinks.
+    portfolioViews: days("RETENTION_PORTFOLIO_VIEW_DAYS", 180),
     deletedDocuments: days("RETENTION_DELETED_DOCUMENT_DAYS", 30),
   };
 }
@@ -142,6 +143,11 @@ export const RETENTION_CANDIDATES = {
       CASE WHEN a."targetType" = 'Document' THEN a."targetId" END)
     WHERE jsonb_typeof(a."metadata") = 'object' AND a."metadata" ?| ARRAY['title', 'slug']
       AND d."deletedAt" < ${cutoff} AND d."content" = ${PURGED}
+    LIMIT ${limit}`,
+  // "AffiliateClick_identified_idx": clicks still holding an IP or user-agent hash.
+  affiliateClicksAnonymized: (cutoff, limit) => Prisma.sql`
+    SELECT "id" FROM "AffiliateClick"
+    WHERE ("ipHash" IS NOT NULL OR "userAgentHash" IS NOT NULL) AND "createdAt" < ${cutoff}
     LIMIT ${limit}`,
 } satisfies Record<string, CandidateQuery>;
 
@@ -294,18 +300,39 @@ const RULES: Array<{ name: string; setting: RetentionSetting; step: BatchStep }>
         SELECT "id" FROM "UsageMetricFlushBatch" WHERE "createdAt" < ${cutoff} LIMIT ${limit})`,
   },
   {
-    name: "affiliateClicks", // AffiliateClick(createdAt)
+    // The row stays, so click totals do not shrink; the hashes, the only per-visitor data, go.
+    name: "affiliateClicks",
     setting: "affiliateClicks",
     step: (cutoff, limit) => prisma.$executeRaw`
-      DELETE FROM "AffiliateClick" WHERE "id" IN (
-        SELECT "id" FROM "AffiliateClick" WHERE "createdAt" < ${cutoff} LIMIT ${limit})`,
+      UPDATE "AffiliateClick" SET "ipHash" = NULL, "userAgentHash" = NULL
+      WHERE "id" IN (${RETENTION_CANDIDATES.affiliateClicksAnonymized(cutoff, limit)})`,
   },
   {
-    name: "portfolioViews", // PortfolioViewDaily(date)
+    // PortfolioViewDaily(date). Each old day row is deleted and its count added to the lifetime
+    // row of its publication and referrer host, in one statement, so a failure loses no views.
+    // The rollup rows themselves sit at VIEW_ROLLUP_DATE, outside the range the batch reads.
+    name: "portfolioViews",
     setting: "portfolioViews",
-    step: (cutoff, limit) => prisma.$executeRaw`
-      DELETE FROM "PortfolioViewDaily" WHERE "id" IN (
-        SELECT "id" FROM "PortfolioViewDaily" WHERE "date" < ${cutoff} LIMIT ${limit})`,
+    step: async (cutoff, limit) => {
+      const [{ moved }] = await prisma.$queryRaw<Array<{ moved: bigint }>>`
+        WITH moved AS (
+          DELETE FROM "PortfolioViewDaily" WHERE "id" IN (
+            SELECT "id" FROM "PortfolioViewDaily"
+            WHERE "date" < ${cutoff} AND "date" > ${VIEW_ROLLUP_DATE} LIMIT ${limit})
+          RETURNING "publicationId", "referrerHost", "count"
+        ), folded AS (
+          INSERT INTO "PortfolioViewDaily"
+            ("id", "publicationId", "date", "referrerHost", "count", "updatedAt")
+          SELECT gen_random_uuid()::text, "publicationId", ${VIEW_ROLLUP_DATE}, "referrerHost",
+            SUM("count"), now()
+          FROM moved GROUP BY "publicationId", "referrerHost"
+          ON CONFLICT ("publicationId", "date", "referrerHost") DO UPDATE
+            SET "count" = "PortfolioViewDaily"."count" + EXCLUDED."count", "updatedAt" = now()
+        )
+        SELECT COUNT(*) AS moved FROM moved`;
+
+      return Number(moved);
+    },
   },
   {
     // `updatedAt` is left alone: it is the sync cursor, and a purge is not an edit. The conditions

@@ -60,7 +60,14 @@ async function seedHistoryAndBacklog() {
                    ELSE '{"type":"payment.succeeded","redacted":true}'::jsonb END,
               'PROCESSED', ${deletedAt}, now()
        FROM generate_series(1, ${DONE}) g`,
-    `ANALYZE "User", "Document", "ShareLink", "PortfolioPublication", "AdminAuditEntry", "BillingWebhookEvent"`,
+    // Affiliate clicks: most already anonymised, the backlog still carrying their hashes.
+    `INSERT INTO "AffiliateClick" ("id", "affiliateId", "code", "ipHash", "userAgentHash", "createdAt")
+       SELECT 'c' || g, 'u' || g, 'code',
+              CASE WHEN g <= ${TO_DO} THEN 'ip' END, CASE WHEN g <= ${TO_DO} THEN 'ua' END,
+              ${deletedAt}
+       FROM generate_series(1, ${DONE}) g`,
+    `ANALYZE "User", "Document", "ShareLink", "PortfolioPublication", "AdminAuditEntry", "BillingWebhookEvent",
+       "AffiliateClick"`,
   ];
 
   for (const statement of statements) await prisma.$executeRawUnsafe(statement);
@@ -83,6 +90,7 @@ describe("retention rules read partial indexes of the rows still to do (V-250)",
     ["deletedShareSnapshotsPurged", "ShareLink_unpurged_idx"],
     ["deletedPublicationSnapshotsPurged", "PortfolioPublication_unpurged_idx"],
     ["deletedDocumentAuditTitlesPurged", "AdminAuditEntry_titled_idx"],
+    ["affiliateClicksAnonymized", "AffiliateClick_identified_idx"],
   ] as const)("%s uses %s", async (rule, index) => {
     const plan = await planWithoutSeqScan(RETENTION_CANDIDATES[rule](cutoff, 100));
 
