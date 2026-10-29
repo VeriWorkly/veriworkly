@@ -46,6 +46,9 @@ export function getSafeAuthCallback(rawCallback: string | null, fallback = "/") 
     try {
       const resolved = new URL(rawCallback, APP_ORIGIN);
       if (resolved.origin !== APP_ORIGIN) return fallback;
+      // Dot segments can leave a path like "//evil.com" (from "/..//evil.com"), which the
+      // browser reads as another host.
+      if (resolved.pathname.startsWith("//")) return fallback;
       if (resolved.pathname === "/login" || resolved.pathname.startsWith("/login/")) {
         return fallback;
       }

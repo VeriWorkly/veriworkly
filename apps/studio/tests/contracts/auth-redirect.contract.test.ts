@@ -183,6 +183,14 @@ describe("auth redirect contract", () => {
     expect(getSafeAuthCallback("javascript:alert(1)")).toBe("/");
   });
 
+  it("S-371: a dot segment cannot resolve a callback to a protocol-relative path", () => {
+    expect(getSafeAuthCallback("/..//evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/%2e%2e//evil.example/x")).toBe("/");
+    expect(getSafeAuthCallback("/a/../..//evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/./\\evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/documents/../settings?tab=sync")).toBe("/settings?tab=sync");
+  });
+
   it("S-200: a 401 from a public share never signs the viewer out", () => {
     expect(isInvalidSessionResponse("/shares/public/jane/resume", 401)).toBe(false);
     expect(isInvalidSessionResponse("/shares/public/jane/resume/verify?x=1", 401)).toBe(false);
