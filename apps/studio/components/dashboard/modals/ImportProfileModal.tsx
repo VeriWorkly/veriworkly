@@ -11,6 +11,7 @@ import { fetchApiData } from "@/utils/fetchApiData";
 import { linkGithubAccount, signInHref } from "@/lib/sign-in";
 import { extractResumeFile, getAtsQuota } from "@/features/ats/ats-api";
 import { describePaidActionError } from "@/features/credits/credit-errors";
+import { requestIdFor, settleRequestId, type PendingAiRequest } from "@/features/ai/ai-api";
 import { getDocumentEditorPath } from "@/features/documents/core/routes";
 import { listDocuments } from "@/features/documents/services/document-workspace-service";
 import {
@@ -146,6 +147,8 @@ export function ImportProfileModal({
   const [linkedinText, setLinkedinText] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // A retry of the same import after a lost response reuses its id, so it is not charged twice.
+  const pendingLinkedinImportRef = useRef<PendingAiRequest["current"]>(null);
 
   // Quota states
   const [quota, setQuota] = useState<QuotaResponse | null>(null);
@@ -315,14 +318,20 @@ export function ImportProfileModal({
   const runLinkedinImport = async () => {
     setLoading(true);
     setLoadingStep("Parsing LinkedIn details via AI...");
+    const profileText = linkedinText.trim();
     try {
       const doc = await fetchApiData<ImportedDocument>("/profiles/import/linkedin", {
         method: "POST",
         body: JSON.stringify({
-          profileText: linkedinText.trim(),
+          profileText,
           replaceMaster,
+          requestId: requestIdFor(
+            pendingLinkedinImportRef,
+            JSON.stringify({ profileText, replaceMaster }),
+          ),
         }),
       });
+      settleRequestId(pendingLinkedinImportRef);
 
       toast.success("LinkedIn profile parsed successfully!");
       onClose();
@@ -330,6 +339,7 @@ export function ImportProfileModal({
       window.dispatchEvent(new Event("storage"));
       router.push(getDocumentEditorPath(doc.type, doc.id));
     } catch (error) {
+      settleRequestId(pendingLinkedinImportRef, error);
       const failure = describePaidActionError(error, "LinkedIn import failed.");
       toast.error(
         failure.message,
