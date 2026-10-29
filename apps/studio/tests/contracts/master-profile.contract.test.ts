@@ -33,10 +33,14 @@ import {
   loadMasterProfileFromDatabase,
   saveMasterProfileToDatabase,
   getMasterProfileForNewDocument,
+  getMasterProfileForReset,
   loadMasterProfileFromLocalStorage,
   saveMasterProfileToLocalStorage,
 } from "@/features/resume/services/master-profile";
 import { ApiRequestError } from "@/utils/fetchApiData";
+import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { WORKSPACE_OWNER_STORAGE_KEY } from "@/features/documents/services/storage-keys";
+import { setWorkspaceViewer } from "@/features/documents/services/workspace-viewer";
 import { useUserStore } from "@/store/useUserStore";
 import { createLocalStorageMock } from "@/tests/utils/local-storage";
 
@@ -619,6 +623,80 @@ describe("master profile for a new account and a failed load (S-115, S-158, S-18
     });
 
     expect((await getMasterProfileForNewDocument())?.basics.fullName).toBe("Ada Lovelace");
+  });
+});
+
+describe("S-421: the cached Master Profile is read only by the account it was cached for", () => {
+  const ada = () =>
+    buildMasterProfile({ basics: { ...defaultResume.basics, fullName: "Ada Lovelace" } });
+
+  /** What a new resume starts from when no profile is handed to it: the device cache. */
+  const startingName = () =>
+    (getDocumentDefinition("RESUME").createDefault("resume-new").content as ResumeData).basics
+      .fullName;
+
+  beforeEach(() => {
+    const localStorageMock = createLocalStorageMock();
+
+    fetchApiDataMock.mockReset();
+
+    vi.stubGlobal("localStorage", localStorageMock);
+    vi.stubGlobal("window", { localStorage: localStorageMock });
+
+    // User A's profile was cached through on a database load.
+    setWorkspaceViewer("user-a");
+    saveMasterProfileToLocalStorage(ada());
+  });
+
+  afterEach(() => {
+    setWorkspaceViewer(null);
+    vi.unstubAllGlobals();
+    useUserStore.getState().logout();
+  });
+
+  it("S-421: a guest after user A's session expired is not seeded with user A's profile", async () => {
+    setWorkspaceViewer(null);
+
+    expect(loadMasterProfileFromLocalStorage()).toEqual({ status: "empty" });
+    expect(await getMasterProfileForNewDocument()).toBeUndefined();
+    expect(await getMasterProfileForReset()).toBeUndefined();
+    expect(startingName()).not.toBe("Ada Lovelace");
+  });
+
+  it("S-421: another account signed in on the browser is not seeded with it either", async () => {
+    setWorkspaceViewer("user-b");
+    useUserStore.getState().setUser({ email: "b@example.com" } as never);
+    fetchApiDataMock.mockResolvedValue(null);
+
+    expect(loadMasterProfileFromLocalStorage()).toEqual({ status: "empty" });
+    expect(await getMasterProfileForNewDocument()).toBeUndefined();
+    expect(await getMasterProfileForReset()).toBeUndefined();
+    expect(startingName()).not.toBe("Ada Lovelace");
+  });
+
+  it("S-421: user A still starts new documents from it", async () => {
+    useUserStore.getState().setUser({ email: "a@example.com" } as never);
+    fetchApiDataMock.mockRejectedValue(new Error("offline"));
+
+    expect((await getMasterProfileForNewDocument())?.basics.fullName).toBe("Ada Lovelace");
+    expect(startingName()).toBe("Ada Lovelace");
+  });
+
+  it("S-421: a cache written before owners were recorded is the device owner's", () => {
+    const legacy = JSON.stringify({ updatedAt: "2026-01-01T00:00:00.000Z", profile: ada() });
+    window.localStorage.setItem(MASTER_PROFILE_STORAGE_KEY, legacy);
+
+    // A device user A signed in on: only user A reads it.
+    window.localStorage.setItem(WORKSPACE_OWNER_STORAGE_KEY, "user-a");
+    setWorkspaceViewer(null);
+    expect(loadMasterProfileFromLocalStorage()).toEqual({ status: "empty" });
+    setWorkspaceViewer("user-a");
+    expect(loadMasterProfileFromLocalStorage()).toMatchObject({ status: "ok" });
+
+    // A device nobody signed in on: the guest's own, and still theirs.
+    window.localStorage.removeItem(WORKSPACE_OWNER_STORAGE_KEY);
+    setWorkspaceViewer(null);
+    expect(loadMasterProfileFromLocalStorage()).toMatchObject({ status: "ok" });
   });
 });
 
