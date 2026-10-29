@@ -10,14 +10,14 @@ interface ChangelogRichTextProps {
   multiline?: boolean;
 }
 
-/** Rejects javascript: and data: URLs. */
-function sanitizeUrl(rawUrl: string): string | null {
+/** Rejects javascript: and data: URLs, and `//host` or `/\host`, which browsers read as another origin. */
+export function sanitizeUrl(rawUrl: string): string | null {
   const trimmed = rawUrl.trim();
 
   if (
     trimmed.startsWith("https://") ||
     trimmed.startsWith("http://") ||
-    trimmed.startsWith("/") ||
+    /^\/(?![/\\])/.test(trimmed) ||
     trimmed.startsWith("#") ||
     trimmed.startsWith("mailto:")
   )

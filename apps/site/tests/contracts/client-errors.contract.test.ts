@@ -13,14 +13,20 @@ describe("reportClientError", () => {
   });
 
   const load = async () => {
-    vi.stubGlobal("window", { location: { href: "https://veriworkly.com/pricing" } });
+    vi.stubGlobal("window", {
+      location: {
+        href: "https://veriworkly.com/pricing?email=a%40b.c#token",
+        origin: "https://veriworkly.com",
+        pathname: "/pricing",
+      },
+    });
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
     const { reportClientError } = await import("@/utils/report-client-error");
     return { reportClientError, fetchMock };
   };
 
-  it("posts each error once to the API in production", async () => {
+  it("posts each error once to the API in production, without the query or fragment", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PUBLIC_BACKEND_URL", "https://api.veriworkly.com/api/v1/");
     const { reportClientError, fetchMock } = await load();

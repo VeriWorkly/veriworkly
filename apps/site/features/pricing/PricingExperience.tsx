@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { siteConfig } from "@/config/site";
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
+import { safeCheckoutUrl } from "./checkout-url";
 import { type ProductKey, type BillingInterval } from "./data/pricingData";
 
 import PricingHero from "./components/PricingHero";
@@ -24,8 +25,17 @@ const PricingExperience = ({
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
 
+  // Back from the checkout page restores this page from the bfcache with the spinner still on.
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => {
+      if (event.persisted) setLoading("");
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
+
   const checkout = async (productKey: ProductKey, interval: BillingInterval) => {
-    if (paymentsBlocked) return;
+    if (paymentsBlocked || loading) return;
     const checkoutKey = `${productKey}:${interval}`;
     setLoading(checkoutKey);
     setError("");
@@ -35,7 +45,13 @@ const PricingExperience = ({
         method: "POST",
         body: JSON.stringify({ productKey, interval, redirectUrl: "/billing" }),
       });
-      window.location.assign(result.url);
+      const url = safeCheckoutUrl(result.url);
+      if (!url) {
+        setError("Could not start checkout.");
+        setLoading("");
+        return;
+      }
+      window.location.assign(url);
     } catch (cause) {
       if (cause instanceof ApiRequestError && cause.status === 401) {
         const params = new URLSearchParams({ productKey, interval });

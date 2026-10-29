@@ -107,7 +107,8 @@ const PricingHero = ({
               "Automatically expires",
             ]}
             loading={loading === "bundle:one_day"}
-            disabled={paymentsBlocked || Boolean(loading && loading !== "bundle:one_day")}
+            blocked={paymentsBlocked}
+            busy={Boolean(loading)}
             onCheckout={() => void onCheckout("bundle", "one_day")}
           />
 
@@ -124,7 +125,8 @@ const PricingHero = ({
               "Automatically expires",
             ]}
             loading={loading === "bundle:seven_day"}
-            disabled={paymentsBlocked || Boolean(loading && loading !== "bundle:seven_day")}
+            blocked={paymentsBlocked}
+            busy={Boolean(loading)}
             onCheckout={() => void onCheckout("bundle", "seven_day")}
           />
 
@@ -144,7 +146,8 @@ const PricingHero = ({
             note={bundlePrice.note}
             badge={bundlePrice.savings}
             loading={loading === `bundle:${bundleInterval}`}
-            disabled={paymentsBlocked || Boolean(loading && loading !== `bundle:${bundleInterval}`)}
+            blocked={paymentsBlocked}
+            busy={Boolean(loading)}
             onCheckout={() => void onCheckout("bundle", bundleInterval)}
             toggle={
               <IntervalToggle
