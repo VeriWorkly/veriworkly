@@ -4,7 +4,7 @@ import { PageSection, TYPE } from "@/components/marketing/PageLayout";
 
 import CompareCaveatNote from "../shared/CompareCaveatNote";
 
-import { PRICES_CHECKED } from "../../data/competitors";
+import { PRICES_CHECKED } from "../../data/featureMatrix";
 import { type Competitor } from "../../types";
 
 interface ComparePricingSectionProps {
