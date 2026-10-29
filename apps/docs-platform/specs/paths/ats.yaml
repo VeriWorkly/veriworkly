@@ -49,6 +49,10 @@ getAtsQuota:
                 extract: { limit: 6, used: 0, remaining: 6 }
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 extractAtsResumeText:
   post:
@@ -126,25 +130,62 @@ extractAtsResumeText:
               statusCode: 413
               message: "The file is larger than the 5 MB upload limit."
       "429":
-        description: ATS upload quota exceeded
+        description: ATS upload quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/AtsQuotaErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "ATS upload quota exceeded."
+            examples:
+              documented:
+                summary: ATS upload quota exceeded
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "ATS upload quota exceeded."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
       "503":
-        description: Extraction is busy or unavailable. The upload is returned to the extract budget.
+        description: Extraction is busy or unavailable. The upload is returned to the extract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 503
-              message: "Too many resume extractions in progress. Please retry shortly."
+            examples:
+              documented:
+                summary: Extraction is busy or unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Too many resume extractions in progress. Please retry shortly."
+              authUnavailableCode:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+                  details:
+                    code: AUTH_UNAVAILABLE
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 checkAtsResume:
   post:
@@ -176,9 +217,9 @@ checkAtsResume:
             schema:
               $ref: "../components/schemas.yaml#/AtsCheckResponse"
       "400":
-        description: |
+        description: |-
           The body failed validation, or the resume is an `AtsResumeDocument` that is not valid.
-          Neither costs a scan.
+          Neither costs a scan. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -199,18 +240,48 @@ checkAtsResume:
                   success: false
                   statusCode: 400
                   message: "Invalid resume document at basics.name: Required"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: ATS scan quota exceeded
+        description: ATS scan quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/AtsQuotaErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "ATS scan quota exceeded."
+            examples:
+              documented:
+                summary: ATS scan quota exceeded
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "ATS scan quota exceeded."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 analyzeAtsResume:
   post:
@@ -252,9 +323,9 @@ analyzeAtsResume:
             schema:
               $ref: "../components/schemas.yaml#/AtsAnalyzeResponse"
       "400":
-        description: |
+        description: |-
           The body failed validation, `fetchJobUrl` was true without a `jobUrl`, the resume
-          document is not valid, or the job page could not be fetched or read.
+          document is not valid, or the job page could not be fetched or read. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -293,6 +364,12 @@ analyzeAtsResume:
                   success: false
                   statusCode: 400
                   message: "Job page did not contain enough readable text."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "402":
@@ -334,10 +411,12 @@ analyzeAtsResume:
                   success: false
                   statusCode: 409
                   message: "This AI request is processing."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: |
+        description: |-
           The ATS scan quota is used up (`details` is the quota), or the caller already has two
-          AI requests in progress (`Retry-After` says when to try again).
+          AI requests in progress (`Retry-After` says when to try again). The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
           application/json:
             schema:
@@ -355,6 +434,23 @@ analyzeAtsResume:
                   success: false
                   statusCode: 429
                   message: "Too many AI requests in progress. Wait for one to finish and try again."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
       "502":
         description: The AI gateway failed
         content:
@@ -366,10 +462,10 @@ analyzeAtsResume:
               statusCode: 502
               message: "AI ATS analysis could not be completed."
       "503":
-        description: |
+        description: |-
           The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
           configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
-          `Retry-After`). Nothing is charged.
+          `Retry-After`). Nothing is charged. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
@@ -390,6 +486,20 @@ analyzeAtsResume:
                   details:
                     code: "SERVER_RESTARTING"
                     retryAfterSeconds: 5
+              authUnavailableCode:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+                  details:
+                    code: AUTH_UNAVAILABLE
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
       "504":
         description: The AI request ran past its deadline.
         content:
@@ -435,7 +545,7 @@ convertAtsResume:
             schema:
               $ref: "../components/schemas.yaml#/AtsConvertResumeResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "402":
@@ -480,6 +590,38 @@ convertAtsResume:
               success: false
               statusCode: 409
               message: "This AI request id can no longer be reused."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        description: The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              documented:
+                summary: The caller already has two AI requests in progress
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "Too many AI requests in progress. Wait for one to finish and try again."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
       "502":
         description: AI provider error
         content:
@@ -490,16 +632,36 @@ convertAtsResume:
               success: false
               statusCode: 502
               message: "AI resume conversion could not be completed."
-      "429":
-        description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+      "503":
+        description: |-
+          The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
+          configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
+          `Retry-After`). Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "Too many AI requests in progress. Wait for one to finish and try again."
+            examples:
+              documented:
+                summary: The server's ATS AI settings are invalid or missing, the AI gateway credentials are not configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with `Retry-After`)
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "AI ATS policy is invalid."
+              authUnavailableCode:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+                  details:
+                    code: AUTH_UNAVAILABLE
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
       "504":
         description: The AI request ran past its deadline.
         content:
@@ -510,16 +672,3 @@ convertAtsResume:
               success: false
               statusCode: 504
               message: "The AI request timed out before the provider answered."
-      "503":
-        description: |
-          The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
-          configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
-          `Retry-After`).
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 503
-              message: "AI ATS policy is invalid."

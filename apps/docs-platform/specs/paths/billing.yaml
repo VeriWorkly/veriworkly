@@ -25,13 +25,17 @@ getBillingSummary:
             schema:
               $ref: "../components/schemas.yaml#/BillingSummaryResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: User not found
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 getBillingHistory:
   get:
@@ -51,7 +55,11 @@ getBillingHistory:
             schema:
               $ref: "../components/schemas.yaml#/BillingHistoryResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 getCreditWallet:
   get:
@@ -71,7 +79,11 @@ getCreditWallet:
             schema:
               $ref: "../components/schemas.yaml#/CreditWalletResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 getCreditHistory:
   get:
@@ -91,7 +103,11 @@ getCreditHistory:
             schema:
               $ref: "../components/schemas.yaml#/CreditHistoryResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 createBillingCheckout:
   post:
@@ -125,17 +141,26 @@ createBillingCheckout:
             schema:
               $ref: "../components/schemas.yaml#/CheckoutResponse"
       "400":
-        description: Invalid product/interval combination
+        description: Invalid product/interval combination. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "That billing interval is not available for this product."
+            examples:
+              documented:
+                summary: Invalid product/interval combination
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "That billing interval is not available for this product."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "403":
         description: Payments disabled in production for non-admins
         content:
@@ -178,6 +203,10 @@ createBillingCheckout:
                 upgrade:
                   productKey: "bundle"
                   interval: "monthly"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "502":
         description: The billing provider did not return a checkout URL.
         content:
@@ -189,7 +218,7 @@ createBillingCheckout:
               statusCode: 502
               message: "Billing provider did not return a checkout URL."
       "503":
-        description: Billing, or the selected product, is not configured on the server.
+        description: Billing, or the selected product, is not configured on the server. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
@@ -207,6 +236,18 @@ createBillingCheckout:
                   success: false
                   statusCode: 503
                   message: "The selected billing product is not configured."
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 cancelBillingCheckout:
   post:
@@ -231,19 +272,34 @@ cancelBillingCheckout:
             schema:
               $ref: "../components/schemas.yaml#/CancelCheckoutResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "409":
         description: The subscription or pass session's payment is still processing (`details.code` is `CHECKOUT_STILL_PROCESSING`), or a checkout is still being prepared (no code; try again in a moment). A credit pack still being paid does not cause this; it is reported in `stillProcessing`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`.
+        description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/CodedErrorResponse"
+            examples:
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 createBillingPortal:
   post:
@@ -267,7 +323,7 @@ createBillingPortal:
             schema:
               $ref: "../components/schemas.yaml#/BillingPortalResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "409":
         description: No billing account exists yet
         content:
@@ -278,6 +334,10 @@ createBillingPortal:
               success: false
               statusCode: 409
               message: "No billing account exists yet."
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 createCreditPackCheckout:
   post:
@@ -310,9 +370,9 @@ createCreditPackCheckout:
             schema:
               $ref: "../components/schemas.yaml#/CreditPackCheckoutResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "403":
         description: Payments disabled in production for non-admins
         content:
@@ -325,12 +385,29 @@ createCreditPackCheckout:
               message: "Payments are disabled in production during this phase. Only administrators can perform payments."
               details:
                 code: "PAYMENTS_DISABLED"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        description: Extra credit checkout is not configured
+        description: Extra credit checkout is not configured. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 previewPlanChange:
   post:
@@ -366,9 +443,9 @@ previewPlanChange:
             schema:
               $ref: "../components/schemas.yaml#/PlanChangePreviewResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "403":
         description: Payments disabled in production for non-admins
         content:
@@ -398,6 +475,10 @@ previewPlanChange:
               message: "Your AI Credits plan is billed monthly. The upgrade keeps that billing period."
               details:
                 code: "PLAN_CHANGE_INTERVAL"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "502":
         description: The billing provider could not price the upgrade; nothing was changed. `details.code` is `PROVIDER_UNAVAILABLE`.
         content:
@@ -405,11 +486,24 @@ previewPlanChange:
             schema:
               $ref: "../components/schemas.yaml#/CodedErrorResponse"
       "503":
-        description: The selected billing product is not configured
+        description: The selected billing product is not configured. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 changePlan:
   post:
@@ -471,13 +565,20 @@ changePlan:
             schema:
               $ref: "../components/schemas.yaml#/PlanChangeResponse"
       "400":
-        description: The body is invalid, or no idempotency key was sent (`details.code` `IDEMPOTENCY_KEY_REQUIRED`).
+        description: The body is invalid, or no idempotency key was sent (`details.code` `IDEMPOTENCY_KEY_REQUIRED`). A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "403":
         description: Payments disabled in production for non-admins
         content:
@@ -505,6 +606,10 @@ changePlan:
               message: "A plan change for this subscription is already in progress. It completes once the payment is confirmed."
               details:
                 code: "PLAN_CHANGE_PENDING"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "502":
         description: The billing provider refused the change; nothing was changed and the same key may try again. `details.code` is `PROVIDER_UNAVAILABLE`.
         content:
@@ -512,8 +617,21 @@ changePlan:
             schema:
               $ref: "../components/schemas.yaml#/CodedErrorResponse"
       "503":
-        description: The selected billing product is not configured
+        description: The selected billing product is not configured. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable

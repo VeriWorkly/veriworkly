@@ -138,9 +138,13 @@ getChangelogEntries:
                   message: "Number must be less than or equal to 50"
 
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getChangelogStats:
   get:
@@ -182,9 +186,13 @@ getChangelogStats:
                     contributions: 9
 
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getChangelogEntryById:
   get:
@@ -232,7 +240,7 @@ getChangelogEntryById:
                 prRefs: null
 
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
 
@@ -246,3 +254,7 @@ getChangelogEntryById:
               success: false
               statusCode: 404
               message: "Changelog entry not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError

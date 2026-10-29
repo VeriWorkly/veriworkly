@@ -25,13 +25,17 @@ trackAffiliateClick:
             schema:
               $ref: "../components/schemas.yaml#/AffiliateClickResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "404":
         description: Affiliate link not found
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"
 
@@ -57,6 +61,8 @@ getAffiliateLeaderboard:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/AffiliateLeaderboardResponse"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"
 
@@ -78,7 +84,9 @@ getMyAffiliateDashboard:
             schema:
               $ref: "../components/schemas.yaml#/AffiliateDashboardResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"
 
@@ -100,7 +108,7 @@ enrollAsAffiliate:
             schema:
               $ref: "../components/schemas.yaml#/AffiliateDashboardResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "403":
         description: The caller's affiliate account is suspended.
         content:
@@ -111,15 +119,30 @@ enrollAsAffiliate:
               success: false
               statusCode: 403
               message: "Affiliate account is suspended"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        description: |
+        description: |-
           The affiliate program is switched off (see `FeatureDisabledError`), or no unique
           affiliate code could be made ("Could not create a unique affiliate code."). Retry the
-          second case.
+          second case. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 applyAffiliateReferral:
   post:
@@ -149,17 +172,26 @@ applyAffiliateReferral:
             schema:
               $ref: "../components/schemas.yaml#/AffiliateReferralResponse"
       "400":
-        description: Validation error, or attempted self-referral
+        description: Validation error, or attempted self-referral. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Self-referrals are not allowed."
+            examples:
+              documented:
+                summary: Validation error, or attempted self-referral
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Self-referrals are not allowed."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: Affiliate code not found
         content:
@@ -175,6 +207,10 @@ applyAffiliateReferral:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"
 
@@ -210,17 +246,26 @@ requestAffiliateWithdrawal:
             schema:
               $ref: "../components/schemas.yaml#/AffiliateWithdrawalResponse"
       "400":
-        description: The amount is more than `withdrawableCents`, or fails validation.
+        description: The amount is more than `withdrawableCents`, or fails validation. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Available balance is too low."
+            examples:
+              documented:
+                summary: The amount is more than `withdrawableCents`, or fails validation
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Available balance is too low."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "403":
         description: The affiliate account is not active (`details.code` `AFFILIATE_NOT_ACTIVE`).
         content:
@@ -240,5 +285,9 @@ requestAffiliateWithdrawal:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"

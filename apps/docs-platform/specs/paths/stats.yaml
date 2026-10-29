@@ -43,20 +43,51 @@ recordUsageEvent:
               data:
                 accepted: true
       "400":
-        description: The body is invalid, or the event name is not allow-listed for public callers.
+        description: The body is invalid, or the event name is not allow-listed for public callers. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Event 'my_event' is not allowlisted for public access."
+            examples:
+              documented:
+                summary: The body is invalid, or the event name is not allow-listed for public callers
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Event 'my_event' is not allowlisted for public access."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: Rate limited, or an internal caller sent a new custom name past the daily cap.
+        description: Rate limited, or an internal caller sent a new custom name past the daily cap. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError

@@ -39,6 +39,8 @@ getCurrentUser:
                   resumes: 4
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "404":
         description: User not found
         content:
@@ -49,6 +51,10 @@ getCurrentUser:
               success: false
               statusCode: 404
               message: "User not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   delete:
     tags:
@@ -107,6 +113,8 @@ getCurrentUser:
               success: true
               message: "Your account and all associated documents, portfolios, and data have been permanently deleted."
               data: null
+      "400":
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "403":
@@ -160,12 +168,31 @@ getCurrentUser:
                     currency: "USD"
                     availableCents: 2500
                     pendingCents: 1500
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
       "503":
-        description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly.
+        description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailableCode:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+                  details:
+                    code: AUTH_UNAVAILABLE
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 updateUserName:
   put:
@@ -222,7 +249,7 @@ updateUserName:
                   shareLinks: 4
                   resumes: 4
       "400":
-        description: Validation error
+        description: Validation error. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -247,8 +274,22 @@ updateUserName:
                   details:
                     - path: "name"
                       message: "Name is too long"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 setUsername:
   put:
@@ -318,20 +359,31 @@ setUsername:
                   shareLinks: 4
                   resumes: 4
       "400":
-        description: The username failed validation after normalisation.
+        description: The username failed validation after normalisation. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Validation failed"
-              details:
-                - path: "username"
-                  message: "invalid_username"
+            examples:
+              documented:
+                summary: The username failed validation after normalisation
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "username"
+                      message: "invalid_username"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "409":
         description: The username is taken, or this account already has one.
         content:
@@ -351,6 +403,12 @@ setUsername:
                   success: false
                   statusCode: 409
                   message: "Username is locked and cannot be changed"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 checkUsernameAvailability:
   get:
@@ -415,6 +473,10 @@ checkUsernameAvailability:
                     reason: "too_short"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 updateAutoSync:
   put:
@@ -472,17 +534,34 @@ updateAutoSync:
                   shareLinks: 4
                   resumes: 4
       "400":
-        description: Validation error
+        description: Validation error. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Validation failed"
-              details:
-                - path: "enabled"
-                  message: "Expected boolean, received string"
+            examples:
+              documented:
+                summary: Validation error
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "enabled"
+                      message: "Expected boolean, received string"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError

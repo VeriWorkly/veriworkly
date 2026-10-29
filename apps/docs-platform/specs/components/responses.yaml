@@ -14,8 +14,106 @@ ValidationError:
           - path: "profile.basics.email"
             message: "Invalid email"
 
+BodyValidationError:
+  description: |
+    Bad Request - The JSON body is invalid. A body that fails validation answers "Validation
+    failed" with `details` listing every failing field as `{ path, message }`. A body that is not
+    valid JSON answers "Invalid JSON body" with no `details`.
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      examples:
+        validation:
+          summary: A field failed validation
+          value:
+            success: false
+            statusCode: 400
+            message: "Validation failed"
+            details:
+              - path: "name"
+                message: "Name cannot be empty"
+        invalidJson:
+          summary: The body is not valid JSON
+          value:
+            success: false
+            statusCode: 400
+            message: "Invalid JSON body"
+
 UnauthorizedError:
-  description: Unauthorized - Authentication failed or session expired.
+  description: |
+    Unauthorized. This route accepts an API key or a session. It answers `401` when:
+
+    - the request carries no API key and comes from no whitelisted first-party `Origin` or
+      `Referer` (`details.code` `API_KEY_REQUIRED`);
+    - a session cookie arrives with no `Origin` or `Referer` and is not a valid session
+      (`details.code` `AUTH_REQUIRED`);
+    - the API key is malformed, unknown, revoked or expired (no `details`);
+    - a first-party request has no signed-in session (no `details`).
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/UnauthorizedResponse"
+      examples:
+        apiKeyRequired:
+          summary: No API key and no first-party origin
+          value:
+            success: false
+            statusCode: 401
+            message: "Authentication required. For programmatic or documentation access, please provide an API key in the X-API-Key header or Authorization bearer token."
+            details:
+              code: API_KEY_REQUIRED
+        authRequired:
+          summary: A session cookie with no Origin that is not a valid session
+          value:
+            success: false
+            statusCode: 401
+            message: "Authentication required"
+            details:
+              code: AUTH_REQUIRED
+        invalidApiKey:
+          summary: Malformed, unknown, revoked or expired API key
+          value:
+            success: false
+            statusCode: 401
+            message: "Invalid or inactive API key."
+        notSignedIn:
+          summary: First-party request with no session
+          value:
+            success: false
+            statusCode: 401
+            message: "Authentication required"
+
+PublicUnauthorizedError:
+  description: |
+    Unauthorized. This route needs no signed-in user, but it is not open to anonymous callers. A
+    request with no API key from an origin that is not a whitelisted VeriWorkly origin answers
+    `401` with `details.code` `API_KEY_REQUIRED`. A malformed, unknown, revoked or expired key
+    answers `401` with no `details`.
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/UnauthorizedResponse"
+      examples:
+        apiKeyRequired:
+          summary: No API key and no first-party origin
+          value:
+            success: false
+            statusCode: 401
+            message: "Authentication required. For programmatic or documentation access, please provide an API key in the X-API-Key header or Authorization bearer token."
+            details:
+              code: API_KEY_REQUIRED
+        invalidApiKey:
+          summary: Malformed, unknown, revoked or expired API key
+          value:
+            success: false
+            statusCode: 401
+            message: "Invalid or inactive API key."
+
+SessionUnauthorizedError:
+  description: |
+    Unauthorized. This route takes a signed-in session only. An API key is ignored here, so a call
+    made with one gets this `401` too. The body has no `details`.
   content:
     application/json:
       schema:
@@ -36,6 +134,143 @@ InsufficientScopeError:
         statusCode: 403
         message: "This API key does not have permission for this action."
 
+PayloadTooLargeError:
+  description: |
+    Payload Too Large - The body is larger than this route accepts (see "Response Envelope" in the
+    introduction for each route's limit).
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      example:
+        success: false
+        statusCode: 413
+        message: "Request body too large"
+
+RateLimitError:
+  description: |
+    Too Many Requests. Two limits apply to this route, and both answer `429` with `Retry-After`
+    (seconds):
+
+    - the per-IP limit, counted before authentication: 100 requests per 15 minutes on most
+      routes, 20 per minute on the AI routes (`/ai/*`, `/ats/analyze`, `/ats/convert-resume`,
+      `/profiles/import/linkedin`), plus 1,000 per 15 minutes across all routes;
+    - the per-key limit, when the request carries an API key: 20 requests per 15 minutes by
+      default, set per key. Every keyed response carries `X-RateLimit-Limit`,
+      `X-RateLimit-Remaining` and `X-RateLimit-Reset`.
+  headers:
+    Retry-After:
+      description: Seconds until the window resets.
+      schema:
+        type: integer
+    X-RateLimit-Limit:
+      description: The key's request limit per 15 minutes. Sent only on API key requests.
+      schema:
+        type: integer
+    X-RateLimit-Remaining:
+      description: Requests left in the current window (`0` on a `429`). Sent only on API key requests.
+      schema:
+        type: integer
+    X-RateLimit-Reset:
+      description: Unix time, in seconds, when the window resets. Sent only on API key requests.
+      schema:
+        type: integer
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      examples:
+        ipLimit:
+          summary: Per-IP limit
+          value:
+            success: false
+            statusCode: 429
+            message: "Too many requests. Please try again later."
+        apiKeyLimit:
+          summary: Per-key limit
+          value:
+            success: false
+            statusCode: 429
+            message: "Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds."
+
+IpRateLimitError:
+  description: |
+    Too Many Requests - The per-IP limit, counted before authentication: 100 requests per 15
+    minutes on most routes, plus 1,000 per 15 minutes across all routes. `Retry-After` gives the
+    seconds to wait.
+  headers:
+    Retry-After:
+      description: Seconds until the window resets.
+      schema:
+        type: integer
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      example:
+        success: false
+        statusCode: 429
+        message: "Too many requests. Please try again later."
+
+ServiceUnavailableError:
+  description: |
+    Service Unavailable - Retry shortly. The session store could not be read, so the server
+    cannot tell whether the caller is signed in (this is not a sign-out), or the database could
+    not be reached.
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      examples:
+        authUnavailable:
+          summary: Session store unavailable
+          value:
+            success: false
+            statusCode: 503
+            message: "Authentication is temporarily unavailable"
+            details:
+              code: AUTH_UNAVAILABLE
+        databaseUnavailable:
+          summary: Database unreachable
+          value:
+            success: false
+            statusCode: 503
+            message: "Service temporarily unavailable"
+
+SessionServiceUnavailableError:
+  description: |
+    Service Unavailable - Retry shortly. The session store could not be read, so the server cannot
+    tell whether the caller is signed in (this is not a sign-out), or the database could not be
+    reached. Neither answer carries `details`.
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      examples:
+        authUnavailable:
+          summary: Session store unavailable
+          value:
+            success: false
+            statusCode: 503
+            message: "Authentication is temporarily unavailable"
+        databaseUnavailable:
+          summary: Database unreachable
+          value:
+            success: false
+            statusCode: 503
+            message: "Service temporarily unavailable"
+
+DatabaseUnavailableError:
+  description: Service Unavailable - The database could not be reached. Retry shortly.
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      example:
+        success: false
+        statusCode: 503
+        message: "Service temporarily unavailable"
+
 BadRequestError:
   description: Bad Request - The request parameters or body are invalid.
   content:
@@ -52,14 +287,41 @@ NotFoundError:
 
 FeatureDisabledError:
   description: |
-    Service Unavailable - This feature is gated behind a feature flag that is currently off
-    (`config.growth.affiliateProgramEnabled` / `config.growth.ambassadorProgramEnabled`), which is
-    the default in production until the program is explicitly enabled.
+    Service Unavailable. The program is switched off (`AFFILIATE_PROGRAM_ENABLED` /
+    `AMBASSADOR_PROGRAM_ENABLED`), which is the default in production until it is turned on. This
+    check runs before authentication and always sends `details.code` `PROGRAM_DISABLED`. The same
+    status is also sent when the database cannot be reached and, on signed-in routes, when the
+    session store cannot be read.
   content:
     application/json:
       schema:
         $ref: "./schemas.yaml#/ErrorResponse"
-      example:
-        success: false
-        statusCode: 503
-        message: "The affiliate program is not available yet. Check back soon."
+      examples:
+        affiliateDisabled:
+          summary: Affiliate program switched off
+          value:
+            success: false
+            statusCode: 503
+            message: "The affiliate program is not available yet. Check back soon."
+            details:
+              code: PROGRAM_DISABLED
+        ambassadorDisabled:
+          summary: Ambassador program switched off
+          value:
+            success: false
+            statusCode: 503
+            message: "The ambassador program is not available yet. Check back soon."
+            details:
+              code: PROGRAM_DISABLED
+        authUnavailable:
+          summary: Session store unavailable (signed-in routes)
+          value:
+            success: false
+            statusCode: 503
+            message: "Authentication is temporarily unavailable"
+        databaseUnavailable:
+          summary: Database unreachable
+          value:
+            success: false
+            statusCode: 503
+            message: "Service temporarily unavailable"

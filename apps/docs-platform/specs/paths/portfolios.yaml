@@ -48,6 +48,12 @@ listPublicPortfolios:
               $ref: "../components/schemas.yaml#/PortfolioPublicListResponse"
       "400":
         $ref: "../components/responses.yaml#/ValidationError"
+      "401":
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getPublicPortfolio:
   get:
@@ -93,6 +99,8 @@ getPublicPortfolio:
               success: false
               statusCode: 400
               message: "Choose a valid portfolio subdomain."
+      "401":
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "404":
         description: No live portfolio exists at this subdomain.
         content:
@@ -103,6 +111,10 @@ getPublicPortfolio:
               success: false
               statusCode: 404
               message: "Portfolio not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 recordPortfolioView:
   post:
@@ -166,7 +178,9 @@ recordPortfolioView:
               message: "Success"
               data: null
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
+      "401":
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "404":
         description: No live portfolio exists at this subdomain.
         content:
@@ -177,6 +191,12 @@ recordPortfolioView:
               success: false
               statusCode: 404
               message: "Portfolio not found"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getMyPortfolio:
   get:
@@ -199,7 +219,11 @@ getMyPortfolio:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioMeResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 savePortfolioDraft:
   put:
@@ -230,9 +254,9 @@ savePortfolioDraft:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioDraftResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: Portfolio draft not found (when documentId was provided but doesn't belong to the caller)
         content:
@@ -249,6 +273,12 @@ savePortfolioDraft:
               success: false
               statusCode: 409
               message: "Portfolio draft changed in another session."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 checkPortfolioSubdomainAvailability:
   get:
@@ -279,7 +309,11 @@ checkPortfolioSubdomainAvailability:
       "400":
         $ref: "../components/responses.yaml#/ValidationError"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 previewPortfolio:
   get:
@@ -308,7 +342,7 @@ previewPortfolio:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioPreviewResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: Portfolio draft not found
         content:
@@ -319,6 +353,10 @@ previewPortfolio:
               success: false
               statusCode: 404
               message: "Portfolio draft not found."
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 publishPortfolio:
   post:
@@ -354,7 +392,7 @@ publishPortfolio:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioPublishResponse"
       "400":
-        description: Validation error, incomplete portfolio content, or an unusable image reference
+        description: Validation error, incomplete portfolio content, or an unusable image reference. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -372,8 +410,14 @@ publishPortfolio:
                   success: false
                   statusCode: 400
                   message: "Portfolio contains an unavailable or invalid image."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "402":
         description: A premium template (`nimbus`, `cipher`) without Creator Pro, the Job Hunter Bundle or a pass.
         content:
@@ -419,6 +463,12 @@ publishPortfolio:
               success: false
               statusCode: 409
               message: "Save the latest draft before publishing."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 unpublishPortfolio:
   post:
@@ -445,7 +495,7 @@ unpublishPortfolio:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioUnpublishResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: The caller has never published a portfolio.
         content:
@@ -456,6 +506,10 @@ unpublishPortfolio:
               success: false
               statusCode: 404
               message: "Portfolio is not published."
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 getPortfolioAnalytics:
   get:
@@ -480,7 +534,11 @@ getPortfolioAnalytics:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioAnalyticsResponse"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 createPortfolioAssetUploadUrl:
   post:
@@ -514,33 +572,71 @@ createPortfolioAssetUploadUrl:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioAssetUploadResponse"
       "400":
-        description: Unsupported image type, or size out of range
+        description: Unsupported image type, or size out of range. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Upload a JPG, PNG, or WebP image."
+            examples:
+              documented:
+                summary: Unsupported image type, or size out of range
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Upload a JPG, PNG, or WebP image."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: The caller started 20 uploads in the last hour, finished or not.
+        description: The caller started 20 uploads in the last hour, finished or not. The per-IP limit also answers `429` ("Too many requests. Please try again later.").
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "Too many image uploads this hour. Try again later."
+            examples:
+              documented:
+                summary: The caller started 20 uploads in the last hour, finished or not
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "Too many image uploads this hour. Try again later."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
       "503":
-        description: Media uploads are not configured (R2 credentials missing)
+        description: Media uploads are not configured (R2 credentials missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 completePortfolioAssetUpload:
   post:
@@ -569,13 +665,20 @@ completePortfolioAssetUpload:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioAssetCompleteResponse"
       "400":
-        description: Uploaded file does not match the declared size/type/checksum
+        description: Uploaded file does not match the declared size/type/checksum. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: Asset not found
         content:
@@ -586,12 +689,29 @@ completePortfolioAssetUpload:
               success: false
               statusCode: 404
               message: "Portfolio asset not found."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        description: Media delivery is not configured (public base URL missing)
+        description: Media delivery is not configured (public base URL missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 deletePortfolioAsset:
   delete:
@@ -626,7 +746,7 @@ deletePortfolioAsset:
               message: "Success"
               data: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: Asset not found
         content:
@@ -637,3 +757,7 @@ deletePortfolioAsset:
               success: false
               statusCode: 404
               message: "Portfolio asset not found."
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError

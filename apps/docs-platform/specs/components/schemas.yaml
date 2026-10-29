@@ -32,25 +32,37 @@ ErrorResponse:
 UnauthorizedResponse:
   type: object
   description: |
-    The body of a `401`. Routes that accept an API key or a session answer with `code`; a
-    rejection thrown from inside a handler carries `statusCode` instead.
+    The body of a `401`. It has the same envelope as every other error, so `statusCode` is always
+    present. When the gate in front of a key-or-session route refuses the request, it names the
+    reason in `details.code`. An invalid API key and a missing session on a signed-in-only route
+    send no `details`.
   required:
     - success
     - message
+    - statusCode
   properties:
     success:
       type: boolean
+      enum: [false]
     message:
       type: string
     statusCode:
       type: integer
-    code:
-      type: string
-      enum: [API_KEY_REQUIRED, AUTH_REQUIRED]
+      enum: [401]
+    details:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [API_KEY_REQUIRED, AUTH_REQUIRED]
+          description: |
+            `API_KEY_REQUIRED`: no API key and no whitelisted first-party `Origin` or `Referer`.
+            `AUTH_REQUIRED`: a session cookie with no `Origin` or `Referer` that is not a valid
+            session.
 
 AtsQuotaErrorResponse:
   type: object
-  description: The body of a `429` from the ATS quota. `details` is the caller's current quota.
+  description: The body of a `429` from the ATS quota, where `details` is the caller's current quota. A `429` from the rate limiters has no `details`.
   required:
     - success
     - message

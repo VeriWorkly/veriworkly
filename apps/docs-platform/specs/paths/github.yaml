@@ -45,9 +45,13 @@ getGitHubStats:
                   message: "GitHub stats fetched successfully"
                   data: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getGitHubIssues:
   get:
@@ -142,9 +146,13 @@ getGitHubIssues:
       "400":
         $ref: "../components/responses.yaml#/ValidationError"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 syncGitHubStats:
   post:

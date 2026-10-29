@@ -31,13 +31,15 @@ getAmbassadorStatus:
                 collegeName: null
                 graduationYear: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: User not found
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"
 
@@ -83,7 +85,7 @@ applyForAmbassador:
                 collegeName: "State University"
                 graduationYear: "2027"
       "400":
-        description: Already an ambassador, application already pending, or validation error
+        description: Already an ambassador, application already pending, or validation error. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -101,7 +103,17 @@ applyForAmbassador:
                   success: false
                   statusCode: 400
                   message: "Your ambassador application is already pending review."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
         $ref: "../components/responses.yaml#/FeatureDisabledError"

@@ -128,9 +128,13 @@ getRoadmap:
                   message: "Number must be greater than or equal to 1"
 
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getRoadmapStats:
   get:
@@ -159,9 +163,13 @@ getRoadmapStats:
                 completionRate: "30.00"
 
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getRoadmapFeatureById:
   get:
@@ -209,7 +217,7 @@ getRoadmapFeatureById:
                 interactions: []
 
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
 
@@ -223,3 +231,7 @@ getRoadmapFeatureById:
               success: false
               statusCode: 404
               message: "Roadmap feature not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError

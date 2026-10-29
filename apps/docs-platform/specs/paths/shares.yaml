@@ -48,7 +48,7 @@ createShareLink:
             schema:
               $ref: "../components/schemas.yaml#/ShareLinkResponse"
       "400":
-        description: Validation error, the caller has not claimed a username yet, or the document is not a résumé or cover letter.
+        description: Validation error, the caller has not claimed a username yet, or the document is not a résumé or cover letter. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -75,22 +75,37 @@ createShareLink:
                   details:
                     - path: "documentId"
                       message: "String must contain at least 1 character(s)"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "403":
-        description: |
+        description: |-
           A moderator made this document private, or made another of the account's résumés or
           cover letters private (a trashed one too, until retention purges it). No link is created
           or refreshed on the account until a moderator lifts it. A portfolio takedown does not
-          pause sharing.
+          pause sharing. An API key without the scope this operation needs also gets `403`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 403
-              message: "A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it."
+            examples:
+              documented:
+                summary: A moderator made this document private, or made another of the account's résumés or cover letters private (a trashed one too, until retention purges it)
+                value:
+                  success: false
+                  statusCode: 403
+                  message: "A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it."
+              scope:
+                summary: API key missing the required scope
+                value:
+                  success: false
+                  statusCode: 403
+                  message: This API key does not have permission for this action.
       "404":
         description: Document not found
         content:
@@ -102,11 +117,22 @@ createShareLink:
               statusCode: 404
               message: "Document not found"
       "413":
-        description: The snapshot is larger than 1 MB.
+        description: The snapshot is larger than 1 MB. A body over the route's parser limit is refused first, with "Request body too large".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              bodyTooLarge:
+                summary: Body over the route's parser limit
+                value:
+                  success: false
+                  statusCode: 413
+                  message: Request body too large
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 listSharedDocumentIds:
   get:
@@ -135,6 +161,12 @@ listSharedDocumentIds:
               $ref: "../components/schemas.yaml#/SharedDocumentIdsResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 listShareLinksForDocument:
   get:
@@ -183,6 +215,12 @@ listShareLinksForDocument:
               $ref: "../components/schemas.yaml#/ErrorResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 revokeShareLink:
   delete:
@@ -221,6 +259,8 @@ revokeShareLink:
               data: null
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "404":
         description: Share link not found
         content:
@@ -231,6 +271,10 @@ revokeShareLink:
               success: false
               statusCode: 404
               message: "Share link not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 getPublicShareLink:
   get:
@@ -270,6 +314,8 @@ getPublicShareLink:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/PublicShareResponse"
+      "401":
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "404":
         description: Link not found
         content:
@@ -290,6 +336,10 @@ getPublicShareLink:
               success: false
               statusCode: 410
               message: "Link expired"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 verifyPublicShareLinkPassword:
   post:
@@ -336,7 +386,9 @@ verifyPublicShareLinkPassword:
             schema:
               $ref: "../components/schemas.yaml#/PublicShareResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
+      "401":
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         description: Wrong password. A `403`, not a `401`, so a signed-in viewer is not treated as signed out.
         content:
@@ -367,25 +419,56 @@ verifyPublicShareLinkPassword:
               success: false
               statusCode: 410
               message: "Link expired"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: |
+        description: |-
           Too many password attempts for this link (5 per 5 minutes), or too many verify requests
-          from this IP (20 per 5 minutes). `Retry-After` says when to try again.
+          from this IP (20 per 5 minutes). `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "Too many password attempts. Please try again later."
+            examples:
+              documented:
+                summary: Too many password attempts for this link (5 per 5 minutes), or too many verify requests from this IP (20 per 5 minutes)
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "Too many password attempts. Please try again later."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
       "503":
-        description: The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds.
+        description: The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds. Also sent as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 503
-              message: "Password verification is temporarily unavailable"
+            examples:
+              documented:
+                summary: The server cannot count attempts right now, so it refuses to check the password
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Password verification is temporarily unavailable"
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable

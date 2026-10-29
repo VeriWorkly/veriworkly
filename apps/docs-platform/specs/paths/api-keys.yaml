@@ -80,7 +80,11 @@ apiKeyCollection:
                   nextOffset: null
                   nextCursor: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
   post:
     tags:
@@ -167,7 +171,7 @@ apiKeyCollection:
                 updatedAt: "2026-04-11T10:37:35.584Z"
                 lastUsed: null
       "400":
-        description: Missing name, an unsupported scope, or a malformed `rateLimit`/`expiresAt`.
+        description: Missing name, an unsupported scope, or a malformed `rateLimit`/`expiresAt`. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
@@ -203,8 +207,14 @@ apiKeyCollection:
                   success: false
                   statusCode: 400
                   message: "rateLimit must be a positive integer"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "409":
         description: The caller already has 10 active, unexpired keys. Revoke or delete one first.
         content:
@@ -218,6 +228,12 @@ apiKeyCollection:
               details:
                 code: "API_KEY_LIMIT"
                 limit: 10
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 apiKeyRotate:
   post:
@@ -306,13 +322,20 @@ apiKeyRotate:
                 lastUsed: null
                 rotatedFromId: "cmnu7awv4000063lk18zpon2m"
       "400":
-        description: An unsupported scope, or a malformed `rateLimit`/`expiresAt`.
+        description: An unsupported scope, or a malformed `rateLimit`/`expiresAt`. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -342,6 +365,12 @@ apiKeyRotate:
                   success: false
                   statusCode: 409
                   message: "Key has expired, create a new one"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 apiKeyRevoke:
   post:
@@ -379,7 +408,7 @@ apiKeyRevoke:
               message: "API key revoked successfully"
               data: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -390,6 +419,10 @@ apiKeyRevoke:
               success: false
               statusCode: 404
               message: "API key not found"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
 apiKeyItem:
   get:
@@ -441,7 +474,7 @@ apiKeyItem:
                 updatedAt: "2026-04-11T10:37:35.584Z"
                 lastUsed: "2026-07-29T09:55:00.000Z"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -452,6 +485,10 @@ apiKeyItem:
               success: false
               statusCode: 404
               message: "API key not found"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
 
   delete:
     tags:
@@ -486,7 +523,7 @@ apiKeyItem:
               message: "API key deleted successfully"
               data: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
         description: No key with this ID belongs to the caller.
         content:
@@ -497,3 +534,7 @@ apiKeyItem:
               success: false
               statusCode: 404
               message: "API key not found"
+      "429":
+        $ref: ../components/responses.yaml#/IpRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/SessionServiceUnavailableError

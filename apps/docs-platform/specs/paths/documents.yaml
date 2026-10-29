@@ -115,6 +115,12 @@ documentCollection:
                 code: "INVALID_DOCUMENT_CURSOR"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   post:
     tags:
@@ -146,7 +152,7 @@ documentCollection:
             schema:
               $ref: "../components/schemas.yaml#/DocumentResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "402":
@@ -162,6 +168,8 @@ documentCollection:
               details:
                 code: "DOCUMENT_LIMIT"
                 type: "RESUME"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "409":
         description: The `id` belongs to another account or to one of the caller's deleted documents, or the slug is taken.
         content:
@@ -188,15 +196,28 @@ documentCollection:
                   statusCode: 409
                   message: "Document slug is already in use"
       "413":
-        description: Payload too large
+        description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 413
-              message: "Document content payload is too large"
+            examples:
+              documented:
+                summary: Payload too large
+                value:
+                  success: false
+                  statusCode: 413
+                  message: "Document content payload is too large"
+              bodyTooLarge:
+                summary: Body over the route's parser limit
+                value:
+                  success: false
+                  statusCode: 413
+                  message: Request body too large
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 documentItem:
   get:
@@ -227,6 +248,8 @@ documentItem:
               $ref: "../components/schemas.yaml#/DocumentResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "404":
         description: Document not found
         content:
@@ -237,6 +260,10 @@ documentItem:
               success: false
               statusCode: 404
               message: "Document not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   patch:
     tags:
@@ -276,9 +303,11 @@ documentItem:
             schema:
               $ref: "../components/schemas.yaml#/DocumentUpdateResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "404":
         description: Document not found
         content:
@@ -309,15 +338,28 @@ documentItem:
                   statusCode: 409
                   message: "Document slug is already in use"
       "413":
-        description: Payload too large
+        description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 413
-              message: "Document content payload is too large"
+            examples:
+              documented:
+                summary: Payload too large
+                value:
+                  success: false
+                  statusCode: 413
+                  message: "Document content payload is too large"
+              bodyTooLarge:
+                summary: Body over the route's parser limit
+                value:
+                  success: false
+                  statusCode: 413
+                  message: Request body too large
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   delete:
     tags:
@@ -353,6 +395,8 @@ documentItem:
               data: null
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "404":
         description: Document not found
         content:
@@ -363,3 +407,7 @@ documentItem:
               success: false
               statusCode: 404
               message: "Document not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError

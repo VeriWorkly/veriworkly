@@ -253,6 +253,8 @@ paths:
                     resumes: 4
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "404":
           description: User not found
           content:
@@ -263,6 +265,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: User not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
     delete:
       tags:
         - Users
@@ -321,6 +327,8 @@ paths:
                 success: true
                 message: Your account and all associated documents, portfolios, and data have been permanently deleted.
                 data: null
+        "400":
+          $ref: "#/components/responses/BodyValidationError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
@@ -374,12 +382,31 @@ paths:
                       currency: USD
                       availableCents: 2500
                       pendingCents: 1500
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
         "503":
-          description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly.
+          description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailableCode:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/users/me/name:
     put:
       tags:
@@ -436,7 +463,7 @@ paths:
                     shareLinks: 4
                     resumes: 4
         "400":
-          description: Validation error
+          description: Validation error. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
@@ -460,8 +487,22 @@ paths:
                     details:
                       - path: name
                         message: Name is too long
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/users/me/username:
     put:
       tags:
@@ -531,20 +572,31 @@ paths:
                     shareLinks: 4
                     resumes: 4
         "400":
-          description: The username failed validation after normalisation.
+          description: The username failed validation after normalisation. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Validation failed
-                details:
-                  - path: username
-                    message: invalid_username
+              examples:
+                documented:
+                  summary: The username failed validation after normalisation
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: username
+                        message: invalid_username
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "409":
           description: The username is taken, or this account already has one.
           content:
@@ -564,6 +616,12 @@ paths:
                     success: false
                     statusCode: 409
                     message: Username is locked and cannot be changed
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/users/me/sync:
     put:
       tags:
@@ -621,20 +679,37 @@ paths:
                     shareLinks: 4
                     resumes: 4
         "400":
-          description: Validation error
+          description: Validation error. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Validation failed
-                details:
-                  - path: enabled
-                    message: Expected boolean, received string
+              examples:
+                documented:
+                  summary: Validation error
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: enabled
+                        message: Expected boolean, received string
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/users/{username}/availability:
     get:
       tags:
@@ -698,6 +773,10 @@ paths:
                       reason: too_short
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/roadmap:
     get:
       tags:
@@ -830,9 +909,13 @@ paths:
                   - path: limit
                     message: Number must be greater than or equal to 1
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/roadmap/stats:
     get:
       tags:
@@ -859,9 +942,13 @@ paths:
                   done: 3
                   completionRate: "30.00"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/roadmap/{id}:
     get:
       tags:
@@ -907,7 +994,7 @@ paths:
                   details: null
                   interactions: []
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
         "404":
@@ -920,6 +1007,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Roadmap feature not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/changelog:
     get:
       tags:
@@ -1062,9 +1153,13 @@ paths:
                   - path: limit
                     message: Number must be less than or equal to 50
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/changelog/stats:
     get:
       tags:
@@ -1104,9 +1199,13 @@ paths:
                       htmlUrl: https://github.com/octocat
                       contributions: 9
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/changelog/{id}:
     get:
       tags:
@@ -1156,7 +1255,7 @@ paths:
                     - editor
                   prRefs: null
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
         "404":
@@ -1169,6 +1268,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Changelog entry not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/github/stats:
     get:
       tags:
@@ -1216,9 +1319,13 @@ paths:
                     message: GitHub stats fetched successfully
                     data: null
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/github/issues:
     get:
       tags:
@@ -1363,9 +1470,13 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/github/admin/sync:
     post:
       tags:
@@ -1745,7 +1856,11 @@ paths:
                     nextOffset: null
                     nextCursor: null
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
     post:
       tags:
         - API Keys
@@ -1838,7 +1953,7 @@ paths:
                   updatedAt: 2026-04-11T10:37:35.584Z
                   lastUsed: null
         "400":
-          description: Missing name, an unsupported scope, or a malformed `rateLimit`/`expiresAt`.
+          description: Missing name, an unsupported scope, or a malformed `rateLimit`/`expiresAt`. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
@@ -1874,8 +1989,14 @@ paths:
                     success: false
                     statusCode: 400
                     message: rateLimit must be a positive integer
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "409":
           description: The caller already has 10 active, unexpired keys. Revoke or delete one first.
           content:
@@ -1889,6 +2010,12 @@ paths:
                 details:
                   code: API_KEY_LIMIT
                   limit: 10
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/api-keys/{id}/rotate:
     post:
       tags:
@@ -1984,13 +2111,20 @@ paths:
                   lastUsed: null
                   rotatedFromId: cmnu7awv4000063lk18zpon2m
         "400":
-          description: An unsupported scope, or a malformed `rateLimit`/`expiresAt`.
+          description: An unsupported scope, or a malformed `rateLimit`/`expiresAt`. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: No key with this ID belongs to the caller.
           content:
@@ -2020,6 +2154,12 @@ paths:
                     success: false
                     statusCode: 409
                     message: Key has expired, create a new one
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/api-keys/{id}/revoke:
     post:
       tags:
@@ -2055,7 +2195,7 @@ paths:
                 message: API key revoked successfully
                 data: null
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: No key with this ID belongs to the caller.
           content:
@@ -2066,6 +2206,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: API key not found
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/api-keys/{id}:
     get:
       tags:
@@ -2118,7 +2262,7 @@ paths:
                   updatedAt: 2026-04-11T10:37:35.584Z
                   lastUsed: 2026-07-29T09:55:00.000Z
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: No key with this ID belongs to the caller.
           content:
@@ -2129,6 +2273,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: API key not found
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
     delete:
       tags:
         - API Keys
@@ -2161,7 +2309,7 @@ paths:
                 message: API key deleted successfully
                 data: null
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: No key with this ID belongs to the caller.
           content:
@@ -2172,6 +2320,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: API key not found
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/profiles/master:
     get:
       tags:
@@ -2219,6 +2371,8 @@ paths:
                         shareResumeCount: 4
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "404":
           description: User not found
           content:
@@ -2229,6 +2383,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: User not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
     put:
       tags:
         - Profile
@@ -2309,9 +2467,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/MasterProfileUpdateResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "409":
           description: Conflict - profile updated elsewhere
           content:
@@ -2323,15 +2483,28 @@ paths:
                 statusCode: 409
                 message: Master profile was updated from another session. Refresh and retry.
         "413":
-          description: Payload too large
+          description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 413
-                message: Master profile payload is too large
+              examples:
+                documented:
+                  summary: Payload too large
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: Master profile payload is too large
+                bodyTooLarge:
+                  summary: Body over the route's parser limit
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: Request body too large
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/profiles/import/quota:
     get:
       tags:
@@ -2386,6 +2559,12 @@ paths:
                     connectedUsername: null
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/profiles/import/github:
     post:
       tags:
@@ -2436,15 +2615,24 @@ paths:
                   createdAt: 2026-04-01T10:00:00.000Z
                   updatedAt: 2026-04-01T10:00:00.000Z
         "400":
-          description: Free user has no connected GitHub account, or a validation error
+          description: Free user has no connected GitHub account, or a validation error. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Please connect your GitHub account in settings to import your profile.
+              examples:
+                documented:
+                  summary: Free user has no connected GitHub account, or a validation error
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Please connect your GitHub account in settings to import your profile.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
@@ -2488,8 +2676,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: Import quota exceeded
+          description: Import quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
@@ -2509,6 +2699,23 @@ paths:
                     success: false
                     statusCode: 429
                     message: You've reached the daily limit of 50 GitHub imports. This protects the shared GitHub API budget used by all users. Please try again tomorrow.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "502":
           description: 'GitHub errored, timed out or could not be reached (`details.code: "GITHUB_UNAVAILABLE"`).'
           content:
@@ -2516,11 +2723,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
-          description: 'GitHub rate limit (`details.code: "GITHUB_RATE_LIMITED"`); try again later.'
+          description: 'GitHub rate limit (`details.code: "GITHUB_RATE_LIMITED"`); try again later. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.'
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailableCode:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/profiles/import/linkedin:
     post:
       tags:
@@ -2583,18 +2805,27 @@ paths:
                   createdAt: 2026-04-01T10:00:00.000Z
                   updatedAt: 2026-04-01T10:00:00.000Z
         "400":
-          description: Validation error
+          description: Validation error. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Validation failed
-                details:
-                  - path: profileText
-                    message: LinkedIn profile text must be at least 10 characters long
+              examples:
+                documented:
+                  summary: Validation error
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: profileText
+                        message: LinkedIn profile text must be at least 10 characters long
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
@@ -2617,18 +2848,40 @@ paths:
                 success: false
                 statusCode: 403
                 message: This API key does not have permission for this action.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: Import quota exceeded
+          description: Import quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: Free accounts can import from LinkedIn once a month. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass.
-                details:
-                  resetsInSeconds: 2160000
+              examples:
+                documented:
+                  summary: Import quota exceeded
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Free accounts can import from LinkedIn once a month. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass.
+                    details:
+                      resetsInSeconds: 2160000
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "502":
           description: AI parsing failed
           content:
@@ -2639,6 +2892,8 @@ paths:
                 success: false
                 statusCode: 502
                 message: Failed to parse profile data using AI. Please try again.
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/documents:
     get:
       tags:
@@ -2763,6 +3018,12 @@ paths:
                   code: INVALID_DOCUMENT_CURSOR
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
     post:
       tags:
         - Documents
@@ -2793,7 +3054,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
@@ -2809,6 +3070,8 @@ paths:
                 details:
                   code: DOCUMENT_LIMIT
                   type: RESUME
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "409":
           description: The `id` belongs to another account or to one of the caller's deleted documents, or the slug is taken.
           content:
@@ -2835,15 +3098,28 @@ paths:
                     statusCode: 409
                     message: Document slug is already in use
         "413":
-          description: Payload too large
+          description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 413
-                message: Document content payload is too large
+              examples:
+                documented:
+                  summary: Payload too large
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: Document content payload is too large
+                bodyTooLarge:
+                  summary: Body over the route's parser limit
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: Request body too large
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/documents/{id}:
     get:
       tags:
@@ -2873,6 +3149,8 @@ paths:
                 $ref: "#/components/schemas/DocumentResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "404":
           description: Document not found
           content:
@@ -2883,6 +3161,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Document not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
     patch:
       tags:
         - Documents
@@ -2921,9 +3203,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentUpdateResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "404":
           description: Document not found
           content:
@@ -2954,15 +3238,28 @@ paths:
                     statusCode: 409
                     message: Document slug is already in use
         "413":
-          description: Payload too large
+          description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 413
-                message: Document content payload is too large
+              examples:
+                documented:
+                  summary: Payload too large
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: Document content payload is too large
+                bodyTooLarge:
+                  summary: Body over the route's parser limit
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: Request body too large
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
     delete:
       tags:
         - Documents
@@ -2997,6 +3294,8 @@ paths:
                 data: null
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "404":
           description: Document not found
           content:
@@ -3007,6 +3306,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Document not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/ats/quota:
     get:
       tags:
@@ -3065,6 +3368,10 @@ paths:
                     remaining: 6
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/ats/extract:
     post:
       tags:
@@ -3142,25 +3449,62 @@ paths:
                 statusCode: 413
                 message: The file is larger than the 5 MB upload limit.
         "429":
-          description: ATS upload quota exceeded
+          description: ATS upload quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AtsQuotaErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: ATS upload quota exceeded.
+              examples:
+                documented:
+                  summary: ATS upload quota exceeded
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: ATS upload quota exceeded.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "503":
-          description: Extraction is busy or unavailable. The upload is returned to the extract budget.
+          description: Extraction is busy or unavailable. The upload is returned to the extract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 503
-                message: Too many resume extractions in progress. Please retry shortly.
+              examples:
+                documented:
+                  summary: Extraction is busy or unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Too many resume extractions in progress. Please retry shortly.
+                authUnavailableCode:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/ats/check:
     post:
       tags:
@@ -3194,9 +3538,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/AtsCheckResponse"
         "400":
-          description: |
+          description: |-
             The body failed validation, or the resume is an `AtsResumeDocument` that is not valid.
-            Neither costs a scan.
+            Neither costs a scan. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
@@ -3217,18 +3561,48 @@ paths:
                     success: false
                     statusCode: 400
                     message: "Invalid resume document at basics.name: Required"
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: ATS scan quota exceeded
+          description: ATS scan quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AtsQuotaErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: ATS scan quota exceeded.
+              examples:
+                documented:
+                  summary: ATS scan quota exceeded
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: ATS scan quota exceeded.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/ats/analyze:
     post:
       tags:
@@ -3272,9 +3646,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/AtsAnalyzeResponse"
         "400":
-          description: |
+          description: |-
             The body failed validation, `fetchJobUrl` was true without a `jobUrl`, the resume
-            document is not valid, or the job page could not be fetched or read.
+            document is not valid, or the job page could not be fetched or read. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
@@ -3313,6 +3687,12 @@ paths:
                     success: false
                     statusCode: 400
                     message: Job page did not contain enough readable text.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
@@ -3354,10 +3734,12 @@ paths:
                     success: false
                     statusCode: 409
                     message: This AI request is processing.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: |
+          description: |-
             The ATS scan quota is used up (`details` is the quota), or the caller already has two
-            AI requests in progress (`Retry-After` says when to try again).
+            AI requests in progress (`Retry-After` says when to try again). The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
@@ -3375,6 +3757,23 @@ paths:
                     success: false
                     statusCode: 429
                     message: Too many AI requests in progress. Wait for one to finish and try again.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "502":
           description: The AI gateway failed
           content:
@@ -3386,10 +3785,10 @@ paths:
                 statusCode: 502
                 message: AI ATS analysis could not be completed.
         "503":
-          description: |
+          description: |-
             The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
             configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
-            `Retry-After`). Nothing is charged.
+            `Retry-After`). Nothing is charged. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
@@ -3410,6 +3809,20 @@ paths:
                     details:
                       code: SERVER_RESTARTING
                       retryAfterSeconds: 5
+                authUnavailableCode:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
         "504":
           description: The AI request ran past its deadline.
           content:
@@ -3457,7 +3870,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AtsConvertResumeResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
@@ -3502,16 +3915,38 @@ paths:
                 success: false
                 statusCode: 409
                 message: This AI request id can no longer be reused.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+          description: The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: Too many AI requests in progress. Wait for one to finish and try again.
+              examples:
+                documented:
+                  summary: The caller already has two AI requests in progress
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many AI requests in progress. Wait for one to finish and try again.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "502":
           description: AI provider error
           content:
@@ -3523,18 +3958,35 @@ paths:
                 statusCode: 502
                 message: AI resume conversion could not be completed.
         "503":
-          description: |
+          description: |-
             The server's ATS AI settings are invalid or missing, the AI gateway credentials are not
             configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
-            `Retry-After`).
+            `Retry-After`). Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 503
-                message: AI ATS policy is invalid.
+              examples:
+                documented:
+                  summary: The server's ATS AI settings are invalid or missing, the AI gateway credentials are not configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with `Retry-After`)
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: AI ATS policy is invalid.
+                authUnavailableCode:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
         "504":
           description: The AI request ran past its deadline.
           content:
@@ -3576,16 +4028,35 @@ paths:
                 $ref: "#/components/schemas/AiActionsResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
         "503":
-          description: The AI policy is missing or invalid, or AI model routing is not configured on the server.
+          description: The AI policy is missing or invalid, or AI model routing is not configured on the server. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 503
-                message: AI generation is unavailable right now. Please try again later.
+              examples:
+                documented:
+                  summary: The AI policy is missing or invalid, or AI model routing is not configured on the server
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: AI generation is unavailable right now. Please try again later.
+                authUnavailableCode:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/ai/generate:
     post:
       tags:
@@ -3641,15 +4112,24 @@ paths:
                     spent: 4
                     balance: 46
         "400":
-          description: Validation error, or text/context exceeds the action's character limit
+          description: Validation error, or text/context exceeds the action's character limit. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Provide text, context, or a job description for this AI action.
+              examples:
+                documented:
+                  summary: Validation error, or text/context exceeds the action's character limit
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Provide text, context, or a job description for this AI action.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
@@ -3682,16 +4162,38 @@ paths:
                 success: false
                 statusCode: 409
                 message: This AI request id can no longer be reused.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: The caller already has two AI requests in progress. `Retry-After` says when to try again.
+          description: The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: Too many AI requests in progress. Wait for one to finish and try again.
+              examples:
+                documented:
+                  summary: The caller already has two AI requests in progress
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many AI requests in progress. Wait for one to finish and try again.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "502":
           description: AI provider error
           content:
@@ -3703,18 +4205,35 @@ paths:
                 statusCode: 502
                 message: The AI provider could not complete the request.
         "503":
-          description: |
+          description: |-
             The server's AI settings are missing or invalid, the AI gateway credentials are not
             configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with
-            `Retry-After`).
+            `Retry-After`). Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 503
-                message: AI provider credentials are not configured.
+              examples:
+                documented:
+                  summary: The server's AI settings are missing or invalid, the AI gateway credentials are not configured, or the server is restarting (`details.code` `SERVER_RESTARTING`, with `Retry-After`)
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: AI provider credentials are not configured.
+                authUnavailableCode:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
         "504":
           description: The AI request ran past its deadline.
           content:
@@ -3777,6 +4296,12 @@ paths:
                 $ref: "#/components/schemas/PortfolioPublicListResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/PublicUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/portfolios/public/{subdomain}:
     get:
       tags:
@@ -3821,6 +4346,8 @@ paths:
                 success: false
                 statusCode: 400
                 message: Choose a valid portfolio subdomain.
+        "401":
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "404":
           description: No live portfolio exists at this subdomain.
           content:
@@ -3831,6 +4358,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/portfolios/public/{subdomain}/view:
     post:
       tags:
@@ -3893,7 +4424,9 @@ paths:
                 message: Success
                 data: null
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
+        "401":
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "404":
           description: No live portfolio exists at this subdomain.
           content:
@@ -3904,6 +4437,12 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio not found
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/portfolios/me:
     get:
       tags:
@@ -3925,7 +4464,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioMeResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/portfolios/draft:
     put:
       tags:
@@ -3955,9 +4498,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioDraftResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: Portfolio draft not found (when documentId was provided but doesn't belong to the caller)
           content:
@@ -3974,6 +4517,12 @@ paths:
                 success: false
                 statusCode: 409
                 message: Portfolio draft changed in another session.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/portfolios/subdomains/{slug}/availability:
     get:
       tags:
@@ -4005,7 +4554,11 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/portfolios/preview/{documentId}:
     get:
       tags:
@@ -4033,7 +4586,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioPreviewResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: Portfolio draft not found
           content:
@@ -4044,6 +4597,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio draft not found.
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/portfolios/publish:
     post:
       tags:
@@ -4078,7 +4635,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioPublishResponse"
         "400":
-          description: Validation error, incomplete portfolio content, or an unusable image reference
+          description: Validation error, incomplete portfolio content, or an unusable image reference. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
@@ -4096,8 +4653,14 @@ paths:
                     success: false
                     statusCode: 400
                     message: Portfolio contains an unavailable or invalid image.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "402":
           description: A premium template (`nimbus`, `cipher`) without Creator Pro, the Job Hunter Bundle or a pass.
           content:
@@ -4143,6 +4706,12 @@ paths:
                 success: false
                 statusCode: 409
                 message: Save the latest draft before publishing.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/portfolios/unpublish:
     post:
       tags:
@@ -4168,7 +4737,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioUnpublishResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: The caller has never published a portfolio.
           content:
@@ -4179,6 +4748,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio is not published.
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/portfolios/analytics:
     get:
       tags:
@@ -4202,7 +4775,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioAnalyticsResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/portfolio-assets/upload-url:
     post:
       tags:
@@ -4235,33 +4812,71 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioAssetUploadResponse"
         "400":
-          description: Unsupported image type, or size out of range
+          description: Unsupported image type, or size out of range. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Upload a JPG, PNG, or WebP image.
+              examples:
+                documented:
+                  summary: Unsupported image type, or size out of range
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Upload a JPG, PNG, or WebP image.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: The caller started 20 uploads in the last hour, finished or not.
+          description: The caller started 20 uploads in the last hour, finished or not. The per-IP limit also answers `429` ("Too many requests. Please try again later.").
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: Too many image uploads this hour. Try again later.
+              examples:
+                documented:
+                  summary: The caller started 20 uploads in the last hour, finished or not
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many image uploads this hour. Try again later.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "503":
-          description: Media uploads are not configured (R2 credentials missing)
+          description: Media uploads are not configured (R2 credentials missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/portfolio-assets/complete:
     post:
       tags:
@@ -4289,13 +4904,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioAssetCompleteResponse"
         "400":
-          description: Uploaded file does not match the declared size/type/checksum
+          description: Uploaded file does not match the declared size/type/checksum. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: Asset not found
           content:
@@ -4306,12 +4928,29 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio asset not found.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
-          description: Media delivery is not configured (public base URL missing)
+          description: Media delivery is not configured (public base URL missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/portfolio-assets/{id}:
     delete:
       tags:
@@ -4345,7 +4984,7 @@ paths:
                 message: Success
                 data: null
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: Asset not found
           content:
@@ -4356,6 +4995,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio asset not found.
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/billing/me:
     get:
       tags:
@@ -4383,13 +5026,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/BillingSummaryResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: User not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/billing/history:
     get:
       tags:
@@ -4408,7 +5055,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/BillingHistoryResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/billing/credits:
     get:
       tags:
@@ -4427,7 +5078,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/CreditWalletResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/billing/credits/history:
     get:
       tags:
@@ -4446,7 +5101,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/CreditHistoryResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/billing/checkout:
     post:
       tags:
@@ -4479,17 +5138,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/CheckoutResponse"
         "400":
-          description: Invalid product/interval combination
+          description: Invalid product/interval combination. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: That billing interval is not available for this product.
+              examples:
+                documented:
+                  summary: Invalid product/interval combination
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: That billing interval is not available for this product.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "403":
           description: Payments disabled in production for non-admins
           content:
@@ -4532,6 +5200,10 @@ paths:
                   upgrade:
                     productKey: bundle
                     interval: monthly
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "502":
           description: The billing provider did not return a checkout URL.
           content:
@@ -4543,7 +5215,7 @@ paths:
                 statusCode: 502
                 message: Billing provider did not return a checkout URL.
         "503":
-          description: Billing, or the selected product, is not configured on the server.
+          description: Billing, or the selected product, is not configured on the server. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
@@ -4561,6 +5233,18 @@ paths:
                     success: false
                     statusCode: 503
                     message: The selected billing product is not configured.
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/billing/checkout/cancel:
     post:
       tags:
@@ -4584,19 +5268,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/CancelCheckoutResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "409":
           description: The subscription or pass session's payment is still processing (`details.code` is `CHECKOUT_STILL_PROCESSING`), or a checkout is still being prepared (no code; try again in a moment). A credit pack still being paid does not cause this; it is reported in `stillProcessing`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
-          description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`.
+          description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CodedErrorResponse"
+              examples:
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/billing/portal:
     post:
       tags:
@@ -4619,7 +5318,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/BillingPortalResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "409":
           description: No billing account exists yet
           content:
@@ -4630,6 +5329,10 @@ paths:
                 success: false
                 statusCode: 409
                 message: No billing account exists yet.
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailableError"
   /api/v1/billing/credits/checkout:
     post:
       tags:
@@ -4661,9 +5364,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/CreditPackCheckoutResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "403":
           description: Payments disabled in production for non-admins
           content:
@@ -4676,12 +5379,29 @@ paths:
                 message: Payments are disabled in production during this phase. Only administrators can perform payments.
                 details:
                   code: PAYMENTS_DISABLED
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
-          description: Extra credit checkout is not configured
+          description: Extra credit checkout is not configured. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/billing/subscription/change-plan/preview:
     post:
       tags:
@@ -4716,9 +5436,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/PlanChangePreviewResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "403":
           description: Payments disabled in production for non-admins
           content:
@@ -4748,6 +5468,10 @@ paths:
                 message: Your AI Credits plan is billed monthly. The upgrade keeps that billing period.
                 details:
                   code: PLAN_CHANGE_INTERVAL
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "502":
           description: The billing provider could not price the upgrade; nothing was changed. `details.code` is `PROVIDER_UNAVAILABLE`.
           content:
@@ -4755,11 +5479,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/CodedErrorResponse"
         "503":
-          description: The selected billing product is not configured
+          description: The selected billing product is not configured. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/billing/subscription/change-plan:
     post:
       tags:
@@ -4820,13 +5557,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/PlanChangeResponse"
         "400":
-          description: The body is invalid, or no idempotency key was sent (`details.code` `IDEMPOTENCY_KEY_REQUIRED`).
+          description: The body is invalid, or no idempotency key was sent (`details.code` `IDEMPOTENCY_KEY_REQUIRED`). A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "403":
           description: Payments disabled in production for non-admins
           content:
@@ -4854,6 +5598,10 @@ paths:
                 message: A plan change for this subscription is already in progress. It completes once the payment is confirmed.
                 details:
                   code: PLAN_CHANGE_PENDING
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "502":
           description: The billing provider refused the change; nothing was changed and the same key may try again. `details.code` is `PROVIDER_UNAVAILABLE`.
           content:
@@ -4861,11 +5609,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/CodedErrorResponse"
         "503":
-          description: The selected billing product is not configured
+          description: The selected billing product is not configured. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/shares:
     post:
       tags:
@@ -4916,7 +5677,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ShareLinkResponse"
         "400":
-          description: Validation error, the caller has not claimed a username yet, or the document is not a résumé or cover letter.
+          description: Validation error, the caller has not claimed a username yet, or the document is not a résumé or cover letter. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
@@ -4943,22 +5704,37 @@ paths:
                     details:
                       - path: documentId
                         message: String must contain at least 1 character(s)
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
-          description: |
+          description: |-
             A moderator made this document private, or made another of the account's résumés or
             cover letters private (a trashed one too, until retention purges it). No link is created
             or refreshed on the account until a moderator lifts it. A portfolio takedown does not
-            pause sharing.
+            pause sharing. An API key without the scope this operation needs also gets `403`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 403
-                message: A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it.
+              examples:
+                documented:
+                  summary: A moderator made this document private, or made another of the account's résumés or cover letters private (a trashed one too, until retention purges it)
+                  value:
+                    success: false
+                    statusCode: 403
+                    message: A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it.
+                scope:
+                  summary: API key missing the required scope
+                  value:
+                    success: false
+                    statusCode: 403
+                    message: This API key does not have permission for this action.
         "404":
           description: Document not found
           content:
@@ -4970,11 +5746,22 @@ paths:
                 statusCode: 404
                 message: Document not found
         "413":
-          description: The snapshot is larger than 1 MB.
+          description: The snapshot is larger than 1 MB. A body over the route's parser limit is refused first, with "Request body too large".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                bodyTooLarge:
+                  summary: Body over the route's parser limit
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: Request body too large
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/shares/documents/shared-ids:
     get:
       tags:
@@ -5002,6 +5789,12 @@ paths:
                 $ref: "#/components/schemas/SharedDocumentIdsResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/shares/documents/{documentId}:
     get:
       tags:
@@ -5049,6 +5842,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/shares/documents/{documentId}/links/{shareLinkId}:
     delete:
       tags:
@@ -5086,6 +5885,8 @@ paths:
                 data: null
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/InsufficientScopeError"
         "404":
           description: Share link not found
           content:
@@ -5096,6 +5897,10 @@ paths:
                 success: false
                 statusCode: 404
                 message: Share link not found
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/shares/public/{username}/{slug}:
     get:
       tags:
@@ -5134,6 +5939,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicShareResponse"
+        "401":
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "404":
           description: Link not found
           content:
@@ -5154,6 +5961,10 @@ paths:
                 success: false
                 statusCode: 410
                 message: Link expired
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
   /api/v1/shares/public/{username}/{slug}/verify:
     post:
       tags:
@@ -5199,7 +6010,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/PublicShareResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
+        "401":
+          $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
           description: Wrong password. A `403`, not a `401`, so a signed-in viewer is not treated as signed out.
           content:
@@ -5230,28 +6043,59 @@ paths:
                 success: false
                 statusCode: 410
                 message: Link expired
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: |
+          description: |-
             Too many password attempts for this link (5 per 5 minutes), or too many verify requests
-            from this IP (20 per 5 minutes). `Retry-After` says when to try again.
+            from this IP (20 per 5 minutes). `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 429
-                message: Too many password attempts. Please try again later.
+              examples:
+                documented:
+                  summary: Too many password attempts for this link (5 per 5 minutes), or too many verify requests from this IP (20 per 5 minutes)
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many password attempts. Please try again later.
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
         "503":
-          description: The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds.
+          description: The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 503
-                message: Password verification is temporarily unavailable
+              examples:
+                documented:
+                  summary: The server cannot count attempts right now, so it refuses to check the password
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Password verification is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/affiliates/click:
     post:
       tags:
@@ -5279,13 +6123,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/AffiliateClickResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BodyValidationError"
         "404":
           description: Affiliate link not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
   /api/v1/affiliates/leaderboard:
@@ -5312,6 +6160,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AffiliateLeaderboardResponse"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
   /api/v1/affiliates/me:
@@ -5332,7 +6182,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/AffiliateDashboardResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
   /api/v1/affiliates/enroll:
@@ -5353,7 +6205,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AffiliateDashboardResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "403":
           description: The caller's affiliate account is suspended.
           content:
@@ -5364,15 +6216,30 @@ paths:
                 success: false
                 statusCode: 403
                 message: Affiliate account is suspended
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
-          description: |
+          description: |-
             The affiliate program is switched off (see `FeatureDisabledError`), or no unique
             affiliate code could be made ("Could not create a unique affiliate code."). Retry the
-            second case.
+            second case. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/affiliates/referral:
     post:
       tags:
@@ -5401,17 +6268,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/AffiliateReferralResponse"
         "400":
-          description: Validation error, or attempted self-referral
+          description: Validation error, or attempted self-referral. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Self-referrals are not allowed.
+              examples:
+                documented:
+                  summary: Validation error, or attempted self-referral
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Self-referrals are not allowed.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: Affiliate code not found
           content:
@@ -5427,6 +6303,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
   /api/v1/affiliates/withdrawals:
@@ -5461,17 +6341,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/AffiliateWithdrawalResponse"
         "400":
-          description: The amount is more than `withdrawableCents`, or fails validation.
+          description: The amount is more than `withdrawableCents`, or fails validation. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Available balance is too low.
+              examples:
+                documented:
+                  summary: The amount is more than `withdrawableCents`, or fails validation
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Available balance is too low.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "403":
           description: The affiliate account is not active (`details.code` `AFFILIATE_NOT_ACTIVE`).
           content:
@@ -5491,6 +6380,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
   /api/v1/ambassador/me:
@@ -5526,13 +6419,15 @@ paths:
                   collegeName: null
                   graduationYear: null
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
           description: User not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
   /api/v1/ambassador/apply:
@@ -5577,7 +6472,7 @@ paths:
                   collegeName: State University
                   graduationYear: "2027"
         "400":
-          description: Already an ambassador, application already pending, or validation error
+          description: Already an ambassador, application already pending, or validation error. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
@@ -5595,8 +6490,18 @@ paths:
                     success: false
                     statusCode: 400
                     message: Your ambassador application is already pending review.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/SessionUnauthorizedError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          $ref: "#/components/responses/IpRateLimitError"
         "503":
           $ref: "#/components/responses/FeatureDisabledError"
   /api/v1/stats/events:
@@ -5644,23 +6549,54 @@ paths:
                 data:
                   accepted: true
         "400":
-          description: The body is invalid, or the event name is not allow-listed for public callers.
+          description: The body is invalid, or the event name is not allow-listed for public callers. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Event 'my_event' is not allowlisted for public access.
+              examples:
+                documented:
+                  summary: The body is invalid, or the event name is not allow-listed for public callers
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Event 'my_event' is not allowlisted for public access.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/PublicUnauthorizedError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: Rate limited, or an internal caller sent a new custom name past the daily cap.
+          description: Rate limited, or an internal caller sent a new custom name past the daily cap. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                ipLimit:
+                  summary: Per-IP limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many requests. Please try again later.
+                apiKeyLimit:
+                  summary: Per-key limit
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets.
+              schema:
+                type: integer
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailableError"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -5714,26 +6650,40 @@ components:
     UnauthorizedResponse:
       type: object
       description: |
-        The body of a `401`. Routes that accept an API key or a session answer with `code`; a
-        rejection thrown from inside a handler carries `statusCode` instead.
+        The body of a `401`. It has the same envelope as every other error, so `statusCode` is always
+        present. When the gate in front of a key-or-session route refuses the request, it names the
+        reason in `details.code`. An invalid API key and a missing session on a signed-in-only route
+        send no `details`.
       required:
         - success
         - message
+        - statusCode
       properties:
         success:
           type: boolean
+          enum:
+            - false
         message:
           type: string
         statusCode:
           type: integer
-        code:
-          type: string
           enum:
-            - API_KEY_REQUIRED
-            - AUTH_REQUIRED
+            - 401
+        details:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - API_KEY_REQUIRED
+                - AUTH_REQUIRED
+              description: |
+                `API_KEY_REQUIRED`: no API key and no whitelisted first-party `Origin` or `Referer`.
+                `AUTH_REQUIRED`: a session cookie with no `Origin` or `Referer` that is not a valid
+                session.
     AtsQuotaErrorResponse:
       type: object
-      description: The body of a `429` from the ATS quota. `details` is the caller's current quota.
+      description: The body of a `429` from the ATS quota, where `details` is the caller's current quota. A `429` from the rate limiters has no `details`.
       required:
         - success
         - message
@@ -11290,8 +12240,103 @@ components:
             details:
               - path: profile.basics.email
                 message: Invalid email
+    BodyValidationError:
+      description: |
+        Bad Request - The JSON body is invalid. A body that fails validation answers "Validation
+        failed" with `details` listing every failing field as `{ path, message }`. A body that is not
+        valid JSON answers "Invalid JSON body" with no `details`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            validation:
+              summary: A field failed validation
+              value:
+                success: false
+                statusCode: 400
+                message: Validation failed
+                details:
+                  - path: name
+                    message: Name cannot be empty
+            invalidJson:
+              summary: The body is not valid JSON
+              value:
+                success: false
+                statusCode: 400
+                message: Invalid JSON body
     UnauthorizedError:
-      description: Unauthorized - Authentication failed or session expired.
+      description: |
+        Unauthorized. This route accepts an API key or a session. It answers `401` when:
+
+        - the request carries no API key and comes from no whitelisted first-party `Origin` or
+          `Referer` (`details.code` `API_KEY_REQUIRED`);
+        - a session cookie arrives with no `Origin` or `Referer` and is not a valid session
+          (`details.code` `AUTH_REQUIRED`);
+        - the API key is malformed, unknown, revoked or expired (no `details`);
+        - a first-party request has no signed-in session (no `details`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UnauthorizedResponse"
+          examples:
+            apiKeyRequired:
+              summary: No API key and no first-party origin
+              value:
+                success: false
+                statusCode: 401
+                message: Authentication required. For programmatic or documentation access, please provide an API key in the X-API-Key header or Authorization bearer token.
+                details:
+                  code: API_KEY_REQUIRED
+            authRequired:
+              summary: A session cookie with no Origin that is not a valid session
+              value:
+                success: false
+                statusCode: 401
+                message: Authentication required
+                details:
+                  code: AUTH_REQUIRED
+            invalidApiKey:
+              summary: Malformed, unknown, revoked or expired API key
+              value:
+                success: false
+                statusCode: 401
+                message: Invalid or inactive API key.
+            notSignedIn:
+              summary: First-party request with no session
+              value:
+                success: false
+                statusCode: 401
+                message: Authentication required
+    PublicUnauthorizedError:
+      description: |
+        Unauthorized. This route needs no signed-in user, but it is not open to anonymous callers. A
+        request with no API key from an origin that is not a whitelisted VeriWorkly origin answers
+        `401` with `details.code` `API_KEY_REQUIRED`. A malformed, unknown, revoked or expired key
+        answers `401` with no `details`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UnauthorizedResponse"
+          examples:
+            apiKeyRequired:
+              summary: No API key and no first-party origin
+              value:
+                success: false
+                statusCode: 401
+                message: Authentication required. For programmatic or documentation access, please provide an API key in the X-API-Key header or Authorization bearer token.
+                details:
+                  code: API_KEY_REQUIRED
+            invalidApiKey:
+              summary: Malformed, unknown, revoked or expired API key
+              value:
+                success: false
+                statusCode: 401
+                message: Invalid or inactive API key.
+    SessionUnauthorizedError:
+      description: |
+        Unauthorized. This route takes a signed-in session only. An API key is ignored here, so a call
+        made with one gets this `401` too. The body has no `details`.
       content:
         application/json:
           schema:
@@ -11310,6 +12355,137 @@ components:
             success: false
             statusCode: 403
             message: This API key does not have permission for this action.
+    PayloadTooLargeError:
+      description: |
+        Payload Too Large - The body is larger than this route accepts (see "Response Envelope" in the
+        introduction for each route's limit).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            statusCode: 413
+            message: Request body too large
+    RateLimitError:
+      description: |
+        Too Many Requests. Two limits apply to this route, and both answer `429` with `Retry-After`
+        (seconds):
+
+        - the per-IP limit, counted before authentication: 100 requests per 15 minutes on most
+          routes, 20 per minute on the AI routes (`/ai/*`, `/ats/analyze`, `/ats/convert-resume`,
+          `/profiles/import/linkedin`), plus 1,000 per 15 minutes across all routes;
+        - the per-key limit, when the request carries an API key: 20 requests per 15 minutes by
+          default, set per key. Every keyed response carries `X-RateLimit-Limit`,
+          `X-RateLimit-Remaining` and `X-RateLimit-Reset`.
+      headers:
+        Retry-After:
+          description: Seconds until the window resets.
+          schema:
+            type: integer
+        X-RateLimit-Limit:
+          description: The key's request limit per 15 minutes. Sent only on API key requests.
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: Requests left in the current window (`0` on a `429`). Sent only on API key requests.
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          description: Unix time, in seconds, when the window resets. Sent only on API key requests.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            ipLimit:
+              summary: Per-IP limit
+              value:
+                success: false
+                statusCode: 429
+                message: Too many requests. Please try again later.
+            apiKeyLimit:
+              summary: Per-key limit
+              value:
+                success: false
+                statusCode: 429
+                message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+    IpRateLimitError:
+      description: |
+        Too Many Requests - The per-IP limit, counted before authentication: 100 requests per 15
+        minutes on most routes, plus 1,000 per 15 minutes across all routes. `Retry-After` gives the
+        seconds to wait.
+      headers:
+        Retry-After:
+          description: Seconds until the window resets.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            statusCode: 429
+            message: Too many requests. Please try again later.
+    ServiceUnavailableError:
+      description: |
+        Service Unavailable - Retry shortly. The session store could not be read, so the server
+        cannot tell whether the caller is signed in (this is not a sign-out), or the database could
+        not be reached.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            authUnavailable:
+              summary: Session store unavailable
+              value:
+                success: false
+                statusCode: 503
+                message: Authentication is temporarily unavailable
+                details:
+                  code: AUTH_UNAVAILABLE
+            databaseUnavailable:
+              summary: Database unreachable
+              value:
+                success: false
+                statusCode: 503
+                message: Service temporarily unavailable
+    SessionServiceUnavailableError:
+      description: |
+        Service Unavailable - Retry shortly. The session store could not be read, so the server cannot
+        tell whether the caller is signed in (this is not a sign-out), or the database could not be
+        reached. Neither answer carries `details`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            authUnavailable:
+              summary: Session store unavailable
+              value:
+                success: false
+                statusCode: 503
+                message: Authentication is temporarily unavailable
+            databaseUnavailable:
+              summary: Database unreachable
+              value:
+                success: false
+                statusCode: 503
+                message: Service temporarily unavailable
+    DatabaseUnavailableError:
+      description: Service Unavailable - The database could not be reached. Retry shortly.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            statusCode: 503
+            message: Service temporarily unavailable
     BadRequestError:
       description: Bad Request - The request parameters or body are invalid.
       content:
@@ -11324,14 +12500,41 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     FeatureDisabledError:
       description: |
-        Service Unavailable - This feature is gated behind a feature flag that is currently off
-        (`config.growth.affiliateProgramEnabled` / `config.growth.ambassadorProgramEnabled`), which is
-        the default in production until the program is explicitly enabled.
+        Service Unavailable. The program is switched off (`AFFILIATE_PROGRAM_ENABLED` /
+        `AMBASSADOR_PROGRAM_ENABLED`), which is the default in production until it is turned on. This
+        check runs before authentication and always sends `details.code` `PROGRAM_DISABLED`. The same
+        status is also sent when the database cannot be reached and, on signed-in routes, when the
+        session store cannot be read.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
-          example:
-            success: false
-            statusCode: 503
-            message: The affiliate program is not available yet. Check back soon.
+          examples:
+            affiliateDisabled:
+              summary: Affiliate program switched off
+              value:
+                success: false
+                statusCode: 503
+                message: The affiliate program is not available yet. Check back soon.
+                details:
+                  code: PROGRAM_DISABLED
+            ambassadorDisabled:
+              summary: Ambassador program switched off
+              value:
+                success: false
+                statusCode: 503
+                message: The ambassador program is not available yet. Check back soon.
+                details:
+                  code: PROGRAM_DISABLED
+            authUnavailable:
+              summary: Session store unavailable (signed-in routes)
+              value:
+                success: false
+                statusCode: 503
+                message: Authentication is temporarily unavailable
+            databaseUnavailable:
+              summary: Database unreachable
+              value:
+                success: false
+                statusCode: 503
+                message: Service temporarily unavailable

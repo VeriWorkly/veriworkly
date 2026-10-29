@@ -46,6 +46,8 @@ masterProfile:
 
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
 
       "404":
         description: User not found
@@ -57,6 +59,10 @@ masterProfile:
               success: false
               statusCode: 404
               message: "User not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   put:
     tags:
@@ -140,10 +146,12 @@ masterProfile:
               $ref: "../components/schemas.yaml#/MasterProfileUpdateResponse"
 
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
 
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
 
       "409":
         description: Conflict - profile updated elsewhere
@@ -157,15 +165,28 @@ masterProfile:
               message: "Master profile was updated from another session. Refresh and retry."
 
       "413":
-        description: Payload too large
+        description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 413
-              message: "Master profile payload is too large"
+            examples:
+              documented:
+                summary: Payload too large
+                value:
+                  success: false
+                  statusCode: 413
+                  message: "Master profile payload is too large"
+              bodyTooLarge:
+                summary: Body over the route's parser limit
+                value:
+                  success: false
+                  statusCode: 413
+                  message: Request body too large
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 getImportQuota:
   get:
@@ -222,6 +243,12 @@ getImportQuota:
 
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 importGithub:
   post:
@@ -274,15 +301,24 @@ importGithub:
                 updatedAt: "2026-04-01T10:00:00.000Z"
 
       "400":
-        description: Free user has no connected GitHub account, or a validation error
+        description: Free user has no connected GitHub account, or a validation error. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Please connect your GitHub account in settings to import your profile."
+            examples:
+              documented:
+                summary: Free user has no connected GitHub account, or a validation error
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Please connect your GitHub account in settings to import your profile."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
 
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
@@ -331,23 +367,11 @@ importGithub:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-
-      "502":
-        description: 'GitHub errored, timed out or could not be reached (`details.code: "GITHUB_UNAVAILABLE"`).'
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-
-      "503":
-        description: 'GitHub rate limit (`details.code: "GITHUB_RATE_LIMITED"`); try again later.'
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
 
       "429":
-        description: Import quota exceeded
+        description: Import quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
           application/json:
             schema:
@@ -367,6 +391,52 @@ importGithub:
                   success: false
                   statusCode: 429
                   message: "You've reached the daily limit of 50 GitHub imports. This protects the shared GitHub API budget used by all users. Please try again tomorrow."
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
+
+      "502":
+        description: 'GitHub errored, timed out or could not be reached (`details.code: "GITHUB_UNAVAILABLE"`).'
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+
+      "503":
+        description: 'GitHub rate limit (`details.code: "GITHUB_RATE_LIMITED"`); try again later. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.'
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              authUnavailableCode:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Authentication is temporarily unavailable
+                  details:
+                    code: AUTH_UNAVAILABLE
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: Service temporarily unavailable
 
 importLinkedin:
   post:
@@ -400,7 +470,11 @@ importLinkedin:
           schema:
             $ref: "../components/schemas.yaml#/ImportLinkedinRequest"
           example:
-            profileText: "Jane Doe\nSoftware Engineer at VeriWorkly\n..."
+            profileText: "Jane Doe
+
+              Software Engineer at VeriWorkly
+
+              ..."
             replaceMaster: false
     responses:
       "200":
@@ -428,18 +502,27 @@ importLinkedin:
                 updatedAt: "2026-04-01T10:00:00.000Z"
 
       "400":
-        description: Validation error
+        description: Validation error. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Validation failed"
-              details:
-                - path: "profileText"
-                  message: "LinkedIn profile text must be at least 10 characters long"
+            examples:
+              documented:
+                summary: Validation error
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "profileText"
+                      message: "LinkedIn profile text must be at least 10 characters long"
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: Invalid JSON body
 
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
@@ -465,19 +548,41 @@ importLinkedin:
               success: false
               statusCode: 403
               message: "This API key does not have permission for this action."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
 
       "429":
-        description: Import quota exceeded
+        description: Import quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 429
-              message: "Free accounts can import from LinkedIn once a month. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass."
-              details:
-                resetsInSeconds: 2160000
+            examples:
+              documented:
+                summary: Import quota exceeded
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "Free accounts can import from LinkedIn once a month. Unlimited imports come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass."
+                  details:
+                    resetsInSeconds: 2160000
+              ipLimit:
+                summary: Per-IP limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Too many requests. Please try again later.
+              apiKeyLimit:
+                summary: Per-key limit
+                value:
+                  success: false
+                  statusCode: 429
+                  message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+        headers:
+          Retry-After:
+            description: Seconds until the limit resets.
+            schema:
+              type: integer
 
       "502":
         description: AI parsing failed
@@ -489,3 +594,5 @@ importLinkedin:
               success: false
               statusCode: 502
               message: "Failed to parse profile data using AI. Please try again."
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
