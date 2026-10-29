@@ -24,6 +24,7 @@ import {
 } from "#utils/portfolioPublicationCache";
 
 import { prisma } from "#lib/prisma";
+import { VIEW_ROLLUP_DATE } from "#lib/portfolioViewRollup";
 import { logger } from "#lib/logger";
 import { ApiError, handleValidationError } from "#lib/errors";
 import {
@@ -1437,9 +1438,10 @@ export class PortfolioService {
         _sum: { count: true },
       }),
 
+      // The lifetime rollup rows (VIEW_ROLLUP_DATE) count toward the total, not as a day.
       prisma.portfolioViewDaily.groupBy({
         by: ["date"],
-        where: { publicationId: publication.id },
+        where: { publicationId: publication.id, date: { gt: VIEW_ROLLUP_DATE } },
         _sum: { count: true },
         orderBy: { date: "desc" },
         take: 30,

@@ -9,6 +9,7 @@ import {
   type RetentionSettings,
 } from "#jobs/retentionJob";
 import { pool, prisma } from "#lib/prisma";
+import { VIEW_ROLLUP_DATE } from "#lib/portfolioViewRollup";
 import { beginDrain, resetShutdownSignalForTests } from "#lib/shutdown";
 import {
   ADMIN_AUDIT_ACTIONS,
@@ -78,8 +79,8 @@ describe("retention defaults", () => {
       creditReservations: 90,
       creditReplays: 1,
       flushBatches: 7,
-      affiliateClicks: 0,
-      portfolioViews: 0,
+      affiliateClicks: 180,
+      portfolioViews: 180,
       deletedDocuments: 30,
     });
     expect(readRetentionSettings({ RETENTION_AUDIT_LOG_DAYS: "0" }).auditLogs).toBe(0);
@@ -406,7 +407,7 @@ describe("retention rules (V-116)", () => {
     ]);
   });
 
-  it("deletes flush markers past 7 days, affiliate clicks and portfolio views past 180", async () => {
+  it("deletes flush markers past 7 days, anonymises clicks and folds views past 180", async () => {
     const affiliate = await createUserWithSession();
     const document = await prisma.document.create({
       data: { userId: affiliate.id, type: "PORTFOLIO", title: "Site", slug: "site", content: {} },
@@ -429,7 +430,15 @@ describe("retention rules (V-116)", () => {
         data: { id: `u-${side}`, date: at(30, "old"), createdAt: at(7, side) },
       });
       await prisma.affiliateClick.create({
-        data: { id: `c-${side}`, affiliateId: affiliate.id, code: "abc", createdAt: at(180, side) },
+        data: {
+          id: `c-${side}`,
+          affiliateId: affiliate.id,
+          code: "abc",
+          referrerHost: "news.example",
+          ipHash: "ip",
+          userAgentHash: "ua",
+          createdAt: at(180, side),
+        },
       });
       await prisma.portfolioViewDaily.create({
         data: { id: `p-${side}`, publicationId: publication.id, date: at(180, side), count: 3 },
@@ -449,8 +458,71 @@ describe("retention rules (V-116)", () => {
     });
     expect(await ids("ViewFlushBatch")).toEqual(["v-fresh"]);
     expect(await ids("UsageMetricFlushBatch")).toEqual(["u-fresh"]);
-    expect(await ids("AffiliateClick")).toEqual(["c-fresh"]);
-    expect(await ids("PortfolioViewDaily")).toEqual(["p-fresh"]);
+    // Both clicks stay, so the totals do not shrink; only the old one loses its hashes.
+    expect(
+      await prisma.affiliateClick.findMany({
+        select: { id: true, referrerHost: true, ipHash: true, userAgentHash: true },
+        orderBy: { id: "asc" },
+      }),
+    ).toEqual([
+      { id: "c-fresh", referrerHost: "news.example", ipHash: "ip", userAgentHash: "ua" },
+      { id: "c-old", referrerHost: "news.example", ipHash: null, userAgentHash: null },
+    ]);
+    // The old day is gone and its views live on in the lifetime row: the total is still 6.
+    const views = await prisma.portfolioViewDaily.findMany({
+      select: { id: true, date: true, count: true },
+      orderBy: { date: "asc" },
+    });
+    expect(views.map(({ date, count }) => ({ date, count }))).toEqual([
+      { date: VIEW_ROLLUP_DATE, count: 3 },
+      { date: at(180, "fresh"), count: 3 },
+    ]);
+    expect(views[1]?.id).toBe("p-fresh");
+  });
+
+  it("adds later folds to the same lifetime row per referrer, never losing a view", async () => {
+    const owner = await createUserWithSession();
+    const document = await prisma.document.create({
+      data: { userId: owner.id, type: "PORTFOLIO", title: "Site", slug: "site", content: {} },
+    });
+    const publication = await prisma.portfolioPublication.create({
+      data: {
+        userId: owner.id,
+        documentId: document.id,
+        subdomain: `site${randomUUID().slice(0, 8)}`,
+        templateId: "signal",
+        snapshot: {},
+      },
+    });
+    const day = (daysAgo: number) => new Date(now.getTime() - daysAgo * DAY_MS);
+    const rows: Array<[number, string, number]> = [
+      [200, "", 2],
+      [200, "news.example", 5],
+      [190, "news.example", 1],
+      [10, "news.example", 4],
+    ];
+    for (const [daysAgo, referrerHost, count] of rows)
+      await prisma.portfolioViewDaily.create({
+        data: { publicationId: publication.id, date: day(daysAgo), referrerHost, count },
+      });
+
+    // Batches of one: every fold after the first lands on a lifetime row that already exists.
+    await applyRetention({ settings: only("portfolioViews"), batchSize: 1, now });
+    await prisma.portfolioViewDaily.create({
+      data: { publicationId: publication.id, date: day(185), referrerHost: "", count: 7 },
+    });
+    await applyRetention({ settings: only("portfolioViews"), now });
+
+    const after = await prisma.portfolioViewDaily.findMany({
+      where: { publicationId: publication.id },
+      select: { date: true, referrerHost: true, count: true },
+      orderBy: [{ date: "asc" }, { referrerHost: "asc" }],
+    });
+    expect(after).toEqual([
+      { date: VIEW_ROLLUP_DATE, referrerHost: "", count: 9 },
+      { date: VIEW_ROLLUP_DATE, referrerHost: "news.example", count: 6 },
+      { date: day(10), referrerHost: "news.example", count: 4 },
+    ]);
   });
 
   it("replaces soft-deleted content with the purge marker after 30 days, keeping rows and shares", async () => {
