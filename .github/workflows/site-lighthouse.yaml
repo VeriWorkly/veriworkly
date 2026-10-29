@@ -2,7 +2,7 @@ name: Site Lighthouse
 
 # Mobile Lighthouse on the six pages the site audit measures, against a production build
 # made with the backend unreachable (the same condition as the Build Apps workflow). The
-# numbers are posted as one sticky comment on the pull request.
+# numbers go to the job summary on every run and to one sticky comment on a pull request.
 
 on:
   pull_request:
@@ -20,7 +20,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -35,10 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
           cache: "npm"
@@ -59,35 +58,68 @@ jobs:
           done
           echo "next start did not come up" && exit 1
 
+      # The script already retries a page once; a trace lost twice in a row (NO_NAVSTART) gets one more full run.
       - name: Run Lighthouse
-        run: npm run lighthouse:mobile -w @veriworkly/site -- http://localhost:3100
+        run: |
+          set -o pipefail
+          npm run lighthouse:mobile -w @veriworkly/site -- http://localhost:3100 2>&1 | tee lighthouse.log && exit 0
+          grep -q "NO_NAVSTART" lighthouse.log || exit 1
+          echo "::warning::Lighthouse lost a page trace (NO_NAVSTART); running it once more."
+          npm run lighthouse:mobile -w @veriworkly/site -- http://localhost:3100
 
       - name: Initial JS per Route
         if: always()
         working-directory: apps/site
         run: |
+          mkdir -p .lighthouse
           {
             echo ""
-            echo "Initial JS per route (module scripts, gzip -9). The job fails when a route is over its budget."
+            echo "Initial JS per route (module scripts, gzip -9). The job fails when a route is over its budget or is not prerendered."
             echo ""
             npx tsx scripts/measure-js.mts --check
           } >> .lighthouse/summary.md
 
+      - name: Print Summary
+        if: always()
+        working-directory: apps/site
+        run: |
+          [ -f .lighthouse/summary.md ] || exit 0
+          cat .lighthouse/summary.md
+          cat .lighthouse/summary.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload Reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: lighthouse-mobile
           path: apps/site/.lighthouse
+          include-hidden-files: true
 
-      - name: Comment on Pull Request
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+  # Only this job can write to the pull request; it runs no repository code.
+  comment:
+    name: Comment on Pull Request
+    needs: lighthouse
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download Reports
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: lighthouse-mobile
+          path: lighthouse
+
+      - name: Comment
+        if: steps.download.outcome == 'success' && hashFiles('lighthouse/summary.md') != ''
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const fs = require("fs");
             const marker = "<!-- site-lighthouse -->";
-            const body = `${marker}\n### Site Lighthouse (mobile)\n\n${fs.readFileSync("apps/site/.lighthouse/summary.md", "utf8")}`;
+            const body = `${marker}\n### Site Lighthouse (mobile)\n\n${fs.readFileSync("lighthouse/summary.md", "utf8")}`;
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
             const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number, per_page: 100 });
