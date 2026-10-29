@@ -1,29 +1,24 @@
 ---
 title: Account Management
-metaTitle: "VeriWorkly Account: Sign-in, Sync, Settings, Deletion"
-description: Manage your VeriWorkly account. Sign in with an email code or Google, GitHub or LinkedIn, sync documents, set a username, or delete your account.
+description: Your account identity, the Master Profile, sign-in, cloud sync, and data deletion.
 ---
 
-**Your VeriWorkly account is passwordless: sign in with a one-time email code or with Google, GitHub
-or LinkedIn. Manage your name and username on `/profile`, sync and appearance on `/settings`, and
-delete the account from the Danger Zone on `/profile`. Your career history lives separately, in
-your Master Profile.** Open your account at [app.veriworkly.com/profile](https://app.veriworkly.com/profile).
+VeriWorkly separates **who you are** (your account) from **your career data** (your Master Profile).
+Understanding that split explains most of how the product behaves.
 
 ---
 
-## What is the difference between my account and my Master Profile?
-
-Your account is who you are and how you sign in. Your Master Profile is your career history.
+## Account vs. Master Profile
 
 ### Your account
 
 Manages authentication and application preferences:
 
-- **Email**: the address used for your passwordless sign-in.
+- **Email** — the address used for your passwordless sign-in.
 - **Display name** and **profile image**.
-- **Username**: required before you can create a public share link, since share URLs are
+- **Username** — required before you can create a public share link, since share URLs are
   username-scoped (`/share/{username}/{slug}`).
-- **Preferences**: theme (light, dark, or follow system) and the auto-sync toggle.
+- **Preferences** — theme (light, dark, or follow system) and the auto-sync toggle.
 
 <Callout type="warn" title="A username is permanent">
   You can only set a username once. It is part of every share URL you have handed out, so the API
@@ -35,9 +30,9 @@ Manages authentication and application preferences:
 
 ### Your Master Profile
 
-The canonical record of your career history (work experience, education, projects, skills,
+The canonical record of your career history — work experience, education, projects, skills,
 certifications, awards, publications, languages, interests, volunteer work, references, and
-achievements), stored as a single record per user.
+achievements — stored as a single record per user.
 
 Every new resume, cover letter, or portfolio auto-seeds from it. **Editing a document never writes
 back to the Master Profile**, so you can tailor one resume for one job without touching your
@@ -48,13 +43,13 @@ changes. See [Master Profile](/docs/product/master-profile) for the full behavio
 
 ---
 
-## How do I sign in?
+## Signing in
 
 VeriWorkly is passwordless. There is no account password to forget or reuse.
 
-1. **Email OTP**: enter your email, receive a one-time passcode, and enter it. The code is valid for
+1. **Email OTP** — enter your email, receive a one-time passcode, and enter it. The code is valid for
    **5 minutes** and allows **3** failed attempts before it must be re-requested.
-2. **OAuth**: sign in with **Google**, **GitHub**, or **LinkedIn** instead. Account linking is
+2. **OAuth** — sign in with **Google**, **GitHub**, or **LinkedIn** instead. Account linking is
    enabled, so signing in with Google after having used email OTP lands you on the same account
    rather than creating a duplicate.
 
@@ -79,7 +74,7 @@ user agent.
 
 ---
 
-## How does cloud sync work?
+## Cloud sync
 
 Once signed in, documents sync in the background.
 
@@ -88,7 +83,7 @@ Once signed in, documents sync in the background.
   or the overview and choose **Back up now**.
 - **Per-document opt-out**: mark any single document "keep local only" to exclude it from sync
   entirely.
-- **Sync status**: every document shows one of `local-only`, `pending`, `syncing`, `synced`, or
+- **Sync status** — every document shows one of `local-only`, `pending`, `syncing`, `synced`, or
   `conflicted`.
 
 ### Conflict handling
@@ -100,7 +95,7 @@ the document is marked `conflicted` rather than overwritten. Resolve it from the
 or resolve it in the editor.
 
 <Callout type="info" title="You can keep typing during a sync">
-  When a sync request is in flight, the response only updates the document's sync metadata, never
+  When a sync request is in flight, the response only updates the document's sync metadata — never
   its content. Edits you make while waiting are not overwritten when the request lands.
 </Callout>
 
@@ -131,7 +126,7 @@ or resolve it in the editor.
 
 ---
 
-## How do I delete my documents or my account?
+## Deleting your data
 
 **Individual documents** can be deleted at any time from the dashboard. Deletion is a soft delete
 server-side: the record is flagged rather than immediately purged, and it stops counting against the
@@ -172,4 +167,4 @@ device are removed too. A confirmation email follows.
 - [Master Profile](/docs/product/master-profile)
 - [Exporting and Sharing](/docs/user-guides/exporting-and-sharing)
 - [Privacy Policy](/docs/legal/privacy-policy)
-- [Authentication System](/docs/architecture/auth-system): the technical detail behind sign-in.
+- [Authentication System](/docs/architecture/auth-system) — the technical detail behind sign-in.

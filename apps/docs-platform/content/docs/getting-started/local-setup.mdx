@@ -1,54 +1,12 @@
 ---
 title: Local Development Setup
-metaTitle: How to Run VeriWorkly Locally for Development
-description: Run VeriWorkly locally with Node.js 22.12+, npm 11, PostgreSQL and Redis. Clone, install, set env vars, migrate, then start any of the six apps.
+description: Step-by-step guide for configuring a VeriWorkly development environment.
 ---
 
 import { Step, Steps } from "fumadocs-ui/components/steps";
-import { File, Folder, Files } from "fumadocs-ui/components/files";
-import { Laptop, Server } from "lucide-react";
 
-**To run VeriWorkly locally, install Node.js 22.12 or later and npm 11, clone the repository, run
-`npm install`, copy each app's `.env.example`, apply the Prisma migrations to a PostgreSQL database,
-start Redis, build `profile-core`, and start each app with its own `npm run dev:*` script. The repository holds five Next.js
-apps, an Express API and two shared packages.**
-
-<Cards>
-  <Card title="Local development" icon={<Laptop />} href="#installation">
-    For contributors. Run the workspaces yourself to change source code, test features, or design
-    templates. This page.
-  </Card>
-
-  <Card title="Docker deployment" icon={<Server />} href="/docs/getting-started/docker-deployment">
-    For self-hosters. Deploy the marketing site, the API, and Redis with the provided Docker Compose
-    configuration and an external PostgreSQL instance.
-  </Card>
-</Cards>
-
----
-
-## What is in the repository?
-
-<Files>
-  <Folder name="apps" defaultOpen>
-    <File name="site" description="Marketing site, port 3000" />
-    <File name="studio" description="Document builder and workspace, port 3001" />
-    <File name="docs-platform" description="This documentation site, port 3002" />
-    <File name="blog-platform" description="Official blog, port 3003" />
-    <File name="portfolio" description="Portfolio builder and published sites, port 3004" />
-    <File name="server" description="Express API, port 8080" />
-  </Folder>
-  <Folder name="packages">
-    <File name="ui" description="@veriworkly/ui shared design system" />
-    <File name="profile-core" description="@veriworkly/profile-core shared document schemas" />
-  </Folder>
-  <File name="compose.yaml" description="Docker Compose deployment configuration" />
-  <File name="package.json" description="npm workspaces root" />
-</Files>
-
-The API needs PostgreSQL (accessed through Prisma) and Redis (sessions, rate limiting, quotas,
-buffered view counts and job locks). See [Monorepo Architecture](/docs/architecture/monorepo) for
-what each workspace does and the full tech stack.
+This guide covers setting up a local development environment for contributors and anyone customising
+the platform.
 
 ---
 

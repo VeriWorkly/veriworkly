@@ -1,18 +1,10 @@
 ---
 title: "Portfolio: Overview"
-metaTitle: "VeriWorkly Portfolio Builder: Free Portfolio Website"
-description: VeriWorkly's portfolio builder makes a personal portfolio website from your career data. Build and preview today; publishing opens at launch.
+description: What the Portfolio product is, and its current rollout status.
 ---
 
-**VeriWorkly's portfolio builder turns your career history into a personal portfolio website with
-four templates and a three-pane editor, plus visitor analytics on a paid plan. Anyone can build and preview a portfolio
-today, signed in or in guest mode. Publishing opens at launch: every portfolio, free or paid, publishes on its own
-`<name>.veriworkly.com` subdomain.** Start at
-[portfolio.veriworkly.com](https://portfolio.veriworkly.com).
-
-## What is the portfolio builder?
-
-It is a single Next.js application (`apps/portfolio`) serving three surfaces:
+Portfolio is VeriWorkly's public portfolio/website builder. It is a single Next.js application
+(`apps/portfolio`, port 3004) serving three distinct surfaces:
 
 1. **Public marketing**: the landing page, template gallery, pricing, and FAQ.
 2. **The workspace**: dashboard, editor, analytics, settings, and profile.
@@ -24,9 +16,11 @@ guest-mode cookie, and rewrites the subdomain host (and the `/portfolio/{slug}` 
 also resolve) onto the internal
 `/portfolios/[username]/[[...slug]]` route.
 
-## Can I publish my portfolio yet?
+## Current rollout status
 
-Not yet. The workspace is open today; publishing and payments open at launch.
+<Callout type="info" title="Built, opening in stages">
+  The workspace is open today. Publishing and payments open at launch.
+</Callout>
 
 - **Workspace** (dashboard, editor, analytics, settings, profile): open to every user in
   production, signed in or in guest mode. Anyone can build and preview a full portfolio today.
@@ -38,7 +32,7 @@ Not yet. The workspace is open today; publishing and payments open at launch.
 Both use the same mechanism: a server-only `ADMIN_EMAIL` check (fail-closed: if `ADMIN_EMAIL` is
 unset, nobody is treated as an admin).
 
-## What is on the public portfolio site?
+## What's on the public marketing site
 
 - A landing page and a full template gallery, with per-template long-form detail pages (design philosophy, style guide, FAQs, best-fit guidance) and a live read-only preview of each template with demo content.
 - A pricing page, an FAQ page, per-template Open Graph image generation, and JSON-LD structured data.
@@ -47,7 +41,7 @@ unset, nobody is treated as an admin).
 Template preview pages behave like normal web pages: text selection, find-in-page and screen readers
 all work.
 
-## How does the portfolio builder relate to Studio?
+## Relationship to Studio
 
 Portfolio and Studio share the same account, session, and Master Profile. A login on either carries
 to the other via a root-domain session cookie.
@@ -59,26 +53,6 @@ portfolio draft. It does not own Master Profile management and links out to Stud
 The editor can import your Master Profile into the portfolio draft, and portfolio copy generation
 uses the same credit-metered AI assistant as Studio. See
 [AI Writing Assistant](/docs/product/ai-writing-assistant).
-
-## Frequently asked questions
-
-<Accordions>
-  <Accordion id="need-one" title="Should I have a portfolio website?">
-    If your work can be shown rather than described, usually yes: designers, developers, writers and
-    anyone with projects to link. A portfolio gives a recruiter proof the resume can only claim. The
-    trade-offs are in [should you have a portfolio
-    website?](https://blog.veriworkly.com/should-you-have-a-portfolio-website)
-  </Accordion>
-  <Accordion id="free-portfolio" title="Is the portfolio builder free?">
-    Building and previewing is free on all four templates. Once publishing opens at launch, Signal
-    and Atelier publish free with a "Built with VeriWorkly" badge. Nimbus and Cipher need Creator
-    Pro, the Job Hunter Bundle or a pass to publish. See [Portfolio:
-    Templates](/docs/product/portfolio/templates).
-  </Accordion>
-</Accordions>
-
-For a tour of the builder, read [introducing the portfolio
-builder](https://blog.veriworkly.com/introducing-the-portfolio-builder).
 
 ## Related
 

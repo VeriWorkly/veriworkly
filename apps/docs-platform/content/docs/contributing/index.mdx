@@ -3,6 +3,8 @@ title: Contributing Guide
 description: How to help build the future of VeriWorkly.
 ---
 
+## Contributing to VeriWorkly
+
 First off, thank you for considering contributing to **VeriWorkly**! We are building a professional, privacy-first career ecosystem, and we value your help.
 
 ---
@@ -60,11 +62,14 @@ We love new features and bug fixes! Check our [GitHub Issues](https://github.com
 ### 2. Design & Templates
 
 The **document** template system (resumes and cover letters) is designed to be extensible. If you're
-a designer or frontend developer, you can contribute new professional, ATS-optimized layouts. See
-[Adding a Template](/docs/contributing/adding-a-template).
+a designer or frontend developer, you can contribute new professional, ATS-optimized layouts — see
+[Adding a template](/docs/user-guides/resume-templates#adding-a-template).
 
-Portfolio templates are not open to outside contributions: they live in a [private
-submodule](/docs/architecture/monorepo#the-private-template-submodule).
+<Callout type="info" title="Portfolio templates are not open to contributions">
+  The four portfolio templates live in a separate **private** submodule
+  (`apps/portfolio/template-library`) and are not part of the public MIT repository. Contributions
+  there are not currently accepted.
+</Callout>
 
 ### 3. Documentation
 
@@ -98,9 +103,39 @@ Your branch name should start with one of the following prefixes based on the wo
 
 ### Pre-commit Quality Verification
 
-Before committing and pushing, run the lint, format, test and build commands listed in
-[Validate before committing](/docs/getting-started/local-setup#validate-before-committing). If you
-touched a resume or cover letter template, include the preview/PDF parity harness.
+Before committing and pushing your changes, run these from the repository root:
+
+```bash
+# ESLint across the monorepo
+npm run lint
+
+# Format code automatically using Prettier
+npm run format:write
+
+# Backend test suite (Vitest)
+npm test -w @veriworkly/server
+
+# Frontend contract and unit suites (Vitest)
+npm run test:contracts -w @veriworkly/studio
+npm run test:contracts -w @veriworkly/site
+npm test -w @veriworkly/portfolio
+npm test -w @veriworkly/ui
+
+# Verify every workspace builds
+npm run build
+```
+
+If you touched a resume or cover letter template, also run the preview/PDF parity harness. It is
+the only thing that proves the live preview and the exported PDF still agree:
+
+```bash
+npm run test:parity -w @veriworkly/studio
+```
+
+<Callout type="warn" title="There is no root `npm test`">
+  The repository root does not define a `test` script. Run the workspace-scoped commands above
+  instead.
+</Callout>
 
 ### Pull Request Process
 

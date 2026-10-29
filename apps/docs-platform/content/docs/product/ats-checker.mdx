@@ -1,15 +1,7 @@
 ---
 title: ATS Checker
-metaTitle: "Free ATS Resume Checker: How the Score Works"
-description: VeriWorkly's ATS checker scores how well a parser can read your resume and match a job post. Free scans, no login for the public checker.
+description: The deterministic core scan and AI-powered deep-analysis layer, and how their quotas actually work.
 ---
-
-**VeriWorkly's ATS checker reads your resume the way an applicant tracking system parses it, then
-scores it from 0 to 100 on parsing, contact details, structure, evidence and format, plus a
-job-match score when you add a job description. The core scan uses no AI and is free; an optional
-AI analysis spends credits.** Try it at [veriworkly.com/ats-checker](https://veriworkly.com/ats-checker).
-
-## Where can I check my resume?
 
 Two layers of analysis over a resume, in two places:
 
@@ -24,7 +16,7 @@ Two layers of analysis over a resume, in two places:
   weight.
 </Callout>
 
-## How does the ATS checker score my resume?
+## Core scan
 
 A deterministic, non-AI, free-of-AI-cost rules engine. One pass produces **both halves** of the
 report (the scores and the recovered record), so seeing either never costs a second scan.
@@ -32,7 +24,7 @@ report (the scores and the recovered record), so seeing either never costs a sec
 Produces a **readiness score** (the share of available points the resume kept, on a true 0–100
 scale), a **job-match score** when a job description is supplied, and a **parsed record**.
 
-### What does an ATS see in my resume?
+### What the ATS sees
 
 The parsed record is the half that is not a score. An applicant tracking system does not rank a
 resume: it shreds it into a row per job holding an **employer**, a **job title** and a **date
@@ -72,7 +64,7 @@ What it checks:
   denominator, so scores stay comparable either way.
 </Callout>
 
-### How does job description matching work?
+### Job match
 
 The posting is segmented into sections before anything is scored. About-us, benefits, and EEO
 boilerplate are dropped; requirements outweigh nice-to-haves; responsibilities prose sits below
@@ -85,9 +77,9 @@ Three behaviours worth knowing:
 - **Implied skills count.** Listing Terraform credits infrastructure-as-code; PostgreSQL credits relational databases. One-way only: the reverse would credit a tool that was never named.
 - **Synonyms and phrases fold together**, so `k8s`, `Kubernetes`, `CI/CD`, and `continuous integration` all resolve to the same term on both sides.
 
-## What does the AI analysis add?
+## AI-powered deep analysis
 
-The AI analysis layers an LLM's explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities on top of the core scan. It requires a signed-in account and spends AI credits from the same pool as every other AI feature; the cost is shown before you run it. Can fetch a job description directly from a URL instead of requiring paste, with strong server-side SSRF protections (HTTPS-only, blocks private/loopback IP ranges, pins the resolved IP for the actual fetch, caps redirects/response size/timeout).
+Layers an LLM's explanation, missing-evidence detection, prioritized recommendations, and keyword opportunities on top of the core scan. It requires a signed-in account and spends AI credits from the same pool as every other AI feature; the cost is shown before you run it. Can fetch a job description directly from a URL instead of requiring paste, with strong server-side SSRF protections (HTTPS-only, blocks private/loopback IP ranges, pins the resolved IP for the actual fetch, caps redirects/response size/timeout).
 
 <Callout type="info" title="If no model can be routed">
   Model selection is priced against the credit bucket the request would be billed at. When the tier
@@ -103,7 +95,7 @@ The AI analysis layers an LLM's explanation, missing-evidence detection, priorit
   The AI analysis also spends credits.
 </Callout>
 
-## How many ATS scans do I get?
+## Quotas
 
 There are **two** independent budgets: scans (`/ats/check` and `/ats/analyze` together) and file
 uploads (`/ats/extract`). Both reset on the same window.
@@ -133,19 +125,15 @@ The month is anchored on the day the account's active `ai_credits` grant was cre
 Paid tiers open at launch, when payments do. Resume conversion spends AI credits like any other AI
 action.
 
-## How do I check a resume I built in VeriWorkly?
+## Getting a resume into the checker
 
 A previously saved Studio resume can be loaded directly as the scan source, or a resume can be uploaded/pasted fresh (the upload accepts PDF, DOCX, TXT, Markdown and JSON, and the API also accepts HTML; 5 MB max, enforced server-side).
 
-## What happens when I run out of scans?
+## When the quota runs out
 
 Exceeding the quota returns `429` with the current quota summary attached (tier, limit, used,
 remaining, and a `resetsAt` timestamp), so the UI can tell you exactly when the next scan unlocks.
 Quota consumption is atomic (a Lua script on Redis), so concurrent scans cannot slip past the limit.
-
-## Frequently asked questions
-
-Answers to the common questions, from free limits to two-column layouts, are on the [ATS checker FAQ](/docs/product/ats-checker-faq). For how the scoring was built and tested, read [how the ATS checker actually works](https://blog.veriworkly.com/how-the-ats-checker-actually-works).
 
 ## API
 
