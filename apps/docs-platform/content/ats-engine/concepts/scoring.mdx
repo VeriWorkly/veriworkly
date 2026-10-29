@@ -83,7 +83,7 @@ import { check, DEFAULT_POLICY, policyFingerprint, policyRubric } from "@veriwor
 
 const report = check(resumeText, DEFAULT_POLICY, { now: new Date("2026-10-01") });
 
-console.log(report.engine); // { version: "0.21.0", policy: "ats-v2+6e295cb1" }
+console.log(report.engine); // { version: "0.22.0", policy: "ats-v2+6e295cb1" }
 console.log(policyFingerprint(DEFAULT_POLICY));
 
 for (const rule of policyRubric(DEFAULT_POLICY)) {

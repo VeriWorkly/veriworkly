@@ -90,14 +90,15 @@ Limits marked "cut" shorten the input and continue. Limits marked "refuse" stop 
 
 ### Files
 
-| Limit                    | Value                    | What happens                                                                                                                     |
-| ------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| File size                | 20 MB (`MAX_FILE_BYTES`) | Refuse, before the file is read into memory.                                                                                     |
-| PDF pages                | First 100                | Cut. Reading also stops once the text reaches the character limit.                                                               |
-| DOCX expanded size       | 64 MB                    | Refuse, before `mammoth` sees it. A larger expansion is treated as a zip bomb.                                                   |
-| DOCX XML parsed          | 2 MB                     | Refuse. The most XML `mammoth` is given to parse, counted for each part as often as it is parsed.                                |
-| DOCX headers and footers | 2 MB between them        | A part past the budget is neither read nor measured. The budget is the same 2 MB.                                                |
-| DOCX embedded HTML pages | 8 MB between them        | Each page (`w:altChunk`) is read once, however often the document names it. A page past the budget is neither read nor measured. |
+| Limit                    | Value                    | What happens                                                                                                                                  |
+| ------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| File size                | 20 MB (`MAX_FILE_BYTES`) | Refuse, before the file is read into memory.                                                                                                  |
+| PDF pages                | First 100                | Cut. Reading also stops once the text reaches the character limit.                                                                            |
+| PDF image size           | 4096 × 4096 pixels       | A larger image is left undrawn. In that PDF, `imageCount`, `imageOnlyPages` and `hiddenTextChars` are left out of the report as not measured. |
+| DOCX expanded size       | 64 MB                    | Refuse, before `mammoth` sees it. A larger expansion is treated as a zip bomb.                                                                |
+| DOCX XML parsed          | 2 MB                     | Refuse. The most XML `mammoth` is given to parse, counted for each part as often as it is parsed.                                             |
+| DOCX headers and footers | 2 MB between them        | A part past the budget is neither read nor measured. The budget is the same 2 MB.                                                             |
+| DOCX embedded HTML pages | 8 MB between them        | Each page (`w:altChunk`) is read once, however often the document names it. A page past the budget is neither read nor measured.              |
 
 ### Structured documents
 

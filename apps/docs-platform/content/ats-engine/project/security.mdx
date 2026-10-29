@@ -23,7 +23,7 @@ Email **grievance@veriworkly.com** with a description, a reproducing input, the 
 | File name                                 | Read to its first 255 characters                                                                                                                                |
 | MCP pasted text                           | Refused over 200,000 characters                                                                                                                                 |
 
-A host should still bound request bodies. PDF images have no size cap: pdf.js decodes every image in full, so a small file with one huge image can hold gigabytes of memory.
+A host should still bound request bodies. Since 0.22.0, pdf.js leaves a PDF image larger than 4096 × 4096 pixels undrawn, so one huge image no longer holds gigabytes of memory. Images under that size are still decoded in full, outside the JavaScript heap, so keep the operating-system memory cap below.
 
 ## Linear-time patterns
 

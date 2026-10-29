@@ -209,7 +209,7 @@ This starts one process per file and kills it afterwards, which keeps the exampl
 
 ### Cap memory in the operating system
 
-Node's `--max-old-space-size` bounds the JavaScript heap only. pdf.js decodes images outside it: a child started with `--max-old-space-size=256` reached 5.6 GB on a crafted file, and a 420 KB PDF with one 144-megapixel image held 1.8 GB. Set the limit where the operating system enforces it: a container or cgroup memory limit, `ulimit -v`, or a Windows Job object.
+Node's `--max-old-space-size` bounds the JavaScript heap only. pdf.js decodes images outside it. Before 0.22.0, a child started with `--max-old-space-size=256` reached 5.6 GB on a crafted file, and a 420 KB PDF with one 144-megapixel image held 1.8 GB. 0.22.0 leaves an image larger than 4096 × 4096 pixels undrawn, but images under that size are still decoded outside the heap. Set the limit where the operating system enforces it: a container or cgroup memory limit, `ulimit -v`, or a Windows Job object.
 
 On Linux, one way is to start the child through a shell that sets `ulimit -v` and then runs Node with `exec`. The IPC channel passes through `exec`, so `child.send` works as before:
 
@@ -226,7 +226,7 @@ const child = spawn(
 
 Replace the `fork(childPath, [], { execArgv: [] })` line in the helper with this and keep the rest. Choose the limit by measuring: Node reserves address space at start, so a value that is too low stops the child before it reads anything.
 
-Set the timeout with images in mind too. The engine waits for each page's images before reading the next, so memory stays at one page's worth and the cost is time: 60 pages with a 49-megapixel image each took 31 to 34 seconds.
+Set the timeout with images in mind too. The engine waits for each page's images before reading the next, so memory stays at one page's worth and the cost is time: on 0.21.0, 60 pages with a 49-megapixel image each took 31 to 34 seconds. 0.22.0 skips images that large, but many pages of images just under 4096 × 4096 pixels still take time.
 
 ## What to watch for
 
