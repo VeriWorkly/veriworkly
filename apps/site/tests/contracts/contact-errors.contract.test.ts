@@ -12,9 +12,9 @@ import { byProp, mount, text } from "./hook-harness";
 
 /** What the contact form shows for each answer /contact can give, through the real fetchApiData. */
 
-// fetchApiData reads the backend URL when it is first imported.
+// fetchApiData reads the backend URL when it is first imported; CI sets one, a local run may not.
 vi.hoisted(() => {
-  process.env.NEXT_PUBLIC_BACKEND_URL = "http://backend.test/api/v1";
+  process.env.NEXT_PUBLIC_BACKEND_URL ||= "http://backend.test/api/v1";
 });
 
 vi.mock("react", async (importOriginal) => {
@@ -57,7 +57,7 @@ async function send(fetchMock: ReturnType<typeof vi.fn>) {
   await view.settle();
 
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(fetchMock.mock.calls[0]?.[0]).toBe("http://backend.test/api/v1/contact");
+  expect(fetchMock.mock.calls[0]?.[0]).toMatch(/\/api\/v1\/contact$/);
   const fieldError = (id: string) => byProp(view.tree, "id", id)?.props.error;
   return { view, fieldError };
 }
