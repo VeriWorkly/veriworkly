@@ -37,21 +37,8 @@ const sentenceCase = (value: string) => value.charAt(0) + value.slice(1).toLower
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { docType } = await params;
 
-  const docTypeData = getDocumentTypeSummary(docType);
-
-  if (!docTypeData || docTypeData.status !== "available") {
-    return buildPageMetadata({
-      path: `/templates/${docType}`,
-      title: "Templates Not Found | VeriWorkly",
-      description: "This document type is not available on VeriWorkly yet.",
-      ogTitle: "Templates Not Found",
-      ogDescription: "This document type is not available on VeriWorkly yet.",
-      twitterTitle: "Templates Not Found",
-      twitterDescription: "This document type is not available on VeriWorkly yet.",
-      image: "/og/templates-page-og.png",
-      noIndex: true,
-    });
-  }
+  // dynamicParams = false: only the available types from generateStaticParams reach this.
+  const docTypeData = getDocumentTypeSummary(docType)!;
 
   const ogImage = ogPageImage(`templates:${docType}`);
 
