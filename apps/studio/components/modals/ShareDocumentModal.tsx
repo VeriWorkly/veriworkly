@@ -29,6 +29,8 @@ import {
   revokeShareLink,
   listAllShareLinks,
   shareAllowsDownload,
+  shareOffersDownloads,
+  shareSnapshotTime,
 } from "@/features/documents/services/share-service";
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 
@@ -301,6 +303,7 @@ const ShareDocumentModal = ({
   const activeLink = shareLinks[0];
   const shownExpiryChoice = effectiveShareExpiryChoice(expiryChoice, activeLink);
   const allowDownload = downloadChoice ?? shareAllowsDownload(activeLink);
+  const offersDownloads = shareOffersDownloads(documentType);
 
   const isSlugOutofSync = useMemo(() => {
     if (!activeLink) return false;
@@ -314,7 +317,7 @@ const ShareDocumentModal = ({
     const updatedAt =
       document?.updatedAt ?? loadDocumentById(documentType, documentId)?.updatedAt ?? null;
 
-    return isShareSnapshotStale(updatedAt, activeLink.updatedAt);
+    return isShareSnapshotStale(updatedAt, shareSnapshotTime(activeLink));
   }, [activeLink, document?.updatedAt, documentId, documentType]);
 
   // Tracks the most recently *requested* document id so a slow response for a
@@ -439,9 +442,10 @@ const ShareDocumentModal = ({
         expiresAt: link.expiresAt,
         viewCount: link.viewCount,
         passwordRequired: link.hasPassword,
-        allowDownload: shareAllowsDownload(link),
+        // "Downloads hidden" only where the page would have had them (S-398).
+        allowDownload: !offersDownloads || shareAllowsDownload(link),
       })),
-    [shareLinks],
+    [shareLinks, offersDownloads],
   );
 
   if (!documentId) return null;
@@ -514,7 +518,7 @@ const ShareDocumentModal = ({
             <>
               {hasActiveLink && activeLink && (
                 <SharedVersionNotice
-                  sharedAt={activeLink.updatedAt}
+                  sharedAt={shareSnapshotTime(activeLink)}
                   stale={isSnapshotStale}
                   busy={busy}
                   onUpdate={() => void handleCreate()}
@@ -671,28 +675,30 @@ const ShareDocumentModal = ({
                 </div>
               </div>
 
-              <div className="flex items-start justify-between gap-3 rounded-xl border p-3">
-                <div className="space-y-1">
-                  <label
-                    htmlFor="share-allow-download-checkbox"
-                    className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
-                  >
-                    <Download className="h-3.5 w-3.5 opacity-70" /> Allow downloads
-                  </label>
+              {offersDownloads && (
+                <div className="flex items-start justify-between gap-3 rounded-xl border p-3">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="share-allow-download-checkbox"
+                      className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
+                    >
+                      <Download className="h-3.5 w-3.5 opacity-70" /> Allow downloads
+                    </label>
 
-                  <p id="share-allow-download-hint" className="text-muted-foreground text-xs">
-                    {shareDownloadHint(allowDownload)}
-                  </p>
+                    <p id="share-allow-download-hint" className="text-muted-foreground text-xs">
+                      {shareDownloadHint(allowDownload)}
+                    </p>
+                  </div>
+
+                  <Checkbox
+                    id="share-allow-download-checkbox"
+                    aria-describedby="share-allow-download-hint"
+                    checked={allowDownload}
+                    onCheckedChange={(value) => setDownloadChoice(value)}
+                    className="mt-0.5 scale-90"
+                  />
                 </div>
-
-                <Checkbox
-                  id="share-allow-download-checkbox"
-                  aria-describedby="share-allow-download-hint"
-                  checked={allowDownload}
-                  onCheckedChange={(value) => setDownloadChoice(value)}
-                  className="mt-0.5 scale-90"
-                />
-              </div>
+              )}
 
               <Button
                 size="sm"

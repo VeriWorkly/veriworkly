@@ -2,6 +2,7 @@
 
 import type { ResumeData, ResumeSectionId } from "@/types/resume";
 import type { BaseDocument } from "@/features/documents/core/types";
+import type { DocumentType } from "@/features/documents/core/document-types";
 import type { CoverLetterContent, CoverLetterSectionId } from "@/features/cover-letter/types";
 
 import { backendApiUrl } from "@/lib/constants";
@@ -64,10 +65,17 @@ export type ShareLinkItem = {
   lastViewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** When the link's snapshot was written (S-254); `updatedAt` also moves on views and renames. */
+  snapshotAt?: string;
   documentSlug?: string;
   /** Absent from a list cached before V-421: read as true, the stored default. */
   allowDownload?: boolean;
 };
+
+/** When a link's shared version was taken; a list cached before S-254 has only `updatedAt`. */
+export function shareSnapshotTime(link: { snapshotAt?: string; updatedAt: string }) {
+  return link.snapshotAt ?? link.updatedAt;
+}
 
 type ShareLinksPage = OffsetPaginationPayload<ShareLinkItem>;
 
@@ -88,6 +96,14 @@ export type ShareLinkPayload<T = unknown> = {
    */
   allowDownload?: boolean;
 };
+
+/**
+ * Whether the share page has a Download button for this type at all (S-398): a shared cover
+ * letter is read on the page, so the modal neither offers the switch nor promises downloads.
+ */
+export function shareOffersDownloads(documentType: DocumentType | null | undefined) {
+  return documentType !== "COVER_LETTER";
+}
 
 /** Whether a share link shows its Download buttons; a link from before V-421 always did. */
 export function shareAllowsDownload(link: { allowDownload?: boolean } | null | undefined) {

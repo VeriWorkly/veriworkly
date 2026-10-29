@@ -803,6 +803,9 @@ model ShareLink {
   // Whether the studio shows the Download button on the public page (V-421). A display
   // preference, not access control: a viewer can still save the page.
   allowDownload Boolean @default(true)
+  // When `snapshot` was last written (S-254); the studio's "link shows an older version" warning
+  // compares against it. `updatedAt` also moves on every view flush and slug rename.
+  snapshotAt    DateTime @default(now())
 
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt

@@ -32,13 +32,19 @@ const SHARE_VIEW_PRUNE_BUDGET_MS = 20_000;
  * One share view, buffered (V-029): the raw row and the link's counter move together. Past the
  * buffer cap (a flush that has not run, or a flood) the view is neither listed nor counted, and
  * only a drop counter grows, which the flush reports; before, the row was trimmed away while the
- * count kept growing, so `viewCount` and the `ShareView` rows disagreed.
- * KEYS: buffer, counts, last-viewed, dropped. ARGV: record, link id, timestamp, cap, ttl.
+ * count kept growing, so `viewCount` and the `ShareView` rows disagreed. A repeat from the same
+ * network inside the dedup window is not counted (S-397). The cap is checked first, so a view
+ * dropped there does not start that network's dedup window.
+ * KEYS: buffer, counts, last-viewed, dropped, dedup (or ""). ARGV: record, link id, timestamp,
+ * cap, ttl, dedup ttl.
  */
 const RECORD_SHARE_VIEW_SCRIPT = `
   if redis.call("LLEN", KEYS[1]) >= tonumber(ARGV[4]) then
     redis.call("INCR", KEYS[4])
     redis.call("EXPIRE", KEYS[4], ARGV[5])
+    return 0
+  end
+  if KEYS[5] ~= "" and not redis.call("SET", KEYS[5], "1", "NX", "EX", ARGV[6]) then
     return 0
   end
   redis.call("LPUSH", KEYS[1], ARGV[1])
@@ -50,6 +56,15 @@ const RECORD_SHARE_VIEW_SCRIPT = `
   return 1
 `;
 const DROPPED_SHARE_VIEWS_KEY = "share:views:dropped";
+/** One view per link per network per day, so a recruiter's refreshes are one view (S-397). */
+const SHARE_VIEW_DEDUP_SECONDS = 24 * 60 * 60;
+/**
+ * Link-preview fetchers and crawlers (S-397): chat apps and social sites fetch a pasted link to
+ * build its preview, which is not anyone reading the document. Named one by one: a bare "bot"
+ * would also catch phones such as the Cubot range.
+ */
+const NON_VIEWER_AGENT =
+  /slackbot|discordbot|twitterbot|linkedinbot|telegrambot|whatsapp|facebookexternalhit|facebookcatalog|googlebot|google-inspectiontool|bingbot|applebot|duckduckbot|yandexbot|baiduspider|petalbot|semrushbot|ahrefsbot|pinterestbot|redditbot|mastodon|skypeuripreview|microsoftpreview|embedly|iframely|vkshare|slurp|bytespider|gptbot|claudebot|perplexitybot/i;
 
 type ShareLinkWriteInput = {
   password?: string;
@@ -140,6 +155,8 @@ export class ShareService {
   }
 
   static async recordShareView(shareLinkId: string, ipAddress?: string, userAgent?: string | null) {
+    if (userAgent && NON_VIEWER_AGENT.test(userAgent)) return;
+
     const hashedIp = ipAddress ? hashForAnalytics(ipAddress) : null;
 
     const redis = getRedis();
@@ -159,6 +176,7 @@ export class ShareService {
         "share:links:view_count",
         "share:links:last_viewed",
         DROPPED_SHARE_VIEWS_KEY,
+        hashedIp ? `share:views:dedup:${shareLinkId}:${hashedIp}` : "",
       ],
       arguments: [
         viewRecord,
@@ -166,6 +184,7 @@ export class ShareService {
         String(timestamp),
         String(MAX_BUFFERED_SHARE_VIEWS),
         String(VIEW_BUFFER_TTL_SECONDS),
+        String(SHARE_VIEW_DEDUP_SECONDS),
       ],
     });
   }
@@ -416,7 +435,14 @@ export class ShareService {
     const shareLink = existing
       ? await prisma.shareLink.update({
           where: { id: existing.id },
-          data: { slug, snapshot: data.snapshot, passwordHash, expiresAt, allowDownload },
+          data: {
+            slug,
+            snapshot: data.snapshot,
+            snapshotAt: new Date(),
+            passwordHash,
+            expiresAt,
+            allowDownload,
+          },
         })
       : await prisma.shareLink.create({
           data: {

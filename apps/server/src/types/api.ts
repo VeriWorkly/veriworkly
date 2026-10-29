@@ -21,6 +21,8 @@ export interface GitHubStatsResponse {
 
 export interface PublicShareLink {
   id: string;
+  /** The owner, so their own visit is not counted as a view (S-397). */
+  userId?: string;
   slug: string;
   passwordHash: string | null;
   expiresAt: string | Date | null;

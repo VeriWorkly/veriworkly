@@ -97,6 +97,18 @@ describe("server fetch contract", () => {
     expect(sentHeaders(1).has("x-forwarded-client-ip")).toBe(false);
   });
 
+  it("S-397: forwards the browser's user agent with the internal key, so the API can tell a link-preview bot from a reader", async () => {
+    respondWith(200, { data: {} });
+    request.headers = new Headers({ "x-real-ip": "203.0.113.9", "user-agent": "Slackbot 1.0" });
+
+    await serverFetch("/shares/public/jane/resume");
+    expect(sentHeaders().get("x-forwarded-client-user-agent")).toBe("Slackbot 1.0");
+
+    vi.stubEnv("INTERNAL_API_KEY", "");
+    await serverFetch("/shares/public/jane/resume");
+    expect(sentHeaders(1).has("x-forwarded-client-user-agent")).toBe(false);
+  });
+
   it("S-171 S-162: every call has a timeout, and Content-Type only travels with a body", async () => {
     respondWith(200, { data: {} });
 
