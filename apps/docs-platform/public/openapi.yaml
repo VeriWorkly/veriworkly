@@ -158,8 +158,8 @@ paths:
         on PostgreSQL or Redis, and never returns `503`. For dependency health use
         `GET /api/v1/health/ready`.
 
-        This is the only truly public endpoint on the API: it requires no session, no API key, and no
-        first-party origin.
+        It requires no session, no API key and no first-party origin, and it is not rate limited.
+        The other fully open endpoints are listed in the introduction.
       responses:
         "200":
           description: Server is healthy
@@ -202,8 +202,8 @@ paths:
                   timestamp: 2026-04-26T10:00:00.000Z
         "503":
           description: |
-            The database or Redis could not be reached. The response carries no diagnostic detail —
-            the underlying error is logged server-side only.
+            The database or Redis could not be reached. `details` gives the state of each:
+            `connected`, `timeout` or `error`. The underlying error is logged server-side only.
           content:
             application/json:
               schema:
@@ -212,6 +212,9 @@ paths:
                 success: false
                 statusCode: 503
                 message: Service Unavailable
+                details:
+                  database: connected
+                  redis: timeout
   /api/v1/users/me:
     get:
       tags:
@@ -289,10 +292,13 @@ paths:
         scopes. The request is refused with `409` while something could still charge the card or
         while the user holds an unpaid affiliate balance:
 
-        - a subscription that is active or past due and not set to cancel: cancel it from Billing
-          first;
+        - a subscription the billing provider still reports as active, on hold, past due or paused,
+          or one created in the last 24 hours that is not paid yet: cancel it from Billing first. A
+          subscription already set to cancel at the end of its period still blocks deletion until
+          that period ends;
         - `details.code: "CHECKOUT_IN_PROGRESS"`: a checkout session is open; finish or cancel it
           first;
+        - an affiliate withdrawal is requested or approved and not yet paid or rejected;
         - `details.code: "AFFILIATE_BALANCE_FORFEIT"`: deleting forfeits the unpaid commissions in
           `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the
           amount, then repeat the request with `confirmAffiliateForfeit: true` and
@@ -328,7 +334,17 @@ paths:
                 message: Your account and all associated documents, portfolios, and data have been permanently deleted.
                 data: null
         "400":
-          $ref: "#/components/responses/BodyValidationError"
+          description: |
+            The body is not valid JSON. The confirmation fields are read leniently, so a wrong value
+            is treated as "not confirmed" (`409`), not refused here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 400
+                message: Invalid JSON body
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
@@ -353,8 +369,9 @@ paths:
                 message: User not found
         "409":
           description: |
-            A live subscription must be cancelled first, a checkout is open
-            (`details.code: "CHECKOUT_IN_PROGRESS"`), or deleting would forfeit an unpaid affiliate
+            A live subscription must be cancelled first (or, when already set to cancel, must reach
+            the end of its period), a checkout is open (`details.code: "CHECKOUT_IN_PROGRESS"`), an
+            affiliate withdrawal is in progress, or deleting would forfeit an unpaid affiliate
             balance that was not confirmed (`details.code: "AFFILIATE_BALANCE_FORFEIT"`, with
             `amountCents`, `currency`, `availableCents` and `pendingCents`).
           content:
@@ -369,7 +386,27 @@ paths:
                   value:
                     success: false
                     statusCode: 409
-                    message: Cancel your subscription before deleting your account. Open Billing and use Manage Subscription — we cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists.
+                    message: "Cancel your subscription before deleting your account: open Billing and use Manage Subscription. We cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists. Once the subscription has ended you can delete your account."
+                subscriptionEnding:
+                  summary: A subscription set to cancel that has not ended yet
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Your subscription is cancelled and ends on 2026-11-30. You can delete your account once it has ended. If you need it deleted sooner, contact support.
+                checkoutOpen:
+                  summary: A checkout session is open
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: A checkout is still open for this account. Finish or cancel it before deleting the account.
+                    details:
+                      code: CHECKOUT_IN_PROGRESS
+                withdrawalInProgress:
+                  summary: An affiliate withdrawal is in progress
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: You have a withdrawal in progress. Wait for it to be paid or rejected before deleting your account.
                 affiliateForfeit:
                   summary: An unpaid affiliate balance
                   value:
@@ -387,12 +424,22 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimitError"
         "503":
-          description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            Account deletion is temporarily unavailable: the checkout state could not be read, or the
+            sessions could not be revoked before the deletion. The account is untouched; try again
+            shortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot
+            be read, and as "Service temporarily unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                deletionUnavailable:
+                  summary: Checkout state unreadable, or sessions not revoked
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Account deletion is temporarily unavailable. Try again shortly.
                 authUnavailableCode:
                   summary: Session store unavailable
                   value:
@@ -527,9 +574,10 @@ paths:
 
         The submitted value is **normalised before validation**: lowercased, non-`[a-z0-9_-]`
         characters folded to hyphens, leading/trailing hyphens stripped, and truncated to 32
-        characters. `Jane.Doe` and `jane-doe` therefore claim the same username. It must survive
-        normalisation as 3–32 characters and must not be a reserved word (`admin`, `api`, `app`,
-        `docs`, and similar platform-owned names). Check with
+        characters. `Jane.Doe` and `jane-doe` therefore claim the same username. A value with no
+        letters, digits, `_` or `-` at all (such as `!!!`) normalises to `user` and claims that name
+        rather than being refused. The result must be 3 to 32 characters and must not be a reserved
+        word (`admin`, `api`, `app`, `docs`, and similar platform-owned names). Check with
         `GET /users/{username}/availability` before committing.
 
         A successful claim invalidates the caller's cached session so the new username is visible
@@ -572,21 +620,24 @@ paths:
                     shareLinks: 4
                     resumes: 4
         "400":
-          description: The username failed validation after normalisation. A body that is not valid JSON answers "Invalid JSON body".
+          description: |
+            The username failed validation after normalisation. The detail message is the reason:
+            `too_short`, `invalid_characters` or `reserved`. A body that is not valid JSON answers
+            "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: The username failed validation after normalisation
+                  summary: The username is reserved
                   value:
                     success: false
                     statusCode: 400
                     message: Validation failed
                     details:
                       - path: username
-                        message: invalid_username
+                        message: reserved
                 invalidJson:
                   summary: The body is not valid JSON
                   value:
@@ -838,10 +889,10 @@ paths:
           schema:
             type: integer
             minimum: 1
-            default: 1
             maximum: 1000000
           required: false
-          description: 1-based page index. An alternative to `offset`.
+          description: |
+            1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` "Send either page or offset, not both".
         - name: pageSize
           in: query
           schema:
@@ -896,7 +947,10 @@ paths:
                     nextOffset: null
                     nextCursor: null
         "400":
-          description: Validation error
+          description: |
+            Validation error: a parameter is out of range, `page` and `offset` were both sent, or the
+            query has a parameter this endpoint does not know (unknown parameters are refused, not
+            ignored).
           content:
             application/json:
               schema:
@@ -992,7 +1046,6 @@ paths:
                   whyItMatters: Improves productivity
                   timeline: In progress
                   details: null
-                  interactions: []
         "401":
           $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
@@ -1054,7 +1107,9 @@ paths:
             type: string
             minLength: 1
             maxLength: 120
-          description: Case-insensitive substring match against the entry title and summary.
+          description: |
+            Case-insensitive substring match against the entry title, summary, version (a leading
+            `v` is ignored) and id.
         - name: limit
           in: query
           required: false
@@ -1079,9 +1134,9 @@ paths:
           schema:
             type: integer
             minimum: 1
-            default: 1
             maximum: 1000000
-          description: 1-based page index. An alternative to `offset`.
+          description: |
+            1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` "Send either page or offset, not both".
         - name: pageSize
           in: query
           required: false
@@ -1140,7 +1195,10 @@ paths:
                     nextOffset: null
                     nextCursor: null
         "400":
-          description: Validation error
+          description: |
+            Validation error: a parameter is out of range, `page` and `offset` were both sent, or the
+            query has a parameter this endpoint does not know (unknown parameters are refused, not
+            ignored).
           content:
             application/json:
               schema:
@@ -1197,7 +1255,6 @@ paths:
                     - login: octocat
                       avatarUrl: https://avatars.githubusercontent.com/u/583231
                       htmlUrl: https://github.com/octocat
-                      contributions: 9
         "401":
           $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
@@ -1254,6 +1311,9 @@ paths:
                     - portfolio
                     - editor
                   prRefs: null
+                  editedAt: null
+                  createdAt: 2026-07-29T10:05:00.000Z
+                  updatedAt: 2026-07-29T10:05:00.000Z
         "401":
           $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
@@ -1303,7 +1363,9 @@ paths:
                     message: GitHub stats fetched successfully
                     data:
                       projectName: owner/repo
+                      projectUrl: https://github.com/orgs/owner/projects/1
                       stats:
+                        totalItems: 120
                         total: 120
                         issues: 70
                         pullRequests: 50
@@ -1312,6 +1374,7 @@ paths:
                         done: 50
                         completionRate: "41.67"
                       syncedAt: 2026-04-26T10:00:00.000Z
+                      nextSyncAt: 2026-04-26T12:00:00.000Z
                 neverSynced:
                   summary: No sync has run yet
                   value:
@@ -1386,9 +1449,9 @@ paths:
           schema:
             type: integer
             minimum: 1
-            default: 1
             maximum: 1000000
-          description: 1-based page index. An alternative to `offset`.
+          description: |
+            1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` "Send either page or offset, not both".
           required: false
         - in: query
           name: pageSize
@@ -1398,42 +1461,50 @@ paths:
             maximum: 50
           description: Alternative spelling of `limit`. Takes precedence over `limit` when both are sent.
           required: false
-        - name: createdFrom
-          in: query
-          required: false
+        - in: query
+          name: createdFrom
           schema:
             anyOf:
               - type: string
                 format: date
               - type: string
                 format: date-time
-        - name: createdTo
-          in: query
+          description: |
+            Items created at or after this time. A date (`2026-08-01`) means the start of that UTC
+            day; a date-time is used as given.
           required: false
+        - in: query
+          name: createdTo
           schema:
             anyOf:
               - type: string
                 format: date
               - type: string
                 format: date-time
-        - name: updatedFrom
-          in: query
+          description: |
+            Items created at or before this time, inclusive. A bare date covers that whole UTC day, so
+            `createdTo=2026-08-10` includes everything up to `2026-08-11T00:00:00Z`.
           required: false
+        - in: query
+          name: updatedFrom
           schema:
             anyOf:
               - type: string
                 format: date
               - type: string
                 format: date-time
-        - name: updatedTo
-          in: query
+          description: Items updated at or after this time. Same date rules as `createdFrom`.
           required: false
+        - in: query
+          name: updatedTo
           schema:
             anyOf:
               - type: string
                 format: date
               - type: string
                 format: date-time
+          description: Items updated at or before this time, inclusive. Same date rules as `createdTo`.
+          required: false
       responses:
         "200":
           description: GitHub issues fetched successfully
@@ -1462,13 +1533,28 @@ paths:
                   page: 1
                   pageSize: 20
                   totalPages: 1
+                  syncedAt: 2026-04-25T12:00:00.000Z
                   hasMore: false
                   pagination:
                     mode: offset
                     nextOffset: null
                     nextCursor: null
         "400":
-          $ref: "#/components/responses/ValidationError"
+          description: |
+            Validation error: a parameter is out of range or not a date, `page` and `offset` were
+            both sent, or the query has a parameter this endpoint does not know (unknown parameters
+            are refused, not ignored).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 400
+                message: Validation failed
+                details:
+                  - path: offset
+                    message: Send either page or offset, not both
         "401":
           $ref: "#/components/responses/PublicUnauthorizedError"
         "403":
@@ -1798,34 +1884,36 @@ paths:
           required: false
           schema:
             type: integer
-            minimum: 1
-            maximum: 50
             default: 20
+          description: |
+            Keys per page. Read leniently: a value above 50 is lowered to 50, and a value that is not
+            a positive integer is ignored (the default applies). Neither is refused.
         - name: offset
           in: query
           required: false
           schema:
             type: integer
-            minimum: 0
             default: 0
+          description: |
+            Rows to skip. A value that is not a non-negative integer is ignored. An offset past row
+            1,000,000 is refused with `400`.
         - name: page
           in: query
           required: false
           schema:
             type: integer
-            minimum: 1
-            default: 1
           description: |
-            1-based page index. An alternative to `offset`. When both are sent, `offset` decides
-            the window and the response echoes the `page` that was sent.
+            1-based page index, the first page when left out. An alternative to `offset`. When both
+            are sent, `offset` decides the window and the response echoes the `page` that was sent.
+            A value that is not a positive integer is ignored.
         - name: pageSize
           in: query
           required: false
           schema:
             type: integer
-            minimum: 1
-            maximum: 50
-          description: Alternative spelling of `limit`. Takes precedence over `limit` when both are sent.
+          description: |
+            Alternative spelling of `limit`, with the same lenient reading. Takes precedence over
+            `limit` when both are sent.
       responses:
         "200":
           description: A list of API keys.
@@ -1844,6 +1932,8 @@ paths:
                       isActive: true
                       createdAt: 2026-04-11T10:37:35.584Z
                       lastUsed: 2026-04-25T19:35:44.409Z
+                      expiresAt: 2027-04-11T10:37:35.584Z
+                      revokedAt: null
                   total: 1
                   limit: 20
                   offset: 0
@@ -1855,6 +1945,19 @@ paths:
                     mode: offset
                     nextOffset: null
                     nextCursor: null
+        "400":
+          description: The requested window reaches past row 1,000,000.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 400
+                message: Validation failed
+                details:
+                  - path: offset
+                    message: Must not reach past row 1000000
         "401":
           $ref: "#/components/responses/SessionUnauthorizedError"
         "429":
@@ -1892,8 +1995,8 @@ paths:
                 scopes:
                   type: array
                   description: |
-                    Scopes granted to the new key. Defaults to `["user:read"]` when omitted (the
-                    server's `API_KEY_DEFAULT_SCOPES`). A comma-separated string such as
+                    Scopes granted to the new key. Defaults to `["user:read"]` (the server's
+                    `API_KEY_DEFAULT_SCOPES`) when omitted, empty, or an empty string. A comma-separated string such as
                     `"user:read,resume:read"` is also accepted. Any value outside the listed set is
                     rejected with `400`.
                   items:
@@ -1901,12 +2004,12 @@ paths:
                 rateLimit:
                   type: integer
                   minimum: 1
-                  maximum: 600
                   description: |
                     Requests allowed per 15-minute window. Defaults to 20 (the server's
                     `API_KEY_DEFAULT_RATE_LIMIT`). The ceiling is `API_KEY_MAX_RATE_LIMIT`, 600 by
-                    default: a larger value is lowered to the ceiling, not rejected. A value that is
-                    not a positive integer is rejected with `400`.
+                    default: a larger value is lowered to the ceiling, not rejected. A numeric string
+                    such as `"50"` is accepted. A value that is not a positive integer is rejected
+                    with `400`.
                   example: 20
                 expiresAt:
                   description: |
@@ -2059,17 +2162,17 @@ paths:
                 scopes:
                   type: array
                   description: |
-                    Scopes for the replacement key. Carried over from the old key when omitted. A
-                    comma-separated string is also accepted.
+                    Scopes for the replacement key. Carried over from the old key when omitted, empty,
+                    or an empty string. A comma-separated string is also accepted.
                   items:
                     $ref: "#/components/schemas/ApiKeyScope"
                 rateLimit:
                   type: integer
                   minimum: 1
-                  maximum: 600
                   description: |
                     Requests allowed per 15-minute window. Carried over unchanged when omitted. A value
-                    you send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger.
+                    you send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger,
+                    not rejected. A numeric string is accepted.
                 expiresAt:
                   description: |
                     New expiry: an ISO 8601 timestamp with a zone, in the future (`400` otherwise).
@@ -2096,7 +2199,7 @@ paths:
                   id: cmnu7awv4000063lk18zpon2n
                   key: vw_9e8d7c6b5a4938271605f4e3d2c1b0a99887766554433221100ffeeddccbbaa9
                   keyPrefix: vw_9e8d7
-                  keySuffix: ccbbaa9
+                  keySuffix: ddccbbaa
                   name: My Documentation Key
                   userId: cmnu7awv4000063lk18zpon2x
                   isActive: true
@@ -2171,8 +2274,9 @@ paths:
         `revokedAt` is stamped. The cached authentication record is purged at the same time, so the
         secret stops working right away rather than after the cache expires.
 
-        A revoked key cannot be reactivated; rotate or create a new one instead. `data` is `null` on
-        success.
+        A revoked key cannot be reactivated; rotate or create a new one instead. Revoking is
+        idempotent: revoking a key that is already revoked, or was retired by a rotation, answers
+        `200` again and keeps its original `revokedAt`. `data` is `null` on success.
       security:
         - LocalSession: []
         - ProdSession: []
@@ -2248,7 +2352,7 @@ paths:
                 data:
                   id: cmnu7bxq2000163lk4d1zqp8n
                   keyPrefix: vw_a1b2c
-                  keySuffix: 9f8e7d6
+                  keySuffix: a09f8e7d
                   name: CI pipeline
                   userId: cmnu7awv4000063lk18zpon2m
                   isActive: true
@@ -2338,9 +2442,9 @@ paths:
         Retrieves the authenticated user's master profile along with an account summary. Requires the
         `resume:read` scope when called with an API key.
 
-        When the user has never saved a profile, this still returns `200` with a placeholder whose
-        `id` is an empty string and whose `content` is `{}` — it does not return `404`. Cached for
-        1 hour and invalidated on write.
+        A user who has never saved a master profile gets `404` "Master profile not found". Create
+        one with `PUT /profiles/master` (without `expectedUpdatedAt`). Cached for 1 hour and
+        invalidated on write.
       responses:
         "200":
           description: Master profile fetched successfully
@@ -2374,15 +2478,24 @@ paths:
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
         "404":
-          description: User not found
+          description: The user has never saved a master profile, or the account no longer exists.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 404
-                message: User not found
+              examples:
+                noProfile:
+                  summary: No master profile saved yet
+                  value:
+                    success: false
+                    statusCode: 404
+                    message: Master profile not found
+                noUser:
+                  summary: Account not found
+                  value:
+                    success: false
+                    statusCode: 404
+                    message: User not found
         "429":
           $ref: "#/components/responses/RateLimitError"
         "503":
@@ -2473,24 +2586,43 @@ paths:
         "403":
           $ref: "#/components/responses/InsufficientScopeError"
         "409":
-          description: Conflict - profile updated elsewhere
+          description: |
+            The profile changed since `expectedUpdatedAt`, or a profile already exists and no
+            `expectedUpdatedAt` was sent. `details.currentUpdatedAt` is the stored version to read
+            and retry against.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: Master profile was updated from another session. Refresh and retry.
+              examples:
+                stale:
+                  summary: Updated from another session
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Master profile was updated from another session. Refresh and retry.
+                    details:
+                      currentUpdatedAt: 2026-04-10T10:05:00.000Z
+                alreadyExists:
+                  summary: No expectedUpdatedAt over an existing profile
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Master profile already exists. Send expectedUpdatedAt to update it.
+                    details:
+                      currentUpdatedAt: 2026-04-10T10:05:00.000Z
         "413":
-          description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
+          description: |
+            A body over 4 MB is refused by the parser with "Request body too large". A body under that
+            whose profile is over 1,000,000 characters once serialised is refused with "Master
+            profile payload is too large".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: Payload too large
+                  summary: Profile over 1,000,000 characters
                   value:
                     success: false
                     statusCode: 413
@@ -2502,7 +2634,7 @@ paths:
                     statusCode: 413
                     message: Request body too large
         "429":
-          $ref: "#/components/responses/RateLimitError"
+          $ref: "#/components/responses/AutosaveRateLimitError"
         "503":
           $ref: "#/components/responses/ServiceUnavailableError"
   /api/v1/profiles/import/quota:
@@ -2547,12 +2679,15 @@ paths:
                 data:
                   github:
                     isPaid: false
+                    unlimited: false
                     remaining: 1
                     limit: 1
                     resetsInSeconds: 0
                     connectedUsername: octocat
+                    hasGithubAccount: true
                   linkedin:
                     isPaid: false
+                    unlimited: false
                     remaining: 1
                     limit: 1
                     resetsInSeconds: 0
@@ -2578,7 +2713,8 @@ paths:
       description: |
         Imports a GitHub profile and repositories directly via the GitHub REST API (no AI parsing) and
         creates a new RESUME document from the result. Free users can only import their own linked
-        GitHub account (`usernameOrUrl` is ignored in that case); paid users may import any public
+        GitHub account: `usernameOrUrl` is still required and must be a valid GitHub username or
+        profile URL, but the linked login is imported instead; paid users may import any public
         username, up to 50 imports a day (see `GET /profiles/import/quota`). Requires the
         `resume:write` scope when called with an API key.
       requestBody:
@@ -2615,18 +2751,27 @@ paths:
                   createdAt: 2026-04-01T10:00:00.000Z
                   updatedAt: 2026-04-01T10:00:00.000Z
         "400":
-          description: Free user has no connected GitHub account, or a validation error. A body that is not valid JSON answers "Invalid JSON body".
+          description: |
+            `usernameOrUrl` is not a GitHub username or profile URL (checked first, for every
+            caller), a free user has no connected GitHub account, or the body fails validation. A
+            body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: Free user has no connected GitHub account, or a validation error
+                  summary: Free user has no connected GitHub account
                   value:
                     success: false
                     statusCode: 400
                     message: Please connect your GitHub account in settings to import your profile.
+                invalidUsername:
+                  summary: Not a GitHub username or profile URL
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Enter a valid GitHub username or profile URL.
                 invalidJson:
                   summary: The body is not valid JSON
                   value:
@@ -2829,15 +2974,29 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "402":
-          description: Not enough AI credits, or a free account already keeps its one resume.
+          description: |
+            Not enough AI credits, or a free account already keeps its one resume
+            (`details.code` `DOCUMENT_LIMIT`).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 402
-                message: Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.
+              examples:
+                credits:
+                  summary: Not enough AI credits
+                  value:
+                    success: false
+                    statusCode: 402
+                    message: Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle.
+                documentLimit:
+                  summary: Free account already keeps one resume
+                  value:
+                    success: false
+                    statusCode: 402
+                    message: Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only.
+                    details:
+                      code: DOCUMENT_LIMIT
+                      type: RESUME
         "403":
           description: The API key lacks `resume:write` or `ai:write`.
           content:
@@ -2848,15 +3007,52 @@ paths:
                 success: false
                 statusCode: 403
                 message: This API key does not have permission for this action.
-        "413":
-          $ref: "#/components/responses/PayloadTooLargeError"
-        "429":
-          description: Import quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+        "409":
+          description: |
+            The `requestId` was already used: for another operation, for this import with different
+            text or a different `replaceMaster`, or it is still processing. Also sent when the credit
+            balance changed while the credits were being held; retry the action.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                otherOperation:
+                  summary: Id used for another operation or input
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: AI request id was already used for another operation.
+                processing:
+                  summary: The same request is still running
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request is processing.
+                balanceChanged:
+                  summary: The balance moved while credits were held
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Credit balance changed. Retry the action.
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "429":
+          description: |
+            The free import quota is used up (`details.resetsInSeconds`), the caller already has two
+            AI requests in progress (`Retry-After` 10), or a rate limit was hit: the per-IP AI limit
+            (20 per minute) or, with an API key, the per-key limit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                inFlight:
+                  summary: Two AI requests already in progress
+                  value:
+                    success: false
+                    statusCode: 429
+                    message: Too many AI requests in progress. Wait for one to finish and try again.
                 documented:
                   summary: Import quota exceeded
                   value:
@@ -2883,17 +3079,68 @@ paths:
               schema:
                 type: integer
         "502":
-          description: AI parsing failed
+          description: The AI provider failed, or its output could not be turned into a profile. Nothing is charged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                failed:
+                  summary: AI parsing failed
+                  value:
+                    success: false
+                    statusCode: 502
+                    message: Failed to parse profile data using AI. Please try again.
+                incomplete:
+                  summary: The parsed profile did not validate
+                  value:
+                    success: false
+                    statusCode: 502
+                    message: Imported profile data was incomplete. Please try again.
+        "503":
+          description: |
+            The AI gateway credentials or the server's AI policy are not usable, the server is
+            restarting (`details.code` `SERVER_RESTARTING`, with `Retry-After`), the session store
+            cannot be read (`details.code` `AUTH_UNAVAILABLE`), or the database cannot be reached.
+            Nothing is charged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                credentials:
+                  summary: AI gateway credentials missing
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: AI provider credentials are not configured.
+                restarting:
+                  summary: The server is restarting
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: The server is restarting. Try again in a few seconds.
+                    details:
+                      code: SERVER_RESTARTING
+                      retryAfterSeconds: 5
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                    details:
+                      code: AUTH_UNAVAILABLE
+        "504":
+          description: The AI provider did not answer before the request deadline. Nothing is charged.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 success: false
-                statusCode: 502
-                message: Failed to parse profile data using AI. Please try again.
-        "503":
-          $ref: "#/components/responses/ServiceUnavailableError"
+                statusCode: 504
+                message: The AI request timed out before the provider answered.
   /api/v1/documents:
     get:
       tags:
@@ -3037,6 +3284,10 @@ paths:
         Creates a new document. If no `content` is provided for a RESUME or COVER_LETTER, it is
         auto-seeded from the user's MasterProfile (when one exists). Free-tier users are limited to
         1 active document per type; upgrading removes that limit.
+
+        Idempotent on the client's own `id`: sending an `id` the caller already has live answers
+        `200` "Document already exists" with the stored row (not `201`), so a retried sync adopts
+        the server's revision.
       requestBody:
         required: true
         content:
@@ -3047,6 +3298,12 @@ paths:
               type: RESUME
               title: My Resume
       responses:
+        "200":
+          description: The `id` sent is already one of the caller's live documents; the stored row is returned and nothing is written. The message is "Document already exists".
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
         "201":
           description: Document created successfully
           content:
@@ -3091,6 +3348,9 @@ paths:
                     success: false
                     statusCode: 409
                     message: Document was deleted
+                    details:
+                      id: doc_123
+                      deletedAt: 2026-04-20T10:00:00.000Z
                 slugInUse:
                   summary: Slug taken
                   value:
@@ -3098,14 +3358,17 @@ paths:
                     statusCode: 409
                     message: Document slug is already in use
         "413":
-          description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
+          description: |
+            A body over 4 MB is refused by the parser with "Request body too large". A body under that
+            whose `content` or `metadata` is over 1,000,000 characters once serialised is refused
+            with "Document content payload is too large".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: Payload too large
+                  summary: Content or metadata over 1,000,000 characters
                   value:
                     success: false
                     statusCode: 413
@@ -3207,7 +3470,26 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
-          $ref: "#/components/responses/InsufficientScopeError"
+          description: |
+            The API key lacks `resume:write`, or the update sets `visibility` to anything but
+            `PRIVATE` on a document a moderator made private.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                scope:
+                  summary: API key missing the required scope
+                  value:
+                    success: false
+                    statusCode: 403
+                    message: This API key does not have permission for this action.
+                moderated:
+                  summary: Made private by a moderator
+                  value:
+                    success: false
+                    statusCode: 403
+                    message: This document was made private by a moderator.
         "404":
           description: Document not found
           content:
@@ -3238,14 +3520,17 @@ paths:
                     statusCode: 409
                     message: Document slug is already in use
         "413":
-          description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
+          description: |
+            A body over 4 MB is refused by the parser with "Request body too large". A body under that
+            whose `content` or `metadata` is over 1,000,000 characters once serialised is refused
+            with "Document content payload is too large".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: Payload too large
+                  summary: Content or metadata over 1,000,000 characters
                   value:
                     success: false
                     statusCode: 413
@@ -3257,7 +3542,7 @@ paths:
                     statusCode: 413
                     message: Request body too large
         "429":
-          $ref: "#/components/responses/RateLimitError"
+          $ref: "#/components/responses/AutosaveRateLimitError"
         "503":
           $ref: "#/components/responses/ServiceUnavailableError"
     delete:
@@ -3274,7 +3559,9 @@ paths:
         list/get responses. Hard delete and restore exist at the service layer but are not exposed
         through any public route.
 
-        `data` is `null` on success — the deleted document is not echoed back.
+        `data` is `null` on success: the deleted document is not echoed back. Deleting a document
+        that is already in the trash also answers `200`; only an id the caller does not own, or one
+        already purged, answers `404`.
       parameters:
         - name: id
           in: path
@@ -3383,7 +3670,7 @@ paths:
         - ProdSession: []
       summary: Extract Resume Text
       description: |
-        Extracts plain text from an uploaded resume file (PDF, DOCX, TXT, Markdown, or JSON, max 5MB)
+        Extracts plain text from an uploaded resume file (PDF, DOCX, HTML, TXT, Markdown, or JSON, max 5MB)
         for use as the `resume` field on `/ats/check` or `/ats/analyze`. Does not consume ATS scan
         quota. Uploads are metered by a separate extract budget instead (`quota.extract`), and a
         request over it is rejected with `429`. The multipart body must carry only the `resume`
@@ -3408,12 +3695,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/AtsExtractResponse"
         "400":
-          description: Missing file, unsupported/unreadable file, or a multipart field other than `resume`
+          description: |
+            Missing file, unsupported or unreadable file, a file with too little text (a scanned PDF
+            has its own message), or a multipart field or file other than `resume` (multer's reason
+            follows "Upload refused:").
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                unreadable:
+                  summary: The parser could not read the file
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Resume file could not be read.
+                tooLittleText:
+                  summary: Under 50 characters of text
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Resume file did not contain enough readable text.
+                scannedPdf:
+                  summary: A PDF with no text layer
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: This PDF appears to be a scanned image or flattened graphic without an embedded text layer. Real ATS parsers cannot read scanned resumes without OCR. Please export your resume as a text-based PDF or Word document.
+                extraField:
+                  summary: A multipart field other than the file
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: "Upload refused: Too many fields."
                 missingFile:
                   summary: No file provided
                   value:
@@ -3448,6 +3762,16 @@ paths:
                 success: false
                 statusCode: 413
                 message: The file is larger than the 5 MB upload limit.
+        "422":
+          description: The parser ran out of memory on this file. Simplify or re-export it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 422
+                message: This file is too complex to read.
         "429":
           description: ATS upload quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
           content:
@@ -3479,18 +3803,34 @@ paths:
               schema:
                 type: integer
         "503":
-          description: Extraction is busy or unavailable. The upload is returned to the extract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            Extraction is busy, unavailable, or stopping for a restart; the upload is returned to the
+            extract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store
+            cannot be read, and as "Service temporarily unavailable" when the database cannot be
+            reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: Extraction is busy or unavailable
+                  summary: Extraction is busy
                   value:
                     success: false
                     statusCode: 503
                     message: Too many resume extractions in progress. Please retry shortly.
+                extractionUnavailable:
+                  summary: The extraction process failed to start or restart
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Resume extraction is temporarily unavailable.
+                shuttingDown:
+                  summary: The server is shutting down
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Server is shutting down.
                 authUnavailableCode:
                   summary: Session store unavailable
                   value:
@@ -3622,8 +3962,9 @@ paths:
         Optionally fetches a job description from a URL instead of requiring pasted text
         (`fetchJobUrl: true` + `jobUrl`). The fetch is SSRF-hardened: HTTPS-only on the standard port,
         rejects localhost/private/link-local addresses, resolves DNS once and pins that IP for the
-        whole request (including redirects), and caps redirects to 3, response size to 2MB, and the
-        request timeout to 8 seconds.
+        whole request (including redirects), and caps redirects to 3 and the response size to 2MB.
+        The page may go 8 seconds without sending data and must finish within 15 seconds; each DNS
+        lookup has its own 5-second limit.
       requestBody:
         required: true
         content:
@@ -3738,8 +4079,9 @@ paths:
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
           description: |-
-            The ATS scan quota is used up (`details` is the quota), or the caller already has two
-            AI requests in progress (`Retry-After` says when to try again). The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+            The ATS scan quota is used up (`details` is the quota), the caller already has two AI
+            requests in progress (`Retry-After` says when to try again), or a rate limit was hit: the
+            per-IP AI limit (20 requests per minute) or, with an API key, the per-key limit.
           content:
             application/json:
               schema:
@@ -3906,19 +4248,52 @@ paths:
                 statusCode: 403
                 message: This API key does not have permission for this action.
         "409":
-          description: requestId was already used, or is still processing
+          description: |
+            The `requestId` was already used (for another operation or input, or it already
+            completed or failed), it is still processing, or the credit balance changed while the
+            credits were being held (retry the action).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: This AI request id can no longer be reused.
+              examples:
+                noLongerReusable:
+                  summary: The id cannot be reused
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request id can no longer be reused.
+                otherOperation:
+                  summary: Id used for another operation or input
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: AI request id was already used for another operation.
+                processing:
+                  summary: The same request is still running
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request is processing.
+                completed:
+                  summary: The request already completed
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request already completed.
+                balanceChanged:
+                  summary: The balance moved while credits were held
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Credit balance changed. Retry the action.
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+          description: |
+            The caller already has two AI requests in progress (`Retry-After` says when to try
+            again), or a rate limit was hit: the per-IP AI limit (20 requests per minute) or, with an
+            API key, the per-key limit.
           content:
             application/json:
               schema:
@@ -4031,14 +4406,16 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimitError"
         "503":
-          description: The AI policy is missing or invalid, or AI model routing is not configured on the server. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            The server's AI policy is missing or invalid, or the session store cannot be read
+            (`details.code` `AUTH_UNAVAILABLE`).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: The AI policy is missing or invalid, or AI model routing is not configured on the server
+                  summary: The AI policy is missing or invalid
                   value:
                     success: false
                     statusCode: 503
@@ -4051,12 +4428,6 @@ paths:
                     message: Authentication is temporarily unavailable
                     details:
                       code: AUTH_UNAVAILABLE
-                databaseUnavailable:
-                  summary: Database unreachable
-                  value:
-                    success: false
-                    statusCode: 503
-                    message: Service temporarily unavailable
   /api/v1/ai/generate:
     post:
       tags:
@@ -4077,6 +4448,9 @@ paths:
         reservation is released instead of committed — a failed generation never burns credits.
 
         Expert mode uses a stronger, more expensive model than Standard mode for the same action.
+
+        The body is validated before the caller is: a first-party request with no session and an
+        invalid body gets `400`, not `401`.
       requestBody:
         required: true
         content:
@@ -4153,19 +4527,52 @@ paths:
                 statusCode: 403
                 message: This API key does not have permission for this action.
         "409":
-          description: requestId was already used, or is still processing
+          description: |
+            The `requestId` was already used (for another action or input, or it already completed
+            or failed), it is still processing, or the credit balance changed while the credits were
+            being held (retry the action).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: This AI request id can no longer be reused.
+              examples:
+                noLongerReusable:
+                  summary: The id cannot be reused
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request id can no longer be reused.
+                otherOperation:
+                  summary: Id used for another action or input
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: AI request id was already used for another operation.
+                processing:
+                  summary: The same request is still running
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request is processing.
+                completed:
+                  summary: The request already completed
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: This AI request already completed.
+                balanceChanged:
+                  summary: The balance moved while credits were held
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Credit balance changed. Retry the action.
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+          description: |
+            The caller already has two AI requests in progress (`Retry-After` 10), or a rate limit
+            was hit: the per-IP AI limit (20 requests per minute) or, with an API key, the per-key
+            limit.
           content:
             application/json:
               schema:
@@ -4195,15 +4602,24 @@ paths:
               schema:
                 type: integer
         "502":
-          description: AI provider error
+          description: The AI provider failed or returned nothing. The reservation is released.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 502
-                message: The AI provider could not complete the request.
+              examples:
+                failed:
+                  summary: Provider error
+                  value:
+                    success: false
+                    statusCode: 502
+                    message: The AI provider could not complete the request.
+                empty:
+                  summary: Empty answer
+                  value:
+                    success: false
+                    statusCode: 502
+                    message: The AI provider returned an empty response.
         "503":
           description: |-
             The server's AI settings are missing or invalid, the AI gateway credentials are not
@@ -4251,8 +4667,9 @@ paths:
       operationId: listPublicPortfolios
       summary: List Public Portfolios
       description: |
-        Lists the subdomains of every portfolio currently in `LIVE` or `GRACE` status, most recently
-        updated first. Returns subdomain and timestamp only — no portfolio content. Without
+        Lists the subdomains of every portfolio the public site serves: `LIVE` ones, and `GRACE`
+        ones while their grace period is still running. A portfolio whose document was deleted is
+        never listed. Most recently updated first. Returns subdomain and timestamp only, no portfolio content. Without
         `limit` a page holds up to 1,000 portfolios; page through the rest with `offset` (up to
         49,999, the sitemap protocol's 50,000 URLs). The default order, most recently updated first,
         moves whenever a site is republished or its billing changes; to page through every site,
@@ -4336,20 +4753,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PortfolioPublicResponse"
-        "400":
-          description: The subdomain is empty or reserved once normalised.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 400
-                message: Choose a valid portfolio subdomain.
         "401":
           $ref: "#/components/responses/PublicUnauthorizedError"
         "404":
-          description: No live portfolio exists at this subdomain.
+          description: |
+            No live portfolio exists at this subdomain. An empty or reserved subdomain is looked up
+            like any other and answers this `404` too.
           content:
             application/json:
               schema:
@@ -4382,7 +4791,11 @@ paths:
         The body may also be sent as `text/plain` holding the same JSON, which is what
         `navigator.sendBeacon(url, JSON.stringify(body))` sends: a CORS-safelisted type, so a
         published portfolio's subdomain can send it without a preflight. A `text/plain` body is
-        limited to 2 KB.
+        limited to 5 KB and is read before the credential check, so an oversized one gets `413`
+        even without a key; a JSON body falls under the 100 kb default.
+
+        The subdomain lookup is cached for 60 seconds, so for up to a minute after a takedown views
+        are still accepted with `202`. A Redis failure while buffering answers `500`.
       security:
         - ApiKeyAuth: []
         - {}
@@ -4498,7 +4911,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioDraftResponse"
         "400":
-          $ref: "#/components/responses/BodyValidationError"
+          description: |
+            The body fails validation ("Validation failed" with `details`), the subdomain is empty,
+            reserved or starts with `xn--` ("Choose a valid portfolio subdomain.", no `details`), or
+            the body is not valid JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validation:
+                  summary: A field failed validation
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: revision
+                        message: Expected number, received string
+                invalidSubdomain:
+                  summary: Empty, reserved or punycode subdomain
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Choose a valid portfolio subdomain.
+                invalidJson:
+                  summary: The body is not valid JSON
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Invalid JSON body
         "401":
           $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
@@ -4508,15 +4950,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Draft was changed in another session
+          description: |
+            The draft was changed in another session (`details.revision` is the stored revision when
+            the check fails up front), or a first save kept colliding on its document slug.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: Portfolio draft changed in another session.
+              examples:
+                stale:
+                  summary: Changed in another session
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Portfolio draft changed in another session.
+                    details:
+                      revision: 4
+                notSaved:
+                  summary: First save could not get a slug
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: The portfolio draft could not be saved. Try again.
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
@@ -4552,7 +5007,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioSubdomainAvailabilityResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          description: |
+            The name is empty, reserved or starts with `xn--` ("Choose a valid portfolio subdomain.",
+            no `details`), or longer than 63 characters ("Validation failed" with `details`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidSubdomain:
+                  summary: Empty, reserved or punycode name
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Choose a valid portfolio subdomain.
+                tooLong:
+                  summary: Longer than 63 characters
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: slug
+                        message: String must contain at most 63 character(s)
         "401":
           $ref: "#/components/responses/SessionUnauthorizedError"
         "429":
@@ -4620,7 +5097,12 @@ paths:
         `ADMIN_EMAIL` check independent of plan tier (`isAdminUser`) — regular users can save drafts,
         preview, and manage everything except actually flipping a portfolio live. This is a
         temporary rollout restriction, not a permanent product limitation. Only administrators can
-        exercise this endpoint end-to-end in production today; it is unrestricted in development.
+        exercise this endpoint end-to-end in production today; outside production (`NODE_ENV` other
+        than `production`) it is unrestricted. The restriction is checked before the body, so in
+        production a non-admin gets `403` even for an invalid body.
+
+        Checks run in this order: the premium-template `402`, then the stale-revision `409`, then
+        the subdomain.
       requestBody:
         required: true
         content:
@@ -4635,12 +5117,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioPublishResponse"
         "400":
-          description: Validation error, incomplete portfolio content, or an unusable image reference. A body that is not valid JSON answers "Invalid JSON body".
+          description: |
+            Validation error, incomplete portfolio content, an unusable image reference, or an empty,
+            reserved or punycode subdomain. A body that is not valid JSON answers "Invalid JSON body".
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                invalidSubdomain:
+                  summary: Empty, reserved or punycode subdomain
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Choose a valid portfolio subdomain.
                 incompleteContent:
                   summary: Draft does not satisfy the stricter publish schema
                   value:
@@ -4702,16 +5192,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                success: false
-                statusCode: 409
-                message: Save the latest draft before publishing.
+              examples:
+                stale:
+                  summary: Stale revision
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Save the latest draft before publishing.
+                subdomainTaken:
+                  summary: Subdomain already in use
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: That portfolio subdomain is already in use.
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
           $ref: "#/components/responses/IpRateLimitError"
         "503":
-          $ref: "#/components/responses/SessionServiceUnavailableError"
+          description: |
+            The draft references images but media delivery is not configured on the server
+            (`R2_PUBLIC_BASE_URL` unset), the session store cannot be read, or the database cannot
+            be reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                mediaDelivery:
+                  summary: Media delivery not configured
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Portfolio media delivery is not configured.
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/portfolios/unpublish:
     post:
       tags:
@@ -4762,7 +5287,11 @@ paths:
         - ProdSession: []
       summary: Get Portfolio Analytics
       description: |
-        Views for the last 30 days plus the top 10 referrer hosts.
+        View counts for the caller's published portfolio. `totalViews` is all-time, including views
+        still buffered and not yet flushed. `daily` is the 30 most recent days that had any views,
+        newest first; days with no views are left out, so it is not a 30-day calendar. `referrers`
+        is the all-time top 10 referrer hosts from flushed views only (views still buffered are not
+        in it).
 
         Visitor analytics comes with Creator Pro, the Job Hunter Bundle or a pass. Without it the
         response has `locked: true` and all-zero data, whether or not a portfolio is published. With
@@ -4812,18 +5341,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioAssetUploadResponse"
         "400":
-          description: Unsupported image type, or size out of range. A body that is not valid JSON answers "Invalid JSON body".
+          description: |
+            A `kind` outside the list or a `sizeBytes` that is not a positive integer ("Validation
+            failed"), a `mimeType` other than JPEG, PNG or WebP, a size over 5 MB, or a body that is
+            not valid JSON.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: Unsupported image type, or size out of range
+                  summary: Unsupported image type
                   value:
                     success: false
                     statusCode: 400
                     message: Upload a JPG, PNG, or WebP image.
+                tooLarge:
+                  summary: Over 5 MB
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Image must be 5 MB or smaller.
                 invalidJson:
                   summary: The body is not valid JSON
                   value:
@@ -4859,12 +5397,22 @@ paths:
               schema:
                 type: integer
         "503":
-          description: Media uploads are not configured (R2 credentials missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            Media uploads are not configured (R2 credentials missing), the session store cannot be
+            read, or the database cannot be reached. The asset row is created before the storage
+            check, so an upload refused for missing credentials still counts toward the 20 uploads
+            an hour and leaves a pending row behind.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                notConfigured:
+                  summary: R2 credentials missing
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Portfolio media uploads are not configured.
                 authUnavailable:
                   summary: Session store unavailable
                   value:
@@ -4904,12 +5452,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/PortfolioAssetCompleteResponse"
         "400":
-          description: Uploaded file does not match the declared size/type/checksum. A body that is not valid JSON answers "Invalid JSON body".
+          description: The uploaded file does not match the declared size, type or checksum, or the body is invalid.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                sizeMismatch:
+                  summary: Size differs from the declared size
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Uploaded file size (180000 bytes) does not match expected size (204800 bytes).
+                typeMismatch:
+                  summary: Type differs from the declared type
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Uploaded file type (image/jpeg) does not match expected type (image/png).
                 invalidJson:
                   summary: The body is not valid JSON
                   value:
@@ -4928,17 +5488,42 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio asset not found.
+        "409":
+          description: Storage has no object for this asset; the browser's upload failed or was aborted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 409
+                message: The upload was not received. Upload the image again.
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
           $ref: "#/components/responses/IpRateLimitError"
         "503":
-          description: Media delivery is not configured (public base URL missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            Media delivery is not configured (public base URL missing), media uploads are not
+            configured (R2 credentials missing), the session store cannot be read, or the database
+            cannot be reached. Any other storage error answers `500`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                deliveryNotConfigured:
+                  summary: Public base URL missing
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Portfolio media delivery is not configured.
+                uploadsNotConfigured:
+                  summary: R2 credentials missing
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Portfolio media uploads are not configured.
                 authUnavailable:
                   summary: Session store unavailable
                   value:
@@ -4961,8 +5546,12 @@ paths:
         - ProdSession: []
       summary: Delete Portfolio Asset
       description: |
-        Deletes the R2 object and its metadata row. `data` is `null` on success.
-        Session-authenticated only.
+        Deletes the R2 object and its metadata row. An asset created in the last 15 minutes (the
+        upload URL's lifetime plus 5 minutes) keeps its row, marked `DELETED`, so a late completion
+        cannot revive it. `data` is `null` on success. Session-authenticated only.
+
+        An image the published portfolio still shows cannot be deleted (`409`): publish without it
+        first.
 
         This does not rewrite any portfolio that still references the asset — remove the reference
         and save the draft first, or publishing will fail with `400`.
@@ -4995,10 +5584,45 @@ paths:
                 success: false
                 statusCode: 404
                 message: Portfolio asset not found.
+        "409":
+          description: The published portfolio still shows this image.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 409
+                message: Your published portfolio still shows this image. Publish without it first.
         "429":
           $ref: "#/components/responses/IpRateLimitError"
         "503":
-          $ref: "#/components/responses/SessionServiceUnavailableError"
+          description: |
+            Media uploads are not configured (R2 credentials missing), the session store cannot be
+            read, or the database cannot be reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                notConfigured:
+                  summary: R2 credentials missing
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Portfolio media uploads are not configured.
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/billing/me:
     get:
       tags:
@@ -5121,6 +5745,10 @@ paths:
         off to Dodo — arbitrary product/interval combinations are rejected with `400`. A Redis lock
         prevents starting a second checkout while one is already in flight. Session-authenticated
         only; blocked for non-admins in production during the current rollout phase.
+
+        When the caller already has an open session for the same choice, its URL is returned again
+        with `reused: true` instead of creating a new one. An error from the billing provider while
+        creating the session is not mapped and answers `500`.
       requestBody:
         required: true
         content:
@@ -5138,7 +5766,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/CheckoutResponse"
         "400":
-          description: Invalid product/interval combination. A body that is not valid JSON answers "Invalid JSON body".
+          description: |
+            The body fails validation ("Validation failed" with `details`), the product/interval
+            combination is not offered, or the body is not valid JSON.
           content:
             application/json:
               schema:
@@ -5170,6 +5800,16 @@ paths:
                 message: Payments are disabled in production during this phase. Only administrators can perform payments.
                 details:
                   code: PAYMENTS_DISABLED
+        "404":
+          description: The account no longer exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 404
+                message: User not found
         "409":
           description: |
             The purchase would overlap something the customer already has, or a checkout is already
@@ -5278,12 +5918,30 @@ paths:
         "429":
           $ref: "#/components/responses/IpRateLimitError"
         "503":
-          description: The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            The billing provider could not be asked about a session; nothing was cleared
+            (`details.code` `PROVIDER_UNAVAILABLE`). Without a `details.code`: billing is not
+            configured on the server, the session store cannot be read, or the database cannot be
+            reached.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CodedErrorResponse"
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
+                providerUnavailable:
+                  summary: Billing provider unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Could not confirm the checkout with the billing provider. Try again in a moment.
+                    details:
+                      code: PROVIDER_UNAVAILABLE
+                notConfigured:
+                  summary: Billing not configured
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Billing is not configured.
                 authUnavailable:
                   summary: Session store unavailable
                   value:
@@ -5309,7 +5967,8 @@ paths:
         Creates a Dodo Payments customer portal URL, where an existing customer cancels, downloads
         receipts and fixes a failed card. It sells nothing new, so it is open in production to every
         customer (not only administrators). Needs a billing account, which the first checkout
-        creates. Session-authenticated only.
+        creates. Session-authenticated only. An error from the billing provider while creating the
+        portal session is not mapped and answers `500`.
       responses:
         "200":
           description: Portal session created successfully
@@ -5332,7 +5991,32 @@ paths:
         "429":
           $ref: "#/components/responses/IpRateLimitError"
         "503":
-          $ref: "#/components/responses/SessionServiceUnavailableError"
+          description: |
+            Billing is not configured on the server, the session store cannot be read, or the
+            database cannot be reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                notConfigured:
+                  summary: Billing not configured
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Billing is not configured.
+                authUnavailable:
+                  summary: Session store unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Authentication is temporarily unavailable
+                databaseUnavailable:
+                  summary: Database unreachable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Service temporarily unavailable
   /api/v1/billing/credits/checkout:
     post:
       tags:
@@ -5347,7 +6031,8 @@ paths:
         subscription. While the session can still be paid (24 hours, or until its payment lands or
         `POST /billing/checkout/cancel` clears it), the account cannot be deleted.
         Session-authenticated only; blocked for non-admins in production during the current rollout
-        phase.
+        phase. An error from the billing provider while creating the session is not mapped and
+        answers `500`.
       requestBody:
         required: true
         content:
@@ -5379,17 +6064,52 @@ paths:
                 message: Payments are disabled in production during this phase. Only administrators can perform payments.
                 details:
                   code: PAYMENTS_DISABLED
+        "404":
+          description: The account no longer exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 404
+                message: User not found.
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
           $ref: "#/components/responses/IpRateLimitError"
+        "502":
+          description: The billing provider did not return a checkout URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 502
+                message: Billing provider did not return a checkout URL.
         "503":
-          description: Extra credit checkout is not configured. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            Extra credit checkout is not configured, the checkout could not be recorded (retry),
+            billing is not configured, the session store cannot be read, or the database cannot be
+            reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                packNotConfigured:
+                  summary: Credit pack product not configured
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Extra credit checkout is not configured.
+                recordFailed:
+                  summary: The checkout could not be recorded
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Extra credit checkout is temporarily unavailable. Try again.
                 authUnavailable:
                   summary: Session store unavailable
                   value:
@@ -5521,10 +6241,11 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: Up to 128 characters. Required unless `idempotencyKey` is in the body.
+          description: |
+            Required unless `idempotencyKey` is in the body; the header wins when both are sent. Only
+            the first 128 characters are used: a longer value is cut, not refused.
           schema:
             type: string
-            maxLength: 128
       requestBody:
         required: true
         content:
@@ -5550,6 +6271,7 @@ paths:
                   interval: monthly
                   paymentId: pay_123
                   confirmed: true
+                  replayed: false
         "202":
           description: "The provider's answer never arrived (`confirmed: false`). The change may still apply; it is held as pending, and a retry with the same key replays this answer."
           content:
@@ -5563,6 +6285,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                keyRequired:
+                  summary: No idempotency key
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: An idempotency key is required to change plans.
+                    details:
+                      code: IDEMPOTENCY_KEY_REQUIRED
                 invalidJson:
                   summary: The body is not valid JSON
                   value:
@@ -5652,8 +6382,9 @@ paths:
         (`/{username}/{slug}`); without one the request fails with `400`. Requires the
         `resume:write` scope when called with an API key.
 
-        The snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in
-        the response, nor in the owner's list of links.
+        The snapshot may be at most 1,000,000 bytes once serialized (`413` otherwise); the whole
+        body may be at most 4 MB. It is not echoed in the response, nor in the owner's list of
+        links.
 
         `allowDownload` (default `true`) says whether the public page shows a Download button.
         Replacing an existing link without it keeps the stored value. It is a display preference,
@@ -5704,6 +6435,21 @@ paths:
                     details:
                       - path: documentId
                         message: String must contain at least 1 character(s)
+                badExpiry:
+                  summary: An expiry that is not one of the allowed periods
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: "A share link expires 7, 14, 30 or 90 days from now, or never (noExpiry: true)."
+                expiryConflict:
+                  summary: noExpiry together with expiresAt
+                  value:
+                    success: false
+                    statusCode: 400
+                    message: Validation failed
+                    details:
+                      - path: expiresAt
+                        message: Send either noExpiry or expiresAt, not both.
                 invalidJson:
                   summary: The body is not valid JSON
                   value:
@@ -5713,22 +6459,29 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
-          description: |-
-            A moderator made this document private, or made another of the account's résumés or
-            cover letters private (a trashed one too, until retention purges it). No link is created
-            or refreshed on the account until a moderator lifts it. A portfolio takedown does not
-            pause sharing. An API key without the scope this operation needs also gets `403`.
+          description: |
+            A moderator made this document private ("This document was made private by a
+            moderator."), or made another of the account's résumés or cover letters private (a
+            trashed one too, until retention purges it). No link is created or refreshed on the
+            account until a moderator lifts it. A portfolio takedown does not pause sharing. An API
+            key without `resume:write` also gets `403`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: A moderator made this document private, or made another of the account's résumés or cover letters private (a trashed one too, until retention purges it)
+                  summary: Another of the account's documents was made private
                   value:
                     success: false
                     statusCode: 403
                     message: A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it.
+                thisDocument:
+                  summary: This document was made private
+                  value:
+                    success: false
+                    statusCode: 403
+                    message: This document was made private by a moderator.
                 scope:
                   summary: API key missing the required scope
                   value:
@@ -5746,12 +6499,20 @@ paths:
                 statusCode: 404
                 message: Document not found
         "413":
-          description: The snapshot is larger than 1 MB. A body over the route's parser limit is refused first, with "Request body too large".
+          description: |
+            A body over 4 MB is refused by the parser with "Request body too large". A smaller body
+            whose snapshot is over 1,000,000 bytes once serialized gets its own message.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                snapshotTooLarge:
+                  summary: Snapshot over 1,000,000 bytes
+                  value:
+                    success: false
+                    statusCode: 413
+                    message: The shared document is too large. Shorten it and share again.
                 bodyTooLarge:
                   summary: Body over the route's parser limit
                   value:
@@ -5817,16 +6578,29 @@ paths:
           required: false
           schema:
             type: integer
-            minimum: 1
-            maximum: 50
             default: 20
+          description: |
+            Links per page. Read leniently: a value above 50 is lowered to 50, and a value that is
+            not a positive integer is ignored (the default applies). Neither is refused.
         - name: offset
           in: query
           required: false
           schema:
             type: integer
-            minimum: 0
             default: 0
+          description: Rows to skip. A value that is not a non-negative integer is ignored.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 1-based page index, an alternative to `offset`. Read leniently like `limit`.
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Alternative spelling of `limit`. Takes precedence over `limit` when both are sent.
       responses:
         "200":
           description: Share links fetched successfully
@@ -5840,6 +6614,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 400
+                message: Validation failed
+                details:
+                  - path: offset
+                    message: Must not reach past row 1000000
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
@@ -5860,7 +6641,9 @@ paths:
       summary: Revoke Share Link
       description: |
         Deletes the share link, immediately breaking its public URL. `data` is `null` on success.
-        Requires the `resume:write` scope when called with an API key.
+        Requires the `resume:write` scope when called with an API key. An account that has not
+        claimed a username gets `400` "Username required before sharing" before the link is looked
+        up.
       parameters:
         - name: documentId
           in: path
@@ -5883,6 +6666,16 @@ paths:
                 success: true
                 message: Share link revoked successfully
                 data: null
+        "400":
+          description: The account has not claimed a username.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 400
+                message: Username required before sharing
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
@@ -5908,8 +6701,9 @@ paths:
       operationId: getPublicShareLink
       summary: Get Public Share Link
       description: |
-        Returns the shared document's title and snapshot, unless the link is password-protected — in
-        which case only `passwordRequired: true` is returned and the caller must call
+        Returns the shared document's title and snapshot, unless the link is password-protected. Then
+        the message is "Password required", `data` is only `{ passwordRequired: true, expiresAt }`
+        (no titles, which can name the person or the job), and the caller must call
         `POST /shares/public/{username}/{slug}/verify` with the password.
 
         `allowDownload` says whether to show a Download button. It is a display preference, not a
@@ -6046,16 +6840,17 @@ paths:
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
-          description: |-
+          description: |
             Too many password attempts for this link (5 per 5 minutes), or too many verify requests
-            from this IP (20 per 5 minutes). `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+            from this IP (20 per 5 minutes, "Too many requests. Please try again later."), or, with
+            an API key, the per-key limit. `Retry-After` says when to try again.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: Too many password attempts for this link (5 per 5 minutes), or too many verify requests from this IP (20 per 5 minutes)
+                  summary: Too many password attempts for this link
                   value:
                     success: false
                     statusCode: 429
@@ -6078,18 +6873,28 @@ paths:
               schema:
                 type: integer
         "503":
-          description: The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            The server cannot count attempts right now, so it refuses to check the password: the
+            per-link counter answers with `Retry-After` 30, and the per-IP limiter, which fails closed
+            on this route, answers with `Retry-After` 5. Also sent as "Service temporarily
+            unavailable" when the database cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 documented:
-                  summary: The server cannot count attempts right now, so it refuses to check the password
+                  summary: The per-link attempt counter is unavailable
                   value:
                     success: false
                     statusCode: 503
                     message: Password verification is temporarily unavailable
+                limiterUnavailable:
+                  summary: The per-IP limiter is unavailable
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Rate limiting is temporarily unavailable. Please retry shortly.
                 databaseUnavailable:
                   summary: Database unreachable
                   value:
@@ -6103,7 +6908,10 @@ paths:
       operationId: trackAffiliateClick
       summary: Track Affiliate Click
       description: |
-        Public, unauthenticated endpoint. Records a click against an affiliate's referral code.
+        Public, unauthenticated endpoint. Records a click against an affiliate's referral code. The
+        answer is the same `200 { tracked: true }` whether or not the code exists or is active, so
+        codes cannot be enumerated; only clicks on an active code are recorded, once per address per
+        window. The code is matched case-insensitively.
         Entire affiliate program is gated behind a feature flag (`config.growth.affiliateProgramEnabled`)
         that defaults off in production until explicitly enabled — every route in this group,
         including this one, returns `503` while the flag is off.
@@ -6124,12 +6932,6 @@ paths:
                 $ref: "#/components/schemas/AffiliateClickResponse"
         "400":
           $ref: "#/components/responses/BodyValidationError"
-        "404":
-          description: Affiliate link not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
@@ -6142,7 +6944,10 @@ paths:
         - Affiliates
       operationId: getAffiliateLeaderboard
       summary: Get Affiliate Leaderboard
-      description: Public, unauthenticated endpoint. Top 50 affiliates ranked by commission earnings, for the current calendar month or all-time.
+      description: |
+        Public, unauthenticated endpoint. Top 50 affiliates ranked by commission earnings, for the
+        current calendar month or all-time. Each entry shows only a short display name ("First L.")
+        and the tier, never an id, username or image.
       parameters:
         - name: period
           in: query
@@ -6153,6 +6958,8 @@ paths:
               - monthly
               - all_time
             default: monthly
+          description: |
+            `all_time` for all-time; any other value, or none, means `monthly`. Never refused.
       responses:
         "200":
           description: Leaderboard fetched successfully
@@ -6183,6 +6990,16 @@ paths:
                 $ref: "#/components/schemas/AffiliateDashboardResponse"
         "401":
           $ref: "#/components/responses/SessionUnauthorizedError"
+        "404":
+          description: The account no longer exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 404
+                message: User not found.
         "429":
           $ref: "#/components/responses/IpRateLimitError"
         "503":
@@ -6216,18 +7033,42 @@ paths:
                 success: false
                 statusCode: 403
                 message: Affiliate account is suspended
+        "404":
+          description: The account no longer exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 404
+                message: User not found.
         "429":
           $ref: "#/components/responses/IpRateLimitError"
         "503":
-          description: |-
-            The affiliate program is switched off (see `FeatureDisabledError`), or no unique
-            affiliate code could be made ("Could not create a unique affiliate code."). Retry the
-            second case. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+          description: |
+            The affiliate program is switched off (`details.code` `PROGRAM_DISABLED`), no unique
+            affiliate code could be made (retry), the session store cannot be read, or the database
+            cannot be reached.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
+                programDisabled:
+                  summary: Affiliate program switched off
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: The affiliate program is not available yet. Check back soon.
+                    details:
+                      code: PROGRAM_DISABLED
+                codeCollision:
+                  summary: No unique code could be made
+                  value:
+                    success: false
+                    statusCode: 503
+                    message: Could not create a unique affiliate code.
                 authUnavailable:
                   summary: Session store unavailable
                   value:
@@ -6289,11 +7130,26 @@ paths:
         "401":
           $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
-          description: Affiliate code not found
+          description: |
+            The code does not belong to an active affiliate (an unknown code and an inactive
+            affiliate's code answer the same), or the account no longer exists.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                codeNotFound:
+                  summary: Unknown or inactive code
+                  value:
+                    success: false
+                    statusCode: 404
+                    message: Affiliate code not found.
+                userNotFound:
+                  summary: Account not found
+                  value:
+                    success: false
+                    statusCode: 404
+                    message: User not found.
         "409":
           description: |
             This account already has a referral, signed up too long ago ("Referral codes can only be
@@ -6375,11 +7231,15 @@ paths:
                   code: AFFILIATE_NOT_ACTIVE
                   affiliateStatus: SUSPENDED
         "409":
-          description: An active withdrawal request already exists
+          description: A withdrawal request is already requested or approved.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 409
+                message: A withdrawal is already in progress
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
@@ -6414,10 +7274,13 @@ paths:
                 success: true
                 message: Success
                 data:
+                  name: Jane Doe
+                  email: jane@example.com
                   role: USER
                   ambassadorStatus: NONE
                   collegeName: null
                   graduationYear: null
+                  application: null
         "401":
           $ref: "#/components/responses/SessionUnauthorizedError"
         "404":
@@ -6440,9 +7303,10 @@ paths:
         - ProdSession: []
       summary: Apply For Campus Ambassador Program
       description: |
-        Submits (or resubmits, once previously rejected) a campus ambassador application. Rejects a
-        duplicate application from a user who already has one pending review, and rejects existing
-        ambassadors from re-applying. `graduationYear` is validated as a real 4-digit year on both the
+        Submits (or resubmits, once previously rejected) a campus ambassador application. Answers
+        `409` for a user who already has one pending review, or whose account role is
+        `AMBASSADOR`. Only the role is checked, so an account with another role (an admin, say)
+        whose application was approved can apply again. `graduationYear` is validated as a real 4-digit year on both the
         client and the server. Session-authenticated only.
       requestBody:
         required: true
@@ -6472,24 +7336,21 @@ paths:
                   collegeName: State University
                   graduationYear: "2027"
         "400":
-          description: Already an ambassador, application already pending, or validation error. A body that is not valid JSON answers "Invalid JSON body".
+          description: The body fails validation, or is not valid JSON.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
-                alreadyAmbassador:
-                  summary: Already approved
+                validation:
+                  summary: A field failed validation
                   value:
                     success: false
                     statusCode: 400
-                    message: You are already a campus ambassador.
-                alreadyPending:
-                  summary: Application already pending
-                  value:
-                    success: false
-                    statusCode: 400
-                    message: Your ambassador application is already pending review.
+                    message: Validation failed
+                    details:
+                      - path: graduationYear
+                        message: Enter a real 4-digit graduation year
                 invalidJson:
                   summary: The body is not valid JSON
                   value:
@@ -6498,6 +7359,35 @@ paths:
                     message: Invalid JSON body
         "401":
           $ref: "#/components/responses/SessionUnauthorizedError"
+        "404":
+          description: The account no longer exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                statusCode: 404
+                message: User not found.
+        "409":
+          description: Already an ambassador, or an application is already pending review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                alreadyAmbassador:
+                  summary: Already an ambassador
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: You are already a campus ambassador.
+                alreadyPending:
+                  summary: Application already pending
+                  value:
+                    success: false
+                    statusCode: 409
+                    message: Your ambassador application is already pending review.
         "413":
           $ref: "#/components/responses/PayloadTooLargeError"
         "429":
@@ -6519,8 +7409,9 @@ paths:
 
         Public callers may send only the allow-listed event names listed under `event`, and every
         call counts as 1. Events the server records itself, such as `auth_login_success`, cannot be
-        reported. Trusted servers send `x-internal-key` instead of an API key, which also allows
-        `custom_*` names (at most 50 distinct custom names per UTC day) and a `value` up to 1000.
+        reported. Trusted servers send `x-internal-key` instead of an API key, which also allows any
+        other name, stored as `custom_<name>` (at most 50 distinct custom names per UTC day), and a
+        `value` up to 1000.
       parameters:
         - name: x-internal-key
           in: header
@@ -6865,14 +7756,15 @@ components:
           properties:
             apiKeys:
               type: integer
+              description: Every API key on the account, active, revoked or expired.
             shareLinks:
               type: integer
+              description: Share links on documents that are not deleted, as the share list counts them.
             resumes:
               type: integer
               description: |
-                Counts every Document the user owns — every `type`, and soft-deleted ones included.
-                It is not a count of RESUME-type documents. Use `GET /documents` for an accurate,
-                filterable list.
+                The documents list's count: documents that are not deleted, of every type except
+                `PORTFOLIO`.
     UserResponse:
       type: object
       required:
@@ -6901,11 +7793,13 @@ components:
           type: string
           enum:
             - too_short
-            - too_long
             - invalid_characters
             - reserved
             - taken
-          description: Present only when `available` is `false`.
+          description: |
+            Present only when `available` is `false`. The path segment is cut to 32 characters during
+            normalisation, so a long name is never refused for length. A value with no letters,
+            digits, `_` or `-` normalises to `user`.
     UsernameAvailabilityResponse:
       type: object
       required:
@@ -6930,7 +7824,6 @@ components:
       properties:
         id:
           type: string
-          description: Empty string when the user has never saved a master profile yet.
         userId:
           type: string
         content:
@@ -6961,7 +7854,7 @@ components:
           type: boolean
         shareResumeCount:
           type: integer
-          description: Number of ShareLink records owned by the user.
+          description: The user's share links on documents that are not deleted, as the share list counts them.
     MasterProfileItemId:
       type: string
       minLength: 1
@@ -7798,9 +8691,9 @@ components:
         usernameOrUrl:
           type: string
           description: |
-            A GitHub username or profile URL. Free users may only import their own OAuth-connected
-            account (this value is ignored server-side and the caller's authenticated GitHub login is
-            used instead); paid users may import any public username.
+            A GitHub username or profile URL. Always required and checked (`400` when it is neither).
+            Free users may only import their own OAuth-connected account, so for them the linked
+            GitHub login is imported instead of this value; paid users may import any public username.
           minLength: 1
         replaceMaster:
           type: boolean
@@ -7825,9 +8718,10 @@ components:
           minLength: 8
           maxLength: 128
           description: |
-            The client's id for this import, as on every other AI route. A retry with the same id
-            and the same text after a lost response returns the document already created
-            (`replayed: true`) without charging again; the same id with different text is `409`.
+            The client's id for this import, as on every other AI route. A retry with the same id,
+            the same text and the same `replaceMaster` after a lost response returns the document
+            already created (`replayed: true`) without charging again; the same id with different
+            text or a different `replaceMaster` is `409`.
     ProfileImportResponse:
       type: object
       required:
@@ -7840,8 +8734,16 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/Document"
-          description: The newly created resume Document seeded from the imported data.
+          description: |
+            The newly created resume Document seeded from the imported data. A LinkedIn import
+            replayed by `requestId` returns the stored document with `replayed: true` added.
+          allOf:
+            - $ref: "#/components/schemas/Document"
+            - type: object
+              properties:
+                replayed:
+                  type: boolean
+                  description: Present and `true` only on a LinkedIn import replayed by `requestId`.
     RoadmapFeature:
       type: object
       required:
@@ -7963,31 +8865,6 @@ components:
               type:
                 - object
                 - "null"
-            interactions:
-              type: array
-              items:
-                type: object
-                properties:
-                  type:
-                    type: string
-                  value:
-                    type: integer
-                  comment:
-                    type:
-                      - string
-                      - "null"
-                  createdAt:
-                    type: string
-                    format: date-time
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      name:
-                        type:
-                          - string
-                          - "null"
     RoadmapFeatureResponse:
       type: object
       required:
@@ -8116,6 +8993,28 @@ components:
           type: string
         data:
           $ref: "#/components/schemas/ChangelogListData"
+    ChangelogEntryDetail:
+      description: A single entry, with the row's timestamps the list leaves out.
+      allOf:
+        - $ref: "#/components/schemas/ChangelogEntry"
+        - type: object
+          required:
+            - editedAt
+            - createdAt
+            - updatedAt
+          properties:
+            editedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+              description: When an admin last edited the entry, or `null` if only the release sync wrote it.
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
     ChangelogEntryResponse:
       type: object
       required:
@@ -8128,7 +9027,7 @@ components:
         message:
           type: string
         data:
-          $ref: "#/components/schemas/ChangelogEntry"
+          $ref: "#/components/schemas/ChangelogEntryDetail"
     ChangelogStats:
       type: object
       properties:
@@ -8155,9 +9054,13 @@ components:
               format: date-time
         contributorCount:
           type: integer
-          description: Distinct pull-request authors across every entry.
+          description: |
+            Distinct contributors, counted once each by GitHub login: the core team, the repository's
+            contributors from the last GitHub sync, the pull-request authors on every entry, and
+            `@mentions` in entry text.
         topContributors:
           type: array
+          description: Up to 30 of the contributors counted in `contributorCount`, the core team first, then in the order they were found. Not ranked by contributions.
           items:
             type: object
             properties:
@@ -8169,8 +9072,6 @@ components:
               htmlUrl:
                 type: string
                 format: uri
-              contributions:
-                type: integer
     ChangelogStatsResponse:
       type: object
       required:
@@ -8187,6 +9088,9 @@ components:
     GitHubStats:
       type: object
       properties:
+        totalItems:
+          type: integer
+          description: The same value as `total`, kept for older clients.
         total:
           type: integer
           description: Issues plus pull requests.
@@ -8210,11 +9114,20 @@ components:
       properties:
         projectName:
           type: string
+        projectUrl:
+          type: string
+          format: uri
         stats:
           $ref: "#/components/schemas/GitHubStats"
         syncedAt:
           type: string
           format: date-time
+        nextSyncAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: When the next scheduled sync is due.
     GitHubStatsResponse:
       type: object
       properties:
@@ -8264,11 +9177,18 @@ components:
         - type: object
           required:
             - items
+            - syncedAt
           properties:
             items:
               type: array
               items:
                 $ref: "#/components/schemas/GitHubItem"
+            syncedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+              description: When the snapshot was taken, or `null` before the first sync.
         - $ref: "#/components/schemas/OffsetPaginationMeta"
     GitHubIssuesResponse:
       type: object
@@ -8350,6 +9270,18 @@ components:
             - "null"
           format: date-time
           description: Written at most once every 5 minutes per key, so it lags real usage slightly.
+        expiresAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: When the key stops working. With `revokedAt`, this tells an expired key from a revoked one.
+        revokedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: When the key was revoked, by the user or by a rotation, or `null`.
     ApiKeySecret:
       type: object
       description: |
@@ -8603,6 +9535,19 @@ components:
             - "null"
           format: date-time
           description: Set by soft delete. Documents with a non-null deletedAt are excluded from list/get.
+        portfolioSubdomain:
+          type:
+            - string
+            - "null"
+          description: A PORTFOLIO draft's chosen subdomain; `null` on every other type.
+        moderatedPrivateAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: |
+            When a moderator made the document private. While set, the owner cannot share it or make
+            it anything but `PRIVATE`.
     DocumentListResponse:
       type: object
       description: |
@@ -8846,6 +9791,17 @@ components:
             - string
             - "null"
           format: date-time
+        portfolioSubdomain:
+          type:
+            - string
+            - "null"
+          description: A PORTFOLIO draft's chosen subdomain; `null` on every other type.
+        moderatedPrivateAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: When a moderator made the document private, or `null`.
     DocumentCreateRequest:
       type: object
       required:
@@ -9732,7 +10688,9 @@ components:
         Any other object is flattened to text, keys on their own lines.
       oneOf:
         - type: string
+          minLength: 1
           maxLength: 50000
+          description: Trimmed first; it must not be empty after trimming.
         - $ref: "#/components/schemas/AtsResumeDocument"
         - type: object
           additionalProperties: true
@@ -9910,7 +10868,7 @@ components:
           properties:
             text:
               type: string
-              description: Plain text extracted from the uploaded PDF, DOCX, TXT, Markdown, or JSON resume file (max ~50,000 characters).
+              description: Plain text extracted from the uploaded PDF, DOCX, HTML, TXT, Markdown, or JSON resume file (max ~50,000 characters).
             layout:
               $ref: "#/components/schemas/AtsLayoutSignals"
             quota:
@@ -9981,7 +10939,7 @@ components:
           type: string
           format: uri
           maxLength: 2048
-          description: Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3, response size to 2MB, and timeout to 8s).
+          description: Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3 and response size to 2MB; the page may go 8s without sending data and must finish within 15s).
         fetchJobUrl:
           type: boolean
           default: false
@@ -10041,6 +10999,11 @@ components:
               $ref: "#/components/schemas/AtsRepairSummary"
             quota:
               $ref: "#/components/schemas/AtsQuotaSummary"
+            replayed:
+              type: boolean
+              description: |
+                Present and `true` only when this is the stored answer to an earlier request with the
+                same `requestId` and input. Nothing is charged again, and `quota` is the current one.
     AtsRepairSummary:
       type: object
       required:
@@ -10159,7 +11122,15 @@ components:
               $ref: "#/components/schemas/AtsConvertedResume"
             creditsSpent:
               type: integer
-              description: Credits spent on the conversion. They come from any source (a plan, a pass or a credit pack), independently of the shared ATS scan quota.
+              description: |
+                Credits spent on the conversion. They come from any source (a plan, a pass or a credit
+                pack), independently of the shared ATS scan quota. A replay reports the conversion's
+                price here although nothing is charged again.
+            replayed:
+              type: boolean
+              description: |
+                Present and `true` only when this is the stored answer to an earlier request with the
+                same `requestId` and resume text.
     AiActionKey:
       type: string
       enum:
@@ -10229,7 +11200,10 @@ components:
           description: |
             Required, though every field inside it is optional and defaults to an empty string. At
             least one of `text`, `context`, or `jobDescription` must be non-empty or the request fails
-            with `400`. Per-action character limits apply — see `GET /ai/actions`.
+            with `400`. Each action also has its own limits for `text` and `context`, set in the
+            server's AI policy and not published: over one, the request fails with `400` "Text
+            exceeds the N character limit." (or "Context exceeds…"), naming the limit. A
+            `jobDescription` over its action's limit is cut to that length, not refused.
           properties:
             text:
               type: string
@@ -10293,6 +11267,11 @@ components:
                 balance:
                   type: integer
                   description: AI credit wallet balance after this generation.
+            replayed:
+              type: boolean
+              description: |
+                Present and `true` only when this is the stored answer to an earlier request with the
+                same `requestId` and input. Nothing is charged again.
     PortfolioPublicSummary:
       type: object
       properties:
@@ -10422,7 +11401,19 @@ components:
           type:
             - string
             - "null"
-          description: One of `grace_expired` or `user_unpublished` when the portfolio is suspended.
+          description: |
+            Why the portfolio is suspended: `user_unpublished`, `grace_expired`, a billing status
+            (`ACTIVE`, `PAST_DUE`, `CANCELED` or `INACTIVE`) recorded by the billing job, or
+            `moderation:<reason>` for a moderator's takedown.
+        reasonBeforeModeration:
+          type:
+            - string
+            - "null"
+          description: The owner's or billing's own suspension reason that a moderator's takedown covers, restored when it is lifted; `null` when the site was online as the takedown went on.
+        firstPublishedAt:
+          type: string
+          format: date-time
+          description: When the portfolio first went online. A republish moves `publishedAt`, not this.
         suspendedAt:
           type:
             - string
@@ -10471,12 +11462,10 @@ components:
         message:
           type: string
         data:
+          $ref: "#/components/schemas/PortfolioPublicationRecord"
           description: |
-            The updated publication record with `status: SUSPENDED`, or null when the caller had never
-            published a portfolio. No `publicUrl` is included.
-          oneOf:
-            - $ref: "#/components/schemas/PortfolioPublicationRecord"
-            - type: "null"
+            The updated publication record with `status: SUSPENDED`. Never null: a caller who never
+            published gets `404`. No `publicUrl` is included.
     PortfolioDraft:
       type: object
       description: |
@@ -10500,11 +11489,10 @@ components:
             draft shows its document slug.
         templateId:
           type: string
-          enum:
-            - signal
-            - atelier
-            - nimbus
-            - cipher
+          description: |
+            `signal`, `atelier`, `nimbus` or `cipher` once the draft has been saved through
+            `PUT /portfolios/draft`. A PORTFOLIO document created through `/documents` and never saved
+            as a draft keeps the template it was created with (`modern` by default).
         content:
           type: object
           additionalProperties: true
@@ -10542,11 +11530,10 @@ components:
           type: string
         templateId:
           type: string
-          enum:
-            - signal
-            - atelier
-            - nimbus
-            - cipher
+          description: |
+            `signal`, `atelier`, `nimbus` or `cipher` once the draft has been saved through
+            `PUT /portfolios/draft`. A PORTFOLIO document created through `/documents` and never saved
+            as a draft keeps the template it was created with (`modern` by default).
         content:
           type: object
           additionalProperties: true
@@ -10592,9 +11579,7 @@ components:
             publishedRevision:
               type: integer
             publishedAt:
-              type:
-                - string
-                - "null"
+              type: string
               format: date-time
             updatedAt:
               type: string
@@ -10880,8 +11865,10 @@ components:
             not a portfolio is published.
         totalViews:
           type: integer
+          description: All-time views, including views still buffered and not yet flushed.
         daily:
           type: array
+          description: The 30 most recent days that had views, newest first. Days with no views are left out.
           items:
             type: object
             properties:
@@ -10892,6 +11879,7 @@ components:
                 type: integer
         referrers:
           type: array
+          description: The all-time top 10 referrer hosts, from flushed views only.
           items:
             type: object
             properties:
@@ -10945,10 +11933,16 @@ components:
             - SOCIAL_IMAGE
         mimeType:
           type: string
+          description: |
+            `image/jpeg`, `image/png` or `image/webp`. Checked by the service rather than the
+            request schema, so any other value answers `400` "Upload a JPG, PNG, or WebP image.".
+          example: image/png
           minLength: 1
         sizeBytes:
           type: integer
-          description: Must be greater than 0 and no more than 5 MB.
+          description: |
+            Greater than 0 and at most 5,242,880 (5 MB). A larger size answers `400` "Image must be
+            5 MB or smaller.".
           exclusiveMinimum: 0
     PortfolioAssetUploadResponse:
       type: object
@@ -11065,11 +12059,14 @@ components:
             - string
             - "null"
           enum:
-            - one_day
-            - seven_day
-            - monthly
-            - annual
+            - ONE_DAY
+            - SEVEN_DAY
+            - MONTHLY
+            - ANNUAL
             - null
+          description: |
+            The stored billing interval, upper case. Request bodies (checkout, plan change) use the
+            lower-case spelling (`monthly`, `annual`, ...).
         currentPeriodEnd:
           type:
             - string
@@ -11158,9 +12155,61 @@ components:
         credits:
           $ref: "#/components/schemas/CreditWallet"
         catalog:
-          type: object
-          additionalProperties: true
-          description: Public product/pricing catalog (prices, intervals, entitlements per plan).
+          type: array
+          description: The public product catalog, one entry per subscription product.
+          items:
+            type: object
+            required:
+              - key
+              - name
+              - entitlements
+              - prices
+              - configuredIntervals
+              - currency
+            properties:
+              key:
+                type: string
+                enum:
+                  - ai_credits
+                  - portfolio_pro
+                  - bundle
+              name:
+                type: string
+              entitlements:
+                type: array
+                items:
+                  type: string
+              prices:
+                type: object
+                description: Price in cents per interval (`one_day`, `seven_day`, `monthly`, `annual`) the product is sold in.
+                additionalProperties:
+                  type: integer
+              creditAllowance:
+                type: object
+                description: AI credits granted per interval, for products that include them.
+                additionalProperties:
+                  type: integer
+              creditNotes:
+                type: object
+                description: How the allowance is delivered, per interval, in words a pricing page can show.
+                additionalProperties:
+                  type: string
+              recommended:
+                type: boolean
+              configuredIntervals:
+                type: array
+                description: The intervals that have a provider product configured on this server, so can be bought now.
+                items:
+                  type: string
+                  enum:
+                    - one_day
+                    - seven_day
+                    - monthly
+                    - annual
+              currency:
+                type: string
+                enum:
+                  - USD
         creditEconomics:
           type: object
           additionalProperties: true
@@ -11385,6 +12434,9 @@ components:
             url:
               type: string
               description: Dodo Payments hosted checkout URL to redirect the user to.
+            reused:
+              type: boolean
+              description: True when an open checkout session for the same choice was handed back instead of a new one.
     CancelCheckoutResponse:
       type: object
       required:
@@ -11489,6 +12541,7 @@ components:
               type: string
     PlanChangePreviewRequest:
       type: object
+      description: An `idempotencyKey` field is accepted here too, and ignored; a preview changes nothing.
       required:
         - productKey
         - interval
@@ -11606,7 +12659,7 @@ components:
               description: False when the provider's answer never arrived (the response is then `202`); the change may still apply.
             replayed:
               type: boolean
-              description: Present and true when this is the stored answer for an idempotency key already used.
+              description: Always present. `true` when this is the stored answer for an idempotency key already used, `false` on a fresh call.
     UsageEventRequest:
       type: object
       required:
@@ -11620,7 +12673,9 @@ components:
             Normalized to lower case with spaces as `_`. Public callers may send only `resume_created`,
             `resume_deleted`, `resume_exported`, `cover_letter_exported`, `auth_otp_sent`,
             `dashboard_opened`, `roadmap_viewed`, `share_link_created`, `share_link_updated` and
-            `share_link_revoked`. Internal callers (`x-internal-key`) may also send `custom_*` names.
+            `share_link_revoked`. Internal callers (`x-internal-key`) may send any other name too:
+            one that is not a known event is stored as `custom_<name>` (a name that already starts with
+            `custom_` is kept as is).
         value:
           type: integer
           maximum: 1000
@@ -11796,6 +12851,13 @@ components:
                 type: string
     PublicSharePayload:
       type: object
+      description: |
+        While a password is required, only `passwordRequired` (`true`) and `expiresAt` are sent.
+        Otherwise every field below is present except `snapshot`, which is sent once no password is
+        required or after successful verification.
+      required:
+        - passwordRequired
+        - expiresAt
       properties:
         passwordRequired:
           type: boolean
@@ -11848,6 +12910,7 @@ components:
           type: string
           minLength: 4
           maxLength: 32
+          description: Letters, digits and hyphens. Upper case is accepted and lower-cased before the lookup.
           pattern: ^[a-z0-9-]+$
         referrerHost:
           type: string
@@ -11881,21 +12944,13 @@ components:
           type:
             - object
             - "null"
+          description: Null when the affiliate's account is gone.
           properties:
-            id:
-              type: string
             name:
               type:
                 - string
                 - "null"
-            username:
-              type:
-                - string
-                - "null"
-            image:
-              type:
-                - string
-                - "null"
+              description: First name and last initial ("Jane D."), or null when the account has no name.
             affiliateTier:
               type: string
               enum:
@@ -11955,8 +13010,9 @@ components:
               status:
                 type: string
                 enum:
-                  - PENDING
+                  - SIGNED_UP
                   - CONVERTED
+                  - REJECTED
               createdAt:
                 type: string
                 format: date-time
@@ -12079,7 +13135,7 @@ components:
           type: string
           minLength: 4
           maxLength: 32
-          description: Another affiliate's code. Self-referrals are rejected.
+          description: Another affiliate's code. Letters, digits and hyphens; upper case is accepted and lower-cased. Self-referrals are rejected.
           pattern: ^[a-z0-9-]+$
     AffiliateReferralResponse:
       type: object
@@ -12125,7 +13181,10 @@ components:
         data:
           type: object
           additionalProperties: true
-          description: The created AffiliateWithdrawal record (status starts as REQUESTED).
+          description: |
+            The created withdrawal row as stored: `id`, `userId`, `amountCents`, `currency`,
+            `status` (`REQUESTED`), `payoutNote`, `reviewedBy`, `reviewedAt`, `paidAt`,
+            `createdAt` and `updatedAt`.
     AmbassadorApplicationRequest:
       type: object
       required:
@@ -12203,6 +13262,15 @@ components:
             - PENDING
             - APPROVED
             - REJECTED
+        name:
+          type:
+            - string
+            - "null"
+          description: The account's name, so the form can greet and prefill.
+        email:
+          type:
+            - string
+            - "null"
         collegeName:
           type:
             - string
@@ -12211,6 +13279,51 @@ components:
           type:
             - string
             - "null"
+        application:
+          type:
+            - object
+            - "null"
+          description: The latest application's answers, so a rejected applicant can edit and resubmit; null when there is none.
+          properties:
+            collegeName:
+              type: string
+            graduationYear:
+              type: string
+            whyJoin:
+              type: string
+            superpower:
+              type: string
+            funFact:
+              type: string
+            vibeCheck:
+              type:
+                - string
+                - "null"
+            socialHandle:
+              type:
+                - string
+                - "null"
+            status:
+              type: string
+              enum:
+                - PENDING
+                - APPROVED
+                - REJECTED
+            reviewNote:
+              type:
+                - string
+                - "null"
+            reviewedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            submittedAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
     AmbassadorStatusResponse:
       type: object
       required:
@@ -12402,6 +13515,34 @@ components:
           examples:
             ipLimit:
               summary: Per-IP limit
+              value:
+                success: false
+                statusCode: 429
+                message: Too many requests. Please try again later.
+            apiKeyLimit:
+              summary: Per-key limit
+              value:
+                success: false
+                statusCode: 429
+                message: Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds.
+    AutosaveRateLimitError:
+      description: |
+        Too Many Requests. This route is an autosave target, so it has its own limit: 600 saves per 15
+        minutes per user, counted after authentication. It also counts toward the 1,000 requests per
+        15 minutes per IP across all routes and, with an API key, the key's own limit. Every `429`
+        carries `Retry-After` (seconds).
+      headers:
+        Retry-After:
+          description: Seconds until the window resets.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            autosaveLimit:
+              summary: Autosave or per-IP limit
               value:
                 success: false
                 statusCode: 429

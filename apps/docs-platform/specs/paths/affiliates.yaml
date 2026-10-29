@@ -5,7 +5,10 @@ trackAffiliateClick:
     operationId: trackAffiliateClick
     summary: Track Affiliate Click
     description: |
-      Public, unauthenticated endpoint. Records a click against an affiliate's referral code.
+      Public, unauthenticated endpoint. Records a click against an affiliate's referral code. The
+      answer is the same `200 { tracked: true }` whether or not the code exists or is active, so
+      codes cannot be enumerated; only clicks on an active code are recorded, once per address per
+      window. The code is matched case-insensitively.
       Entire affiliate program is gated behind a feature flag (`config.growth.affiliateProgramEnabled`)
       that defaults off in production until explicitly enabled — every route in this group,
       including this one, returns `503` while the flag is off.
@@ -26,12 +29,6 @@ trackAffiliateClick:
               $ref: "../components/schemas.yaml#/AffiliateClickResponse"
       "400":
         $ref: ../components/responses.yaml#/BodyValidationError
-      "404":
-        description: Affiliate link not found
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
       "413":
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
@@ -45,7 +42,10 @@ getAffiliateLeaderboard:
       - Affiliates
     operationId: getAffiliateLeaderboard
     summary: Get Affiliate Leaderboard
-    description: Public, unauthenticated endpoint. Top 50 affiliates ranked by commission earnings, for the current calendar month or all-time.
+    description: |
+      Public, unauthenticated endpoint. Top 50 affiliates ranked by commission earnings, for the
+      current calendar month or all-time. Each entry shows only a short display name ("First L.")
+      and the tier, never an id, username or image.
     parameters:
       - name: period
         in: query
@@ -54,6 +54,8 @@ getAffiliateLeaderboard:
           type: string
           enum: [monthly, all_time]
           default: monthly
+        description: |
+          `all_time` for all-time; any other value, or none, means `monthly`. Never refused.
     responses:
       "200":
         description: Leaderboard fetched successfully
@@ -85,6 +87,16 @@ getMyAffiliateDashboard:
               $ref: "../components/schemas.yaml#/AffiliateDashboardResponse"
       "401":
         $ref: ../components/responses.yaml#/SessionUnauthorizedError
+      "404":
+        description: The account no longer exists.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 404
+              message: "User not found."
       "429":
         $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
@@ -119,18 +131,42 @@ enrollAsAffiliate:
               success: false
               statusCode: 403
               message: "Affiliate account is suspended"
+      "404":
+        description: The account no longer exists.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 404
+              message: "User not found."
       "429":
         $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        description: |-
-          The affiliate program is switched off (see `FeatureDisabledError`), or no unique
-          affiliate code could be made ("Could not create a unique affiliate code."). Retry the
-          second case. Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+        description: |
+          The affiliate program is switched off (`details.code` `PROGRAM_DISABLED`), no unique
+          affiliate code could be made (retry), the session store cannot be read, or the database
+          cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              programDisabled:
+                summary: Affiliate program switched off
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "The affiliate program is not available yet. Check back soon."
+                  details:
+                    code: PROGRAM_DISABLED
+              codeCollision:
+                summary: No unique code could be made
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Could not create a unique affiliate code."
               authUnavailable:
                 summary: Session store unavailable
                 value:
@@ -193,11 +229,26 @@ applyAffiliateReferral:
       "401":
         $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
-        description: Affiliate code not found
+        description: |
+          The code does not belong to an active affiliate (an unknown code and an inactive
+          affiliate's code answer the same), or the account no longer exists.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              codeNotFound:
+                summary: Unknown or inactive code
+                value:
+                  success: false
+                  statusCode: 404
+                  message: "Affiliate code not found."
+              userNotFound:
+                summary: Account not found
+                value:
+                  success: false
+                  statusCode: 404
+                  message: "User not found."
       "409":
         description: |
           This account already has a referral, signed up too long ago ("Referral codes can only be
@@ -280,11 +331,15 @@ requestAffiliateWithdrawal:
                 code: "AFFILIATE_NOT_ACTIVE"
                 affiliateStatus: "SUSPENDED"
       "409":
-        description: An active withdrawal request already exists
+        description: A withdrawal request is already requested or approved.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 409
+              message: "A withdrawal is already in progress"
       "413":
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":

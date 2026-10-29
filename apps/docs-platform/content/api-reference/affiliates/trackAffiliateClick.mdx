@@ -2,7 +2,15 @@
 title: Track Affiliate Click
 description: >
   Public, unauthenticated endpoint. Records a click against an affiliate's
-  referral code.
+  referral code. The
+
+  answer is the same `200 { tracked: true }` whether or not the code exists or
+  is active, so
+
+  codes cannot be enumerated; only clicks on an active code are recorded, once
+  per address per
+
+  window. The code is matched case-insensitively.
 
   Entire affiliate program is gated behind a feature flag
   (`config.growth.affiliateProgramEnabled`)
@@ -23,7 +31,15 @@ _openapi:
     contents:
       - content: >
           Public, unauthenticated endpoint. Records a click against an
-          affiliate's referral code.
+          affiliate's referral code. The
+
+          answer is the same `200 { tracked: true }` whether or not the code
+          exists or is active, so
+
+          codes cannot be enumerated; only clicks on an active code are
+          recorded, once per address per
+
+          window. The code is matched case-insensitively.
 
           Entire affiliate program is gated behind a feature flag
           (`config.growth.affiliateProgramEnabled`)

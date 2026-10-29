@@ -193,6 +193,35 @@ RateLimitError:
             statusCode: 429
             message: "Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds."
 
+AutosaveRateLimitError:
+  description: |
+    Too Many Requests. This route is an autosave target, so it has its own limit: 600 saves per 15
+    minutes per user, counted after authentication. It also counts toward the 1,000 requests per
+    15 minutes per IP across all routes and, with an API key, the key's own limit. Every `429`
+    carries `Retry-After` (seconds).
+  headers:
+    Retry-After:
+      description: Seconds until the window resets.
+      schema:
+        type: integer
+  content:
+    application/json:
+      schema:
+        $ref: "./schemas.yaml#/ErrorResponse"
+      examples:
+        autosaveLimit:
+          summary: Autosave or per-IP limit
+          value:
+            success: false
+            statusCode: 429
+            message: "Too many requests. Please try again later."
+        apiKeyLimit:
+          summary: Per-key limit
+          value:
+            success: false
+            statusCode: 429
+            message: "Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds."
+
 IpRateLimitError:
   description: |
     Too Many Requests - The per-IP limit, counted before authentication: 100 requests per 15

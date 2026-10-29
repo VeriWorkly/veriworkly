@@ -17,10 +17,12 @@ description: >
   `auth_login_success`, cannot be
 
   reported. Trusted servers send `x-internal-key` instead of an API key, which
-  also allows
+  also allows any
 
-  `custom_*` names (at most 50 distinct custom names per UTC day) and a `value`
-  up to 1000.
+  other name, stored as `custom_<name>` (at most 50 distinct custom names per
+  UTC day), and a
+
+  `value` up to 1000.
 full: true
 _openapi:
   preload:
@@ -48,9 +50,11 @@ _openapi:
           `auth_login_success`, cannot be
 
           reported. Trusted servers send `x-internal-key` instead of an API key,
-          which also allows
+          which also allows any
 
-          `custom_*` names (at most 50 distinct custom names per UTC day) and a
+          other name, stored as `custom_<name>` (at most 50 distinct custom
+          names per UTC day), and a
+
           `value` up to 1000.
 ---
 

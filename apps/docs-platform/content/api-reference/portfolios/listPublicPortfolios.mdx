@@ -1,11 +1,14 @@
 ---
 title: List Public Portfolios
 description: >
-  Lists the subdomains of every portfolio currently in `LIVE` or `GRACE` status,
-  most recently
+  Lists the subdomains of every portfolio the public site serves: `LIVE` ones,
+  and `GRACE`
 
-  updated first. Returns subdomain and timestamp only — no portfolio content.
-  Without
+  ones while their grace period is still running. A portfolio whose document was
+  deleted is
+
+  never listed. Most recently updated first. Returns subdomain and timestamp
+  only, no portfolio content. Without
 
   `limit` a page holds up to 1,000 portfolios; page through the rest with
   `offset` (up to
@@ -35,11 +38,14 @@ _openapi:
     headings: []
     contents:
       - content: >
-          Lists the subdomains of every portfolio currently in `LIVE` or `GRACE`
-          status, most recently
+          Lists the subdomains of every portfolio the public site serves: `LIVE`
+          ones, and `GRACE`
 
-          updated first. Returns subdomain and timestamp only — no portfolio
-          content. Without
+          ones while their grace period is still running. A portfolio whose
+          document was deleted is
+
+          never listed. Most recently updated first. Returns subdomain and
+          timestamp only, no portfolio content. Without
 
           `limit` a page holds up to 1,000 portfolios; page through the rest
           with `offset` (up to

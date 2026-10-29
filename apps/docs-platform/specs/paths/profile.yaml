@@ -12,9 +12,9 @@ masterProfile:
       Retrieves the authenticated user's master profile along with an account summary. Requires the
       `resume:read` scope when called with an API key.
 
-      When the user has never saved a profile, this still returns `200` with a placeholder whose
-      `id` is an empty string and whose `content` is `{}` — it does not return `404`. Cached for
-      1 hour and invalidated on write.
+      A user who has never saved a master profile gets `404` "Master profile not found". Create
+      one with `PUT /profiles/master` (without `expectedUpdatedAt`). Cached for 1 hour and
+      invalidated on write.
     responses:
       "200":
         description: Master profile fetched successfully
@@ -50,15 +50,24 @@ masterProfile:
         $ref: ../components/responses.yaml#/InsufficientScopeError
 
       "404":
-        description: User not found
+        description: The user has never saved a master profile, or the account no longer exists.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 404
-              message: "User not found"
+            examples:
+              noProfile:
+                summary: No master profile saved yet
+                value:
+                  success: false
+                  statusCode: 404
+                  message: "Master profile not found"
+              noUser:
+                summary: Account not found
+                value:
+                  success: false
+                  statusCode: 404
+                  message: "User not found"
       "429":
         $ref: ../components/responses.yaml#/RateLimitError
       "503":
@@ -154,25 +163,44 @@ masterProfile:
         $ref: ../components/responses.yaml#/InsufficientScopeError
 
       "409":
-        description: Conflict - profile updated elsewhere
+        description: |
+          The profile changed since `expectedUpdatedAt`, or a profile already exists and no
+          `expectedUpdatedAt` was sent. `details.currentUpdatedAt` is the stored version to read
+          and retry against.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "Master profile was updated from another session. Refresh and retry."
+            examples:
+              stale:
+                summary: Updated from another session
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Master profile was updated from another session. Refresh and retry."
+                  details:
+                    currentUpdatedAt: "2026-04-10T10:05:00.000Z"
+              alreadyExists:
+                summary: No expectedUpdatedAt over an existing profile
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Master profile already exists. Send expectedUpdatedAt to update it."
+                  details:
+                    currentUpdatedAt: "2026-04-10T10:05:00.000Z"
 
       "413":
-        description: Payload too large. A body over the route's parser limit is refused first, with "Request body too large".
+        description: |
+          A body over 4 MB is refused by the parser with "Request body too large". A body under that
+          whose profile is over 1,000,000 characters once serialised is refused with "Master
+          profile payload is too large".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
               documented:
-                summary: Payload too large
+                summary: Profile over 1,000,000 characters
                 value:
                   success: false
                   statusCode: 413
@@ -184,7 +212,7 @@ masterProfile:
                   statusCode: 413
                   message: Request body too large
       "429":
-        $ref: ../components/responses.yaml#/RateLimitError
+        $ref: ../components/responses.yaml#/AutosaveRateLimitError
       "503":
         $ref: ../components/responses.yaml#/ServiceUnavailableError
 
@@ -230,12 +258,15 @@ getImportQuota:
               data:
                 github:
                   isPaid: false
+                  unlimited: false
                   remaining: 1
                   limit: 1
                   resetsInSeconds: 0
                   connectedUsername: "octocat"
+                  hasGithubAccount: true
                 linkedin:
                   isPaid: false
+                  unlimited: false
                   remaining: 1
                   limit: 1
                   resetsInSeconds: 0
@@ -263,7 +294,8 @@ importGithub:
     description: |
       Imports a GitHub profile and repositories directly via the GitHub REST API (no AI parsing) and
       creates a new RESUME document from the result. Free users can only import their own linked
-      GitHub account (`usernameOrUrl` is ignored in that case); paid users may import any public
+      GitHub account: `usernameOrUrl` is still required and must be a valid GitHub username or
+      profile URL, but the linked login is imported instead; paid users may import any public
       username, up to 50 imports a day (see `GET /profiles/import/quota`). Requires the
       `resume:write` scope when called with an API key.
     requestBody:
@@ -301,18 +333,27 @@ importGithub:
                 updatedAt: "2026-04-01T10:00:00.000Z"
 
       "400":
-        description: Free user has no connected GitHub account, or a validation error. A body that is not valid JSON answers "Invalid JSON body".
+        description: |
+          `usernameOrUrl` is not a GitHub username or profile URL (checked first, for every
+          caller), a free user has no connected GitHub account, or the body fails validation. A
+          body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
               documented:
-                summary: Free user has no connected GitHub account, or a validation error
+                summary: Free user has no connected GitHub account
                 value:
                   success: false
                   statusCode: 400
                   message: "Please connect your GitHub account in settings to import your profile."
+              invalidUsername:
+                summary: Not a GitHub username or profile URL
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Enter a valid GitHub username or profile URL."
               invalidJson:
                 summary: The body is not valid JSON
                 value:
@@ -528,15 +569,29 @@ importLinkedin:
         $ref: "../components/responses.yaml#/UnauthorizedError"
 
       "402":
-        description: Not enough AI credits, or a free account already keeps its one resume.
+        description: |
+          Not enough AI credits, or a free account already keeps its one resume
+          (`details.code` `DOCUMENT_LIMIT`).
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 402
-              message: "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
+            examples:
+              credits:
+                summary: Not enough AI credits
+                value:
+                  success: false
+                  statusCode: 402
+                  message: "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
+              documentLimit:
+                summary: Free account already keeps one resume
+                value:
+                  success: false
+                  statusCode: 402
+                  message: "Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only."
+                  details:
+                    code: "DOCUMENT_LIMIT"
+                    type: "RESUME"
 
       "403":
         description: The API key lacks `resume:write` or `ai:write`.
@@ -548,16 +603,53 @@ importLinkedin:
               success: false
               statusCode: 403
               message: "This API key does not have permission for this action."
-      "413":
-        $ref: ../components/responses.yaml#/PayloadTooLargeError
-
-      "429":
-        description: Import quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+      "409":
+        description: |
+          The `requestId` was already used: for another operation, for this import with different
+          text or a different `replaceMaster`, or it is still processing. Also sent when the credit
+          balance changed while the credits were being held; retry the action.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              otherOperation:
+                summary: Id used for another operation or input
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "AI request id was already used for another operation."
+              processing:
+                summary: The same request is still running
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request is processing."
+              balanceChanged:
+                summary: The balance moved while credits were held
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Credit balance changed. Retry the action."
+      "413":
+        $ref: ../components/responses.yaml#/PayloadTooLargeError
+
+      "429":
+        description: |
+          The free import quota is used up (`details.resetsInSeconds`), the caller already has two
+          AI requests in progress (`Retry-After` 10), or a rate limit was hit: the per-IP AI limit
+          (20 per minute) or, with an API key, the per-key limit.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              inFlight:
+                summary: Two AI requests already in progress
+                value:
+                  success: false
+                  statusCode: 429
+                  message: "Too many AI requests in progress. Wait for one to finish and try again."
               documented:
                 summary: Import quota exceeded
                 value:
@@ -585,14 +677,65 @@ importLinkedin:
               type: integer
 
       "502":
-        description: AI parsing failed
+        description: The AI provider failed, or its output could not be turned into a profile. Nothing is charged.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              failed:
+                summary: AI parsing failed
+                value:
+                  success: false
+                  statusCode: 502
+                  message: "Failed to parse profile data using AI. Please try again."
+              incomplete:
+                summary: The parsed profile did not validate
+                value:
+                  success: false
+                  statusCode: 502
+                  message: "Imported profile data was incomplete. Please try again."
+      "503":
+        description: |
+          The AI gateway credentials or the server's AI policy are not usable, the server is
+          restarting (`details.code` `SERVER_RESTARTING`, with `Retry-After`), the session store
+          cannot be read (`details.code` `AUTH_UNAVAILABLE`), or the database cannot be reached.
+          Nothing is charged.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              credentials:
+                summary: AI gateway credentials missing
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "AI provider credentials are not configured."
+              restarting:
+                summary: The server is restarting
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "The server is restarting. Try again in a few seconds."
+                  details:
+                    code: "SERVER_RESTARTING"
+                    retryAfterSeconds: 5
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Authentication is temporarily unavailable"
+                  details:
+                    code: "AUTH_UNAVAILABLE"
+      "504":
+        description: The AI provider did not answer before the request deadline. Nothing is charged.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             example:
               success: false
-              statusCode: 502
-              message: "Failed to parse profile data using AI. Please try again."
-      "503":
-        $ref: ../components/responses.yaml#/ServiceUnavailableError
+              statusCode: 504
+              message: "The AI request timed out before the provider answered."

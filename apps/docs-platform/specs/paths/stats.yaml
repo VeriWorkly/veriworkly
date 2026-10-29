@@ -13,8 +13,9 @@ recordUsageEvent:
 
       Public callers may send only the allow-listed event names listed under `event`, and every
       call counts as 1. Events the server records itself, such as `auth_login_success`, cannot be
-      reported. Trusted servers send `x-internal-key` instead of an API key, which also allows
-      `custom_*` names (at most 50 distinct custom names per UTC day) and a `value` up to 1000.
+      reported. Trusted servers send `x-internal-key` instead of an API key, which also allows any
+      other name, stored as `custom_<name>` (at most 50 distinct custom names per UTC day), and a
+      `value` up to 1000.
     parameters:
       - name: x-internal-key
         in: header

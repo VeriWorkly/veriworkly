@@ -2,13 +2,15 @@
 title: Apply For Campus Ambassador Program
 description: >
   Submits (or resubmits, once previously rejected) a campus ambassador
-  application. Rejects a
+  application. Answers
 
-  duplicate application from a user who already has one pending review, and
-  rejects existing
+  `409` for a user who already has one pending review, or whose account role is
 
-  ambassadors from re-applying. `graduationYear` is validated as a real 4-digit
-  year on both the
+  `AMBASSADOR`. Only the role is checked, so an account with another role (an
+  admin, say)
+
+  whose application was approved can apply again. `graduationYear` is validated
+  as a real 4-digit year on both the
 
   client and the server. Session-authenticated only.
 full: true
@@ -23,13 +25,16 @@ _openapi:
     contents:
       - content: >
           Submits (or resubmits, once previously rejected) a campus ambassador
-          application. Rejects a
+          application. Answers
 
-          duplicate application from a user who already has one pending review,
-          and rejects existing
+          `409` for a user who already has one pending review, or whose account
+          role is
 
-          ambassadors from re-applying. `graduationYear` is validated as a real
-          4-digit year on both the
+          `AMBASSADOR`. Only the role is checked, so an account with another
+          role (an admin, say)
+
+          whose application was approved can apply again. `graduationYear` is
+          validated as a real 4-digit year on both the
 
           client and the server. Session-authenticated only.
 ---

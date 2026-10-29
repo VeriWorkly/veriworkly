@@ -78,7 +78,7 @@
         "tags": ["Health"],
         "operationId": "healthCheck",
         "summary": "Liveness Check",
-        "description": "Lightweight liveness probe. Confirms the API process is up and responding.\n\nIt deliberately touches **no** external dependency — no database query, no Redis command — so\nthat frequent uptime polling does not keep database compute awake. It therefore cannot report\non PostgreSQL or Redis, and never returns `503`. For dependency health use\n`GET /api/v1/health/ready`.\n\nThis is the only truly public endpoint on the API: it requires no session, no API key, and no\nfirst-party origin.\n",
+        "description": "Lightweight liveness probe. Confirms the API process is up and responding.\n\nIt deliberately touches **no** external dependency — no database query, no Redis command — so\nthat frequent uptime polling does not keep database compute awake. It therefore cannot report\non PostgreSQL or Redis, and never returns `503`. For dependency health use\n`GET /api/v1/health/ready`.\n\nIt requires no session, no API key and no first-party origin, and it is not rate limited.\nThe other fully open endpoints are listed in the introduction.\n",
         "responses": {
           "200": {
             "description": "Server is healthy",
@@ -122,11 +122,16 @@
             }
           },
           "503": {
-            "description": "The database or Redis could not be reached. The response carries no diagnostic detail —\nthe underlying error is logged server-side only.\n",
+            "description": "The database or Redis could not be reached. `details` gives the state of each:\n`connected`, `timeout` or `error`. The underlying error is logged server-side only.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": { "success": false, "statusCode": 503, "message": "Service Unavailable" }
+                "example": {
+                  "success": false,
+                  "statusCode": 503,
+                  "message": "Service Unavailable",
+                  "details": { "database": "connected", "redis": "timeout" }
+                }
               }
             }
           }
@@ -184,7 +189,7 @@
         "operationId": "deleteCurrentUser",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Delete Current User",
-        "description": "Permanently deletes the authenticated user's account with its documents, portfolio, share\nlinks, API keys and profile, then clears the session cookies. This cannot be undone.\n\nBilling and payout records are kept, unlinked from the deleted account, for as long as the law\nrequires: subscriptions, purchases, entitlement grants, the credit wallet and its\ntransactions, affiliate commissions and withdrawals.\n\nSession only: a request authenticated with an API key is rejected with `403`, whatever its\nscopes. The request is refused with `409` while something could still charge the card or\nwhile the user holds an unpaid affiliate balance:\n\n- a subscription that is active or past due and not set to cancel: cancel it from Billing\n  first;\n- `details.code: \"CHECKOUT_IN_PROGRESS\"`: a checkout session is open; finish or cancel it\n  first;\n- `details.code: \"AFFILIATE_BALANCE_FORFEIT\"`: deleting forfeits the unpaid commissions in\n  `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the\n  amount, then repeat the request with `confirmAffiliateForfeit: true` and\n  `confirmedAffiliateForfeitCents` set to the amount shown. If the balance has grown past\n  that amount, the request is refused again with the new one.\n",
+        "description": "Permanently deletes the authenticated user's account with its documents, portfolio, share\nlinks, API keys and profile, then clears the session cookies. This cannot be undone.\n\nBilling and payout records are kept, unlinked from the deleted account, for as long as the law\nrequires: subscriptions, purchases, entitlement grants, the credit wallet and its\ntransactions, affiliate commissions and withdrawals.\n\nSession only: a request authenticated with an API key is rejected with `403`, whatever its\nscopes. The request is refused with `409` while something could still charge the card or\nwhile the user holds an unpaid affiliate balance:\n\n- a subscription the billing provider still reports as active, on hold, past due or paused,\n  or one created in the last 24 hours that is not paid yet: cancel it from Billing first. A\n  subscription already set to cancel at the end of its period still blocks deletion until\n  that period ends;\n- `details.code: \"CHECKOUT_IN_PROGRESS\"`: a checkout session is open; finish or cancel it\n  first;\n- an affiliate withdrawal is requested or approved and not yet paid or rejected;\n- `details.code: \"AFFILIATE_BALANCE_FORFEIT\"`: deleting forfeits the unpaid commissions in\n  `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the\n  amount, then repeat the request with `confirmAffiliateForfeit: true` and\n  `confirmedAffiliateForfeitCents` set to the amount shown. If the balance has grown past\n  that amount, the request is refused again with the new one.\n",
         "parameters": [
           {
             "name": "confirmAffiliateForfeit",
@@ -217,7 +222,15 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BodyValidationError" },
+          "400": {
+            "description": "The body is not valid JSON. The confirmation fields are read leniently, so a wrong value\nis treated as \"not confirmed\" (`409`), not refused here.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "success": false, "statusCode": 400, "message": "Invalid JSON body" }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
           "403": {
             "description": "The request was authenticated with an API key.",
@@ -242,7 +255,7 @@
             }
           },
           "409": {
-            "description": "A live subscription must be cancelled first, a checkout is open\n(`details.code: \"CHECKOUT_IN_PROGRESS\"`), or deleting would forfeit an unpaid affiliate\nbalance that was not confirmed (`details.code: \"AFFILIATE_BALANCE_FORFEIT\"`, with\n`amountCents`, `currency`, `availableCents` and `pendingCents`).\n",
+            "description": "A live subscription must be cancelled first (or, when already set to cancel, must reach\nthe end of its period), a checkout is open (`details.code: \"CHECKOUT_IN_PROGRESS\"`), an\naffiliate withdrawal is in progress, or deleting would forfeit an unpaid affiliate\nbalance that was not confirmed (`details.code: \"AFFILIATE_BALANCE_FORFEIT\"`, with\n`amountCents`, `currency`, `availableCents` and `pendingCents`).\n",
             "content": {
               "application/json": {
                 "schema": {
@@ -257,7 +270,32 @@
                     "value": {
                       "success": false,
                       "statusCode": 409,
-                      "message": "Cancel your subscription before deleting your account. Open Billing and use Manage Subscription — we cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists."
+                      "message": "Cancel your subscription before deleting your account: open Billing and use Manage Subscription. We cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists. Once the subscription has ended you can delete your account."
+                    }
+                  },
+                  "subscriptionEnding": {
+                    "summary": "A subscription set to cancel that has not ended yet",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Your subscription is cancelled and ends on 2026-11-30. You can delete your account once it has ended. If you need it deleted sooner, contact support."
+                    }
+                  },
+                  "checkoutOpen": {
+                    "summary": "A checkout session is open",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "A checkout is still open for this account. Finish or cancel it before deleting the account.",
+                      "details": { "code": "CHECKOUT_IN_PROGRESS" }
+                    }
+                  },
+                  "withdrawalInProgress": {
+                    "summary": "An affiliate withdrawal is in progress",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "You have a withdrawal in progress. Wait for it to be paid or rejected before deleting your account."
                     }
                   },
                   "affiliateForfeit": {
@@ -282,11 +320,19 @@
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": { "$ref": "#/components/responses/RateLimitError" },
           "503": {
-            "description": "Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "Account deletion is temporarily unavailable: the checkout state could not be read, or the\nsessions could not be revoked before the deletion. The account is untouched; try again\nshortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot\nbe read, and as \"Service temporarily unavailable\" when the database cannot be reached.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "deletionUnavailable": {
+                    "summary": "Checkout state unreadable, or sessions not revoked",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Account deletion is temporarily unavailable. Try again shortly."
+                    }
+                  },
                   "authUnavailableCode": {
                     "summary": "Session store unavailable",
                     "value": {
@@ -408,7 +454,7 @@
         "operationId": "setUsername",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Set Username",
-        "description": "Claims the authenticated user's username. Requires the `user:write` scope when called with an\nAPI key.\n\nThe username is the public identifier in share-link URLs (`/share/{username}/{slug}`) and, for\naccounts holding `custom_subdomain`, the published-portfolio subdomain — so a user cannot\ncreate a share link until one is set.\n\n**A username can only be set once.** Once the account has one, this endpoint rejects any\ndifferent value with `409 Username is locked and cannot be changed`. Re-sending the value the\naccount already holds is a no-op and returns `200`, so the call is safe to retry.\n\nThe submitted value is **normalised before validation**: lowercased, non-`[a-z0-9_-]`\ncharacters folded to hyphens, leading/trailing hyphens stripped, and truncated to 32\ncharacters. `Jane.Doe` and `jane-doe` therefore claim the same username. It must survive\nnormalisation as 3–32 characters and must not be a reserved word (`admin`, `api`, `app`,\n`docs`, and similar platform-owned names). Check with\n`GET /users/{username}/availability` before committing.\n\nA successful claim invalidates the caller's cached session so the new username is visible\nimmediately rather than at the end of the session-cache TTL.\n",
+        "description": "Claims the authenticated user's username. Requires the `user:write` scope when called with an\nAPI key.\n\nThe username is the public identifier in share-link URLs (`/share/{username}/{slug}`) and, for\naccounts holding `custom_subdomain`, the published-portfolio subdomain — so a user cannot\ncreate a share link until one is set.\n\n**A username can only be set once.** Once the account has one, this endpoint rejects any\ndifferent value with `409 Username is locked and cannot be changed`. Re-sending the value the\naccount already holds is a no-op and returns `200`, so the call is safe to retry.\n\nThe submitted value is **normalised before validation**: lowercased, non-`[a-z0-9_-]`\ncharacters folded to hyphens, leading/trailing hyphens stripped, and truncated to 32\ncharacters. `Jane.Doe` and `jane-doe` therefore claim the same username. A value with no\nletters, digits, `_` or `-` at all (such as `!!!`) normalises to `user` and claims that name\nrather than being refused. The result must be 3 to 32 characters and must not be a reserved\nword (`admin`, `api`, `app`, `docs`, and similar platform-owned names). Check with\n`GET /users/{username}/availability` before committing.\n\nA successful claim invalidates the caller's cached session so the new username is visible\nimmediately rather than at the end of the session-cache TTL.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -452,18 +498,18 @@
             }
           },
           "400": {
-            "description": "The username failed validation after normalisation. A body that is not valid JSON answers \"Invalid JSON body\".",
+            "description": "The username failed validation after normalisation. The detail message is the reason:\n`too_short`, `invalid_characters` or `reserved`. A body that is not valid JSON answers\n\"Invalid JSON body\".\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "The username failed validation after normalisation",
+                    "summary": "The username is reserved",
                     "value": {
                       "success": false,
                       "statusCode": 400,
                       "message": "Validation failed",
-                      "details": [{ "path": "username", "message": "invalid_username" }]
+                      "details": [{ "path": "username", "message": "reserved" }]
                     }
                   },
                   "invalidJson": {
@@ -693,9 +739,9 @@
           {
             "name": "page",
             "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "default": 1, "maximum": 1000000 },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 1000000 },
             "required": false,
-            "description": "1-based page index. An alternative to `offset`."
+            "description": "1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` \"Send either page or offset, not both\".\n"
           },
           {
             "name": "pageSize",
@@ -752,7 +798,7 @@
             }
           },
           "400": {
-            "description": "Validation error",
+            "description": "Validation error: a parameter is out of range, `page` and `offset` were both sent, or the\nquery has a parameter this endpoint does not know (unknown parameters are refused, not\nignored).\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -848,8 +894,7 @@
                     "fullDescription": "Full feature details",
                     "whyItMatters": "Improves productivity",
                     "timeline": "In progress",
-                    "details": null,
-                    "interactions": []
+                    "details": null
                   }
                 }
               }
@@ -902,7 +947,7 @@
             "in": "query",
             "required": false,
             "schema": { "type": "string", "minLength": 1, "maxLength": 120 },
-            "description": "Case-insensitive substring match against the entry title and summary."
+            "description": "Case-insensitive substring match against the entry title, summary, version (a leading\n`v` is ignored) and id.\n"
           },
           {
             "name": "limit",
@@ -922,8 +967,8 @@
             "name": "page",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "default": 1, "maximum": 1000000 },
-            "description": "1-based page index. An alternative to `offset`."
+            "schema": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+            "description": "1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` \"Send either page or offset, not both\".\n"
           },
           {
             "name": "pageSize",
@@ -986,7 +1031,7 @@
             }
           },
           "400": {
-            "description": "Validation error",
+            "description": "Validation error: a parameter is out of range, `page` and `offset` were both sent, or the\nquery has a parameter this endpoint does not know (unknown parameters are refused, not\nignored).\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -1039,8 +1084,7 @@
                       {
                         "login": "octocat",
                         "avatarUrl": "https://avatars.githubusercontent.com/u/583231",
-                        "htmlUrl": "https://github.com/octocat",
-                        "contributions": 9
+                        "htmlUrl": "https://github.com/octocat"
                       }
                     ]
                   }
@@ -1094,7 +1138,10 @@
                     "breaking": [],
                     "security": [],
                     "tags": ["portfolio", "editor"],
-                    "prRefs": null
+                    "prRefs": null,
+                    "editedAt": null,
+                    "createdAt": "2026-07-29T10:05:00.000Z",
+                    "updatedAt": "2026-07-29T10:05:00.000Z"
                   }
                 }
               }
@@ -1141,7 +1188,9 @@
                       "message": "GitHub stats fetched successfully",
                       "data": {
                         "projectName": "owner/repo",
+                        "projectUrl": "https://github.com/orgs/owner/projects/1",
                         "stats": {
+                          "totalItems": 120,
                           "total": 120,
                           "issues": 70,
                           "pullRequests": 50,
@@ -1150,7 +1199,8 @@
                           "done": 50,
                           "completionRate": "41.67"
                         },
-                        "syncedAt": "2026-04-26T10:00:00.000Z"
+                        "syncedAt": "2026-04-26T10:00:00.000Z",
+                        "nextSyncAt": "2026-04-26T12:00:00.000Z"
                       }
                     }
                   },
@@ -1211,8 +1261,8 @@
           {
             "in": "query",
             "name": "page",
-            "schema": { "type": "integer", "minimum": 1, "default": 1, "maximum": 1000000 },
-            "description": "1-based page index. An alternative to `offset`.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+            "description": "1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` \"Send either page or offset, not both\".\n",
             "required": false
           },
           {
@@ -1223,48 +1273,52 @@
             "required": false
           },
           {
+            "in": "query",
             "name": "createdFrom",
-            "in": "query",
-            "required": false,
             "schema": {
               "anyOf": [
                 { "type": "string", "format": "date" },
                 { "type": "string", "format": "date-time" }
               ]
-            }
+            },
+            "description": "Items created at or after this time. A date (`2026-08-01`) means the start of that UTC\nday; a date-time is used as given.\n",
+            "required": false
           },
           {
+            "in": "query",
             "name": "createdTo",
-            "in": "query",
-            "required": false,
             "schema": {
               "anyOf": [
                 { "type": "string", "format": "date" },
                 { "type": "string", "format": "date-time" }
               ]
-            }
+            },
+            "description": "Items created at or before this time, inclusive. A bare date covers that whole UTC day, so\n`createdTo=2026-08-10` includes everything up to `2026-08-11T00:00:00Z`.\n",
+            "required": false
           },
           {
+            "in": "query",
             "name": "updatedFrom",
-            "in": "query",
-            "required": false,
             "schema": {
               "anyOf": [
                 { "type": "string", "format": "date" },
                 { "type": "string", "format": "date-time" }
               ]
-            }
+            },
+            "description": "Items updated at or after this time. Same date rules as `createdFrom`.",
+            "required": false
           },
           {
-            "name": "updatedTo",
             "in": "query",
-            "required": false,
+            "name": "updatedTo",
             "schema": {
               "anyOf": [
                 { "type": "string", "format": "date" },
                 { "type": "string", "format": "date-time" }
               ]
-            }
+            },
+            "description": "Items updated at or before this time, inclusive. Same date rules as `createdTo`.",
+            "required": false
           }
         ],
         "responses": {
@@ -1296,6 +1350,7 @@
                     "page": 1,
                     "pageSize": 20,
                     "totalPages": 1,
+                    "syncedAt": "2026-04-25T12:00:00.000Z",
                     "hasMore": false,
                     "pagination": { "mode": "offset", "nextOffset": null, "nextCursor": null }
                   }
@@ -1303,7 +1358,22 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
+          "400": {
+            "description": "Validation error: a parameter is out of range or not a date, `page` and `offset` were\nboth sent, or the query has a parameter this endpoint does not know (unknown parameters\nare refused, not ignored).\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 400,
+                  "message": "Validation failed",
+                  "details": [
+                    { "path": "offset", "message": "Send either page or offset, not both" }
+                  ]
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/PublicUnauthorizedError" },
           "403": { "$ref": "#/components/responses/InsufficientScopeError" },
           "429": { "$ref": "#/components/responses/RateLimitError" },
@@ -1570,27 +1640,29 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+            "schema": { "type": "integer", "default": 20 },
+            "description": "Keys per page. Read leniently: a value above 50 is lowered to 50, and a value that is not\na positive integer is ignored (the default applies). Neither is refused.\n"
           },
           {
             "name": "offset",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+            "schema": { "type": "integer", "default": 0 },
+            "description": "Rows to skip. A value that is not a non-negative integer is ignored. An offset past row\n1,000,000 is refused with `400`.\n"
           },
           {
             "name": "page",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "default": 1 },
-            "description": "1-based page index. An alternative to `offset`. When both are sent, `offset` decides\nthe window and the response echoes the `page` that was sent.\n"
+            "schema": { "type": "integer" },
+            "description": "1-based page index, the first page when left out. An alternative to `offset`. When both\nare sent, `offset` decides the window and the response echoes the `page` that was sent.\nA value that is not a positive integer is ignored.\n"
           },
           {
             "name": "pageSize",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50 },
-            "description": "Alternative spelling of `limit`. Takes precedence over `limit` when both are sent."
+            "schema": { "type": "integer" },
+            "description": "Alternative spelling of `limit`, with the same lenient reading. Takes precedence over\n`limit` when both are sent.\n"
           }
         ],
         "responses": {
@@ -1610,7 +1682,9 @@
                         "keyPrefix": "vw_a1b2c",
                         "isActive": true,
                         "createdAt": "2026-04-11T10:37:35.584Z",
-                        "lastUsed": "2026-04-25T19:35:44.409Z"
+                        "lastUsed": "2026-04-25T19:35:44.409Z",
+                        "expiresAt": "2027-04-11T10:37:35.584Z",
+                        "revokedAt": null
                       }
                     ],
                     "total": 1,
@@ -1622,6 +1696,20 @@
                     "hasMore": false,
                     "pagination": { "mode": "offset", "nextOffset": null, "nextCursor": null }
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The requested window reaches past row 1,000,000.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 400,
+                  "message": "Validation failed",
+                  "details": [{ "path": "offset", "message": "Must not reach past row 1000000" }]
                 }
               }
             }
@@ -1654,14 +1742,13 @@
                   },
                   "scopes": {
                     "type": "array",
-                    "description": "Scopes granted to the new key. Defaults to `[\"user:read\"]` when omitted (the\nserver's `API_KEY_DEFAULT_SCOPES`). A comma-separated string such as\n`\"user:read,resume:read\"` is also accepted. Any value outside the listed set is\nrejected with `400`.\n",
+                    "description": "Scopes granted to the new key. Defaults to `[\"user:read\"]` (the server's\n`API_KEY_DEFAULT_SCOPES`) when omitted, empty, or an empty string. A comma-separated string such as\n`\"user:read,resume:read\"` is also accepted. Any value outside the listed set is\nrejected with `400`.\n",
                     "items": { "$ref": "#/components/schemas/ApiKeyScope" }
                   },
                   "rateLimit": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 600,
-                    "description": "Requests allowed per 15-minute window. Defaults to 20 (the server's\n`API_KEY_DEFAULT_RATE_LIMIT`). The ceiling is `API_KEY_MAX_RATE_LIMIT`, 600 by\ndefault: a larger value is lowered to the ceiling, not rejected. A value that is\nnot a positive integer is rejected with `400`.\n",
+                    "description": "Requests allowed per 15-minute window. Defaults to 20 (the server's\n`API_KEY_DEFAULT_RATE_LIMIT`). The ceiling is `API_KEY_MAX_RATE_LIMIT`, 600 by\ndefault: a larger value is lowered to the ceiling, not rejected. A numeric string\nsuch as `\"50\"` is accepted. A value that is not a positive integer is rejected\nwith `400`.\n",
                     "example": 20
                   },
                   "expiresAt": {
@@ -1810,14 +1897,13 @@
                   },
                   "scopes": {
                     "type": "array",
-                    "description": "Scopes for the replacement key. Carried over from the old key when omitted. A\ncomma-separated string is also accepted.\n",
+                    "description": "Scopes for the replacement key. Carried over from the old key when omitted, empty,\nor an empty string. A comma-separated string is also accepted.\n",
                     "items": { "$ref": "#/components/schemas/ApiKeyScope" }
                   },
                   "rateLimit": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 600,
-                    "description": "Requests allowed per 15-minute window. Carried over unchanged when omitted. A value\nyou send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger.\n"
+                    "description": "Requests allowed per 15-minute window. Carried over unchanged when omitted. A value\nyou send is lowered to `API_KEY_MAX_RATE_LIMIT` (600 by default) if it is larger,\nnot rejected. A numeric string is accepted.\n"
                   },
                   "expiresAt": {
                     "description": "New expiry: an ISO 8601 timestamp with a zone, in the future (`400` otherwise).\nCarried over from the old key when omitted, falling back to 365 days from now if\nthe old key had none.\n",
@@ -1846,7 +1932,7 @@
                     "id": "cmnu7awv4000063lk18zpon2n",
                     "key": "vw_9e8d7c6b5a4938271605f4e3d2c1b0a99887766554433221100ffeeddccbbaa9",
                     "keyPrefix": "vw_9e8d7",
-                    "keySuffix": "ccbbaa9",
+                    "keySuffix": "ddccbbaa",
                     "name": "My Documentation Key",
                     "userId": "cmnu7awv4000063lk18zpon2x",
                     "isActive": true,
@@ -1924,7 +2010,7 @@
         "tags": ["API Keys"],
         "operationId": "revokeApiKey",
         "summary": "Revoke API Key",
-        "description": "Immediately disables an API key without deleting its record — `isActive` becomes false and\n`revokedAt` is stamped. The cached authentication record is purged at the same time, so the\nsecret stops working right away rather than after the cache expires.\n\nA revoked key cannot be reactivated; rotate or create a new one instead. `data` is `null` on\nsuccess.\n",
+        "description": "Immediately disables an API key without deleting its record — `isActive` becomes false and\n`revokedAt` is stamped. The cached authentication record is purged at the same time, so the\nsecret stops working right away rather than after the cache expires.\n\nA revoked key cannot be reactivated; rotate or create a new one instead. Revoking is\nidempotent: revoking a key that is already revoked, or was retired by a rotation, answers\n`200` again and keeps its original `revokedAt`. `data` is `null` on success.\n",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "parameters": [
           {
@@ -1992,7 +2078,7 @@
                   "data": {
                     "id": "cmnu7bxq2000163lk4d1zqp8n",
                     "keyPrefix": "vw_a1b2c",
-                    "keySuffix": "9f8e7d6",
+                    "keySuffix": "a09f8e7d",
                     "name": "CI pipeline",
                     "userId": "cmnu7awv4000063lk18zpon2m",
                     "isActive": true,
@@ -2072,7 +2158,7 @@
         "operationId": "getMasterProfile",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Get Master Profile",
-        "description": "Retrieves the authenticated user's master profile along with an account summary. Requires the\n`resume:read` scope when called with an API key.\n\nWhen the user has never saved a profile, this still returns `200` with a placeholder whose\n`id` is an empty string and whose `content` is `{}` — it does not return `404`. Cached for\n1 hour and invalidated on write.\n",
+        "description": "Retrieves the authenticated user's master profile along with an account summary. Requires the\n`resume:read` scope when called with an API key.\n\nA user who has never saved a master profile gets `404` \"Master profile not found\". Create\none with `PUT /profiles/master` (without `expectedUpdatedAt`). Cached for 1 hour and\ninvalidated on write.\n",
         "responses": {
           "200": {
             "description": "Master profile fetched successfully",
@@ -2112,11 +2198,24 @@
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
           "403": { "$ref": "#/components/responses/InsufficientScopeError" },
           "404": {
-            "description": "User not found",
+            "description": "The user has never saved a master profile, or the account no longer exists.",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": { "success": false, "statusCode": 404, "message": "User not found" }
+                "examples": {
+                  "noProfile": {
+                    "summary": "No master profile saved yet",
+                    "value": {
+                      "success": false,
+                      "statusCode": 404,
+                      "message": "Master profile not found"
+                    }
+                  },
+                  "noUser": {
+                    "summary": "Account not found",
+                    "value": { "success": false, "statusCode": 404, "message": "User not found" }
+                  }
+                }
               }
             }
           },
@@ -2198,26 +2297,41 @@
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
           "403": { "$ref": "#/components/responses/InsufficientScopeError" },
           "409": {
-            "description": "Conflict - profile updated elsewhere",
+            "description": "The profile changed since `expectedUpdatedAt`, or a profile already exists and no\n`expectedUpdatedAt` was sent. `details.currentUpdatedAt` is the stored version to read\nand retry against.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 409,
-                  "message": "Master profile was updated from another session. Refresh and retry."
+                "examples": {
+                  "stale": {
+                    "summary": "Updated from another session",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Master profile was updated from another session. Refresh and retry.",
+                      "details": { "currentUpdatedAt": "2026-04-10T10:05:00.000Z" }
+                    }
+                  },
+                  "alreadyExists": {
+                    "summary": "No expectedUpdatedAt over an existing profile",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Master profile already exists. Send expectedUpdatedAt to update it.",
+                      "details": { "currentUpdatedAt": "2026-04-10T10:05:00.000Z" }
+                    }
+                  }
                 }
               }
             }
           },
           "413": {
-            "description": "Payload too large. A body over the route's parser limit is refused first, with \"Request body too large\".",
+            "description": "A body over 4 MB is refused by the parser with \"Request body too large\". A body under that\nwhose profile is over 1,000,000 characters once serialised is refused with \"Master\nprofile payload is too large\".\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "Payload too large",
+                    "summary": "Profile over 1,000,000 characters",
                     "value": {
                       "success": false,
                       "statusCode": 413,
@@ -2236,7 +2350,7 @@
               }
             }
           },
-          "429": { "$ref": "#/components/responses/RateLimitError" },
+          "429": { "$ref": "#/components/responses/AutosaveRateLimitError" },
           "503": { "$ref": "#/components/responses/ServiceUnavailableError" }
         }
       }
@@ -2260,13 +2374,16 @@
                   "data": {
                     "github": {
                       "isPaid": false,
+                      "unlimited": false,
                       "remaining": 1,
                       "limit": 1,
                       "resetsInSeconds": 0,
-                      "connectedUsername": "octocat"
+                      "connectedUsername": "octocat",
+                      "hasGithubAccount": true
                     },
                     "linkedin": {
                       "isPaid": false,
+                      "unlimited": false,
                       "remaining": 1,
                       "limit": 1,
                       "resetsInSeconds": 0,
@@ -2290,7 +2407,7 @@
         "operationId": "importGithub",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Import Profile From GitHub",
-        "description": "Imports a GitHub profile and repositories directly via the GitHub REST API (no AI parsing) and\ncreates a new RESUME document from the result. Free users can only import their own linked\nGitHub account (`usernameOrUrl` is ignored in that case); paid users may import any public\nusername, up to 50 imports a day (see `GET /profiles/import/quota`). Requires the\n`resume:write` scope when called with an API key.\n",
+        "description": "Imports a GitHub profile and repositories directly via the GitHub REST API (no AI parsing) and\ncreates a new RESUME document from the result. Free users can only import their own linked\nGitHub account: `usernameOrUrl` is still required and must be a valid GitHub username or\nprofile URL, but the linked login is imported instead; paid users may import any public\nusername, up to 50 imports a day (see `GET /profiles/import/quota`). Requires the\n`resume:write` scope when called with an API key.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -2329,17 +2446,25 @@
             }
           },
           "400": {
-            "description": "Free user has no connected GitHub account, or a validation error. A body that is not valid JSON answers \"Invalid JSON body\".",
+            "description": "`usernameOrUrl` is not a GitHub username or profile URL (checked first, for every\ncaller), a free user has no connected GitHub account, or the body fails validation. A\nbody that is not valid JSON answers \"Invalid JSON body\".\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "Free user has no connected GitHub account, or a validation error",
+                    "summary": "Free user has no connected GitHub account",
                     "value": {
                       "success": false,
                       "statusCode": 400,
                       "message": "Please connect your GitHub account in settings to import your profile."
+                    }
+                  },
+                  "invalidUsername": {
+                    "summary": "Not a GitHub username or profile URL",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Enter a valid GitHub username or profile URL."
                     }
                   },
                   "invalidJson": {
@@ -2560,14 +2685,28 @@
           },
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
           "402": {
-            "description": "Not enough AI credits, or a free account already keeps its one resume.",
+            "description": "Not enough AI credits, or a free account already keeps its one resume\n(`details.code` `DOCUMENT_LIMIT`).\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 402,
-                  "message": "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
+                "examples": {
+                  "credits": {
+                    "summary": "Not enough AI credits",
+                    "value": {
+                      "success": false,
+                      "statusCode": 402,
+                      "message": "Not enough AI credits. Credits come with a credit pack, a pass, AI Credits or the Job Hunter Bundle."
+                    }
+                  },
+                  "documentLimit": {
+                    "summary": "Free account already keeps one resume",
+                    "value": {
+                      "success": false,
+                      "statusCode": 402,
+                      "message": "Free accounts can keep 1 active resume at a time. Unlimited documents come with any plan (AI Credits, Creator Pro or the Job Hunter Bundle) or a pass; credit packs add AI credits only.",
+                      "details": { "code": "DOCUMENT_LIMIT", "type": "RESUME" }
+                    }
+                  }
                 }
               }
             }
@@ -2585,13 +2724,55 @@
               }
             }
           },
-          "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
-          "429": {
-            "description": "Import quota exceeded. The per-IP limit also answers `429` (\"Too many requests. Please try again later.\"). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.",
+          "409": {
+            "description": "The `requestId` was already used: for another operation, for this import with different\ntext or a different `replaceMaster`, or it is still processing. Also sent when the credit\nbalance changed while the credits were being held; retry the action.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "otherOperation": {
+                    "summary": "Id used for another operation or input",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "AI request id was already used for another operation."
+                    }
+                  },
+                  "processing": {
+                    "summary": "The same request is still running",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "This AI request is processing."
+                    }
+                  },
+                  "balanceChanged": {
+                    "summary": "The balance moved while credits were held",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Credit balance changed. Retry the action."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
+          "429": {
+            "description": "The free import quota is used up (`details.resetsInSeconds`), the caller already has two\nAI requests in progress (`Retry-After` 10), or a rate limit was hit: the per-IP AI limit\n(20 per minute) or, with an API key, the per-key limit.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "inFlight": {
+                    "summary": "Two AI requests already in progress",
+                    "value": {
+                      "success": false,
+                      "statusCode": 429,
+                      "message": "Too many AI requests in progress. Wait for one to finish and try again."
+                    }
+                  },
                   "documented": {
                     "summary": "Import quota exceeded",
                     "value": {
@@ -2628,19 +2809,80 @@
             }
           },
           "502": {
-            "description": "AI parsing failed",
+            "description": "The AI provider failed, or its output could not be turned into a profile. Nothing is charged.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "failed": {
+                    "summary": "AI parsing failed",
+                    "value": {
+                      "success": false,
+                      "statusCode": 502,
+                      "message": "Failed to parse profile data using AI. Please try again."
+                    }
+                  },
+                  "incomplete": {
+                    "summary": "The parsed profile did not validate",
+                    "value": {
+                      "success": false,
+                      "statusCode": 502,
+                      "message": "Imported profile data was incomplete. Please try again."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The AI gateway credentials or the server's AI policy are not usable, the server is\nrestarting (`details.code` `SERVER_RESTARTING`, with `Retry-After`), the session store\ncannot be read (`details.code` `AUTH_UNAVAILABLE`), or the database cannot be reached.\nNothing is charged.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "credentials": {
+                    "summary": "AI gateway credentials missing",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "AI provider credentials are not configured."
+                    }
+                  },
+                  "restarting": {
+                    "summary": "The server is restarting",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "The server is restarting. Try again in a few seconds.",
+                      "details": { "code": "SERVER_RESTARTING", "retryAfterSeconds": 5 }
+                    }
+                  },
+                  "authUnavailable": {
+                    "summary": "Session store unavailable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Authentication is temporarily unavailable",
+                      "details": { "code": "AUTH_UNAVAILABLE" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The AI provider did not answer before the request deadline. Nothing is charged.",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "example": {
                   "success": false,
-                  "statusCode": 502,
-                  "message": "Failed to parse profile data using AI. Please try again."
+                  "statusCode": 504,
+                  "message": "The AI request timed out before the provider answered."
                 }
               }
             }
-          },
-          "503": { "$ref": "#/components/responses/ServiceUnavailableError" }
+          }
         }
       }
     },
@@ -2749,7 +2991,7 @@
         "operationId": "createDocument",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Document",
-        "description": "Creates a new document. If no `content` is provided for a RESUME or COVER_LETTER, it is\nauto-seeded from the user's MasterProfile (when one exists). Free-tier users are limited to\n1 active document per type; upgrading removes that limit.\n",
+        "description": "Creates a new document. If no `content` is provided for a RESUME or COVER_LETTER, it is\nauto-seeded from the user's MasterProfile (when one exists). Free-tier users are limited to\n1 active document per type; upgrading removes that limit.\n\nIdempotent on the client's own `id`: sending an `id` the caller already has live answers\n`200` \"Document already exists\" with the stored row (not `201`), so a retried sync adopts\nthe server's revision.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -2760,6 +3002,12 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "The `id` sent is already one of the caller's live documents; the stored row is returned and nothing is written. The message is \"Document already exists\".",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/DocumentResponse" } }
+            }
+          },
           "201": {
             "description": "Document created successfully",
             "content": {
@@ -2802,7 +3050,8 @@
                     "value": {
                       "success": false,
                       "statusCode": 409,
-                      "message": "Document was deleted"
+                      "message": "Document was deleted",
+                      "details": { "id": "doc_123", "deletedAt": "2026-04-20T10:00:00.000Z" }
                     }
                   },
                   "slugInUse": {
@@ -2818,13 +3067,13 @@
             }
           },
           "413": {
-            "description": "Payload too large. A body over the route's parser limit is refused first, with \"Request body too large\".",
+            "description": "A body over 4 MB is refused by the parser with \"Request body too large\". A body under that\nwhose `content` or `metadata` is over 1,000,000 characters once serialised is refused\nwith \"Document content payload is too large\".\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "Payload too large",
+                    "summary": "Content or metadata over 1,000,000 characters",
                     "value": {
                       "success": false,
                       "statusCode": 413,
@@ -2909,7 +3158,32 @@
           },
           "400": { "$ref": "#/components/responses/BodyValidationError" },
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "403": { "$ref": "#/components/responses/InsufficientScopeError" },
+          "403": {
+            "description": "The API key lacks `resume:write`, or the update sets `visibility` to anything but\n`PRIVATE` on a document a moderator made private.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "scope": {
+                    "summary": "API key missing the required scope",
+                    "value": {
+                      "success": false,
+                      "statusCode": 403,
+                      "message": "This API key does not have permission for this action."
+                    }
+                  },
+                  "moderated": {
+                    "summary": "Made private by a moderator",
+                    "value": {
+                      "success": false,
+                      "statusCode": 403,
+                      "message": "This document was made private by a moderator."
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Document not found",
             "content": {
@@ -2946,13 +3220,13 @@
             }
           },
           "413": {
-            "description": "Payload too large. A body over the route's parser limit is refused first, with \"Request body too large\".",
+            "description": "A body over 4 MB is refused by the parser with \"Request body too large\". A body under that\nwhose `content` or `metadata` is over 1,000,000 characters once serialised is refused\nwith \"Document content payload is too large\".\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "Payload too large",
+                    "summary": "Content or metadata over 1,000,000 characters",
                     "value": {
                       "success": false,
                       "statusCode": 413,
@@ -2971,7 +3245,7 @@
               }
             }
           },
-          "429": { "$ref": "#/components/responses/RateLimitError" },
+          "429": { "$ref": "#/components/responses/AutosaveRateLimitError" },
           "503": { "$ref": "#/components/responses/ServiceUnavailableError" }
         }
       },
@@ -2980,7 +3254,7 @@
         "operationId": "deleteDocument",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Delete Document",
-        "description": "Soft-deletes a document by setting `deletedAt`. The document is immediately excluded from\nlist/get responses. Hard delete and restore exist at the service layer but are not exposed\nthrough any public route.\n\n`data` is `null` on success — the deleted document is not echoed back.\n",
+        "description": "Soft-deletes a document by setting `deletedAt`. The document is immediately excluded from\nlist/get responses. Hard delete and restore exist at the service layer but are not exposed\nthrough any public route.\n\n`data` is `null` on success: the deleted document is not echoed back. Deleting a document\nthat is already in the trash also answers `200`; only an id the caller does not own, or one\nalready purged, answers `404`.\n",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -3062,7 +3336,7 @@
         "operationId": "extractAtsResumeText",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Extract Resume Text",
-        "description": "Extracts plain text from an uploaded resume file (PDF, DOCX, TXT, Markdown, or JSON, max 5MB)\nfor use as the `resume` field on `/ats/check` or `/ats/analyze`. Does not consume ATS scan\nquota. Uploads are metered by a separate extract budget instead (`quota.extract`), and a\nrequest over it is rejected with `429`. The multipart body must carry only the `resume`\nfile; any other field is rejected with `400`.\n",
+        "description": "Extracts plain text from an uploaded resume file (PDF, DOCX, HTML, TXT, Markdown, or JSON, max 5MB)\nfor use as the `resume` field on `/ats/check` or `/ats/analyze`. Does not consume ATS scan\nquota. Uploads are metered by a separate extract budget instead (`quota.extract`), and a\nrequest over it is rejected with `429`. The multipart body must carry only the `resume`\nfile; any other field is rejected with `400`.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -3085,11 +3359,43 @@
             }
           },
           "400": {
-            "description": "Missing file, unsupported/unreadable file, or a multipart field other than `resume`",
+            "description": "Missing file, unsupported or unreadable file, a file with too little text (a scanned PDF\nhas its own message), or a multipart field or file other than `resume` (multer's reason\nfollows \"Upload refused:\").\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "unreadable": {
+                    "summary": "The parser could not read the file",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Resume file could not be read."
+                    }
+                  },
+                  "tooLittleText": {
+                    "summary": "Under 50 characters of text",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Resume file did not contain enough readable text."
+                    }
+                  },
+                  "scannedPdf": {
+                    "summary": "A PDF with no text layer",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "This PDF appears to be a scanned image or flattened graphic without an embedded text layer. Real ATS parsers cannot read scanned resumes without OCR. Please export your resume as a text-based PDF or Word document."
+                    }
+                  },
+                  "extraField": {
+                    "summary": "A multipart field other than the file",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Upload refused: Too many fields."
+                    }
+                  },
                   "missingFile": {
                     "summary": "No file provided",
                     "value": {
@@ -3137,6 +3443,19 @@
               }
             }
           },
+          "422": {
+            "description": "The parser ran out of memory on this file. Simplify or re-export it.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 422,
+                  "message": "This file is too complex to read."
+                }
+              }
+            }
+          },
           "429": {
             "description": "ATS upload quota exceeded. The per-IP limit also answers `429` (\"Too many requests. Please try again later.\"). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.",
             "content": {
@@ -3178,17 +3497,33 @@
             }
           },
           "503": {
-            "description": "Extraction is busy or unavailable. The upload is returned to the extract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "Extraction is busy, unavailable, or stopping for a restart; the upload is returned to the\nextract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store\ncannot be read, and as \"Service temporarily unavailable\" when the database cannot be\nreached.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "Extraction is busy or unavailable",
+                    "summary": "Extraction is busy",
                     "value": {
                       "success": false,
                       "statusCode": 503,
                       "message": "Too many resume extractions in progress. Please retry shortly."
+                    }
+                  },
+                  "extractionUnavailable": {
+                    "summary": "The extraction process failed to start or restart",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Resume extraction is temporarily unavailable."
+                    }
+                  },
+                  "shuttingDown": {
+                    "summary": "The server is shutting down",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Server is shutting down."
                     }
                   },
                   "authUnavailableCode": {
@@ -3324,7 +3659,7 @@
         "operationId": "analyzeAtsResume",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Run AI-Powered ATS Analysis",
-        "description": "Runs the deterministic scan plus an AI deep-analysis pass on top of it (explanation, missing\nevidence, keyword opportunities, prioritized fixes). Requires authentication. Consumes one\nunit from the same shared ATS scan quota as `/ats/check` — this is not a second, separate\nquota. Requires the `ai:write` API key scope when called with an API key.\n\nOptionally fetches a job description from a URL instead of requiring pasted text\n(`fetchJobUrl: true` + `jobUrl`). The fetch is SSRF-hardened: HTTPS-only on the standard port,\nrejects localhost/private/link-local addresses, resolves DNS once and pins that IP for the\nwhole request (including redirects), and caps redirects to 3, response size to 2MB, and the\nrequest timeout to 8 seconds.\n",
+        "description": "Runs the deterministic scan plus an AI deep-analysis pass on top of it (explanation, missing\nevidence, keyword opportunities, prioritized fixes). Requires authentication. Consumes one\nunit from the same shared ATS scan quota as `/ats/check` — this is not a second, separate\nquota. Requires the `ai:write` API key scope when called with an API key.\n\nOptionally fetches a job description from a URL instead of requiring pasted text\n(`fetchJobUrl: true` + `jobUrl`). The fetch is SSRF-hardened: HTTPS-only on the standard port,\nrejects localhost/private/link-local addresses, resolves DNS once and pins that IP for the\nwhole request (including redirects), and caps redirects to 3 and the response size to 2MB.\nThe page may go 8 seconds without sending data and must finish within 15 seconds; each DNS\nlookup has its own 5-second limit.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -3451,7 +3786,7 @@
           },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": {
-            "description": "The ATS scan quota is used up (`details` is the quota), or the caller already has two\nAI requests in progress (`Retry-After` says when to try again). The per-IP limit also answers `429` (\"Too many requests. Please try again later.\"). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.",
+            "description": "The ATS scan quota is used up (`details` is the quota), the caller already has two AI\nrequests in progress (`Retry-After` says when to try again), or a rate limit was hit: the\nper-IP AI limit (20 requests per minute) or, with an API key, the per-key limit.",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -3642,21 +3977,58 @@
             }
           },
           "409": {
-            "description": "requestId was already used, or is still processing",
+            "description": "The `requestId` was already used (for another operation or input, or it already\ncompleted or failed), it is still processing, or the credit balance changed while the\ncredits were being held (retry the action).\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 409,
-                  "message": "This AI request id can no longer be reused."
+                "examples": {
+                  "noLongerReusable": {
+                    "summary": "The id cannot be reused",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "This AI request id can no longer be reused."
+                    }
+                  },
+                  "otherOperation": {
+                    "summary": "Id used for another operation or input",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "AI request id was already used for another operation."
+                    }
+                  },
+                  "processing": {
+                    "summary": "The same request is still running",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "This AI request is processing."
+                    }
+                  },
+                  "completed": {
+                    "summary": "The request already completed",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "This AI request already completed."
+                    }
+                  },
+                  "balanceChanged": {
+                    "summary": "The balance moved while credits were held",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Credit balance changed. Retry the action."
+                    }
+                  }
                 }
               }
             }
           },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": {
-            "description": "The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` (\"Too many requests. Please try again later.\"). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.",
+            "description": "The caller already has two AI requests in progress (`Retry-After` says when to try\nagain), or a rate limit was hit: the per-IP AI limit (20 requests per minute) or, with an\nAPI key, the per-key limit.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -3776,13 +4148,13 @@
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
           "429": { "$ref": "#/components/responses/RateLimitError" },
           "503": {
-            "description": "The AI policy is missing or invalid, or AI model routing is not configured on the server. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "The server's AI policy is missing or invalid, or the session store cannot be read\n(`details.code` `AUTH_UNAVAILABLE`).\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "The AI policy is missing or invalid, or AI model routing is not configured on the server",
+                    "summary": "The AI policy is missing or invalid",
                     "value": {
                       "success": false,
                       "statusCode": 503,
@@ -3796,14 +4168,6 @@
                       "statusCode": 503,
                       "message": "Authentication is temporarily unavailable",
                       "details": { "code": "AUTH_UNAVAILABLE" }
-                    }
-                  },
-                  "databaseUnavailable": {
-                    "summary": "Database unreachable",
-                    "value": {
-                      "success": false,
-                      "statusCode": 503,
-                      "message": "Service temporarily unavailable"
                     }
                   }
                 }
@@ -3819,7 +4183,7 @@
         "operationId": "generateAiContent",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Generate AI Content",
-        "description": "Runs an AI generation action (rewriting a section, generating a cover letter, tailoring a\nresume to a job description, etc). Requires the `ai:write` scope when called with an API key.\n\nCredits are handled with a two-phase reserve → commit/release flow: the cost for the chosen\naction + mode is reserved from the caller's AI credit wallet before the AI provider is called,\nthen committed only after a successful response. If the AI call fails or errors out, the\nreservation is released instead of committed — a failed generation never burns credits.\n\nExpert mode uses a stronger, more expensive model than Standard mode for the same action.\n",
+        "description": "Runs an AI generation action (rewriting a section, generating a cover letter, tailoring a\nresume to a job description, etc). Requires the `ai:write` scope when called with an API key.\n\nCredits are handled with a two-phase reserve → commit/release flow: the cost for the chosen\naction + mode is reserved from the caller's AI credit wallet before the AI provider is called,\nthen committed only after a successful response. If the AI call fails or errors out, the\nreservation is released instead of committed — a failed generation never burns credits.\n\nExpert mode uses a stronger, more expensive model than Standard mode for the same action.\n\nThe body is validated before the caller is: a first-party request with no session and an\ninvalid body gets `400`, not `401`.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -3907,21 +4271,58 @@
             }
           },
           "409": {
-            "description": "requestId was already used, or is still processing",
+            "description": "The `requestId` was already used (for another action or input, or it already completed\nor failed), it is still processing, or the credit balance changed while the credits were\nbeing held (retry the action).\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 409,
-                  "message": "This AI request id can no longer be reused."
+                "examples": {
+                  "noLongerReusable": {
+                    "summary": "The id cannot be reused",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "This AI request id can no longer be reused."
+                    }
+                  },
+                  "otherOperation": {
+                    "summary": "Id used for another action or input",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "AI request id was already used for another operation."
+                    }
+                  },
+                  "processing": {
+                    "summary": "The same request is still running",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "This AI request is processing."
+                    }
+                  },
+                  "completed": {
+                    "summary": "The request already completed",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "This AI request already completed."
+                    }
+                  },
+                  "balanceChanged": {
+                    "summary": "The balance moved while credits were held",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Credit balance changed. Retry the action."
+                    }
+                  }
                 }
               }
             }
           },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": {
-            "description": "The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` (\"Too many requests. Please try again later.\"). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.",
+            "description": "The caller already has two AI requests in progress (`Retry-After` 10), or a rate limit\nwas hit: the per-IP AI limit (20 requests per minute) or, with an API key, the per-key\nlimit.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -3961,14 +4362,27 @@
             }
           },
           "502": {
-            "description": "AI provider error",
+            "description": "The AI provider failed or returned nothing. The reservation is released.",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 502,
-                  "message": "The AI provider could not complete the request."
+                "examples": {
+                  "failed": {
+                    "summary": "Provider error",
+                    "value": {
+                      "success": false,
+                      "statusCode": 502,
+                      "message": "The AI provider could not complete the request."
+                    }
+                  },
+                  "empty": {
+                    "summary": "Empty answer",
+                    "value": {
+                      "success": false,
+                      "statusCode": 502,
+                      "message": "The AI provider returned an empty response."
+                    }
+                  }
                 }
               }
             }
@@ -4029,7 +4443,7 @@
         "tags": ["Portfolios"],
         "operationId": "listPublicPortfolios",
         "summary": "List Public Portfolios",
-        "description": "Lists the subdomains of every portfolio currently in `LIVE` or `GRACE` status, most recently\nupdated first. Returns subdomain and timestamp only — no portfolio content. Without\n`limit` a page holds up to 1,000 portfolios; page through the rest with `offset` (up to\n49,999, the sitemap protocol's 50,000 URLs). The default order, most recently updated first,\nmoves whenever a site is republished or its billing changes; to page through every site,\nsend `order=stable`, which lists by publication id and never moves.\n\nNo user session is required, but the request must carry an API key or originate from a\nwhitelisted first-party origin; otherwise it is rejected with `401`. Cached for 5 minutes.\n",
+        "description": "Lists the subdomains of every portfolio the public site serves: `LIVE` ones, and `GRACE`\nones while their grace period is still running. A portfolio whose document was deleted is\nnever listed. Most recently updated first. Returns subdomain and timestamp only, no portfolio content. Without\n`limit` a page holds up to 1,000 portfolios; page through the rest with `offset` (up to\n49,999, the sitemap protocol's 50,000 URLs). The default order, most recently updated first,\nmoves whenever a site is republished or its billing changes; to page through every site,\nsend `order=stable`, which lists by publication id and never moves.\n\nNo user session is required, but the request must carry an API key or originate from a\nwhitelisted first-party origin; otherwise it is rejected with `401`. Cached for 5 minutes.\n",
         "security": [{ "ApiKeyAuth": [] }, {}],
         "parameters": [
           {
@@ -4087,22 +4501,9 @@
               }
             }
           },
-          "400": {
-            "description": "The subdomain is empty or reserved once normalised.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 400,
-                  "message": "Choose a valid portfolio subdomain."
-                }
-              }
-            }
-          },
           "401": { "$ref": "#/components/responses/PublicUnauthorizedError" },
           "404": {
-            "description": "No live portfolio exists at this subdomain.",
+            "description": "No live portfolio exists at this subdomain. An empty or reserved subdomain is looked up\nlike any other and answers this `404` too.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -4120,7 +4521,7 @@
         "tags": ["Portfolios"],
         "operationId": "recordPortfolioView",
         "summary": "Record Portfolio View",
-        "description": "Records an analytics view for a published portfolio. Responds `202 Accepted` with\n`data: null` — the count is not persisted synchronously.\n\nViews are buffered in Redis, deduplicated per viewer IP for 30 minutes, and flushed to\nPostgres by a scheduled job. A repeat view inside that window is accepted and silently\ndropped, so a `202` does not guarantee the count increased.\n\nNo user session is required, but the request must carry an API key or originate from a\nwhitelisted first-party origin; otherwise it is rejected with `401`.\n\nThe body may also be sent as `text/plain` holding the same JSON, which is what\n`navigator.sendBeacon(url, JSON.stringify(body))` sends: a CORS-safelisted type, so a\npublished portfolio's subdomain can send it without a preflight. A `text/plain` body is\nlimited to 2 KB.\n",
+        "description": "Records an analytics view for a published portfolio. Responds `202 Accepted` with\n`data: null` — the count is not persisted synchronously.\n\nViews are buffered in Redis, deduplicated per viewer IP for 30 minutes, and flushed to\nPostgres by a scheduled job. A repeat view inside that window is accepted and silently\ndropped, so a `202` does not guarantee the count increased.\n\nNo user session is required, but the request must carry an API key or originate from a\nwhitelisted first-party origin; otherwise it is rejected with `401`.\n\nThe body may also be sent as `text/plain` holding the same JSON, which is what\n`navigator.sendBeacon(url, JSON.stringify(body))` sends: a CORS-safelisted type, so a\npublished portfolio's subdomain can send it without a preflight. A `text/plain` body is\nlimited to 5 KB and is read before the credential check, so an oversized one gets `413`\neven without a key; a JSON body falls under the 100 kb default.\n\nThe subdomain lookup is cached for 60 seconds, so for up to a minute after a takedown views\nare still accepted with `202`. A Redis failure while buffering answers `500`.\n",
         "security": [{ "ApiKeyAuth": [] }, {}],
         "parameters": [
           { "name": "subdomain", "in": "path", "required": true, "schema": { "type": "string" } }
@@ -4222,7 +4623,39 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BodyValidationError" },
+          "400": {
+            "description": "The body fails validation (\"Validation failed\" with `details`), the subdomain is empty,\nreserved or starts with `xn--` (\"Choose a valid portfolio subdomain.\", no `details`), or\nthe body is not valid JSON.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "validation": {
+                    "summary": "A field failed validation",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Validation failed",
+                      "details": [
+                        { "path": "revision", "message": "Expected number, received string" }
+                      ]
+                    }
+                  },
+                  "invalidSubdomain": {
+                    "summary": "Empty, reserved or punycode subdomain",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Choose a valid portfolio subdomain."
+                    }
+                  },
+                  "invalidJson": {
+                    "summary": "The body is not valid JSON",
+                    "value": { "success": false, "statusCode": 400, "message": "Invalid JSON body" }
+                  }
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/SessionUnauthorizedError" },
           "404": {
             "description": "Portfolio draft not found (when documentId was provided but doesn't belong to the caller)",
@@ -4231,14 +4664,28 @@
             }
           },
           "409": {
-            "description": "Draft was changed in another session",
+            "description": "The draft was changed in another session (`details.revision` is the stored revision when\nthe check fails up front), or a first save kept colliding on its document slug.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 409,
-                  "message": "Portfolio draft changed in another session."
+                "examples": {
+                  "stale": {
+                    "summary": "Changed in another session",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Portfolio draft changed in another session.",
+                      "details": { "revision": 4 }
+                    }
+                  },
+                  "notSaved": {
+                    "summary": "First save could not get a slug",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "The portfolio draft could not be saved. Try again."
+                    }
+                  }
                 }
               }
             }
@@ -4273,7 +4720,35 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
+          "400": {
+            "description": "The name is empty, reserved or starts with `xn--` (\"Choose a valid portfolio subdomain.\",\nno `details`), or longer than 63 characters (\"Validation failed\" with `details`).\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "invalidSubdomain": {
+                    "summary": "Empty, reserved or punycode name",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Choose a valid portfolio subdomain."
+                    }
+                  },
+                  "tooLong": {
+                    "summary": "Longer than 63 characters",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Validation failed",
+                      "details": [
+                        { "path": "slug", "message": "String must contain at most 63 character(s)" }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/SessionUnauthorizedError" },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
           "503": { "$ref": "#/components/responses/SessionServiceUnavailableError" }
@@ -4324,7 +4799,7 @@
         "operationId": "publishPortfolio",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Publish Portfolio",
-        "description": "Publishes the given draft revision to its chosen subdomain, making it publicly reachable.\nPremium templates (`nimbus`, `cipher`) need Creator Pro, the Job Hunter Bundle or a pass;\n`signal` and `atelier` are free. The stored draft is checked against the stricter publish\nrules (see `PortfolioDraftContent`).\n\n**Current-state caveat:** in production, publishing is gated behind a hardcoded\n`ADMIN_EMAIL` check independent of plan tier (`isAdminUser`) — regular users can save drafts,\npreview, and manage everything except actually flipping a portfolio live. This is a\ntemporary rollout restriction, not a permanent product limitation. Only administrators can\nexercise this endpoint end-to-end in production today; it is unrestricted in development.\n",
+        "description": "Publishes the given draft revision to its chosen subdomain, making it publicly reachable.\nPremium templates (`nimbus`, `cipher`) need Creator Pro, the Job Hunter Bundle or a pass;\n`signal` and `atelier` are free. The stored draft is checked against the stricter publish\nrules (see `PortfolioDraftContent`).\n\n**Current-state caveat:** in production, publishing is gated behind a hardcoded\n`ADMIN_EMAIL` check independent of plan tier (`isAdminUser`) — regular users can save drafts,\npreview, and manage everything except actually flipping a portfolio live. This is a\ntemporary rollout restriction, not a permanent product limitation. Only administrators can\nexercise this endpoint end-to-end in production today; outside production (`NODE_ENV` other\nthan `production`) it is unrestricted. The restriction is checked before the body, so in\nproduction a non-admin gets `403` even for an invalid body.\n\nChecks run in this order: the premium-template `402`, then the stale-revision `409`, then\nthe subdomain.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -4343,11 +4818,19 @@
             }
           },
           "400": {
-            "description": "Validation error, incomplete portfolio content, or an unusable image reference. A body that is not valid JSON answers \"Invalid JSON body\".",
+            "description": "Validation error, incomplete portfolio content, an unusable image reference, or an empty,\nreserved or punycode subdomain. A body that is not valid JSON answers \"Invalid JSON body\".\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "invalidSubdomain": {
+                    "summary": "Empty, reserved or punycode subdomain",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Choose a valid portfolio subdomain."
+                    }
+                  },
                   "incompleteContent": {
                     "summary": "Draft does not satisfy the stricter publish schema",
                     "value": {
@@ -4423,17 +4906,63 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": {
-                  "success": false,
-                  "statusCode": 409,
-                  "message": "Save the latest draft before publishing."
+                "examples": {
+                  "stale": {
+                    "summary": "Stale revision",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Save the latest draft before publishing."
+                    }
+                  },
+                  "subdomainTaken": {
+                    "summary": "Subdomain already in use",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "That portfolio subdomain is already in use."
+                    }
+                  }
                 }
               }
             }
           },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
-          "503": { "$ref": "#/components/responses/SessionServiceUnavailableError" }
+          "503": {
+            "description": "The draft references images but media delivery is not configured on the server\n(`R2_PUBLIC_BASE_URL` unset), the session store cannot be read, or the database cannot\nbe reached.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "mediaDelivery": {
+                    "summary": "Media delivery not configured",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Portfolio media delivery is not configured."
+                    }
+                  },
+                  "authUnavailable": {
+                    "summary": "Session store unavailable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Authentication is temporarily unavailable"
+                    }
+                  },
+                  "databaseUnavailable": {
+                    "summary": "Database unreachable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Service temporarily unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -4478,7 +5007,7 @@
         "operationId": "getPortfolioAnalytics",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Get Portfolio Analytics",
-        "description": "Views for the last 30 days plus the top 10 referrer hosts.\n\nVisitor analytics comes with Creator Pro, the Job Hunter Bundle or a pass. Without it the\nresponse has `locked: true` and all-zero data, whether or not a portfolio is published. With\nit and no published portfolio, `locked` is false and the data is all zero.\n",
+        "description": "View counts for the caller's published portfolio. `totalViews` is all-time, including views\nstill buffered and not yet flushed. `daily` is the 30 most recent days that had any views,\nnewest first; days with no views are left out, so it is not a 30-day calendar. `referrers`\nis the all-time top 10 referrer hosts from flushed views only (views still buffered are not\nin it).\n\nVisitor analytics comes with Creator Pro, the Job Hunter Bundle or a pass. Without it the\nresponse has `locked: true` and all-zero data, whether or not a portfolio is published. With\nit and no published portfolio, `locked` is false and the data is all zero.\n",
         "responses": {
           "200": {
             "description": "Analytics fetched successfully",
@@ -4520,17 +5049,25 @@
             }
           },
           "400": {
-            "description": "Unsupported image type, or size out of range. A body that is not valid JSON answers \"Invalid JSON body\".",
+            "description": "A `kind` outside the list or a `sizeBytes` that is not a positive integer (\"Validation\nfailed\"), a `mimeType` other than JPEG, PNG or WebP, a size over 5 MB, or a body that is\nnot valid JSON.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "Unsupported image type, or size out of range",
+                    "summary": "Unsupported image type",
                     "value": {
                       "success": false,
                       "statusCode": 400,
                       "message": "Upload a JPG, PNG, or WebP image."
+                    }
+                  },
+                  "tooLarge": {
+                    "summary": "Over 5 MB",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Image must be 5 MB or smaller."
                     }
                   },
                   "invalidJson": {
@@ -4576,11 +5113,19 @@
             }
           },
           "503": {
-            "description": "Media uploads are not configured (R2 credentials missing). Also sent when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "Media uploads are not configured (R2 credentials missing), the session store cannot be\nread, or the database cannot be reached. The asset row is created before the storage\ncheck, so an upload refused for missing credentials still counts toward the 20 uploads\nan hour and leaves a pending row behind.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "notConfigured": {
+                    "summary": "R2 credentials missing",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Portfolio media uploads are not configured."
+                    }
+                  },
                   "authUnavailable": {
                     "summary": "Session store unavailable",
                     "value": {
@@ -4629,11 +5174,27 @@
             }
           },
           "400": {
-            "description": "Uploaded file does not match the declared size/type/checksum. A body that is not valid JSON answers \"Invalid JSON body\".",
+            "description": "The uploaded file does not match the declared size, type or checksum, or the body is invalid.",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "sizeMismatch": {
+                    "summary": "Size differs from the declared size",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Uploaded file size (180000 bytes) does not match expected size (204800 bytes)."
+                    }
+                  },
+                  "typeMismatch": {
+                    "summary": "Type differs from the declared type",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Uploaded file type (image/jpeg) does not match expected type (image/png)."
+                    }
+                  },
                   "invalidJson": {
                     "summary": "The body is not valid JSON",
                     "value": { "success": false, "statusCode": 400, "message": "Invalid JSON body" }
@@ -4656,14 +5217,43 @@
               }
             }
           },
+          "409": {
+            "description": "Storage has no object for this asset; the browser's upload failed or was aborted.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 409,
+                  "message": "The upload was not received. Upload the image again."
+                }
+              }
+            }
+          },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
           "503": {
-            "description": "Media delivery is not configured (public base URL missing). Also sent when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "Media delivery is not configured (public base URL missing), media uploads are not\nconfigured (R2 credentials missing), the session store cannot be read, or the database\ncannot be reached. Any other storage error answers `500`.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "deliveryNotConfigured": {
+                    "summary": "Public base URL missing",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Portfolio media delivery is not configured."
+                    }
+                  },
+                  "uploadsNotConfigured": {
+                    "summary": "R2 credentials missing",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Portfolio media uploads are not configured."
+                    }
+                  },
                   "authUnavailable": {
                     "summary": "Session store unavailable",
                     "value": {
@@ -4693,7 +5283,7 @@
         "operationId": "deletePortfolioAsset",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Delete Portfolio Asset",
-        "description": "Deletes the R2 object and its metadata row. `data` is `null` on success.\nSession-authenticated only.\n\nThis does not rewrite any portfolio that still references the asset — remove the reference\nand save the draft first, or publishing will fail with `400`.\n",
+        "description": "Deletes the R2 object and its metadata row. An asset created in the last 15 minutes (the\nupload URL's lifetime plus 5 minutes) keeps its row, marked `DELETED`, so a late completion\ncannot revive it. `data` is `null` on success. Session-authenticated only.\n\nAn image the published portfolio still shows cannot be deleted (`409`): publish without it\nfirst.\n\nThis does not rewrite any portfolio that still references the asset — remove the reference\nand save the draft first, or publishing will fail with `400`.\n",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -4721,8 +5311,54 @@
               }
             }
           },
+          "409": {
+            "description": "The published portfolio still shows this image.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 409,
+                  "message": "Your published portfolio still shows this image. Publish without it first."
+                }
+              }
+            }
+          },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
-          "503": { "$ref": "#/components/responses/SessionServiceUnavailableError" }
+          "503": {
+            "description": "Media uploads are not configured (R2 credentials missing), the session store cannot be\nread, or the database cannot be reached.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "notConfigured": {
+                    "summary": "R2 credentials missing",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Portfolio media uploads are not configured."
+                    }
+                  },
+                  "authUnavailable": {
+                    "summary": "Session store unavailable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Authentication is temporarily unavailable"
+                    }
+                  },
+                  "databaseUnavailable": {
+                    "summary": "Database unreachable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Service temporarily unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -4826,7 +5462,7 @@
         "operationId": "createBillingCheckout",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Subscription Checkout Session",
-        "description": "Creates a hosted Dodo Payments checkout session for a subscription product. `productKey` and\n`interval` are validated against a fixed whitelist (the product catalog) before being handed\noff to Dodo — arbitrary product/interval combinations are rejected with `400`. A Redis lock\nprevents starting a second checkout while one is already in flight. Session-authenticated\nonly; blocked for non-admins in production during the current rollout phase.\n",
+        "description": "Creates a hosted Dodo Payments checkout session for a subscription product. `productKey` and\n`interval` are validated against a fixed whitelist (the product catalog) before being handed\noff to Dodo — arbitrary product/interval combinations are rejected with `400`. A Redis lock\nprevents starting a second checkout while one is already in flight. Session-authenticated\nonly; blocked for non-admins in production during the current rollout phase.\n\nWhen the caller already has an open session for the same choice, its URL is returned again\nwith `reused: true` instead of creating a new one. An error from the billing provider while\ncreating the session is not mapped and answers `500`.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -4844,7 +5480,7 @@
             }
           },
           "400": {
-            "description": "Invalid product/interval combination. A body that is not valid JSON answers \"Invalid JSON body\".",
+            "description": "The body fails validation (\"Validation failed\" with `details`), the product/interval\ncombination is not offered, or the body is not valid JSON.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
@@ -4877,6 +5513,15 @@
                   "message": "Payments are disabled in production during this phase. Only administrators can perform payments.",
                   "details": { "code": "PAYMENTS_DISABLED" }
                 }
+              }
+            }
+          },
+          "404": {
+            "description": "The account no longer exists.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "success": false, "statusCode": 404, "message": "User not found" }
               }
             }
           },
@@ -4984,11 +5629,28 @@
           },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
           "503": {
-            "description": "The billing provider could not be asked about a session; nothing was cleared. `details.code` is `PROVIDER_UNAVAILABLE`. Also sent when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "The billing provider could not be asked about a session; nothing was cleared\n(`details.code` `PROVIDER_UNAVAILABLE`). Without a `details.code`: billing is not\nconfigured on the server, the session store cannot be read, or the database cannot be\nreached.\n",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CodedErrorResponse" },
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "providerUnavailable": {
+                    "summary": "Billing provider unreachable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Could not confirm the checkout with the billing provider. Try again in a moment.",
+                      "details": { "code": "PROVIDER_UNAVAILABLE" }
+                    }
+                  },
+                  "notConfigured": {
+                    "summary": "Billing not configured",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Billing is not configured."
+                    }
+                  },
                   "authUnavailable": {
                     "summary": "Session store unavailable",
                     "value": {
@@ -5018,7 +5680,7 @@
         "operationId": "createBillingPortal",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Billing Portal Session",
-        "description": "Creates a Dodo Payments customer portal URL, where an existing customer cancels, downloads\nreceipts and fixes a failed card. It sells nothing new, so it is open in production to every\ncustomer (not only administrators). Needs a billing account, which the first checkout\ncreates. Session-authenticated only.\n",
+        "description": "Creates a Dodo Payments customer portal URL, where an existing customer cancels, downloads\nreceipts and fixes a failed card. It sells nothing new, so it is open in production to every\ncustomer (not only administrators). Needs a billing account, which the first checkout\ncreates. Session-authenticated only. An error from the billing provider while creating the\nportal session is not mapped and answers `500`.\n",
         "responses": {
           "200": {
             "description": "Portal session created successfully",
@@ -5043,7 +5705,40 @@
             }
           },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
-          "503": { "$ref": "#/components/responses/SessionServiceUnavailableError" }
+          "503": {
+            "description": "Billing is not configured on the server, the session store cannot be read, or the\ndatabase cannot be reached.\n",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "notConfigured": {
+                    "summary": "Billing not configured",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Billing is not configured."
+                    }
+                  },
+                  "authUnavailable": {
+                    "summary": "Session store unavailable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Authentication is temporarily unavailable"
+                    }
+                  },
+                  "databaseUnavailable": {
+                    "summary": "Database unreachable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Service temporarily unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -5053,7 +5748,7 @@
         "operationId": "createCreditPackCheckout",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Extra Credit Pack Checkout",
-        "description": "Creates a one-time Dodo Payments checkout session for an extra AI credit pack, on top of any\nsubscription. While the session can still be paid (24 hours, or until its payment lands or\n`POST /billing/checkout/cancel` clears it), the account cannot be deleted.\nSession-authenticated only; blocked for non-admins in production during the current rollout\nphase.\n",
+        "description": "Creates a one-time Dodo Payments checkout session for an extra AI credit pack, on top of any\nsubscription. While the session can still be paid (24 hours, or until its payment lands or\n`POST /billing/checkout/cancel` clears it), the account cannot be deleted.\nSession-authenticated only; blocked for non-admins in production during the current rollout\nphase. An error from the billing provider while creating the session is not mapped and\nanswers `500`.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -5088,14 +5783,52 @@
               }
             }
           },
+          "404": {
+            "description": "The account no longer exists.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "success": false, "statusCode": 404, "message": "User not found." }
+              }
+            }
+          },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
+          "502": {
+            "description": "The billing provider did not return a checkout URL.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 502,
+                  "message": "Billing provider did not return a checkout URL."
+                }
+              }
+            }
+          },
           "503": {
-            "description": "Extra credit checkout is not configured. Also sent when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "Extra credit checkout is not configured, the checkout could not be recorded (retry),\nbilling is not configured, the session store cannot be read, or the database cannot be\nreached.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "packNotConfigured": {
+                    "summary": "Credit pack product not configured",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Extra credit checkout is not configured."
+                    }
+                  },
+                  "recordFailed": {
+                    "summary": "The checkout could not be recorded",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Extra credit checkout is temporarily unavailable. Try again."
+                    }
+                  },
                   "authUnavailable": {
                     "summary": "Session store unavailable",
                     "value": {
@@ -5225,8 +5958,8 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Up to 128 characters. Required unless `idempotencyKey` is in the body.",
-            "schema": { "type": "string", "maxLength": 128 }
+            "description": "Required unless `idempotencyKey` is in the body; the header wins when both are sent. Only\nthe first 128 characters are used: a longer value is cut, not refused.\n",
+            "schema": { "type": "string" }
           }
         ],
         "requestBody": {
@@ -5252,7 +5985,8 @@
                     "productKey": "bundle",
                     "interval": "monthly",
                     "paymentId": "pay_123",
-                    "confirmed": true
+                    "confirmed": true,
+                    "replayed": false
                   }
                 }
               }
@@ -5272,6 +6006,15 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "keyRequired": {
+                    "summary": "No idempotency key",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "An idempotency key is required to change plans.",
+                      "details": { "code": "IDEMPOTENCY_KEY_REQUIRED" }
+                    }
+                  },
                   "invalidJson": {
                     "summary": "The body is not valid JSON",
                     "value": { "success": false, "statusCode": 400, "message": "Invalid JSON body" }
@@ -5354,7 +6097,7 @@
         "operationId": "createShareLink",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Create Share Link",
-        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response.\n\nA link expires 7, 14, 30 or 90 days after it is made, or never. Send `noExpiry: true` for\nnever, or an `expiresAt` 7, 14, 30 or 90 days from now (within a day, for clock skew). With\nneither (an `expiresAt` of `null` counts as neither, not as never), a new link lasts **7 days**\nand replacing an existing link keeps its expiry. Any\nother date, or `noExpiry` together with a date, is `400`.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n\nThe snapshot may be at most 1 MB once serialized (`413` otherwise). It is not echoed in\nthe response, nor in the owner's list of links.\n\n`allowDownload` (default `true`) says whether the public page shows a Download button.\nReplacing an existing link without it keeps the stored value. It is a display preference,\nnot a security control: the studio hides the Download button, and viewers can still save\nthe page.\n",
+        "description": "Creates (or replaces, if one already exists for this document) a public share link for a\ndocument. Optionally password-protected — passwords are scrypt-hashed and never returned in\nany response.\n\nA link expires 7, 14, 30 or 90 days after it is made, or never. Send `noExpiry: true` for\nnever, or an `expiresAt` 7, 14, 30 or 90 days from now (within a day, for clock skew). With\nneither (an `expiresAt` of `null` counts as neither, not as never), a new link lasts **7 days**\nand replacing an existing link keeps its expiry. Any\nother date, or `noExpiry` together with a date, is `400`.\n\nThe caller **must have claimed a username first**, since it forms the public URL\n(`/{username}/{slug}`); without one the request fails with `400`. Requires the\n`resume:write` scope when called with an API key.\n\nThe snapshot may be at most 1,000,000 bytes once serialized (`413` otherwise); the whole\nbody may be at most 4 MB. It is not echoed in the response, nor in the owner's list of\nlinks.\n\n`allowDownload` (default `true`) says whether the public page shows a Download button.\nReplacing an existing link without it keeps the stored value. It is a display preference,\nnot a security control: the studio hides the Download button, and viewers can still save\nthe page.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -5407,6 +6150,28 @@
                       ]
                     }
                   },
+                  "badExpiry": {
+                    "summary": "An expiry that is not one of the allowed periods",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "A share link expires 7, 14, 30 or 90 days from now, or never (noExpiry: true)."
+                    }
+                  },
+                  "expiryConflict": {
+                    "summary": "noExpiry together with expiresAt",
+                    "value": {
+                      "success": false,
+                      "statusCode": 400,
+                      "message": "Validation failed",
+                      "details": [
+                        {
+                          "path": "expiresAt",
+                          "message": "Send either noExpiry or expiresAt, not both."
+                        }
+                      ]
+                    }
+                  },
                   "invalidJson": {
                     "summary": "The body is not valid JSON",
                     "value": { "success": false, "statusCode": 400, "message": "Invalid JSON body" }
@@ -5417,17 +6182,25 @@
           },
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
           "403": {
-            "description": "A moderator made this document private, or made another of the account's résumés or\ncover letters private (a trashed one too, until retention purges it). No link is created\nor refreshed on the account until a moderator lifts it. A portfolio takedown does not\npause sharing. An API key without the scope this operation needs also gets `403`.",
+            "description": "A moderator made this document private (\"This document was made private by a\nmoderator.\"), or made another of the account's résumés or cover letters private (a\ntrashed one too, until retention purges it). No link is created or refreshed on the\naccount until a moderator lifts it. A portfolio takedown does not pause sharing. An API\nkey without `resume:write` also gets `403`.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "A moderator made this document private, or made another of the account's résumés or cover letters private (a trashed one too, until retention purges it)",
+                    "summary": "Another of the account's documents was made private",
                     "value": {
                       "success": false,
                       "statusCode": 403,
                       "message": "A moderator made one of your résumés or cover letters private, so new share links are paused until a moderator lifts it."
+                    }
+                  },
+                  "thisDocument": {
+                    "summary": "This document was made private",
+                    "value": {
+                      "success": false,
+                      "statusCode": 403,
+                      "message": "This document was made private by a moderator."
                     }
                   },
                   "scope": {
@@ -5452,11 +6225,19 @@
             }
           },
           "413": {
-            "description": "The snapshot is larger than 1 MB. A body over the route's parser limit is refused first, with \"Request body too large\".",
+            "description": "A body over 4 MB is refused by the parser with \"Request body too large\". A smaller body\nwhose snapshot is over 1,000,000 bytes once serialized gets its own message.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "snapshotTooLarge": {
+                    "summary": "Snapshot over 1,000,000 bytes",
+                    "value": {
+                      "success": false,
+                      "statusCode": 413,
+                      "message": "The shared document is too large. Shorten it and share again."
+                    }
+                  },
                   "bodyTooLarge": {
                     "summary": "Body over the route's parser limit",
                     "value": {
@@ -5519,13 +6300,29 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+            "schema": { "type": "integer", "default": 20 },
+            "description": "Links per page. Read leniently: a value above 50 is lowered to 50, and a value that is\nnot a positive integer is ignored (the default applies). Neither is refused.\n"
           },
           {
             "name": "offset",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+            "schema": { "type": "integer", "default": 0 },
+            "description": "Rows to skip. A value that is not a non-negative integer is ignored."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" },
+            "description": "1-based page index, an alternative to `offset`. Read leniently like `limit`."
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" },
+            "description": "Alternative spelling of `limit`. Takes precedence over `limit` when both are sent."
           }
         ],
         "responses": {
@@ -5540,7 +6337,15 @@
           "400": {
             "description": "`offset` (or `page`) reaches past row 1,000,000.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 400,
+                  "message": "Validation failed",
+                  "details": [{ "path": "offset", "message": "Must not reach past row 1000000" }]
+                }
+              }
             }
           },
           "401": { "$ref": "#/components/responses/UnauthorizedError" },
@@ -5556,7 +6361,7 @@
         "operationId": "revokeShareLink",
         "security": [{ "ApiKeyAuth": [] }, { "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Revoke Share Link",
-        "description": "Deletes the share link, immediately breaking its public URL. `data` is `null` on success.\nRequires the `resume:write` scope when called with an API key.\n",
+        "description": "Deletes the share link, immediately breaking its public URL. `data` is `null` on success.\nRequires the `resume:write` scope when called with an API key. An account that has not\nclaimed a username gets `400` \"Username required before sharing\" before the link is looked\nup.\n",
         "parameters": [
           { "name": "documentId", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "shareLinkId", "in": "path", "required": true, "schema": { "type": "string" } }
@@ -5571,6 +6376,19 @@
                   "success": true,
                   "message": "Share link revoked successfully",
                   "data": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The account has not claimed a username.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 400,
+                  "message": "Username required before sharing"
                 }
               }
             }
@@ -5600,7 +6418,7 @@
         "tags": ["Shares"],
         "operationId": "getPublicShareLink",
         "summary": "Get Public Share Link",
-        "description": "Returns the shared document's title and snapshot, unless the link is password-protected — in\nwhich case only `passwordRequired: true` is returned and the caller must call\n`POST /shares/public/{username}/{slug}/verify` with the password.\n\n`allowDownload` says whether to show a Download button. It is a display preference, not a\nsecurity control: the studio hides the Download button, and viewers can still save the page.\n\nNo user session is required, but the request is still gated: it must carry an API key, or\noriginate from a whitelisted first-party origin. A bare request from an unrecognised origin\nis rejected with `401`.\n",
+        "description": "Returns the shared document's title and snapshot, unless the link is password-protected. Then\nthe message is \"Password required\", `data` is only `{ passwordRequired: true, expiresAt }`\n(no titles, which can name the person or the job), and the caller must call\n`POST /shares/public/{username}/{slug}/verify` with the password.\n\n`allowDownload` says whether to show a Download button. It is a display preference, not a\nsecurity control: the studio hides the Download button, and viewers can still save the page.\n\nNo user session is required, but the request is still gated: it must carry an API key, or\noriginate from a whitelisted first-party origin. A bare request from an unrecognised origin\nis rejected with `401`.\n",
         "security": [{ "ApiKeyAuth": [] }, {}],
         "parameters": [
           { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } },
@@ -5698,13 +6516,13 @@
           },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": {
-            "description": "Too many password attempts for this link (5 per 5 minutes), or too many verify requests\nfrom this IP (20 per 5 minutes). `Retry-After` says when to try again. The per-IP limit also answers `429` (\"Too many requests. Please try again later.\"). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.",
+            "description": "Too many password attempts for this link (5 per 5 minutes), or too many verify requests\nfrom this IP (20 per 5 minutes, \"Too many requests. Please try again later.\"), or, with\nan API key, the per-key limit. `Retry-After` says when to try again.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "Too many password attempts for this link (5 per 5 minutes), or too many verify requests from this IP (20 per 5 minutes)",
+                    "summary": "Too many password attempts for this link",
                     "value": {
                       "success": false,
                       "statusCode": 429,
@@ -5738,17 +6556,25 @@
             }
           },
           "503": {
-            "description": "The server cannot count attempts right now, so it refuses to check the password. `Retry-After` is 30 seconds. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "The server cannot count attempts right now, so it refuses to check the password: the\nper-link counter answers with `Retry-After` 30, and the per-IP limiter, which fails closed\non this route, answers with `Retry-After` 5. Also sent as \"Service temporarily\nunavailable\" when the database cannot be reached.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
                   "documented": {
-                    "summary": "The server cannot count attempts right now, so it refuses to check the password",
+                    "summary": "The per-link attempt counter is unavailable",
                     "value": {
                       "success": false,
                       "statusCode": 503,
                       "message": "Password verification is temporarily unavailable"
+                    }
+                  },
+                  "limiterUnavailable": {
+                    "summary": "The per-IP limiter is unavailable",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Rate limiting is temporarily unavailable. Please retry shortly."
                     }
                   },
                   "databaseUnavailable": {
@@ -5771,7 +6597,7 @@
         "tags": ["Affiliates"],
         "operationId": "trackAffiliateClick",
         "summary": "Track Affiliate Click",
-        "description": "Public, unauthenticated endpoint. Records a click against an affiliate's referral code.\nEntire affiliate program is gated behind a feature flag (`config.growth.affiliateProgramEnabled`)\nthat defaults off in production until explicitly enabled — every route in this group,\nincluding this one, returns `503` while the flag is off.\n",
+        "description": "Public, unauthenticated endpoint. Records a click against an affiliate's referral code. The\nanswer is the same `200 { tracked: true }` whether or not the code exists or is active, so\ncodes cannot be enumerated; only clicks on an active code are recorded, once per address per\nwindow. The code is matched case-insensitively.\nEntire affiliate program is gated behind a feature flag (`config.growth.affiliateProgramEnabled`)\nthat defaults off in production until explicitly enabled — every route in this group,\nincluding this one, returns `503` while the flag is off.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -5791,12 +6617,6 @@
             }
           },
           "400": { "$ref": "#/components/responses/BodyValidationError" },
-          "404": {
-            "description": "Affiliate link not found",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
           "503": { "$ref": "#/components/responses/FeatureDisabledError" }
@@ -5808,13 +6628,14 @@
         "tags": ["Affiliates"],
         "operationId": "getAffiliateLeaderboard",
         "summary": "Get Affiliate Leaderboard",
-        "description": "Public, unauthenticated endpoint. Top 50 affiliates ranked by commission earnings, for the current calendar month or all-time.",
+        "description": "Public, unauthenticated endpoint. Top 50 affiliates ranked by commission earnings, for the\ncurrent calendar month or all-time. Each entry shows only a short display name (\"First L.\")\nand the tier, never an id, username or image.\n",
         "parameters": [
           {
             "name": "period",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "enum": ["monthly", "all_time"], "default": "monthly" }
+            "schema": { "type": "string", "enum": ["monthly", "all_time"], "default": "monthly" },
+            "description": "`all_time` for all-time; any other value, or none, means `monthly`. Never refused.\n"
           }
         ],
         "responses": {
@@ -5848,6 +6669,15 @@
             }
           },
           "401": { "$ref": "#/components/responses/SessionUnauthorizedError" },
+          "404": {
+            "description": "The account no longer exists.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "success": false, "statusCode": 404, "message": "User not found." }
+              }
+            }
+          },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
           "503": { "$ref": "#/components/responses/FeatureDisabledError" }
         }
@@ -5883,13 +6713,39 @@
               }
             }
           },
+          "404": {
+            "description": "The account no longer exists.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "success": false, "statusCode": 404, "message": "User not found." }
+              }
+            }
+          },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
           "503": {
-            "description": "The affiliate program is switched off (see `FeatureDisabledError`), or no unique\naffiliate code could be made (\"Could not create a unique affiliate code.\"). Retry the\nsecond case. Also sent when the session store cannot be read. Also sent as \"Service temporarily unavailable\" when the database cannot be reached.",
+            "description": "The affiliate program is switched off (`details.code` `PROGRAM_DISABLED`), no unique\naffiliate code could be made (retry), the session store cannot be read, or the database\ncannot be reached.\n",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
+                  "programDisabled": {
+                    "summary": "Affiliate program switched off",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "The affiliate program is not available yet. Check back soon.",
+                      "details": { "code": "PROGRAM_DISABLED" }
+                    }
+                  },
+                  "codeCollision": {
+                    "summary": "No unique code could be made",
+                    "value": {
+                      "success": false,
+                      "statusCode": 503,
+                      "message": "Could not create a unique affiliate code."
+                    }
+                  },
                   "authUnavailable": {
                     "summary": "Session store unavailable",
                     "value": {
@@ -5961,9 +6817,25 @@
           },
           "401": { "$ref": "#/components/responses/SessionUnauthorizedError" },
           "404": {
-            "description": "Affiliate code not found",
+            "description": "The code does not belong to an active affiliate (an unknown code and an inactive\naffiliate's code answer the same), or the account no longer exists.\n",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "codeNotFound": {
+                    "summary": "Unknown or inactive code",
+                    "value": {
+                      "success": false,
+                      "statusCode": 404,
+                      "message": "Affiliate code not found."
+                    }
+                  },
+                  "userNotFound": {
+                    "summary": "Account not found",
+                    "value": { "success": false, "statusCode": 404, "message": "User not found." }
+                  }
+                }
+              }
             }
           },
           "409": {
@@ -6041,9 +6913,16 @@
             }
           },
           "409": {
-            "description": "An active withdrawal request already exists",
+            "description": "A withdrawal request is already requested or approved.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "statusCode": 409,
+                  "message": "A withdrawal is already in progress"
+                }
+              }
             }
           },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
@@ -6069,10 +6948,13 @@
                   "success": true,
                   "message": "Success",
                   "data": {
+                    "name": "Jane Doe",
+                    "email": "jane@example.com",
                     "role": "USER",
                     "ambassadorStatus": "NONE",
                     "collegeName": null,
-                    "graduationYear": null
+                    "graduationYear": null,
+                    "application": null
                   }
                 }
               }
@@ -6096,7 +6978,7 @@
         "operationId": "applyForAmbassador",
         "security": [{ "LocalSession": [] }, { "ProdSession": [] }],
         "summary": "Apply For Campus Ambassador Program",
-        "description": "Submits (or resubmits, once previously rejected) a campus ambassador application. Rejects a\nduplicate application from a user who already has one pending review, and rejects existing\nambassadors from re-applying. `graduationYear` is validated as a real 4-digit year on both the\nclient and the server. Session-authenticated only.\n",
+        "description": "Submits (or resubmits, once previously rejected) a campus ambassador application. Answers\n`409` for a user who already has one pending review, or whose account role is\n`AMBASSADOR`. Only the role is checked, so an account with another role (an admin, say)\nwhose application was approved can apply again. `graduationYear` is validated as a real 4-digit year on both the\nclient and the server. Session-authenticated only.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -6132,25 +7014,23 @@
             }
           },
           "400": {
-            "description": "Already an ambassador, application already pending, or validation error. A body that is not valid JSON answers \"Invalid JSON body\".",
+            "description": "The body fails validation, or is not valid JSON.",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" },
                 "examples": {
-                  "alreadyAmbassador": {
-                    "summary": "Already approved",
+                  "validation": {
+                    "summary": "A field failed validation",
                     "value": {
                       "success": false,
                       "statusCode": 400,
-                      "message": "You are already a campus ambassador."
-                    }
-                  },
-                  "alreadyPending": {
-                    "summary": "Application already pending",
-                    "value": {
-                      "success": false,
-                      "statusCode": 400,
-                      "message": "Your ambassador application is already pending review."
+                      "message": "Validation failed",
+                      "details": [
+                        {
+                          "path": "graduationYear",
+                          "message": "Enter a real 4-digit graduation year"
+                        }
+                      ]
                     }
                   },
                   "invalidJson": {
@@ -6162,6 +7042,41 @@
             }
           },
           "401": { "$ref": "#/components/responses/SessionUnauthorizedError" },
+          "404": {
+            "description": "The account no longer exists.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "success": false, "statusCode": 404, "message": "User not found." }
+              }
+            }
+          },
+          "409": {
+            "description": "Already an ambassador, or an application is already pending review.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "alreadyAmbassador": {
+                    "summary": "Already an ambassador",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "You are already a campus ambassador."
+                    }
+                  },
+                  "alreadyPending": {
+                    "summary": "Application already pending",
+                    "value": {
+                      "success": false,
+                      "statusCode": 409,
+                      "message": "Your ambassador application is already pending review."
+                    }
+                  }
+                }
+              }
+            }
+          },
           "413": { "$ref": "#/components/responses/PayloadTooLargeError" },
           "429": { "$ref": "#/components/responses/IpRateLimitError" },
           "503": { "$ref": "#/components/responses/FeatureDisabledError" }
@@ -6174,7 +7089,7 @@
         "operationId": "recordUsageEvent",
         "security": [{ "ApiKeyAuth": [] }],
         "summary": "Record Usage Event",
-        "description": "Counts one product usage event (for example `resume_exported`) toward VeriWorkly's daily\nusage metrics. Any developer API key may call it, whatever its scopes; the studio calls it\nfrom the browser.\n\nPublic callers may send only the allow-listed event names listed under `event`, and every\ncall counts as 1. Events the server records itself, such as `auth_login_success`, cannot be\nreported. Trusted servers send `x-internal-key` instead of an API key, which also allows\n`custom_*` names (at most 50 distinct custom names per UTC day) and a `value` up to 1000.\n",
+        "description": "Counts one product usage event (for example `resume_exported`) toward VeriWorkly's daily\nusage metrics. Any developer API key may call it, whatever its scopes; the studio calls it\nfrom the browser.\n\nPublic callers may send only the allow-listed event names listed under `event`, and every\ncall counts as 1. Events the server records itself, such as `auth_login_success`, cannot be\nreported. Trusted servers send `x-internal-key` instead of an API key, which also allows any\nother name, stored as `custom_<name>` (at most 50 distinct custom names per UTC day), and a\n`value` up to 1000.\n",
         "parameters": [
           {
             "name": "x-internal-key",
@@ -6453,11 +7368,17 @@
             "description": "Relational counts for the user's own records.",
             "required": ["apiKeys", "shareLinks", "resumes"],
             "properties": {
-              "apiKeys": { "type": "integer" },
-              "shareLinks": { "type": "integer" },
+              "apiKeys": {
+                "type": "integer",
+                "description": "Every API key on the account, active, revoked or expired."
+              },
+              "shareLinks": {
+                "type": "integer",
+                "description": "Share links on documents that are not deleted, as the share list counts them."
+              },
               "resumes": {
                 "type": "integer",
-                "description": "Counts every Document the user owns — every `type`, and soft-deleted ones included.\nIt is not a count of RESUME-type documents. Use `GET /documents` for an accurate,\nfilterable list.\n"
+                "description": "The documents list's count: documents that are not deleted, of every type except\n`PORTFOLIO`.\n"
               }
             }
           }
@@ -6483,8 +7404,8 @@
           },
           "reason": {
             "type": "string",
-            "enum": ["too_short", "too_long", "invalid_characters", "reserved", "taken"],
-            "description": "Present only when `available` is `false`."
+            "enum": ["too_short", "invalid_characters", "reserved", "taken"],
+            "description": "Present only when `available` is `false`. The path segment is cut to 32 characters during\nnormalisation, so a long name is never refused for length. A value with no letters,\ndigits, `_` or `-` normalises to `user`.\n"
           }
         }
       },
@@ -6501,10 +7422,7 @@
         "type": "object",
         "required": ["id", "userId", "content", "createdAt", "updatedAt"],
         "properties": {
-          "id": {
-            "type": "string",
-            "description": "Empty string when the user has never saved a master profile yet."
-          },
+          "id": { "type": "string" },
           "userId": { "type": "string" },
           "content": { "$ref": "#/components/schemas/MasterProfileContent" },
           "createdAt": { "type": "string", "format": "date-time" },
@@ -6522,7 +7440,7 @@
           "autoSyncEnabled": { "type": "boolean" },
           "shareResumeCount": {
             "type": "integer",
-            "description": "Number of ShareLink records owned by the user."
+            "description": "The user's share links on documents that are not deleted, as the share list counts them."
           }
         }
       },
@@ -7147,7 +8065,7 @@
         "properties": {
           "usernameOrUrl": {
             "type": "string",
-            "description": "A GitHub username or profile URL. Free users may only import their own OAuth-connected\naccount (this value is ignored server-side and the caller's authenticated GitHub login is\nused instead); paid users may import any public username.\n",
+            "description": "A GitHub username or profile URL. Always required and checked (`400` when it is neither).\nFree users may only import their own OAuth-connected account, so for them the linked\nGitHub login is imported instead of this value; paid users may import any public username.\n",
             "minLength": 1
           },
           "replaceMaster": {
@@ -7176,7 +8094,7 @@
             "type": "string",
             "minLength": 8,
             "maxLength": 128,
-            "description": "The client's id for this import, as on every other AI route. A retry with the same id\nand the same text after a lost response returns the document already created\n(`replayed: true`) without charging again; the same id with different text is `409`.\n"
+            "description": "The client's id for this import, as on every other AI route. A retry with the same id,\nthe same text and the same `replaceMaster` after a lost response returns the document\nalready created (`replayed: true`) without charging again; the same id with different\ntext or a different `replaceMaster` is `409`.\n"
           }
         }
       },
@@ -7187,8 +8105,19 @@
           "success": { "type": "boolean" },
           "message": { "type": "string" },
           "data": {
-            "$ref": "#/components/schemas/Document",
-            "description": "The newly created resume Document seeded from the imported data."
+            "description": "The newly created resume Document seeded from the imported data. A LinkedIn import\nreplayed by `requestId` returns the stored document with `replayed: true` added.\n",
+            "allOf": [
+              { "$ref": "#/components/schemas/Document" },
+              {
+                "type": "object",
+                "properties": {
+                  "replayed": {
+                    "type": "boolean",
+                    "description": "Present and `true` only on a LinkedIn import replayed by `requestId`."
+                  }
+                }
+              }
+            ]
           }
         }
       },
@@ -7261,26 +8190,7 @@
             "properties": {
               "fullDescription": { "type": ["string", "null"] },
               "whyItMatters": { "type": ["string", "null"] },
-              "details": { "type": ["object", "null"] },
-              "interactions": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "type": { "type": "string" },
-                    "value": { "type": "integer" },
-                    "comment": { "type": ["string", "null"] },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "user": {
-                      "type": "object",
-                      "properties": {
-                        "id": { "type": "string" },
-                        "name": { "type": ["string", "null"] }
-                      }
-                    }
-                  }
-                }
-              }
+              "details": { "type": ["object", "null"] }
             }
           }
         ]
@@ -7362,13 +8272,32 @@
           "data": { "$ref": "#/components/schemas/ChangelogListData" }
         }
       },
+      "ChangelogEntryDetail": {
+        "description": "A single entry, with the row's timestamps the list leaves out.",
+        "allOf": [
+          { "$ref": "#/components/schemas/ChangelogEntry" },
+          {
+            "type": "object",
+            "required": ["editedAt", "createdAt", "updatedAt"],
+            "properties": {
+              "editedAt": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "When an admin last edited the entry, or `null` if only the release sync wrote it."
+              },
+              "createdAt": { "type": "string", "format": "date-time" },
+              "updatedAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        ]
+      },
       "ChangelogEntryResponse": {
         "type": "object",
         "required": ["success", "message", "data"],
         "properties": {
           "success": { "type": "boolean" },
           "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/ChangelogEntry" }
+          "data": { "$ref": "#/components/schemas/ChangelogEntryDetail" }
         }
       },
       "ChangelogStats": {
@@ -7389,17 +8318,17 @@
           },
           "contributorCount": {
             "type": "integer",
-            "description": "Distinct pull-request authors across every entry."
+            "description": "Distinct contributors, counted once each by GitHub login: the core team, the repository's\ncontributors from the last GitHub sync, the pull-request authors on every entry, and\n`@mentions` in entry text.\n"
           },
           "topContributors": {
             "type": "array",
+            "description": "Up to 30 of the contributors counted in `contributorCount`, the core team first, then in the order they were found. Not ranked by contributions.",
             "items": {
               "type": "object",
               "properties": {
                 "login": { "type": "string" },
                 "avatarUrl": { "type": "string", "format": "uri" },
-                "htmlUrl": { "type": "string", "format": "uri" },
-                "contributions": { "type": "integer" }
+                "htmlUrl": { "type": "string", "format": "uri" }
               }
             }
           }
@@ -7417,6 +8346,10 @@
       "GitHubStats": {
         "type": "object",
         "properties": {
+          "totalItems": {
+            "type": "integer",
+            "description": "The same value as `total`, kept for older clients."
+          },
           "total": { "type": "integer", "description": "Issues plus pull requests." },
           "issues": { "type": "integer", "description": "Issue-only count." },
           "pullRequests": { "type": "integer" },
@@ -7434,8 +8367,14 @@
         "type": "object",
         "properties": {
           "projectName": { "type": "string" },
+          "projectUrl": { "type": "string", "format": "uri" },
           "stats": { "$ref": "#/components/schemas/GitHubStats" },
-          "syncedAt": { "type": "string", "format": "date-time" }
+          "syncedAt": { "type": "string", "format": "date-time" },
+          "nextSyncAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the next scheduled sync is due."
+          }
         }
       },
       "GitHubStatsResponse": {
@@ -7467,9 +8406,14 @@
         "allOf": [
           {
             "type": "object",
-            "required": ["items"],
+            "required": ["items", "syncedAt"],
             "properties": {
-              "items": { "type": "array", "items": { "$ref": "#/components/schemas/GitHubItem" } }
+              "items": { "type": "array", "items": { "$ref": "#/components/schemas/GitHubItem" } },
+              "syncedAt": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "When the snapshot was taken, or `null` before the first sync."
+              }
             }
           },
           { "$ref": "#/components/schemas/OffsetPaginationMeta" }
@@ -7533,6 +8477,16 @@
             "type": ["string", "null"],
             "format": "date-time",
             "description": "Written at most once every 5 minutes per key, so it lags real usage slightly."
+          },
+          "expiresAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the key stops working. With `revokedAt`, this tells an expired key from a revoked one."
+          },
+          "revokedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the key was revoked, by the user or by a rotation, or `null`."
           }
         }
       },
@@ -7716,6 +8670,15 @@
             "type": ["string", "null"],
             "format": "date-time",
             "description": "Set by soft delete. Documents with a non-null deletedAt are excluded from list/get."
+          },
+          "portfolioSubdomain": {
+            "type": ["string", "null"],
+            "description": "A PORTFOLIO draft's chosen subdomain; `null` on every other type."
+          },
+          "moderatedPrivateAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When a moderator made the document private. While set, the owner cannot share it or make\nit anything but `PRIVATE`.\n"
           }
         }
       },
@@ -7878,7 +8841,16 @@
           "lastSyncedAt": { "type": ["string", "null"], "format": "date-time" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
-          "deletedAt": { "type": ["string", "null"], "format": "date-time" }
+          "deletedAt": { "type": ["string", "null"], "format": "date-time" },
+          "portfolioSubdomain": {
+            "type": ["string", "null"],
+            "description": "A PORTFOLIO draft's chosen subdomain; `null` on every other type."
+          },
+          "moderatedPrivateAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When a moderator made the document private, or `null`."
+          }
         }
       },
       "DocumentCreateRequest": {
@@ -8477,7 +9449,12 @@
       "AtsResumeInput": {
         "description": "The resume, in any of three shapes:\n\n- **Text** — extracted from a file or pasted. Parsed deterministically.\n- **`AtsResumeDocument`** — structured data, identified by `format: \"ats-resume@1\"`. The ATS\n  record is read from its fields; the content checks run on its rendered text. An invalid\n  document is rejected with 400 before any quota is consumed.\n- **JSON Resume** (jsonresume.org) — recognised by shape and read the same way as a document.\n  One that exceeds the document limits is scored as flattened text instead.\n\nAny other object is flattened to text, keys on their own lines.\n",
         "oneOf": [
-          { "type": "string", "maxLength": 50000 },
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50000,
+            "description": "Trimmed first; it must not be empty after trimming."
+          },
           { "$ref": "#/components/schemas/AtsResumeDocument" },
           { "type": "object", "additionalProperties": true }
         ]
@@ -8612,7 +9589,7 @@
             "properties": {
               "text": {
                 "type": "string",
-                "description": "Plain text extracted from the uploaded PDF, DOCX, TXT, Markdown, or JSON resume file (max ~50,000 characters)."
+                "description": "Plain text extracted from the uploaded PDF, DOCX, HTML, TXT, Markdown, or JSON resume file (max ~50,000 characters)."
               },
               "layout": { "$ref": "#/components/schemas/AtsLayoutSignals" },
               "quota": { "$ref": "#/components/schemas/AtsQuotaSummary" }
@@ -8669,7 +9646,7 @@
             "type": "string",
             "format": "uri",
             "maxLength": 2048,
-            "description": "Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3, response size to 2MB, and timeout to 8s)."
+            "description": "Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3 and response size to 2MB; the page may go 8s without sending data and must finish within 15s)."
           },
           "fetchJobUrl": { "type": "boolean", "default": false },
           "requestId": {
@@ -8709,7 +9686,11 @@
               },
               "creditsSpent": { "type": "integer" },
               "repair": { "$ref": "#/components/schemas/AtsRepairSummary" },
-              "quota": { "$ref": "#/components/schemas/AtsQuotaSummary" }
+              "quota": { "$ref": "#/components/schemas/AtsQuotaSummary" },
+              "replayed": {
+                "type": "boolean",
+                "description": "Present and `true` only when this is the stored answer to an earlier request with the\nsame `requestId` and input. Nothing is charged again, and `quota` is the current one.\n"
+              }
             }
           }
         }
@@ -8816,7 +9797,11 @@
               "resume": { "$ref": "#/components/schemas/AtsConvertedResume" },
               "creditsSpent": {
                 "type": "integer",
-                "description": "Credits spent on the conversion. They come from any source (a plan, a pass or a credit pack), independently of the shared ATS scan quota."
+                "description": "Credits spent on the conversion. They come from any source (a plan, a pass or a credit\npack), independently of the shared ATS scan quota. A replay reports the conversion's\nprice here although nothing is charged again.\n"
+              },
+              "replayed": {
+                "type": "boolean",
+                "description": "Present and `true` only when this is the stored answer to an earlier request with the\nsame `requestId` and resume text.\n"
               }
             }
           }
@@ -8873,7 +9858,7 @@
           },
           "input": {
             "type": "object",
-            "description": "Required, though every field inside it is optional and defaults to an empty string. At\nleast one of `text`, `context`, or `jobDescription` must be non-empty or the request fails\nwith `400`. Per-action character limits apply — see `GET /ai/actions`.\n",
+            "description": "Required, though every field inside it is optional and defaults to an empty string. At\nleast one of `text`, `context`, or `jobDescription` must be non-empty or the request fails\nwith `400`. Each action also has its own limits for `text` and `context`, set in the\nserver's AI policy and not published: over one, the request fails with `400` \"Text\nexceeds the N character limit.\" (or \"Context exceeds…\"), naming the limit. A\n`jobDescription` over its action's limit is cut to that length, not refused.\n",
             "properties": {
               "text": { "type": "string", "maxLength": 50000, "default": "" },
               "context": { "type": "string", "maxLength": 50000, "default": "" },
@@ -8927,6 +9912,10 @@
                     "description": "AI credit wallet balance after this generation."
                   }
                 }
+              },
+              "replayed": {
+                "type": "boolean",
+                "description": "Present and `true` only when this is the stored answer to an earlier request with the\nsame `requestId` and input. Nothing is charged again.\n"
               }
             }
           }
@@ -9023,7 +10012,16 @@
           },
           "suspensionReason": {
             "type": ["string", "null"],
-            "description": "One of `grace_expired` or `user_unpublished` when the portfolio is suspended."
+            "description": "Why the portfolio is suspended: `user_unpublished`, `grace_expired`, a billing status\n(`ACTIVE`, `PAST_DUE`, `CANCELED` or `INACTIVE`) recorded by the billing job, or\n`moderation:<reason>` for a moderator's takedown.\n"
+          },
+          "reasonBeforeModeration": {
+            "type": ["string", "null"],
+            "description": "The owner's or billing's own suspension reason that a moderator's takedown covers, restored when it is lifted; `null` when the site was online as the takedown went on."
+          },
+          "firstPublishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the portfolio first went online. A republish moves `publishedAt`, not this."
           },
           "suspendedAt": { "type": ["string", "null"], "format": "date-time" },
           "publishedAt": { "type": "string", "format": "date-time" },
@@ -9061,11 +10059,8 @@
           "success": { "type": "boolean" },
           "message": { "type": "string" },
           "data": {
-            "description": "The updated publication record with `status: SUSPENDED`, or null when the caller had never\npublished a portfolio. No `publicUrl` is included.\n",
-            "oneOf": [
-              { "$ref": "#/components/schemas/PortfolioPublicationRecord" },
-              { "type": "null" }
-            ]
+            "$ref": "#/components/schemas/PortfolioPublicationRecord",
+            "description": "The updated publication record with `status: SUSPENDED`. Never null: a caller who never\npublished gets `404`. No `publicUrl` is included.\n"
           }
         }
       },
@@ -9079,7 +10074,10 @@
             "type": "string",
             "description": "The subdomain the draft was last saved under. It is not the document's own slug: a rename or\nanother document's slug never changes or blocks it. A PORTFOLIO document never saved as a\ndraft shows its document slug.\n"
           },
-          "templateId": { "type": "string", "enum": ["signal", "atelier", "nimbus", "cipher"] },
+          "templateId": {
+            "type": "string",
+            "description": "`signal`, `atelier`, `nimbus` or `cipher` once the draft has been saved through\n`PUT /portfolios/draft`. A PORTFOLIO document created through `/documents` and never saved\nas a draft keeps the template it was created with (`modern` by default).\n"
+          },
           "content": {
             "type": "object",
             "additionalProperties": true,
@@ -9107,7 +10105,10 @@
         "required": ["id", "templateId", "content", "revision", "updatedAt"],
         "properties": {
           "id": { "type": "string" },
-          "templateId": { "type": "string", "enum": ["signal", "atelier", "nimbus", "cipher"] },
+          "templateId": {
+            "type": "string",
+            "description": "`signal`, `atelier`, `nimbus` or `cipher` once the draft has been saved through\n`PUT /portfolios/draft`. A PORTFOLIO document created through `/documents` and never saved\nas a draft keeps the template it was created with (`modern` by default).\n"
+          },
           "content": { "type": "object", "additionalProperties": true },
           "revision": { "type": "integer" },
           "updatedAt": { "type": "string", "format": "date-time" }
@@ -9135,7 +10136,7 @@
               "subdomain": { "type": "string" },
               "status": { "type": "string", "enum": ["LIVE", "GRACE", "SUSPENDED"] },
               "publishedRevision": { "type": "integer" },
-              "publishedAt": { "type": ["string", "null"], "format": "date-time" },
+              "publishedAt": { "type": "string", "format": "date-time" },
               "updatedAt": { "type": "string", "format": "date-time" }
             }
           },
@@ -9363,9 +10364,13 @@
             "type": "boolean",
             "description": "True when the caller has no visitor-analytics access (it comes with Creator Pro, the Job\nHunter Bundle or a pass). The numbers are then all zero and the lists empty, whether or\nnot a portfolio is published.\n"
           },
-          "totalViews": { "type": "integer" },
+          "totalViews": {
+            "type": "integer",
+            "description": "All-time views, including views still buffered and not yet flushed."
+          },
           "daily": {
             "type": "array",
+            "description": "The 30 most recent days that had views, newest first. Days with no views are left out.",
             "items": {
               "type": "object",
               "properties": {
@@ -9376,6 +10381,7 @@
           },
           "referrers": {
             "type": "array",
+            "description": "The all-time top 10 referrer hosts, from flushed views only.",
             "items": {
               "type": "object",
               "properties": { "host": { "type": "string" }, "count": { "type": "integer" } }
@@ -9409,10 +10415,15 @@
         "required": ["kind", "mimeType", "sizeBytes"],
         "properties": {
           "kind": { "type": "string", "enum": ["AVATAR", "PROJECT_COVER", "SOCIAL_IMAGE"] },
-          "mimeType": { "type": "string", "minLength": 1 },
+          "mimeType": {
+            "type": "string",
+            "description": "`image/jpeg`, `image/png` or `image/webp`. Checked by the service rather than the\nrequest schema, so any other value answers `400` \"Upload a JPG, PNG, or WebP image.\".\n",
+            "example": "image/png",
+            "minLength": 1
+          },
           "sizeBytes": {
             "type": "integer",
-            "description": "Must be greater than 0 and no more than 5 MB.",
+            "description": "Greater than 0 and at most 5,242,880 (5 MB). A larger size answers `400` \"Image must be\n5 MB or smaller.\".\n",
             "exclusiveMinimum": 0
           }
         }
@@ -9505,7 +10516,8 @@
           },
           "interval": {
             "type": ["string", "null"],
-            "enum": ["one_day", "seven_day", "monthly", "annual", null]
+            "enum": ["ONE_DAY", "SEVEN_DAY", "MONTHLY", "ANNUAL", null],
+            "description": "The stored billing interval, upper case. Request bodies (checkout, plan change) use the\nlower-case spelling (`monthly`, `annual`, ...).\n"
           },
           "currentPeriodEnd": { "type": ["string", "null"], "format": "date-time" },
           "cancelAtPeriodEnd": { "type": "boolean" },
@@ -9571,9 +10583,49 @@
           },
           "credits": { "$ref": "#/components/schemas/CreditWallet" },
           "catalog": {
-            "type": "object",
-            "additionalProperties": true,
-            "description": "Public product/pricing catalog (prices, intervals, entitlements per plan)."
+            "type": "array",
+            "description": "The public product catalog, one entry per subscription product.",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "name",
+                "entitlements",
+                "prices",
+                "configuredIntervals",
+                "currency"
+              ],
+              "properties": {
+                "key": { "type": "string", "enum": ["ai_credits", "portfolio_pro", "bundle"] },
+                "name": { "type": "string" },
+                "entitlements": { "type": "array", "items": { "type": "string" } },
+                "prices": {
+                  "type": "object",
+                  "description": "Price in cents per interval (`one_day`, `seven_day`, `monthly`, `annual`) the product is sold in.",
+                  "additionalProperties": { "type": "integer" }
+                },
+                "creditAllowance": {
+                  "type": "object",
+                  "description": "AI credits granted per interval, for products that include them.",
+                  "additionalProperties": { "type": "integer" }
+                },
+                "creditNotes": {
+                  "type": "object",
+                  "description": "How the allowance is delivered, per interval, in words a pricing page can show.",
+                  "additionalProperties": { "type": "string" }
+                },
+                "recommended": { "type": "boolean" },
+                "configuredIntervals": {
+                  "type": "array",
+                  "description": "The intervals that have a provider product configured on this server, so can be bought now.",
+                  "items": {
+                    "type": "string",
+                    "enum": ["one_day", "seven_day", "monthly", "annual"]
+                  }
+                },
+                "currency": { "type": "string", "enum": ["USD"] }
+              }
+            }
           },
           "creditEconomics": { "type": "object", "additionalProperties": true },
           "addOns": {
@@ -9737,6 +10789,10 @@
               "url": {
                 "type": "string",
                 "description": "Dodo Payments hosted checkout URL to redirect the user to."
+              },
+              "reused": {
+                "type": "boolean",
+                "description": "True when an open checkout session for the same choice was handed back instead of a new one."
               }
             }
           }
@@ -9831,6 +10887,7 @@
       },
       "PlanChangePreviewRequest": {
         "type": "object",
+        "description": "An `idempotencyKey` field is accepted here too, and ignored; a preview changes nothing.",
         "required": ["productKey", "interval"],
         "properties": {
           "productKey": {
@@ -9915,7 +10972,7 @@
               },
               "replayed": {
                 "type": "boolean",
-                "description": "Present and true when this is the stored answer for an idempotency key already used."
+                "description": "Always present. `true` when this is the stored answer for an idempotency key already used, `false` on a fresh call."
               }
             }
           }
@@ -9929,7 +10986,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 64,
-            "description": "Normalized to lower case with spaces as `_`. Public callers may send only `resume_created`,\n`resume_deleted`, `resume_exported`, `cover_letter_exported`, `auth_otp_sent`,\n`dashboard_opened`, `roadmap_viewed`, `share_link_created`, `share_link_updated` and\n`share_link_revoked`. Internal callers (`x-internal-key`) may also send `custom_*` names.\n"
+            "description": "Normalized to lower case with spaces as `_`. Public callers may send only `resume_created`,\n`resume_deleted`, `resume_exported`, `cover_letter_exported`, `auth_otp_sent`,\n`dashboard_opened`, `roadmap_viewed`, `share_link_created`, `share_link_updated` and\n`share_link_revoked`. Internal callers (`x-internal-key`) may send any other name too:\none that is not a known event is stored as `custom_<name>` (a name that already starts with\n`custom_` is kept as is).\n"
           },
           "value": {
             "type": "integer",
@@ -10077,6 +11134,8 @@
       },
       "PublicSharePayload": {
         "type": "object",
+        "description": "While a password is required, only `passwordRequired` (`true`) and `expiresAt` are sent.\nOtherwise every field below is present except `snapshot`, which is sent once no password is\nrequired or after successful verification.\n",
+        "required": ["passwordRequired", "expiresAt"],
         "properties": {
           "passwordRequired": { "type": "boolean" },
           "resumeTitle": { "type": "string" },
@@ -10111,7 +11170,13 @@
         "type": "object",
         "required": ["code"],
         "properties": {
-          "code": { "type": "string", "minLength": 4, "maxLength": 32, "pattern": "^[a-z0-9-]+$" },
+          "code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 32,
+            "description": "Letters, digits and hyphens. Upper case is accepted and lower-cased before the lookup.",
+            "pattern": "^[a-z0-9-]+$"
+          },
           "referrerHost": { "type": "string", "maxLength": 255 }
         }
       },
@@ -10132,11 +11197,12 @@
           "commissions": { "type": "integer" },
           "user": {
             "type": ["object", "null"],
+            "description": "Null when the affiliate's account is gone.",
             "properties": {
-              "id": { "type": "string" },
-              "name": { "type": ["string", "null"] },
-              "username": { "type": ["string", "null"] },
-              "image": { "type": ["string", "null"] },
+              "name": {
+                "type": ["string", "null"],
+                "description": "First name and last initial (\"Jane D.\"), or null when the account has no name."
+              },
               "affiliateTier": { "type": "string", "enum": ["TIER_1", "TIER_2", "TIER_3"] }
             }
           }
@@ -10172,7 +11238,7 @@
               "type": "object",
               "properties": {
                 "id": { "type": "string" },
-                "status": { "type": "string", "enum": ["PENDING", "CONVERTED"] },
+                "status": { "type": "string", "enum": ["SIGNED_UP", "CONVERTED", "REJECTED"] },
                 "createdAt": { "type": "string", "format": "date-time" },
                 "convertedAt": { "type": ["string", "null"], "format": "date-time" }
               }
@@ -10263,7 +11329,7 @@
             "type": "string",
             "minLength": 4,
             "maxLength": 32,
-            "description": "Another affiliate's code. Self-referrals are rejected.",
+            "description": "Another affiliate's code. Letters, digits and hyphens; upper case is accepted and lower-cased. Self-referrals are rejected.",
             "pattern": "^[a-z0-9-]+$"
           }
         }
@@ -10302,7 +11368,7 @@
           "data": {
             "type": "object",
             "additionalProperties": true,
-            "description": "The created AffiliateWithdrawal record (status starts as REQUESTED)."
+            "description": "The created withdrawal row as stored: `id`, `userId`, `amountCents`, `currency`,\n`status` (`REQUESTED`), `payoutNote`, `reviewedBy`, `reviewedAt`, `paidAt`,\n`createdAt` and `updatedAt`.\n"
           }
         }
       },
@@ -10352,8 +11418,31 @@
             "type": "string",
             "enum": ["NONE", "PENDING", "APPROVED", "REJECTED"]
           },
+          "name": {
+            "type": ["string", "null"],
+            "description": "The account's name, so the form can greet and prefill."
+          },
+          "email": { "type": ["string", "null"] },
           "collegeName": { "type": ["string", "null"] },
-          "graduationYear": { "type": ["string", "null"] }
+          "graduationYear": { "type": ["string", "null"] },
+          "application": {
+            "type": ["object", "null"],
+            "description": "The latest application's answers, so a rejected applicant can edit and resubmit; null when there is none.",
+            "properties": {
+              "collegeName": { "type": "string" },
+              "graduationYear": { "type": "string" },
+              "whyJoin": { "type": "string" },
+              "superpower": { "type": "string" },
+              "funFact": { "type": "string" },
+              "vibeCheck": { "type": ["string", "null"] },
+              "socialHandle": { "type": ["string", "null"] },
+              "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+              "reviewNote": { "type": ["string", "null"] },
+              "reviewedAt": { "type": ["string", "null"], "format": "date-time" },
+              "submittedAt": { "type": "string", "format": "date-time" },
+              "updatedAt": { "type": "string", "format": "date-time" }
+            }
+          }
         }
       },
       "AmbassadorStatusResponse": {
@@ -10532,6 +11621,38 @@
             "examples": {
               "ipLimit": {
                 "summary": "Per-IP limit",
+                "value": {
+                  "success": false,
+                  "statusCode": 429,
+                  "message": "Too many requests. Please try again later."
+                }
+              },
+              "apiKeyLimit": {
+                "summary": "Per-key limit",
+                "value": {
+                  "success": false,
+                  "statusCode": 429,
+                  "message": "Rate limit exceeded. You are allowed 20 requests per 15 minutes. Please try again in 840 seconds."
+                }
+              }
+            }
+          }
+        }
+      },
+      "AutosaveRateLimitError": {
+        "description": "Too Many Requests. This route is an autosave target, so it has its own limit: 600 saves per 15\nminutes per user, counted after authentication. It also counts toward the 1,000 requests per\n15 minutes per IP across all routes and, with an API key, the key's own limit. Every `429`\ncarries `Retry-After` (seconds).\n",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds until the window resets.",
+            "schema": { "type": "integer" }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "autosaveLimit": {
+                "summary": "Autosave or per-IP limit",
                 "value": {
                   "success": false,
                   "statusCode": 429,

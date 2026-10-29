@@ -76,10 +76,13 @@ getCurrentUser:
       scopes. The request is refused with `409` while something could still charge the card or
       while the user holds an unpaid affiliate balance:
 
-      - a subscription that is active or past due and not set to cancel: cancel it from Billing
-        first;
+      - a subscription the billing provider still reports as active, on hold, past due or paused,
+        or one created in the last 24 hours that is not paid yet: cancel it from Billing first. A
+        subscription already set to cancel at the end of its period still blocks deletion until
+        that period ends;
       - `details.code: "CHECKOUT_IN_PROGRESS"`: a checkout session is open; finish or cancel it
         first;
+      - an affiliate withdrawal is requested or approved and not yet paid or rejected;
       - `details.code: "AFFILIATE_BALANCE_FORFEIT"`: deleting forfeits the unpaid commissions in
         `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the
         amount, then repeat the request with `confirmAffiliateForfeit: true` and
@@ -114,7 +117,17 @@ getCurrentUser:
               message: "Your account and all associated documents, portfolios, and data have been permanently deleted."
               data: null
       "400":
-        $ref: ../components/responses.yaml#/BodyValidationError
+        description: |
+          The body is not valid JSON. The confirmation fields are read leniently, so a wrong value
+          is treated as "not confirmed" (`409`), not refused here.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 400
+              message: "Invalid JSON body"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "403":
@@ -139,8 +152,9 @@ getCurrentUser:
               message: "User not found"
       "409":
         description: |
-          A live subscription must be cancelled first, a checkout is open
-          (`details.code: "CHECKOUT_IN_PROGRESS"`), or deleting would forfeit an unpaid affiliate
+          A live subscription must be cancelled first (or, when already set to cancel, must reach
+          the end of its period), a checkout is open (`details.code: "CHECKOUT_IN_PROGRESS"`), an
+          affiliate withdrawal is in progress, or deleting would forfeit an unpaid affiliate
           balance that was not confirmed (`details.code: "AFFILIATE_BALANCE_FORFEIT"`, with
           `amountCents`, `currency`, `availableCents` and `pendingCents`).
         content:
@@ -155,7 +169,27 @@ getCurrentUser:
                 value:
                   success: false
                   statusCode: 409
-                  message: "Cancel your subscription before deleting your account. Open Billing and use Manage Subscription — we cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists."
+                  message: "Cancel your subscription before deleting your account: open Billing and use Manage Subscription. We cannot cancel it for you, and deleting now would leave you being charged for an account that no longer exists. Once the subscription has ended you can delete your account."
+              subscriptionEnding:
+                summary: A subscription set to cancel that has not ended yet
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Your subscription is cancelled and ends on 2026-11-30. You can delete your account once it has ended. If you need it deleted sooner, contact support."
+              checkoutOpen:
+                summary: A checkout session is open
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "A checkout is still open for this account. Finish or cancel it before deleting the account."
+                  details:
+                    code: "CHECKOUT_IN_PROGRESS"
+              withdrawalInProgress:
+                summary: An affiliate withdrawal is in progress
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "You have a withdrawal in progress. Wait for it to be paid or rejected before deleting your account."
               affiliateForfeit:
                 summary: An unpaid affiliate balance
                 value:
@@ -173,12 +207,22 @@ getCurrentUser:
       "429":
         $ref: ../components/responses.yaml#/RateLimitError
       "503":
-        description: Account deletion is temporarily unavailable (the checkout state could not be read). Try again shortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+        description: |
+          Account deletion is temporarily unavailable: the checkout state could not be read, or the
+          sessions could not be revoked before the deletion. The account is untouched; try again
+          shortly. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot
+          be read, and as "Service temporarily unavailable" when the database cannot be reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              deletionUnavailable:
+                summary: Checkout state unreadable, or sessions not revoked
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Account deletion is temporarily unavailable. Try again shortly."
               authUnavailableCode:
                 summary: Session store unavailable
                 value:
@@ -315,9 +359,10 @@ setUsername:
 
       The submitted value is **normalised before validation**: lowercased, non-`[a-z0-9_-]`
       characters folded to hyphens, leading/trailing hyphens stripped, and truncated to 32
-      characters. `Jane.Doe` and `jane-doe` therefore claim the same username. It must survive
-      normalisation as 3–32 characters and must not be a reserved word (`admin`, `api`, `app`,
-      `docs`, and similar platform-owned names). Check with
+      characters. `Jane.Doe` and `jane-doe` therefore claim the same username. A value with no
+      letters, digits, `_` or `-` at all (such as `!!!`) normalises to `user` and claims that name
+      rather than being refused. The result must be 3 to 32 characters and must not be a reserved
+      word (`admin`, `api`, `app`, `docs`, and similar platform-owned names). Check with
       `GET /users/{username}/availability` before committing.
 
       A successful claim invalidates the caller's cached session so the new username is visible
@@ -359,21 +404,24 @@ setUsername:
                   shareLinks: 4
                   resumes: 4
       "400":
-        description: The username failed validation after normalisation. A body that is not valid JSON answers "Invalid JSON body".
+        description: |
+          The username failed validation after normalisation. The detail message is the reason:
+          `too_short`, `invalid_characters` or `reserved`. A body that is not valid JSON answers
+          "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
               documented:
-                summary: The username failed validation after normalisation
+                summary: The username is reserved
                 value:
                   success: false
                   statusCode: 400
                   message: "Validation failed"
                   details:
                     - path: "username"
-                      message: "invalid_username"
+                      message: "reserved"
               invalidJson:
                 summary: The body is not valid JSON
                 value:

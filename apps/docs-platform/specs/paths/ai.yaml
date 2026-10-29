@@ -32,14 +32,16 @@ getAiActions:
       "429":
         $ref: ../components/responses.yaml#/RateLimitError
       "503":
-        description: The AI policy is missing or invalid, or AI model routing is not configured on the server. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+        description: |
+          The server's AI policy is missing or invalid, or the session store cannot be read
+          (`details.code` `AUTH_UNAVAILABLE`).
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
               documented:
-                summary: The AI policy is missing or invalid, or AI model routing is not configured on the server
+                summary: The AI policy is missing or invalid
                 value:
                   success: false
                   statusCode: 503
@@ -52,12 +54,6 @@ getAiActions:
                   message: Authentication is temporarily unavailable
                   details:
                     code: AUTH_UNAVAILABLE
-              databaseUnavailable:
-                summary: Database unreachable
-                value:
-                  success: false
-                  statusCode: 503
-                  message: Service temporarily unavailable
 
 generateAiContent:
   post:
@@ -79,6 +75,9 @@ generateAiContent:
       reservation is released instead of committed — a failed generation never burns credits.
 
       Expert mode uses a stronger, more expensive model than Standard mode for the same action.
+
+      The body is validated before the caller is: a first-party request with no session and an
+      invalid body gets `400`, not `401`.
     requestBody:
       required: true
       content:
@@ -155,19 +154,52 @@ generateAiContent:
               statusCode: 403
               message: "This API key does not have permission for this action."
       "409":
-        description: requestId was already used, or is still processing
+        description: |
+          The `requestId` was already used (for another action or input, or it already completed
+          or failed), it is still processing, or the credit balance changed while the credits were
+          being held (retry the action).
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "This AI request id can no longer be reused."
+            examples:
+              noLongerReusable:
+                summary: The id cannot be reused
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request id can no longer be reused."
+              otherOperation:
+                summary: Id used for another action or input
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "AI request id was already used for another operation."
+              processing:
+                summary: The same request is still running
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request is processing."
+              completed:
+                summary: The request already completed
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request already completed."
+              balanceChanged:
+                summary: The balance moved while credits were held
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Credit balance changed. Retry the action."
       "413":
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+        description: |
+          The caller already has two AI requests in progress (`Retry-After` 10), or a rate limit
+          was hit: the per-IP AI limit (20 requests per minute) or, with an API key, the per-key
+          limit.
         content:
           application/json:
             schema:
@@ -197,15 +229,24 @@ generateAiContent:
             schema:
               type: integer
       "502":
-        description: AI provider error
+        description: The AI provider failed or returned nothing. The reservation is released.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 502
-              message: "The AI provider could not complete the request."
+            examples:
+              failed:
+                summary: Provider error
+                value:
+                  success: false
+                  statusCode: 502
+                  message: "The AI provider could not complete the request."
+              empty:
+                summary: Empty answer
+                value:
+                  success: false
+                  statusCode: 502
+                  message: "The AI provider returned an empty response."
       "503":
         description: |-
           The server's AI settings are missing or invalid, the AI gateway credentials are not

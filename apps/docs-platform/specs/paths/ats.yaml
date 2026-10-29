@@ -65,7 +65,7 @@ extractAtsResumeText:
       - ProdSession: []
     summary: Extract Resume Text
     description: |
-      Extracts plain text from an uploaded resume file (PDF, DOCX, TXT, Markdown, or JSON, max 5MB)
+      Extracts plain text from an uploaded resume file (PDF, DOCX, HTML, TXT, Markdown, or JSON, max 5MB)
       for use as the `resume` field on `/ats/check` or `/ats/analyze`. Does not consume ATS scan
       quota. Uploads are metered by a separate extract budget instead (`quota.extract`), and a
       request over it is rejected with `429`. The multipart body must carry only the `resume`
@@ -89,12 +89,39 @@ extractAtsResumeText:
             schema:
               $ref: "../components/schemas.yaml#/AtsExtractResponse"
       "400":
-        description: Missing file, unsupported/unreadable file, or a multipart field other than `resume`
+        description: |
+          Missing file, unsupported or unreadable file, a file with too little text (a scanned PDF
+          has its own message), or a multipart field or file other than `resume` (multer's reason
+          follows "Upload refused:").
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              unreadable:
+                summary: The parser could not read the file
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Resume file could not be read."
+              tooLittleText:
+                summary: Under 50 characters of text
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Resume file did not contain enough readable text."
+              scannedPdf:
+                summary: A PDF with no text layer
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "This PDF appears to be a scanned image or flattened graphic without an embedded text layer. Real ATS parsers cannot read scanned resumes without OCR. Please export your resume as a text-based PDF or Word document."
+              extraField:
+                summary: A multipart field other than the file
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Upload refused: Too many fields."
               missingFile:
                 summary: No file provided
                 value:
@@ -129,6 +156,16 @@ extractAtsResumeText:
               success: false
               statusCode: 413
               message: "The file is larger than the 5 MB upload limit."
+      "422":
+        description: The parser ran out of memory on this file. Simplify or re-export it.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 422
+              message: "This file is too complex to read."
       "429":
         description: ATS upload quota exceeded. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
         content:
@@ -160,18 +197,34 @@ extractAtsResumeText:
             schema:
               type: integer
       "503":
-        description: Extraction is busy or unavailable. The upload is returned to the extract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+        description: |
+          Extraction is busy, unavailable, or stopping for a restart; the upload is returned to the
+          extract budget. Also sent, with `details.code` `AUTH_UNAVAILABLE`, when the session store
+          cannot be read, and as "Service temporarily unavailable" when the database cannot be
+          reached.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
               documented:
-                summary: Extraction is busy or unavailable
+                summary: Extraction is busy
                 value:
                   success: false
                   statusCode: 503
                   message: "Too many resume extractions in progress. Please retry shortly."
+              extractionUnavailable:
+                summary: The extraction process failed to start or restart
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Resume extraction is temporarily unavailable."
+              shuttingDown:
+                summary: The server is shutting down
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Server is shutting down."
               authUnavailableCode:
                 summary: Session store unavailable
                 value:
@@ -302,8 +355,9 @@ analyzeAtsResume:
       Optionally fetches a job description from a URL instead of requiring pasted text
       (`fetchJobUrl: true` + `jobUrl`). The fetch is SSRF-hardened: HTTPS-only on the standard port,
       rejects localhost/private/link-local addresses, resolves DNS once and pins that IP for the
-      whole request (including redirects), and caps redirects to 3, response size to 2MB, and the
-      request timeout to 8 seconds.
+      whole request (including redirects), and caps redirects to 3 and the response size to 2MB.
+      The page may go 8 seconds without sending data and must finish within 15 seconds; each DNS
+      lookup has its own 5-second limit.
     requestBody:
       required: true
       content:
@@ -415,8 +469,9 @@ analyzeAtsResume:
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
         description: |-
-          The ATS scan quota is used up (`details` is the quota), or the caller already has two
-          AI requests in progress (`Retry-After` says when to try again). The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+          The ATS scan quota is used up (`details` is the quota), the caller already has two AI
+          requests in progress (`Retry-After` says when to try again), or a rate limit was hit: the
+          per-IP AI limit (20 requests per minute) or, with an API key, the per-key limit.
         content:
           application/json:
             schema:
@@ -581,19 +636,52 @@ convertAtsResume:
               statusCode: 403
               message: "This API key does not have permission for this action."
       "409":
-        description: requestId was already used, or is still processing
+        description: |
+          The `requestId` was already used (for another operation or input, or it already
+          completed or failed), it is still processing, or the credit balance changed while the
+          credits were being held (retry the action).
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "This AI request id can no longer be reused."
+            examples:
+              noLongerReusable:
+                summary: The id cannot be reused
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request id can no longer be reused."
+              otherOperation:
+                summary: Id used for another operation or input
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "AI request id was already used for another operation."
+              processing:
+                summary: The same request is still running
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request is processing."
+              completed:
+                summary: The request already completed
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "This AI request already completed."
+              balanceChanged:
+                summary: The balance moved while credits were held
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Credit balance changed. Retry the action."
       "413":
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
-        description: The caller already has two AI requests in progress. `Retry-After` says when to try again. The per-IP limit also answers `429` ("Too many requests. Please try again later."). With an API key, the per-key limit (20 requests per 15 minutes by default) also answers `429`.
+        description: |
+          The caller already has two AI requests in progress (`Retry-After` says when to try
+          again), or a rate limit was hit: the per-IP AI limit (20 requests per minute) or, with an
+          API key, the per-key limit.
         content:
           application/json:
             schema:

@@ -39,7 +39,9 @@ getChangelogEntries:
           type: string
           minLength: 1
           maxLength: 120
-        description: Case-insensitive substring match against the entry title and summary.
+        description: |
+          Case-insensitive substring match against the entry title, summary, version (a leading
+          `v` is ignored) and id.
 
       - name: limit
         in: query
@@ -66,8 +68,8 @@ getChangelogEntries:
         schema:
           type: integer
           minimum: 1
-          default: 1
-        description: 1-based page index. An alternative to `offset`.
+        description: |
+          1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` "Send either page or offset, not both".
 
       - name: pageSize
         in: query
@@ -124,7 +126,10 @@ getChangelogEntries:
                   nextCursor: null
 
       "400":
-        description: Validation error
+        description: |
+          Validation error: a parameter is out of range, `page` and `offset` were both sent, or the
+          query has a parameter this endpoint does not know (unknown parameters are refused, not
+          ignored).
         content:
           application/json:
             schema:
@@ -183,7 +188,6 @@ getChangelogStats:
                   - login: "octocat"
                     avatarUrl: "https://avatars.githubusercontent.com/u/583231"
                     htmlUrl: "https://github.com/octocat"
-                    contributions: 9
 
       "401":
         $ref: ../components/responses.yaml#/PublicUnauthorizedError
@@ -238,6 +242,9 @@ getChangelogEntryById:
                 security: []
                 tags: ["portfolio", "editor"]
                 prRefs: null
+                editedAt: null
+                createdAt: "2026-07-29T10:05:00.000Z"
+                updatedAt: "2026-07-29T10:05:00.000Z"
 
       "401":
         $ref: ../components/responses.yaml#/PublicUnauthorizedError

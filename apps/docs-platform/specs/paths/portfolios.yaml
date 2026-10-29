@@ -5,8 +5,9 @@ listPublicPortfolios:
     operationId: listPublicPortfolios
     summary: List Public Portfolios
     description: |
-      Lists the subdomains of every portfolio currently in `LIVE` or `GRACE` status, most recently
-      updated first. Returns subdomain and timestamp only — no portfolio content. Without
+      Lists the subdomains of every portfolio the public site serves: `LIVE` ones, and `GRACE`
+      ones while their grace period is still running. A portfolio whose document was deleted is
+      never listed. Most recently updated first. Returns subdomain and timestamp only, no portfolio content. Without
       `limit` a page holds up to 1,000 portfolios; page through the rest with `offset` (up to
       49,999, the sitemap protocol's 50,000 URLs). The default order, most recently updated first,
       moves whenever a site is republished or its billing changes; to page through every site,
@@ -89,20 +90,12 @@ getPublicPortfolio:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioPublicResponse"
-      "400":
-        description: The subdomain is empty or reserved once normalised.
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 400
-              message: "Choose a valid portfolio subdomain."
       "401":
         $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "404":
-        description: No live portfolio exists at this subdomain.
+        description: |
+          No live portfolio exists at this subdomain. An empty or reserved subdomain is looked up
+          like any other and answers this `404` too.
         content:
           application/json:
             schema:
@@ -136,7 +129,11 @@ recordPortfolioView:
       The body may also be sent as `text/plain` holding the same JSON, which is what
       `navigator.sendBeacon(url, JSON.stringify(body))` sends: a CORS-safelisted type, so a
       published portfolio's subdomain can send it without a preflight. A `text/plain` body is
-      limited to 2 KB.
+      limited to 5 KB and is read before the credential check, so an oversized one gets `413`
+      even without a key; a JSON body falls under the 100 kb default.
+
+      The subdomain lookup is cached for 60 seconds, so for up to a minute after a takedown views
+      are still accepted with `202`. A Redis failure while buffering answers `500`.
     security:
       - ApiKeyAuth: []
       - {}
@@ -254,7 +251,36 @@ savePortfolioDraft:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioDraftResponse"
       "400":
-        $ref: ../components/responses.yaml#/BodyValidationError
+        description: |
+          The body fails validation ("Validation failed" with `details`), the subdomain is empty,
+          reserved or starts with `xn--` ("Choose a valid portfolio subdomain.", no `details`), or
+          the body is not valid JSON.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              validation:
+                summary: A field failed validation
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "revision"
+                      message: "Expected number, received string"
+              invalidSubdomain:
+                summary: Empty, reserved or punycode subdomain
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Choose a valid portfolio subdomain."
+              invalidJson:
+                summary: The body is not valid JSON
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Invalid JSON body"
       "401":
         $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "404":
@@ -264,15 +290,28 @@ savePortfolioDraft:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
       "409":
-        description: Draft was changed in another session
+        description: |
+          The draft was changed in another session (`details.revision` is the stored revision when
+          the check fails up front), or a first save kept colliding on its document slug.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "Portfolio draft changed in another session."
+            examples:
+              stale:
+                summary: Changed in another session
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Portfolio draft changed in another session."
+                  details:
+                    revision: 4
+              notSaved:
+                summary: First save could not get a slug
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "The portfolio draft could not be saved. Try again."
       "413":
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
@@ -307,7 +346,29 @@ checkPortfolioSubdomainAvailability:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioSubdomainAvailabilityResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        description: |
+          The name is empty, reserved or starts with `xn--` ("Choose a valid portfolio subdomain.",
+          no `details`), or longer than 63 characters ("Validation failed" with `details`).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              invalidSubdomain:
+                summary: Empty, reserved or punycode name
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Choose a valid portfolio subdomain."
+              tooLong:
+                summary: Longer than 63 characters
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Validation failed"
+                  details:
+                    - path: "slug"
+                      message: "String must contain at most 63 character(s)"
       "401":
         $ref: ../components/responses.yaml#/SessionUnauthorizedError
       "429":
@@ -377,7 +438,12 @@ publishPortfolio:
       `ADMIN_EMAIL` check independent of plan tier (`isAdminUser`) — regular users can save drafts,
       preview, and manage everything except actually flipping a portfolio live. This is a
       temporary rollout restriction, not a permanent product limitation. Only administrators can
-      exercise this endpoint end-to-end in production today; it is unrestricted in development.
+      exercise this endpoint end-to-end in production today; outside production (`NODE_ENV` other
+      than `production`) it is unrestricted. The restriction is checked before the body, so in
+      production a non-admin gets `403` even for an invalid body.
+
+      Checks run in this order: the premium-template `402`, then the stale-revision `409`, then
+      the subdomain.
     requestBody:
       required: true
       content:
@@ -392,12 +458,20 @@ publishPortfolio:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioPublishResponse"
       "400":
-        description: Validation error, incomplete portfolio content, or an unusable image reference. A body that is not valid JSON answers "Invalid JSON body".
+        description: |
+          Validation error, incomplete portfolio content, an unusable image reference, or an empty,
+          reserved or punycode subdomain. A body that is not valid JSON answers "Invalid JSON body".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              invalidSubdomain:
+                summary: Empty, reserved or punycode subdomain
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Choose a valid portfolio subdomain."
               incompleteContent:
                 summary: Draft does not satisfy the stricter publish schema
                 value:
@@ -459,16 +533,51 @@ publishPortfolio:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "Save the latest draft before publishing."
+            examples:
+              stale:
+                summary: Stale revision
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "Save the latest draft before publishing."
+              subdomainTaken:
+                summary: Subdomain already in use
+                value:
+                  success: false
+                  statusCode: 409
+                  message: "That portfolio subdomain is already in use."
       "413":
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
         $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
+        description: |
+          The draft references images but media delivery is not configured on the server
+          (`R2_PUBLIC_BASE_URL` unset), the session store cannot be read, or the database cannot
+          be reached.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              mediaDelivery:
+                summary: Media delivery not configured
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Portfolio media delivery is not configured."
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Authentication is temporarily unavailable"
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Service temporarily unavailable"
 
 unpublishPortfolio:
   post:
@@ -521,7 +630,11 @@ getPortfolioAnalytics:
       - ProdSession: []
     summary: Get Portfolio Analytics
     description: |
-      Views for the last 30 days plus the top 10 referrer hosts.
+      View counts for the caller's published portfolio. `totalViews` is all-time, including views
+      still buffered and not yet flushed. `daily` is the 30 most recent days that had any views,
+      newest first; days with no views are left out, so it is not a 30-day calendar. `referrers`
+      is the all-time top 10 referrer hosts from flushed views only (views still buffered are not
+      in it).
 
       Visitor analytics comes with Creator Pro, the Job Hunter Bundle or a pass. Without it the
       response has `locked: true` and all-zero data, whether or not a portfolio is published. With
@@ -572,18 +685,27 @@ createPortfolioAssetUploadUrl:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioAssetUploadResponse"
       "400":
-        description: Unsupported image type, or size out of range. A body that is not valid JSON answers "Invalid JSON body".
+        description: |
+          A `kind` outside the list or a `sizeBytes` that is not a positive integer ("Validation
+          failed"), a `mimeType` other than JPEG, PNG or WebP, a size over 5 MB, or a body that is
+          not valid JSON.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
               documented:
-                summary: Unsupported image type, or size out of range
+                summary: Unsupported image type
                 value:
                   success: false
                   statusCode: 400
                   message: "Upload a JPG, PNG, or WebP image."
+              tooLarge:
+                summary: Over 5 MB
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Image must be 5 MB or smaller."
               invalidJson:
                 summary: The body is not valid JSON
                 value:
@@ -619,12 +741,22 @@ createPortfolioAssetUploadUrl:
             schema:
               type: integer
       "503":
-        description: Media uploads are not configured (R2 credentials missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+        description: |
+          Media uploads are not configured (R2 credentials missing), the session store cannot be
+          read, or the database cannot be reached. The asset row is created before the storage
+          check, so an upload refused for missing credentials still counts toward the 20 uploads
+          an hour and leaves a pending row behind.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              notConfigured:
+                summary: R2 credentials missing
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Portfolio media uploads are not configured."
               authUnavailable:
                 summary: Session store unavailable
                 value:
@@ -665,12 +797,24 @@ completePortfolioAssetUpload:
             schema:
               $ref: "../components/schemas.yaml#/PortfolioAssetCompleteResponse"
       "400":
-        description: Uploaded file does not match the declared size/type/checksum. A body that is not valid JSON answers "Invalid JSON body".
+        description: The uploaded file does not match the declared size, type or checksum, or the body is invalid.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              sizeMismatch:
+                summary: Size differs from the declared size
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Uploaded file size (180000 bytes) does not match expected size (204800 bytes)."
+              typeMismatch:
+                summary: Type differs from the declared type
+                value:
+                  success: false
+                  statusCode: 400
+                  message: "Uploaded file type (image/jpeg) does not match expected type (image/png)."
               invalidJson:
                 summary: The body is not valid JSON
                 value:
@@ -689,17 +833,42 @@ completePortfolioAssetUpload:
               success: false
               statusCode: 404
               message: "Portfolio asset not found."
+      "409":
+        description: Storage has no object for this asset; the browser's upload failed or was aborted.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 409
+              message: "The upload was not received. Upload the image again."
       "413":
         $ref: ../components/responses.yaml#/PayloadTooLargeError
       "429":
         $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        description: Media delivery is not configured (public base URL missing). Also sent when the session store cannot be read. Also sent as "Service temporarily unavailable" when the database cannot be reached.
+        description: |
+          Media delivery is not configured (public base URL missing), media uploads are not
+          configured (R2 credentials missing), the session store cannot be read, or the database
+          cannot be reached. Any other storage error answers `500`.
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
             examples:
+              deliveryNotConfigured:
+                summary: Public base URL missing
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Portfolio media delivery is not configured."
+              uploadsNotConfigured:
+                summary: R2 credentials missing
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Portfolio media uploads are not configured."
               authUnavailable:
                 summary: Session store unavailable
                 value:
@@ -723,8 +892,12 @@ deletePortfolioAsset:
       - ProdSession: []
     summary: Delete Portfolio Asset
     description: |
-      Deletes the R2 object and its metadata row. `data` is `null` on success.
-      Session-authenticated only.
+      Deletes the R2 object and its metadata row. An asset created in the last 15 minutes (the
+      upload URL's lifetime plus 5 minutes) keeps its row, marked `DELETED`, so a late completion
+      cannot revive it. `data` is `null` on success. Session-authenticated only.
+
+      An image the published portfolio still shows cannot be deleted (`409`): publish without it
+      first.
 
       This does not rewrite any portfolio that still references the asset — remove the reference
       and save the draft first, or publishing will fail with `400`.
@@ -757,7 +930,42 @@ deletePortfolioAsset:
               success: false
               statusCode: 404
               message: "Portfolio asset not found."
+      "409":
+        description: The published portfolio still shows this image.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 409
+              message: "Your published portfolio still shows this image. Publish without it first."
       "429":
         $ref: ../components/responses.yaml#/IpRateLimitError
       "503":
-        $ref: ../components/responses.yaml#/SessionServiceUnavailableError
+        description: |
+          Media uploads are not configured (R2 credentials missing), the session store cannot be
+          read, or the database cannot be reached.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              notConfigured:
+                summary: R2 credentials missing
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Portfolio media uploads are not configured."
+              authUnavailable:
+                summary: Session store unavailable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Authentication is temporarily unavailable"
+              databaseUnavailable:
+                summary: Database unreachable
+                value:
+                  success: false
+                  statusCode: 503
+                  message: "Service temporarily unavailable"
