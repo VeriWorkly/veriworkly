@@ -58,3 +58,31 @@ export function visibleEntries<E extends Pick<DocumentIndexEntry, "owner">>(entr
     return owner === viewerId || (unknownVisible && owner === UNKNOWN_DOCUMENT_OWNER);
   });
 }
+
+/**
+ * The documents among `entries` the signed-in user is asked about: a guest's, and those of
+ * unknown owner. Either may be theirs, so neither syncs until they answer.
+ */
+export function entriesAwaitingAnswer<E extends Pick<DocumentIndexEntry, "owner">>(
+  entries: E[],
+): E[] {
+  return [...entriesOwnedBy(entries, null), ...entriesOwnedBy(entries, UNKNOWN_DOCUMENT_OWNER)];
+}
+
+/**
+ * The documents among `entries` that belong to an account other than `viewer` (the current
+ * viewer unless given). They stay on this device for that account (S-372): never listed for,
+ * uploaded, pulled into, backed up or removed by anyone else, and the account sees them again
+ * when it signs back in.
+ */
+export function entriesOfOtherAccounts<E extends Pick<DocumentIndexEntry, "owner">>(
+  entries: E[],
+  viewer: string | null = viewerId,
+): E[] {
+  const deviceOwner = readDeviceOwner();
+
+  return entries.filter((entry) => {
+    const owner = entry.owner === undefined ? deviceOwner : entry.owner;
+    return owner !== null && owner !== UNKNOWN_DOCUMENT_OWNER && owner !== viewer;
+  });
+}

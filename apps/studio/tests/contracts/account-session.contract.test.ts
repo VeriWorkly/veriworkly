@@ -38,6 +38,10 @@ import {
   settleWorkspaceOwnership,
 } from "@/features/documents/services/workspace-owner";
 import {
+  getWorkspaceSyncTelemetry,
+  hydrateAllDocumentsFromCloud,
+  hydrateCloudDocumentByIdToLocalStorage,
+  keepDocumentLocalOnly,
   setAllDocumentsSyncEnabled,
   syncAllPendingDocuments,
   syncDocumentNow,
@@ -53,6 +57,7 @@ import {
   subscribeToIndexRebuilds,
 } from "@/features/documents/services/document-workspace-service";
 import { DOCUMENT_INDEX_STORAGE_KEY } from "@/features/documents/services/storage-keys";
+import { SyncEngine } from "@/features/documents/services/sync-engine";
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
 import { createLocalStorageMock } from "@/tests/utils/local-storage";
 
@@ -170,10 +175,11 @@ describe("sign-out clears this device only once the server agrees", () => {
 
 /**
  * Answers the documents API like the server: `GET /documents` lists `accountIds`, `POST`
- * creates (after `createGate`, when given), `DELETE` succeeds. Every call is recorded.
+ * creates (after `createGate`, when given), `DELETE` succeeds. Every call is recorded, with
+ * its body.
  */
 function serveDocumentsApi(accountIds: string[], createGate?: Promise<void>) {
-  const calls: Array<{ method: string; url: string }> = [];
+  const calls: Array<{ method: string; url: string; body: string }> = [];
   const row = (id: string) => ({
     id,
     type: "RESUME",
@@ -190,7 +196,7 @@ function serveDocumentsApi(accountIds: string[], createGate?: Promise<void>) {
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? "GET";
-      calls.push({ method, url });
+      calls.push({ method, url, body: typeof init?.body === "string" ? init.body : "" });
 
       if (method === "GET") {
         return documentListReply(accountIds.map(row), url);
@@ -231,56 +237,6 @@ describe("S-283: a device's documents belong to the account that made them", () 
     return claimWorkspaceIfUncontested(userId);
   }
 
-  it("S-283: another account's documents are not uploaded to the next account before it chooses", async () => {
-    expect(signIn("user-a")).toBe(true);
-    const left = createDocument("RESUME");
-    setAllDocumentsSyncEnabled(true);
-
-    // User A's session expires without a sign-out; user B signs in on the same browser.
-    const calls = serveDocumentsApi([]);
-    expect(signIn("user-b")).toBe(false);
-    expect(canWorkspaceReachCloud()).toBe(false);
-    expect(listDocuments()).toEqual([]);
-
-    expect((await syncDocumentNow("RESUME", left.id)).ok).toBe(false);
-    await syncAllPendingDocuments();
-    expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
-
-    const unclaimed = await findUnclaimedDocuments("user-b");
-    expect(unclaimed).toMatchObject({ origin: "account", documents: [{ id: left.id }] });
-
-    resolveUnclaimedDocuments("user-b", unclaimed!, "keep", false);
-
-    // Kept documents stay on this device only, whatever bulk toggle the sign-in applies.
-    expect(canWorkspaceReachCloud()).toBe(true);
-    setAllDocumentsSyncEnabled(true);
-    await syncAllPendingDocuments();
-
-    // Under a fresh id: a later manual backup creates a new cloud document, never user A's.
-    const [kept] = listDocuments();
-    expect(kept.id).not.toBe(left.id);
-    expect(loadDocumentById("RESUME", kept.id)?.sync).toMatchObject({
-      enabled: false,
-      status: "local-only",
-      cloudDocumentId: null,
-    });
-    expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
-  });
-
-  it("S-283: removing another account's documents clears them from this device", async () => {
-    signIn("user-a");
-    createDocument("RESUME");
-    createDocument("COVER_LETTER");
-    serveDocumentsApi([]);
-
-    signIn("user-b");
-    const unclaimed = await findUnclaimedDocuments("user-b");
-    resolveUnclaimedDocuments("user-b", unclaimed!, "remove", false);
-
-    expect(listDocuments()).toHaveLength(0);
-    expect(canWorkspaceReachCloud()).toBe(true);
-  });
-
   it("S-283: guest documents join the account only once the user agrees", async () => {
     // The device already has an owner, whose session then ended; a guest works on it.
     signIn("user-a");
@@ -292,7 +248,7 @@ describe("S-283: a device's documents belong to the account that made them", () 
     expect(canWorkspaceReachCloud()).toBe(false);
 
     const unclaimed = await findUnclaimedDocuments("user-b");
-    expect(unclaimed).toMatchObject({ origin: "guest", documents: [{ id: guestDocument.id }] });
+    expect(unclaimed).toMatchObject({ documents: [{ id: guestDocument.id }] });
 
     resolveUnclaimedDocuments("user-b", unclaimed!, "add", false);
 
@@ -321,7 +277,6 @@ describe("S-283: a device's documents belong to the account that made them", () 
     expect(signIn("user-b")).toBe(false);
     expect(listDocuments()).toEqual([]);
     expect(await findUnclaimedDocuments("user-b")).toMatchObject({
-      origin: "guest",
       documents: [{ id: guestDocument.id }],
     });
   });
@@ -439,7 +394,6 @@ describe("S-283: a device's documents belong to the account that made them", () 
     expect(signIn("user-a")).toBe(false);
     expect(canWorkspaceReachCloud()).toBe(false);
     expect(await findUnclaimedDocuments("user-a")).toMatchObject({
-      origin: "guest",
       documents: [{ id: document.id }],
     });
   });
@@ -478,7 +432,7 @@ describe("S-283: a device's documents belong to the account that made them", () 
     expect(listDocuments().map((meta) => meta.id)).toEqual([accountDocument.id]);
 
     const unclaimed = await findUnclaimedDocuments("user-a");
-    expect(unclaimed).toMatchObject({ origin: "guest", documents: [{ id: guestDocument.id }] });
+    expect(unclaimed).toMatchObject({ documents: [{ id: guestDocument.id }] });
 
     resolveUnclaimedDocuments("user-a", unclaimed!, "add", false);
     expect(listDocuments()).toHaveLength(2);
@@ -616,10 +570,14 @@ describe("S-283: a device's documents belong to the account that made them", () 
     const lookup = createAccountDocumentLookup();
 
     expect(signIn("user-b")).toBe(false);
-    expect(await findUnclaimedDocuments("user-b", lookup)).toMatchObject({ origin: "account" });
+    expect(await findUnclaimedDocuments("user-b", lookup)).toMatchObject({
+      cloudCopyMissing: true,
+    });
     expect(calls).toHaveLength(2);
 
-    expect(await findUnclaimedDocuments("user-b", lookup)).toMatchObject({ origin: "account" });
+    expect(await findUnclaimedDocuments("user-b", lookup)).toMatchObject({
+      cloudCopyMissing: true,
+    });
     expect(calls).toHaveLength(2);
   });
 
@@ -652,6 +610,296 @@ describe("S-283: a device's documents belong to the account that made them", () 
 
     expect(calls.map((call) => call.method)).toEqual(["POST", "DELETE"]);
     expect(listDocuments()).toHaveLength(0);
+  });
+});
+
+describe("S-372: another account's documents stay on the device, hidden for it", () => {
+  beforeEach(() => {
+    stubBrowser("app.veriworkly.com");
+    vi.stubGlobal("navigator", {});
+  });
+
+  afterEach(() => {
+    setWorkspaceUser(null);
+    vi.unstubAllGlobals();
+  });
+
+  function signIn(userId: string) {
+    setWorkspaceUser(userId);
+    return claimWorkspaceIfUncontested(userId);
+  }
+
+  /** User A's documents, left behind by a session that expired without a sign-out. */
+  function leaveAccountDocuments() {
+    expect(signIn("user-a")).toBe(true);
+
+    const pending = createDocument("RESUME");
+    getWorkspaceStorage("RESUME").patchSync(pending.id, { enabled: true, status: "pending" });
+
+    const linked = createDocument("RESUME");
+    getWorkspaceStorage("RESUME").patchSync(linked.id, {
+      enabled: true,
+      status: "synced",
+      cloudDocumentId: linked.id,
+      revision: 3,
+    });
+
+    // User A kept this one off the cloud.
+    const localOnly = createDocument("COVER_LETTER");
+
+    return { pending, linked, localOnly };
+  }
+
+  function storedSync(type: "RESUME" | "COVER_LETTER", id: string) {
+    return getWorkspaceStorage(type).loadById(id)?.sync;
+  }
+
+  it("S-372: the next account is not asked about them, and its sync is not held back", async () => {
+    const left = leaveAccountDocuments();
+    const calls = serveDocumentsApi([]);
+
+    expect(signIn("user-b")).toBe(true);
+    expect(await findUnclaimedDocuments("user-b")).toBeNull();
+    expect(canWorkspaceReachCloud()).toBe(true);
+    // User A's linked copy is not looked for in user B's account: it is not B's to prove.
+    expect(calls).toEqual([]);
+
+    expect(listDocuments()).toEqual([]);
+    expect(loadDocumentById("RESUME", left.pending.id)).toBeNull();
+    expect(loadDocumentById("COVER_LETTER", left.localOnly.id)).toBeNull();
+    expect(JSON.parse(buildWorkspaceBackup(listDocuments()).json).documents).toEqual([]);
+  });
+
+  it("S-372: the next account's sync never sends them to the documents API", async () => {
+    const left = leaveAccountDocuments();
+    const before = {
+      pending: storedSync("RESUME", left.pending.id),
+      linked: storedSync("RESUME", left.linked.id),
+      localOnly: storedSync("COVER_LETTER", left.localOnly.id),
+    };
+
+    signIn("user-b");
+    const own = createDocument("RESUME");
+    const calls = serveDocumentsApi([]);
+
+    // The sign-in's bulk toggle, then every way a sync can start.
+    setAllDocumentsSyncEnabled(true);
+    await syncAllPendingDocuments();
+    expect((await syncDocumentNow("RESUME", left.pending.id)).ok).toBe(false);
+    expect((await keepDocumentLocalOnly("RESUME", left.linked.id)).ok).toBe(false);
+    expect((await hydrateCloudDocumentByIdToLocalStorage("RESUME", left.linked.id)).ok).toBe(false);
+    await expect(deleteDocumentEverywhere("RESUME", left.linked)).rejects.toThrow();
+
+    // Only user B's own document went out, and nothing of user A's in any URL or body.
+    expect(calls.map((call) => call.method)).toEqual(["POST"]);
+    expect(calls.map((call) => (JSON.parse(call.body) as { id: string }).id)).toEqual([own.id]);
+    for (const doc of Object.values(left)) {
+      expect(calls.some((call) => call.url.includes(doc.id) || call.body.includes(doc.id))).toBe(
+        false,
+      );
+    }
+    expect(storedSync("RESUME", own.id)?.status).toBe("synced");
+
+    expect(storedSync("RESUME", left.pending.id)).toEqual(before.pending);
+    expect(storedSync("RESUME", left.linked.id)).toEqual(before.linked);
+    expect(storedSync("COVER_LETTER", left.localOnly.id)).toEqual(before.localOnly);
+  });
+
+  it("S-372: a pull into the next account never writes over one of them with the same id", async () => {
+    const left = leaveAccountDocuments();
+    const stored = getWorkspaceStorage("RESUME").loadById(left.linked.id)!;
+
+    signIn("user-b");
+    const impostor = { ...stored, title: "From user B's cloud" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const rows =
+          new URL(url).searchParams.get("type") === "RESUME"
+            ? [
+                {
+                  id: impostor.id,
+                  type: "RESUME",
+                  title: impostor.title,
+                  content: impostor,
+                  revision: 9,
+                  templateId: "template",
+                  visibility: "PRIVATE",
+                  lastSyncedAt: "2026-10-26T00:00:00.000Z",
+                  updatedAt: "2026-10-26T00:00:00.000Z",
+                  createdAt: "2026-10-26T00:00:00.000Z",
+                },
+              ]
+            : [];
+
+        return documentListReply(rows, url);
+      }),
+    );
+
+    await hydrateAllDocumentsFromCloud({ force: true });
+
+    expect(getWorkspaceStorage("RESUME").loadById(left.linked.id)?.title).toBe(stored.title);
+    expect(storedSync("RESUME", left.linked.id)?.revision).toBe(3);
+    expect(listDocuments()).toEqual([]);
+  });
+
+  it("S-372: the account that left them sees them again when it signs back in", () => {
+    const left = leaveAccountDocuments();
+
+    signIn("user-b");
+    const own = createDocument("RESUME");
+
+    expect(signIn("user-a")).toBe(true);
+    expect(canWorkspaceReachCloud()).toBe(true);
+    expect(
+      listDocuments()
+        .map((meta) => meta.id)
+        .sort(),
+    ).toEqual([left.pending.id, left.linked.id, left.localOnly.id].sort());
+    expect(loadDocumentById("RESUME", own.id)).toBeNull();
+  });
+
+  it("S-372: signing out removes the leaving account's documents and keeps the other account's", async () => {
+    const left = leaveAccountDocuments();
+
+    signIn("user-b");
+    const own = createDocument("RESUME");
+    localStorage.setItem(MASTER_PROFILE_STORAGE_KEY, "{}");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 200 })),
+    );
+
+    await signOutCurrentUser();
+
+    expect(getWorkspaceStorage("RESUME").loadById(own.id)).toBeNull();
+    expect(localStorage.getItem(MASTER_PROFILE_STORAGE_KEY)).toBeNull();
+    // Hidden from whoever uses the browser next...
+    expect(listDocuments()).toEqual([]);
+
+    // ...and back, as they were, for user A.
+    expect(signIn("user-a")).toBe(true);
+    expect(
+      listDocuments()
+        .map((meta) => meta.id)
+        .sort(),
+    ).toEqual([left.pending.id, left.linked.id, left.localOnly.id].sort());
+    expect(storedSync("RESUME", left.linked.id)).toMatchObject({
+      status: "synced",
+      cloudDocumentId: left.linked.id,
+      revision: 3,
+    });
+  });
+
+  it("S-372: signing out as an account keeps the documents still awaiting an answer", async () => {
+    expect(signIn("user-a")).toBe(true);
+    const own = createDocument("RESUME");
+    const rebuilt = createDocument("RESUME");
+    const index = JSON.parse(localStorage.getItem(DOCUMENT_INDEX_STORAGE_KEY)!);
+    index.items[`RESUME:${rebuilt.id}`].owner = "unknown:index-rebuilt";
+    localStorage.setItem(DOCUMENT_INDEX_STORAGE_KEY, JSON.stringify(index));
+    setWorkspaceUser(null);
+    const guest = createDocument("COVER_LETTER");
+
+    // User A signs out while both are still unanswered (the question is open in another tab).
+    setWorkspaceUser("user-a");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 200 })),
+    );
+    await signOutCurrentUser();
+
+    expect(getWorkspaceStorage("RESUME").loadById(own.id)).toBeNull();
+    expect(getWorkspaceStorage("RESUME").loadById(rebuilt.id)).not.toBeNull();
+    // The guest's is still the guest's; the one of unknown owner stays hidden from a guest.
+    expect(listDocuments().map((meta) => meta.id)).toEqual([guest.id]);
+
+    serveDocumentsApi([]);
+    expect(signIn("user-a")).toBe(false);
+    expect(await findUnclaimedDocuments("user-a")).toMatchObject({
+      cloudCopyMissing: false,
+      documents: expect.arrayContaining([
+        expect.objectContaining({ id: rebuilt.id }),
+        expect.objectContaining({ id: guest.id }),
+      ]),
+    });
+  });
+
+  it("S-372: a document recorded as another account's is never offered, even when linked", async () => {
+    const left = leaveAccountDocuments();
+    serveDocumentsApi([left.linked.id]);
+
+    // Even an account that holds the same id in its cloud does not adopt user A's copy.
+    expect(signIn("user-b")).toBe(true);
+    expect(await findUnclaimedDocuments("user-b")).toBeNull();
+    expect(listDocuments()).toEqual([]);
+  });
+
+  it("S-372: a linked copy the account cannot find is put to the user, never hidden", async () => {
+    // Written before owners were recorded, and linked to a cloud document since deleted.
+    const copy = createDocument("RESUME");
+    getWorkspaceStorage("RESUME").patchSync(copy.id, {
+      enabled: true,
+      status: "synced",
+      cloudDocumentId: copy.id,
+    });
+    const index = JSON.parse(localStorage.getItem(DOCUMENT_INDEX_STORAGE_KEY)!);
+    delete index.items[`RESUME:${copy.id}`].owner;
+    localStorage.setItem(DOCUMENT_INDEX_STORAGE_KEY, JSON.stringify(index));
+
+    const calls = serveDocumentsApi([]);
+    expect(signIn("user-b")).toBe(false);
+    const unclaimed = await findUnclaimedDocuments("user-b");
+    expect(unclaimed).toEqual({
+      cloudCopyMissing: true,
+      documents: [expect.objectContaining({ id: copy.id })],
+    });
+    expect(canWorkspaceReachCloud()).toBe(false);
+
+    // It cannot be added: the id belongs to a cloud document this account does not hold.
+    expect(() => resolveUnclaimedDocuments("user-b", unclaimed!, "add", true)).toThrow();
+
+    resolveUnclaimedDocuments("user-b", unclaimed!, "keep", true);
+
+    // Kept under a fresh id, on this device only, whatever bulk toggle the sign-in applies.
+    expect(canWorkspaceReachCloud()).toBe(true);
+    const [kept] = listDocuments();
+    expect(kept.id).not.toBe(copy.id);
+    setAllDocumentsSyncEnabled(true);
+    await syncAllPendingDocuments();
+    expect(loadDocumentById("RESUME", kept.id)?.sync).toMatchObject({
+      enabled: false,
+      status: "local-only",
+      cloudDocumentId: null,
+    });
+    expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+  });
+
+  it("S-372: the next account's last backup times are its own", () => {
+    const left = leaveAccountDocuments();
+    SyncEngine.updateTelemetry(
+      left.linked.id,
+      { lastAttemptAt: "2026-10-01T00:00:00.000Z", lastSuccessAt: "2026-10-01T00:00:00.000Z" },
+      "RESUME",
+    );
+
+    signIn("user-b");
+
+    expect(getWorkspaceSyncTelemetry()).toEqual({ lastAttemptAt: null, lastSuccessAt: null });
+    expect(getWorkspaceSyncTelemetry("RESUME")).toEqual({
+      lastAttemptAt: null,
+      lastSuccessAt: null,
+    });
+
+    signIn("user-a");
+    expect(getWorkspaceSyncTelemetry().lastSuccessAt).toBe("2026-10-01T00:00:00.000Z");
+  });
+
+  it("S-372: the sign-in dialog cannot show, download or keep another account's documents", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("features/auth/components/UnclaimedDocumentsDialog.tsx", "utf8");
+
+    expect(source).not.toMatch(/another account|onDownloadBackup|origin/);
   });
 });
 
@@ -697,7 +945,7 @@ describe("S-239: sign-in starts the backup workers", () => {
     expect(startAllDocumentSyncWorkers).toHaveBeenCalledWith({ enabled: true });
   });
 
-  it("S-239: another account's documents on the device hold every worker until the user chooses", async () => {
+  it("S-239: a guest's documents on the device hold every worker until the user chooses", async () => {
     const { startWorkspaceSession, startAllDocumentSyncWorkers } = await loadSession();
     // The same module instances auth-provider loaded (the registry was reset above).
     const owner = await import("@/features/documents/services/workspace-owner");
@@ -705,8 +953,9 @@ describe("S-239: sign-in starts the backup workers", () => {
 
     owner.setWorkspaceUser("user-b");
     expect(owner.claimWorkspaceIfUncontested("user-b")).toBe(true);
+    owner.setWorkspaceUser(null);
     workspace.createDocument("RESUME");
-    // The settler's account lookup stays in flight: nothing may start while it is unanswered.
+    // Nothing may start while the question about the guest's document is unanswered.
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise<Response>(() => {})),
@@ -722,6 +971,23 @@ describe("S-239: sign-in starts the backup workers", () => {
       expect(startAllDocumentSyncWorkers).not.toHaveBeenCalledWith({ enabled: true });
     } finally {
       settler?.cancel();
+      owner.setWorkspaceUser(null);
+    }
+  });
+
+  it("S-372: another account's documents on the device hold no worker back", async () => {
+    const { startWorkspaceSession, startAllDocumentSyncWorkers } = await loadSession();
+    const owner = await import("@/features/documents/services/workspace-owner");
+    const workspace = await import("@/features/documents/services/document-workspace-service");
+
+    owner.setWorkspaceUser("user-b");
+    expect(owner.claimWorkspaceIfUncontested("user-b")).toBe(true);
+    workspace.createDocument("RESUME");
+
+    try {
+      expect(startWorkspaceSession(user, vi.fn(), vi.fn())).toBeNull();
+      expect(startAllDocumentSyncWorkers).toHaveBeenCalledWith({ enabled: true });
+    } finally {
       owner.setWorkspaceUser(null);
     }
   });
@@ -1598,7 +1864,8 @@ describe("S-347: the account backup made before deleting the account", () => {
     claimWorkspaceIfUncontested("user-a");
     titled("User A's resume");
     setWorkspaceUser("user-b");
-    expect(canWorkspaceReachCloud()).toBe(false);
+    // User A's documents stay on the device without holding user B's sync back (S-372).
+    expect(canWorkspaceReachCloud()).toBe(true);
 
     const accountDocument = { ...titled("User B's resume") };
     deleteDocument("RESUME", accountDocument.id);

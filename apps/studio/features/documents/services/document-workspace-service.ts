@@ -24,7 +24,14 @@ import {
 } from "./storage/safe-local-storage";
 
 import { bumpWorkspaceEpoch } from "./workspace-epoch";
-import { getWorkspaceViewer, UNKNOWN_DOCUMENT_OWNER, visibleEntries } from "./workspace-viewer";
+import {
+  entriesOfOtherAccounts,
+  entriesOwnedBy,
+  getWorkspaceViewer,
+  readDeviceOwner,
+  UNKNOWN_DOCUMENT_OWNER,
+  visibleEntries,
+} from "./workspace-viewer";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 import { getMasterProfileForNewDocument } from "@/features/resume/services/master-profile";
@@ -40,6 +47,7 @@ import {
   getDocumentKeyPrefix,
   getLegacyDocumentCollectionKey,
   getRecoveredEditsKey,
+  WORKSPACE_OWNER_STORAGE_KEY,
 } from "@/features/documents/services/storage-keys";
 
 const pendingSaves = new Map<
@@ -605,6 +613,13 @@ export async function deleteDocumentEverywhere(
   type: DocumentType,
   doc: { id: string },
 ): Promise<void> {
+  // Another account's document is not the viewer's to delete, here or in the cloud (S-372).
+  const entry = getDocumentIndexEntry(type, doc.id);
+
+  if (entry && entriesOfOtherAccounts([entry]).length > 0) {
+    throw new Error("This document could not be found.");
+  }
+
   // A first upload still in flight would land after the local delete, take the free slot and
   // come back on the next pull; once it settles, the linkage below includes it.
   await SyncEngine.whenSyncSettled(doc.id, type);
@@ -643,9 +658,17 @@ const WORKSPACE_KEY_PREFIXES = [
  * and index (parked `:corrupt` copies included), the sync outbox, telemetry, opt-outs and
  * hydrate cursors, and the cached master profile. For sign-out and account deletion, so the
  * next person on a shared device starts empty. Workspace preferences are kept.
+ *
+ * `leaving` is the account signing out (null for a guest). Only its own documents go: those
+ * another account left here stay for it, still hidden from everyone else (S-372), and so do a
+ * guest's and those of unknown owner still waiting for an answer, which may not be the leaving
+ * account's at all. Signing out is not a way to delete someone else's work. A guest leaving
+ * keeps only other accounts' documents. Without `leaving`, every document goes.
  */
-export function clearWorkspaceStorage(): void {
+export function clearWorkspaceStorage(leaving?: string | null): void {
   if (typeof window === "undefined") return;
+
+  const kept = leaving === undefined ? null : captureDocumentsNotLeaving(leaving);
 
   // First, so a sync or pull already in flight drops its reply instead of writing it back.
   bumpWorkspaceEpoch();
@@ -660,9 +683,120 @@ export function clearWorkspaceStorage(): void {
     }
   }
 
+  if (kept) restoreDocumentsNotLeaving(kept);
+
   invalidateDocumentIndexCache();
   window.dispatchEvent(new Event(DOCUMENT_STORAGE_UPDATED_EVENT));
   announceWorkspaceCleared();
+}
+
+interface KeptDocuments {
+  documents: Array<{ entry: DocumentIndexEntry; body: string; recovered: string | null }>;
+  /** Kept with them, so a document of unknown owner stays hidden from a guest. */
+  deviceOwner: string | null;
+  /** Each sync record (outbox, telemetry, opt-outs, cloud revisions), as stored. */
+  syncRecords: Array<[key: string, raw: string | null]>;
+}
+
+/** What {@link clearWorkspaceStorage} puts back: every document that is not `leaving`'s. */
+function captureDocumentsNotLeaving(leaving: string | null): KeptDocuments {
+  const deviceOwner = readDeviceOwner();
+  const all = listAllDocumentEntries();
+  const leavingOwn = new Set(entriesOwnedBy(all, leaving));
+  const kept =
+    leaving === null
+      ? entriesOfOtherAccounts(all, null)
+      : all.filter((entry) => !leavingOwn.has(entry));
+
+  const documents = kept.flatMap((entry) => {
+    const type = entry.type as DocumentType;
+    const body = window.localStorage.getItem(getDocumentKey(type, entry.id));
+    // Written out: an entry without an owner is the device owner's, and that record is cleared.
+    const owner = entry.owner === undefined ? deviceOwner : entry.owner;
+
+    return body === null
+      ? []
+      : [
+          {
+            entry: { ...entry, owner },
+            body,
+            recovered: window.localStorage.getItem(getRecoveredEditsKey(type, entry.id)),
+          },
+        ];
+  });
+
+  return {
+    documents,
+    deviceOwner,
+    syncRecords: Object.values(SYNC_STORAGE_KEYS).map((key) => [
+      key,
+      window.localStorage.getItem(key),
+    ]),
+  };
+}
+
+/**
+ * Narrows one stored sync record to `keys` (`TYPE:id`). Every record is a JSON object whose
+ * fields are maps keyed by document, or a list of such keys (the opt-outs). Null when it holds
+ * nothing to put back or cannot be read.
+ */
+function narrowSyncRecord(raw: string | null, keys: Set<string>): string | null {
+  if (!raw) return null;
+
+  try {
+    const record = JSON.parse(raw) as Record<string, unknown>;
+    const narrowed = Object.fromEntries(
+      Object.entries(record).map(([field, value]) => [
+        field,
+        Array.isArray(value)
+          ? value.filter((key) => keys.has(key))
+          : typeof value === "object" && value !== null
+            ? Object.fromEntries(Object.entries(value).filter(([key]) => keys.has(key)))
+            : value,
+      ]),
+    );
+
+    return JSON.stringify(narrowed);
+  } catch {
+    return null;
+  }
+}
+
+function restoreDocumentsNotLeaving({ documents, deviceOwner, syncRecords }: KeptDocuments) {
+  if (documents.length === 0) return;
+
+  const storage = window.localStorage;
+  const index = readDocumentIndex();
+  const keys = new Set<string>();
+
+  for (const { entry, body, recovered } of documents) {
+    const type = entry.type as DocumentType;
+    // Room was just made by the clear; a write that still fails loses only that document here.
+    if (!safeSetLocalStorageItem(storage, getDocumentKey(type, entry.id), body).ok) continue;
+
+    if (recovered !== null) {
+      safeSetLocalStorageItem(storage, getRecoveredEditsKey(type, entry.id), recovered);
+    }
+
+    index.items[`${type}:${entry.id}`] = entry;
+    keys.add(`${type}:${entry.id}`);
+  }
+
+  if (!writeDocumentIndex(index).ok) {
+    console.error(
+      "Documents that are not the leaving account's could not be kept: storage is full.",
+    );
+    return;
+  }
+
+  if (deviceOwner !== null) {
+    safeSetLocalStorageItem(storage, WORKSPACE_OWNER_STORAGE_KEY, deviceOwner);
+  }
+
+  for (const [key, raw] of syncRecords) {
+    const narrowed = narrowSyncRecord(raw, keys);
+    if (narrowed !== null) safeSetLocalStorageItem(storage, key, narrowed);
+  }
 }
 
 /** Discards debounced autosaves without writing them. */
