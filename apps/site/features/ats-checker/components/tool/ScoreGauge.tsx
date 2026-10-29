@@ -1,14 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  animate,
-  m,
-  useMotionValue,
-  useMotionValueEvent,
-  useReducedMotion,
-  useTransform,
-} from "framer-motion";
+import { useEffect } from "react";
+import { animate, m, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 
 import { scoreTone, TONE_CLASSES } from "../../data/categories";
 
@@ -33,16 +26,18 @@ export function ScoreGauge({ score, label, caption, size = "lg" }: ScoreGaugePro
   const shouldReduceMotion = useReducedMotion();
   const scoreMV = useMotionValue(shouldReduceMotion ? clamped : 0);
   const strokeDashOffset = useTransform(scoreMV, [0, 100], [CIRCUMFERENCE, 0]);
-  const [animated, setAnimated] = useState(0);
-  useMotionValueEvent(scoreMV, "change", (latest) => setAnimated(Math.round(latest)));
+  // Rendered by framer outside React, so the count-up costs no re-render per frame.
+  const display = useTransform(scoreMV, Math.round);
 
   useEffect(() => {
-    if (shouldReduceMotion) return;
+    if (shouldReduceMotion) {
+      scoreMV.jump(clamped);
+      return;
+    }
     const controls = animate(scoreMV, clamped, { duration: 1.1, ease: [0.23, 1, 0.32, 1] });
     return () => controls.stop();
   }, [clamped, scoreMV, shouldReduceMotion]);
 
-  const display = shouldReduceMotion ? clamped : animated;
   const dims = size === "lg" ? 132 : 104;
   const tone = scoreTone(clamped);
 
@@ -80,13 +75,13 @@ export function ScoreGauge({ score, label, caption, size = "lg" }: ScoreGaugePro
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span
+          <m.span
             className={`font-bold tracking-tighter tabular-nums ${
               size === "lg" ? "text-4xl" : "text-3xl"
             }`}
           >
             {display}
-          </span>
+          </m.span>
           <span className="text-muted text-sm font-medium">out of 100</span>
         </div>
       </div>
