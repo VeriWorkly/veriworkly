@@ -1,10 +1,10 @@
 import MatrixValueCell from "./MatrixValueCell";
 
-import { type Competitor } from "../../types";
-import { SNAPSHOT_ROWS, VERIWORKLY_MATRIX, VERIWORKLY_PRICE } from "../../data";
+import { type ScoreboardCompetitor } from "../../types";
+import { SNAPSHOT_ROWS, VERIWORKLY_MATRIX, VERIWORKLY_PRICE } from "../../data/featureMatrix";
 
 interface CompareScoreboardProps {
-  competitor: Competitor;
+  competitor: ScoreboardCompetitor;
   headingLevel?: "h2" | "h3";
 }
 

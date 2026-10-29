@@ -119,7 +119,19 @@ const ComparePage = () => {
           </div>
         }
       >
-        <CompareHubPicker />
+        <CompareHubPicker
+          competitors={COMPETITORS.map(
+            ({ id, name, initials, color, positioning, pricingModel, matrix }) => ({
+              id,
+              name,
+              initials,
+              color,
+              positioning,
+              pricingModel,
+              matrix,
+            }),
+          )}
+        />
       </PageHero>
 
       <CompareDifferences />

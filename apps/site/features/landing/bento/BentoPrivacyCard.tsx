@@ -4,14 +4,12 @@ import BentoCard from "./BentoCard";
 
 interface BentoPrivacyCardProps {
   drift: "up" | "down";
-  canHover: boolean;
 }
 
-const BentoPrivacyCard = ({ drift, canHover }: BentoPrivacyCardProps) => {
+const BentoPrivacyCard = ({ drift }: BentoPrivacyCardProps) => {
   return (
     <BentoCard
       drift={drift}
-      canHover={canHover}
       glowColor="rgba(16,185,129,0.12)"
       className="col-span-1 flex flex-col justify-between border-zinc-800 bg-[#060606] text-white dark:border-white/5"
     >

@@ -1,6 +1,9 @@
 import type { CompetitorFeatureMatrix, FeatureRowItem } from "../types";
 
-export const PRICING_VERIFIED_AT = "October 2026";
+/** When every competitor price and feature in competitors.ts was last checked against its public pages. Re-check, then update. */
+export const PRICES_CHECKED = { month: "October", year: 2026 } as const;
+
+export const PRICING_VERIFIED_AT = `${PRICES_CHECKED.month} ${PRICES_CHECKED.year}`;
 
 export const VERIWORKLY_MATRIX: CompetitorFeatureMatrix = {
   loginRequired: "No login needed",

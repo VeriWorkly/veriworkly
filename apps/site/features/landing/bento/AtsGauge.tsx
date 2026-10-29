@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  m,
-  animate,
-  useInView,
-  useTransform,
-  useMotionValue,
-  useMotionValueEvent,
-} from "framer-motion";
+import { m, animate, useInView, useTransform, useMotionValue } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 const AtsGauge = () => {
   const gaugeRef = useRef<HTMLDivElement>(null);
@@ -19,9 +12,8 @@ const AtsGauge = () => {
   const scoreMV = useMotionValue(0);
   const strokeDashOffset = useTransform(scoreMV, [0, 98], [277, 277 - 271]);
 
-  const [score, setScore] = useState(0);
-
-  useMotionValueEvent(scoreMV, "change", (latest) => setScore(Math.round(latest)));
+  // A motion value rendered as a child updates the text node directly, without re-rendering.
+  const score = useTransform(scoreMV, Math.round);
 
   useEffect(() => {
     if (!isInView) return;
@@ -69,7 +61,7 @@ const AtsGauge = () => {
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-3xl font-bold tracking-tighter text-white">
-            <span>{score}</span>
+            <m.span>{score}</m.span>
 
             <span className="text-lg text-zinc-400">%</span>
           </span>

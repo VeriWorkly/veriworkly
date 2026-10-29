@@ -29,14 +29,14 @@ const BrandKitHeader = () => {
       </p>
 
       <div className="flex flex-wrap items-center gap-3 pt-2">
-        <Link
+        <a
           href="/brand/veriworkly-brand-kit.zip"
           download
           className="bg-accent text-accent-foreground focus-visible:ring-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <Download className="size-4" aria-hidden="true" />
           Download Brand Kit (.zip)
-        </Link>
+        </a>
 
         <Link
           href="/style-guide"
