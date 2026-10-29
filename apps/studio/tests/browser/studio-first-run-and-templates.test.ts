@@ -192,6 +192,8 @@ describe("guest backup reminder (S-214)", () => {
 
   it("is absent before the guest has a document", async () => {
     await page.goto(`${server.origin}/documents`, { waitUntil: "networkidle" });
+    // The library must have rendered, or the check below would pass on an error page.
+    await page.getByRole("heading", { level: 1, name: "Documents" }).waitFor();
     // Deliberate negative check: the reminder must not turn up after hydration either.
     await page.waitForTimeout(500);
 
