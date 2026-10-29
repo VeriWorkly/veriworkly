@@ -43,7 +43,7 @@ export const ActionsPill = ({ mounted, isDark, onToggleTheme }: ActionsPillProps
       </Link>
 
       <a
-        href={`${siteConfig.links.app}/login`}
+        href={siteConfig.links.app}
         className="ml-1 hidden rounded-full bg-zinc-950 px-4.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all duration-200 ease-out hover:bg-blue-600 hover:shadow-sm active:scale-[0.97] xl:block dark:bg-white dark:text-zinc-950 dark:hover:bg-blue-500 dark:hover:text-white"
       >
         Get Started

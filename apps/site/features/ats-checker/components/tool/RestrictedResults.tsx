@@ -1,16 +1,12 @@
 import Link from "next/link";
 import { Lock, TriangleAlert, Wrench } from "lucide-react";
 
-import { siteConfig } from "@/config/site";
 import type { AtsRestrictedReport } from "../../types";
+import { loginHref } from "./QuotaNotice";
 import { ScoreSummary } from "./ScoreSummary";
 
 /** Nothing here is hidden client-side: the server never sends the category rollup or work-history table to anonymous callers. */
 export function RestrictedResults({ report }: { report: AtsRestrictedReport }) {
-  const loginHref = `${siteConfig.links.app}/login?callbackURL=${encodeURIComponent(
-    `${siteConfig.url}/ats-checker/scan`,
-  )}`;
-
   const locked = [
     report.missingKeywordCount > 0
       ? `Which ${report.missingKeywordCount} job-description ${report.missingKeywordCount === 1 ? "term is" : "terms are"} missing, and which ${report.matchedKeywordCount} you already cover`
@@ -68,7 +64,7 @@ export function RestrictedResults({ report }: { report: AtsRestrictedReport }) {
             ))}
           </ul>
           <Link
-            href={loginHref}
+            href={loginHref()}
             className="bg-background text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-[0.97]"
           >
             Create a free account to unlock it

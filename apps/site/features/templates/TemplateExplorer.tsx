@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { TemplateCardData } from "./cardFields";
 
@@ -14,6 +14,9 @@ type Props = {
 };
 
 const NO_FILTERS: TemplateFilterState = { query: "", family: ALL, layout: ALL };
+
+/** Safari throws after 100 history.replaceState calls in 10 s, which holding backspace reaches. */
+const URL_SYNC_DELAY_MS = 300;
 
 const searchText = (template: TemplateCardData) =>
   [
@@ -30,6 +33,7 @@ const searchText = (template: TemplateCardData) =>
 /** State starts empty so the server HTML has every template (the SEO value); `useSearchParams` would bail out of static rendering. */
 const TemplateExplorer = ({ templates, noun }: Props) => {
   const [filters, setFilters] = useState(NO_FILTERS);
+  const urlSync = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const familyOptions = useMemo(
     () => Array.from(new Set(templates.map((template) => template.family))),
@@ -47,6 +51,7 @@ const TemplateExplorer = ({ templates, noun }: Props) => {
   // Adopt a deep link once on the client; values that no longer exist are ignored.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (!params.has("q") && !params.has("family") && !params.has("layout")) return;
     const family = params.get("family");
     const layout = params.get("layout");
 
@@ -60,20 +65,26 @@ const TemplateExplorer = ({ templates, noun }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A pending write after leaving the page would rewrite the next page's URL.
+  useEffect(() => () => clearTimeout(urlSync.current), []);
+
   // Update the URL without a navigation: a router push would round-trip the server for nothing.
   const update = useCallback((next: TemplateFilterState) => {
     setFilters(next);
 
-    const params = new URLSearchParams(window.location.search);
-    const set = (key: string, value: string, empty: string) =>
-      value && value !== empty ? params.set(key, value) : params.delete(key);
+    clearTimeout(urlSync.current);
+    urlSync.current = setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const set = (key: string, value: string, empty: string) =>
+        value && value !== empty ? params.set(key, value) : params.delete(key);
 
-    set("q", next.query.trim(), "");
-    set("family", next.family, ALL);
-    set("layout", next.layout, ALL);
+      set("q", next.query.trim(), "");
+      set("family", next.family, ALL);
+      set("layout", next.layout, ALL);
 
-    const query = params.toString();
-    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+      const query = params.toString();
+      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+    }, URL_SYNC_DELAY_MS);
   }, []);
 
   const visible = useMemo(() => {

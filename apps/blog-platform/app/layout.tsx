@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     "VeriWorkly blog",
   ],
 
-  authors: [{ name: "VeriWorkly Team" }],
+  authors: [{ name: "Gautam Raj", url: "https://gautam-raj.vercel.app" }],
   creator: "Gautam Raj",
   publisher: "VeriWorkly",
 

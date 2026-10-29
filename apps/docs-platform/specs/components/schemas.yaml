@@ -32,25 +32,37 @@ ErrorResponse:
 UnauthorizedResponse:
   type: object
   description: |
-    The body of a `401`. Routes that accept an API key or a session answer with `code`; a
-    rejection thrown from inside a handler carries `statusCode` instead.
+    The body of a `401`. It has the same envelope as every other error, so `statusCode` is always
+    present. When the gate in front of a key-or-session route refuses the request, it names the
+    reason in `details.code`. An invalid API key and a missing session on a signed-in-only route
+    send no `details`.
   required:
     - success
     - message
+    - statusCode
   properties:
     success:
       type: boolean
+      enum: [false]
     message:
       type: string
     statusCode:
       type: integer
-    code:
-      type: string
-      enum: [API_KEY_REQUIRED, AUTH_REQUIRED]
+      enum: [401]
+    details:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [API_KEY_REQUIRED, AUTH_REQUIRED]
+          description: |
+            `API_KEY_REQUIRED`: no API key and no whitelisted first-party `Origin` or `Referer`.
+            `AUTH_REQUIRED`: a session cookie with no `Origin` or `Referer` that is not a valid
+            session.
 
 AtsQuotaErrorResponse:
   type: object
-  description: The body of a `429` from the ATS quota. `details` is the caller's current quota.
+  description: The body of a `429` from the ATS quota, where `details` is the caller's current quota. A `429` from the rate limiters has no `details`.
   required:
     - success
     - message
@@ -238,14 +250,15 @@ UserObject:
       properties:
         apiKeys:
           type: integer
+          description: Every API key on the account, active, revoked or expired.
         shareLinks:
           type: integer
+          description: Share links on documents that are not deleted, as the share list counts them.
         resumes:
           type: integer
           description: |
-            Counts every Document the user owns — every `type`, and soft-deleted ones included.
-            It is not a count of RESUME-type documents. Use `GET /documents` for an accurate,
-            filterable list.
+            The documents list's count: documents that are not deleted, of every type except
+            `PORTFOLIO`.
 
 UserResponse:
   type: object
@@ -272,8 +285,11 @@ UsernameAvailability:
       description: The value that would actually be stored, after server-side normalisation.
     reason:
       type: string
-      enum: [too_short, too_long, invalid_characters, reserved, taken]
-      description: Present only when `available` is `false`.
+      enum: [too_short, invalid_characters, reserved, taken]
+      description: |
+        Present only when `available` is `false`. The path segment is cut to 32 characters during
+        normalisation, so a long name is never refused for length. A value with no letters,
+        digits, `_` or `-` normalises to `user`.
 
 UsernameAvailabilityResponse:
   type: object
@@ -301,7 +317,6 @@ MasterProfile:
   properties:
     id:
       type: string
-      description: Empty string when the user has never saved a master profile yet.
     userId:
       type: string
     content:
@@ -331,7 +346,7 @@ UserSummary:
       type: boolean
     shareResumeCount:
       type: integer
-      description: Number of ShareLink records owned by the user.
+      description: The user's share links on documents that are not deleted, as the share list counts them.
 
 MasterProfileItemId:
   type: string
@@ -1080,9 +1095,9 @@ ImportGithubRequest:
     usernameOrUrl:
       type: string
       description: |
-        A GitHub username or profile URL. Free users may only import their own OAuth-connected
-        account (this value is ignored server-side and the caller's authenticated GitHub login is
-        used instead); paid users may import any public username.
+        A GitHub username or profile URL. Always required and checked (`400` when it is neither).
+        Free users may only import their own OAuth-connected account, so for them the linked
+        GitHub login is imported instead of this value; paid users may import any public username.
     replaceMaster:
       type: boolean
       default: false
@@ -1106,9 +1121,10 @@ ImportLinkedinRequest:
       minLength: 8
       maxLength: 128
       description: |
-        The client's id for this import, as on every other AI route. A retry with the same id
-        and the same text after a lost response returns the document already created
-        (`replayed: true`) without charging again; the same id with different text is `409`.
+        The client's id for this import, as on every other AI route. A retry with the same id,
+        the same text and the same `replaceMaster` after a lost response returns the document
+        already created (`replayed: true`) without charging again; the same id with different
+        text or a different `replaceMaster` is `409`.
 
 ProfileImportResponse:
   type: object
@@ -1119,8 +1135,16 @@ ProfileImportResponse:
     message:
       type: string
     data:
-      $ref: "#/Document"
-      description: The newly created resume Document seeded from the imported data.
+      description: |
+        The newly created resume Document seeded from the imported data. A LinkedIn import
+        replayed by `requestId` returns the stored document with `replayed: true` added.
+      allOf:
+        - $ref: "#/Document"
+        - type: object
+          properties:
+            replayed:
+              type: boolean
+              description: Present and `true` only on a LinkedIn import replayed by `requestId`.
 
 ##################################################
 # ROADMAP SCHEMA
@@ -1226,27 +1250,6 @@ RoadmapFeatureDetail:
           type: [string, "null"]
         details:
           type: [object, "null"]
-        interactions:
-          type: array
-          items:
-            type: object
-            properties:
-              type:
-                type: string
-              value:
-                type: integer
-              comment:
-                type: [string, "null"]
-              createdAt:
-                type: string
-                format: date-time
-              user:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  name:
-                    type: [string, "null"]
 
 RoadmapFeatureResponse:
   type: object
@@ -1360,6 +1363,24 @@ ChangelogListResponse:
     data:
       $ref: "#/ChangelogListData"
 
+ChangelogEntryDetail:
+  description: A single entry, with the row's timestamps the list leaves out.
+  allOf:
+    - $ref: "#/ChangelogEntry"
+    - type: object
+      required: [editedAt, createdAt, updatedAt]
+      properties:
+        editedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When an admin last edited the entry, or `null` if only the release sync wrote it.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
 ChangelogEntryResponse:
   type: object
   required: [success, message, data]
@@ -1369,7 +1390,7 @@ ChangelogEntryResponse:
     message:
       type: string
     data:
-      $ref: "#/ChangelogEntry"
+      $ref: "#/ChangelogEntryDetail"
 
 ChangelogStats:
   type: object
@@ -1395,9 +1416,13 @@ ChangelogStats:
           format: date-time
     contributorCount:
       type: integer
-      description: Distinct pull-request authors across every entry.
+      description: |
+        Distinct contributors, counted once each by GitHub login: the core team, the repository's
+        contributors from the last GitHub sync, the pull-request authors on every entry, and
+        `@mentions` in entry text.
     topContributors:
       type: array
+      description: Up to 30 of the contributors counted in `contributorCount`, the core team first, then in the order they were found. Not ranked by contributions.
       items:
         type: object
         properties:
@@ -1409,8 +1434,6 @@ ChangelogStats:
           htmlUrl:
             type: string
             format: uri
-          contributions:
-            type: integer
 
 ChangelogStatsResponse:
   type: object
@@ -1430,6 +1453,9 @@ ChangelogStatsResponse:
 GitHubStats:
   type: object
   properties:
+    totalItems:
+      type: integer
+      description: The same value as `total`, kept for older clients.
     total:
       type: integer
       description: Issues plus pull requests.
@@ -1454,11 +1480,18 @@ GitHubStatsData:
   properties:
     projectName:
       type: string
+    projectUrl:
+      type: string
+      format: uri
     stats:
       $ref: "#/GitHubStats"
     syncedAt:
       type: string
       format: date-time
+    nextSyncAt:
+      type: [string, "null"]
+      format: date-time
+      description: When the next scheduled sync is due.
 
 GitHubStatsResponse:
   type: object
@@ -1504,12 +1537,16 @@ GitHubItem:
 GitHubIssuesData:
   allOf:
     - type: object
-      required: [items]
+      required: [items, syncedAt]
       properties:
         items:
           type: array
           items:
             $ref: "#/GitHubItem"
+        syncedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the snapshot was taken, or `null` before the first sync.
     - $ref: "#/OffsetPaginationMeta"
 
 GitHubIssuesResponse:
@@ -1598,6 +1635,14 @@ ApiKeyListItem:
       type: [string, "null"]
       format: date-time
       description: Written at most once every 5 minutes per key, so it lags real usage slightly.
+    expiresAt:
+      type: [string, "null"]
+      format: date-time
+      description: When the key stops working. With `revokedAt`, this tells an expired key from a revoked one.
+    revokedAt:
+      type: [string, "null"]
+      format: date-time
+      description: When the key was revoked, by the user or by a rotation, or `null`.
 
 ApiKeySecret:
   type: object
@@ -1827,6 +1872,15 @@ Document:
       type: [string, "null"]
       format: date-time
       description: Set by soft delete. Documents with a non-null deletedAt are excluded from list/get.
+    portfolioSubdomain:
+      type: [string, "null"]
+      description: A PORTFOLIO draft's chosen subdomain; `null` on every other type.
+    moderatedPrivateAt:
+      type: [string, "null"]
+      format: date-time
+      description: |
+        When a moderator made the document private. While set, the owner cannot share it or make
+        it anything but `PRIVATE`.
 
 DocumentListResponse:
   type: object
@@ -2035,6 +2089,13 @@ DocumentUpdateResult:
     deletedAt:
       type: [string, "null"]
       format: date-time
+    portfolioSubdomain:
+      type: [string, "null"]
+      description: A PORTFOLIO draft's chosen subdomain; `null` on every other type.
+    moderatedPrivateAt:
+      type: [string, "null"]
+      format: date-time
+      description: When a moderator made the document private, or `null`.
 
 DocumentCreateRequest:
   type: object
@@ -2725,7 +2786,9 @@ AtsResumeInput:
     Any other object is flattened to text, keys on their own lines.
   oneOf:
     - type: string
+      minLength: 1
       maxLength: 50000
+      description: Trimmed first; it must not be empty after trimming.
     - $ref: "#/AtsResumeDocument"
     - type: object
       additionalProperties: true
@@ -2865,7 +2928,7 @@ AtsExtractResponse:
       properties:
         text:
           type: string
-          description: Plain text extracted from the uploaded PDF, DOCX, TXT, Markdown, or JSON resume file (max ~50,000 characters).
+          description: Plain text extracted from the uploaded PDF, DOCX, HTML, TXT, Markdown, or JSON resume file (max ~50,000 characters).
         layout:
           $ref: "#/AtsLayoutSignals"
         quota:
@@ -2933,7 +2996,7 @@ AtsAnalyzeRequest:
       type: string
       format: uri
       maxLength: 2048
-      description: Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3, response size to 2MB, and timeout to 8s).
+      description: Required when fetchJobUrl is true. Fetched server-side through an SSRF-hardened HTTPS-only fetcher (blocks localhost/private/link-local IPs, pins the resolved IP for the whole request, caps redirects to 3 and response size to 2MB; the page may go 8s without sending data and must finish within 15s).
     fetchJobUrl:
       type: boolean
       default: false
@@ -2989,6 +3052,11 @@ AtsAnalyzeResponse:
           $ref: "#/AtsRepairSummary"
         quota:
           $ref: "#/AtsQuotaSummary"
+        replayed:
+          type: boolean
+          description: |
+            Present and `true` only when this is the stored answer to an earlier request with the
+            same `requestId` and input. Nothing is charged again, and `quota` is the current one.
 
 AtsRepairSummary:
   type: object
@@ -3100,7 +3168,15 @@ AtsConvertResumeResponse:
           $ref: "#/AtsConvertedResume"
         creditsSpent:
           type: integer
-          description: Credits spent on the conversion. They come from any source (a plan, a pass or a credit pack), independently of the shared ATS scan quota.
+          description: |
+            Credits spent on the conversion. They come from any source (a plan, a pass or a credit
+            pack), independently of the shared ATS scan quota. A replay reports the conversion's
+            price here although nothing is charged again.
+        replayed:
+          type: boolean
+          description: |
+            Present and `true` only when this is the stored answer to an earlier request with the
+            same `requestId` and resume text.
 
 ##################################################
 # AI SCHEMA
@@ -3164,7 +3240,10 @@ AiGenerateRequest:
       description: |
         Required, though every field inside it is optional and defaults to an empty string. At
         least one of `text`, `context`, or `jobDescription` must be non-empty or the request fails
-        with `400`. Per-action character limits apply — see `GET /ai/actions`.
+        with `400`. Each action also has its own limits for `text` and `context`, set in the
+        server's AI policy and not published: over one, the request fails with `400` "Text
+        exceeds the N character limit." (or "Context exceeds…"), naming the limit. A
+        `jobDescription` over its action's limit is cut to that length, not refused.
       properties:
         text:
           type: string
@@ -3224,6 +3303,11 @@ AiGenerateResponse:
             balance:
               type: integer
               description: AI credit wallet balance after this generation.
+        replayed:
+          type: boolean
+          description: |
+            Present and `true` only when this is the stored answer to an earlier request with the
+            same `requestId` and input. Nothing is charged again.
 
 ##################################################
 # PORTFOLIO SCHEMA
@@ -3335,7 +3419,17 @@ PortfolioPublicationRecord:
       description: The draft `revision` that was published.
     suspensionReason:
       type: [string, "null"]
-      description: One of `grace_expired` or `user_unpublished` when the portfolio is suspended.
+      description: |
+        Why the portfolio is suspended: `user_unpublished`, `grace_expired`, a billing status
+        (`ACTIVE`, `PAST_DUE`, `CANCELED` or `INACTIVE`) recorded by the billing job, or
+        `moderation:<reason>` for a moderator's takedown.
+    reasonBeforeModeration:
+      type: [string, "null"]
+      description: The owner's or billing's own suspension reason that a moderator's takedown covers, restored when it is lifted; `null` when the site was online as the takedown went on.
+    firstPublishedAt:
+      type: string
+      format: date-time
+      description: When the portfolio first went online. A republish moves `publishedAt`, not this.
     suspendedAt:
       type: [string, "null"]
       format: date-time
@@ -3378,11 +3472,9 @@ PortfolioUnpublishResponse:
       type: string
     data:
       description: |
-        The updated publication record with `status: SUSPENDED`, or null when the caller had never
-        published a portfolio. No `publicUrl` is included.
-      oneOf:
-        - $ref: "#/PortfolioPublicationRecord"
-        - type: "null"
+        The updated publication record with `status: SUSPENDED`. Never null: a caller who never
+        published gets `404`. No `publicUrl` is included.
+      $ref: "#/PortfolioPublicationRecord"
 
 PortfolioDraft:
   type: object
@@ -3401,7 +3493,10 @@ PortfolioDraft:
         draft shows its document slug.
     templateId:
       type: string
-      enum: [signal, atelier, nimbus, cipher]
+      description: |
+        `signal`, `atelier`, `nimbus` or `cipher` once the draft has been saved through
+        `PUT /portfolios/draft`. A PORTFOLIO document created through `/documents` and never saved
+        as a draft keeps the template it was created with (`modern` by default).
     content:
       type: object
       additionalProperties: true
@@ -3433,7 +3528,10 @@ PortfolioPreview:
       type: string
     templateId:
       type: string
-      enum: [signal, atelier, nimbus, cipher]
+      description: |
+        `signal`, `atelier`, `nimbus` or `cipher` once the draft has been saved through
+        `PUT /portfolios/draft`. A PORTFOLIO document created through `/documents` and never saved
+        as a draft keeps the template it was created with (`modern` by default).
     content:
       type: object
       additionalProperties: true
@@ -3473,7 +3571,7 @@ PortfolioMe:
         publishedRevision:
           type: integer
         publishedAt:
-          type: [string, "null"]
+          type: string
           format: date-time
         updatedAt:
           type: string
@@ -3715,8 +3813,10 @@ PortfolioAnalytics:
         not a portfolio is published.
     totalViews:
       type: integer
+      description: All-time views, including views still buffered and not yet flushed.
     daily:
       type: array
+      description: The 30 most recent days that had views, newest first. Days with no views are left out.
       items:
         type: object
         properties:
@@ -3727,6 +3827,7 @@ PortfolioAnalytics:
             type: integer
     referrers:
       type: array
+      description: The all-time top 10 referrer hosts, from flushed views only.
       items:
         type: object
         properties:
@@ -3775,11 +3876,15 @@ PortfolioAssetUploadRequest:
       enum: [AVATAR, PROJECT_COVER, SOCIAL_IMAGE]
     mimeType:
       type: string
-      enum: [image/jpeg, image/png, image/webp]
+      description: |
+        `image/jpeg`, `image/png` or `image/webp`. Checked by the service rather than the
+        request schema, so any other value answers `400` "Upload a JPG, PNG, or WebP image.".
+      example: image/png
     sizeBytes:
       type: integer
-      maximum: 5242880
-      description: Must be greater than 0 and no more than 5 MB.
+      description: |
+        Greater than 0 and at most 5,242,880 (5 MB). A larger size answers `400` "Image must be
+        5 MB or smaller.".
 
 PortfolioAssetUploadResponse:
   type: object
@@ -3876,7 +3981,10 @@ BillingSummary:
         paused. There are no trials.
     interval:
       type: [string, "null"]
-      enum: [one_day, seven_day, monthly, annual, null]
+      enum: [ONE_DAY, SEVEN_DAY, MONTHLY, ANNUAL, null]
+      description: |
+        The stored billing interval, upper case. Request bodies (checkout, plan change) use the
+        lower-case spelling (`monthly`, `annual`, ...).
     currentPeriodEnd:
       type: [string, "null"]
       format: date-time
@@ -3946,9 +4054,47 @@ BillingSummary:
     credits:
       $ref: "#/CreditWallet"
     catalog:
-      type: object
-      additionalProperties: true
-      description: Public product/pricing catalog (prices, intervals, entitlements per plan).
+      type: array
+      description: The public product catalog, one entry per subscription product.
+      items:
+        type: object
+        required: [key, name, entitlements, prices, configuredIntervals, currency]
+        properties:
+          key:
+            type: string
+            enum: [ai_credits, portfolio_pro, bundle]
+          name:
+            type: string
+          entitlements:
+            type: array
+            items:
+              type: string
+          prices:
+            type: object
+            description: Price in cents per interval (`one_day`, `seven_day`, `monthly`, `annual`) the product is sold in.
+            additionalProperties:
+              type: integer
+          creditAllowance:
+            type: object
+            description: AI credits granted per interval, for products that include them.
+            additionalProperties:
+              type: integer
+          creditNotes:
+            type: object
+            description: How the allowance is delivered, per interval, in words a pricing page can show.
+            additionalProperties:
+              type: string
+          recommended:
+            type: boolean
+          configuredIntervals:
+            type: array
+            description: The intervals that have a provider product configured on this server, so can be bought now.
+            items:
+              type: string
+              enum: [one_day, seven_day, monthly, annual]
+          currency:
+            type: string
+            enum: [USD]
     creditEconomics:
       type: object
       additionalProperties: true
@@ -4118,6 +4264,9 @@ CheckoutResponse:
         url:
           type: string
           description: Dodo Payments hosted checkout URL to redirect the user to.
+        reused:
+          type: boolean
+          description: True when an open checkout session for the same choice was handed back instead of a new one.
 
 CancelCheckoutResponse:
   type: object
@@ -4208,6 +4357,7 @@ CodedErrorResponse:
 
 PlanChangePreviewRequest:
   type: object
+  description: An `idempotencyKey` field is accepted here too, and ignored; a preview changes nothing.
   required: [productKey, interval]
   properties:
     productKey:
@@ -4295,7 +4445,7 @@ PlanChangeResponse:
           description: False when the provider's answer never arrived (the response is then `202`); the change may still apply.
         replayed:
           type: boolean
-          description: Present and true when this is the stored answer for an idempotency key already used.
+          description: Always present. `true` when this is the stored answer for an idempotency key already used, `false` on a fresh call.
 
 UsageEventRequest:
   type: object
@@ -4309,7 +4459,9 @@ UsageEventRequest:
         Normalized to lower case with spaces as `_`. Public callers may send only `resume_created`,
         `resume_deleted`, `resume_exported`, `cover_letter_exported`, `auth_otp_sent`,
         `dashboard_opened`, `roadmap_viewed`, `share_link_created`, `share_link_updated` and
-        `share_link_revoked`. Internal callers (`x-internal-key`) may also send `custom_*` names.
+        `share_link_revoked`. Internal callers (`x-internal-key`) may send any other name too:
+        one that is not a known event is stored as `custom_<name>` (a name that already starts with
+        `custom_` is kept as is).
     value:
       type: integer
       minimum: 1
@@ -4474,6 +4626,11 @@ SharedDocumentIdsResponse:
 
 PublicSharePayload:
   type: object
+  description: |
+    While a password is required, only `passwordRequired` (`true`) and `expiresAt` are sent.
+    Otherwise every field below is present except `snapshot`, which is sent once no password is
+    required or after successful verification.
+  required: [passwordRequired, expiresAt]
   properties:
     passwordRequired:
       type: boolean
@@ -4526,6 +4683,7 @@ AffiliateClickRequest:
       type: string
       minLength: 4
       maxLength: 32
+      description: Letters, digits and hyphens. Upper case is accepted and lower-cased before the lookup.
     referrerHost:
       type: string
       maxLength: 255
@@ -4555,15 +4713,11 @@ AffiliateLeaderboardEntry:
       type: integer
     user:
       type: [object, "null"]
+      description: Null when the affiliate's account is gone.
       properties:
-        id:
-          type: string
         name:
           type: [string, "null"]
-        username:
-          type: [string, "null"]
-        image:
-          type: [string, "null"]
+          description: First name and last initial ("Jane D."), or null when the account has no name.
         affiliateTier:
           type: string
           enum: [TIER_1, TIER_2, TIER_3]
@@ -4607,7 +4761,7 @@ AffiliateDashboard:
             type: string
           status:
             type: string
-            enum: [PENDING, CONVERTED]
+            enum: [SIGNED_UP, CONVERTED, REJECTED]
           createdAt:
             type: string
             format: date-time
@@ -4713,7 +4867,7 @@ AffiliateReferralRequest:
       type: string
       minLength: 4
       maxLength: 32
-      description: Another affiliate's code. Self-referrals are rejected.
+      description: Another affiliate's code. Letters, digits and hyphens; upper case is accepted and lower-cased. Self-referrals are rejected.
 
 AffiliateReferralResponse:
   type: object
@@ -4752,7 +4906,10 @@ AffiliateWithdrawalResponse:
     data:
       type: object
       additionalProperties: true
-      description: The created AffiliateWithdrawal record (status starts as REQUESTED).
+      description: |
+        The created withdrawal row as stored: `id`, `userId`, `amountCents`, `currency`,
+        `status` (`REQUESTED`), `payoutNote`, `reviewedBy`, `reviewedAt`, `paidAt`,
+        `createdAt` and `updatedAt`.
 
 ##################################################
 # AMBASSADOR SCHEMA
@@ -4822,10 +4979,47 @@ AmbassadorStatus:
     ambassadorStatus:
       type: string
       enum: [NONE, PENDING, APPROVED, REJECTED]
+    name:
+      type: [string, "null"]
+      description: The account's name, so the form can greet and prefill.
+    email:
+      type: [string, "null"]
     collegeName:
       type: [string, "null"]
     graduationYear:
       type: [string, "null"]
+    application:
+      type: [object, "null"]
+      description: The latest application's answers, so a rejected applicant can edit and resubmit; null when there is none.
+      properties:
+        collegeName:
+          type: string
+        graduationYear:
+          type: string
+        whyJoin:
+          type: string
+        superpower:
+          type: string
+        funFact:
+          type: string
+        vibeCheck:
+          type: [string, "null"]
+        socialHandle:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        reviewNote:
+          type: [string, "null"]
+        reviewedAt:
+          type: [string, "null"]
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
 AmbassadorStatusResponse:
   type: object

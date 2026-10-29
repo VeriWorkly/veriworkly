@@ -127,6 +127,16 @@ jobs:
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
 
+      # The check below compares the pages with the engine the docs install, so it cannot see the
+      # server moving to a newer engine. The docs must document the version the server runs.
+      - name: Check docs and server use the same ATS Engine
+        run: |
+          version() { (cd "apps/$1" && node -p 'require("@veriworkly/ats-engine/package.json").version'); }
+          docs="$(version docs-platform)"
+          server="$(version server)"
+          echo "docs $docs, server $server"
+          test "$docs" = "$server" || { echo "Bump @veriworkly/ats-engine in apps/docs-platform to $server and run generate:engine."; exit 1; }
+
       # The ATS Engine reference pages are generated from the installed engine and committed. A
       # bump of @veriworkly/ats-engine without regenerating them fails here.
       - name: Check generated ATS Engine pages are current

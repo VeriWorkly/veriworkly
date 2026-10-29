@@ -1,19 +1,15 @@
-"use client";
-
 import { FileText } from "lucide-react";
 
 import BentoCard from "./BentoCard";
 
 interface BentoCoverLetterCardProps {
   drift: "up" | "down";
-  canHover: boolean;
 }
 
-const BentoCoverLetterCard = ({ drift, canHover }: BentoCoverLetterCardProps) => {
+const BentoCoverLetterCard = ({ drift }: BentoCoverLetterCardProps) => {
   return (
     <BentoCard
       drift={drift}
-      canHover={canHover}
       glowColor="rgba(6,182,212,0.1)"
       className="col-span-1 flex flex-col justify-between border-zinc-200/60 bg-zinc-50/50 sm:col-span-2 sm:row-span-1 dark:border-zinc-800/80 dark:bg-[#0c0c0c]/40"
     >

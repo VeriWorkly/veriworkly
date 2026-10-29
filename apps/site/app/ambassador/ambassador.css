@@ -1,7 +1,3 @@
-html {
-  scroll-behavior: smooth;
-}
-
 .ambassador-bg-noise {
   background-color: var(--background);
   background-image:

@@ -2,6 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 
+import { CurrentYear } from "./CurrentYear";
+
 export interface LandingFooterLink {
   name: string;
   href: string;
@@ -150,7 +152,7 @@ export const LandingFooter = ({
 
         <div className="relative z-10 flex flex-col items-center justify-between gap-4 pb-16 text-[13px] font-medium text-gray-500 md:flex-row md:pb-24 dark:text-gray-400">
           <p>
-            © {new Date().getFullYear()} {shortName} by {authorName}
+            © <CurrentYear /> {shortName} by {authorName}
           </p>
 
           <div className="flex items-center gap-8">

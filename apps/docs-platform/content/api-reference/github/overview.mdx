@@ -30,16 +30,9 @@ Data is not fetched in real-time on every `GET` request. Instead, we use a backg
 
 ## Authentication & Access
 
-| Method | Endpoint            | Access Level   | Requirement                                                        |
-| :----- | :------------------ | :------------- | :----------------------------------------------------------------- |
-| `GET`  | `/stats`, `/issues` | **No session** | An API key with the `github:read` scope, or a first-party origin.  |
-| `POST` | `/admin/sync`       | **Admin**      | A session cookie whose email matches the configured `ADMIN_EMAIL`. |
-
-<Callout type="warn">
-  `POST /github/admin/sync` is strictly protected and **cannot be reached with an API key**; it
-  requires an admin session. A request with no session returns `401 Unauthorized`; an authenticated
-  non-admin returns `403 Forbidden`.
-</Callout>
+| Method | Endpoint            | Access Level   | Requirement                                                       |
+| :----- | :------------------ | :------------- | :---------------------------------------------------------------- |
+| `GET`  | `/stats`, `/issues` | **No session** | An API key with the `github:read` scope, or a first-party origin. |
 
 <Callout type="info" title="The read endpoints still need credentials">
   `/github/stats` and `/github/issues` require no logged-in user, but they are not open to anonymous
@@ -53,4 +46,6 @@ Data is not fetched in real-time on every `GET` request. Instead, we use a backg
 
 - `GET /github/stats`: [Fetch Repository Stats](./getGitHubStats)
 - `GET /github/issues`: [List Issues & PRs](./getGitHubIssues)
-- `POST /github/admin/sync`: [Trigger Manual Sync](./syncGitHubStats) (admin only)
+
+A manual sync can be triggered from the admin dashboard; that route is admin-only and not part of
+the public API.

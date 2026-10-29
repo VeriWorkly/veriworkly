@@ -1,5 +1,5 @@
 {
   "title": "GitHub",
   "description": "GitHub issues, pull requests, and repository statistics.",
-  "pages": ["overview", "getGitHubStats", "getGitHubIssues", "syncGitHubStats"]
+  "pages": ["overview", "getGitHubStats", "getGitHubIssues"]
 }

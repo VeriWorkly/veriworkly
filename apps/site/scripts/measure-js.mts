@@ -12,6 +12,10 @@ const BUDGETS: Record<string, number> = {
 };
 const DEFAULT_BUDGET = 188;
 
+// Routes rendered per request on purpose, with the reason. Any other route without prerendered HTML fails --check:
+// it has turned dynamic by accident, and its JS can no longer be measured here.
+const DYNAMIC_ROUTES: Record<string, string> = {};
+
 const args = process.argv.slice(2);
 const check = args.includes("--check");
 const requested = args.filter((arg) => arg !== "--check");
@@ -41,7 +45,11 @@ for (const route of ROUTES) {
   const budget = BUDGETS[route] ?? DEFAULT_BUDGET;
 
   if (!existsSync(file)) {
-    rows.push(`| ${route} | not prerendered | ${budget} KB | |`);
+    const reason = DYNAMIC_ROUTES[route];
+    if (!reason) over.push(`${route} is not prerendered`);
+    rows.push(
+      `| ${route} | ${reason ? `dynamic: ${reason}` : "not prerendered ❌"} | ${budget} KB | |`,
+    );
     continue;
   }
 
@@ -71,6 +79,6 @@ for (const route of ROUTES) {
 console.log(rows.join("\n"));
 
 if (check && over.length) {
-  console.error(`\nOver budget:\n${over.join("\n")}`);
+  console.error(`\nOver budget or not prerendered:\n${over.join("\n")}`);
   process.exit(1);
 }

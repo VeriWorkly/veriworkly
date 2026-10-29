@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import { ImageIcon, Download, X, Check } from "lucide-react";
 
 import { Card } from "@veriworkly/ui";
@@ -103,7 +102,7 @@ const LogoSection = () => {
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {logoAssets.map((asset) => (
-            <Link
+            <a
               key={asset.file}
               href={`/brand/logo/${asset.file}`}
               download
@@ -125,7 +124,7 @@ const LogoSection = () => {
               </p>
 
               <p className="text-muted text-xs leading-relaxed">{asset.usage}</p>
-            </Link>
+            </a>
           ))}
         </div>
       </Card>

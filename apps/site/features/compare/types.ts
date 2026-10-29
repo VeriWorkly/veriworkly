@@ -55,3 +55,11 @@ export interface Competitor {
   matrix: CompetitorFeatureMatrix;
   faqs: CompetitorFaq[];
 }
+
+/** What the scoreboard reads, so a client island can be handed this instead of the whole record. */
+export type ScoreboardCompetitor = Pick<
+  Competitor,
+  "name" | "initials" | "color" | "matrix" | "pricingModel"
+>;
+
+export type CompareHubEntry = ScoreboardCompetitor & Pick<Competitor, "id" | "positioning">;

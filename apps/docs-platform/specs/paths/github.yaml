@@ -29,7 +29,9 @@ getGitHubStats:
                   message: "GitHub stats fetched successfully"
                   data:
                     projectName: "owner/repo"
+                    projectUrl: "https://github.com/orgs/owner/projects/1"
                     stats:
+                      totalItems: 120
                       total: 120
                       issues: 70
                       pullRequests: 50
@@ -38,6 +40,7 @@ getGitHubStats:
                       done: 50
                       completionRate: "41.67"
                     syncedAt: "2026-04-26T10:00:00.000Z"
+                    nextSyncAt: "2026-04-26T12:00:00.000Z"
               neverSynced:
                 summary: No sync has run yet
                 value:
@@ -45,9 +48,13 @@ getGitHubStats:
                   message: "GitHub stats fetched successfully"
                   data: null
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError
 
 getGitHubIssues:
   get:
@@ -98,8 +105,8 @@ getGitHubIssues:
         schema:
           type: integer
           minimum: 1
-          default: 1
-        description: 1-based page index. An alternative to `offset`.
+        description: |
+          1-based page index, the first page when left out. An alternative to `offset`: sending both answers `400` "Send either page or offset, not both".
       - in: query
         name: pageSize
         schema:
@@ -107,6 +114,30 @@ getGitHubIssues:
           minimum: 1
           maximum: 50
         description: Alternative spelling of `limit`. Takes precedence over `limit` when both are sent.
+      - in: query
+        name: createdFrom
+        schema:
+          type: string
+        description: |
+          Items created at or after this time. A date (`2026-08-01`) means the start of that UTC
+          day; a date-time is used as given.
+      - in: query
+        name: createdTo
+        schema:
+          type: string
+        description: |
+          Items created at or before this time, inclusive. A bare date covers that whole UTC day, so
+          `createdTo=2026-08-10` includes everything up to `2026-08-11T00:00:00Z`.
+      - in: query
+        name: updatedFrom
+        schema:
+          type: string
+        description: Items updated at or after this time. Same date rules as `createdFrom`.
+      - in: query
+        name: updatedTo
+        schema:
+          type: string
+        description: Items updated at or before this time, inclusive. Same date rules as `createdTo`.
     responses:
       "200":
         description: GitHub issues fetched successfully
@@ -134,92 +165,33 @@ getGitHubIssues:
                 page: 1
                 pageSize: 20
                 totalPages: 1
+                syncedAt: "2026-04-25T12:00:00.000Z"
                 hasMore: false
                 pagination:
                   mode: "offset"
                   nextOffset: null
                   nextCursor: null
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        description: |
+          Validation error: a parameter is out of range or not a date, `page` and `offset` were
+          both sent, or the query has a parameter this endpoint does not know (unknown parameters
+          are refused, not ignored).
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            example:
+              success: false
+              statusCode: 400
+              message: "Validation failed"
+              details:
+                - path: "offset"
+                  message: "Send either page or offset, not both"
       "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
+        $ref: ../components/responses.yaml#/PublicUnauthorizedError
       "403":
         $ref: "../components/responses.yaml#/InsufficientScopeError"
-
-syncGitHubStats:
-  post:
-    tags:
-      - GitHub
-    operationId: syncGitHubStats
-    security:
-      - LocalSession: []
-      - ProdSession: []
-    summary: (Admin) Sync GitHub
-    description: |
-      Manually triggers a GitHub sync. **Administrators only** — the caller's session email must
-      match the configured `ADMIN_EMAIL`; an API key cannot reach this route.
-
-      Incremental by default: only issues updated since the last sync are refetched. The run is
-      guarded by a 10-minute Redis lock, so a concurrent attempt fails with `409` rather than
-      double-syncing.
-
-      A sync can take minutes, so it runs in the background: the response is `202` as soon as
-      the lock is taken. `GET /github/stats` shows the new `syncedAt` once it has finished; a
-      failed run leaves the previous data in place.
-    responses:
-      "202":
-        description: The sync started and is running in the background.
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/GenericSuccessResponse"
-            example:
-              success: true
-              message: "GitHub sync started"
-              data:
-                status: "started"
-                statusUrl: "/api/v1/admin/system/github"
-      "401":
-        $ref: "../components/responses.yaml#/UnauthorizedError"
-      "403":
-        description: The authenticated user is not the configured administrator.
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 403
-              message: "Forbidden"
-      "409":
-        description: A sync is already running.
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 409
-              message: "GitHub sync is already in progress"
-      "500":
-        description: The server has no `ADMIN_EMAIL` set, so no one can be the administrator.
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 500
-              message: "ADMIN_EMAIL is not configured"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
       "503":
-        description: |
-          The sync cannot start: Redis, which holds its lock, is unreachable, or
-          `GITHUB_OWNER`/`GITHUB_REPO` are not configured.
-        content:
-          application/json:
-            schema:
-              $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 503
-              message: "Syncing is unavailable right now. Try again shortly."
+        $ref: ../components/responses.yaml#/DatabaseUnavailableError

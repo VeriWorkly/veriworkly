@@ -1,25 +1,17 @@
-"use client";
-
 import { Check } from "lucide-react";
-import { m } from "framer-motion";
-
-import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface TemplateCardProps {
   name: string;
   tag: string;
   themeColor: string;
   layout: "modern" | "executive" | "minimalist" | "creative";
-  canHover?: boolean;
 }
 
-const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: TemplateCardProps) => {
+const TemplateCard = ({ name, tag, themeColor, layout }: TemplateCardProps) => {
   return (
-    <m.div
-      whileHover={canHover ? { y: -10, scale: 1.03 } : {}}
-      transition={{ type: "spring", stiffness: 380, damping: 28 }}
+    <div
       style={{ "--glow-color": themeColor } as React.CSSProperties}
-      className="group relative h-90 w-65 shrink-0 overflow-hidden rounded-4xl border border-zinc-200 bg-white p-6 shadow-xs transition-shadow duration-500 hover:shadow-[0_30px_70px_-25px_var(--glow-color)] dark:border-zinc-800 dark:bg-[#0c0c0c]"
+      className="group relative h-90 w-65 shrink-0 overflow-hidden rounded-4xl border border-zinc-200 bg-white p-6 shadow-xs [transition:box-shadow_500ms_cubic-bezier(0.4,0,0.2,1),translate_350ms_cubic-bezier(0.34,1.3,0.64,1),scale_350ms_cubic-bezier(0.34,1.3,0.64,1)] hover:shadow-[0_30px_70px_-25px_var(--glow-color)] dark:border-zinc-800 dark:bg-[#0c0c0c] pointer-fine:hover:-translate-y-2.5 pointer-fine:hover:scale-[1.03]"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--glow-color)_0%,transparent_50%)] opacity-35 transition-opacity duration-500 group-hover:opacity-50 dark:opacity-20 dark:group-hover:opacity-30" />
 
@@ -141,13 +133,11 @@ const TemplateCard = ({ name, tag, themeColor, layout, canHover = true }: Templa
 
         <span className="text-sm font-black text-zinc-900 dark:text-white">99%</span>
       </div>
-    </m.div>
+    </div>
   );
 };
 
 const TemplateShowcaseTracks = () => {
-  const canHover = useMediaQuery("(hover: hover) and (pointer: fine)");
-
   return (
     <div
       className="relative flex w-full flex-col gap-6 overflow-x-clip py-4 pb-16"
@@ -162,7 +152,6 @@ const TemplateShowcaseTracks = () => {
           tag="ATS Standard"
           themeColor="#3b82f6"
           layout="modern"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -170,7 +159,6 @@ const TemplateShowcaseTracks = () => {
           tag="Editorial Accent"
           themeColor="#10b981"
           layout="executive"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -178,7 +166,6 @@ const TemplateShowcaseTracks = () => {
           tag="Austere Clean"
           themeColor="#6b7280"
           layout="minimalist"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -186,7 +173,6 @@ const TemplateShowcaseTracks = () => {
           tag="Bold Spotlight"
           themeColor="#ec4899"
           layout="creative"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -194,7 +180,6 @@ const TemplateShowcaseTracks = () => {
           tag="ATS Standard"
           themeColor="#3b82f6"
           layout="modern"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -202,7 +187,6 @@ const TemplateShowcaseTracks = () => {
           tag="Editorial Accent"
           themeColor="#10b981"
           layout="executive"
-          canHover={canHover}
         />
       </div>
 
@@ -212,7 +196,6 @@ const TemplateShowcaseTracks = () => {
           tag="Bold Spotlight"
           themeColor="#ec4899"
           layout="creative"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -220,7 +203,6 @@ const TemplateShowcaseTracks = () => {
           tag="Austere Clean"
           themeColor="#6b7280"
           layout="minimalist"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -228,7 +210,6 @@ const TemplateShowcaseTracks = () => {
           tag="Editorial Accent"
           themeColor="#10b981"
           layout="executive"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -236,7 +217,6 @@ const TemplateShowcaseTracks = () => {
           tag="ATS Standard"
           themeColor="#3b82f6"
           layout="modern"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -244,7 +224,6 @@ const TemplateShowcaseTracks = () => {
           tag="Bold Spotlight"
           themeColor="#ec4899"
           layout="creative"
-          canHover={canHover}
         />
 
         <TemplateCard
@@ -252,7 +231,6 @@ const TemplateShowcaseTracks = () => {
           tag="Austere Clean"
           themeColor="#6b7280"
           layout="minimalist"
-          canHover={canHover}
         />
       </div>
     </div>

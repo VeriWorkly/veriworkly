@@ -1,21 +1,17 @@
-"use client";
-
 import { Globe } from "lucide-react";
 
 import BentoCard from "./BentoCard";
 
 interface BentoPortfolioCardProps {
   drift: "up" | "down";
-  canHover: boolean;
 }
 
-const BentoPortfolioCard = ({ drift, canHover }: BentoPortfolioCardProps) => {
+const BentoPortfolioCard = ({ drift }: BentoPortfolioCardProps) => {
   return (
     <BentoCard
       className="col-span-1 flex flex-col justify-between border-zinc-200/60 bg-zinc-50/50 dark:border-zinc-800/80 dark:bg-[#0c0c0c]/40"
       glowColor="rgba(59,130,246,0.1)"
       drift={drift}
-      canHover={canHover}
     >
       <div className="scroll-shift absolute top-4 right-4 h-28 w-44 rounded-xl border border-zinc-200/90 bg-white p-2.5 shadow-2xs transition-transform duration-700 [--sr0:15deg] [--sr1:-15deg] group-hover:-translate-x-1 sm:-top-2 sm:-right-4 sm:h-32 sm:w-48 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mb-2 flex h-4 items-center justify-between border-b border-zinc-100 pb-1 dark:border-zinc-800">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { m } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 
 export type ConfettiPiece = {
   id: number;
@@ -22,12 +22,16 @@ export function generateConfetti(): ConfettiPiece[] {
 }
 
 export const ConfettiBurst = () => {
+  const prefersReducedMotion = useReducedMotion();
   const [pieces, setPieces] = useState<ConfettiPiece[]>([]);
 
   useEffect(() => {
+    // Random positions are made after mount so the server and client HTML match.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPieces(generateConfetti());
   }, []);
+
+  if (prefersReducedMotion) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 flex items-start justify-center overflow-hidden">

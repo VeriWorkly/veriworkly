@@ -23,7 +23,7 @@ const ResumePreview = () => {
               </span>
 
               <span>&middot;</span>
-              <span className="font-semibold text-blue-500">gautam.veriworkly.me</span>
+              <span className="font-semibold text-blue-500">gautam.veriworkly.com</span>
             </div>
           </div>
 

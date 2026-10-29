@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
 import { COMPETITORS, getCompetitor } from "@/features/compare/data/competitors";
+import { PRICES_CHECKED } from "@/features/compare/data/featureMatrix";
 import CompareClosing from "@/features/compare/components/shared/CompareClosing";
 import CompareHighlights from "@/features/compare/components/detail/CompareHighlights";
 import CompareScoreboard from "@/features/compare/components/shared/CompareScoreboard";
@@ -35,26 +36,8 @@ export const dynamicParams = false;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { tool } = await params;
-  const competitor = getCompetitor(tool);
-
-  if (!competitor) {
-    return buildPageMetadata({
-      path: `/compare/${tool}`,
-
-      title: "Comparison Not Found | VeriWorkly",
-      description: "This comparison is not available on VeriWorkly yet.",
-
-      ogTitle: "Comparison Not Found",
-      ogDescription: "This comparison is not available on VeriWorkly yet.",
-
-      twitterTitle: "Comparison Not Found",
-      twitterDescription: "This comparison is not available on VeriWorkly yet.",
-
-      image: ogPageImage("compare-missing"),
-
-      noIndex: true,
-    });
-  }
+  // dynamicParams = false: only generateStaticParams ids reach this.
+  const competitor = getCompetitor(tool)!;
 
   const ogImage = ogPageImage(`compare:${competitor.id}`);
 
@@ -81,7 +64,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       `${competitor.name} pricing comparison`,
       `${competitor.name} ATS checker alternative`,
       "free resume builder no watermark",
-      `best resume builder ${new Date().getFullYear()}`,
+      // The year the comparison was last checked, not the build year, so it cannot claim a year nobody checked.
+      `best resume builder ${PRICES_CHECKED.year}`,
     ],
   });
 }

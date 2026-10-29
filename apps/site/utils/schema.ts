@@ -10,5 +10,4 @@ export const SCHEMA_IDS = {
 
 export const webSiteRef = { "@id": SCHEMA_IDS.website } as const;
 export const organizationRef = { "@id": SCHEMA_IDS.organization } as const;
-export const personRef = { "@id": SCHEMA_IDS.person } as const;
 export const appRef = { "@id": SCHEMA_IDS.app } as const;

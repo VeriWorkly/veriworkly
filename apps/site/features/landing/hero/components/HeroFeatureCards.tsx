@@ -99,7 +99,7 @@ export const HeroFeatureCards = () => {
           <div className="truncate text-sm font-semibold sm:text-base">Senior React Developer</div>
 
           <div className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400">
-            <span className="flex" aria-label="5 out of 5 stars">
+            <span className="flex" role="img" aria-label="5 out of 5 stars">
               {[1, 2, 3, 4, 5].map((i) => (
                 <span
                   key={i}

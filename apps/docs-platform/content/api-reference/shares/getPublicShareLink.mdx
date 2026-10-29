@@ -2,9 +2,12 @@
 title: Get Public Share Link
 description: >
   Returns the shared document's title and snapshot, unless the link is
-  password-protected — in
+  password-protected. Then
 
-  which case only `passwordRequired: true` is returned and the caller must call
+  the message is "Password required", `data` is only `{ passwordRequired: true,
+  expiresAt }`
+
+  (no titles, which can name the person or the job), and the caller must call
 
   `POST /shares/public/{username}/{slug}/verify` with the password.
 
@@ -35,10 +38,13 @@ _openapi:
     contents:
       - content: >
           Returns the shared document's title and snapshot, unless the link is
-          password-protected — in
+          password-protected. Then
 
-          which case only `passwordRequired: true` is returned and the caller
-          must call
+          the message is "Password required", `data` is only `{
+          passwordRequired: true, expiresAt }`
+
+          (no titles, which can name the person or the job), and the caller must
+          call
 
           `POST /shares/public/{username}/{slug}/verify` with the password.
 

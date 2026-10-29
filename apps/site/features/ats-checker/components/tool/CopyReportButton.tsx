@@ -25,24 +25,28 @@ export function CopyReportButton({ report }: { report: AtsFullReport }) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="bg-background hover:bg-foreground hover:text-background focus-visible:ring-accent/40 inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-[0.97]"
-      aria-label="Copy report as plain text"
-    >
-      {copied ? (
-        <>
-          <Check className="text-success h-4 w-4" aria-hidden="true" />
-          <span>Copied</span>
-        </>
-      ) : (
-        <>
-          <Copy className="h-4 w-4" aria-hidden="true" />
-          <span>{failed ? "Couldn't copy, try again" : "Copy report"}</span>
-        </>
-      )}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="bg-background hover:bg-foreground hover:text-background focus-visible:ring-accent/40 inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-[0.97]"
+      >
+        {copied ? (
+          <>
+            <Check className="text-success h-4 w-4" aria-hidden="true" />
+            <span>Copied</span>
+          </>
+        ) : (
+          <>
+            <Copy className="h-4 w-4" aria-hidden="true" />
+            <span>{failed ? "Couldn't copy, try again" : "Copy report"}</span>
+          </>
+        )}
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {copied ? "Report copied as plain text" : failed ? "Couldn't copy the report" : ""}
+      </span>
+    </>
   );
 }
 

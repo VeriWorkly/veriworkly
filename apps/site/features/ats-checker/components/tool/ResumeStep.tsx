@@ -83,14 +83,18 @@ export function ResumeStep({
         <label
           onDragOver={(e) => {
             e.preventDefault();
-            setDragOver(true);
+            if (!busy) setDragOver(true);
           }}
-          onDragLeave={() => setDragOver(false)}
+          onDragLeave={(e) => {
+            // dragleave also fires when the pointer moves onto a child of the drop zone.
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
+          }}
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
             const file = e.dataTransfer.files[0];
-            if (file) onFile(file);
+            // The input is disabled while a file is read; a drop is not, and each read is a paid extract.
+            if (file && !busy) onFile(file);
           }}
           className={`bg-card focus-within:ring-accent/40 flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-colors focus-within:ring-2 ${
             dragOver

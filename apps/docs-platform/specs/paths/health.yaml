@@ -12,8 +12,8 @@ healthCheck:
       on PostgreSQL or Redis, and never returns `503`. For dependency health use
       `GET /api/v1/health/ready`.
 
-      This is the only truly public endpoint on the API: it requires no session, no API key, and no
-      first-party origin.
+      It requires no session, no API key and no first-party origin, and it is not rate limited.
+      The other fully open endpoints are listed in the introduction.
     responses:
       "200":
         description: Server is healthy
@@ -58,8 +58,8 @@ healthReady:
 
       "503":
         description: |
-          The database or Redis could not be reached. The response carries no diagnostic detail —
-          the underlying error is logged server-side only.
+          The database or Redis could not be reached. `details` gives the state of each:
+          `connected`, `timeout` or `error`. The underlying error is logged server-side only.
         content:
           application/json:
             schema:
@@ -68,3 +68,6 @@ healthReady:
               success: false
               statusCode: 503
               message: "Service Unavailable"
+              details:
+                database: "connected"
+                redis: "timeout"

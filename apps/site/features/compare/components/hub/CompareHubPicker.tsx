@@ -4,16 +4,16 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 
-import { COMPETITORS } from "../../data";
+import { type CompareHubEntry } from "../../types";
 import CompareScoreboard from "../shared/CompareScoreboard";
 
-export const CompareHubPicker = () => {
+export const CompareHubPicker = ({ competitors }: { competitors: CompareHubEntry[] }) => {
   const [index, setIndex] = useState(0);
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
-  const selected = COMPETITORS[index]!;
+  const selected = competitors[index]!;
 
   const select = (next: number) => {
-    const wrapped = (next + COMPETITORS.length) % COMPETITORS.length;
+    const wrapped = (next + competitors.length) % competitors.length;
     setIndex(wrapped);
     tabs.current[wrapped]?.focus();
   };
@@ -25,7 +25,7 @@ export const CompareHubPicker = () => {
       ArrowUp: index - 1,
       ArrowLeft: index - 1,
       Home: 0,
-      End: COMPETITORS.length - 1,
+      End: competitors.length - 1,
     };
 
     if (event.key in moves) {
@@ -43,7 +43,7 @@ export const CompareHubPicker = () => {
         onKeyDown={onKeyDown}
         className="hide-scrollbar relative -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0"
       >
-        {COMPETITORS.map((competitor, i) => {
+        {competitors.map((competitor, i) => {
           const active = i === index;
 
           return (
@@ -78,12 +78,7 @@ export const CompareHubPicker = () => {
         })}
       </div>
 
-      <div
-        id="compare-panel"
-        role="tabpanel"
-        aria-labelledby={`compare-tab-${selected.id}`}
-        aria-live="polite"
-      >
+      <div id="compare-panel" role="tabpanel" aria-labelledby={`compare-tab-${selected.id}`}>
         <CompareScoreboard competitor={selected} headingLevel="h3" />
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4">

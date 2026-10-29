@@ -7,7 +7,7 @@ import { jsonLdScriptProps } from "@/utils/json-ld";
 import { SCHEMA_IDS } from "@/utils/schema";
 import { globalFontVariables } from "@veriworkly/ui";
 
-import { ThemeProvider } from "@/providers/theme-provider";
+import { ThemeProvider } from "next-themes";
 import { WebVitals } from "@/components/WebVitals";
 
 export const viewport: Viewport = {

@@ -32,10 +32,13 @@ description: >
   `resume:write` scope when called with an API key.
 
 
-  The snapshot may be at most 1 MB once serialized (`413` otherwise). It is not
-  echoed in
+  The snapshot may be at most 1,000,000 bytes once serialized (`413` otherwise);
+  the whole
 
-  the response, nor in the owner's list of links.
+  body may be at most 4 MB. It is not echoed in the response, nor in the owner's
+  list of
+
+  links.
 
 
   `allowDownload` (default `true`) says whether the public page shows a Download
@@ -91,10 +94,13 @@ _openapi:
           `resume:write` scope when called with an API key.
 
 
-          The snapshot may be at most 1 MB once serialized (`413` otherwise). It
-          is not echoed in
+          The snapshot may be at most 1,000,000 bytes once serialized (`413`
+          otherwise); the whole
 
-          the response, nor in the owner's list of links.
+          body may be at most 4 MB. It is not echoed in the response, nor in the
+          owner's list of
+
+          links.
 
 
           `allowDownload` (default `true`) says whether the public page shows a

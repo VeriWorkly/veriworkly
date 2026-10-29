@@ -229,7 +229,7 @@ after the `RETENTION_*_WEBHOOK_PAYLOAD_DAYS` windows.
 | :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PortfolioPublication` | A published portfolio's live state: status (`LIVE`/`GRACE`/`SUSPENDED`), unique subdomain, template, content snapshot, published revision, suspension metadata. One per user. |
 | `PortfolioAsset`       | Uploaded images (avatar, project cover, social image) with R2 upload status (`PENDING`/`READY`/`DELETED`), checksum, and size.                                                |
-| `PortfolioViewDaily`   | Daily view counts, unique per (publication, date, referrer host).                                                                                                             |
+| `PortfolioViewDaily`   | Daily view counts, unique per (publication, date, referrer host). Days older than 180 are folded into one lifetime row per publication and referrer host.                     |
 
 Abandoned `PENDING` uploads older than 24 hours, and their R2 objects, are garbage-collected by the
 hourly portfolio access job. The same job moves a premium portfolio whose paid access has ended to a

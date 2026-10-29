@@ -4,7 +4,7 @@ import { PageSection, TYPE } from "@/components/marketing/PageLayout";
 
 import CompareCaveatNote from "../shared/CompareCaveatNote";
 
-import { PRICES_CHECKED } from "../../data/competitors";
+import { PRICES_CHECKED } from "../../data/featureMatrix";
 import { type Competitor } from "../../types";
 
 interface ComparePricingSectionProps {
@@ -18,7 +18,7 @@ const VERIWORKLY_PRICING_PILLARS = [
   "Documents export with no watermark, on every tier",
   "Target job post ATS keyword checks included",
   "Portfolio publishing on a veriworkly.com subdomain, with the free core templates and a “Built with VeriWorkly” badge (at launch)",
-  "Optional pay-as-you-go AI credits with zero monthly subscriptions",
+  "Optional pay-as-you-go AI credit packs, no subscription required",
 ];
 
 export const ComparePricingSection = ({ competitor }: ComparePricingSectionProps) => (

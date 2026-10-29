@@ -29,15 +29,7 @@ const FeatureDetailsContent = ({ feature }: { feature: RoadmapFeature }) => {
   const timeline = feature.timeline ?? details.timeline;
   const whyItMatters = feature.whyItMatters ?? details.whyItMatters;
   const overview = feature.fullDescription ?? details.fullDescription;
-  const approach =
-    ((feature as unknown as Record<string, unknown>).approach as string | undefined) ??
-    details.approach;
-  const technicalHighlights =
-    ((feature as unknown as Record<string, unknown>).technicalHighlights as string[] | undefined) ??
-    details.technicalHighlights;
-  const githubRefs =
-    ((feature as unknown as Record<string, unknown>).githubRefs as typeof details.githubRefs) ??
-    details.githubRefs;
+  const { approach, technicalHighlights, githubRefs } = details;
 
   return (
     <div className="mt-12 space-y-12">

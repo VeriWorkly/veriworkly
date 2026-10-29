@@ -1,7 +1,19 @@
 ---
 title: Get Portfolio Analytics
 description: >
-  Views for the last 30 days plus the top 10 referrer hosts.
+  View counts for the caller's published portfolio. `totalViews` is all-time,
+  including views
+
+  still buffered and not yet flushed. `daily` is the 30 most recent days that
+  had any views,
+
+  newest first; days with no views are left out, so it is not a 30-day calendar.
+  `referrers`
+
+  is the all-time top 10 referrer hosts from flushed views only (views still
+  buffered are not
+
+  in it).
 
 
   Visitor analytics comes with Creator Pro, the Job Hunter Bundle or a pass.
@@ -22,7 +34,19 @@ _openapi:
     headings: []
     contents:
       - content: >
-          Views for the last 30 days plus the top 10 referrer hosts.
+          View counts for the caller's published portfolio. `totalViews` is
+          all-time, including views
+
+          still buffered and not yet flushed. `daily` is the 30 most recent days
+          that had any views,
+
+          newest first; days with no views are left out, so it is not a 30-day
+          calendar. `referrers`
+
+          is the all-time top 10 referrer hosts from flushed views only (views
+          still buffered are not
+
+          in it).
 
 
           Visitor analytics comes with Creator Pro, the Job Hunter Bundle or a

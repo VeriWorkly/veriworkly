@@ -115,6 +115,12 @@ documentCollection:
                 code: "INVALID_DOCUMENT_CURSOR"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   post:
     tags:
@@ -129,6 +135,10 @@ documentCollection:
       Creates a new document. If no `content` is provided for a RESUME or COVER_LETTER, it is
       auto-seeded from the user's MasterProfile (when one exists). Free-tier users are limited to
       1 active document per type; upgrading removes that limit.
+
+      Idempotent on the client's own `id`: sending an `id` the caller already has live answers
+      `200` "Document already exists" with the stored row (not `201`), so a retried sync adopts
+      the server's revision.
     requestBody:
       required: true
       content:
@@ -139,6 +149,12 @@ documentCollection:
             type: "RESUME"
             title: "My Resume"
     responses:
+      "200":
+        description: The `id` sent is already one of the caller's live documents; the stored row is returned and nothing is written. The message is "Document already exists".
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/DocumentResponse"
       "201":
         description: Document created successfully
         content:
@@ -146,7 +162,7 @@ documentCollection:
             schema:
               $ref: "../components/schemas.yaml#/DocumentResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
       "402":
@@ -162,6 +178,8 @@ documentCollection:
               details:
                 code: "DOCUMENT_LIMIT"
                 type: "RESUME"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "409":
         description: The `id` belongs to another account or to one of the caller's deleted documents, or the slug is taken.
         content:
@@ -181,6 +199,9 @@ documentCollection:
                   success: false
                   statusCode: 409
                   message: "Document was deleted"
+                  details:
+                    id: "doc_123"
+                    deletedAt: "2026-04-20T10:00:00.000Z"
               slugInUse:
                 summary: Slug taken
                 value:
@@ -188,15 +209,31 @@ documentCollection:
                   statusCode: 409
                   message: "Document slug is already in use"
       "413":
-        description: Payload too large
+        description: |
+          A body over 4 MB is refused by the parser with "Request body too large". A body under that
+          whose `content` or `metadata` is over 1,000,000 characters once serialised is refused
+          with "Document content payload is too large".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 413
-              message: "Document content payload is too large"
+            examples:
+              documented:
+                summary: Content or metadata over 1,000,000 characters
+                value:
+                  success: false
+                  statusCode: 413
+                  message: "Document content payload is too large"
+              bodyTooLarge:
+                summary: Body over the route's parser limit
+                value:
+                  success: false
+                  statusCode: 413
+                  message: Request body too large
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
 documentItem:
   get:
@@ -227,6 +264,8 @@ documentItem:
               $ref: "../components/schemas.yaml#/DocumentResponse"
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "404":
         description: Document not found
         content:
@@ -237,6 +276,10 @@ documentItem:
               success: false
               statusCode: 404
               message: "Document not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   patch:
     tags:
@@ -276,9 +319,30 @@ documentItem:
             schema:
               $ref: "../components/schemas.yaml#/DocumentUpdateResponse"
       "400":
-        $ref: "../components/responses.yaml#/ValidationError"
+        $ref: ../components/responses.yaml#/BodyValidationError
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        description: |
+          The API key lacks `resume:write`, or the update sets `visibility` to anything but
+          `PRIVATE` on a document a moderator made private.
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/ErrorResponse"
+            examples:
+              scope:
+                summary: API key missing the required scope
+                value:
+                  success: false
+                  statusCode: 403
+                  message: "This API key does not have permission for this action."
+              moderated:
+                summary: Made private by a moderator
+                value:
+                  success: false
+                  statusCode: 403
+                  message: "This document was made private by a moderator."
       "404":
         description: Document not found
         content:
@@ -309,15 +373,31 @@ documentItem:
                   statusCode: 409
                   message: "Document slug is already in use"
       "413":
-        description: Payload too large
+        description: |
+          A body over 4 MB is refused by the parser with "Request body too large". A body under that
+          whose `content` or `metadata` is over 1,000,000 characters once serialised is refused
+          with "Document content payload is too large".
         content:
           application/json:
             schema:
               $ref: "../components/schemas.yaml#/ErrorResponse"
-            example:
-              success: false
-              statusCode: 413
-              message: "Document content payload is too large"
+            examples:
+              documented:
+                summary: Content or metadata over 1,000,000 characters
+                value:
+                  success: false
+                  statusCode: 413
+                  message: "Document content payload is too large"
+              bodyTooLarge:
+                summary: Body over the route's parser limit
+                value:
+                  success: false
+                  statusCode: 413
+                  message: Request body too large
+      "429":
+        $ref: ../components/responses.yaml#/AutosaveRateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError
 
   delete:
     tags:
@@ -333,7 +413,9 @@ documentItem:
       list/get responses. Hard delete and restore exist at the service layer but are not exposed
       through any public route.
 
-      `data` is `null` on success — the deleted document is not echoed back.
+      `data` is `null` on success: the deleted document is not echoed back. Deleting a document
+      that is already in the trash also answers `200`; only an id the caller does not own, or one
+      already purged, answers `404`.
     parameters:
       - name: id
         in: path
@@ -353,6 +435,8 @@ documentItem:
               data: null
       "401":
         $ref: "../components/responses.yaml#/UnauthorizedError"
+      "403":
+        $ref: ../components/responses.yaml#/InsufficientScopeError
       "404":
         description: Document not found
         content:
@@ -363,3 +447,7 @@ documentItem:
               success: false
               statusCode: 404
               message: "Document not found"
+      "429":
+        $ref: ../components/responses.yaml#/RateLimitError
+      "503":
+        $ref: ../components/responses.yaml#/ServiceUnavailableError

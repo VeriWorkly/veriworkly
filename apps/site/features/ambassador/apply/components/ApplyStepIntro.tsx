@@ -1,5 +1,5 @@
 import React from "react";
-import { m } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { ArrowRight, Lock, Rocket } from "lucide-react";
 import { APPLY_REACTIONS } from "@/features/ambassador/apply-reactions";
 import { ReactionMedia } from "@/features/ambassador/ReactionMedia";
@@ -11,10 +11,12 @@ interface ApplyStepIntroProps {
 }
 
 export const ApplyStepIntro = ({ viewer, onStart }: ApplyStepIntroProps) => {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <div className="flex flex-col items-center py-6 text-center">
       <m.div
-        animate={{ rotate: [0, -8, 8, -8, 0] }}
+        animate={prefersReducedMotion ? undefined : { rotate: [0, -8, 8, -8, 0] }}
         transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1.5 }}
         className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
       >

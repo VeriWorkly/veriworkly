@@ -26,12 +26,17 @@ description: >
   while the user holds an unpaid affiliate balance:
 
 
-  - a subscription that is active or past due and not set to cancel: cancel it
-  from Billing
-    first;
+  - a subscription the billing provider still reports as active, on hold, past
+  due or paused,
+    or one created in the last 24 hours that is not paid yet: cancel it from Billing first. A
+    subscription already set to cancel at the end of its period still blocks deletion until
+    that period ends;
   - `details.code: "CHECKOUT_IN_PROGRESS"`: a checkout session is open; finish
   or cancel it
     first;
+  - an affiliate withdrawal is requested or approved and not yet paid or
+  rejected;
+
   - `details.code: "AFFILIATE_BALANCE_FORFEIT"`: deleting forfeits the unpaid
   commissions in
     `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the
@@ -74,12 +79,17 @@ _openapi:
           while the user holds an unpaid affiliate balance:
 
 
-          - a subscription that is active or past due and not set to cancel:
-          cancel it from Billing
-            first;
+          - a subscription the billing provider still reports as active, on
+          hold, past due or paused,
+            or one created in the last 24 hours that is not paid yet: cancel it from Billing first. A
+            subscription already set to cancel at the end of its period still blocks deletion until
+            that period ends;
           - `details.code: "CHECKOUT_IN_PROGRESS"`: a checkout session is open;
           finish or cancel it
             first;
+          - an affiliate withdrawal is requested or approved and not yet paid or
+          rejected;
+
           - `details.code: "AFFILIATE_BALANCE_FORFEIT"`: deleting forfeits the
           unpaid commissions in
             `details.amountCents` (`availableCents` plus `pendingCents`, in `currency`). Show the
