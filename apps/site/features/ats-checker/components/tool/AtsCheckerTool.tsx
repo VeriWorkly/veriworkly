@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ArrowRight, RotateCcw, ScanSearch, TriangleAlert } from "lucide-react";
 
 import {
   MAX_JOB_DESCRIPTION_CHARS,
-  MAX_RESUME_BYTES,
-  extractResumeFile,
   getAtsQuota,
   runAtsCheck,
 } from "../../services/ats-checker-api";
-import { readJsonResume } from "../../services/json-resume";
+import { createResumeReader, isQuota, wordCountOf } from "../../services/resume-reader";
 import type { AtsCheckResult, AtsLayoutSignals, AtsQuota } from "../../types";
 import { ApiRequestError } from "@/utils/fetchApiData";
 import { Stepper } from "./Stepper";
@@ -32,10 +30,6 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function wordCountOf(text: string) {
-  return text.trim() ? text.trim().split(/\s+/).length : 0;
-}
-
 export function AtsCheckerTool() {
   const [phase, setPhase] = useState<Phase>("resume");
   const [resume, setResume] = useState<ResumeInput>("");
@@ -47,12 +41,25 @@ export function AtsCheckerTool() {
   const [jobDescription, setJobDescription] = useState("");
   const [quota, setQuota] = useState<AtsQuota | null>(null);
   const [result, setResult] = useState<AtsCheckResult | null>(null);
-  const [busy, setBusy] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState("");
+  const [reader] = useState(createResumeReader);
   const resultsRef = useRef<HTMLDivElement>(null);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  // A step change unmounts the focused control; the next step's heading takes focus when it mounts.
+  const moveFocus = useRef(false);
   const shouldReduceMotion = useReducedMotion();
+
+  const focusOnMount = useCallback((node: HTMLElement | null) => {
+    if (!node || !moveFocus.current) return;
+    moveFocus.current = false;
+    node.focus({ preventScroll: true });
+  }, []);
+
+  const goTo = (next: Phase) => {
+    moveFocus.current = true;
+    setPhase(next);
+  };
 
   useEffect(() => {
     let active = true;
@@ -65,88 +72,44 @@ export function AtsCheckerTool() {
       });
     return () => {
       active = false;
+      reader.cancel();
     };
-  }, []);
+  }, [reader]);
 
   const acceptResume = (input: ResumeInput, words: number, label: string) => {
     setResume(input);
     setResumeWords(words);
     setSourceLabel(label);
-    setPhase("target");
+    goTo("target");
   };
 
-  const handleJsonFile = async (file: File) => {
-    setExtracting(true);
-    try {
-      const read = await readJsonResume(file);
-      if (!read.ok) {
-        setError(read.error);
-        return;
-      }
-      const { input, text } = read;
-      if (wordCountOf(text) < 30) {
-        setError(
-          "This file appears to contain very little readable text. Please try pasting the text.",
-        );
-        return;
-      }
-
-      setLayout(undefined);
-      setUpload({ name: file.name, bytes: file.size });
-      acceptResume(input, wordCountOf(text), file.name);
-    } catch {
-      setError("Could not read this resume file.");
-    } finally {
-      setExtracting(false);
-    }
+  const cancelRead = () => {
+    reader.cancel();
+    setExtracting(false);
   };
 
   const handleFile = async (file: File) => {
+    if (reader.busy) return;
     setError("");
-
-    if (file.name.toLowerCase().endsWith(".json")) {
-      await handleJsonFile(file);
-      return;
-    }
-
-    if (file.size > MAX_RESUME_BYTES) {
-      setError("That file is over 5 MB. Export a smaller PDF, or paste the text instead.");
-      return;
-    }
-
     setExtracting(true);
-    try {
-      const { text, layout: extractedLayout, quota: latest } = await extractResumeFile(file);
-      if (latest) setQuota(latest);
-      if (wordCountOf(text) < 30) {
-        setError(
-          "This file appears to contain very little readable text. Please try pasting the text.",
-        );
-        return;
-      }
-      setLayout(extractedLayout);
-      setUpload({ name: file.name, bytes: file.size });
-      acceptResume(text, wordCountOf(text), file.name);
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 429) {
-        // The upload quota sends its summary; the per-IP rate limiter sends none.
-        if (isQuota(err.details)) {
-          setQuota(err.details);
-          setError(
-            "You have used your file uploads for now. Paste the text instead, or try later.",
-          );
-        } else {
-          setError("Too many requests from this connection. Wait a minute and try again.");
-        }
-      } else {
-        setError(err instanceof Error ? err.message : "Could not read this resume file.");
-      }
-    } finally {
-      setExtracting(false);
+
+    const outcome = await reader.read(file);
+    // Cancelled by a paste, a removal or unmount: whatever did that owns the state now.
+    if (!outcome) return;
+
+    setExtracting(false);
+    if (outcome.quota) setQuota(outcome.quota);
+    if (!outcome.ok) {
+      setError(outcome.error);
+      return;
     }
+    setLayout(outcome.layout);
+    setUpload({ name: file.name, bytes: file.size });
+    acceptResume(outcome.input, outcome.words, file.name);
   };
 
   const handlePaste = (text: string) => {
+    cancelRead();
     setError("");
     if (wordCountOf(text) < 30) {
       setError(
@@ -161,19 +124,20 @@ export function AtsCheckerTool() {
   };
 
   const handleClearResume = () => {
+    cancelRead();
     setResume("");
     setResumeWords(0);
     setLayout(undefined);
     setUpload(undefined);
     setSourceLabel("");
     setError("");
-    setPhase("resume");
+    goTo("resume");
   };
 
   const runScan = async () => {
     if (!resumeWords) {
       setError("Add a resume first.");
-      setPhase("resume");
+      goTo("resume");
       return;
     }
 
@@ -183,7 +147,6 @@ export function AtsCheckerTool() {
     }
 
     setError("");
-    setBusy(true);
     setPhase("scanning");
 
     const startedAt = Date.now();
@@ -218,14 +181,12 @@ export function AtsCheckerTool() {
       } else {
         setError(err instanceof Error ? err.message : "Scan failed. Please try again.");
       }
-      setPhase("target");
-    } finally {
-      setBusy(false);
+      goTo("target");
     }
   };
 
   const resetAll = () => {
-    setPhase("resume");
+    goTo("resume");
     setResume("");
     setResumeWords(0);
     setLayout(undefined);
@@ -267,7 +228,13 @@ export function AtsCheckerTool() {
               transition={{ duration: 0.2 }}
             >
               <div className="bg-card rounded-3xl p-6 sm:p-8">
-                <h2 className="text-2xl font-bold tracking-tight">Add your resume</h2>
+                <h2
+                  ref={focusOnMount}
+                  tabIndex={-1}
+                  className="text-2xl font-bold tracking-tight focus:outline-none"
+                >
+                  Add your resume
+                </h2>
                 <p className="text-muted mt-2 text-base">
                   Upload a document or paste raw text. The scan runs entirely in volatile memory.
                 </p>
@@ -310,7 +277,13 @@ export function AtsCheckerTool() {
 
                 <div className="border-border mt-6 border-t pt-6">
                   <div className="flex items-baseline justify-between gap-4">
-                    <label htmlFor="target-jd" className="text-base font-semibold">
+                    {/* Focused rather than the textarea, which would open the keyboard on a phone. */}
+                    <label
+                      ref={focusOnMount}
+                      tabIndex={-1}
+                      htmlFor="target-jd"
+                      className="text-base font-semibold focus:outline-none"
+                    >
                       Target job description{" "}
                       <span className="text-muted text-sm font-normal">
                         (optional, for keyword scoring)
@@ -357,9 +330,7 @@ export function AtsCheckerTool() {
                   </button>
                   <button
                     type="button"
-                    disabled={
-                      busy || !resumeWords || jobDescriptionLength > MAX_JOB_DESCRIPTION_CHARS
-                    }
+                    disabled={!resumeWords || jobDescriptionLength > MAX_JOB_DESCRIPTION_CHARS}
                     onClick={runScan}
                     className="bg-foreground text-background hover:bg-accent hover:text-accent-foreground inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-semibold transition-[transform,background-color,color] duration-200 active:scale-[0.97] disabled:opacity-50"
                   >
@@ -427,13 +398,3 @@ export function AtsCheckerTool() {
 }
 
 export default AtsCheckerTool;
-
-function isQuota(value: unknown): value is AtsQuota {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "remaining" in value &&
-    "limit" in value &&
-    "resetsAt" in value
-  );
-}

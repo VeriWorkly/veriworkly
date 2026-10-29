@@ -20,7 +20,7 @@ const PortfolioPreview = () => {
                 </h3>
 
                 <span className="hidden rounded-full bg-blue-500/10 px-2 py-0.5 font-mono text-[9px] font-semibold text-blue-600 sm:inline-block dark:text-blue-400">
-                  gautam.veriworkly.me
+                  gautam.veriworkly.com
                 </span>
               </div>
 

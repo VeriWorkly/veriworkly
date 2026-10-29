@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FileText, Globe, Mail } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 
@@ -36,7 +36,7 @@ const tabs: DocumentTab[] = [
     label: "Live Web Portfolio",
     shortLabel: "Portfolio",
     icon: Globe,
-    urlLabel: "gautam.veriworkly.me",
+    urlLabel: "gautam.veriworkly.com",
     color: "text-emerald-500 dark:text-emerald-400",
   },
 ];
@@ -50,9 +50,18 @@ const DocumentPortfolioSwitcher = ({ previews }: DocumentPortfolioSwitcherProps)
 
   const activeMeta = tabs.find((tab) => tab.id === activeTab)!;
 
-  // Not layoutId: that pulls in framer's layout bundle. Measured on the first click only.
+  // Not layoutId: that pulls in framer's layout bundle. Measured on click; a resize drops it back to the in-button span.
   const tabRefs = useRef<Partial<Record<DocumentPreviewTabId, HTMLButtonElement | null>>>({});
+  const tabListRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState<{ x: number; width: number } | null>(null);
+
+  useEffect(() => {
+    const node = tabListRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver(() => setPill(null));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const measure = (id: DocumentPreviewTabId) => {
     const button = tabRefs.current[id];
@@ -84,7 +93,10 @@ const DocumentPortfolioSwitcher = ({ previews }: DocumentPortfolioSwitcherProps)
         </div>
 
         <div className="mt-10 flex justify-center sm:mt-12">
-          <div className="relative inline-flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-zinc-200/90 bg-zinc-100/90 p-1.5 shadow-2xs backdrop-blur-xl sm:w-auto sm:max-w-none sm:justify-center dark:border-white/10 dark:bg-zinc-900/90">
+          <div
+            ref={tabListRef}
+            className="relative inline-flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-zinc-200/90 bg-zinc-100/90 p-1.5 shadow-2xs backdrop-blur-xl sm:w-auto sm:max-w-none sm:justify-center dark:border-white/10 dark:bg-zinc-900/90"
+          >
             {pill && (
               <m.span
                 aria-hidden="true"

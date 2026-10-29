@@ -1,8 +1,19 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { Database, Zap, FileText, Check } from "lucide-react";
-import { m, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import {
+  m,
+  useScroll,
+  useTransform,
+  useSpring,
+  AnimatePresence,
+  useMotionValue,
+  useMotionValueEvent,
+  type MotionValue,
+} from "framer-motion";
+
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 import Step1Visual from "./Step1Visual";
 import Step2Visual from "./Step2Visual";
@@ -10,30 +21,38 @@ import Step3Visual from "./Step3Visual";
 
 const STEP_ACCENTS = ["#3b82f6", "#06b6d4", "#10b981"];
 
-const InteractiveProcess = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const [currentStep, setCurrentStep] = useState(0);
-
-  const { scrollYProgress } = useScroll({
-    target: scrollRef,
-    offset: ["start start", "end end"],
-  });
-
-  const progress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
-
+/** Mounted only at lg, where the steps are pinned to the scroll: phones skip the per-scroll work. */
+function ScrollSync({
+  target,
+  progress,
+  onStep,
+}: {
+  target: RefObject<HTMLDivElement | null>;
+  progress: MotionValue<number>;
+  onStep: (step: number) => void;
+}) {
+  const { scrollYProgress } = useScroll({ target, offset: ["start start", "end end"] });
+  const spring = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
   const activeStep = useTransform(
     scrollYProgress,
     [0, 0.28, 0.38, 0.61, 0.71, 1],
     [0, 0, 1, 1, 2, 2],
   );
 
-  useEffect(() => {
-    return activeStep.on("change", (latest) => {
-      const stepIndex = Math.min(Math.max(Math.round(latest), 0), 2);
-      setCurrentStep(stepIndex);
-    });
-  }, [activeStep]);
+  useMotionValueEvent(spring, "change", (latest) => progress.set(latest));
+  useMotionValueEvent(activeStep, "change", (latest) =>
+    onStep(Math.min(Math.max(Math.round(latest), 0), 2)),
+  );
+
+  return null;
+}
+
+const InteractiveProcess = () => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const progress = useMotionValue(0);
+  const pinned = useMediaQuery("(min-width: 64rem)");
 
   const steps = [
     {
@@ -64,6 +83,7 @@ const InteractiveProcess = () => {
 
   return (
     <div ref={scrollRef} className="relative w-full border-y border-zinc-200/40 lg:h-[250vh]">
+      {pinned && <ScrollSync target={scrollRef} progress={progress} onStep={setCurrentStep} />}
       <div className="w-full bg-zinc-50/30 py-20 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:items-center lg:overflow-hidden lg:py-14 dark:bg-zinc-950/20">
         <div className="mx-auto w-full max-w-350 px-6 md:px-8">
           <div className="lg:hidden">
@@ -134,14 +154,13 @@ const InteractiveProcess = () => {
                   const isActive = currentStep === index;
 
                   return (
-                    <m.div
+                    <div
                       key={step.id}
-                      className={`group relative flex cursor-pointer items-start gap-5 rounded-2xl border px-5 py-4 text-left transition-all duration-300 ${
+                      className={`group relative flex items-start gap-5 rounded-2xl border px-5 py-4 text-left transition-all duration-300 ${
                         isActive
                           ? "border-zinc-200/90 bg-white shadow-xs dark:border-zinc-800 dark:bg-[#0c0c0c]"
                           : "border-transparent hover:border-zinc-200/60 dark:hover:border-zinc-800/60"
                       }`}
-                      onClick={() => setCurrentStep(index)}
                     >
                       <div
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
@@ -184,7 +203,7 @@ const InteractiveProcess = () => {
                           )}
                         </AnimatePresence>
                       </div>
-                    </m.div>
+                    </div>
                   );
                 })}
               </div>

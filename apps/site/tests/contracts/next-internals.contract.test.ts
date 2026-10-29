@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-/** Two imports reach into Next's private files (W-091); a Next upgrade that moves either fails here, not in production. */
+/** One import reaches into Next's private files; a Next upgrade that moves it fails here, not in production. */
 
 const require = createRequire(import.meta.url);
 
@@ -13,9 +15,9 @@ describe("private Next modules the site relies on", () => {
     expect(HTML_LIMITED_BOT_UA_RE.test("Twitterbot/1.0")).toBe(true);
   });
 
-  it("the compiled web-vitals copy WebVitals.tsx loads is still there", () => {
-    const vitals = require("next/dist/compiled/web-vitals");
-    for (const name of ["onLCP", "onINP", "onCLS", "onFCP", "onTTFB"])
-      expect(typeof vitals[name], name).toBe("function");
+  it("WebVitals.tsx uses the public next/web-vitals hook, not the compiled copy (W-091)", () => {
+    const source = readFileSync(join(__dirname, "..", "..", "components", "WebVitals.tsx"), "utf8");
+    expect(source).toContain('from "next/web-vitals"');
+    expect(source).not.toContain("next/dist/");
   });
 });

@@ -35,7 +35,7 @@ const Step3Visual = () => {
           </span>
 
           <span className="cursor-pointer text-[10px] font-semibold text-blue-600 hover:underline dark:text-blue-400">
-            gautam.veriworkly.me
+            gautam.veriworkly.com
           </span>
         </div>
       </div>

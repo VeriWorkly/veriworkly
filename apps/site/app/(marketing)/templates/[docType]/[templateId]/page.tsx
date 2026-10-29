@@ -33,21 +33,8 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { docType, templateId } = await params;
 
-  const template = getTemplateByDocumentTypeAndId(docType, templateId);
-
-  if (!template) {
-    return buildPageMetadata({
-      path: `/templates/${docType}/${templateId}`,
-      title: "Template Not Found | VeriWorkly",
-      description: "This template does not exist or has been retired.",
-      ogTitle: "Template Not Found",
-      ogDescription: "This template does not exist or has been retired.",
-      twitterTitle: "Template Not Found",
-      twitterDescription: "This template does not exist or has been retired.",
-      image: "/og/templates-page-og.png",
-      noIndex: true,
-    });
-  }
+  // dynamicParams = false: only the templates from generateStaticParams reach this.
+  const template = getTemplateByDocumentTypeAndId(docType, templateId)!;
 
   const templateTypeLabel = template.documentTypeLabel.toLowerCase();
   const shareImage = shareImageFor(template.previewImage);

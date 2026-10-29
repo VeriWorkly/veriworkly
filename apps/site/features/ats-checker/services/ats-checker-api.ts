@@ -27,13 +27,14 @@ export const MAX_JOB_DESCRIPTION_CHARS = 20_000;
 /** `/ats/check` parses at most 256 KB of JSON (apps/server/src/app.ts); this leaves room for the posting. */
 export const MAX_JSON_RESUME_BYTES = 200 * 1024;
 
-export async function extractResumeFile(file: File) {
+export async function extractResumeFile(file: File, signal: AbortSignal) {
   const body = new FormData();
   body.append("resume", file);
 
   // `layout` goes back with the scan so format checks see the real layout; without it those checks are skipped, not passed.
   return fetchApiData<{ text: string; layout?: AtsLayoutSignals; quota?: AtsQuota }>(
     "/ats/extract",
-    { method: "POST", body, timeoutMs: 30_000 },
+    // fetchApiData drops its own timeout when given a signal, so the 30 s budget rides along.
+    { method: "POST", body, signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]) },
   );
 }

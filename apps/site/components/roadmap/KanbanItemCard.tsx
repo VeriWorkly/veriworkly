@@ -6,6 +6,15 @@ import { cn } from "@veriworkly/ui";
 import { KanbanItem } from "./KanbanBoard";
 import { tagDotMap } from "./KanbanTagColor";
 
+/** In UTC like the backend's timestamp: a server in another zone would otherwise move a 1st-of-month ship into the month before. */
+export function shippedMonth(completedAt: string) {
+  return new Date(completedAt).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 const KanbanItemCard = ({
   item,
   showDescription,
@@ -82,7 +91,7 @@ const KanbanItemCard = ({
                 {item.completedQuarter
                   ? `Shipped: ${item.completedQuarter}`
                   : item.completedAt
-                    ? `Shipped: ${new Date(item.completedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+                    ? `Shipped: ${shippedMonth(item.completedAt)}`
                     : "Shipped"}
               </span>
             </div>
