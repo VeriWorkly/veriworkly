@@ -90,7 +90,14 @@ const RoadmapDetailPage = async ({ params }: RoadmapDetailPageProps) => {
     notFound();
   }
 
-  const suggestedItems = await fetchSuggestedRoadmapItems(feature);
+  let suggested = await fetchSuggestedRoadmapItems(feature);
+
+  // A sidebar that failed to load must not be cached for the week as "no other items". connection()
+  // is no use here: on a page first rendered at request time it turns the whole page into a 500.
+  // A second try with a one-minute window makes this render expire within a minute instead.
+  if (suggested.failed) suggested = await fetchSuggestedRoadmapItems(feature, 60);
+
+  const suggestedItems = suggested.items;
   const currentStatus = feature.status as "todo" | "in-progress" | "done";
 
   const steps = [

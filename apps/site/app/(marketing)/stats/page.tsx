@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
@@ -9,6 +10,7 @@ import { webSiteRef } from "@/utils/schema";
 import { buildPageMetadata } from "@/utils/metadata";
 
 import {
+  MAX_PAGE,
   PAGE_SIZE,
   parseKind,
   parsePage,
@@ -94,6 +96,8 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
   const page = parsePage(params.page);
   const status = parseStatus(params.status);
 
+  if (page > MAX_PAGE) notFound();
+
   const offset = (page - 1) * PAGE_SIZE;
 
   const [stats, issuePage] = await Promise.all([
@@ -117,7 +121,9 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
   const hasMore = Boolean(issuePage?.hasMore);
 
   const totalPages = Math.max(1, Math.ceil((issuePage?.total ?? 0) / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
+
+  // Only when the backend answered with items, as on the changelog: an outage must not become a 404 (W-105).
+  if (issuePage && issuePage.total > 0 && page > totalPages) notFound();
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -200,7 +206,7 @@ const StatsPage = async ({ searchParams }: StatsPageProps) => {
               kind={kind}
               status={status}
               hasMore={hasMore}
-              currentPage={currentPage}
+              currentPage={Math.min(page, totalPages)}
             />
           </div>
         </section>

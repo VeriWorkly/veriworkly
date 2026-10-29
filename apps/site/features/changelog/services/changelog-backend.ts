@@ -1,5 +1,6 @@
-import { fetchApiData, ApiRequestError } from "@/utils/fetchApiData";
+import { fetchApiData, ApiRequestError, describeError } from "@/utils/fetchApiData";
 import { siteConfig } from "@/config/site";
+import { httpUrl } from "@/utils/safe-url";
 
 /** One week as a backstop: the API calls /api/revalidate with the "changelog" tag after every sync or edit. The fetch cache survives deploys. */
 
@@ -68,6 +69,16 @@ export interface ChangelogQuery {
 
 export const CHANGELOG_PAGE_SIZE = 15;
 
+/** The API answers a longer search with 400 (changelogValidator.ts). */
+export const CHANGELOG_SEARCH_MAX_LENGTH = 120;
+
+/**
+ * Upper bound on releases the site pages through. A page past it is a 404 without a backend
+ * call, so a crawler or a script cannot spend the API's rate limit on page numbers.
+ */
+const CHANGELOG_MAX_RELEASES = 2000;
+export const CHANGELOG_MAX_PAGE = Math.ceil(CHANGELOG_MAX_RELEASES / CHANGELOG_PAGE_SIZE);
+
 export interface ChangelogPagination {
   page: number;
   pageSize: number;
@@ -76,6 +87,8 @@ export interface ChangelogPagination {
 }
 
 export interface ChangelogResponse {
+  /** The list did not load: show the outage state, never "no match". */
+  failed: boolean;
   entries: ChangelogEntry[];
   stats: ChangelogStats | null;
   pagination: ChangelogPagination;
@@ -87,14 +100,12 @@ function parsePrAuthor(raw: unknown): ChangelogPrAuthor | null {
 
   const item = raw as Record<string, unknown>;
 
-  if (
-    typeof item.login !== "string" ||
-    typeof item.avatarUrl !== "string" ||
-    typeof item.htmlUrl !== "string"
-  )
-    return null;
+  const avatarUrl = httpUrl(item.avatarUrl);
+  const htmlUrl = httpUrl(item.htmlUrl);
 
-  return { login: item.login, avatarUrl: item.avatarUrl, htmlUrl: item.htmlUrl };
+  if (typeof item.login !== "string" || !avatarUrl || !htmlUrl) return null;
+
+  return { login: item.login, avatarUrl, htmlUrl };
 }
 
 function parsePrRefs(raw: unknown): ChangelogPrRef[] | undefined {
@@ -111,7 +122,7 @@ function parsePrRefs(raw: unknown): ChangelogPrRef[] | undefined {
       return {
         number: item.number,
         title: item.title,
-        url: typeof item.url === "string" ? item.url : undefined,
+        url: httpUrl(item.url),
         author: parsePrAuthor(item.author),
       };
     })
@@ -164,6 +175,7 @@ export function normalizeEntry(entry: ChangelogEntry): ChangelogEntry {
 
   return {
     ...entry,
+    githubUrl: httpUrl(entry.githubUrl) ?? null,
     summary: summary || null,
     // "auto-synced" marks rows the release sync owns; it is bookkeeping, not a topic.
     tags: (entry.tags ?? []).filter((tag) => tag !== "auto-synced"),
@@ -179,11 +191,12 @@ export function normalizeEntry(entry: ChangelogEntry): ChangelogEntry {
 async function fetchChangelogPage(
   query: ChangelogQuery,
   page: number,
+  pageSize = CHANGELOG_PAGE_SIZE,
 ): Promise<{ entries: ChangelogEntry[]; total: number }> {
-  const offset = (page - 1) * CHANGELOG_PAGE_SIZE;
+  const offset = (page - 1) * pageSize;
 
   const params = new URLSearchParams({
-    limit: CHANGELOG_PAGE_SIZE.toString(),
+    limit: pageSize.toString(),
     offset: offset.toString(),
   });
 
@@ -191,9 +204,15 @@ async function fetchChangelogPage(
   if (query.tag) params.set("tag", query.tag);
   if (query.search) params.set("search", query.search);
 
-  const listData = await fetchApiData<ChangelogListPayload>(`/changelog?${params.toString()}`, {
-    next: { revalidate: CHANGELOG_REVALIDATE_SECONDS, tags: ["changelog"] },
-  });
+  // Free text is one cache entry per value typed: fetched per request, never written to the data cache.
+  const freeText = Boolean(query.search || query.tag);
+
+  const listData = await fetchApiData<ChangelogListPayload>(
+    `/changelog?${params.toString()}`,
+    freeText
+      ? { cache: "no-store" }
+      : { next: { revalidate: CHANGELOG_REVALIDATE_SECONDS, tags: ["changelog"] } },
+  );
 
   return { entries: listData.items.map(normalizeEntry), total: listData.total };
 }
@@ -213,14 +232,16 @@ export async function fetchChangelogFromBackend(
     const totalPages = Math.max(1, Math.ceil(total / CHANGELOG_PAGE_SIZE));
 
     return {
+      failed: false,
       entries,
       stats,
       pagination: { page, pageSize: CHANGELOG_PAGE_SIZE, total, totalPages },
       generatedAt: new Date().toISOString(),
     };
   } catch (err) {
-    console.error("Failed to fetch changelog from backend:", err);
+    console.error(`Failed to fetch changelog from backend: ${describeError(err)}`);
     return {
+      failed: true,
       entries: [],
       stats: null,
       pagination: { page, pageSize: CHANGELOG_PAGE_SIZE, total: 0, totalPages: 1 },
@@ -257,17 +278,18 @@ export interface ChangelogIndexItem {
   publishedAt: string;
 }
 
+/** The API's largest page: the walk covers every release in a few cached requests (W-117). */
+const INDEX_PAGE_SIZE = 50;
+
 /** Hard ceiling on the index walk: a render must not start an unbounded loop against a misbehaving backend. */
+const MAX_INDEX_PAGES = Math.ceil(CHANGELOG_MAX_RELEASES / INDEX_PAGE_SIZE);
 
-const MAX_INDEX_PAGES = 8;
-
-/** Reuses the listing's exact URLs (Data Cache hits). Throws on outage: an empty index would bake every release as a 404. */
-
+/** Throws on outage: an empty index would bake every release as a 404. */
 async function fetchAllChangelogEntries(): Promise<ChangelogEntry[]> {
   const collected: ChangelogEntry[] = [];
 
   for (let page = 1; page <= MAX_INDEX_PAGES; page++) {
-    const { entries, total } = await fetchChangelogPage({}, page);
+    const { entries, total } = await fetchChangelogPage({}, page, INDEX_PAGE_SIZE);
 
     collected.push(...entries);
 
