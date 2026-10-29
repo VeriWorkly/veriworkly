@@ -3,16 +3,34 @@ import { ArrowRight } from "lucide-react";
 
 interface LegalHeroMetaProps {
   effectiveDate: string;
+  /** ISO date (YYYY-MM-DD): the text promises readers a "Last updated" date. */
+  lastUpdated: string;
   links: { label: string; href: string }[];
 }
 
-export function LegalHeroMeta({ effectiveDate, links }: LegalHeroMetaProps) {
+const formatIsoDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+export function LegalHeroMeta({ effectiveDate, lastUpdated, links }: LegalHeroMetaProps) {
   return (
     <div className="space-y-6">
-      <p className="text-base">
-        <span className="text-muted">Effective</span>{" "}
-        <span className="font-semibold">{effectiveDate}</span>
-      </p>
+      <div className="space-y-1">
+        <p className="text-base">
+          <span className="text-muted">Effective</span>{" "}
+          <span className="font-semibold">{effectiveDate}</span>
+        </p>
+        <p className="text-base">
+          <span className="text-muted">Last updated</span>{" "}
+          <time dateTime={lastUpdated} className="font-semibold">
+            {formatIsoDate(lastUpdated)}
+          </time>
+        </p>
+      </div>
 
       <ul className="space-y-2">
         {links.map((link) => (
