@@ -188,6 +188,8 @@ describe("auth redirect contract", () => {
     expect(getSafeAuthCallback("/%2e%2e//evil.example/x")).toBe("/");
     expect(getSafeAuthCallback("/a/../..//evil.example")).toBe("/");
     expect(getSafeAuthCallback("/./\\evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/.//evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/x/..\\\\evil.example")).toBe("/");
     expect(getSafeAuthCallback("/documents/../settings?tab=sync")).toBe("/settings?tab=sync");
   });
 
