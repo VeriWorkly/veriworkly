@@ -1,4 +1,5 @@
-import { fetchApiData, ApiRequestError } from "@/utils/fetchApiData";
+import { fetchApiData, ApiRequestError, describeError } from "@/utils/fetchApiData";
+import { httpUrl } from "@/utils/safe-url";
 
 /** One week as a backstop: the API calls /api/revalidate with the "roadmap" tag after every change. */
 const ROADMAP_REVALIDATE_SECONDS = 604800;
@@ -152,7 +153,7 @@ function parseDetails(raw: unknown): RoadmapDetails | null {
             return {
               type: typeof item.type === "string" ? item.type : undefined,
               label: typeof item.label === "string" ? item.label : undefined,
-              url: typeof item.url === "string" ? item.url : undefined,
+              url: httpUrl(item.url),
             };
           })
           .filter(
@@ -170,10 +171,12 @@ function parseDetails(raw: unknown): RoadmapDetails | null {
 
             const item = entry as Record<string, unknown>;
 
+            const url = httpUrl(item.url);
+
             if (
               typeof item.number !== "number" ||
               typeof item.title !== "string" ||
-              typeof item.url !== "string" ||
+              !url ||
               (item.kind !== "issue" && item.kind !== "pull-request")
             ) {
               return null;
@@ -188,7 +191,7 @@ function parseDetails(raw: unknown): RoadmapDetails | null {
               number: item.number,
               kind: item.kind,
               title: item.title,
-              url: item.url,
+              url,
               state,
             };
           })
@@ -212,7 +215,7 @@ function parseDetails(raw: unknown): RoadmapDetails | null {
             return {
               name: item.name,
               description: typeof item.description === "string" ? item.description : undefined,
-              image: typeof item.image === "string" ? item.image : undefined,
+              image: httpUrl(item.image),
             };
           })
           .filter((entry): entry is RoadmapDetailItem => entry !== null)
@@ -299,7 +302,7 @@ export async function fetchRoadmapFromBackend(query: RoadmapQuery = {}): Promise
           return [status, await fetchRoadmapStatusItems(status, sort), false] as const;
         } catch (err) {
           // One column failing must not blank the others, nor read as an empty column.
-          console.error(`Roadmap column "${status}" failed to load:`, err);
+          console.error(`Roadmap column "${status}" failed to load: ${describeError(err)}`);
           return [status, [] as RoadmapFeature[], true] as const;
         }
       }),
@@ -414,24 +417,29 @@ export async function fetchRoadmapFeatureById(id: string): Promise<RoadmapFeatur
   }
 }
 
+/**
+ * `failed` tells "the list did not load" apart from "no other items". `revalidate` also becomes
+ * the page's ISR window (Next takes the smallest), so a short one bounds how long a page keeps
+ * a degraded sidebar.
+ */
 export async function fetchSuggestedRoadmapItems(
   feature: RoadmapFeature,
-  limit = 3,
-): Promise<RoadmapFeature[]> {
+  revalidate = ROADMAP_REVALIDATE_SECONDS,
+): Promise<{ items: RoadmapFeature[]; failed: boolean }> {
   try {
     const query = new URLSearchParams({
       status: feature.status,
       sort: "newest",
-      limit: limit.toString(),
+      limit: "3",
       excludeId: feature.id,
     });
 
     const listData = await fetchApiData<RoadmapListPayload>(`/roadmap?${query.toString()}`, {
-      next: { revalidate: ROADMAP_REVALIDATE_SECONDS, tags: ["roadmap"] },
+      next: { revalidate, tags: ["roadmap"] },
     });
 
-    return listData.items.map(normalizeFeature);
+    return { items: listData.items.map(normalizeFeature), failed: false };
   } catch {
-    return [];
+    return { items: [], failed: true };
   }
 }

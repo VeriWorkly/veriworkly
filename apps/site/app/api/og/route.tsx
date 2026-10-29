@@ -1,11 +1,12 @@
 import { ImageResponse } from "next/og";
 
 import { DEFAULT_OG_CARD } from "@/features/og/cards";
-import { resolveOgCard } from "@/features/og/resolve";
+import { canonicalOgQuery, resolveOgCard } from "@/features/og/resolve";
 
 export const runtime = "nodejs";
 
-const OG_CACHE_CONTROL = "public, immutable, no-transform, max-age=31536000";
+/** Not immutable: a release or roadmap title can be edited, and page cards change with a deploy. Same window as the static images. */
+const OG_CACHE_CONTROL = "public, no-transform, max-age=86400, stale-while-revalidate=604800";
 /** A card not found yet may exist soon (a release id before its sync), so the default is not kept long. */
 const OG_FALLBACK_CACHE_CONTROL = "public, no-transform, max-age=300";
 
@@ -31,7 +32,18 @@ function sanitizeText(value: string | null, fallback: string, maxLength: number)
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const url = new URL(request.url);
+    const { searchParams } = url;
+
+    const canonical = canonicalOgQuery(searchParams);
+    if (canonical !== searchParams.toString())
+      return new Response(null, {
+        status: 308,
+        headers: {
+          Location: `${url.pathname}${canonical ? `?${canonical}` : ""}`,
+          "Cache-Control": OG_CACHE_CONTROL,
+        },
+      });
 
     const resolved = await resolveOgCard(searchParams);
     const card = resolved ?? DEFAULT_OG_CARD;

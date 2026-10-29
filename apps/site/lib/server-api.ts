@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isIP } from "node:net";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 
@@ -29,13 +30,15 @@ export function sessionCookieHeader(all: { name: string; value: string }[]) {
 
 /**
  * The browser's address as nginx reports it: `X-Real-IP`, else the last `X-Forwarded-For` hop
- * (the one nginx appended). Same rule as the studio's server-fetch-core.ts.
+ * (the one nginx appended). Same rule as the studio's server-fetch-core.ts. nginx must overwrite
+ * both headers (README "Behind nginx"); anything that is not an IP address is dropped.
  */
 export function clientIpFrom(requestHeaders: Headers) {
   const realIp = requestHeaders.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
+  const candidate =
+    realIp || requestHeaders.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "";
 
-  return requestHeaders.get("x-forwarded-for")?.split(",").at(-1)?.trim() || undefined;
+  return isIP(candidate) ? candidate : undefined;
 }
 
 /**

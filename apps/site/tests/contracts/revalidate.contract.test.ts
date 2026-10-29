@@ -39,13 +39,24 @@ describe("POST /api/revalidate", () => {
     expect(revalidateTag).not.toHaveBeenCalled();
   });
 
-  it("marks each named tag stale once", async () => {
+  it("refuses a secret shorter than 32 characters", async () => {
+    vi.stubEnv("SITE_REVALIDATE_SECRET", "short");
+    expect((await call({ secret: "short", tags: ["changelog"] })).status).toBe(503);
+  });
+
+  it("does not read a body over 4 KB", async () => {
+    const response = await call({ secret: SECRET, tags: ["changelog"], pad: "x".repeat(5000) });
+    expect(response.status).toBe(413);
+    expect(revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("expires each named tag once, now rather than stale-while-revalidate (W-083)", async () => {
     const response = await call({ secret: SECRET, tags: ["changelog", "roadmap", "changelog"] });
 
     expect(response.status).toBe(200);
     expect(revalidateTag.mock.calls).toEqual([
-      ["changelog", "max"],
-      ["roadmap", "max"],
+      ["changelog", { expire: 0 }],
+      ["roadmap", { expire: 0 }],
     ]);
   });
 

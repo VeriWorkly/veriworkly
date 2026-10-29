@@ -26,7 +26,8 @@ export function reportClientError(error: Error & { digest?: string }, boundary: 
         boundary,
         message: (error.message || "Unknown error").slice(0, 500),
         digest: error.digest?.slice(0, 64),
-        url: window.location.href.slice(0, 500),
+        // Origin and path only: a query or fragment can carry a search, a token or an email.
+        url: `${window.location.origin}${window.location.pathname}`.slice(0, 500),
         stack: error.stack?.slice(0, 4_000),
       }),
     }).catch(() => undefined);

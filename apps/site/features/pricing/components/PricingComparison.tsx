@@ -106,7 +106,7 @@ const PricingComparison = ({ loading, paymentsBlocked, onCheckout }: PricingComp
           <CheckoutButton
             className="text-accent bg-white hover:bg-white/95"
             loading={loading === "bundle:annual"}
-            disabled={paymentsBlocked}
+            disabled={paymentsBlocked || Boolean(loading)}
             onClick={() => void onCheckout("bundle", "annual")}
           >
             {paymentsBlocked ? "Payments disabled" : "Get the yearly bundle"}
