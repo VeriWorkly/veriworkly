@@ -238,3 +238,20 @@ describe("subdomains (P-023, P-019)", () => {
     );
   });
 });
+
+describe("reserved subdomains stay in step with the server", () => {
+  it("lists exactly the names apps/server/src/utils/slugs.ts refuses", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { RESERVED_SUBDOMAINS } = await import("@/lib/subdomain");
+    const source = readFileSync(
+      join(__dirname, "..", "..", "server", "src", "utils", "slugs.ts"),
+      "utf8",
+    );
+    // RESERVED_SUBDOMAINS on the server spreads RESERVED_USERNAMES and adds its own names.
+    const blocks = [...source.matchAll(/new Set\(\[([\s\S]*?)\]\)/g)].slice(0, 2);
+    const server = new Set(blocks.flatMap((block) => block[1].match(/"[a-z0-9-]+"/g) ?? []));
+
+    expect([...RESERVED_SUBDOMAINS].map((name) => `"${name}"`).sort()).toEqual([...server].sort());
+  });
+});

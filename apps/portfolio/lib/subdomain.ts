@@ -5,7 +5,7 @@ import { normalizeSlug } from "@/lib/portfolio";
  * apps/server/src/utils/slugs.ts. Copied so a default can be picked without a round trip; the
  * server stays the enforcement point, and the availability check reports anything this misses.
  */
-const RESERVED_SUBDOMAINS = new Set([
+export const RESERVED_SUBDOMAINS = new Set([
   "admin",
   "api",
   "app",
