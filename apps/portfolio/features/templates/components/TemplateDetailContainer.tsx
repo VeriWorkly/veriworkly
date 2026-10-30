@@ -110,7 +110,7 @@ const TemplateDetailContainer = ({ template, details }: ContainerProps) => {
 
           <span className="relative flex h-2 w-2">
             <span
-              className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${devMode ? "bg-white" : "bg-accent"}`}
+              className={`absolute inline-flex h-full w-full rounded-full opacity-75 motion-safe:animate-ping ${devMode ? "bg-white" : "bg-accent"}`}
             ></span>
             <span
               className={`relative inline-flex h-2 w-2 rounded-full ${devMode ? "bg-white" : "bg-accent"}`}

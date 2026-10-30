@@ -57,7 +57,7 @@ export function PriceCard({
             <span
               className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wider uppercase ${
                 featured
-                  ? "text-accent animate-pulse bg-white"
+                  ? "text-accent bg-white motion-safe:animate-pulse"
                   : "bg-accent/10 text-accent border-accent/20 border"
               }`}
             >

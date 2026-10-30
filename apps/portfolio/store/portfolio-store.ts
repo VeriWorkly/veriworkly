@@ -257,7 +257,7 @@ interface PortfolioStoreState {
   removeSection: (id: string) => void;
 
   // Page Management
-  addPage: (slug: string, title: string) => void;
+  addPage: (slug: string, title: string, sections?: PortfolioSection[]) => void;
   removePage: (id: string) => void;
 
   // Async Actions
@@ -541,14 +541,14 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           };
         }),
 
-      addPage: (slug, title) =>
+      addPage: (slug, title, sections = []) =>
         set((state) => {
           if ((state.content.pages?.length ?? 0) >= PORTFOLIO_LIMITS.pages) return {};
           const newPage: PortfolioPage = {
             id: createId("page"),
             slug,
             title,
-            sections: [],
+            sections,
           };
           return {
             content: {

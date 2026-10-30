@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup, renderToString } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The template preview page renders on the server through the server-only template runtime.
+vi.mock("server-only", () => ({}));
 
 import AtelierTemplate from "@/template-library/atelier/AtelierTemplate";
 import CipherTemplate from "@/template-library/cipher/CipherTemplate";
@@ -470,5 +473,7 @@ describe("template gallery (P-061, P-079)", () => {
       await preview.default({ params: Promise.resolve({ id: "signal" }) }),
     );
     expect(html).toContain("Demo content.");
+    // Server-rendered: the sample is in the HTML, not filled in by JavaScript later.
+    expect(html).toContain(demoPortfolio.identity.name);
   });
 });

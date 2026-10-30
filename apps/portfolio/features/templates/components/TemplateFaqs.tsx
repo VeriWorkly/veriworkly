@@ -28,7 +28,8 @@ export default function TemplateFaqs({ faqs, templateName }: FaqProps) {
         <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
             <p className="text-accent flex items-center gap-2 text-xs font-bold tracking-[0.16em] uppercase">
-              <HelpCircle size={14} className="animate-pulse" /> Frequently Asked Questions
+              <HelpCircle size={14} className="motion-safe:animate-pulse" /> Frequently Asked
+              Questions
             </p>
 
             <h2 className="text-ink-2 mt-4 max-w-xl text-[clamp(2.8rem,5vw,5.5rem)] leading-[1.05] font-bold tracking-tighter">

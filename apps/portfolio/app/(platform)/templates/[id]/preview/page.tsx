@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { DraftPreview } from "@/components/DraftPreview";
+import { demoPortfolio } from "@/lib/portfolio";
+import { renderTemplate } from "@/templates/runtime/registry";
 
 import { isTemplateId, templates } from "@/templates/catalog/templates";
 import { templateEditorHref, templateOgImage } from "@/features/templates/constants";
@@ -66,7 +67,8 @@ export default async function Preview({ params }: { params: Promise<{ id: string
 
   return (
     <>
-      <DraftPreview templateId={id} />
+      {/* Rendered on the server, so the sample reads without JavaScript too. */}
+      {await renderTemplate({ ...demoPortfolio, templateId: id })}
       <aside
         role="note"
         className="bg-ink text-paper fixed bottom-4 left-1/2 z-[10050] flex w-max max-w-[calc(100%-32px)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full px-5 py-2.5 text-sm shadow-lg"

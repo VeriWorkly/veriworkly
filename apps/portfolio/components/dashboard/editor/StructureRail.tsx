@@ -11,7 +11,7 @@ import {
   FileText,
   FilePlus,
 } from "lucide-react";
-import { portfolioSectionTypes } from "@/lib/portfolio";
+import { createId, portfolioSectionTypes, type PortfolioSection } from "@/lib/portfolio";
 import Link from "next/link";
 import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 import { usePortfolioStore } from "@/store/portfolio-store";
@@ -77,10 +77,19 @@ export function StructureRail({
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "") || index
     }`;
-    return { slug, title: `Detail: ${title}` };
+    // The page starts with that project in it, not as an empty shell.
+    const sections = projectsSection
+      ? [{ ...projectsSection, id: createId("section"), title, items: [item] }]
+      : [];
+    return { slug, title, label: `Detail: ${title}`, sections };
   });
 
-  const availablePages = [...PREDEFINED_PAGES, ...projectDetailPages];
+  const availablePages: Array<{
+    slug: string;
+    title: string;
+    label?: string;
+    sections?: PortfolioSection[];
+  }> = [...PREDEFINED_PAGES, ...projectDetailPages];
 
   return (
     <aside
@@ -143,13 +152,13 @@ export function StructureRail({
                       }`}
                       onClick={() => {
                         if (isAdded) return;
-                        addPage(pageOption.slug, pageOption.title);
+                        addPage(pageOption.slug, pageOption.title, pageOption.sections);
                         setOpenPages(false);
                       }}
                       disabled={isAdded}
                       type="button"
                     >
-                      {pageOption.title}
+                      {pageOption.label ?? pageOption.title}
                     </button>
                   );
                 })}

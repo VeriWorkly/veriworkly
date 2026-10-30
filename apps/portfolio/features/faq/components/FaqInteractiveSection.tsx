@@ -42,7 +42,7 @@ const FaqInteractiveSection = ({ sidebar }: FaqInteractiveSectionProps) => {
       <div className="border-line mb-16 border-b pb-12">
         <div className="max-w-3xl">
           <p className="border-line bg-panel/60 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold tracking-[0.12em] uppercase backdrop-blur-sm">
-            <HelpCircle className="text-accent size-3.5 animate-pulse" /> Support Portal
+            <HelpCircle className="text-accent size-3.5 motion-safe:animate-pulse" /> Support Portal
           </p>
 
           <h1 className="text-ink mt-6 text-[clamp(2.8rem,7vw,5.5rem)] leading-none font-bold tracking-tighter">

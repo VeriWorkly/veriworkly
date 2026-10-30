@@ -5,8 +5,8 @@ import { WorkspaceProvider } from "@/components/WorkspaceProvider";
 import {
   MAX_SOCIAL_LINKS,
   SocialLinksEditor,
-  withScheme,
 } from "@/components/dashboard/editor/SocialLinksEditor";
+import { withScheme } from "@/lib/portfolio-limits";
 import { createDefaultPortfolio, parsePortfolioContent, type PortfolioLink } from "@/lib/portfolio";
 
 /** The social-links editor (P-043). */

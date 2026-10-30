@@ -100,6 +100,25 @@ describe("portfolio store", () => {
     expect(store.getState().content.sections).toHaveLength(24);
   });
 
+  it("starts a project detail page with that project in it, not an empty shell", () => {
+    store.setState({ ready: true });
+    const section = {
+      id: "s1",
+      type: "projects" as const,
+      title: "Atlas",
+      visible: true,
+      items: [{ id: "p1", title: "Atlas" }],
+    };
+
+    store.getState().addPage("work/atlas", "Atlas", [section]);
+
+    expect(store.getState().content.pages?.[0]).toMatchObject({
+      slug: "work/atlas",
+      title: "Atlas",
+      sections: [section],
+    });
+  });
+
   it("normalizes slug input through updateSlug", () => {
     store.getState().updateSlug("  Gautam Raj!! ");
     expect(store.getState().slug).toBe("gautam-raj");
