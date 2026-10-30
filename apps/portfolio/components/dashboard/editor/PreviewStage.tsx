@@ -3,6 +3,8 @@ import { Laptop, Monitor, PanelLeftOpen, PanelRightOpen, Smartphone } from "luci
 import { usePortfolioStore } from "@/store/portfolio-store";
 
 export interface PreviewStageProps {
+  /** Display classes from the editor layout (a tab below `lg`). */
+  visibility: string;
   structureOpen: boolean;
   contentOpen: boolean;
   onOpenStructure: () => void;
@@ -12,6 +14,7 @@ export interface PreviewStageProps {
 }
 
 export function PreviewStage({
+  visibility,
   structureOpen,
   contentOpen,
   onOpenStructure,
@@ -48,12 +51,17 @@ export function PreviewStage({
   }
 
   return (
-    <aside className="bg-panel min-h-0 overflow-hidden">
+    <aside
+      id="editor-panel-preview"
+      role="tabpanel"
+      aria-labelledby="editor-tab-preview"
+      className={`bg-panel ${visibility} min-h-0 overflow-hidden`}
+    >
       <div className="border-line flex h-11 items-center justify-between border-b px-3">
         <div className="flex items-center gap-1">
           {!structureOpen ? (
             <button
-              className="text-muted hover:bg-paper grid size-7 place-items-center rounded-md"
+              className="text-muted hover:bg-paper hidden size-7 place-items-center rounded-md lg:grid"
               onClick={onOpenStructure}
               aria-label="Open page structure"
               type="button"
@@ -63,7 +71,7 @@ export function PreviewStage({
           ) : null}
           {!contentOpen ? (
             <button
-              className="text-muted hover:bg-paper grid size-7 place-items-center rounded-md"
+              className="text-muted hover:bg-paper hidden size-7 place-items-center rounded-md lg:grid"
               onClick={onOpenContent}
               aria-label="Open content editor"
               type="button"

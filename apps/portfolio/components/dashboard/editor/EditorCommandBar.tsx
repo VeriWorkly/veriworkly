@@ -3,23 +3,35 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownToLine, ExternalLink, Eye, Globe2, Lock, Save } from "lucide-react";
 import { toast } from "sonner";
+import { Modal } from "@veriworkly/ui";
 import { portfolioWorkspaceUrl, siteConfig } from "@/config/site";
 import { isPremiumTemplate } from "@/lib/portfolio";
-import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
-import { usePortfolioStore } from "@/store/portfolio-store";
+import { issuesFromDetails, publishIssues, type PublishIssue } from "@/lib/portfolio-limits";
+import {
+  hasPortfolioAccess,
+  isPortfolioPubliclyVisible,
+  upgradeHref,
+} from "@/lib/portfolio-status";
+import { saveStatusLabel, usePortfolioStore } from "@/store/portfolio-store";
 import { useWorkspace } from "@/components/WorkspaceProvider";
 import { actionClass as action } from "./constants";
 import { ImportMasterProfileModal } from "./ImportMasterProfileModal";
 
 const isProd = process.env.NODE_ENV === "production";
 
-export function EditorCommandBar() {
+export interface EditorCommandBarProps {
+  /** Opens the page, section and field a publish checklist entry points at. */
+  onJump: (issue: PublishIssue) => void;
+}
+
+export function EditorCommandBar({ onJump }: EditorCommandBarProps) {
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [issues, setIssues] = useState<PublishIssue[]>([]);
 
   // Selected field by field: a bare `usePortfolioStore()` subscribes to the whole store,
   // so the command bar re-rendered on every keystroke anywhere in the editor.
-  const slug = usePortfolioStore((state) => state.slug);
   const status = usePortfolioStore((state) => state.status);
+  const saveIssue = usePortfolioStore((state) => state.saveIssue);
   const billing = usePortfolioStore((state) => state.billing);
   const publication = usePortfolioStore((state) => state.publication);
   const draft = usePortfolioStore((state) => state.draft);
@@ -69,9 +81,18 @@ export function EditorCommandBar() {
       return;
     }
 
+    // What the server's publish check would refuse, listed with a way to each gap (P-036).
+    const missing = publishIssues(content);
+    if (missing.length) {
+      setIssues(missing);
+      return;
+    }
+
     // `publish` saves first and reports whichever step failed.
     const result = await publish();
     if (result.ok) toast.success("Portfolio published.");
+    else if (result.status === 400 && result.details?.length)
+      setIssues(issuesFromDetails(content, result.details));
     else toast.error(result.message);
   };
 
@@ -81,7 +102,25 @@ export function EditorCommandBar() {
     else toast.error(result.message);
   };
 
-  const { href: urlPath, display: urlDisplay } = portfolioWorkspaceUrl(slug);
+  // The preview renders the last saved draft, so save first (P-032). The tab is opened before
+  // the save so the browser still counts it as the click's own popup.
+  const handlePreview = async () => {
+    const tab = window.open("about:blank", "_blank");
+    const result = await saveDraft();
+    const href = `/preview/${(result.draft ?? draft)?.id ?? "guest"}`;
+    if (!result.ok) {
+      toast.error(`The preview shows your last saved version. ${result.message}`);
+    }
+    if (tab) tab.location.href = href;
+    else window.open(href, "_blank");
+  };
+
+  // Only a site that resolves is linked, at the address it is live on (P-031).
+  const live =
+    publication && isPortfolioPubliclyVisible(publication.status)
+      ? portfolioWorkspaceUrl(publication.subdomain)
+      : null;
+  const statusText = saveStatusLabel(status, saveIssue);
 
   return (
     <>
@@ -92,41 +131,55 @@ export function EditorCommandBar() {
         </Link>
         <div className="min-w-0 text-center">
           <p className="truncate text-sm font-extrabold">Portfolio editor</p>
-          <a
-            className="mx-auto mt-0.5 flex w-fit max-w-full items-center gap-1 text-[11px] font-bold text-white/45"
-            href={urlPath}
-            target="_blank"
-            rel="noreferrer"
+          <p
+            aria-live="polite"
+            title={statusText}
+            className={`mt-0.5 truncate text-[11px] font-bold ${
+              status === "Not saved" || status === "Conflict" ? "text-red-300" : "text-white/55"
+            }`}
           >
-            <span className="truncate">{urlDisplay}</span>
-            <ExternalLink size={10} aria-hidden="true" />
-          </a>
+            {statusText}
+          </p>
+          {live ? (
+            <a
+              className="mx-auto flex w-fit max-w-full items-center gap-1 text-[11px] font-bold text-white/45"
+              href={live.href}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="truncate">{live.display}</span>
+              <ExternalLink size={10} aria-hidden="true" />
+            </a>
+          ) : null}
         </div>
         <div className="flex items-center justify-end gap-1.5">
-          <span className="hidden text-xs font-bold text-white/45 lg:block">{status}</span>
           <button
             className={`${action} border border-white/15 bg-white/8 hover:border-white/25`}
             onClick={() => setIsImportOpen(true)}
             title="Import career data from Master Profile"
+            aria-label="Import Profile"
             type="button"
           >
             <ArrowDownToLine size={14} aria-hidden="true" />
             <span className="hidden md:inline">Import Profile</span>
           </button>
-          <Link
+          <button
             className={`${action} border border-white/15 bg-white/8`}
-            href={`/preview/${draft ? draft.id : "guest"}`}
-            target="_blank"
+            onClick={() => void handlePreview()}
+            aria-label="Save and preview"
+            type="button"
           >
             <Eye size={14} aria-hidden="true" />
             <span className="hidden sm:inline">Preview</span>
-          </Link>
+          </button>
           <button
             className={`${action} border border-white/15 bg-white/8`}
             onClick={() => void handleSave()}
+            aria-label="Save"
             type="button"
           >
-            <Save size={14} aria-hidden="true" /> Save
+            <Save size={14} aria-hidden="true" />
+            <span className="hidden sm:inline">Save</span>
           </button>
           <button
             className={`${action} bg-accent text-(--color-accent-ink) hover:bg-(--color-accent-strong) disabled:cursor-not-allowed disabled:opacity-50`}
@@ -149,6 +202,36 @@ export function EditorCommandBar() {
         </div>
       </header>
       <ImportMasterProfileModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <Modal open={issues.length > 0} onClose={() => setIssues([])}>
+        <Modal.Content className="workspace-theme bg-panel border-line text-ink">
+          <Modal.Header>
+            <Modal.Title>A few things before you publish</Modal.Title>
+            <Modal.Description className="text-muted">
+              Your site needs these to go live. Fix them, then publish again.
+            </Modal.Description>
+          </Modal.Header>
+          <ul className="mt-4 grid gap-2">
+            {issues.map((issue, index) => (
+              <li
+                key={`${issue.sectionId}-${index}`}
+                className="border-line flex items-center justify-between gap-3 rounded-lg border p-3 text-xs font-bold"
+              >
+                <span>{issue.message}</span>
+                <button
+                  className="text-accent shrink-0 font-extrabold"
+                  onClick={() => {
+                    setIssues([]);
+                    onJump(issue);
+                  }}
+                  type="button"
+                >
+                  Go there
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Modal.Content>
+      </Modal>
     </>
   );
 }

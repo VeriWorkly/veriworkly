@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { Save } from "lucide-react";
 import { UnpublishButton } from "@/components/dashboard/UnpublishButton";
+import { saveStatusLabel, type SaveIssue, type SaveStatus } from "@/store/portfolio-store";
 
 const action =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-xs font-extrabold transition";
 
 export interface SettingsHeaderProps {
-  status: string;
+  status: SaveStatus;
+  saveIssue: SaveIssue;
   onSave: () => void;
 }
 
-export function SettingsHeader({ status, onSave }: SettingsHeaderProps) {
+export function SettingsHeader({ status, saveIssue, onSave }: SettingsHeaderProps) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -23,7 +25,15 @@ export function SettingsHeader({ status, onSave }: SettingsHeaderProps) {
           work.
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <p
+          aria-live="polite"
+          className={`basis-full text-xs font-bold sm:basis-auto ${
+            status === "Not saved" || status === "Conflict" ? "text-danger" : "text-muted"
+          }`}
+        >
+          {saveStatusLabel(status, saveIssue)}
+        </p>
         <UnpublishButton className={`${action} border-line bg-panel text-ink border`} />
         <Link className={`${action} border-line bg-panel text-ink border`} href="/editor">
           Open editor

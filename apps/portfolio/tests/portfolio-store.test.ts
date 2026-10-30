@@ -45,6 +45,9 @@ const baseContent = {
 
 describe("portfolio store", () => {
   let createPortfolioStore: typeof import("@/store/portfolio-store").createPortfolioStore;
+  let shouldAutosave: typeof import("@/store/portfolio-store").shouldAutosave;
+  let saveStatusLabel: typeof import("@/store/portfolio-store").saveStatusLabel;
+  let warnOnLeave: typeof import("@/store/portfolio-store").warnOnLeave;
   let store: ReturnType<typeof createPortfolioStore>;
   let localStorageMock: ReturnType<typeof createMemoryStorage>;
 
@@ -55,8 +58,46 @@ describe("portfolio store", () => {
     localStorageMock = createMemoryStorage();
     vi.stubGlobal("window", { localStorage: localStorageMock });
 
-    ({ createPortfolioStore } = await import("@/store/portfolio-store"));
+    ({ createPortfolioStore, shouldAutosave, saveStatusLabel, warnOnLeave } =
+      await import("@/store/portfolio-store"));
     store = createPortfolioStore();
+  });
+
+  describe("leaving with unsaved edits (P-022)", () => {
+    it("asks a signed-in owner first, from any workspace page", () => {
+      const state = {
+        ...store.getState(),
+        user: { name: "Gautam Raj" },
+        workspaceState: "ready" as const,
+        isDirty: true,
+      };
+      expect(warnOnLeave(state)).toBe(true);
+      expect(warnOnLeave({ ...state, isDirty: false })).toBe(false);
+    });
+
+    it("never holds up a guest: their draft is written to this browser instead", () => {
+      const state = {
+        ...store.getState(),
+        user: null,
+        workspaceState: "ready" as const,
+        isDirty: true,
+      };
+      state.content = {
+        ...state.content,
+        identity: { ...state.content.identity, bio: "guest edit" },
+      };
+
+      expect(warnOnLeave(state)).toBe(false);
+      expect(JSON.parse(localStorageMock.getItem(CACHE_KEY) ?? "{}").content.identity.bio).toBe(
+        "guest edit",
+      );
+    });
+  });
+
+  it("stops adding sections at the server's cap of 24 (P-025)", () => {
+    store.setState({ ready: true });
+    for (let i = 0; i < 30; i++) store.getState().addSection("projects");
+    expect(store.getState().content.sections).toHaveLength(24);
   });
 
   it("normalizes slug input through updateSlug", () => {
@@ -450,7 +491,7 @@ describe("portfolio store", () => {
 
       const state = store.getState();
       expect(state.workspaceState).toBe("error");
-      expect(state.status).toBe("Offline");
+      expect(state.status).toBe("Not saved");
       expect(calls.some((url) => url.includes("/portfolios/me"))).toBe(false);
 
       // An edit and an autosave in this state must neither save as a guest nor touch the cache.
@@ -532,6 +573,8 @@ describe("portfolio store", () => {
         ok: false,
         status: 400,
         message: "Validation failed. Add a short bio.",
+        // The editor points at each field from these (P-004).
+        details: [{ path: "identity.bio", message: "Add a short bio." }],
       });
     });
 
@@ -586,7 +629,7 @@ describe("portfolio store", () => {
       });
       const staleResult = await stale.getState().saveDraft();
       expect(staleResult).toMatchObject({ ok: false, status: 409 });
-      expect(staleResult.message).toMatch(/Refresh/);
+      expect(staleResult.message).toMatch(/Load the cloud copy/);
       expect(stale.getState().status).toBe("Conflict");
 
       const refused = signedIn();
@@ -597,6 +640,128 @@ describe("portfolio store", () => {
         ok: false,
         status: 400,
         message: "Choose a valid subdomain.",
+      });
+    });
+
+    describe("save state and autosave (P-020)", () => {
+      it.each([
+        [
+          "a stale revision",
+          { message: "Portfolio draft changed in another session.", details: { revision: 5 } },
+        ],
+        // The conditional write losing a race (P2025) carries no revision.
+        ["a lost write race", { message: "Portfolio draft changed in another session." }],
+      ])("stops autosave on %s until the owner picks a copy", async (_, body) => {
+        const stale = signedIn();
+        stale.setState({ isDirty: true, status: "Unsaved changes" });
+        stubApi({ "/portfolios/draft": () => errorResponse(409, body) });
+
+        await stale.getState().saveDraft();
+        expect(stale.getState().status).toBe("Conflict");
+        expect(shouldAutosave(stale.getState())).toBe(false);
+
+        // Typing on does not resume it: that would overwrite the other copy or fail forever.
+        stale.getState().updateIdentity({ bio: "still typing" });
+        expect(stale.getState().status).toBe("Conflict");
+        expect(shouldAutosave(stale.getState())).toBe(false);
+      });
+
+      it("does not resend a refused draft every 12 s, only after the next edit", async () => {
+        const refused = signedIn();
+        refused.setState({ isDirty: true, status: "Unsaved changes" });
+        stubApi({
+          "/portfolios/draft": () =>
+            errorResponse(400, {
+              message: "Validation failed",
+              details: [{ path: "snapshot.identity.email", message: "Invalid email" }],
+            }),
+        });
+
+        await refused.getState().saveDraft();
+        expect(refused.getState().status).toBe("Not saved");
+        expect(refused.getState().saveIssue).toEqual({
+          reason: "Validation failed Invalid email",
+          retry: false,
+        });
+        expect(saveStatusLabel(refused.getState().status, refused.getState().saveIssue)).toBe(
+          "Not saved: Validation failed Invalid email",
+        );
+        expect(shouldAutosave(refused.getState())).toBe(false);
+
+        refused.getState().updateIdentity({ email: "gautam@veriworkly.com" });
+        expect(shouldAutosave(refused.getState())).toBe(true);
+      });
+
+      it("keeps retrying a save that failed for a reason on our side", async () => {
+        const failing = signedIn();
+        failing.setState({ isDirty: true, status: "Unsaved changes" });
+        stubApi({ "/portfolios/draft": () => errorResponse(503, { message: "Try later." }) });
+
+        await failing.getState().saveDraft();
+        expect(failing.getState().status).toBe("Not saved");
+        expect(shouldAutosave(failing.getState())).toBe(true);
+      });
+
+      const cloudDraft = {
+        id: "draft-1",
+        slug: "gautam-cloud",
+        templateId: "atelier",
+        revision: 7,
+        updatedAt: "2026-10-30T00:00:00.000Z",
+        content: {
+          ...baseContent,
+          templateId: "atelier",
+          identity: { ...baseContent.identity, bio: "cloud" },
+        },
+      };
+
+      it("loads the cloud copy over this one", async () => {
+        const stale = signedIn();
+        stale.setState({
+          status: "Conflict",
+          isDirty: true,
+          content: { ...baseContent, identity: { ...baseContent.identity, bio: "mine" } },
+        });
+        stubApi({
+          "/portfolios/me": () =>
+            jsonResponse({ draft: cloudDraft, publication: null, billing: null }),
+        });
+
+        expect((await stale.getState().resolveConflict("cloud")).ok).toBe(true);
+        const state = stale.getState();
+        expect(state.content.identity.bio).toBe("cloud");
+        expect(state.slug).toBe("gautam-cloud");
+        expect(state.draft?.revision).toBe(7);
+        expect(state).toMatchObject({ status: "Saved", isDirty: false });
+      });
+
+      it("keeps this copy by saving it at the cloud copy's revision", async () => {
+        const stale = signedIn();
+        stale.setState({
+          status: "Conflict",
+          isDirty: true,
+          content: { ...baseContent, identity: { ...baseContent.identity, bio: "mine" } },
+        });
+        let sent: { revision?: number; snapshot: { identity: { bio: string } } } | undefined;
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            if (url.includes("/portfolios/me"))
+              return jsonResponse({ draft: cloudDraft, publication: null, billing: null });
+            if (url.includes("/portfolios/draft")) {
+              sent = JSON.parse(String(init?.body));
+              return jsonResponse({ ...cloudDraft, revision: 8, content: sent?.snapshot });
+            }
+            return jsonResponse(null, 404);
+          }),
+        );
+
+        expect((await stale.getState().resolveConflict("mine")).ok).toBe(true);
+        expect(sent?.revision).toBe(7);
+        expect(sent?.snapshot.identity.bio).toBe("mine");
+        expect(stale.getState()).toMatchObject({ status: "Saved", isDirty: false });
+        expect(stale.getState().draft?.revision).toBe(8);
       });
     });
 

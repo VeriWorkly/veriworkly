@@ -15,10 +15,14 @@ import { portfolioSectionTypes } from "@/lib/portfolio";
 import Link from "next/link";
 import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 import { usePortfolioStore } from "@/store/portfolio-store";
+import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
 import { RailButton } from "./RailButton";
+import { ConfirmDelete, type DeleteRequest } from "./ConfirmDelete";
 import { sectionInfo } from "./constants";
 
 export interface StructureRailProps {
+  /** Display classes from the editor layout (a tab below `lg`). */
+  visibility: string;
   selectedSectionId: string;
   onSelect: (id: string) => void;
   onClose: () => void;
@@ -33,6 +37,7 @@ const PREDEFINED_PAGES = [
 ];
 
 export function StructureRail({
+  visibility,
   selectedSectionId,
   onSelect,
   onClose,
@@ -58,6 +63,9 @@ export function StructureRail({
   const removeSection = usePortfolioStore((state) => state.removeSection);
   const [open, setOpen] = useState(false);
   const [openPages, setOpenPages] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<DeleteRequest>(null);
+  const sectionsFull = sections.length >= PORTFOLIO_LIMITS.sections;
+  const pagesFull = pages.length >= PORTFOLIO_LIMITS.pages;
 
   const projectsSection = rootSections.find((s) => s.type === "projects");
   const projectItems = projectsSection?.items || [];
@@ -75,7 +83,12 @@ export function StructureRail({
   const availablePages = [...PREDEFINED_PAGES, ...projectDetailPages];
 
   return (
-    <aside className="border-line bg-panel hidden min-h-0 flex-col overflow-y-auto border-r p-2 lg:flex">
+    <aside
+      id="editor-panel-structure"
+      role="tabpanel"
+      aria-labelledby="editor-tab-structure"
+      className={`border-line bg-panel ${visibility} min-h-0 flex-col overflow-y-auto border-r p-2`}
+    >
       <button
         className="group bg-accent mb-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg p-2 text-left text-white transition hover:-translate-y-0.5"
         onClick={onOpenTemplates}
@@ -100,15 +113,21 @@ export function StructureRail({
           <div className="flex items-center justify-between py-2">
             <h2 className="text-xs font-extrabold">Pages</h2>
             <button
-              className="text-accent hover:bg-accent-soft grid size-7 place-items-center rounded-lg"
+              className="text-accent hover:bg-accent-soft grid size-7 place-items-center rounded-lg disabled:opacity-40"
               onClick={() => setOpenPages(!openPages)}
               aria-label="Add page"
+              disabled={pagesFull}
               type="button"
             >
               <FilePlus size={15} aria-hidden="true" />
             </button>
           </div>
-          {openPages && (
+          {pagesFull ? (
+            <p className="text-muted mb-2 text-[11px]">
+              A site can have up to {PORTFOLIO_LIMITS.pages} pages. Delete one to add another.
+            </p>
+          ) : null}
+          {openPages && !pagesFull && (
             <div className="border-line mb-3 border-t p-2">
               <p className="text-muted mb-2 text-[10px] font-extrabold tracking-[.12em] uppercase">
                 Add predefined page
@@ -138,53 +157,53 @@ export function StructureRail({
             </div>
           )}
           <div className="space-y-1">
-            <div
-              className={`group flex items-center gap-2 rounded-lg px-2 py-2 ${
-                selectedPageId === null
-                  ? "bg-accent text-accent-ink"
-                  : "hover:bg-paper cursor-pointer"
+            <button
+              className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold ${
+                selectedPageId === null ? "bg-accent text-accent-ink" : "hover:bg-paper"
               }`}
+              aria-current={selectedPageId === null ? "page" : undefined}
               onClick={() => setSelectedPageId(null)}
+              type="button"
             >
               <FileText
                 size={14}
+                aria-hidden="true"
                 className={selectedPageId === null ? "text-accent-ink/65" : "text-muted"}
               />
-              <button className="min-w-0 flex-1 truncate text-left text-xs font-bold" type="button">
-                Home
-              </button>
-            </div>
+              <span className="min-w-0 flex-1 truncate">Home</span>
+            </button>
             {pages.map((page) => (
               <div
                 key={page.id}
                 className={`group flex items-center gap-2 rounded-lg px-2 py-2 ${
-                  selectedPageId === page.id
-                    ? "bg-accent text-accent-ink"
-                    : "hover:bg-paper cursor-pointer"
+                  selectedPageId === page.id ? "bg-accent text-accent-ink" : "hover:bg-paper"
                 }`}
-                onClick={() => setSelectedPageId(page.id)}
               >
-                <FileText
-                  size={14}
-                  className={selectedPageId === page.id ? "text-accent-ink/65" : "text-muted"}
-                />
                 <button
-                  className="min-w-0 flex-1 truncate text-left text-xs font-bold"
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-bold"
+                  aria-current={selectedPageId === page.id ? "page" : undefined}
+                  onClick={() => setSelectedPageId(page.id)}
                   type="button"
                 >
-                  {page.title}
+                  <FileText
+                    size={14}
+                    aria-hidden="true"
+                    className={selectedPageId === page.id ? "text-accent-ink/65" : "text-muted"}
+                  />
+                  <span className="truncate">{page.title}</span>
                 </button>
                 {selectedPageId === page.id && (
                   <RailButton
                     selected={true}
                     label="Delete page"
                     danger
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm("Delete this page?")) {
-                        removePage(page.id);
-                      }
-                    }}
+                    onClick={() =>
+                      setPendingDelete({
+                        title: `Delete the ${page.title} page?`,
+                        detail: "The page and every section on it will be removed from your draft.",
+                        run: () => removePage(page.id),
+                      })
+                    }
                   >
                     <Trash2 size={12} aria-hidden="true" />
                   </RailButton>
@@ -207,15 +226,16 @@ export function StructureRail({
         <h2 className="text-xs font-extrabold">Page structure</h2>
         <div className="flex">
           <button
-            className="text-accent hover:bg-accent-soft grid size-7 place-items-center rounded-lg"
+            className="text-accent hover:bg-accent-soft grid size-7 place-items-center rounded-lg disabled:opacity-40"
             onClick={() => setOpen(!open)}
             aria-label="Add section"
+            disabled={sectionsFull}
             type="button"
           >
             <Plus size={15} aria-hidden="true" />
           </button>
           <button
-            className="text-muted hover:bg-paper grid size-7 place-items-center rounded-lg"
+            className="text-muted hover:bg-paper hidden size-7 place-items-center rounded-lg lg:grid"
             onClick={onClose}
             aria-label="Close page structure"
             type="button"
@@ -257,7 +277,7 @@ export function StructureRail({
               onClick={() => onSelect(section.id)}
               type="button"
             >
-              {section.title.trim() || `Untitled ${sectionInfo[section.type].label}`}
+              {section.title.trim() || `${sectionInfo[section.type].label} (needs a title)`}
             </button>
             <RailButton
               selected={selectedSectionId === section.id}
@@ -286,16 +306,29 @@ export function StructureRail({
             </RailButton>
             <RailButton
               selected={selectedSectionId === section.id}
-              label="Delete"
+              label="Delete section"
               danger
-              onClick={() => removeSection(section.id)}
+              onClick={() =>
+                setPendingDelete({
+                  title: `Delete ${section.title.trim() || sectionInfo[section.type].label}?`,
+                  detail: `The section and its ${section.items.length} ${
+                    section.items.length === 1 ? "item" : "items"
+                  } will be removed from your draft.`,
+                  run: () => removeSection(section.id),
+                })
+              }
             >
               <Trash2 size={12} aria-hidden="true" />
             </RailButton>
           </div>
         ))}
       </div>
-      {open ? (
+      {sectionsFull ? (
+        <p className="text-muted px-2 pt-2 text-[11px]">
+          A page can have up to {PORTFOLIO_LIMITS.sections} sections. Delete one to add another.
+        </p>
+      ) : null}
+      {open && !sectionsFull ? (
         <div className="border-line mt-3 border-t p-2">
           <p className="text-muted mb-2 text-[10px] font-extrabold tracking-[.12em] uppercase">
             Add section
@@ -320,6 +353,7 @@ export function StructureRail({
           </div>
         </div>
       ) : null}
+      <ConfirmDelete request={pendingDelete} onClose={() => setPendingDelete(null)} />
     </aside>
   );
 }

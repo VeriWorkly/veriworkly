@@ -10,6 +10,7 @@ import { PortfolioSettingsWorkspace } from "@/components/dashboard/settings/Port
 import { createDefaultPortfolio, type PortfolioContent } from "@/lib/portfolio";
 import { StructureRail } from "@/components/dashboard/editor/StructureRail";
 import { ContentCanvas } from "@/components/dashboard/editor/ContentCanvas";
+import { PortfolioEditorWorkspace } from "@/components/dashboard/editor/PortfolioEditorWorkspace";
 import { previewProject, showsBadge } from "@/components/LivePortfolioPreview";
 
 /**
@@ -277,6 +278,7 @@ describe("paid portfolio features follow canPublish (P-010)", () => {
     const rail = renderWith(
       { billing: passHolder },
       <StructureRail
+        visibility="flex"
         selectedSectionId="profile"
         onSelect={() => {}}
         onClose={() => {}}
@@ -285,7 +287,7 @@ describe("paid portfolio features follow canPublish (P-010)", () => {
     );
     const canvas = renderWith(
       { billing: passHolder },
-      <ContentCanvas selectedSectionId="profile" onClose={() => {}} />,
+      <ContentCanvas visibility="block" selectedSectionId="profile" onClose={() => {}} />,
     );
     const settings = renderWith({ billing: passHolder }, <PortfolioSettingsWorkspace />);
 
@@ -300,6 +302,7 @@ describe("paid portfolio features follow canPublish (P-010)", () => {
     const rail = renderWith(
       { billing: aiOnly },
       <StructureRail
+        visibility="flex"
         selectedSectionId="profile"
         onSelect={() => {}}
         onClose={() => {}}
@@ -308,7 +311,7 @@ describe("paid portfolio features follow canPublish (P-010)", () => {
     );
     const canvas = renderWith(
       { billing: aiOnly },
-      <ContentCanvas selectedSectionId="profile" onClose={() => {}} />,
+      <ContentCanvas visibility="block" selectedSectionId="profile" onClose={() => {}} />,
     );
     const settings = renderWith({ billing: aiOnly }, <PortfolioSettingsWorkspace />);
 
@@ -462,5 +465,55 @@ describe("analytics tells the truth (P-044)", () => {
     expect(markup).toContain("No visits yet");
     expect(markup).not.toContain("Analytics start after publishing");
     expect(markup).toContain("Referring sites (top 10)");
+  });
+});
+
+describe("editor layout and links (P-024, P-031)", () => {
+  it("is a tabbed single column below lg, with the content tab open", () => {
+    const markup = renderWith({}, <PortfolioEditorWorkspace />);
+
+    expect(markup).toContain('role="tablist"');
+    for (const tab of ["Structure", "Content", "Preview"])
+      expect(markup).toContain(`>${tab}</button>`);
+    expect(markup).toMatch(/id="editor-tab-content" role="tab" aria-selected="true"/);
+    // Only the active tab shows on a phone; every panel shows from lg up.
+    expect(markup).toMatch(/id="editor-panel-structure"[^>]*class="[^"]*\bhidden lg:flex\b/);
+    expect(markup).toMatch(/id="editor-panel-content"[^>]*class="[^"]*\bblock lg:block\b/);
+    expect(markup).toMatch(/id="editor-panel-preview"[^>]*class="[^"]*\bhidden lg:block\b/);
+  });
+
+  it("shows the save state on every width, announced politely", () => {
+    const markup = renderWith({}, <PortfolioEditorWorkspace />);
+
+    expect(markup).toMatch(/<p aria-live="polite"[^>]*>Saved<\/p>/);
+  });
+
+  it("links the live address, not the draft slug, and nothing when unpublished", () => {
+    const live = renderWith(
+      { publication: { subdomain: "gautam-live", status: "LIVE" } },
+      <PortfolioEditorWorkspace />,
+    );
+    expect(live).toContain('href="https://gautam-live.veriworkly.com"');
+    expect(live).not.toContain("https://gautam.veriworkly.com");
+
+    const unpublished = renderWith({ publication: null }, <PortfolioEditorWorkspace />);
+    expect(unpublished).not.toContain(".veriworkly.com");
+
+    const dashboard = renderWith(
+      { publication: { subdomain: "gautam-live", status: "LIVE" } },
+      <PortfolioDashboardWorkspace />,
+    );
+    expect(dashboard).toContain('href="https://gautam-live.veriworkly.com"');
+    expect(dashboard).not.toContain("https://gautam.veriworkly.com");
+  });
+
+  it("names the badge the way the live site shows it", () => {
+    const canvas = renderWith(
+      { billing: passHolder },
+      <ContentCanvas visibility="block" selectedSectionId="profile" onClose={() => {}} />,
+    );
+    expect(canvas).toContain("Built with VeriWorkly");
+    // No label inside a label: the toggle is one control with one name.
+    expect(canvas).not.toMatch(/<label[^>]*>(?:(?!<\/label>)[\s\S])*<label/);
   });
 });

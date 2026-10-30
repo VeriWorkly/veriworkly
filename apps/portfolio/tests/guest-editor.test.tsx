@@ -38,7 +38,7 @@ function renderCanvas(signedIn: boolean) {
     : { user: null, workspace: null, isAdmin: false };
   return renderToStaticMarkup(
     <WorkspaceProvider initialData={initialData}>
-      <ContentCanvas selectedSectionId="profile" onClose={() => {}} />
+      <ContentCanvas visibility="block" selectedSectionId="profile" onClose={() => {}} />
     </WorkspaceProvider>,
   );
 }

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { SectionField } from "@/lib/section-fields";
 import { Field } from "./Field";
 import { inputClass as input } from "./constants";
+import { withScheme } from "@/lib/portfolio-limits";
 
 /**
  * Renders one item's inputs from the section's field schema.
@@ -99,13 +100,24 @@ function Control({
     return <ListControl field={field} item={item} onChange={onChange} />;
   }
 
+  const isLink = field.key === "link";
   return (
     <Field label={field.label} help={field.help}>
       <input
         className={input}
+        type={isLink ? "url" : undefined}
         placeholder={field.placeholder}
         value={typeof item[field.key] === "string" ? (item[field.key] as string) : ""}
         onChange={(e) => onChange({ [field.key]: e.target.value })}
+        // "github.com/me" is meant as a web address; give it its https:// instead of losing it.
+        onBlur={
+          isLink
+            ? (e) => {
+                const fixed = withScheme(e.target.value);
+                if (fixed !== e.target.value) onChange({ [field.key]: fixed });
+              }
+            : undefined
+        }
       />
     </Field>
   );

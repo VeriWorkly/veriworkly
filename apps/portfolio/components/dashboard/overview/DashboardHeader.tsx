@@ -12,6 +12,7 @@ const secondaryAction =
 
 export interface DashboardHeaderProps {
   userName?: string | null;
+  /** The live publication's subdomain. */
   slug?: string;
   isLive: boolean;
 }
