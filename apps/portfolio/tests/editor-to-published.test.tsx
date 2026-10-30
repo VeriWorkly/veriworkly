@@ -9,7 +9,7 @@ import {
   parsePortfolioContent,
   portfolioSectionTypes,
 } from "@/lib/portfolio";
-import { emptyItemFor, sectionFields, sectionSubtitleDefaults } from "@/lib/section-fields";
+import { emptyItemFor, sectionFields, sectionMeta } from "@/lib/section-fields";
 import type { PortfolioProject } from "@/template-library/types";
 
 /**
@@ -188,7 +188,7 @@ describe("legacy drafts keep working", () => {
       ...createDefaultPortfolio(),
       sections: [{ id: "s", type: "skills", title: "Skills", visible: true, items: [] }],
     });
-    expect(parsed.sections[0].subtitle).toBe(sectionSubtitleDefaults.skills);
+    expect(parsed.sections[0].subtitle).toBe(sectionMeta.skills.subtitle);
   });
 
   it("preserves a deliberately cleared subtitle instead of re-seeding it", () => {

@@ -186,6 +186,12 @@ export function useWorkspace() {
   return context;
 }
 
+/** Publishing is admin-only in production until launch. */
+export function usePublishingClosed() {
+  const { isAdmin } = useWorkspace();
+  return process.env.NODE_ENV === "production" && !isAdmin;
+}
+
 /**
  * Analytics is provided separately from the workspace because only the dashboard routes
  * render it. Keeping it out of the shared provider is what lets `/editor` skip that

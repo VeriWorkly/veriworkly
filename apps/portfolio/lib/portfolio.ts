@@ -1,4 +1,5 @@
-import { sectionSubtitleDefaults } from "@/lib/section-fields";
+import { sectionMeta } from "@/lib/section-fields";
+import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
 import { type TemplateId, isTemplateId } from "@/templates/catalog/templates";
 
 export { templates, isPremiumTemplate } from "@/templates/catalog/templates";
@@ -872,7 +873,7 @@ export function normalizeSlug(value: string) {
     .slice(0, 63);
 }
 
-export function isPortfolioSectionType(value: unknown): value is PortfolioSectionType {
+function isPortfolioSectionType(value: unknown): value is PortfolioSectionType {
   return typeof value === "string" && portfolioSectionTypes.includes(value as PortfolioSectionType);
 }
 
@@ -894,7 +895,7 @@ function parseSections(input: unknown[]): PortfolioSection[] {
       subtitle:
         typeof section.subtitle === "string"
           ? section.subtitle.slice(0, 240)
-          : sectionSubtitleDefaults[section.type as PortfolioSectionType],
+          : sectionMeta[section.type as PortfolioSectionType].subtitle,
       visible: section.visible !== false,
       items: Array.isArray(section.items)
         ? (section.items as unknown[])
@@ -963,8 +964,8 @@ export function parsePortfolioContent(
           .filter((link): link is Record<string, unknown> => !!link && typeof link === "object")
           .slice(0, 12)
           .map((link) => ({
-            id: text(link.id, createId("link"), 64),
-            label: text(link.label, "", 60),
+            id: text(link.id, createId("link"), 128),
+            label: text(link.label, "", PORTFOLIO_LIMITS.linkLabel),
             url: text(link.url, "", 2048),
           }))
       : [],

@@ -29,7 +29,7 @@ const TemplateDesignNote = () => {
                 width={28}
                 height={28}
                 alt="VeriWorkly Logo"
-                src="/veriworkly-logo.png"
+                src="/veriworkly-logo-128.png"
               />
             </div>
 

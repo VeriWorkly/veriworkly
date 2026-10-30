@@ -7,7 +7,7 @@ import {
   SocialLinksEditor,
   withScheme,
 } from "@/components/dashboard/editor/SocialLinksEditor";
-import { createDefaultPortfolio, type PortfolioLink } from "@/lib/portfolio";
+import { createDefaultPortfolio, parsePortfolioContent, type PortfolioLink } from "@/lib/portfolio";
 
 /** The social-links editor (P-043). */
 
@@ -68,5 +68,17 @@ describe("social links editor", () => {
     expect(MAX_SOCIAL_LINKS).toBe(12);
     expect(markup).not.toContain("Add link");
     expect(markup).toContain("up to 12 links");
+  });
+
+  it("keeps a label up to the server's 80 characters through a reload", () => {
+    const label = "x".repeat(80);
+    const markup = render([{ id: "a", label, url: "https://example.com" }]);
+    const parsed = parsePortfolioContent({
+      ...createDefaultPortfolio(),
+      socialLinks: [{ id: "a", label: `${label}y`, url: "https://example.com" }],
+    });
+
+    expect(markup).toContain('maxLength="80"');
+    expect(parsed.socialLinks[0].label).toBe(label);
   });
 });

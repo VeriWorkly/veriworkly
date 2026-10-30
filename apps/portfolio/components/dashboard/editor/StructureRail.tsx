@@ -18,7 +18,7 @@ import { usePortfolioStore } from "@/store/portfolio-store";
 import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
 import { RailButton } from "./RailButton";
 import { ConfirmDelete, type DeleteRequest } from "./ConfirmDelete";
-import { sectionInfo } from "./constants";
+import { sectionMeta } from "@/lib/section-fields";
 
 export interface StructureRailProps {
   /** Display classes from the editor layout (a tab below `lg`). */
@@ -277,7 +277,7 @@ export function StructureRail({
               onClick={() => onSelect(section.id)}
               type="button"
             >
-              {section.title.trim() || `${sectionInfo[section.type].label} (needs a title)`}
+              {section.title.trim() || `${sectionMeta[section.type].label} (needs a title)`}
             </button>
             <RailButton
               selected={selectedSectionId === section.id}
@@ -310,7 +310,7 @@ export function StructureRail({
               danger
               onClick={() =>
                 setPendingDelete({
-                  title: `Delete ${section.title.trim() || sectionInfo[section.type].label}?`,
+                  title: `Delete ${section.title.trim() || sectionMeta[section.type].label}?`,
                   detail: `The section and its ${section.items.length} ${
                     section.items.length === 1 ? "item" : "items"
                   } will be removed from your draft.`,
@@ -344,9 +344,9 @@ export function StructureRail({
                 }}
                 type="button"
               >
-                <span className="block text-xs font-extrabold">{sectionInfo[type].label}</span>
+                <span className="block text-xs font-extrabold">{sectionMeta[type].label}</span>
                 <span className="text-muted mt-0.5 block text-[10px]">
-                  {sectionInfo[type].detail}
+                  {sectionMeta[type].detail}
                 </span>
               </button>
             ))}

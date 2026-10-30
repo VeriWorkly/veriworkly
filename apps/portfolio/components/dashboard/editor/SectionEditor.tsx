@@ -6,12 +6,12 @@ import { EditorPanel } from "./EditorPanel";
 import { Field } from "./Field";
 import { ItemAction } from "./ItemAction";
 import { AssetUpload } from "./AssetUpload";
-import { actionClass as action, inputClass as input, sectionInfo } from "./constants";
+import { actionClass as action, inputClass as input } from "./constants";
 import { PortfolioAiAssist } from "./PortfolioAiAssist";
 import { ItemFields } from "./ItemFields";
 import { ConfirmDelete, type DeleteRequest } from "./ConfirmDelete";
 import { PORTFOLIO_LIMITS as LIMITS, fieldIds } from "@/lib/portfolio-limits";
-import { emptyItemFor, sectionFields, sectionSubtitleDefaults } from "@/lib/section-fields";
+import { emptyItemFor, sectionFields, sectionMeta } from "@/lib/section-fields";
 
 export interface SectionEditorProps {
   section: PortfolioSection;
@@ -36,8 +36,8 @@ export function SectionEditor({ section }: SectionEditorProps) {
 
   return (
     <EditorPanel
-      title={section.title.trim() || `${sectionInfo[section.type].label} (needs a title)`}
-      detail={`${section.items.length} ${section.items.length === 1 ? "item" : "items"} · ${sectionInfo[section.type].detail}`}
+      title={section.title.trim() || `${sectionMeta[section.type].label} (needs a title)`}
+      detail={`${section.items.length} ${section.items.length === 1 ? "item" : "items"} · ${sectionMeta[section.type].detail}`}
     >
       <Field
         label="Section title"
@@ -64,7 +64,7 @@ export function SectionEditor({ section }: SectionEditorProps) {
           <input
             className={input}
             maxLength={LIMITS.sectionSubtitle}
-            placeholder={sectionSubtitleDefaults[section.type]}
+            placeholder={sectionMeta[section.type].subtitle}
             value={typeof section.subtitle === "string" ? section.subtitle : ""}
             onChange={(e) => updateSection(section.id, { subtitle: e.target.value })}
           />

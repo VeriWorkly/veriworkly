@@ -68,7 +68,7 @@ export function PortfolioTemplatePreviewFrame({
   );
 }
 
-export function TemplatePreviewArt({ templateId }: { templateId: TemplateId }) {
+function TemplatePreviewArt({ templateId }: { templateId: TemplateId }) {
   const isSignal = templateId === "signal";
 
   return (

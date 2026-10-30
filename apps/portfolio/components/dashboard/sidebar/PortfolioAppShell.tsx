@@ -89,7 +89,13 @@ export function PortfolioAppShell({ children }: { children: React.ReactNode }) {
             title="Portfolio dashboard"
             className="flex min-w-0 items-center gap-3"
           >
-            <Image src="/veriworkly-logo.png" width={30} height={30} alt="VeriWorkly" priority />
+            <Image
+              src="/veriworkly-logo-128.png"
+              width={30}
+              height={30}
+              alt="VeriWorkly"
+              priority
+            />
 
             {!collapsed ? (
               <span>

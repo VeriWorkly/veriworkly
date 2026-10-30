@@ -141,7 +141,7 @@ const RootLoading = () => {
               width={18}
               height={18}
               alt="VeriWorkly logo"
-              src="/veriworkly-logo.png"
+              src="/veriworkly-logo-128.png"
               className="opacity-95"
             />
           </div>

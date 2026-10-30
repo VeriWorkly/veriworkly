@@ -33,7 +33,17 @@ describe("looksLikeStaticAssetPath", () => {
 
 describe("proxy middleware — platform host auth gate", () => {
   it("redirects away from private workspace routes when there's no session or guest cookie", () => {
-    for (const path of ["/dashboard", "/editor", "/billing", "/settings", "/analytics"]) {
+    // Private by default: a new workspace page is gated without being listed anywhere.
+    for (const path of [
+      "/dashboard",
+      "/editor",
+      "/billing",
+      "/settings",
+      "/analytics",
+      "/profile",
+      "/preview/document-1",
+      "/future-private-page",
+    ]) {
       const response = proxy(requestTo(`https://portfolio.veriworkly.com${path}`));
       expect(response.status).toBe(307);
       const location = response.headers.get("location") ?? "";
@@ -53,6 +63,22 @@ describe("proxy middleware — platform host auth gate", () => {
     }
   });
 
+  it("accepts the development session cookie too", () => {
+    const response = proxy(
+      requestTo("http://portfolio.veriworkly.com/editor", {
+        cookie: "veriworkly-auth.session_token=dev-token",
+      }),
+    );
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("does not treat any other guest cookie value as guest mode", () => {
+    const response = proxy(
+      requestTo("https://portfolio.veriworkly.com/editor", { cookie: "veriworkly-guest-mode=no" }),
+    );
+    expect(response.status).toBe(307);
+  });
+
   it("lets a guest visitor through to private workspace routes when guest cookie is present", () => {
     for (const path of ["/dashboard", "/editor", "/settings", "/analytics"]) {
       const response = proxy(
@@ -65,7 +91,15 @@ describe("proxy middleware — platform host auth gate", () => {
   });
 
   it("never redirects public platform paths, even without a session or guest cookie", () => {
-    for (const path of ["/", "/pricing", "/templates", "/faq"]) {
+    for (const path of [
+      "/",
+      "/pricing",
+      "/templates",
+      "/templates/signal/preview",
+      "/faq",
+      "/user/gautam",
+      "/portfolios/gautam",
+    ]) {
       const response = proxy(requestTo(`https://portfolio.veriworkly.com${path}`));
       expect(response.headers.get("location")).toBeNull();
     }

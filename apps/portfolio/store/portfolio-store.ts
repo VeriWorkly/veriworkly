@@ -19,7 +19,7 @@ import {
 } from "@/lib/portfolio";
 import { defaultSubdomain, isAllowedSubdomain } from "@/lib/subdomain";
 import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
-import { sectionLabels, sectionSubtitleDefaults } from "@/lib/section-fields";
+import { sectionMeta } from "@/lib/section-fields";
 import {
   clearPortfolioCache,
   loadPortfolioCache,
@@ -66,7 +66,6 @@ export type Billing = {
     isPaying: boolean;
   };
 };
-export type EditorPanel = "profile" | "sections" | "style" | "sharing";
 export type PortfolioAnalyticsData = {
   // Set by the server when the account lacks the Creator Pro entitlement. The payload
   // then carries no real figures at all, so the dashboard must render a locked state
@@ -182,9 +181,7 @@ export type PortfolioHydratedState = Pick<
   | "slug"
   | "publication"
   | "billing"
-  | "analyticsData"
   | "message"
-  | "previewIssue"
   | "workspaceState"
   | "status"
   | "saveIssue"
@@ -202,7 +199,6 @@ export type PortfolioHydratedState = Pick<
 export function buildHydratedState({
   user,
   workspace,
-  analytics,
 }: PortfolioWorkspaceBootstrap): PortfolioHydratedState {
   const cloud = workspace?.draft as CloudPortfolioDraft | undefined;
   const restored = cloud
@@ -219,9 +215,7 @@ export function buildHydratedState({
     slug,
     publication: workspace?.publication ?? null,
     billing: workspace?.billing ?? { canPublish: false, status: "INACTIVE" },
-    analyticsData: analytics,
     message: isGuest ? "" : workspace ? "" : "Could not load your portfolio workspace.",
-    previewIssue: "",
     workspaceState: "ready",
     status: isGuest || workspace ? "Saved" : "Not saved",
     saveIssue:
@@ -238,33 +232,19 @@ interface PortfolioStoreState {
   publication: Publication;
   billing: Billing;
   user: { name?: string | null; email?: string | null } | null;
-  analyticsData: PortfolioAnalyticsData | null;
   status: SaveStatus;
   saveIssue: SaveIssue;
   message: string;
   ready: boolean;
   workspaceState: WorkspaceState;
-  previewIssue: string;
-  activePanel: EditorPanel;
   isDirty: boolean;
   selectedPageId: string | null;
   /** A guest draft found in this browser after signing in, until the owner keeps or discards it. */
   guestDraft: { content: PortfolioContent; slug: string; replacesCloud: boolean } | null;
 
   // Setters
-  setContent: (content: PortfolioContent) => void;
-  setSlug: (slug: string) => void;
   updateSlug: (slug: string) => void;
-  setDraft: (draft: CloudPortfolioDraft | null) => void;
-  setPublication: (publication: Publication) => void;
-  setBilling: (billing: Billing) => void;
-  setStatus: (status: SaveStatus) => void;
   setMessage: (message: string) => void;
-  setReady: (ready: boolean) => void;
-  setWorkspaceState: (workspaceState: WorkspaceState) => void;
-  setPreviewIssue: (previewIssue: string) => void;
-  setActivePanel: (activePanel: EditorPanel) => void;
-  setIsDirty: (isDirty: boolean) => void;
   setSelectedPageId: (id: string | null) => void;
 
   // State Updaters
@@ -279,7 +259,6 @@ interface PortfolioStoreState {
   // Page Management
   addPage: (slug: string, title: string) => void;
   removePage: (id: string) => void;
-  updatePage: (id: string, patch: Partial<PortfolioPage>) => void;
 
   // Async Actions
   loadWorkspace: () => Promise<void>;
@@ -377,17 +356,17 @@ async function sendDraft(store: StoreApi<PortfolioStoreState>): Promise<SaveResu
       saveIssue: null,
       isDirty: unsaved,
       message: "",
-      previewIssue: "",
     });
     return { ok: true, message: "Draft saved.", draft: saved };
   } catch (error) {
     const reason =
-      error instanceof Error && error.name !== "AbortError" ? error.message : "Draft sync failed.";
+      error instanceof Error && error.name !== "AbortError" && error.name !== "TimeoutError"
+        ? error.message
+        : "Draft sync failed.";
     const offline = !(error as { status?: number }).status;
     set({
       status: "Not saved",
       saveIssue: { reason: offline ? "Could not reach VeriWorkly." : reason, retry: true },
-      previewIssue: "Live preview is unavailable while your draft cannot sync.",
     });
     return {
       ok: false,
@@ -415,35 +394,21 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       publication: null,
       billing: { canPublish: false, status: "INACTIVE" },
       user: null,
-      analyticsData: null,
       status: "Saved",
       saveIssue: null,
       message: "",
       ready: false,
       workspaceState: "loading",
-      previewIssue: "",
-      activePanel: "profile",
       isDirty: false,
       selectedPageId: null,
       guestDraft: null,
 
-      setContent: (content) => set({ content }),
-      setSlug: (slug) => set({ slug }),
       updateSlug: (slug) =>
         set((state) => ({
           slug: normalizeSlug(slug),
           ...touched(state),
         })),
-      setDraft: (draft) => set({ draft }),
-      setPublication: (publication) => set({ publication }),
-      setBilling: (billing) => set({ billing }),
-      setStatus: (status) => set({ status }),
       setMessage: (message) => set({ message }),
-      setReady: (ready) => set({ ready }),
-      setWorkspaceState: (workspaceState) => set({ workspaceState }),
-      setPreviewIssue: (previewIssue) => set({ previewIssue }),
-      setActivePanel: (activePanel) => set({ activePanel }),
-      setIsDirty: (isDirty) => set({ isDirty }),
       setSelectedPageId: (id) => set({ selectedPageId: id }),
 
       updateContent: (patch) =>
@@ -528,11 +493,8 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           const newSection: PortfolioSection = {
             id: createId("section"),
             type,
-            // `sectionInfo` carries the human label ("Test Scores"); the old
-            // `type[0].toUpperCase() + slice(1)` produced "TestScores" for
-            // camelCase types and rendered that straight into the heading.
-            title: sectionLabels[type],
-            subtitle: sectionSubtitleDefaults[type],
+            title: sectionMeta[type].label,
+            subtitle: sectionMeta[type].subtitle,
             visible: true,
             items: [],
           };
@@ -607,17 +569,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           ...touched(state),
         })),
 
-      updatePage: (id, patch) =>
-        set((state) => ({
-          content: {
-            ...state.content,
-            pages: (state.content.pages || []).map((page) =>
-              page.id === id ? { ...page, ...patch } : page,
-            ),
-          },
-          ...touched(state),
-        })),
-
       hydrateWorkspace: (bootstrap) => set(buildHydratedState(bootstrap)),
 
       loadWorkspace: async () => {
@@ -632,7 +583,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           if (cached) {
             set({ content: cached.content, slug: cached.slug });
           }
-          set({ workspaceState: "loading", previewIssue: "" });
+          set({ workspaceState: "loading" });
           try {
             // Standard check to see if user has a session without triggering redirect
             const response = await fetch(backendApiUrl("/users/me"), { credentials: "include" });
@@ -645,7 +596,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
-                analyticsData: null,
                 message: "",
                 workspaceState: "ready",
                 status: "Saved",
@@ -662,7 +612,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             }
 
             // User is logged in, continue with fetching data
-            const [userPayload, portfolioPayload, analyticsPayload] = await Promise.all([
+            const [userPayload, portfolioPayload] = await Promise.all([
               response
                 .json()
                 .then((r) => r.data)
@@ -672,12 +622,8 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                   return data;
                 }),
               fetchPayload("/portfolios/me", "Could not load your portfolio workspace."),
-              fetchPayload("/portfolios/analytics", "Could not load portfolio analytics.").catch(
-                () => null,
-              ),
             ]);
             const user = userPayload ?? null;
-            const analytics = analyticsPayload?.data ?? null;
             const cloud = portfolioPayload?.data?.draft;
 
             const cloudDraft = cloud
@@ -710,7 +656,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                   : null,
               publication: portfolioPayload?.data?.publication ?? null,
               billing: portfolioPayload?.data?.billing ?? { canPublish: false, status: "INACTIVE" },
-              analyticsData: analytics,
               message: "",
               workspaceState: "ready",
               ready: true,
@@ -736,7 +681,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
-                analyticsData: null,
                 message: "",
                 workspaceState: "ready",
                 status: "Saved",
@@ -749,7 +693,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               status: "Not saved",
               saveIssue: { reason: "Your workspace did not load.", retry: false },
               workspaceState: "error",
-              previewIssue: "Live preview is unavailable until the workspace reconnects.",
               message:
                 error instanceof Error ? error.message : "Could not load your portfolio workspace.",
               ready: true,

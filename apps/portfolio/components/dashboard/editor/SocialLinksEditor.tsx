@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 
 import { createId, type PortfolioLink } from "@/lib/portfolio";
+import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
 import { usePortfolioStore } from "@/store/portfolio-store";
 
 import { inputClass as input } from "./constants";
@@ -71,7 +72,7 @@ export function SocialLinksEditor() {
               <input
                 aria-label={`Label for ${name}`}
                 className={input}
-                maxLength={60}
+                maxLength={PORTFOLIO_LIMITS.linkLabel}
                 placeholder="Label, e.g. Dribbble"
                 value={link.label}
                 onChange={(e) => update(link.id, { label: e.target.value })}
