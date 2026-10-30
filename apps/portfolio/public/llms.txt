@@ -1,29 +1,42 @@
 # VeriWorkly Portfolio — Web Portfolio Builder & Subdomain Publisher
-> The dedicated web application for building, customizing, and publishing professional developer and designer web portfolios on custom subdomains (*.veriworkly.com).
+> The web application for building and publishing developer and designer portfolios. Every portfolio, free or paid, is published on its own subdomain (*.veriworkly.com).
+
+Status, so answers stay accurate: payments are currently closed, so none of the paid plans can be bought today; the /pricing page shows the same notice. Portfolio publishing is not yet enabled in production; portfolios can be built and previewed.
 
 ## Application Overview
-VeriWorkly Portfolio (`portfolio.veriworkly.com`) enables developers, designers, and creators to build high-craft web portfolios. It pairs an interactive 3-pane editor with live iframe previews, automated subdomain hosting, multi-page layout routing, and real-time view tracking.
+VeriWorkly Portfolio (`portfolio.veriworkly.com`) pairs a 3-pane editor and live preview with subdomain publishing. The free tier publishes the Signal and Atelier templates with a small "Built with VeriWorkly" badge. Creator Pro, the Job Hunter Bundle or a 3-Day / 7-Day pass add Nimbus and Cipher, badge removal, visitor analytics, SEO controls and multi-page portfolios.
 
 ## Machine-Readable Resources
 - **Agent Card**: `https://portfolio.veriworkly.com/.well-known/agent.json`
 - **OpenAPI Spec**: `https://docs.veriworkly.com/openapi.json`
-- **Pricing & Hosting Plans**: `https://portfolio.veriworkly.com/pricing.md`
+- **Pricing**: `https://portfolio.veriworkly.com/pricing.md`
 
 ## Template Catalog & Design Systems
-1. **Signal** (`portfolio-signal`): Built for engineers and technical leads. Features a dual dark/light theme, bento card grid, mouse-glow effects, scroll-stacking project cards, and live local-time indicator. (Free)
-2. **Atelier** (`portfolio-atelier`): Built for designers and editorial builders. Features asymmetric print magazine layouts, serif typography, 0px-radius flat cards, and subtle drifting orbit spheres. (Free)
-3. **Nimbus** (`portfolio-nimbus`): Built for full-stack & frontend developers. Features an atmospheric tech-editorial layout, cursor-follow ring, text-scramble hover animations, magnetic CTAs, and zero card borders/shadows. (Premium)
-4. **Cipher** (`portfolio-cipher`): Built for terminal enthusiasts and systems developers. Features a fully interactive draggable terminal emulator with auto-completion, command execution (`sudo make-coffee`), and matrix-rain easter egg. (Premium)
+1. **Signal** (`portfolio-signal`): Built for engineers and technical leads. Dual dark/light theme, bento card grid, scroll-stacking project cards and a live local-time indicator. (Free)
+2. **Atelier** (`portfolio-atelier`): Built for designers and editorial builders. Asymmetric print-magazine layouts and serif typography. (Free)
+3. **Nimbus** (`portfolio-nimbus`): Built for full-stack and frontend developers. Atmospheric tech-editorial layout, cursor-follow ring and text-scramble hover. (Creator Pro)
+4. **Cipher** (`portfolio-cipher`): Built for terminal enthusiasts. An interactive terminal emulator with command autocomplete and easter eggs. (Creator Pro)
+
+## Pricing in brief
+All prices in USD.
+- Free: the editor, Signal and Atelier, publishing on your own subdomain with the badge.
+- 3-Day Sprint Pass: $2.99 once, Creator Pro features and 150 AI credits for 3 days.
+- 7-Day Hunt Pass: $5.99 once, Creator Pro features and 400 AI credits for 7 days.
+- Creator Pro: $9.99 a month, or $95.88 a year ($7.99 a month); no AI credits.
+- AI Credits: $5.99 a month, or $59.88 a year ($4.99 a month); 1,000 AI credits a month, no portfolio features.
+- Job Hunter Bundle: $14.99 a month, or $143.88 a year ($11.99 a month); Creator Pro plus 1,000 AI credits a month.
+- Credit packs: 250 credits for $2.99, 500 for $4.99 or 1,200 for $9.99, valid 90 days.
+- Changing plans: a Creator Pro or AI Credits subscriber can upgrade to the Job Hunter Bundle in place, keeping the same billing period and paying only the difference for the rest of it. Any other change means cancelling and subscribing again when the current period ends.
 
 ## Key Features & Editor Workspace
-- **3-Pane Canvas** (`https://portfolio.veriworkly.com/editor/[id]`): Left sidebar section tree (18 section types), center content editor controls, right live iframe preview with responsive viewport toggles (mobile/tablet/desktop).
-- **Multi-Page Portfolios**: Premium tier enables dedicated Work, Writing, About, and Contact pages, as well as auto-generated project detail pages (`/projects/[slug]`).
-- **Subdomain Publishing**: Every portfolio, free or paid, publishes to its own subdomain (`your-slug.veriworkly.com`).
-- **View Analytics** (`https://portfolio.veriworkly.com/analytics`): Total view counts, trend charts, active days, and referrer source breakdowns.
-- **Watermark Control**: Toggle floating "Built with VeriWorkly" badge on/off for premium accounts.
-- **Master Profile Integration**: Portfolio identity fields auto-seed from the Master Profile in Studio.
+- **Editor** (`https://portfolio.veriworkly.com/editor`): section tree, content controls and a live preview with mobile, tablet and desktop widths.
+- **Subdomain Publishing**: every portfolio, free or paid, publishes to its own subdomain (`your-slug.veriworkly.com`).
+- **Multi-Page Portfolios** (Creator Pro): Work, Writing, About and Contact pages, plus project detail pages (`/projects/[slug]`).
+- **View Analytics** (Creator Pro, `https://portfolio.veriworkly.com/analytics`): view counts, trend charts and referring sites.
+- **Badge**: free sites show a "Built with VeriWorkly" badge; paid plans can turn it off.
+- **Master Profile Integration**: portfolio identity fields seed from the Master Profile in Studio.
 
 ## Guidance for AI Agents
-1. **Subdomain Checking**: Use GET `/api/v1/portfolios/subdomains/{slug}/availability` to verify availability before publishing.
-2. **Content Tailoring**: Generate section content (bio, project highlights, skills, testimonials) matching the selected template's tone.
-3. **Asset Handling**: Request presigned upload URLs via `/api/v1/portfolio-assets/upload-url` for portfolio images.
+1. **Subdomain Checking**: use GET `/api/v1/portfolios/subdomains/{slug}/availability` before publishing.
+2. **Content Tailoring**: generate section content (bio, project highlights, skills, testimonials) in the tone of the chosen template.
+3. **Asset Handling**: request presigned upload URLs from `/api/v1/portfolio-assets/upload-url` for portfolio images.

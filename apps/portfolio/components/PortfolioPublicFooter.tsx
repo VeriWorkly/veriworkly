@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 
-import { veriworklyProductLinks } from "@/config/site";
+import { siteConfig, veriworklyProductLinks } from "@/config/site";
 
 const products = [
   {
@@ -36,7 +36,7 @@ const PortfolioPublicFooter = () => {
       <div className="mx-auto grid w-[min(1360px,calc(100%-48px))] gap-12 py-16 max-sm:w-[min(calc(100%-30px),1360px)] lg:grid-cols-[1.1fr_1.4fr]">
         <div>
           <Link href="/" className="flex items-center gap-3 text-sm font-medium tracking-[-.04em]">
-            <Image src="/veriworkly-logo.png" width={30} height={30} alt="VeriWorkly Logo" />
+            <Image src="/veriworkly-logo-128.png" width={30} height={30} alt="" />
             VeriWorkly Portfolio
           </Link>
 
@@ -81,7 +81,7 @@ const PortfolioPublicFooter = () => {
         </div>
       </div>
 
-      <div className="mx-auto flex w-[min(1360px,calc(100%-48px))] flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 text-xs text-[#f5f4ef]/45 max-sm:w-[min(calc(100%-30px),1360px)]">
+      <div className="mx-auto flex w-[min(1360px,calc(100%-48px))] flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 text-xs text-[#f5f4ef]/70 max-sm:w-[min(calc(100%-30px),1360px)]">
         <span>&copy; {new Date().getFullYear()} VeriWorkly</span>
 
         <div className="flex flex-wrap gap-5">
@@ -89,6 +89,10 @@ const PortfolioPublicFooter = () => {
           <Link href="/pricing">Pricing</Link>
           <Link href="/dashboard">Dashboard</Link>
           <Link href="/editor">Editor</Link>
+          <a href={`${siteConfig.links.main}/terms`}>Terms</a>
+          <a href={`${siteConfig.links.main}/privacy`}>Privacy</a>
+          <a href={`${siteConfig.links.main}/terms#billing`}>Refunds</a>
+          <a href={`${siteConfig.links.main}/contact`}>Contact</a>
         </div>
       </div>
     </footer>

@@ -19,12 +19,12 @@ Four templates, sourced from the private submodule and rendered server-side:
 
 ## ✏️ Editor
 
-A three-pane workspace (structure / content / live `<iframe>` preview) autosaving every 12 seconds, supporting 18 section types. **Note:** the backend's publish-time content validator currently only accepts 9 of those 18 (`projects, experience, services, skills, education, writing, testimonials, awards, contact`) — using one of the other 9 will fail validation at publish time. Premium users additionally get multi-page portfolios (dedicated Work/Writing/About/Contact pages plus auto-generated per-project detail pages).
+A three-pane workspace (structure / content / live `<iframe>` preview) autosaving every 12 seconds, supporting 18 section types; the server validates against the same list (owned by `profile-core`). Paid plans (Creator Pro, the Job Hunter Bundle or a pass) additionally get multi-page portfolios (dedicated Work/Writing/About/Contact pages plus auto-generated per-project detail pages).
 
 ## 📈 Publishing, analytics & watermark
 
 - Every portfolio, free or paid, is served on its own subdomain (`your-slug.veriworkly.com`); the platform path (`portfolio.veriworkly.com/portfolio/your-slug`) still resolves and names the subdomain as canonical.
-- Premium adds the Nimbus and Cipher templates and multi-page portfolios.
+- Free sites use Signal or Atelier and show a "Built with VeriWorkly" badge. Paid plans (Creator Pro, the Job Hunter Bundle or a 3-Day / 7-Day pass) add Nimbus and Cipher, badge removal, visitor analytics, SEO controls and multi-page portfolios. Prices: `public/pricing.md`.
 - Analytics (views, trend, referrers) is premium-gated, with distinct locked states for logged-out visitors vs. logged-in free users.
 - A "Built with VeriWorkly" watermark appears on every free-tier published portfolio; premium gets a per-portfolio removal toggle.
 
