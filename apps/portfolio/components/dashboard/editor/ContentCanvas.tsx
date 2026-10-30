@@ -21,7 +21,8 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
   const updateIdentity = usePortfolioStore((state) => state.updateIdentity);
   const documentId = usePortfolioStore((state) => state.draft?.id);
   const selectedPageId = usePortfolioStore((state) => state.selectedPageId);
-  const pages = usePortfolioStore((state) => state.content.pages || []);
+  // The fallback stays outside the selector: a new [] per call makes the store loop forever.
+  const pages = usePortfolioStore((state) => state.content.pages) ?? [];
   const rootSections = usePortfolioStore((state) => state.content.sections);
   const sections = selectedPageId
     ? pages.find((p) => p.id === selectedPageId)?.sections || []

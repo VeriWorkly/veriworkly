@@ -24,7 +24,8 @@ export function PortfolioEditorWorkspace() {
   );
   const ready = usePortfolioStore((state) => state.ready);
   const selectedPageIdState = usePortfolioStore((state) => state.selectedPageId);
-  const pages = usePortfolioStore((state) => state.content.pages || []);
+  // The fallback stays outside the selector: a new [] per call makes the store loop forever.
+  const pages = usePortfolioStore((state) => state.content.pages) ?? [];
   const rootSections = usePortfolioStore((state) => state.content.sections);
   const sections = selectedPageIdState
     ? pages.find((p) => p.id === selectedPageIdState)?.sections || []
